@@ -7,6 +7,7 @@ import {
   NOTIFICATION_HUBS,
   NOTIFICATION_MIGRATIONS,
   installNotificationHubs,
+  restoreGeneratedWireRoutes,
 } from "./install-notification-hubs.mjs";
 
 const sourceFlows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
@@ -17,12 +18,26 @@ const runtimeRoundTrip = structuredClone(migrated);
 for (const candidate of runtimeRoundTrip) {
   if (candidate.type === "group") delete candidate.notification_hub_layout_version;
 }
-const afterRuntimeRoundTrip = installNotificationHubs(runtimeRoundTrip);
+const afterRuntimeRoundTrip = installNotificationHubs(structuredClone(runtimeRoundTrip));
 assert.deepEqual(
   afterRuntimeRoundTrip,
-  migrated,
-  "a serialização do Node-RED não pode reaplicar o deslocamento visual dos hubs",
+  runtimeRoundTrip,
+  "a serialização do Node-RED não pode reaplicar deslocamento nem metadado visual dos hubs",
 );
+
+const orphanRouteOut = "notification_hub_wire_out_123456789abc";
+const orphanRouteIn = "notification_hub_wire_in_123456789abc";
+const orphanRouteFixture = [
+  { id: "route-tab", type: "tab", label: "route" },
+  { id: "route-group", type: "group", z: "route-tab", nodes: [orphanRouteOut, orphanRouteIn, "route-target"] },
+  { id: orphanRouteOut, type: "link out", z: "route-tab", g: "route-group", links: [orphanRouteIn], wires: [] },
+  { id: orphanRouteIn, type: "link in", z: "route-tab", g: "route-group", links: [orphanRouteOut], wires: [["route-target"]] },
+  { id: "route-target", type: "function", z: "route-tab", g: "route-group", wires: [[]] },
+];
+const restoredOrphanRoute = restoreGeneratedWireRoutes(structuredClone(orphanRouteFixture));
+assert.equal(restoredOrphanRoute.some((candidate) => candidate.id === orphanRouteOut), false);
+assert.equal(restoredOrphanRoute.some((candidate) => candidate.id === orphanRouteIn), false);
+assert.deepEqual(restoredOrphanRoute.find((candidate) => candidate.id === "route-group").nodes, ["route-target"]);
 
 const byId = new Map(migrated.map((node) => [node.id, node]));
 assert.equal(byId.size, migrated.length, "IDs duplicados após instalar os hubs");

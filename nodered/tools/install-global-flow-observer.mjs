@@ -24,18 +24,26 @@ const hasNotificationHubs = notificationHubTabs.every((tabId) =>
   parsedFlows.some((node) => node.id === tabId && node.type === "tab")
 );
 const flows = hasNotificationHubs
-  ? parsedFlows
-  : installNotificationHubs(parsedFlows);
+  ? structuredClone(parsedFlows)
+  : installNotificationHubs(structuredClone(parsedFlows));
 
 const source = (name) =>
   fs.readFileSync(path.join(functionDir, name), "utf8").trimEnd();
 const isCoverageId = (id) =>
   typeof id === "string" && id.startsWith("global_observer_coverage__");
+const isGeneratedWireRoute = (node) =>
+  node?.z === OBSERVER_TAB &&
+  /^notification_hub_wire_(?:out|in)_[a-f0-9]{12}$/.test(node.id ?? "");
 const owned = (id) =>
   id === OBSERVER_TAB ||
   (id.startsWith("global_observer_") && !isCoverageId(id));
+const observerManaged = (node) =>
+  owned(node.id) || isCoverageId(node.id) || isGeneratedWireRoute(node);
 
-let next = flows.filter((node) => !owned(node.id));
+// Short visual routes are derived from the observer's generated wires. Remove
+// the old copies together with their source nodes so the refreshed topology
+// recreates each pair exactly once.
+let next = flows.filter((node) => !owned(node.id) && !isGeneratedWireRoute(node));
 for (const node of next) {
   if (Array.isArray(node.nodes)) {
     node.nodes = node.nodes.filter((id) => !owned(id));
@@ -347,7 +355,6 @@ const observerNodes = [
     y: 39,
     w: 3900,
     h: 522,
-    notification_hub_layout_version: 1,
   },
   {
     id: "global_observer_architecture",
@@ -1340,7 +1347,8 @@ next.push(...coverageNodes, ...observerNodes);
 // generated groups; keeping them would leave `g` and `group.nodes` divergent.
 const finalizedUnordered = refreshNotificationWireRoutes(next);
 const finalized = reconcileGeneratedFlows(parsedFlows, finalizedUnordered, {
-  isOwned: (node) => owned(node.id),
+  isOwned: observerManaged,
+  shouldUpdate: (node) => observerManaged(node) || externalEventOutIds.includes(node.id),
 });
 fs.writeFileSync(outputPath, `${JSON.stringify(finalized, null, 4)}\n`);
 console.log(

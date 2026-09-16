@@ -20,7 +20,9 @@ function node(id) {
 function resolvedWireTargets(id, output = 0) {
   return (node(id).wires?.[output] ?? []).flatMap((targetId) => {
     const routeOut = node(targetId);
-    if (!routeOut.notification_hub_wire_route) return [targetId];
+    const generatedRoute = routeOut.notification_hub_wire_route ||
+      /^notification_hub_wire_out_[a-f0-9]{12}$/.test(routeOut.id);
+    if (!generatedRoute) return [targetId];
     assert.equal(routeOut.type, "link out");
     assert.equal(routeOut.links?.length, 1);
     const routeIn = node(routeOut.links[0]);

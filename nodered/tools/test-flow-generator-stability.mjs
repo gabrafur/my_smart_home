@@ -140,7 +140,10 @@ staleById.get("security_light_arrival_direction_blocked_v1").func = "return null
 staleById.get("security_light_arrival_direction_gate_v1").name = "stale";
 staleById.get("security_light_arrival_direction_gate_v1").property = "stale";
 staleById.get("people_arrival_direction_note_v1").name = "stale";
-fs.writeFileSync(functionalTarget, `${JSON.stringify(stale, null, 4)}\n`);
+fs.writeFileSync(
+  functionalTarget,
+  `${JSON.stringify(stale, null, 4)}${baselineText.endsWith("\n") ? "\n" : ""}`,
+);
 run("update-location-flows.mjs", functionalTarget);
 const functionalResultText = fs.readFileSync(functionalTarget, "utf8");
 const functionalResult = JSON.parse(functionalResultText);

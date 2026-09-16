@@ -30,7 +30,7 @@ classify_remote_error() {
     *"non-fast-forward"*|*"fetch first"*|*"behind or diverged"*)
       printf '%s\n' "remote_diverged"
       ;;
-    *"Node-RED canvas validation failed:"*|*"flows:validate-layout"*|*"validate-flow-layout.mjs"*)
+    *"Node-RED canvas validation failed:"*|*"Visual quality violation detected"*)
       printf '%s\n' "validation_node_red_layout"
       ;;
     *"pre-push:"*|*"validate-public"*|*"make: ***"*|*"hook declined"*)
@@ -79,6 +79,8 @@ fi
     exit 1
   fi
 
+  starting_head="$(git rev-parse HEAD)"
+  created_commit=0
   git add -A
 
   # O scanner canonico valida caminhos proibidos e conteudo sem confundir
@@ -97,6 +99,7 @@ fi
   else
     commit_message="chore: create automated smart home backup"
     git commit -m "$commit_message" --quiet
+    created_commit=1
   fi
 
   ahead_count=$(git rev-list --count "$REMOTE/$BRANCH..HEAD")
@@ -119,6 +122,11 @@ fi
         ;;
       *)
         failure_reason=$(classify_remote_error "$push_output")
+        if [[ "$created_commit" -eq 1 &&
+              ("$failure_reason" == "validation_node_red_layout" || "$failure_reason" == "validation_failed") ]]; then
+          git reset --mixed --quiet "$starting_head"
+          log "backup restored worktree after validation rejected the new commit"
+        fi
         log "backup failed: could not push $REMOTE/$BRANCH reason=$failure_reason"
         emit_reason "$failure_reason"
         exit 1

@@ -1220,7 +1220,9 @@
         },
         "alarm_group_effects": {
           "x": 64,
-          "y": 682
+          "y": 694,
+          "w": 2801,
+          "h": 312
         },
         "alarm_group_tests": {
           "x": 64,
@@ -2268,16 +2270,22 @@
       "compact_groups": true,
       "group_positions": {
         "storage_visual_decision_group": {
-          "x": 1310,
-          "y": 260
+          "x": 64,
+          "y": 1549,
+          "w": 5945,
+          "h": 622
         },
         "storage_group_alerts": {
-          "x": 8676,
-          "y": 99
+          "x": 1290,
+          "y": 279,
+          "w": 3387,
+          "h": 502
         },
         "global_observer_coverage__storage_health_tab__group": {
-          "x": 12120,
-          "y": 59
+          "x": 4717,
+          "y": 839,
+          "w": 722,
+          "h": 142
         }
       },
       "node_positions": {
@@ -5652,8 +5660,10 @@
           "y": 6866
         },
         "global_observer_coverage__daily_host_updates_tab__group": {
-          "x": 1800,
-          "y": 47
+          "x": 1365,
+          "y": 47,
+          "w": 702,
+          "h": 150
         },
         "daily_update_alexa_media_group": {
           "x": 224,
@@ -7806,8 +7816,10 @@
           "y": 847
         },
         "global_observer_coverage__monitoramento_vpn_tab__group": {
-          "x": 8055,
-          "y": 59
+          "x": 2531,
+          "y": 3,
+          "w": 702,
+          "h": 150
         }
       },
       "node_positions": {
@@ -8759,8 +8771,10 @@
           "y": 19
         },
         "git_backup_test_group": {
-          "x": 92,
-          "y": 576
+          "x": 64,
+          "y": 592,
+          "w": 1482,
+          "h": 479
         },
         "git_backup_effect_group": {
           "x": 1657,
@@ -9595,8 +9609,10 @@
           "y": 1416
         },
         "global_observer_coverage__monitoramento_zigbee_tab__group": {
-          "x": 7065,
-          "y": 59
+          "x": 4257,
+          "y": 57,
+          "w": 702,
+          "h": 150
         }
       },
       "node_positions": {
@@ -10177,8 +10193,10 @@
           "y": 1649
         },
         "global_observer_coverage__monitoramento_tuya_tab__group": {
-          "x": 8335,
-          "y": 59
+          "x": 5558,
+          "y": 22,
+          "w": 702,
+          "h": 150
         }
       },
       "node_positions": {
@@ -12348,16 +12366,20 @@
           "y": 1569
         },
         "resident_notifications_output_group": {
-          "x": 7456,
-          "y": 39
+          "x": 5217,
+          "y": 39,
+          "w": 2474,
+          "h": 555
         },
         "resident_notifications_test_group": {
           "x": 115,
           "y": 776
         },
         "global_observer_coverage__resident_notifications_tab__group": {
-          "x": 10600,
-          "y": 59
+          "x": 3600,
+          "y": 776,
+          "w": 702,
+          "h": 150
         }
       },
       "node_positions": {

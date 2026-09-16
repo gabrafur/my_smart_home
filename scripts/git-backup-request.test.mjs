@@ -258,6 +258,37 @@ test("backup retries an existing local commit after validation contention", () =
   const layoutFailed = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
   assert.equal(layoutFailed.status, 1, layoutFailed.stderr);
   assert.match(layoutFailed.stdout, /git-backup-reason=validation_node_red_layout/);
+  assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "1");
+
+  assert.equal(git("reset", "--hard", "origin/main").status, 0);
+  fs.writeFileSync(
+    hook,
+    "#!/bin/sh\necho 'Node-RED canvas validation failed:' >&2\necho '- backup_git: left margin below 64px' >&2\nexit 1\n",
+  );
+  fs.chmodSync(hook, 0o755);
+  fs.writeFileSync(path.join(repo, "state.txt"), "layout invalid\n");
+  const freshLayoutFailure = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
+  assert.equal(freshLayoutFailure.status, 1, freshLayoutFailure.stderr);
+  assert.match(freshLayoutFailure.stdout, /git-backup-reason=validation_node_red_layout/);
+  assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "0");
+  assert.equal(git("status", "--short", "state.txt").stdout, " M state.txt\n");
+  assert.match(fs.readFileSync(path.join(repo, ".git-backup.log"), "utf8"),
+    /restored worktree after validation rejected the new commit/);
+
+  assert.equal(git("reset", "--hard", "origin/main").status, 0);
+  fs.writeFileSync(
+    hook,
+    "#!/bin/sh\necho '> flows:validate-layout' >&2\n" +
+      "echo 'generator stability test failed' >&2\n" +
+      "echo 'make: *** [validate-node-red] Error 1' >&2\nexit 1\n",
+  );
+  fs.chmodSync(hook, 0o755);
+  fs.writeFileSync(path.join(repo, "state.txt"), "generator invalid\n");
+  const generatorFailure = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
+  assert.equal(generatorFailure.status, 1, generatorFailure.stderr);
+  assert.match(generatorFailure.stdout, /git-backup-reason=validation_failed/);
+  assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "0");
+  assert.equal(git("status", "--short", "state.txt").stdout, " M state.txt\n");
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

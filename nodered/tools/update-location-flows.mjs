@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
 const outputPath = path.resolve(process.argv[3] ?? sourcePath);
+const sourceEndedWithNewline = fs.readFileSync(sourcePath, "utf8").endsWith("\n");
 const scripts = [
   "install-resident-notifications-flow.mjs",
   "install-arrival-context-flow.mjs",
@@ -32,7 +33,13 @@ if (sourcePath !== outputPath) fs.copyFileSync(sourcePath, outputPath);
 
 for (const script of scripts) {
   const env = script === "apply-left-margin.mjs"
-    ? { ...process.env, FLOW_LAYOUT_CANVASES: layoutCanvases }
+    ? {
+        ...process.env,
+        FLOW_LAYOUT_CANVASES: layoutCanvases,
+        FLOW_LAYOUT_APPLY_BASE_NODES: "0",
+        FLOW_LAYOUT_APPLY_GROUP_POSITIONS: "0",
+        FLOW_LAYOUT_APPLY_NODE_POSITIONS: "0",
+      }
     : process.env;
   const result = spawnSync(process.execPath, [path.join(here, script), outputPath, outputPath], {
     cwd: path.dirname(outputPath),
@@ -40,4 +47,11 @@ for (const script of scripts) {
     stdio: "inherit",
   });
   if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
+// Node-RED may serialize flows.json without a terminal newline. Preserve the
+// input byte convention so a no-op regeneration remains a true no-op.
+if (!sourceEndedWithNewline) {
+  const generated = fs.readFileSync(outputPath, "utf8");
+  if (generated.endsWith("\n")) fs.writeFileSync(outputPath, generated.slice(0, -1));
 }

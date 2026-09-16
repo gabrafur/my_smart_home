@@ -1,5 +1,15 @@
 const LAYOUT_FIELDS = new Set(["x", "y", "w", "h"]);
 
+function duplicateIds(flows) {
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const node of flows) {
+    if (seen.has(node.id)) duplicates.add(node.id);
+    seen.add(node.id);
+  }
+  return [...duplicates].sort();
+}
+
 function stableMembership(current = [], desired = [], isOwnedId = () => true) {
   const desiredIds = new Set(desired);
   const currentIds = new Set(current);
@@ -39,8 +49,16 @@ export function reconcileGeneratedFlows(currentFlows, desiredFlows, options = {}
   const currentById = new Map(currentFlows.map((node) => [node.id, node]));
   const desiredById = new Map(desiredFlows.map((node) => [node.id, node]));
 
-  if (currentById.size !== currentFlows.length) throw new Error("IDs duplicados no fluxo atual");
-  if (desiredById.size !== desiredFlows.length) throw new Error("IDs duplicados no fluxo gerado");
+  if (currentById.size !== currentFlows.length) {
+    throw new Error(`IDs duplicados no fluxo atual: ${duplicateIds(currentFlows).join(", ")}`);
+  }
+  if (desiredById.size !== desiredFlows.length) {
+    const duplicated = duplicateIds(desiredFlows);
+    const details = desiredFlows
+      .filter((node) => duplicated.includes(node.id))
+      .map((node) => `${node.id}[route=${Object.hasOwn(node, "notification_hub_wire_route") ? "yes" : "no"}]`);
+    throw new Error(`IDs duplicados no fluxo gerado: ${details.join(", ")}`);
+  }
   const isOwnedId = (id) => {
     const node = currentById.get(id) ?? desiredById.get(id);
     return node ? isOwned(node) : false;
@@ -59,7 +77,9 @@ export function reconcileGeneratedFlows(currentFlows, desiredFlows, options = {}
   }
 
   for (const desired of desiredFlows) {
-    if (!currentById.has(desired.id)) reconciled.push(structuredClone(desired));
+    if (!currentById.has(desired.id) && isOwned(desired)) {
+      reconciled.push(structuredClone(desired));
+    }
   }
   return reconciled;
 }

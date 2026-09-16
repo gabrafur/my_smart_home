@@ -451,10 +451,10 @@
             "notification_hub_wire_out_34604f022367",
             "notification_hub_wire_in_34604f022367"
         ],
-        "x": 8676,
-        "y": 99,
-        "w": 3357,
-        "h": 510,
+        "x": 1290,
+        "y": 279,
+        "w": 3387,
+        "h": 502,
         "notification_hub_layout_version": 1
     },
     {
@@ -1820,9 +1820,9 @@
             "alarm_notification_dry_run_out"
         ],
         "x": 64,
-        "y": 682,
-        "w": 2771,
-        "h": 320,
+        "y": 694,
+        "w": 2801,
+        "h": 312,
         "notification_hub_layout_version": 1
     },
     {
@@ -3067,10 +3067,10 @@
             "storage_test_decision_out",
             "storage_auto_out"
         ],
-        "x": 1310,
-        "y": 260,
-        "w": 7217,
-        "h": 627
+        "x": 64,
+        "y": 1549,
+        "w": 5945,
+        "h": 622
     },
     {
         "id": "grp_internet_triggers",
@@ -3944,10 +3944,10 @@
             "global_observer_coverage__storage_health_tab__annotate",
             "global_observer_coverage__storage_health_tab__out"
         ],
-        "x": 12120,
-        "y": 59,
-        "w": 702,
-        "h": 150
+        "x": 1684,
+        "y": 39,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "global_observer_coverage__c22d8b12055e87f7__group",
@@ -3984,7 +3984,7 @@
             "global_observer_coverage__daily_host_updates_tab__annotate",
             "global_observer_coverage__daily_host_updates_tab__out"
         ],
-        "x": 1800,
+        "x": 1365,
         "y": 47,
         "w": 702,
         "h": 150
@@ -4024,8 +4024,8 @@
             "global_observer_coverage__monitoramento_vpn_tab__annotate",
             "global_observer_coverage__monitoramento_vpn_tab__out"
         ],
-        "x": 8055,
-        "y": 59,
+        "x": 2531,
+        "y": 3,
         "w": 702,
         "h": 150
     },
@@ -4124,8 +4124,8 @@
             "global_observer_coverage__monitoramento_zigbee_tab__annotate",
             "global_observer_coverage__monitoramento_zigbee_tab__out"
         ],
-        "x": 7065,
-        "y": 59,
+        "x": 4257,
+        "y": 57,
         "w": 702,
         "h": 150
     },
@@ -4144,8 +4144,8 @@
             "global_observer_coverage__monitoramento_tuya_tab__annotate",
             "global_observer_coverage__monitoramento_tuya_tab__out"
         ],
-        "x": 8335,
-        "y": 59,
+        "x": 5558,
+        "y": 22,
         "w": 702,
         "h": 150
     },
@@ -10625,7 +10625,7 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1331,
+        "x": 1335,
         "y": 735,
         "wires": [
             [
@@ -10657,7 +10657,7 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1331,
+        "x": 1335,
         "y": 855,
         "wires": [
             [
@@ -10675,7 +10675,7 @@
             "70eb073f8191e69e"
         ],
         "uncaught": false,
-        "x": 321,
+        "x": 325,
         "y": 915,
         "wires": [
             [
@@ -10703,7 +10703,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1631,
+        "x": 1635,
         "y": 735,
         "wires": [
             [
@@ -10735,7 +10735,7 @@
         "blockInputOverrides": true,
         "domain": "homeassistant",
         "service": "update_entity",
-        "x": 1931,
+        "x": 1935,
         "y": 735,
         "wires": [
             [
@@ -10763,7 +10763,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1671,
+        "x": 1675,
         "y": 855,
         "wires": [
             [
@@ -10781,7 +10781,7 @@
             "8261c7cfb6756ca8"
         ],
         "uncaught": false,
-        "x": 331,
+        "x": 335,
         "y": 965,
         "wires": [
             [
@@ -10910,7 +10910,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 2405,
+        "x": 2409,
         "y": 800,
         "wires": [
             [
@@ -10930,7 +10930,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 2685,
+        "x": 2689,
         "y": 800,
         "wires": [
             []
@@ -11644,7 +11644,7 @@
             "alarm_intent_ready_out",
             "alarm_retry_request_out"
         ],
-        "x": 101,
+        "x": 105,
         "y": 785,
         "wires": [
             [
@@ -11672,7 +11672,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 321,
+        "x": 325,
         "y": 785,
         "wires": [
             [
@@ -11703,7 +11703,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 621,
+        "x": 625,
         "y": 785,
         "wires": [
             [
@@ -11737,7 +11737,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 961,
+        "x": 965,
         "y": 755,
         "wires": [
             [
@@ -11771,7 +11771,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 971,
+        "x": 975,
         "y": 855,
         "wires": [
             [
@@ -11792,7 +11792,7 @@
         "links": [
             "alarm_test_dry_run_in"
         ],
-        "x": 1181,
+        "x": 1185,
         "y": 805,
         "wires": []
     },
@@ -11823,7 +11823,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 571,
+        "x": 575,
         "y": 915,
         "wires": [
             [
@@ -11858,7 +11858,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 581,
+        "x": 585,
         "y": 965,
         "wires": [
             [
@@ -11876,7 +11876,7 @@
         "links": [
             "alarm_failure_in"
         ],
-        "x": 811,
+        "x": 815,
         "y": 940,
         "wires": []
     },
@@ -11889,7 +11889,7 @@
         "links": [
             "alarm_retry_notify_out"
         ],
-        "x": 1831,
+        "x": 1835,
         "y": 945,
         "wires": [
             [
@@ -11920,7 +11920,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2150,
+        "x": 2154,
         "y": 830,
         "wires": [
             [
@@ -11941,7 +11941,7 @@
         "links": [
             "alarm_test_dry_run_in"
         ],
-        "x": 2405,
+        "x": 2409,
         "y": 880,
         "wires": []
     },
@@ -15439,8 +15439,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 8993,
-        "y": 152,
+        "x": 1611,
+        "y": 320,
         "wires": []
     },
     {
@@ -15477,8 +15477,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 9760,
-        "y": 360,
+        "x": 1681,
+        "y": 500,
         "wires": [
             [
                 "storage_notify__hub_call"
@@ -15497,8 +15497,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 10120,
-        "y": 360,
+        "x": 1961,
+        "y": 500,
         "wires": [
             [
                 "storage_notify__hub_result"
@@ -15526,8 +15526,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 10460,
-        "y": 360,
+        "x": 2231,
+        "y": 500,
         "wires": [
             [
                 "notification_hub_wire_out_b5cbe7a52037"
@@ -15571,8 +15571,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 9760,
-        "y": 230,
+        "x": 1681,
+        "y": 560,
         "wires": [
             [
                 "storage_notify_secondary__hub_call"
@@ -15591,8 +15591,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 10120,
-        "y": 230,
+        "x": 1961,
+        "y": 560,
         "wires": [
             [
                 "storage_notify_secondary__hub_result"
@@ -15620,8 +15620,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 10460,
-        "y": 230,
+        "x": 2231,
+        "y": 560,
         "wires": [
             [
                 "notification_hub_wire_out_168dc6db5cd7"
@@ -15879,8 +15879,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 9760,
-        "y": 500,
+        "x": 1681,
+        "y": 620,
         "wires": [
             [
                 "storage_notify_persistent__hub_call"
@@ -15899,8 +15899,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 10120,
-        "y": 500,
+        "x": 1961,
+        "y": 620,
         "wires": [
             [
                 "storage_notify_persistent__hub_result"
@@ -15928,8 +15928,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 10460,
-        "y": 500,
+        "x": 2231,
+        "y": 620,
         "wires": [
             [
                 "notification_hub_wire_out_0f2bad790b49"
@@ -15952,8 +15952,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 11070,
-        "y": 300,
+        "x": 4501,
+        "y": 560,
         "wires": []
     },
     {
@@ -15968,8 +15968,8 @@
             "storage_notify_persistent__hub_call"
         ],
         "uncaught": false,
-        "x": 10460,
-        "y": 570,
+        "x": 1501,
+        "y": 740,
         "wires": [
             [
                 "notification_hub_wire_out_34604f022367"
@@ -15989,8 +15989,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 11060,
-        "y": 500,
+        "x": 4301,
+        "y": 740,
         "wires": []
     },
     {
@@ -16038,8 +16038,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 8960,
-        "y": 230,
+        "x": 1611,
+        "y": 400,
         "wires": []
     },
     {
@@ -16107,8 +16107,8 @@
         "links": [
             "storage_test_decision_in"
         ],
-        "x": 8490,
-        "y": 800,
+        "x": 5968,
+        "y": 1780,
         "wires": []
     },
     {
@@ -16416,8 +16416,8 @@
         "links": [
             "storage_auto_in"
         ],
-        "x": 8490,
-        "y": 850,
+        "x": 5968,
+        "y": 1830,
         "wires": []
     },
     {
@@ -16667,8 +16667,8 @@
             "storage_visual_input_out",
             "storage_visual_test_input_out"
         ],
-        "x": 1347,
-        "y": 500,
+        "x": 105,
+        "y": 1780,
         "wires": [
             [
                 "storage_visual_policy_load"
@@ -16688,8 +16688,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1547,
-        "y": 500,
+        "x": 305,
+        "y": 1780,
         "wires": [
             [
                 "storage_visual_policy_available"
@@ -16715,8 +16715,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1787,
-        "y": 500,
+        "x": 545,
+        "y": 1780,
         "wires": [
             [
                 "storage_visual_input_normalize"
@@ -16739,8 +16739,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2047,
-        "y": 400,
+        "x": 818,
+        "y": 1820,
         "wires": []
     },
     {
@@ -16756,8 +16756,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2057,
-        "y": 500,
+        "x": 818,
+        "y": 1780,
         "wires": [
             [
                 "storage_visual_metrics_valid"
@@ -16783,8 +16783,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2317,
-        "y": 500,
+        "x": 1148,
+        "y": 1780,
         "wires": [
             [
                 "storage_visual_history_analyze"
@@ -16813,8 +16813,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2587,
-        "y": 360,
+        "x": 1538,
+        "y": 1640,
         "wires": [
             [
                 "storage_visual_invalid_finalize"
@@ -16837,8 +16837,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2897,
-        "y": 360,
+        "x": 1941,
+        "y": 1640,
         "wires": [
             [
                 "storage_visual_invalid_mqtt_out"
@@ -16862,8 +16862,8 @@
         "links": [
             "storage_visual_mqtt_in"
         ],
-        "x": 3197,
-        "y": 310,
+        "x": 2241,
+        "y": 1590,
         "wires": []
     },
     {
@@ -16876,8 +16876,8 @@
         "links": [
             "storage_visual_notify_in"
         ],
-        "x": 3197,
-        "y": 360,
+        "x": 2241,
+        "y": 1640,
         "wires": []
     },
     {
@@ -16890,8 +16890,8 @@
         "links": [
             "storage_test_decision_in"
         ],
-        "x": 3197,
-        "y": 410,
+        "x": 2243,
+        "y": 1700,
         "wires": []
     },
     {
@@ -16907,8 +16907,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2597,
-        "y": 550,
+        "x": 1355,
+        "y": 1830,
         "wires": [
             [
                 "storage_visual_raw_severity"
@@ -16946,8 +16946,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 4,
-        "x": 2867,
-        "y": 550,
+        "x": 1625,
+        "y": 1830,
         "wires": [
             [
                 "storage_visual_set_critical"
@@ -16983,8 +16983,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3137,
-        "y": 470,
+        "x": 1895,
+        "y": 1750,
         "wires": [
             [
                 "storage_visual_set_critical_out"
@@ -17001,8 +17001,8 @@
         "links": [
             "storage_visual_hysteresis_in"
         ],
-        "x": 3347,
-        "y": 470,
+        "x": 2105,
+        "y": 1750,
         "wires": []
     },
     {
@@ -17025,8 +17025,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3137,
-        "y": 530,
+        "x": 1895,
+        "y": 1810,
         "wires": [
             [
                 "storage_visual_set_high_out"
@@ -17043,8 +17043,8 @@
         "links": [
             "storage_visual_hysteresis_in"
         ],
-        "x": 3347,
-        "y": 530,
+        "x": 2105,
+        "y": 1810,
         "wires": []
     },
     {
@@ -17067,8 +17067,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3137,
-        "y": 590,
+        "x": 1895,
+        "y": 1870,
         "wires": [
             [
                 "storage_visual_set_warning_out"
@@ -17085,8 +17085,8 @@
         "links": [
             "storage_visual_hysteresis_in"
         ],
-        "x": 3347,
-        "y": 590,
+        "x": 2105,
+        "y": 1870,
         "wires": []
     },
     {
@@ -17109,8 +17109,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3137,
-        "y": 650,
+        "x": 1895,
+        "y": 1930,
         "wires": [
             [
                 "storage_visual_set_normal_out"
@@ -17127,8 +17127,8 @@
         "links": [
             "storage_visual_hysteresis_in"
         ],
-        "x": 3347,
-        "y": 650,
+        "x": 2105,
+        "y": 1930,
         "wires": []
     },
     {
@@ -17143,8 +17143,8 @@
             "storage_visual_set_warning_out",
             "storage_visual_set_normal_out"
         ],
-        "x": 3437,
-        "y": 550,
+        "x": 2195,
+        "y": 1830,
         "wires": [
             [
                 "storage_visual_keep_critical"
@@ -17170,8 +17170,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3657,
-        "y": 550,
+        "x": 2415,
+        "y": 1830,
         "wires": [
             [
                 "storage_visual_final_critical"
@@ -17200,8 +17200,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3937,
-        "y": 550,
+        "x": 2695,
+        "y": 1830,
         "wires": [
             [
                 "storage_visual_final_high"
@@ -17230,8 +17230,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 4217,
-        "y": 550,
+        "x": 2975,
+        "y": 1830,
         "wires": [
             [
                 "storage_visual_final_warning"
@@ -17261,8 +17261,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3937,
-        "y": 370,
+        "x": 2695,
+        "y": 1650,
         "wires": [
             [
                 "storage_visual_final_critical_out"
@@ -17279,8 +17279,8 @@
         "links": [
             "storage_visual_facts_in"
         ],
-        "x": 4147,
-        "y": 370,
+        "x": 2905,
+        "y": 1650,
         "wires": []
     },
     {
@@ -17303,8 +17303,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 4217,
-        "y": 440,
+        "x": 2975,
+        "y": 1720,
         "wires": [
             [
                 "storage_visual_final_high_out"
@@ -17321,8 +17321,8 @@
         "links": [
             "storage_visual_facts_in"
         ],
-        "x": 4427,
-        "y": 440,
+        "x": 3185,
+        "y": 1720,
         "wires": []
     },
     {
@@ -17345,8 +17345,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 4497,
-        "y": 510,
+        "x": 3255,
+        "y": 1790,
         "wires": [
             [
                 "storage_visual_final_warning_out"
@@ -17363,8 +17363,8 @@
         "links": [
             "storage_visual_facts_in"
         ],
-        "x": 4707,
-        "y": 510,
+        "x": 3465,
+        "y": 1790,
         "wires": []
     },
     {
@@ -17387,8 +17387,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 4497,
-        "y": 620,
+        "x": 3255,
+        "y": 1900,
         "wires": [
             [
                 "storage_visual_final_raw_out"
@@ -17405,8 +17405,8 @@
         "links": [
             "storage_visual_facts_in"
         ],
-        "x": 4707,
-        "y": 620,
+        "x": 3465,
+        "y": 1900,
         "wires": []
     },
     {
@@ -17421,8 +17421,8 @@
             "storage_visual_final_warning_out",
             "storage_visual_final_raw_out"
         ],
-        "x": 4407,
-        "y": 740,
+        "x": 3165,
+        "y": 2020,
         "wires": [
             [
                 "storage_visual_facts"
@@ -17491,8 +17491,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 4657,
-        "y": 740,
+        "x": 3415,
+        "y": 2020,
         "wires": [
             [
                 "storage_visual_recovery_gate"
@@ -17518,8 +17518,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 4907,
-        "y": 740,
+        "x": 3665,
+        "y": 2020,
         "wires": [
             [
                 "storage_visual_alert_recovery"
@@ -17549,8 +17549,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 5157,
-        "y": 650,
+        "x": 3915,
+        "y": 1930,
         "wires": [
             [
                 "storage_visual_alert_recovery_out"
@@ -17567,8 +17567,8 @@
         "links": [
             "storage_visual_alert_build_in"
         ],
-        "x": 5407,
-        "y": 650,
+        "x": 4165,
+        "y": 1930,
         "wires": []
     },
     {
@@ -17590,8 +17590,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 5207,
-        "y": 760,
+        "x": 3965,
+        "y": 2040,
         "wires": [
             [
                 "storage_visual_alert_capacity"
@@ -17621,8 +17621,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 5507,
-        "y": 710,
+        "x": 4265,
+        "y": 1990,
         "wires": [
             [
                 "storage_visual_alert_capacity_out"
@@ -17639,8 +17639,8 @@
         "links": [
             "storage_visual_alert_build_in"
         ],
-        "x": 5757,
-        "y": 710,
+        "x": 4515,
+        "y": 1990,
         "wires": []
     },
     {
@@ -17662,8 +17662,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 5507,
-        "y": 810,
+        "x": 4265,
+        "y": 2090,
         "wires": [
             [
                 "storage_visual_alert_trend"
@@ -17693,8 +17693,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 5807,
-        "y": 780,
+        "x": 4565,
+        "y": 2060,
         "wires": [
             [
                 "storage_visual_alert_trend_out"
@@ -17711,8 +17711,8 @@
         "links": [
             "storage_visual_alert_build_in"
         ],
-        "x": 6037,
-        "y": 780,
+        "x": 4795,
+        "y": 2060,
         "wires": []
     },
     {
@@ -17735,8 +17735,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 5807,
-        "y": 850,
+        "x": 4565,
+        "y": 2130,
         "wires": [
             [
                 "storage_visual_alert_none_out"
@@ -17753,8 +17753,8 @@
         "links": [
             "storage_visual_alert_build_in"
         ],
-        "x": 6037,
-        "y": 850,
+        "x": 4795,
+        "y": 2130,
         "wires": []
     },
     {
@@ -17769,8 +17769,8 @@
             "storage_visual_alert_trend_out",
             "storage_visual_alert_none_out"
         ],
-        "x": 6137,
-        "y": 740,
+        "x": 3593,
+        "y": 1720,
         "wires": [
             [
                 "storage_visual_alert_build"
@@ -17790,8 +17790,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 6357,
-        "y": 740,
+        "x": 3813,
+        "y": 1720,
         "wires": [
             [
                 "storage_visual_remediation_gate"
@@ -17817,8 +17817,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 6632,
-        "y": 740,
+        "x": 4088,
+        "y": 1720,
         "wires": [
             [
                 "storage_visual_remediation_cooldown"
@@ -17847,8 +17847,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 6912,
-        "y": 680,
+        "x": 4368,
+        "y": 1660,
         "wires": [
             [
                 "storage_visual_state_finalize"
@@ -17878,8 +17878,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 7112,
-        "y": 820,
+        "x": 4568,
+        "y": 1800,
         "wires": [
             [
                 "storage_visual_state_finalize"
@@ -17899,8 +17899,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 7402,
-        "y": 740,
+        "x": 4858,
+        "y": 1720,
         "wires": [
             [
                 "storage_visual_attributes_build"
@@ -17920,8 +17920,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 7662,
-        "y": 740,
+        "x": 5118,
+        "y": 1720,
         "wires": [
             [
                 "storage_visual_mqtt_build"
@@ -17941,8 +17941,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 7902,
-        "y": 740,
+        "x": 5358,
+        "y": 1720,
         "wires": [
             [
                 "storage_visual_output_route"
@@ -17962,8 +17962,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8142,
-        "y": 740,
+        "x": 5620,
+        "y": 1720,
         "wires": [
             [
                 "storage_visual_mqtt_out"
@@ -17989,8 +17989,8 @@
         "links": [
             "storage_visual_mqtt_in"
         ],
-        "x": 8402,
-        "y": 670,
+        "x": 5880,
+        "y": 1650,
         "wires": []
     },
     {
@@ -18003,8 +18003,8 @@
         "links": [
             "storage_visual_notify_in"
         ],
-        "x": 8402,
-        "y": 730,
+        "x": 5880,
+        "y": 1710,
         "wires": []
     },
     {
@@ -18017,8 +18017,8 @@
             "storage_visual_mqtt_out",
             "storage_visual_invalid_mqtt_out"
         ],
-        "x": 8713,
-        "y": 152,
+        "x": 1331,
+        "y": 320,
         "wires": [
             [
                 "storage_mqtt_state"
@@ -18036,8 +18036,8 @@
             "storage_visual_invalid_notify_out",
             "storage_visual_maintenance_notify_out"
         ],
-        "x": 9520,
-        "y": 500,
+        "x": 1331,
+        "y": 560,
         "wires": [
             [
                 "storage_notify",
@@ -18269,8 +18269,8 @@
             "storage_visual_manual_status_out",
             "storage_visual_manual_complete_status_out"
         ],
-        "x": 8740,
-        "y": 230,
+        "x": 1331,
+        "y": 400,
         "wires": [
             [
                 "storage_manual_status_mqtt"
@@ -18285,8 +18285,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 12260,
-        "y": 112,
+        "x": 1840,
+        "y": 80,
         "wires": [
             [
                 "global_observer_coverage__storage_health_tab__annotate"
@@ -18300,8 +18300,8 @@
         "g": "global_observer_coverage__storage_health_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 12270,
-        "y": 172,
+        "x": 1850,
+        "y": 140,
         "wires": [
             [
                 "global_observer_coverage__storage_health_tab__annotate"
@@ -18321,8 +18321,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 12540,
-        "y": 142,
+        "x": 2120,
+        "y": 110,
         "wires": [
             [
                 "global_observer_coverage__storage_health_tab__out"
@@ -18339,8 +18339,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 12785,
-        "y": 142,
+        "x": 2365,
+        "y": 110,
         "wires": []
     },
     {
@@ -27816,7 +27816,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1940,
+        "x": 1505,
         "y": 100,
         "wires": [
             [
@@ -27831,7 +27831,7 @@
         "g": "global_observer_coverage__daily_host_updates_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1950,
+        "x": 1515,
         "y": 160,
         "wires": [
             [
@@ -27852,7 +27852,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2220,
+        "x": 1785,
         "y": 130,
         "wires": [
             [
@@ -27870,7 +27870,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2465,
+        "x": 2030,
         "y": 130,
         "wires": []
     },
@@ -31601,8 +31601,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 8195,
-        "y": 112,
+        "x": 2671,
+        "y": 56,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_vpn_tab__annotate"
@@ -31616,8 +31616,8 @@
         "g": "global_observer_coverage__monitoramento_vpn_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 8205,
-        "y": 172,
+        "x": 2681,
+        "y": 116,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_vpn_tab__annotate"
@@ -31637,8 +31637,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8475,
-        "y": 142,
+        "x": 2951,
+        "y": 86,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_vpn_tab__out"
@@ -31655,8 +31655,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 8720,
-        "y": 142,
+        "x": 3196,
+        "y": 86,
         "wires": []
     },
     {
@@ -44020,8 +44020,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 7205,
-        "y": 112,
+        "x": 4397,
+        "y": 110,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_zigbee_tab__annotate"
@@ -44035,8 +44035,8 @@
         "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 7215,
-        "y": 172,
+        "x": 4407,
+        "y": 170,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_zigbee_tab__annotate"
@@ -44056,8 +44056,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 7485,
-        "y": 142,
+        "x": 4677,
+        "y": 140,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_zigbee_tab__out"
@@ -44074,8 +44074,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 7730,
-        "y": 142,
+        "x": 4922,
+        "y": 140,
         "wires": []
     },
     {
@@ -47147,8 +47147,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 8475,
-        "y": 112,
+        "x": 5698,
+        "y": 75,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_tuya_tab__annotate"
@@ -47162,8 +47162,8 @@
         "g": "global_observer_coverage__monitoramento_tuya_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 8485,
-        "y": 172,
+        "x": 5708,
+        "y": 135,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_tuya_tab__annotate"
@@ -47183,8 +47183,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8755,
-        "y": 142,
+        "x": 5978,
+        "y": 105,
         "wires": [
             [
                 "global_observer_coverage__monitoramento_tuya_tab__out"
@@ -47201,8 +47201,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 9000,
-        "y": 142,
+        "x": 6223,
+        "y": 105,
         "wires": []
     },
     {
@@ -52716,7 +52716,7 @@
             "notification_hub_wire_out_3e1229d83eeb",
             "notification_hub_wire_in_3e1229d83eeb"
         ],
-        "x": 7456,
+        "x": 5217,
         "y": 39,
         "w": 2474,
         "h": 555,
@@ -53852,7 +53852,7 @@
         "links": [
             "resident_notifications_delivery_out"
         ],
-        "x": 7493,
+        "x": 5254,
         "y": 256,
         "wires": [
             [
@@ -53873,7 +53873,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 7713,
+        "x": 5474,
         "y": 256,
         "wires": [
             [
@@ -53900,7 +53900,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 7973,
+        "x": 5734,
         "y": 256,
         "wires": [
             [
@@ -53921,7 +53921,7 @@
         "links": [
             "resident_notifications_dry_run_in"
         ],
-        "x": 8173,
+        "x": 5934,
         "y": 166,
         "wires": []
     },
@@ -53951,7 +53951,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 8193,
+        "x": 5954,
         "y": 296,
         "wires": [
             [
@@ -53975,7 +53975,7 @@
         "links": [
             "resident_notifications_primary_in"
         ],
-        "x": 8403,
+        "x": 6164,
         "y": 246,
         "wires": []
     },
@@ -53989,7 +53989,7 @@
         "links": [
             "resident_notifications_secondary_in"
         ],
-        "x": 8403,
+        "x": 6164,
         "y": 326,
         "wires": []
     },
@@ -54006,7 +54006,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8403,
+        "x": 6164,
         "y": 146,
         "wires": []
     },
@@ -54019,7 +54019,7 @@
         "links": [
             "resident_notifications_primary_out"
         ],
-        "x": 8493,
+        "x": 6254,
         "y": 246,
         "wires": [
             [
@@ -54061,7 +54061,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 8733,
+        "x": 6494,
         "y": 246,
         "wires": [
             [
@@ -54081,7 +54081,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 9013,
+        "x": 6774,
         "y": 246,
         "wires": [
             [
@@ -54110,7 +54110,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 9283,
+        "x": 7044,
         "y": 246,
         "wires": [
             [
@@ -54130,7 +54130,7 @@
         "links": [
             "resident_notifications_secondary_out"
         ],
-        "x": 8493,
+        "x": 6254,
         "y": 326,
         "wires": [
             [
@@ -54172,7 +54172,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 8733,
+        "x": 6494,
         "y": 326,
         "wires": [
             [
@@ -54192,7 +54192,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 9013,
+        "x": 6774,
         "y": 326,
         "wires": [
             [
@@ -54221,7 +54221,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 9283,
+        "x": 7044,
         "y": 326,
         "wires": [
             [
@@ -54245,7 +54245,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 9653,
+        "x": 7414,
         "y": 286,
         "wires": []
     },
@@ -54260,7 +54260,7 @@
             "resident_notifications_notify_secondary__hub_call"
         ],
         "uncaught": false,
-        "x": 8290,
+        "x": 6051,
         "y": 410,
         "wires": [
             [
@@ -54281,7 +54281,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8740,
+        "x": 6501,
         "y": 530,
         "wires": [
             [
@@ -54308,7 +54308,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 9383,
+        "x": 7144,
         "y": 426,
         "wires": [
             [
@@ -54337,7 +54337,7 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 9623,
+        "x": 7384,
         "y": 376,
         "wires": [
             [
@@ -54355,7 +54355,7 @@
         "links": [
             "resident_notifications_retry_in"
         ],
-        "x": 9893,
+        "x": 7654,
         "y": 376,
         "wires": []
     },
@@ -54372,7 +54372,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 9623,
+        "x": 7384,
         "y": 466,
         "wires": []
     },
@@ -54383,7 +54383,7 @@
         "g": "resident_notifications_output_group",
         "name": "Cada chegada avisa somente o outro morador; nunca o próprio.",
         "info": "queue: all preserva eventos durante queda temporária do HA. O recibo confirma somente o aceite do serviço; a entrega no iOS continua best-effort. Nenhum botão manual possui ligação com estes serviços.",
-        "x": 8313,
+        "x": 6074,
         "y": 96,
         "wires": []
     },
@@ -63675,8 +63675,8 @@
             "global_observer_coverage__resident_notifications_tab__annotate",
             "global_observer_coverage__resident_notifications_tab__out"
         ],
-        "x": 10600,
-        "y": 59,
+        "x": 3600,
+        "y": 776,
         "w": 702,
         "h": 150
     },
@@ -63688,8 +63688,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 10740,
-        "y": 112,
+        "x": 3740,
+        "y": 829,
         "wires": [
             [
                 "global_observer_coverage__resident_notifications_tab__annotate"
@@ -63703,8 +63703,8 @@
         "g": "global_observer_coverage__resident_notifications_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 10750,
-        "y": 172,
+        "x": 3750,
+        "y": 889,
         "wires": [
             [
                 "global_observer_coverage__resident_notifications_tab__annotate"
@@ -63724,8 +63724,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 11020,
-        "y": 142,
+        "x": 4020,
+        "y": 859,
         "wires": [
             [
                 "global_observer_coverage__resident_notifications_tab__out"
@@ -63742,8 +63742,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 11265,
-        "y": 142,
+        "x": 4265,
+        "y": 859,
         "wires": []
     },
     {
@@ -63970,10 +63970,10 @@
             "git_backup_dry_in",
             "git_backup_dry_run_terminal"
         ],
-        "x": 92,
-        "y": 576,
-        "w": 1414,
-        "h": 491
+        "x": 64,
+        "y": 592,
+        "w": 1482,
+        "h": 479
     },
     {
         "id": "git_backup_tab",
@@ -64911,7 +64911,7 @@
         "g": "git_backup_test_group",
         "name": "Ordem: reset → pedido → sucesso/falha/adiado/inválido. Worker, push e avisos permanecem bloqueados.",
         "info": "O pedido sintético prova o gate antes do worker. Os resultados sintéticos percorrem o parser e todas as decisões até as fronteiras de efeito.",
-        "x": 916,
+        "x": 930,
         "y": 633,
         "wires": []
     },
@@ -64933,8 +64933,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 180,
-        "y": 710,
+        "x": 200,
+        "y": 713,
         "wires": [
             [
                 "git_backup_test_reset_state"
@@ -64955,7 +64955,7 @@
         "finalize": "",
         "libs": [],
         "x": 440,
-        "y": 710,
+        "y": 713,
         "wires": []
     },
     {
@@ -64988,8 +64988,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 240,
-        "y": 780,
+        "x": 230,
+        "y": 783,
         "wires": [
             [
                 "git_backup_test_request_out"
@@ -65006,8 +65006,8 @@
         "links": [
             "git_backup_test_request_in"
         ],
-        "x": 470,
-        "y": 780,
+        "x": 510,
+        "y": 783,
         "wires": []
     },
     {
@@ -65057,7 +65057,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 268,
+        "x": 282,
         "y": 850,
         "wires": [
             [
@@ -65095,7 +65095,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 268,
+        "x": 282,
         "y": 910,
         "wires": [
             [
@@ -65133,7 +65133,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 268,
+        "x": 282,
         "y": 970,
         "wires": [
             [
@@ -65166,7 +65166,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 268,
+        "x": 282,
         "y": 1030,
         "wires": [
             [
@@ -65184,7 +65184,7 @@
         "links": [
             "git_backup_result_in"
         ],
-        "x": 696,
+        "x": 710,
         "y": 983,
         "wires": []
     },
@@ -65198,8 +65198,8 @@
             "git_backup_dry_out",
             "git_backup_request_dry_out"
         ],
-        "x": 1100,
-        "y": 780,
+        "x": 1090,
+        "y": 783,
         "wires": [
             [
                 "git_backup_dry_run_terminal"
@@ -65219,8 +65219,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1340,
-        "y": 780,
+        "x": 1370,
+        "y": 783,
         "wires": []
     },
     {
@@ -65356,8 +65356,8 @@
         "links": [
             "notification_hub_wire_in_b5cbe7a52037"
         ],
-        "x": 10690,
-        "y": 300,
+        "x": 2411,
+        "y": 500,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify__hub_result",
@@ -65374,8 +65374,8 @@
         "links": [
             "notification_hub_wire_out_b5cbe7a52037"
         ],
-        "x": 10830,
-        "y": 300,
+        "x": 4321,
+        "y": 560,
         "wires": [
             [
                 "storage_notification_ack"
@@ -65397,8 +65397,8 @@
         "links": [
             "notification_hub_wire_in_578212e7a55b"
         ],
-        "x": 10690,
-        "y": 370,
+        "x": 2411,
+        "y": 600,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify__hub_result",
@@ -65415,8 +65415,8 @@
         "links": [
             "notification_hub_wire_out_578212e7a55b"
         ],
-        "x": 10830,
-        "y": 370,
+        "x": 4121,
+        "y": 740,
         "wires": [
             [
                 "storage_notification_failure"
@@ -65438,8 +65438,8 @@
         "links": [
             "notification_hub_wire_in_168dc6db5cd7"
         ],
-        "x": 10690,
-        "y": 160,
+        "x": 2411,
+        "y": 660,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify_secondary__hub_result",
@@ -65456,8 +65456,8 @@
         "links": [
             "notification_hub_wire_out_168dc6db5cd7"
         ],
-        "x": 10830,
-        "y": 160,
+        "x": 4321,
+        "y": 660,
         "wires": [
             [
                 "storage_notification_ack"
@@ -65479,8 +65479,8 @@
         "links": [
             "notification_hub_wire_in_3eb3db66ab38"
         ],
-        "x": 10690,
-        "y": 230,
+        "x": 2411,
+        "y": 410,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify_secondary__hub_result",
@@ -65497,8 +65497,8 @@
         "links": [
             "notification_hub_wire_out_3eb3db66ab38"
         ],
-        "x": 10830,
-        "y": 230,
+        "x": 4121,
+        "y": 640,
         "wires": [
             [
                 "storage_notification_failure"
@@ -65520,8 +65520,8 @@
         "links": [
             "notification_hub_wire_in_0f2bad790b49"
         ],
-        "x": 10690,
-        "y": 440,
+        "x": 2411,
+        "y": 720,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify_persistent__hub_result",
@@ -65538,8 +65538,8 @@
         "links": [
             "notification_hub_wire_out_0f2bad790b49"
         ],
-        "x": 10830,
-        "y": 440,
+        "x": 4321,
+        "y": 460,
         "wires": [
             [
                 "storage_notification_ack"
@@ -65561,8 +65561,8 @@
         "links": [
             "notification_hub_wire_in_6d962ba6b125"
         ],
-        "x": 10690,
-        "y": 500,
+        "x": 2411,
+        "y": 320,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify_persistent__hub_result",
@@ -65579,8 +65579,8 @@
         "links": [
             "notification_hub_wire_out_6d962ba6b125"
         ],
-        "x": 10830,
-        "y": 500,
+        "x": 4121,
+        "y": 540,
         "wires": [
             [
                 "storage_notification_failure"
@@ -65602,8 +65602,8 @@
         "links": [
             "notification_hub_wire_in_34604f022367"
         ],
-        "x": 10690,
-        "y": 570,
+        "x": 1681,
+        "y": 740,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notification_catch",
@@ -65620,8 +65620,8 @@
         "links": [
             "notification_hub_wire_out_34604f022367"
         ],
-        "x": 10830,
-        "y": 570,
+        "x": 4121,
+        "y": 440,
         "wires": [
             [
                 "storage_notification_failure"
@@ -66422,7 +66422,7 @@
         "links": [
             "notification_hub_wire_in_1ecb0204c49e"
         ],
-        "x": 9463,
+        "x": 7224,
         "y": 246,
         "wires": [],
         "notification_hub_wire_route": {
@@ -66440,7 +66440,7 @@
         "links": [
             "notification_hub_wire_out_1ecb0204c49e"
         ],
-        "x": 8440,
+        "x": 6201,
         "y": 500,
         "wires": [
             [
@@ -66463,7 +66463,7 @@
         "links": [
             "notification_hub_wire_in_be8bb6bde419"
         ],
-        "x": 9463,
+        "x": 7224,
         "y": 326,
         "wires": [],
         "notification_hub_wire_route": {
@@ -66481,7 +66481,7 @@
         "links": [
             "notification_hub_wire_out_be8bb6bde419"
         ],
-        "x": 8440,
+        "x": 6201,
         "y": 560,
         "wires": [
             [
@@ -66504,7 +66504,7 @@
         "links": [
             "notification_hub_wire_in_3e1229d83eeb"
         ],
-        "x": 9040,
+        "x": 6801,
         "y": 530,
         "wires": [],
         "notification_hub_wire_route": {
@@ -66522,7 +66522,7 @@
         "links": [
             "notification_hub_wire_out_3e1229d83eeb"
         ],
-        "x": 9203,
+        "x": 6964,
         "y": 426,
         "wires": [
             [

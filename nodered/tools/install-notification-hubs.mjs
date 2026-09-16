@@ -90,6 +90,13 @@ const contextRule = () => ({
 const setRule = (property, value, valueType = "jsonata") => ({
   t: "set", p: property, pt: "msg", to: value, tot: valueType,
 });
+const setRuntimeMetadata = (node, property, value) => {
+  Object.defineProperty(node, property, {
+    value,
+    configurable: true,
+    writable: true,
+  });
+};
 const notificationExpression = (migration) => {
   const fields = [`"source":"${migration.source}"`];
   if (migration.channel === "mobile") {
@@ -357,6 +364,10 @@ function migrateDirectCall(flows, migration) {
   const resultId = `${migration.id}__hub_result`;
   const existingCall = byId.get(callId);
   const existingResult = byId.get(resultId);
+  // The generated call is the durable structural marker. Node-RED removes
+  // custom metadata, while approved coordinates may legitimately differ from
+  // the generator defaults.
+  const layoutPreviouslyApplied = original.notification_hub_layout_version === 1 || Boolean(existingCall);
   const catches = flows.filter((node) => node.type === "catch" && Array.isArray(node.scope));
   const failureTargets = existingResult?.wires?.[1] ?? catches
     .filter((node) => node.scope.includes(migration.id) || node.scope.includes(callId))
@@ -384,8 +395,8 @@ function migrateDirectCall(flows, migration) {
     original.y,
     [[callId]],
   );
-  if (original.notification_hub_layout_version === 1) {
-    adapter.notification_hub_layout_version = 1;
+  if (layoutPreviouslyApplied) {
+    setRuntimeMetadata(adapter, "notification_hub_layout_version", 1);
   }
   const hubCall = caller(
     callId,
@@ -435,6 +446,7 @@ function migrateInfrastructureCaller(flows, id) {
   let current = flows.find((node) => node.id === id);
   if (!current) return flows;
   const existing = new Map(flows.map((node) => [node.id, node]));
+  const layoutPreviouslyApplied = generatedIds.some((generatedId) => existing.has(generatedId));
   if (current.type === `subflow:${LEGACY_SUBFLOW}` || current.type === "change") {
     current = { ...current };
   }
@@ -449,7 +461,17 @@ function migrateInfrastructureCaller(flows, id) {
   const z = current.z;
   const g = current.g;
   const shared = change(id, z, g, "Ler contrato legado de infraestrutura", [setRule("_notification_hub_shared", "notification", "msg")], x, y, [[`${id}__contract_gate`]]);
-  if (Number.isFinite(current.notification_hub_anchor_y)) shared.notification_hub_anchor_y = current.notification_hub_anchor_y;
+  const storedAnchorY = Number(current.notification_hub_anchor_y);
+  if (Number.isFinite(storedAnchorY) || layoutPreviouslyApplied) {
+    // Node-RED removes custom properties and structuredClone intentionally
+    // drops our non-enumerable runtime marker. The generated child nodes are
+    // therefore the durable proof that the current Y is already approved.
+    setRuntimeMetadata(
+      shared,
+      "notification_hub_anchor_y",
+      Number.isFinite(storedAnchorY) ? storedAnchorY : Number(current.y ?? 0),
+    );
+  }
   const contractGate = sw(`${id}__contract_gate`, z, g, "Título, mensagem e ID presentes?", "$boolean(_notification_hub_shared.title) and $boolean(_notification_hub_shared.message) and $boolean(_notification_hub_shared.id)", "jsonata", [{ t: "true" }, { t: "else" }], x + 300, y, [[`${id}__mobile_prepare`, `${id}__mobile_secondary_prepare`, `${id}__alexa_prepare`, `${id}__persistent_prepare`, `${id}__dismiss_gate`], [`${id}__contract_reject`]]);
   const contractReject = fn(`${id}__contract_reject`, z, g, "Descartar contrato incompleto", "notification-hub-infrastructure-reject.js", 0, x + 300, y + 160, []);
   const channelAdapter = (suffix, name, payload, notification, dx, dy, callSuffix, target, callName) => [
@@ -504,9 +526,14 @@ export function restoreGeneratedWireRoutes(inputFlows) {
         routeIn.z !== routeOut.z ||
         !routeOut.links?.includes(routeIn.id) ||
         !routeIn.links?.includes(routeOut.id) ||
-        sources.length !== 1 ||
         targets.length !== 1
       ) continue;
+      if (sources.length === 0) {
+        removed.add(routeOut.id);
+        removed.add(routeIn.id);
+        continue;
+      }
+      if (sources.length !== 1) continue;
       route = { source: sources[0].candidate.id, target: targets[0], output: sources[0].output };
     } else {
       routeIn = (routeOut.links ?? []).map((id) => byId.get(id)).find((node) => node?.type === "link in") ?? null;
@@ -594,8 +621,14 @@ function routeLongNotificationTabWires(flows) {
     } catch (error) {
       throw new Error(`${error.message}; rota ${source.id}:${output} -> ${target.id}`, { cause: error });
     }
-    const out = { id: outId, type: "link out", z: source.z, ...(source.g ? { g: source.g } : {}), name: outName, mode: "link", links: [inId], ...outPoint, wires: [], notification_hub_wire_route: route };
-    const input = { id: inId, type: "link in", z: target.z, ...(target.g ? { g: target.g } : {}), name: inName, links: [outId], ...inPoint, wires: [[target.id]], notification_hub_wire_route: route };
+    const out = { id: outId, type: "link out", z: source.z, ...(source.g ? { g: source.g } : {}), name: outName, mode: "link", links: [inId], ...outPoint, wires: [] };
+    const input = { id: inId, type: "link in", z: target.z, ...(target.g ? { g: target.g } : {}), name: inName, links: [outId], ...inPoint, wires: [[target.id]] };
+    // Runtime-only provenance lets a subsequent generator restore the direct
+    // wire without persisting a custom property that Node-RED strips again.
+    // Keeping it non-enumerable makes generator output byte-stable after the
+    // editor has saved the approved flow.
+    setRuntimeMetadata(out, "notification_hub_wire_route", route);
+    setRuntimeMetadata(input, "notification_hub_wire_route", route);
     source.wires[output][index] = outId;
     flows.push(out, input);
     byId.set(outId, out); byId.set(inId, input);
@@ -657,9 +690,9 @@ function applyBusinessCallerLayout(flows) {
       const result = byId.get(`${migration.id}__hub_result`);
       if (call) Object.assign(call, { x: Number(adapter.x ?? 0) + 280, y: adapter.y });
       if (result) Object.assign(result, { x: Number(adapter.x ?? 0) + 550, y: adapter.y });
-      adapter.notification_hub_layout_version = 1;
+      setRuntimeMetadata(adapter, "notification_hub_layout_version", 1);
     }
-    owner.notification_hub_layout_version = 1;
+    setRuntimeMetadata(owner, "notification_hub_layout_version", 1);
     const members = flows.filter((node) => node.g === groupId && Number.isFinite(node.x) && Number.isFinite(node.y));
     owner.w = Math.max(Number(owner.w ?? 0), Math.ceil(Math.max(...members.map((node) => node.x + 160)) - Number(owner.x ?? 0)));
     owner.h = Math.max(Number(owner.h ?? 0), Math.ceil(Math.max(...members.map((node) => node.y + 40)) - Number(owner.y ?? 0)));
@@ -690,7 +723,7 @@ function applyInfrastructureCallerLayout(flows) {
         : sorted.length > 1
           ? Number(owner.y ?? 0) + 170 + index * 390
           : Number(shared.y ?? 0);
-      shared.notification_hub_anchor_y = baseY;
+      setRuntimeMetadata(shared, "notification_hub_anchor_y", baseY);
       Object.assign(shared, { x: baseX, y: baseY });
       for (const [suffix, dx, dy] of [
         ["contract_gate", 300, 0], ["contract_reject", 300, 160],
@@ -704,7 +737,7 @@ function applyInfrastructureCallerLayout(flows) {
         if (candidate) Object.assign(candidate, { x: baseX + dx, y: baseY + dy });
       }
     }
-    owner.notification_hub_layout_version = 1;
+    setRuntimeMetadata(owner, "notification_hub_layout_version", 1);
     const members = flows.filter((node) => node.g === groupId && Number.isFinite(node.x) && Number.isFinite(node.y));
     owner.w = Math.max(Number(owner.w ?? 0), Math.ceil(Math.max(...members.map((node) => node.x + 160)) - Number(owner.x ?? 0)));
     owner.h = Math.max(Number(owner.h ?? 0), Math.ceil(Math.max(...members.map((node) => node.y + 40)) - Number(owner.y ?? 0)));

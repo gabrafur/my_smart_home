@@ -22,6 +22,7 @@ const selectedCanvases = new Set(
 );
 const applyBaseNodes = process.env.FLOW_LAYOUT_APPLY_BASE_NODES !== "0";
 const applyNodePositions = process.env.FLOW_LAYOUT_APPLY_NODE_POSITIONS !== "0";
+const applyGroupPositions = process.env.FLOW_LAYOUT_APPLY_GROUP_POSITIONS !== "0";
 const compactGroups = process.env.FLOW_LAYOUT_COMPACT_GROUPS !== "0";
 const selectedGroupIds = new Set(
   String(process.env.FLOW_LAYOUT_GROUP_IDS ?? "")
@@ -68,20 +69,26 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     overridden += 1;
   }
 
-  for (const [groupId, target] of Object.entries(finalGeometry ? {} : (canvas.group_positions ?? {}))) {
+  for (const [groupId, target] of Object.entries(applyGroupPositions ? (canvas.group_positions ?? {}) : {})) {
     if (selectedGroupIds.size > 0 && !selectedGroupIds.has(groupId)) continue;
     const group = byId.get(groupId);
     if (!group || group.z !== canvasId || group.type !== "group") {
       throw new Error(`Group do posicionamento ausente: ${groupId}`);
     }
-    if (!Number.isFinite(target.x) || !Number.isFinite(target.y)) {
+    if (!Number.isFinite(target.x) || !Number.isFinite(target.y) ||
+        (target.w !== undefined && !Number.isFinite(target.w)) ||
+        (target.h !== undefined && !Number.isFinite(target.h))) {
       throw new Error(`Posicionamento de group inválido: ${groupId}`);
     }
     const deltaX = target.x - group.x;
     const deltaY = target.y - group.y;
-    if (deltaX === 0 && deltaY === 0) continue;
-    group.x += deltaX;
-    group.y += deltaY;
+    const widthChanged = target.w !== undefined && target.w !== group.w;
+    const heightChanged = target.h !== undefined && target.h !== group.h;
+    if (deltaX === 0 && deltaY === 0 && !widthChanged && !heightChanged) continue;
+    group.x = target.x;
+    group.y = target.y;
+    if (target.w !== undefined) group.w = target.w;
+    if (target.h !== undefined) group.h = target.h;
     for (const child of flows.filter((node) => node.z === canvasId && node.g === groupId && Number.isFinite(node.x) && Number.isFinite(node.y))) {
       child.x += deltaX;
       child.y += deltaY;
@@ -105,6 +112,9 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
 
   if (!compactGroups || finalGeometry) continue;
   for (const group of flows.filter((node) => node.z === canvasId && node.type === "group")) {
+    // Explicit positions and dimensions are approved geometry. Recomputing
+    // them here creates drift and can undo the override on every regeneration.
+    if (Object.hasOwn(canvas.group_positions ?? {}, group.id)) continue;
     const children = flows.filter((node) =>
       node.z === canvasId && node.g === group.id && Number.isFinite(node.x) && Number.isFinite(node.y)
     );
@@ -150,6 +160,7 @@ for (const canvas of flows.filter((node) =>
   node.type === "tab" || node.type === "subflow"
 )) {
   if (selectedCanvases.size > 0 && !selectedCanvases.has(canvas.id) && !selectedCanvases.has(canvas.label || canvas.name)) continue;
+  if (selectedGroupIds.size > 0) continue;
   const items = flows.filter(
     (node) => node.z === canvas.id && Number.isFinite(node.x),
   );

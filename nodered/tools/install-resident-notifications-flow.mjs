@@ -260,14 +260,26 @@ const linkedInputs = new Set([peopleOut.id, peopleTestOut.id, "global_observer_e
 const originalById = new Map(originalFlows.map((node) => [node.id, node]));
 const desiredById = new Map(desired.map((node) => [node.id, node]));
 for (const routeOut of originalFlows.filter((node) =>
-  node.z === TAB && node.type === "link out" && node.notification_hub_wire_route
+  node.z === TAB && node.type === "link out" && (
+    node.notification_hub_wire_route ||
+    /^notification_hub_wire_out_[a-f0-9]{12}$/.test(node.id)
+  )
 )) {
   if (desiredById.has(routeOut.id)) continue;
-  const route = routeOut.notification_hub_wire_route;
-  const sourceNode = desiredById.get(route.source);
-  const targetIndex = sourceNode?.wires?.[route.output]?.indexOf(route.target) ?? -1;
   const routeIn = (routeOut.links ?? []).map((id) => originalById.get(id))
     .find((node) => node?.type === "link in");
+  const inferredSource = originalFlows.find((candidate) =>
+    (candidate.wires ?? []).some((wire) => wire.includes(routeOut.id))
+  );
+  const inferredOutput = inferredSource?.wires?.findIndex((wire) => wire.includes(routeOut.id));
+  const route = routeOut.notification_hub_wire_route ?? (
+    inferredSource && inferredOutput >= 0 && routeIn?.wires?.[0]?.length === 1
+      ? { source: inferredSource.id, target: routeIn.wires[0][0], output: inferredOutput }
+      : null
+  );
+  if (!route) continue;
+  const sourceNode = desiredById.get(route.source);
+  const targetIndex = sourceNode?.wires?.[route.output]?.indexOf(route.target) ?? -1;
   if (targetIndex < 0 || !routeIn) continue;
   sourceNode.wires[route.output][targetIndex] = routeOut.id;
   for (const routeNode of [routeOut, routeIn]) {
