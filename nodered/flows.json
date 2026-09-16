@@ -181,6 +181,35 @@
         "env": []
     },
     {
+        "id": "git_backup_tab",
+        "type": "tab",
+        "label": "backup_git",
+        "disabled": false,
+        "info": "Node-RED agenda e decide; o helper allowlisted executa Git/SSH no host. Testes percorrem as mesmas decisões e terminam antes de qualquer efeito.",
+        "env": []
+    },
+    {
+        "id": "notification_hub_mobile_tab",
+        "type": "tab",
+        "label": "hub_notificacoes_moveis",
+        "disabled": false,
+        "info": "Única fronteira Node-RED para celulares. Contrato fail-closed: msg.payload é a mensagem; msg.notification informa source, recipients, profile, title/data opcionais e flags explícitas de TESTE."
+    },
+    {
+        "id": "notification_hub_alexa_tab",
+        "type": "tab",
+        "label": "hub_notificacoes_alexa",
+        "disabled": false,
+        "info": "Única fronteira Node-RED para Alexa. O target lógico explícito preserva o binding atual sem fallback para todas as Alexas."
+    },
+    {
+        "id": "notification_hub_persistent_tab",
+        "type": "tab",
+        "label": "hub_notificacoes_persistentes_ha",
+        "disabled": false,
+        "info": "Única fronteira Node-RED para persistent_notification.create/dismiss. IDs e política de fila são obrigatórios e explícitos."
+    },
+    {
         "id": "recorder_retention_group_config",
         "type": "group",
         "z": "recorder_retention_tab",
@@ -206,9 +235,9 @@
             "recorder_retention_config"
         ],
         "x": 124,
-        "y": 23,
+        "y": 39,
         "w": 1667,
-        "h": 438
+        "h": 422
     },
     {
         "id": "recorder_retention_group_capture",
@@ -232,9 +261,9 @@
             "recorder_retention_discard_terminal"
         ],
         "x": 94,
-        "y": 467,
+        "y": 479,
         "w": 1497,
-        "h": 254
+        "h": 242
     },
     {
         "id": "recorder_retention_group_execution",
@@ -265,9 +294,9 @@
             "recorder_retention_repack_dry_out"
         ],
         "x": 64,
-        "y": 750,
+        "y": 762,
         "w": 2232,
-        "h": 274
+        "h": 262
     },
     {
         "id": "recorder_retention_group_tests",
@@ -295,9 +324,9 @@
             "recorder_retention_dry_run_terminal"
         ],
         "x": 64,
-        "y": 1030,
+        "y": 1046,
         "w": 1632,
-        "h": 348
+        "h": 332
     },
     {
         "id": "weekly_docs_review_production_group",
@@ -470,8 +499,7 @@
         "x": 8676,
         "y": 99,
         "w": 2757,
-        "h": 510,
-        "notification_hub_layout_version": 1
+        "h": 510
     },
     {
         "id": "storage_group_maintenance",
@@ -710,8 +738,7 @@
         "x": 68,
         "y": 1347,
         "w": 4822,
-        "h": 230,
-        "notification_hub_layout_version": 1
+        "h": 230
     },
     {
         "id": "c1e3fc50d8ed0093",
@@ -980,8 +1007,7 @@
         "x": 80,
         "y": -33,
         "w": 3830,
-        "h": 590,
-        "notification_hub_layout_version": 1
+        "h": 590
     },
     {
         "id": "daily_update_production_group",
@@ -1181,8 +1207,7 @@
         "x": 2676,
         "y": 1367,
         "w": 2124,
-        "h": 274,
-        "notification_hub_layout_version": 1
+        "h": 274
     },
     {
         "id": "vehicle_primary_remote_command_test_group_v1",
@@ -1632,8 +1657,7 @@
         "x": 978,
         "y": 407,
         "w": 3464,
-        "h": 450,
-        "notification_hub_layout_version": 1
+        "h": 450
     },
     {
         "id": "gar_group_observer",
@@ -1838,8 +1862,7 @@
         "x": 64,
         "y": 682,
         "w": 2771,
-        "h": 320,
-        "notification_hub_layout_version": 1
+        "h": 320
     },
     {
         "id": "alarm_group_tests",
@@ -2173,8 +2196,7 @@
         "x": 95,
         "y": 1169,
         "w": 1906,
-        "h": 568,
-        "notification_hub_layout_version": 1
+        "h": 568
     },
     {
         "id": "vpn_monitor_publish_group",
@@ -2381,8 +2403,7 @@
         "x": 2798,
         "y": 527,
         "w": 2607,
-        "h": 290,
-        "notification_hub_layout_version": 1
+        "h": 290
     },
     {
         "id": "alarm_arrival_confirmation_group",
@@ -2668,8 +2689,7 @@
         "x": 2493,
         "y": 877,
         "w": 1922,
-        "h": 90,
-        "notification_hub_layout_version": 1
+        "h": 90
     },
     {
         "id": "local_ai_rtx_test_group",
@@ -3006,8 +3026,7 @@
         "x": 913,
         "y": 1027,
         "w": 4294,
-        "h": 437,
-        "notification_hub_layout_version": 1
+        "h": 437
     },
     {
         "id": "storage_visual_decision_group",
@@ -3234,8 +3253,7 @@
         "x": 1465,
         "y": 812,
         "w": 2712,
-        "h": 790,
-        "notification_hub_layout_version": 1
+        "h": 790
     },
     {
         "id": "grp_internet_tests",
@@ -3463,8 +3481,7 @@
         "x": 95,
         "y": 1979,
         "w": 2509,
-        "h": 840,
-        "notification_hub_layout_version": 1
+        "h": 840
     },
     {
         "id": "grp_zigbee_tests",
@@ -3671,8 +3688,7 @@
         "x": 95,
         "y": 1649,
         "w": 2612,
-        "h": 948,
-        "notification_hub_layout_version": 1
+        "h": 948
     },
     {
         "id": "grp_tuya_tests",
@@ -3821,9 +3837,9 @@
             "global_observer_coverage__recorder_retention_tab__out"
         ],
         "x": 1924,
-        "y": 47,
+        "y": 59,
         "w": 722,
-        "h": 154
+        "h": 142
     },
     {
         "id": "global_observer_coverage__weekly_docs_review_tab__group",
@@ -4180,10 +4196,10 @@
             "global_observer_coverage__git_backup_tab__annotate",
             "global_observer_coverage__git_backup_tab__out"
         ],
-        "x": 2337,
-        "y": 19,
-        "w": 702,
-        "h": 150
+        "x": 2321,
+        "y": 31,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "global_observer_production_group",
@@ -4241,11 +4257,10 @@
             "global_observer_internal_catch",
             "global_observer_internal_failure"
         ],
-        "x": 64,
-        "y": 23,
-        "w": 3900,
-        "h": 538,
-        "notification_hub_layout_version": 1
+        "x": 14,
+        "y": 39,
+        "w": 4212,
+        "h": 522
     },
     {
         "id": "global_observer_policy_group",
@@ -4268,9 +4283,9 @@
             "global_observer_policy_reject"
         ],
         "x": 224,
-        "y": 563,
+        "y": 579,
         "w": 1692,
-        "h": 338
+        "h": 322
     },
     {
         "id": "global_observer_test_group",
@@ -4301,9 +4316,9 @@
             "global_observer_dry_run_terminal"
         ],
         "x": 114,
-        "y": 943,
-        "w": 2033,
-        "h": 354
+        "y": 959,
+        "w": 2037,
+        "h": 342
     },
     {
         "id": "global_observer_integration_group",
@@ -4323,10 +4338,10 @@
             "global_observer_integration_lifecycle",
             "global_observer_integration_alert_out"
         ],
-        "x": 2200,
-        "y": 563,
-        "w": 1960,
-        "h": 358
+        "x": 1944,
+        "y": 579,
+        "w": 1447,
+        "h": 282
     },
     {
         "id": "e53f5ed6c320c591",
@@ -4351,10 +4366,10 @@
             "security_visual_context_route_out",
             "security_visual_arrival_route_out"
         ],
-        "x": 68,
-        "y": 79,
-        "w": 649,
-        "h": 354
+        "x": 42,
+        "y": 95,
+        "w": 679,
+        "h": 342
     },
     {
         "id": "32a89192d93735b1",
@@ -4431,10 +4446,10 @@
             "security_visual_availability_unavailable_out",
             "security_visual_availability_result_in"
         ],
-        "x": 132,
-        "y": 1690,
-        "w": 6134,
-        "h": 594
+        "x": 128,
+        "y": 1699,
+        "w": 6142,
+        "h": 592
     },
     {
         "id": "95e7527bc7a0a9a1",
@@ -4483,11 +4498,10 @@
             "notification_hub_wire_out_58d452601a4e",
             "notification_hub_wire_in_58d452601a4e"
         ],
-        "x": 793,
-        "y": 7,
-        "w": 2437,
-        "h": 647,
-        "notification_hub_layout_version": 1
+        "x": 789,
+        "y": 19,
+        "w": 2547,
+        "h": 642
     },
     {
         "id": "a610d085d27ea80d",
@@ -4512,10 +4526,10 @@
             "light_off_decision_route_out_v1",
             "light_off_decision_route_in_v1"
         ],
-        "x": 153,
-        "y": 680,
-        "w": 1329,
-        "h": 324
+        "x": 149,
+        "y": 689,
+        "w": 1337,
+        "h": 322
     },
     {
         "id": "ed8fa1d49205cbdb",
@@ -4534,10 +4548,10 @@
             "2f8ac8be8e84a548",
             "556814a7d5379621"
         ],
-        "x": 1524,
-        "y": 899,
-        "w": 457,
-        "h": 90
+        "x": 1514,
+        "y": 919,
+        "w": 547,
+        "h": 82
     },
     {
         "id": "6013a28eaa95addd",
@@ -4561,10 +4575,10 @@
             "security_visual_recovery_needed",
             "security_visual_recovery_build"
         ],
-        "x": 124,
-        "y": 2500,
-        "w": 2996,
-        "h": 267
+        "x": 94,
+        "y": 2359,
+        "w": 3027,
+        "h": 262
     },
     {
         "id": "security_light_engine_bypass_group_v1",
@@ -4600,10 +4614,10 @@
             "security_visual_bypass_result_in",
             "security_visual_bypass_output"
         ],
-        "x": 130,
-        "y": 1047,
-        "w": 2450,
-        "h": 620
+        "x": 64,
+        "y": 1059,
+        "w": 2542,
+        "h": 612
     },
     {
         "id": "light_location_policy_group_v1",
@@ -4623,10 +4637,10 @@
             "light_location_policy_in_v1",
             "light_location_policy_status_v1"
         ],
-        "x": 1524,
-        "y": 779,
-        "w": 481,
-        "h": 90
+        "x": 1520,
+        "y": 791,
+        "w": 492,
+        "h": 82
     },
     {
         "id": "global_observer_coverage__6b7552efb85343f4__group",
@@ -4643,10 +4657,10 @@
             "global_observer_coverage__6b7552efb85343f4__annotate",
             "global_observer_coverage__6b7552efb85343f4__out"
         ],
-        "x": 2134,
-        "y": 719,
-        "w": 702,
-        "h": 150
+        "x": 2118,
+        "y": 731,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "98945604e99f7604",
@@ -4668,10 +4682,10 @@
             "203ccb69e0a6d24b",
             "cc920126e5845a43"
         ],
-        "x": 68,
-        "y": 403,
-        "w": 422,
-        "h": 294
+        "x": 64,
+        "y": 419,
+        "w": 502,
+        "h": 282
     },
     {
         "id": "8e1c3a19399ad44d",
@@ -4713,10 +4727,10 @@
             "people_visual_unchanged_out",
             "people_visual_finalize_in"
         ],
-        "x": 2083,
-        "y": 427,
-        "w": 3297,
-        "h": 314
+        "x": 2079,
+        "y": 439,
+        "w": 3337,
+        "h": 302
     },
     {
         "id": "b35563e0f73e5b64",
@@ -4750,11 +4764,10 @@
             "notification_hub_wire_out_ea83b8ce73cb",
             "notification_hub_wire_in_ea83b8ce73cb"
         ],
-        "x": 64,
-        "y": 750,
-        "w": 2883,
-        "h": 318,
-        "notification_hub_layout_version": 1
+        "x": 60,
+        "y": 759,
+        "w": 2913,
+        "h": 313
     },
     {
         "id": "6e71dbc937fe5669",
@@ -4787,10 +4800,10 @@
             "people_tracker_recovery_tests_out_v1",
             "people_tracker_recovery_tests_in_v1"
         ],
-        "x": 74,
-        "y": 1100,
-        "w": 787,
-        "h": 850
+        "x": 3,
+        "y": 1112,
+        "w": 862,
+        "h": 842
     },
     {
         "id": "people_location_policy_group_v1",
@@ -4826,10 +4839,10 @@
             "people_visual_policy_validate",
             "people_visual_policy_reject"
         ],
-        "x": 150,
-        "y": 43,
-        "w": 1417,
-        "h": 354
+        "x": 104,
+        "y": 59,
+        "w": 1467,
+        "h": 342
     },
     {
         "id": "people_location_selection_group_v1",
@@ -4858,10 +4871,10 @@
             "people_location_build_discovery_v1",
             "people_location_mqtt_discovery_v1"
         ],
-        "x": 638,
-        "y": 403,
-        "w": 1392,
-        "h": 331
+        "x": 614,
+        "y": 419,
+        "w": 1442,
+        "h": 322
     },
     {
         "id": "global_observer_coverage__ea0a6aa0d24ff863__group",
@@ -4878,10 +4891,10 @@
             "global_observer_coverage__ea0a6aa0d24ff863__annotate",
             "global_observer_coverage__ea0a6aa0d24ff863__out"
         ],
-        "x": 2400,
-        "y": 1080,
-        "w": 702,
-        "h": 150
+        "x": 904,
+        "y": 1119,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "resident_notifications_config_group",
@@ -4909,10 +4922,10 @@
             "resident_notifications_policy_store",
             "resident_notifications_policy_reject"
         ],
-        "x": 100,
-        "y": 23,
-        "w": 1342,
-        "h": 344
+        "x": 34,
+        "y": 39,
+        "w": 1412,
+        "h": 332
     },
     {
         "id": "resident_notifications_input_group",
@@ -4937,10 +4950,10 @@
             "resident_notifications_kind_invalid",
             "resident_notifications_canonical_out"
         ],
-        "x": 1456,
-        "y": 89,
-        "w": 1264,
-        "h": 290
+        "x": 1452,
+        "y": 101,
+        "w": 1272,
+        "h": 282
     },
     {
         "id": "resident_notifications_decision_group",
@@ -4973,10 +4986,10 @@
             "resident_notifications_source_invalid",
             "resident_notifications_decision_out"
         ],
-        "x": 2793,
-        "y": 67,
-        "w": 2384,
-        "h": 570
+        "x": 2789,
+        "y": 79,
+        "w": 2407,
+        "h": 562
     },
     {
         "id": "resident_notifications_state_group",
@@ -5008,10 +5021,10 @@
             "resident_notifications_state_write",
             "resident_notifications_delivery_out"
         ],
-        "x": 74,
-        "y": 1569,
-        "w": 2191,
-        "h": 565
+        "x": 70,
+        "y": 1581,
+        "w": 2199,
+        "h": 560
     },
     {
         "id": "resident_notifications_output_group",
@@ -5063,11 +5076,10 @@
             "notification_hub_wire_out_3e1229d83eeb",
             "notification_hub_wire_in_3e1229d83eeb"
         ],
-        "x": 7456,
-        "y": 39,
-        "w": 3074,
-        "h": 555,
-        "notification_hub_layout_version": 1
+        "x": 7452,
+        "y": 55,
+        "w": 3082,
+        "h": 546
     },
     {
         "id": "resident_notifications_test_group",
@@ -5108,11 +5120,10 @@
             "notification_hub_wire_out_8cbc7f908435",
             "notification_hub_wire_in_8cbc7f908435"
         ],
-        "x": 64,
-        "y": 776,
-        "w": 4045,
-        "h": 708,
-        "notification_hub_layout_version": 1
+        "x": 13,
+        "y": 792,
+        "w": 4182,
+        "h": 699
     },
     {
         "id": "global_observer_coverage__resident_notifications_tab__group",
@@ -5129,10 +5140,10 @@
             "global_observer_coverage__resident_notifications_tab__annotate",
             "global_observer_coverage__resident_notifications_tab__out"
         ],
-        "x": 10600,
-        "y": 59,
-        "w": 702,
-        "h": 150
+        "x": 10584,
+        "y": 71,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "people_location_lifecycle_config_group_v2",
@@ -5162,10 +5173,10 @@
             "people_visual_lifecycle_config_middle_out",
             "people_visual_lifecycle_config_right_out"
         ],
-        "x": 2221,
-        "y": 43,
-        "w": 1106,
-        "h": 321
+        "x": 1594,
+        "y": 59,
+        "w": 1147,
+        "h": 312
     },
     {
         "id": "vehicle_visual_refresh_safety_config_group_v2",
@@ -5295,10 +5306,10 @@
             "9f9a1fe3c4afc387",
             "arrival_context_snapshot_out"
         ],
-        "x": 104,
-        "y": 3,
-        "w": 1107,
-        "h": 671
+        "x": 73,
+        "y": 19,
+        "w": 1142,
+        "h": 662
     },
     {
         "id": "arrival_context_cycle_group",
@@ -5334,10 +5345,10 @@
             "arrival_context_cycle_start",
             "3514854bb1279cbb"
         ],
-        "x": 1272,
-        "y": 127,
-        "w": 2408,
-        "h": 320
+        "x": 1268,
+        "y": 139,
+        "w": 2427,
+        "h": 312
     },
     {
         "id": "arrival_context_snapshot_group",
@@ -5382,10 +5393,10 @@
             "arrival_context_cache_mutate",
             "arrival_context_departure_out"
         ],
-        "x": 68,
-        "y": 1364,
-        "w": 3214,
-        "h": 473
+        "x": 64,
+        "y": 1376,
+        "w": 3222,
+        "h": 465
     },
     {
         "id": "arrival_context_departure_group",
@@ -5424,10 +5435,10 @@
             "arrival_context_departure_no_duplicate",
             "arrival_context_departure_selected_out"
         ],
-        "x": 78,
-        "y": 750,
-        "w": 3330,
-        "h": 144
+        "x": 74,
+        "y": 759,
+        "w": 3338,
+        "h": 142
     },
     {
         "id": "arrival_context_pending_group",
@@ -5472,10 +5483,10 @@
             "arrival_context_refresh_merge_in",
             "1ba5ecf650ac79b8"
         ],
-        "x": 78,
-        "y": 920,
-        "w": 4204,
-        "h": 417
+        "x": 74,
+        "y": 929,
+        "w": 4212,
+        "h": 412
     },
     {
         "id": "arrival_context_home_refresh_group",
@@ -5539,10 +5550,10 @@
             "arrival_context_home_wait_engine_out",
             "arrival_context_home_wait_engine_in"
         ],
-        "x": 73,
-        "y": 1937,
-        "w": 3984,
-        "h": 430
+        "x": 34,
+        "y": 1949,
+        "w": 4027,
+        "h": 422
     },
     {
         "id": "arrival_context_test_group",
@@ -5571,10 +5582,10 @@
             "arrival_context_test_cycle_control",
             "arrival_context_test_request_out"
         ],
-        "x": 99,
-        "y": 2433,
-        "w": 1388,
-        "h": 374
+        "x": 54,
+        "y": 2449,
+        "w": 1437,
+        "h": 362
     },
     {
         "id": "global_observer_coverage__62bb822e033d1623__group",
@@ -5591,10 +5602,10 @@
             "global_observer_coverage__62bb822e033d1623__annotate",
             "global_observer_coverage__62bb822e033d1623__out"
         ],
-        "x": 1320,
-        "y": 527,
-        "w": 702,
-        "h": 150
+        "x": 1304,
+        "y": 539,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "security_visual_policy_group_v1",
@@ -5629,10 +5640,10 @@
             "security_visual_policy_store",
             "security_visual_policy_reject"
         ],
-        "x": 2699,
-        "y": 1059,
-        "w": 1234,
-        "h": 494
+        "x": 2695,
+        "y": 1075,
+        "w": 1242,
+        "h": 482
     },
     {
         "id": "security_visual_decision_diagnostic_group_v1",
@@ -5654,10 +5665,433 @@
             "security_visual_decision_publish",
             "security_visual_decision_mqtt"
         ],
-        "x": 2912,
-        "y": 707,
-        "w": 995,
-        "h": 207
+        "x": 2874,
+        "y": 719,
+        "w": 1052,
+        "h": 202
+    },
+    {
+        "id": "git_backup_input_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "0. Entradas, agenda e pedido",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_architecture",
+            "git_backup_schedule",
+            "git_backup_manual",
+            "git_backup_retry_in",
+            "git_backup_request_out"
+        ],
+        "x": -12,
+        "y": 52,
+        "w": 652,
+        "h": 302
+    },
+    {
+        "id": "git_backup_decision_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "1. Normalização e decisões visuais",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_request_in",
+            "git_backup_request_gate",
+            "git_backup_request_dry_out",
+            "git_backup_worker_out",
+            "git_backup_result_in",
+            "git_backup_result",
+            "git_backup_status_switch",
+            "git_backup_success_origin",
+            "git_backup_success_gate",
+            "git_backup_mark_daily_success",
+            "git_backup_manual_success",
+            "git_backup_alert_build",
+            "git_backup_failure_gate",
+            "git_backup_deferred_gate",
+            "git_backup_invalid_gate",
+            "git_backup_invalid_result",
+            "git_backup_notification_out",
+            "git_backup_retry_effect_out",
+            "git_backup_daily_update_out",
+            "git_backup_dry_out",
+            "git_backup_test_request_in"
+        ],
+        "x": 773,
+        "y": 26,
+        "w": 1529,
+        "h": 515
+    },
+    {
+        "id": "git_backup_effect_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "2. Efeitos isolados, retry e confirmação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#dc2626",
+            "stroke-opacity": "1",
+            "fill": "#fee2e2",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_worker_in",
+            "git_backup_request",
+            "git_backup_result_out",
+            "git_backup_error",
+            "git_backup_notification_direct",
+            "git_backup_complete",
+            "git_backup_complete_ok",
+            "git_backup_complete_failed",
+            "git_backup_notification_in",
+            "git_backup_notify_primary",
+            "git_backup_notify_primary__hub_call",
+            "git_backup_notify_persistent",
+            "git_backup_notify_persistent__hub_call",
+            "git_backup_retry_effect_in",
+            "git_backup_retry_delay",
+            "git_backup_retry_out",
+            "notification_hub_wire_out_0501ea75369a",
+            "notification_hub_wire_in_0501ea75369a",
+            "notification_hub_wire_out_3a0e38c6f0ed",
+            "notification_hub_wire_in_3a0e38c6f0ed"
+        ],
+        "x": 1653,
+        "y": 558.5,
+        "w": 2177,
+        "h": 452.5
+    },
+    {
+        "id": "git_backup_test_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "3. Replay manual completo — dry-run",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0891b2",
+            "stroke-opacity": "1",
+            "fill": "#cffafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_test_instructions",
+            "git_backup_test_reset",
+            "git_backup_test_reset_state",
+            "git_backup_test_request",
+            "git_backup_test_request_out",
+            "git_backup_test_success",
+            "git_backup_test_failure",
+            "git_backup_test_deferred",
+            "git_backup_test_invalid",
+            "git_backup_test_result_out",
+            "git_backup_dry_in",
+            "git_backup_dry_run_terminal"
+        ],
+        "x": 50,
+        "y": 592,
+        "w": 1482,
+        "h": 479
+    },
+    {
+        "id": "notification_hub_mobile_main_group",
+        "type": "group",
+        "z": "notification_hub_mobile_tab",
+        "name": "Contrato, destinatários e perfis de entrega",
+        "style": {
+            "label": true,
+            "color": "#2563eb",
+            "fill": "#dbeafe"
+        },
+        "nodes": [
+            "notification_hub_mobile_contract",
+            "notification_hub_mobile_in",
+            "notification_hub_mobile_test_in",
+            "notification_hub_mobile_mark_channel",
+            "notification_hub_mobile_validate",
+            "notification_hub_mobile_invalid_test_gate",
+            "notification_hub_mobile_test_gate",
+            "notification_hub_mobile_dry_out",
+            "notification_hub_mobile_count",
+            "notification_hub_mobile_single",
+            "notification_hub_mobile_only_primary",
+            "notification_hub_mobile_only_secondary",
+            "notification_hub_mobile_both_primary",
+            "notification_hub_mobile_pair_continue_in",
+            "notification_hub_mobile_both_secondary",
+            "notification_hub_mobile_profile",
+            "notification_hub_mobile_simple_recipient",
+            "notification_hub_mobile_actionable_recipient",
+            "notification_hub_mobile_background_recipient",
+            "notification_hub_mobile_primary_simple",
+            "notification_hub_mobile_secondary_simple",
+            "notification_hub_mobile_primary_actionable",
+            "notification_hub_mobile_secondary_actionable",
+            "notification_hub_mobile_primary_background",
+            "notification_hub_mobile_secondary_background",
+            "notification_hub_mobile_after_service",
+            "notification_hub_mobile_pair_continue_out",
+            "notification_hub_mobile_success",
+            "notification_hub_mobile_return_success",
+            "notification_hub_mobile_service_catch",
+            "notification_hub_mobile_leg_failure",
+            "notification_hub_mobile_pair_retry_out",
+            "notification_hub_mobile_failure",
+            "notification_hub_mobile_return_failure",
+            "notification_hub_mobile_observer_out",
+            "notification_hub_mobile_reject_early_out",
+            "notification_hub_mobile_reject_selection_out",
+            "notification_hub_mobile_reject_late_out",
+            "notification_hub_mobile_reject_in",
+            "notification_hub_mobile_reject",
+            "notification_hub_mobile_return_reject"
+        ],
+        "x": 83,
+        "y": -3,
+        "w": 3709,
+        "h": 640
+    },
+    {
+        "id": "notification_hub_mobile_test_group",
+        "type": "group",
+        "z": "notification_hub_mobile_tab",
+        "name": "TESTES — destinatários explícitos e fail-closed",
+        "style": {
+            "label": true,
+            "color": "#0891b2",
+            "fill": "#cffafe"
+        },
+        "nodes": [
+            "notification_hub_mobile_test_note",
+            "notification_hub_mobile_test_primary",
+            "notification_hub_mobile_test_secondary",
+            "notification_hub_mobile_test_both",
+            "notification_hub_mobile_test_invalid",
+            "notification_hub_mobile_test_out",
+            "notification_hub_mobile_dry_in",
+            "notification_hub_mobile_dry_run_terminal",
+            "notification_hub_mobile_dry_run_assert",
+            "notification_hub_mobile_return_dry"
+        ],
+        "x": 70,
+        "y": 693,
+        "w": 1310,
+        "h": 329
+    },
+    {
+        "id": "notification_hub_alexa_main_group",
+        "type": "group",
+        "z": "notification_hub_alexa_tab",
+        "name": "Contrato, target lógico e anúncio",
+        "style": {
+            "label": true,
+            "color": "#7c3aed",
+            "fill": "#ede9fe"
+        },
+        "nodes": [
+            "notification_hub_alexa_contract",
+            "notification_hub_alexa_in",
+            "notification_hub_alexa_test_in",
+            "notification_hub_alexa_mark_channel",
+            "notification_hub_alexa_validate",
+            "notification_hub_alexa_invalid_test_gate",
+            "notification_hub_alexa_test_gate",
+            "notification_hub_alexa_target",
+            "notification_hub_alexa_select_target",
+            "notification_hub_alexa_service",
+            "notification_hub_alexa_success",
+            "notification_hub_alexa_return_success",
+            "notification_hub_alexa_service_catch",
+            "notification_hub_alexa_failure",
+            "notification_hub_alexa_return_failure",
+            "notification_hub_alexa_observer_out",
+            "notification_hub_alexa_reject",
+            "notification_hub_alexa_return_reject",
+            "notification_hub_alexa_dry_out",
+            "notification_hub_alexa_dashboard_event",
+            "notification_hub_alexa_dashboard_test_in",
+            "notification_hub_alexa_dashboard_request",
+            "notification_hub_alexa_dashboard_call"
+        ],
+        "x": 70,
+        "y": 23,
+        "w": 2117,
+        "h": 431
+    },
+    {
+        "id": "notification_hub_alexa_test_group",
+        "type": "group",
+        "z": "notification_hub_alexa_tab",
+        "name": "TESTES — target, mensagem do painel e rejeições",
+        "style": {
+            "label": true,
+            "color": "#0891b2",
+            "fill": "#cffafe"
+        },
+        "nodes": [
+            "notification_hub_alexa_test_note",
+            "notification_hub_alexa_test_valid",
+            "notification_hub_alexa_test_invalid",
+            "notification_hub_alexa_test_out",
+            "notification_hub_alexa_dry_in",
+            "notification_hub_alexa_dry_run_terminal",
+            "notification_hub_alexa_dry_run_assert",
+            "notification_hub_alexa_return_dry",
+            "notification_hub_alexa_dashboard_test_valid",
+            "notification_hub_alexa_dashboard_test_empty",
+            "notification_hub_alexa_dashboard_test_out"
+        ],
+        "x": 103,
+        "y": 533,
+        "w": 1237,
+        "h": 354
+    },
+    {
+        "id": "notification_hub_persistent_main_group",
+        "type": "group",
+        "z": "notification_hub_persistent_tab",
+        "name": "Contrato, operação, fila e efeito HA",
+        "style": {
+            "label": true,
+            "color": "#0f766e",
+            "fill": "#ccfbf1"
+        },
+        "nodes": [
+            "notification_hub_persistent_contract",
+            "notification_hub_persistent_in",
+            "notification_hub_persistent_test_in",
+            "notification_hub_persistent_mark_channel",
+            "notification_hub_persistent_validate",
+            "notification_hub_persistent_invalid_test_gate",
+            "notification_hub_persistent_test_gate",
+            "notification_hub_persistent_operation",
+            "notification_hub_persistent_create_delivery",
+            "notification_hub_persistent_dismiss_delivery",
+            "notification_hub_persistent_create_queued",
+            "notification_hub_persistent_create_immediate",
+            "notification_hub_persistent_dismiss_queued",
+            "notification_hub_persistent_dismiss_immediate",
+            "notification_hub_persistent_success",
+            "notification_hub_persistent_return_success",
+            "notification_hub_persistent_service_catch",
+            "notification_hub_persistent_failure",
+            "notification_hub_persistent_return_failure",
+            "notification_hub_persistent_observer_out",
+            "notification_hub_persistent_reject_early_out",
+            "notification_hub_persistent_reject_in",
+            "notification_hub_persistent_reject",
+            "notification_hub_persistent_return_reject",
+            "notification_hub_persistent_dry_out"
+        ],
+        "x": 64,
+        "y": 40,
+        "w": 2180,
+        "h": 500
+    },
+    {
+        "id": "notification_hub_persistent_test_group",
+        "type": "group",
+        "z": "notification_hub_persistent_tab",
+        "name": "TESTES — criar, remover e rejeitar",
+        "style": {
+            "label": true,
+            "color": "#0891b2",
+            "fill": "#cffafe"
+        },
+        "nodes": [
+            "notification_hub_persistent_test_note",
+            "notification_hub_persistent_test_create",
+            "notification_hub_persistent_test_dismiss",
+            "notification_hub_persistent_test_invalid",
+            "notification_hub_persistent_test_out",
+            "notification_hub_persistent_dry_in",
+            "notification_hub_persistent_dry_run_terminal",
+            "notification_hub_persistent_dry_run_assert",
+            "notification_hub_persistent_return_dry"
+        ],
+        "x": 64,
+        "y": 600,
+        "w": 1320,
+        "h": 320
+    },
+    {
+        "id": "global_observer_coverage__notification_hub_mobile_tab__group",
+        "type": "group",
+        "z": "notification_hub_mobile_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__notification_hub_mobile_tab__catch",
+            "global_observer_coverage__notification_hub_mobile_tab__status",
+            "global_observer_coverage__notification_hub_mobile_tab__annotate",
+            "global_observer_coverage__notification_hub_mobile_tab__out"
+        ],
+        "x": 1504,
+        "y": 719,
+        "w": 702,
+        "h": 150
+    },
+    {
+        "id": "global_observer_coverage__notification_hub_alexa_tab__group",
+        "type": "group",
+        "z": "notification_hub_alexa_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__notification_hub_alexa_tab__catch",
+            "global_observer_coverage__notification_hub_alexa_tab__status",
+            "global_observer_coverage__notification_hub_alexa_tab__annotate",
+            "global_observer_coverage__notification_hub_alexa_tab__out"
+        ],
+        "x": 2234,
+        "y": 59,
+        "w": 702,
+        "h": 150
+    },
+    {
+        "id": "global_observer_coverage__notification_hub_persistent_tab__group",
+        "type": "group",
+        "z": "notification_hub_persistent_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__notification_hub_persistent_tab__catch",
+            "global_observer_coverage__notification_hub_persistent_tab__status",
+            "global_observer_coverage__notification_hub_persistent_tab__annotate",
+            "global_observer_coverage__notification_hub_persistent_tab__out"
+        ],
+        "x": 2380,
+        "y": 40,
+        "w": 720,
+        "h": 162
     },
     {
         "id": "4126427d5e161a03",
@@ -9446,6 +9880,68 @@
         "wires": []
     },
     {
+        "id": "notification_hub_wire_out_270bc4ef8706",
+        "type": "link out",
+        "z": "29d64664bf8cbde8",
+        "g": "gar_group_effect",
+        "name": "Encurtar: Aplicar largura da política",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_270bc4ef8706"
+        ],
+        "x": 1805,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_270bc4ef8706",
+        "type": "link in",
+        "z": "29d64664bf8cbde8",
+        "g": "gar_group_effect",
+        "name": "Continuar: Adaptar MQTT: fechar contato (ON)",
+        "links": [
+            "notification_hub_wire_out_270bc4ef8706"
+        ],
+        "x": 2305,
+        "y": 460,
+        "wires": [
+            [
+                "gar_relay_pulse_on"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_92eda6ec8d9a",
+        "type": "link out",
+        "z": "29d64664bf8cbde8",
+        "g": "gar_group_effect",
+        "name": "Encurtar: Aplicar largura da política",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_92eda6ec8d9a"
+        ],
+        "x": 1805,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_92eda6ec8d9a",
+        "type": "link in",
+        "z": "29d64664bf8cbde8",
+        "g": "gar_group_effect",
+        "name": "Continuar: Confirmar pedido aceito no Logbook",
+        "links": [
+            "notification_hub_wire_out_92eda6ec8d9a"
+        ],
+        "x": 1955,
+        "y": 580,
+        "wires": [
+            [
+                "gar_log_pulse_started"
+            ]
+        ]
+    },
+    {
         "id": "70e147e6b7df9826",
         "type": "DuloNodeHub",
         "z": "shared_integrations_tab",
@@ -11308,6 +11804,37 @@
         "x": 769,
         "y": 962,
         "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_f78f3a081ff8",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_f78f3a081ff8"
+        ],
+        "x": 2230,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_f78f3a081ff8",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Continuar: Registrar confirmação enviada",
+        "links": [
+            "notification_hub_wire_out_f78f3a081ff8"
+        ],
+        "x": 2740,
+        "y": 400,
+        "wires": [
+            [
+                "ext_commit_recovery_confirmation"
+            ]
+        ]
     },
     {
         "id": "moni_mobile_arm_event",
@@ -19117,6 +19644,223 @@
         "wires": []
     },
     {
+        "id": "notification_hub_wire_out_b5cbe7a52037",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_b5cbe7a52037"
+        ],
+        "x": 9793,
+        "y": 332,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_b5cbe7a52037",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Continuar: Confirmar entrega e iniciar cooldown",
+        "links": [
+            "notification_hub_wire_out_b5cbe7a52037"
+        ],
+        "x": 11103,
+        "y": 392,
+        "wires": [
+            [
+                "storage_notification_ack"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_578212e7a55b",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_578212e7a55b"
+        ],
+        "x": 9793,
+        "y": 432,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_578212e7a55b",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Continuar: Registrar falha sem cooldown",
+        "links": [
+            "notification_hub_wire_out_578212e7a55b"
+        ],
+        "x": 10903,
+        "y": 572,
+        "wires": [
+            [
+                "storage_notification_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_168dc6db5cd7",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_168dc6db5cd7"
+        ],
+        "x": 9793,
+        "y": 492,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_168dc6db5cd7",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Continuar: Confirmar entrega e iniciar cooldown",
+        "links": [
+            "notification_hub_wire_out_168dc6db5cd7"
+        ],
+        "x": 11103,
+        "y": 492,
+        "wires": [
+            [
+                "storage_notification_ack"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_3eb3db66ab38",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_3eb3db66ab38"
+        ],
+        "x": 9793,
+        "y": 242,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_3eb3db66ab38",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Continuar: Registrar falha sem cooldown",
+        "links": [
+            "notification_hub_wire_out_3eb3db66ab38"
+        ],
+        "x": 10903,
+        "y": 472,
+        "wires": [
+            [
+                "storage_notification_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_0f2bad790b49",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_0f2bad790b49"
+        ],
+        "x": 9793,
+        "y": 552,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_0f2bad790b49",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Continuar: Confirmar entrega e iniciar cooldown",
+        "links": [
+            "notification_hub_wire_out_0f2bad790b49"
+        ],
+        "x": 11103,
+        "y": 292,
+        "wires": [
+            [
+                "storage_notification_ack"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_6d962ba6b125",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_6d962ba6b125"
+        ],
+        "x": 9793,
+        "y": 152,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_6d962ba6b125",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Continuar: Registrar falha sem cooldown",
+        "links": [
+            "notification_hub_wire_out_6d962ba6b125"
+        ],
+        "x": 10903,
+        "y": 372,
+        "wires": [
+            [
+                "storage_notification_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_34604f022367",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Encurtar: Capturar falha de notificacao",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_34604f022367"
+        ],
+        "x": 9063,
+        "y": 572,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_34604f022367",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Continuar: Registrar falha sem cooldown",
+        "links": [
+            "notification_hub_wire_out_34604f022367"
+        ],
+        "x": 10903,
+        "y": 272,
+        "wires": [
+            [
+                "storage_notification_failure"
+            ]
+        ]
+    },
+    {
         "id": "e1df5b6e59c2e349",
         "type": "comment",
         "z": "c22d8b12055e87f7",
@@ -24688,6 +25432,68 @@
         "wires": [
             [
                 "vehicle_primary_cache_probe_dispatch_guard_v1"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_cd6c9923c45e",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Encurtar: Separar notificações reais e dry-run",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_cd6c9923c45e"
+        ],
+        "x": 3620,
+        "y": 1510,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_cd6c9923c45e",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Continuar: Preparar HA persistente para o hub",
+        "links": [
+            "notification_hub_wire_out_cd6c9923c45e"
+        ],
+        "x": 4250,
+        "y": 1480,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_notify_persistent_v1"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_6de4bafa9323",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_request_group_v1",
+        "name": "Encurtar: Outro comando está em andamento?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_6de4bafa9323"
+        ],
+        "x": 1390,
+        "y": 1470,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_6de4bafa9323",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_request_group_v1",
+        "name": "Continuar: Falhar fechado: comando já em andamento",
+        "links": [
+            "notification_hub_wire_out_6de4bafa9323"
+        ],
+        "x": 1480,
+        "y": 1700,
+        "wires": [
+            [
+                "vehicle_primary_remote_request_busy_v1"
             ]
         ]
     },
@@ -33389,8 +34195,7 @@
             [
                 "vpn_monitor_notify_dispatch__contract_gate"
             ]
-        ],
-        "notification_hub_anchor_y": 1360
+        ]
     },
     {
         "id": "vpn_monitor_notify_dispatch__contract_gate",
@@ -36687,6 +37492,161 @@
         "x": 3799,
         "y": 142,
         "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_67ae86930bb8",
+        "type": "link out",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_67ae86930bb8"
+        ],
+        "x": 3835,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_67ae86930bb8",
+        "type": "link in",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Continuar: Promover pendência após aceite HA",
+        "links": [
+            "notification_hub_wire_out_67ae86930bb8"
+        ],
+        "x": 5075,
+        "y": 620,
+        "wires": [
+            [
+                "alarm_arrival_notification_ack_v1"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_97fc6a0d5b1e",
+        "type": "link out",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_97fc6a0d5b1e"
+        ],
+        "x": 3835,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_97fc6a0d5b1e",
+        "type": "link in",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Continuar: Falhar sem armar cooldown",
+        "links": [
+            "notification_hub_wire_out_97fc6a0d5b1e"
+        ],
+        "x": 4925,
+        "y": 780,
+        "wires": [
+            [
+                "alarm_arrival_notification_failure_v1"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_141ea9d78acf",
+        "type": "link out",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_141ea9d78acf"
+        ],
+        "x": 3835,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_141ea9d78acf",
+        "type": "link in",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Continuar: Promover pendência após aceite HA",
+        "links": [
+            "notification_hub_wire_out_141ea9d78acf"
+        ],
+        "x": 5075,
+        "y": 720,
+        "wires": [
+            [
+                "alarm_arrival_notification_ack_v1"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_caa9720e34e9",
+        "type": "link out",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_caa9720e34e9"
+        ],
+        "x": 3915,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_caa9720e34e9",
+        "type": "link in",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Continuar: Falhar sem armar cooldown",
+        "links": [
+            "notification_hub_wire_out_caa9720e34e9"
+        ],
+        "x": 4925,
+        "y": 680,
+        "wires": [
+            [
+                "alarm_arrival_notification_failure_v1"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_9bba19cfd7e6",
+        "type": "link out",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Encurtar: Capturar falha das notificações",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_9bba19cfd7e6"
+        ],
+        "x": 3135,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_9bba19cfd7e6",
+        "type": "link in",
+        "z": "1f468eaeef0733dd",
+        "g": "alarm_arrival_effect_group",
+        "name": "Continuar: Falhar sem armar cooldown",
+        "links": [
+            "notification_hub_wire_out_9bba19cfd7e6"
+        ],
+        "x": 4925,
+        "y": 580,
+        "wires": [
+            [
+                "alarm_arrival_notification_failure_v1"
+            ]
+        ]
     },
     {
         "id": "local_ai_rtx_architecture",
@@ -41044,6 +42004,161 @@
         "wires": []
     },
     {
+        "id": "notification_hub_wire_out_384dd929fa94",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_384dd929fa94"
+        ],
+        "x": 3050,
+        "y": 1160,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_384dd929fa94",
+        "type": "link in",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Continuar: Confirmar entrega e iniciar cooldown",
+        "links": [
+            "notification_hub_wire_out_384dd929fa94"
+        ],
+        "x": 4240,
+        "y": 1310,
+        "wires": [
+            [
+                "codex_alert_ack"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_1c7fe8d1f644",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_1c7fe8d1f644"
+        ],
+        "x": 3050,
+        "y": 1260,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_1c7fe8d1f644",
+        "type": "link in",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Continuar: Manter pendência para recovery",
+        "links": [
+            "notification_hub_wire_out_1c7fe8d1f644"
+        ],
+        "x": 4500,
+        "y": 1410,
+        "wires": [
+            [
+                "codex_alert_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_d391b65dd501",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_d391b65dd501"
+        ],
+        "x": 3050,
+        "y": 1360,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_d391b65dd501",
+        "type": "link in",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Continuar: Confirmar entrega e iniciar cooldown",
+        "links": [
+            "notification_hub_wire_out_d391b65dd501"
+        ],
+        "x": 4240,
+        "y": 1410,
+        "wires": [
+            [
+                "codex_alert_ack"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_f84122f74ad3",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_f84122f74ad3"
+        ],
+        "x": 3130,
+        "y": 1310,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_f84122f74ad3",
+        "type": "link in",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Continuar: Manter pendência para recovery",
+        "links": [
+            "notification_hub_wire_out_f84122f74ad3"
+        ],
+        "x": 4420,
+        "y": 1360,
+        "wires": [
+            [
+                "codex_alert_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_9508fa5eb578",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Encurtar: Carregar política de recovery",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_9508fa5eb578"
+        ],
+        "x": 5170,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_9508fa5eb578",
+        "type": "link in",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Continuar: Ler pendência persistente",
+        "links": [
+            "notification_hub_wire_out_9508fa5eb578"
+        ],
+        "x": 3920,
+        "y": 1160,
+        "wires": [
+            [
+                "codex_pending_check"
+            ]
+        ]
+    },
+    {
         "id": "internet_policy_note",
         "type": "comment",
         "z": "monitoramento_internet_tab",
@@ -42287,8 +43402,7 @@
             [
                 "internet_notify_down__contract_gate"
             ]
-        ],
-        "notification_hub_anchor_y": 1015
+        ]
     },
     {
         "id": "internet_notify_down__contract_gate",
@@ -42690,8 +43804,7 @@
             [
                 "internet_notify_recovery__contract_gate"
             ]
-        ],
-        "notification_hub_anchor_y": 1405
+        ]
     },
     {
         "id": "internet_notify_recovery__contract_gate",
@@ -45829,8 +46942,7 @@
             [
                 "zigbee_notify_effect__contract_gate"
             ]
-        ],
-        "notification_hub_anchor_y": 2250
+        ]
     },
     {
         "id": "zigbee_notify_effect__contract_gate",
@@ -48885,8 +49997,7 @@
             [
                 "tuya_notify_effect__contract_gate"
             ]
-        ],
-        "notification_hub_anchor_y": 2332
+        ]
     },
     {
         "id": "tuya_notify_effect__contract_gate",
@@ -50703,7 +51814,7 @@
         "links": [
             "global_observer_dry_run_in"
         ],
-        "x": 2760,
+        "x": 3040,
         "y": 360,
         "wires": []
     },
@@ -50748,7 +51859,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 2810,
+        "x": 3090,
         "y": 200,
         "wires": [
             [
@@ -50767,7 +51878,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 3070,
+        "x": 3350,
         "y": 200,
         "wires": [
             [
@@ -50796,7 +51907,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3320,
+        "x": 3600,
         "y": 200,
         "wires": [
             [
@@ -50848,7 +51959,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 2830,
+        "x": 3110,
         "y": 280,
         "wires": [
             [
@@ -50867,7 +51978,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 3090,
+        "x": 3370,
         "y": 280,
         "wires": [
             [
@@ -50896,7 +52007,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3340,
+        "x": 3620,
         "y": 280,
         "wires": [
             [
@@ -50920,8 +52031,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3590,
-        "y": 230,
+        "x": 3990,
+        "y": 220,
         "wires": []
     },
     {
@@ -50935,7 +52046,7 @@
             "global_observer_notify_persistent__hub_call"
         ],
         "uncaught": false,
-        "x": 3200,
+        "x": 3480,
         "y": 400,
         "wires": [
             [
@@ -50956,8 +52067,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3680,
-        "y": 380,
+        "x": 4080,
+        "y": 370,
         "wires": []
     },
     {
@@ -51524,7 +52635,7 @@
         "g": "global_observer_integration_group",
         "name": "HA produz config_entries → Node-RED confirma falha → dedupe persistente → push + alerta no HA",
         "info": "setup_error, setup_retry, migration_error e failed_unload são falhas. loaded encerra o incidente; entradas desativadas são silenciosas. Confirmação e lembrete usam os parâmetros visuais do observador.",
-        "x": 3150,
+        "x": 2920,
         "y": 620,
         "wires": []
     },
@@ -51546,7 +52657,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 2340,
+        "x": 2110,
         "y": 720,
         "wires": [
             [
@@ -51563,7 +52674,7 @@
         "links": [
             "global_observer_integration_test_out"
         ],
-        "x": 2480,
+        "x": 2250,
         "y": 820,
         "wires": [
             [
@@ -51594,7 +52705,7 @@
                 "valueType": "results"
             }
         ],
-        "x": 2650,
+        "x": 2420,
         "y": 720,
         "wires": [
             [
@@ -51615,7 +52726,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2950,
+        "x": 2720,
         "y": 720,
         "wires": [
             [
@@ -51636,7 +52747,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3260,
+        "x": 3030,
         "y": 720,
         "wires": [
             [
@@ -51654,7 +52765,7 @@
         "links": [
             "global_observer_alert_to_dispatch_in"
         ],
-        "x": 3580,
+        "x": 3350,
         "y": 720,
         "wires": []
     },
@@ -52469,8 +53580,8 @@
         "topic": "",
         "payload": "{\"kind\":\"manual_action_dry_run\",\"test_mode\":true,\"simulated\":true,\"dispatched\":false,\"source\":\"manual\",\"arrival_stage\":\"manual\"}",
         "payloadType": "json",
-        "x": 1674,
-        "y": 952,
+        "x": 1750,
+        "y": 960,
         "wires": [
             [
                 "556814a7d5379621"
@@ -52487,8 +53598,8 @@
         "links": [
             "d2cc7a5873776be0"
         ],
-        "x": 1944,
-        "y": 952,
+        "x": 2020,
+        "y": 960,
         "wires": []
     },
     {
@@ -52530,8 +53641,8 @@
         "topic": "",
         "payload": "{\"kind\":\"startup\"}",
         "payloadType": "json",
-        "x": 273,
-        "y": 2553,
+        "x": 270,
+        "y": 2400,
         "wires": [
             [
                 "bfcddf998d4e3a53"
@@ -52569,8 +53680,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 533,
-        "y": 2553,
+        "x": 530,
+        "y": 2400,
         "wires": [
             [
                 "security_visual_lifecycle_load"
@@ -52616,8 +53727,8 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 273,
-        "y": 2693,
+        "x": 270,
+        "y": 2540,
         "wires": [
             [
                 "security_visual_lifecycle_load"
@@ -52637,8 +53748,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2233,
-        "y": 2593,
+        "x": 2230,
+        "y": 2440,
         "wires": [
             [
                 "704af53cd84ba2a2"
@@ -52663,8 +53774,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 2513,
-        "y": 2593,
+        "x": 2510,
+        "y": 2440,
         "wires": [
             [
                 "2405a253853fa82e"
@@ -52681,8 +53792,8 @@
         "links": [
             "f59d2ceb5ba88ddf"
         ],
-        "x": 3083,
-        "y": 2633,
+        "x": 3080,
+        "y": 2480,
         "wires": []
     },
     {
@@ -52725,8 +53836,8 @@
         "links": [
             "68a67feb7cc57957"
         ],
-        "x": 533,
-        "y": 2733,
+        "x": 530,
+        "y": 2580,
         "wires": [
             [
                 "security_visual_lifecycle_load"
@@ -55166,8 +56277,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 753,
-        "y": 2673,
+        "x": 750,
+        "y": 2520,
         "wires": [
             [
                 "security_visual_physical_apply"
@@ -55187,8 +56298,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1103,
-        "y": 2633,
+        "x": 1100,
+        "y": 2480,
         "wires": [
             [
                 "security_visual_recovery_facts"
@@ -55208,8 +56319,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1403,
-        "y": 2633,
+        "x": 1400,
+        "y": 2480,
         "wires": [
             [
                 "security_visual_recovery_needed"
@@ -55235,8 +56346,8 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 1683,
-        "y": 2633,
+        "x": 1680,
+        "y": 2480,
         "wires": [
             [
                 "security_visual_recovery_build"
@@ -55257,11 +56368,166 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1963,
-        "y": 2593,
+        "x": 1960,
+        "y": 2440,
         "wires": [
             [
                 "a0a4977052d1ce06"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_33aba8ee0945",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Encurtar: Marcar refletor ativo por chegada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_33aba8ee0945"
+        ],
+        "x": 1380,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_33aba8ee0945",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Continuar: Ligar refletor do portão",
+        "links": [
+            "notification_hub_wire_out_33aba8ee0945"
+        ],
+        "x": 1530,
+        "y": 60,
+        "wires": [
+            [
+                "f863fcd77744a4da"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_9691eb37bd5f",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Encurtar: Marcar refletor ativo por chegada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_9691eb37bd5f"
+        ],
+        "x": 1380,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_9691eb37bd5f",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Continuar: Aguardar backstop de 15 min",
+        "links": [
+            "notification_hub_wire_out_9691eb37bd5f"
+        ],
+        "x": 1530,
+        "y": 120,
+        "wires": [
+            [
+                "9f047ccb2ce2c3aa"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_5e4e15fa0779",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Encurtar: Marcar refletor ativo por chegada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_5e4e15fa0779"
+        ],
+        "x": 1380,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_5e4e15fa0779",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Continuar: Preparar mobile para o hub",
+        "links": [
+            "notification_hub_wire_out_5e4e15fa0779"
+        ],
+        "x": 1530,
+        "y": 180,
+        "wires": [
+            [
+                "2818bf202b397612"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_fa4355492e8d",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Encurtar: Marcar refletor ativo por chegada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_fa4355492e8d"
+        ],
+        "x": 1380,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_fa4355492e8d",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Continuar: Preparar mobile para o hub",
+        "links": [
+            "notification_hub_wire_out_fa4355492e8d"
+        ],
+        "x": 2180,
+        "y": 240,
+        "wires": [
+            [
+                "light_notify_on_secondary"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_58d452601a4e",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Encurtar: Aguardar backstop de 15 min",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_58d452601a4e"
+        ],
+        "x": 2030,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_58d452601a4e",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Continuar: Solicitar desligamento por timeout",
+        "links": [
+            "notification_hub_wire_out_58d452601a4e"
+        ],
+        "x": 2180,
+        "y": 120,
+        "wires": [
+            [
+                "8fbbd9e9e8fdaacc"
             ]
         ]
     },
@@ -56947,8 +58213,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 2540,
-        "y": 1133,
+        "x": 1060,
+        "y": 1160,
         "wires": [
             [
                 "global_observer_coverage__ea0a6aa0d24ff863__annotate"
@@ -56962,8 +58228,8 @@
         "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 2550,
-        "y": 1193,
+        "x": 1070,
+        "y": 1220,
         "wires": [
             [
                 "global_observer_coverage__ea0a6aa0d24ff863__annotate"
@@ -56983,8 +58249,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2820,
-        "y": 1163,
+        "x": 1340,
+        "y": 1190,
         "wires": [
             [
                 "global_observer_coverage__ea0a6aa0d24ff863__out"
@@ -57001,8 +58267,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 3065,
-        "y": 1163,
+        "x": 1585,
+        "y": 1190,
         "wires": []
     },
     {
@@ -57053,7 +58319,7 @@
         "g": "people_location_lifecycle_config_group_v2",
         "name": "Valores inválidos são rejeitados; a última política válida permanece ativa para todos os consumidores.",
         "info": "Dedupe: 1–60 min; graça: 1–60 min; retorno local: 15–180 min; ciclo externo: 15–600 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
-        "x": 2740,
+        "x": 2150,
         "y": 100,
         "wires": []
     },
@@ -57079,7 +58345,7 @@
         "topic": "arrival_dedupe_minutes",
         "payload": "10",
         "payloadType": "num",
-        "x": 2370,
+        "x": 1780,
         "y": 160,
         "wires": [
             [
@@ -57109,7 +58375,7 @@
         "topic": "primary_home_grace_minutes",
         "payload": "10",
         "payloadType": "num",
-        "x": 2370,
+        "x": 1780,
         "y": 210,
         "wires": [
             [
@@ -57139,7 +58405,7 @@
         "topic": "local_excursion_minutes",
         "payload": "90",
         "payloadType": "num",
-        "x": 2370,
+        "x": 1780,
         "y": 260,
         "wires": [
             [
@@ -57169,7 +58435,7 @@
         "topic": "future_tolerance_seconds",
         "payload": "60",
         "payloadType": "num",
-        "x": 2740,
+        "x": 2150,
         "y": 160,
         "wires": [
             [
@@ -57199,7 +58465,7 @@
         "topic": "vehicle_signal_fresh_minutes",
         "payload": "5",
         "payloadType": "num",
-        "x": 2740,
+        "x": 2150,
         "y": 210,
         "wires": [
             [
@@ -57229,7 +58495,7 @@
         "topic": "near_home_refresh_minutes",
         "payload": "10",
         "payloadType": "num",
-        "x": 2740,
+        "x": 2150,
         "y": 260,
         "wires": [
             [
@@ -57259,7 +58525,7 @@
         "topic": "vehicle_recovery_hours",
         "payload": "24",
         "payloadType": "num",
-        "x": 3110,
+        "x": 2520,
         "y": 160,
         "wires": [
             [
@@ -57289,7 +58555,7 @@
         "topic": "external_cycle_confirm_seconds",
         "payload": "60",
         "payloadType": "num",
-        "x": 3110,
+        "x": 2520,
         "y": 210,
         "wires": [
             [
@@ -57307,7 +58573,7 @@
         "links": [
             "people_location_values_route_in_v1"
         ],
-        "x": 2550,
+        "x": 1960,
         "y": 330,
         "wires": []
     },
@@ -57321,7 +58587,7 @@
         "links": [
             "people_location_values_route_in_v1"
         ],
-        "x": 2920,
+        "x": 2330,
         "y": 330,
         "wires": []
     },
@@ -57335,7 +58601,7 @@
         "links": [
             "people_location_values_route_in_v1"
         ],
-        "x": 3290,
+        "x": 2700,
         "y": 330,
         "wires": []
     },
@@ -57513,7 +58779,7 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 3690,
+        "x": 3730,
         "y": 560,
         "wires": [
             [
@@ -57543,7 +58809,7 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 3690,
+        "x": 3720,
         "y": 640,
         "wires": [
             [
@@ -57711,8 +58977,8 @@
         "links": [
             "people_visual_finalize_in"
         ],
-        "x": 4070,
-        "y": 700,
+        "x": 3935,
+        "y": 680,
         "wires": []
     },
     {
@@ -57732,6 +58998,68 @@
         "wires": [
             [
                 "554cb653b2fa4504"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_6a14668fd8dd",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_6a14668fd8dd"
+        ],
+        "x": 1307,
+        "y": 891,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_6a14668fd8dd",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64",
+        "name": "Continuar: Tratar desconexão transitória do HA",
+        "links": [
+            "notification_hub_wire_out_6a14668fd8dd"
+        ],
+        "x": 2617,
+        "y": 931,
+        "wires": [
+            [
+                "people_refresh_connection_handler"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_ea83b8ce73cb",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_ea83b8ce73cb"
+        ],
+        "x": 1307,
+        "y": 951,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_ea83b8ce73cb",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64",
+        "name": "Continuar: Tratar desconexão transitória do HA",
+        "links": [
+            "notification_hub_wire_out_ea83b8ce73cb"
+        ],
+        "x": 2617,
+        "y": 831,
+        "wires": [
+            [
+                "people_refresh_connection_handler"
             ]
         ]
     },
@@ -59913,70 +61241,190 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__git_backup_tab__catch",
-        "type": "catch",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2477,
-        "y": 72,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__status",
-        "type": "status",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2487,
-        "y": 132,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__annotate",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"git_backup_tab\",\"flow_label\":\"backup_git\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2757,
-        "y": 102,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__out",
+        "id": "notification_hub_wire_out_ac61f0c8c320",
         "type": "link out",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Falha da aba → monitor global",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
         "mode": "link",
         "links": [
-            "global_observer_events_in"
+            "notification_hub_wire_in_ac61f0c8c320"
         ],
-        "x": 3002,
-        "y": 102,
+        "x": 9463,
+        "y": 246,
         "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_ac61f0c8c320",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Continuar: Registrar aceite do Home Assistant",
+        "links": [
+            "notification_hub_wire_out_ac61f0c8c320"
+        ],
+        "x": 10073,
+        "y": 286,
+        "wires": [
+            [
+                "resident_notifications_delivery_ack"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_1ecb0204c49e",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_1ecb0204c49e"
+        ],
+        "x": 9463,
+        "y": 346,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_1ecb0204c49e",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Continuar: Liberar reserva e limitar tentativas",
+        "links": [
+            "notification_hub_wire_out_1ecb0204c49e"
+        ],
+        "x": 8440,
+        "y": 500,
+        "wires": [
+            [
+                "resident_notifications_delivery_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_d0613b331db7",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_d0613b331db7"
+        ],
+        "x": 9463,
+        "y": 426,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_d0613b331db7",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Continuar: Registrar aceite do Home Assistant",
+        "links": [
+            "notification_hub_wire_out_d0613b331db7"
+        ],
+        "x": 10073,
+        "y": 186,
+        "wires": [
+            [
+                "resident_notifications_delivery_ack"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_be8bb6bde419",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_be8bb6bde419"
+        ],
+        "x": 9463,
+        "y": 176,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_be8bb6bde419",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Continuar: Liberar reserva e limitar tentativas",
+        "links": [
+            "notification_hub_wire_out_be8bb6bde419"
+        ],
+        "x": 8440,
+        "y": 560,
+        "wires": [
+            [
+                "resident_notifications_delivery_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_3e1229d83eeb",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Encurtar: Liberar reserva e limitar tentativas",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_3e1229d83eeb"
+        ],
+        "x": 9040,
+        "y": 530,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_3e1229d83eeb",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Continuar: Ainda restam tentativas?",
+        "links": [
+            "notification_hub_wire_out_3e1229d83eeb"
+        ],
+        "x": 9803,
+        "y": 426,
+        "wires": [
+            [
+                "resident_notifications_retry_switch"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_8cbc7f908435",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_test_group",
+        "name": "Encurtar: Hub aceitou a entrega?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_8cbc7f908435"
+        ],
+        "x": 3169,
+        "y": 1303,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_8cbc7f908435",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_test_group",
+        "name": "Continuar: TESTE: push mobile_secondary aceito pelo HA",
+        "links": [
+            "notification_hub_wire_out_8cbc7f908435"
+        ],
+        "x": 3779,
+        "y": 1303,
+        "wires": [
+            [
+                "resident_notifications_test_delivery_accepted"
+            ]
+        ]
     },
     {
         "id": "arrival_context_policy_note",
@@ -63800,155 +65248,70 @@
         "wires": []
     },
     {
-        "id": "git_backup_input_group",
-        "type": "group",
+        "id": "global_observer_coverage__git_backup_tab__catch",
+        "type": "catch",
         "z": "git_backup_tab",
-        "name": "0. Entradas, agenda e pedido",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#2563eb",
-            "stroke-opacity": "1",
-            "fill": "#dbeafe",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "git_backup_architecture",
-            "git_backup_schedule",
-            "git_backup_manual",
-            "git_backup_retry_in",
-            "git_backup_request_out"
-        ],
-        "x": 64,
-        "y": 36,
-        "w": 477,
-        "h": 311
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2477,
+        "y": 72,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__annotate"
+            ]
+        ]
     },
     {
-        "id": "git_backup_decision_group",
-        "type": "group",
+        "id": "global_observer_coverage__git_backup_tab__status",
+        "type": "status",
         "z": "git_backup_tab",
-        "name": "1. Normalização e decisões visuais",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0f766e",
-            "stroke-opacity": "1",
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "git_backup_request_in",
-            "git_backup_request_gate",
-            "git_backup_request_dry_out",
-            "git_backup_worker_out",
-            "git_backup_result_in",
-            "git_backup_result",
-            "git_backup_status_switch",
-            "git_backup_success_origin",
-            "git_backup_success_gate",
-            "git_backup_mark_daily_success",
-            "git_backup_manual_success",
-            "git_backup_alert_build",
-            "git_backup_failure_gate",
-            "git_backup_deferred_gate",
-            "git_backup_invalid_gate",
-            "git_backup_invalid_result",
-            "git_backup_notification_out",
-            "git_backup_retry_effect_out",
-            "git_backup_daily_update_out",
-            "git_backup_dry_out",
-            "git_backup_test_request_in"
-        ],
-        "x": 777,
-        "y": 17,
-        "w": 1521,
-        "h": 520
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2487,
+        "y": 132,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__annotate"
+            ]
+        ]
     },
     {
-        "id": "git_backup_effect_group",
-        "type": "group",
+        "id": "global_observer_coverage__git_backup_tab__annotate",
+        "type": "function",
         "z": "git_backup_tab",
-        "name": "2. Efeitos isolados, retry e confirmação",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#dc2626",
-            "stroke-opacity": "1",
-            "fill": "#fee2e2",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "git_backup_worker_in",
-            "git_backup_request",
-            "git_backup_result_out",
-            "git_backup_error",
-            "git_backup_notification_direct",
-            "git_backup_complete",
-            "git_backup_complete_ok",
-            "git_backup_complete_failed",
-            "git_backup_notification_in",
-            "git_backup_notify_primary",
-            "git_backup_notify_primary__hub_call",
-            "git_backup_notify_persistent",
-            "git_backup_notify_persistent__hub_call",
-            "git_backup_retry_effect_in",
-            "git_backup_retry_delay",
-            "git_backup_retry_out",
-            "notification_hub_wire_out_0501ea75369a",
-            "notification_hub_wire_in_0501ea75369a",
-            "notification_hub_wire_out_3a0e38c6f0ed",
-            "notification_hub_wire_in_3a0e38c6f0ed"
-        ],
-        "x": 1657,
-        "y": 550,
-        "w": 2152,
-        "h": 457,
-        "notification_hub_layout_version": 1
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"git_backup_tab\",\"flow_label\":\"backup_git\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2757,
+        "y": 102,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__out"
+            ]
+        ]
     },
     {
-        "id": "git_backup_test_group",
-        "type": "group",
+        "id": "global_observer_coverage__git_backup_tab__out",
+        "type": "link out",
         "z": "git_backup_tab",
-        "name": "3. Replay manual completo — dry-run",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0891b2",
-            "stroke-opacity": "1",
-            "fill": "#cffafe",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "git_backup_test_instructions",
-            "git_backup_test_reset",
-            "git_backup_test_reset_state",
-            "git_backup_test_request",
-            "git_backup_test_request_out",
-            "git_backup_test_success",
-            "git_backup_test_failure",
-            "git_backup_test_deferred",
-            "git_backup_test_invalid",
-            "git_backup_test_result_out",
-            "git_backup_dry_in",
-            "git_backup_dry_run_terminal"
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
         ],
-        "x": 92,
-        "y": 576,
-        "w": 1414,
-        "h": 491
-    },
-    {
-        "id": "git_backup_tab",
-        "type": "tab",
-        "label": "backup_git",
-        "disabled": false,
-        "info": "Node-RED agenda e decide; o helper allowlisted executa Git/SSH no host. Testes percorrem as mesmas decisões e terminam antes de qualquer efeito.",
-        "env": []
+        "x": 3002,
+        "y": 102,
+        "wires": []
     },
     {
         "id": "git_backup_architecture",
@@ -65189,1441 +66552,6 @@
         "wires": []
     },
     {
-        "id": "notification_hub_wire_out_270bc4ef8706",
-        "type": "link out",
-        "z": "29d64664bf8cbde8",
-        "g": "gar_group_effect",
-        "name": "Encurtar: Aplicar largura da política",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_270bc4ef8706"
-        ],
-        "x": 1805,
-        "y": 460,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "gar_prepare_pulse_delay",
-            "target": "gar_relay_pulse_on",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_270bc4ef8706",
-        "type": "link in",
-        "z": "29d64664bf8cbde8",
-        "g": "gar_group_effect",
-        "name": "Continuar: Adaptar MQTT: fechar contato (ON)",
-        "links": [
-            "notification_hub_wire_out_270bc4ef8706"
-        ],
-        "x": 2305,
-        "y": 460,
-        "wires": [
-            [
-                "gar_relay_pulse_on"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "gar_prepare_pulse_delay",
-            "target": "gar_relay_pulse_on",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_92eda6ec8d9a",
-        "type": "link out",
-        "z": "29d64664bf8cbde8",
-        "g": "gar_group_effect",
-        "name": "Encurtar: Aplicar largura da política",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_92eda6ec8d9a"
-        ],
-        "x": 1805,
-        "y": 580,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "gar_prepare_pulse_delay",
-            "target": "gar_log_pulse_started",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_92eda6ec8d9a",
-        "type": "link in",
-        "z": "29d64664bf8cbde8",
-        "g": "gar_group_effect",
-        "name": "Continuar: Confirmar pedido aceito no Logbook",
-        "links": [
-            "notification_hub_wire_out_92eda6ec8d9a"
-        ],
-        "x": 1955,
-        "y": 580,
-        "wires": [
-            [
-                "gar_log_pulse_started"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "gar_prepare_pulse_delay",
-            "target": "gar_log_pulse_started",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_f78f3a081ff8",
-        "type": "link out",
-        "z": "ce258dec9814b96b",
-        "g": "external_lighting_full_flow_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_f78f3a081ff8"
-        ],
-        "x": 2230,
-        "y": 440,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "ext_send_recovery_mobile__hub_result",
-            "target": "ext_commit_recovery_confirmation",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_f78f3a081ff8",
-        "type": "link in",
-        "z": "ce258dec9814b96b",
-        "g": "external_lighting_full_flow_group",
-        "name": "Continuar: Registrar confirmação enviada",
-        "links": [
-            "notification_hub_wire_out_f78f3a081ff8"
-        ],
-        "x": 2740,
-        "y": 400,
-        "wires": [
-            [
-                "ext_commit_recovery_confirmation"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "ext_send_recovery_mobile__hub_result",
-            "target": "ext_commit_recovery_confirmation",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_b5cbe7a52037",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_b5cbe7a52037"
-        ],
-        "x": 9793,
-        "y": 332,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "storage_notify__hub_result",
-            "target": "storage_notification_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_b5cbe7a52037",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Continuar: Confirmar entrega e iniciar cooldown",
-        "links": [
-            "notification_hub_wire_out_b5cbe7a52037"
-        ],
-        "x": 11103,
-        "y": 392,
-        "wires": [
-            [
-                "storage_notification_ack"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "storage_notify__hub_result",
-            "target": "storage_notification_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_578212e7a55b",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_578212e7a55b"
-        ],
-        "x": 9793,
-        "y": 432,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "storage_notify__hub_result",
-            "target": "storage_notification_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_578212e7a55b",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Continuar: Registrar falha sem cooldown",
-        "links": [
-            "notification_hub_wire_out_578212e7a55b"
-        ],
-        "x": 10903,
-        "y": 572,
-        "wires": [
-            [
-                "storage_notification_failure"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "storage_notify__hub_result",
-            "target": "storage_notification_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_168dc6db5cd7",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_168dc6db5cd7"
-        ],
-        "x": 9793,
-        "y": 492,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "storage_notify_secondary__hub_result",
-            "target": "storage_notification_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_168dc6db5cd7",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Continuar: Confirmar entrega e iniciar cooldown",
-        "links": [
-            "notification_hub_wire_out_168dc6db5cd7"
-        ],
-        "x": 11103,
-        "y": 492,
-        "wires": [
-            [
-                "storage_notification_ack"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "storage_notify_secondary__hub_result",
-            "target": "storage_notification_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_3eb3db66ab38",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_3eb3db66ab38"
-        ],
-        "x": 9793,
-        "y": 242,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "storage_notify_secondary__hub_result",
-            "target": "storage_notification_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_3eb3db66ab38",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Continuar: Registrar falha sem cooldown",
-        "links": [
-            "notification_hub_wire_out_3eb3db66ab38"
-        ],
-        "x": 10903,
-        "y": 472,
-        "wires": [
-            [
-                "storage_notification_failure"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "storage_notify_secondary__hub_result",
-            "target": "storage_notification_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_0f2bad790b49",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_0f2bad790b49"
-        ],
-        "x": 9793,
-        "y": 552,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "storage_notify_persistent__hub_result",
-            "target": "storage_notification_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_0f2bad790b49",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Continuar: Confirmar entrega e iniciar cooldown",
-        "links": [
-            "notification_hub_wire_out_0f2bad790b49"
-        ],
-        "x": 11103,
-        "y": 292,
-        "wires": [
-            [
-                "storage_notification_ack"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "storage_notify_persistent__hub_result",
-            "target": "storage_notification_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_6d962ba6b125",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_6d962ba6b125"
-        ],
-        "x": 9793,
-        "y": 152,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "storage_notify_persistent__hub_result",
-            "target": "storage_notification_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_6d962ba6b125",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Continuar: Registrar falha sem cooldown",
-        "links": [
-            "notification_hub_wire_out_6d962ba6b125"
-        ],
-        "x": 10903,
-        "y": 372,
-        "wires": [
-            [
-                "storage_notification_failure"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "storage_notify_persistent__hub_result",
-            "target": "storage_notification_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_34604f022367",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Encurtar: Capturar falha de notificacao",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_34604f022367"
-        ],
-        "x": 9063,
-        "y": 572,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "storage_notification_catch",
-            "target": "storage_notification_failure",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_34604f022367",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Continuar: Registrar falha sem cooldown",
-        "links": [
-            "notification_hub_wire_out_34604f022367"
-        ],
-        "x": 10903,
-        "y": 272,
-        "wires": [
-            [
-                "storage_notification_failure"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "storage_notification_catch",
-            "target": "storage_notification_failure",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_cd6c9923c45e",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Encurtar: Separar notificações reais e dry-run",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_cd6c9923c45e"
-        ],
-        "x": 3620,
-        "y": 1510,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "vehicle_primary_remote_command_guard_v1",
-            "target": "vehicle_primary_remote_command_notify_persistent_v1",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_cd6c9923c45e",
-        "type": "link in",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Continuar: Preparar HA persistente para o hub",
-        "links": [
-            "notification_hub_wire_out_cd6c9923c45e"
-        ],
-        "x": 4250,
-        "y": 1480,
-        "wires": [
-            [
-                "vehicle_primary_remote_command_notify_persistent_v1"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "vehicle_primary_remote_command_guard_v1",
-            "target": "vehicle_primary_remote_command_notify_persistent_v1",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_6de4bafa9323",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_request_group_v1",
-        "name": "Encurtar: Outro comando está em andamento?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_6de4bafa9323"
-        ],
-        "x": 1390,
-        "y": 1470,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "vehicle_primary_remote_not_busy_v1",
-            "target": "vehicle_primary_remote_request_busy_v1",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_6de4bafa9323",
-        "type": "link in",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_request_group_v1",
-        "name": "Continuar: Falhar fechado: comando já em andamento",
-        "links": [
-            "notification_hub_wire_out_6de4bafa9323"
-        ],
-        "x": 1480,
-        "y": 1700,
-        "wires": [
-            [
-                "vehicle_primary_remote_request_busy_v1"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "vehicle_primary_remote_not_busy_v1",
-            "target": "vehicle_primary_remote_request_busy_v1",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_67ae86930bb8",
-        "type": "link out",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_67ae86930bb8"
-        ],
-        "x": 3835,
-        "y": 580,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "3b95712a74512929__hub_result",
-            "target": "alarm_arrival_notification_ack_v1",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_67ae86930bb8",
-        "type": "link in",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Continuar: Promover pendência após aceite HA",
-        "links": [
-            "notification_hub_wire_out_67ae86930bb8"
-        ],
-        "x": 5075,
-        "y": 620,
-        "wires": [
-            [
-                "alarm_arrival_notification_ack_v1"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "3b95712a74512929__hub_result",
-            "target": "alarm_arrival_notification_ack_v1",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_97fc6a0d5b1e",
-        "type": "link out",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_97fc6a0d5b1e"
-        ],
-        "x": 3835,
-        "y": 680,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "3b95712a74512929__hub_result",
-            "target": "alarm_arrival_notification_failure_v1",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_97fc6a0d5b1e",
-        "type": "link in",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Continuar: Falhar sem armar cooldown",
-        "links": [
-            "notification_hub_wire_out_97fc6a0d5b1e"
-        ],
-        "x": 4925,
-        "y": 780,
-        "wires": [
-            [
-                "alarm_arrival_notification_failure_v1"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "3b95712a74512929__hub_result",
-            "target": "alarm_arrival_notification_failure_v1",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_141ea9d78acf",
-        "type": "link out",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_141ea9d78acf"
-        ],
-        "x": 3835,
-        "y": 760,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "370622ddaaf3fcab__hub_result",
-            "target": "alarm_arrival_notification_ack_v1",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_141ea9d78acf",
-        "type": "link in",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Continuar: Promover pendência após aceite HA",
-        "links": [
-            "notification_hub_wire_out_141ea9d78acf"
-        ],
-        "x": 5075,
-        "y": 720,
-        "wires": [
-            [
-                "alarm_arrival_notification_ack_v1"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "370622ddaaf3fcab__hub_result",
-            "target": "alarm_arrival_notification_ack_v1",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_caa9720e34e9",
-        "type": "link out",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_caa9720e34e9"
-        ],
-        "x": 3915,
-        "y": 660,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "370622ddaaf3fcab__hub_result",
-            "target": "alarm_arrival_notification_failure_v1",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_caa9720e34e9",
-        "type": "link in",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Continuar: Falhar sem armar cooldown",
-        "links": [
-            "notification_hub_wire_out_caa9720e34e9"
-        ],
-        "x": 4925,
-        "y": 680,
-        "wires": [
-            [
-                "alarm_arrival_notification_failure_v1"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "370622ddaaf3fcab__hub_result",
-            "target": "alarm_arrival_notification_failure_v1",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_9bba19cfd7e6",
-        "type": "link out",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Encurtar: Capturar falha das notificações",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_9bba19cfd7e6"
-        ],
-        "x": 3135,
-        "y": 780,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "7a19b058661ba5f8",
-            "target": "alarm_arrival_notification_failure_v1",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_9bba19cfd7e6",
-        "type": "link in",
-        "z": "1f468eaeef0733dd",
-        "g": "alarm_arrival_effect_group",
-        "name": "Continuar: Falhar sem armar cooldown",
-        "links": [
-            "notification_hub_wire_out_9bba19cfd7e6"
-        ],
-        "x": 4925,
-        "y": 580,
-        "wires": [
-            [
-                "alarm_arrival_notification_failure_v1"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "7a19b058661ba5f8",
-            "target": "alarm_arrival_notification_failure_v1",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_384dd929fa94",
-        "type": "link out",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_384dd929fa94"
-        ],
-        "x": 3050,
-        "y": 1160,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "codex_alert_push__hub_result",
-            "target": "codex_alert_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_384dd929fa94",
-        "type": "link in",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Continuar: Confirmar entrega e iniciar cooldown",
-        "links": [
-            "notification_hub_wire_out_384dd929fa94"
-        ],
-        "x": 4240,
-        "y": 1310,
-        "wires": [
-            [
-                "codex_alert_ack"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "codex_alert_push__hub_result",
-            "target": "codex_alert_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_1c7fe8d1f644",
-        "type": "link out",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_1c7fe8d1f644"
-        ],
-        "x": 3050,
-        "y": 1260,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "codex_alert_push__hub_result",
-            "target": "codex_alert_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_1c7fe8d1f644",
-        "type": "link in",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Continuar: Manter pendência para recovery",
-        "links": [
-            "notification_hub_wire_out_1c7fe8d1f644"
-        ],
-        "x": 4500,
-        "y": 1410,
-        "wires": [
-            [
-                "codex_alert_failure"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "codex_alert_push__hub_result",
-            "target": "codex_alert_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_d391b65dd501",
-        "type": "link out",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_d391b65dd501"
-        ],
-        "x": 3050,
-        "y": 1360,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "codex_alert_persistent__hub_result",
-            "target": "codex_alert_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_d391b65dd501",
-        "type": "link in",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Continuar: Confirmar entrega e iniciar cooldown",
-        "links": [
-            "notification_hub_wire_out_d391b65dd501"
-        ],
-        "x": 4240,
-        "y": 1410,
-        "wires": [
-            [
-                "codex_alert_ack"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "codex_alert_persistent__hub_result",
-            "target": "codex_alert_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_f84122f74ad3",
-        "type": "link out",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_f84122f74ad3"
-        ],
-        "x": 3130,
-        "y": 1310,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "codex_alert_persistent__hub_result",
-            "target": "codex_alert_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_f84122f74ad3",
-        "type": "link in",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Continuar: Manter pendência para recovery",
-        "links": [
-            "notification_hub_wire_out_f84122f74ad3"
-        ],
-        "x": 4420,
-        "y": 1360,
-        "wires": [
-            [
-                "codex_alert_failure"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "codex_alert_persistent__hub_result",
-            "target": "codex_alert_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_9508fa5eb578",
-        "type": "link out",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Encurtar: Carregar política de recovery",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_9508fa5eb578"
-        ],
-        "x": 5170,
-        "y": 1080,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "codex_pending_policy",
-            "target": "codex_pending_check",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_9508fa5eb578",
-        "type": "link in",
-        "z": "codex_alertas_tab",
-        "g": "codex_group_effects",
-        "name": "Continuar: Ler pendência persistente",
-        "links": [
-            "notification_hub_wire_out_9508fa5eb578"
-        ],
-        "x": 3920,
-        "y": 1160,
-        "wires": [
-            [
-                "codex_pending_check"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "codex_pending_policy",
-            "target": "codex_pending_check",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_33aba8ee0945",
-        "type": "link out",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Encurtar: Marcar refletor ativo por chegada",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_33aba8ee0945"
-        ],
-        "x": 1380,
-        "y": 60,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "354c9839bfca592f",
-            "target": "f863fcd77744a4da",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_33aba8ee0945",
-        "type": "link in",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Continuar: Ligar refletor do portão",
-        "links": [
-            "notification_hub_wire_out_33aba8ee0945"
-        ],
-        "x": 1530,
-        "y": 60,
-        "wires": [
-            [
-                "f863fcd77744a4da"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "354c9839bfca592f",
-            "target": "f863fcd77744a4da",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_9691eb37bd5f",
-        "type": "link out",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Encurtar: Marcar refletor ativo por chegada",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_9691eb37bd5f"
-        ],
-        "x": 1380,
-        "y": 100,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "354c9839bfca592f",
-            "target": "9f047ccb2ce2c3aa",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_9691eb37bd5f",
-        "type": "link in",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Continuar: Aguardar backstop de 15 min",
-        "links": [
-            "notification_hub_wire_out_9691eb37bd5f"
-        ],
-        "x": 1530,
-        "y": 120,
-        "wires": [
-            [
-                "9f047ccb2ce2c3aa"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "354c9839bfca592f",
-            "target": "9f047ccb2ce2c3aa",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_5e4e15fa0779",
-        "type": "link out",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Encurtar: Marcar refletor ativo por chegada",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_5e4e15fa0779"
-        ],
-        "x": 1380,
-        "y": 140,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "354c9839bfca592f",
-            "target": "2818bf202b397612",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_5e4e15fa0779",
-        "type": "link in",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Continuar: Preparar mobile para o hub",
-        "links": [
-            "notification_hub_wire_out_5e4e15fa0779"
-        ],
-        "x": 1530,
-        "y": 180,
-        "wires": [
-            [
-                "2818bf202b397612"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "354c9839bfca592f",
-            "target": "2818bf202b397612",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_fa4355492e8d",
-        "type": "link out",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Encurtar: Marcar refletor ativo por chegada",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_fa4355492e8d"
-        ],
-        "x": 1380,
-        "y": 180,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "354c9839bfca592f",
-            "target": "light_notify_on_secondary",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_fa4355492e8d",
-        "type": "link in",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Continuar: Preparar mobile para o hub",
-        "links": [
-            "notification_hub_wire_out_fa4355492e8d"
-        ],
-        "x": 2180,
-        "y": 240,
-        "wires": [
-            [
-                "light_notify_on_secondary"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "354c9839bfca592f",
-            "target": "light_notify_on_secondary",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_58d452601a4e",
-        "type": "link out",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Encurtar: Aguardar backstop de 15 min",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_58d452601a4e"
-        ],
-        "x": 2030,
-        "y": 120,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "9f047ccb2ce2c3aa",
-            "target": "8fbbd9e9e8fdaacc",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_58d452601a4e",
-        "type": "link in",
-        "z": "6b7552efb85343f4",
-        "g": "95e7527bc7a0a9a1",
-        "name": "Continuar: Solicitar desligamento por timeout",
-        "links": [
-            "notification_hub_wire_out_58d452601a4e"
-        ],
-        "x": 2180,
-        "y": 120,
-        "wires": [
-            [
-                "8fbbd9e9e8fdaacc"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "9f047ccb2ce2c3aa",
-            "target": "8fbbd9e9e8fdaacc",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_6a14668fd8dd",
-        "type": "link out",
-        "z": "ea0a6aa0d24ff863",
-        "g": "b35563e0f73e5b64",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_6a14668fd8dd"
-        ],
-        "x": 1307,
-        "y": 891,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "564fdc36031eaef8__hub_result",
-            "target": "people_refresh_connection_handler",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_6a14668fd8dd",
-        "type": "link in",
-        "z": "ea0a6aa0d24ff863",
-        "g": "b35563e0f73e5b64",
-        "name": "Continuar: Tratar desconexão transitória do HA",
-        "links": [
-            "notification_hub_wire_out_6a14668fd8dd"
-        ],
-        "x": 2617,
-        "y": 931,
-        "wires": [
-            [
-                "people_refresh_connection_handler"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "564fdc36031eaef8__hub_result",
-            "target": "people_refresh_connection_handler",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_ea83b8ce73cb",
-        "type": "link out",
-        "z": "ea0a6aa0d24ff863",
-        "g": "b35563e0f73e5b64",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_ea83b8ce73cb"
-        ],
-        "x": 1307,
-        "y": 951,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "e0b7c0ecf1d8ee28__hub_result",
-            "target": "people_refresh_connection_handler",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_ea83b8ce73cb",
-        "type": "link in",
-        "z": "ea0a6aa0d24ff863",
-        "g": "b35563e0f73e5b64",
-        "name": "Continuar: Tratar desconexão transitória do HA",
-        "links": [
-            "notification_hub_wire_out_ea83b8ce73cb"
-        ],
-        "x": 2617,
-        "y": 831,
-        "wires": [
-            [
-                "people_refresh_connection_handler"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "e0b7c0ecf1d8ee28__hub_result",
-            "target": "people_refresh_connection_handler",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_ac61f0c8c320",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_ac61f0c8c320"
-        ],
-        "x": 9463,
-        "y": 246,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_notify_primary__hub_result",
-            "target": "resident_notifications_delivery_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_ac61f0c8c320",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Continuar: Registrar aceite do Home Assistant",
-        "links": [
-            "notification_hub_wire_out_ac61f0c8c320"
-        ],
-        "x": 10073,
-        "y": 286,
-        "wires": [
-            [
-                "resident_notifications_delivery_ack"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_notify_primary__hub_result",
-            "target": "resident_notifications_delivery_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_1ecb0204c49e",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_1ecb0204c49e"
-        ],
-        "x": 9463,
-        "y": 346,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_notify_primary__hub_result",
-            "target": "resident_notifications_delivery_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_1ecb0204c49e",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Continuar: Liberar reserva e limitar tentativas",
-        "links": [
-            "notification_hub_wire_out_1ecb0204c49e"
-        ],
-        "x": 8440,
-        "y": 500,
-        "wires": [
-            [
-                "resident_notifications_delivery_failure"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_notify_primary__hub_result",
-            "target": "resident_notifications_delivery_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_d0613b331db7",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_d0613b331db7"
-        ],
-        "x": 9463,
-        "y": 426,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_notify_secondary__hub_result",
-            "target": "resident_notifications_delivery_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_d0613b331db7",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Continuar: Registrar aceite do Home Assistant",
-        "links": [
-            "notification_hub_wire_out_d0613b331db7"
-        ],
-        "x": 10073,
-        "y": 186,
-        "wires": [
-            [
-                "resident_notifications_delivery_ack"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_notify_secondary__hub_result",
-            "target": "resident_notifications_delivery_ack",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_be8bb6bde419",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_be8bb6bde419"
-        ],
-        "x": 9463,
-        "y": 176,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_notify_secondary__hub_result",
-            "target": "resident_notifications_delivery_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_be8bb6bde419",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Continuar: Liberar reserva e limitar tentativas",
-        "links": [
-            "notification_hub_wire_out_be8bb6bde419"
-        ],
-        "x": 8440,
-        "y": 560,
-        "wires": [
-            [
-                "resident_notifications_delivery_failure"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_notify_secondary__hub_result",
-            "target": "resident_notifications_delivery_failure",
-            "output": 1
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_3e1229d83eeb",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Encurtar: Liberar reserva e limitar tentativas",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_3e1229d83eeb"
-        ],
-        "x": 9040,
-        "y": 530,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_delivery_failure",
-            "target": "resident_notifications_retry_switch",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_3e1229d83eeb",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Continuar: Ainda restam tentativas?",
-        "links": [
-            "notification_hub_wire_out_3e1229d83eeb"
-        ],
-        "x": 9803,
-        "y": 426,
-        "wires": [
-            [
-                "resident_notifications_retry_switch"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_delivery_failure",
-            "target": "resident_notifications_retry_switch",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_out_8cbc7f908435",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_test_group",
-        "name": "Encurtar: Hub aceitou a entrega?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_8cbc7f908435"
-        ],
-        "x": 3169,
-        "y": 1303,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_test_notify_secondary__hub_result",
-            "target": "resident_notifications_test_delivery_accepted",
-            "output": 0
-        }
-    },
-    {
-        "id": "notification_hub_wire_in_8cbc7f908435",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_test_group",
-        "name": "Continuar: TESTE: push mobile_secondary aceito pelo HA",
-        "links": [
-            "notification_hub_wire_out_8cbc7f908435"
-        ],
-        "x": 3779,
-        "y": 1303,
-        "wires": [
-            [
-                "resident_notifications_test_delivery_accepted"
-            ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "resident_notifications_test_notify_secondary__hub_result",
-            "target": "resident_notifications_test_delivery_accepted",
-            "output": 0
-        }
-    },
-    {
         "id": "notification_hub_wire_out_0501ea75369a",
         "type": "link out",
         "z": "git_backup_tab",
@@ -66635,12 +66563,7 @@
         ],
         "x": 2134,
         "y": 707,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "git_backup_request",
-            "target": "git_backup_error",
-            "output": 1
-        }
+        "wires": []
     },
     {
         "id": "notification_hub_wire_in_0501ea75369a",
@@ -66657,12 +66580,7 @@
             [
                 "git_backup_error"
             ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "git_backup_request",
-            "target": "git_backup_error",
-            "output": 1
-        }
+        ]
     },
     {
         "id": "notification_hub_wire_out_3a0e38c6f0ed",
@@ -66676,12 +66594,7 @@
         ],
         "x": 2174,
         "y": 907,
-        "wires": [],
-        "notification_hub_wire_route": {
-            "source": "git_backup_request",
-            "target": "git_backup_complete",
-            "output": 2
-        }
+        "wires": []
     },
     {
         "id": "notification_hub_wire_in_3a0e38c6f0ed",
@@ -66698,104 +66611,7 @@
             [
                 "git_backup_complete"
             ]
-        ],
-        "notification_hub_wire_route": {
-            "source": "git_backup_request",
-            "target": "git_backup_complete",
-            "output": 2
-        }
-    },
-    {
-        "id": "notification_hub_mobile_tab",
-        "type": "tab",
-        "label": "hub_notificacoes_moveis",
-        "disabled": false,
-        "info": "Única fronteira Node-RED para celulares. Contrato fail-closed: msg.payload é a mensagem; msg.notification informa source, recipients, profile, title/data opcionais e flags explícitas de TESTE."
-    },
-    {
-        "id": "notification_hub_mobile_main_group",
-        "type": "group",
-        "z": "notification_hub_mobile_tab",
-        "name": "Contrato, destinatários e perfis de entrega",
-        "style": {
-            "label": true,
-            "color": "#2563eb",
-            "fill": "#dbeafe"
-        },
-        "nodes": [
-            "notification_hub_mobile_contract",
-            "notification_hub_mobile_in",
-            "notification_hub_mobile_test_in",
-            "notification_hub_mobile_mark_channel",
-            "notification_hub_mobile_validate",
-            "notification_hub_mobile_invalid_test_gate",
-            "notification_hub_mobile_test_gate",
-            "notification_hub_mobile_dry_out",
-            "notification_hub_mobile_count",
-            "notification_hub_mobile_single",
-            "notification_hub_mobile_only_primary",
-            "notification_hub_mobile_only_secondary",
-            "notification_hub_mobile_both_primary",
-            "notification_hub_mobile_pair_continue_in",
-            "notification_hub_mobile_both_secondary",
-            "notification_hub_mobile_profile",
-            "notification_hub_mobile_simple_recipient",
-            "notification_hub_mobile_actionable_recipient",
-            "notification_hub_mobile_background_recipient",
-            "notification_hub_mobile_primary_simple",
-            "notification_hub_mobile_secondary_simple",
-            "notification_hub_mobile_primary_actionable",
-            "notification_hub_mobile_secondary_actionable",
-            "notification_hub_mobile_primary_background",
-            "notification_hub_mobile_secondary_background",
-            "notification_hub_mobile_after_service",
-            "notification_hub_mobile_pair_continue_out",
-            "notification_hub_mobile_success",
-            "notification_hub_mobile_return_success",
-            "notification_hub_mobile_service_catch",
-            "notification_hub_mobile_leg_failure",
-            "notification_hub_mobile_pair_retry_out",
-            "notification_hub_mobile_failure",
-            "notification_hub_mobile_return_failure",
-            "notification_hub_mobile_observer_out",
-            "notification_hub_mobile_reject_early_out",
-            "notification_hub_mobile_reject_selection_out",
-            "notification_hub_mobile_reject_late_out",
-            "notification_hub_mobile_reject_in",
-            "notification_hub_mobile_reject",
-            "notification_hub_mobile_return_reject"
-        ],
-        "x": 83,
-        "y": -3,
-        "w": 3709,
-        "h": 640
-    },
-    {
-        "id": "notification_hub_mobile_test_group",
-        "type": "group",
-        "z": "notification_hub_mobile_tab",
-        "name": "TESTES — destinatários explícitos e fail-closed",
-        "style": {
-            "label": true,
-            "color": "#0891b2",
-            "fill": "#cffafe"
-        },
-        "nodes": [
-            "notification_hub_mobile_test_note",
-            "notification_hub_mobile_test_primary",
-            "notification_hub_mobile_test_secondary",
-            "notification_hub_mobile_test_both",
-            "notification_hub_mobile_test_invalid",
-            "notification_hub_mobile_test_out",
-            "notification_hub_mobile_dry_in",
-            "notification_hub_mobile_dry_run_terminal",
-            "notification_hub_mobile_dry_run_assert",
-            "notification_hub_mobile_return_dry"
-        ],
-        "x": 70,
-        "y": 693,
-        "w": 1310,
-        "h": 329
+        ]
     },
     {
         "id": "notification_hub_mobile_contract",
@@ -68048,79 +67864,70 @@
         "wires": []
     },
     {
-        "id": "notification_hub_alexa_tab",
-        "type": "tab",
-        "label": "hub_notificacoes_alexa",
-        "disabled": false,
-        "info": "Única fronteira Node-RED para Alexa. O target lógico explícito preserva o binding atual sem fallback para todas as Alexas."
+        "id": "global_observer_coverage__notification_hub_mobile_tab__catch",
+        "type": "catch",
+        "z": "notification_hub_mobile_tab",
+        "g": "global_observer_coverage__notification_hub_mobile_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1644,
+        "y": 772,
+        "wires": [
+            [
+                "global_observer_coverage__notification_hub_mobile_tab__annotate"
+            ]
+        ]
     },
     {
-        "id": "notification_hub_alexa_main_group",
-        "type": "group",
-        "z": "notification_hub_alexa_tab",
-        "name": "Contrato, target lógico e anúncio",
-        "style": {
-            "label": true,
-            "color": "#7c3aed",
-            "fill": "#ede9fe"
-        },
-        "nodes": [
-            "notification_hub_alexa_contract",
-            "notification_hub_alexa_in",
-            "notification_hub_alexa_test_in",
-            "notification_hub_alexa_mark_channel",
-            "notification_hub_alexa_validate",
-            "notification_hub_alexa_invalid_test_gate",
-            "notification_hub_alexa_test_gate",
-            "notification_hub_alexa_target",
-            "notification_hub_alexa_select_target",
-            "notification_hub_alexa_service",
-            "notification_hub_alexa_success",
-            "notification_hub_alexa_return_success",
-            "notification_hub_alexa_service_catch",
-            "notification_hub_alexa_failure",
-            "notification_hub_alexa_return_failure",
-            "notification_hub_alexa_observer_out",
-            "notification_hub_alexa_reject",
-            "notification_hub_alexa_return_reject",
-            "notification_hub_alexa_dry_out",
-            "notification_hub_alexa_dashboard_event",
-            "notification_hub_alexa_dashboard_test_in",
-            "notification_hub_alexa_dashboard_request",
-            "notification_hub_alexa_dashboard_call"
-        ],
-        "x": 70,
-        "y": 23,
-        "w": 2117,
-        "h": 431
+        "id": "global_observer_coverage__notification_hub_mobile_tab__status",
+        "type": "status",
+        "z": "notification_hub_mobile_tab",
+        "g": "global_observer_coverage__notification_hub_mobile_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1654,
+        "y": 832,
+        "wires": [
+            [
+                "global_observer_coverage__notification_hub_mobile_tab__annotate"
+            ]
+        ]
     },
     {
-        "id": "notification_hub_alexa_test_group",
-        "type": "group",
-        "z": "notification_hub_alexa_tab",
-        "name": "TESTES — target, mensagem do painel e rejeições",
-        "style": {
-            "label": true,
-            "color": "#0891b2",
-            "fill": "#cffafe"
-        },
-        "nodes": [
-            "notification_hub_alexa_test_note",
-            "notification_hub_alexa_test_valid",
-            "notification_hub_alexa_test_invalid",
-            "notification_hub_alexa_test_out",
-            "notification_hub_alexa_dry_in",
-            "notification_hub_alexa_dry_run_terminal",
-            "notification_hub_alexa_dry_run_assert",
-            "notification_hub_alexa_return_dry",
-            "notification_hub_alexa_dashboard_test_valid",
-            "notification_hub_alexa_dashboard_test_empty",
-            "notification_hub_alexa_dashboard_test_out"
+        "id": "global_observer_coverage__notification_hub_mobile_tab__annotate",
+        "type": "function",
+        "z": "notification_hub_mobile_tab",
+        "g": "global_observer_coverage__notification_hub_mobile_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"notification_hub_mobile_tab\",\"flow_label\":\"hub_notificacoes_moveis\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1924,
+        "y": 802,
+        "wires": [
+            [
+                "global_observer_coverage__notification_hub_mobile_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__notification_hub_mobile_tab__out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "global_observer_coverage__notification_hub_mobile_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
         ],
-        "x": 103,
-        "y": 533,
-        "w": 1237,
-        "h": 354
+        "x": 2169,
+        "y": 802,
+        "wires": []
     },
     {
         "id": "notification_hub_alexa_contract",
@@ -68834,79 +68641,70 @@
         "wires": []
     },
     {
-        "id": "notification_hub_persistent_tab",
-        "type": "tab",
-        "label": "hub_notificacoes_persistentes_ha",
-        "disabled": false,
-        "info": "Única fronteira Node-RED para persistent_notification.create/dismiss. IDs e política de fila são obrigatórios e explícitos."
+        "id": "global_observer_coverage__notification_hub_alexa_tab__catch",
+        "type": "catch",
+        "z": "notification_hub_alexa_tab",
+        "g": "global_observer_coverage__notification_hub_alexa_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2374,
+        "y": 112,
+        "wires": [
+            [
+                "global_observer_coverage__notification_hub_alexa_tab__annotate"
+            ]
+        ]
     },
     {
-        "id": "notification_hub_persistent_main_group",
-        "type": "group",
-        "z": "notification_hub_persistent_tab",
-        "name": "Contrato, operação, fila e efeito HA",
-        "style": {
-            "label": true,
-            "color": "#0f766e",
-            "fill": "#ccfbf1"
-        },
-        "nodes": [
-            "notification_hub_persistent_contract",
-            "notification_hub_persistent_in",
-            "notification_hub_persistent_test_in",
-            "notification_hub_persistent_mark_channel",
-            "notification_hub_persistent_validate",
-            "notification_hub_persistent_invalid_test_gate",
-            "notification_hub_persistent_test_gate",
-            "notification_hub_persistent_operation",
-            "notification_hub_persistent_create_delivery",
-            "notification_hub_persistent_dismiss_delivery",
-            "notification_hub_persistent_create_queued",
-            "notification_hub_persistent_create_immediate",
-            "notification_hub_persistent_dismiss_queued",
-            "notification_hub_persistent_dismiss_immediate",
-            "notification_hub_persistent_success",
-            "notification_hub_persistent_return_success",
-            "notification_hub_persistent_service_catch",
-            "notification_hub_persistent_failure",
-            "notification_hub_persistent_return_failure",
-            "notification_hub_persistent_observer_out",
-            "notification_hub_persistent_reject_early_out",
-            "notification_hub_persistent_reject_in",
-            "notification_hub_persistent_reject",
-            "notification_hub_persistent_return_reject",
-            "notification_hub_persistent_dry_out"
-        ],
-        "x": 64,
-        "y": 40,
-        "w": 2180,
-        "h": 500
+        "id": "global_observer_coverage__notification_hub_alexa_tab__status",
+        "type": "status",
+        "z": "notification_hub_alexa_tab",
+        "g": "global_observer_coverage__notification_hub_alexa_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2384,
+        "y": 172,
+        "wires": [
+            [
+                "global_observer_coverage__notification_hub_alexa_tab__annotate"
+            ]
+        ]
     },
     {
-        "id": "notification_hub_persistent_test_group",
-        "type": "group",
-        "z": "notification_hub_persistent_tab",
-        "name": "TESTES — criar, remover e rejeitar",
-        "style": {
-            "label": true,
-            "color": "#0891b2",
-            "fill": "#cffafe"
-        },
-        "nodes": [
-            "notification_hub_persistent_test_note",
-            "notification_hub_persistent_test_create",
-            "notification_hub_persistent_test_dismiss",
-            "notification_hub_persistent_test_invalid",
-            "notification_hub_persistent_test_out",
-            "notification_hub_persistent_dry_in",
-            "notification_hub_persistent_dry_run_terminal",
-            "notification_hub_persistent_dry_run_assert",
-            "notification_hub_persistent_return_dry"
+        "id": "global_observer_coverage__notification_hub_alexa_tab__annotate",
+        "type": "function",
+        "z": "notification_hub_alexa_tab",
+        "g": "global_observer_coverage__notification_hub_alexa_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"notification_hub_alexa_tab\",\"flow_label\":\"hub_notificacoes_alexa\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2654,
+        "y": 142,
+        "wires": [
+            [
+                "global_observer_coverage__notification_hub_alexa_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__notification_hub_alexa_tab__out",
+        "type": "link out",
+        "z": "notification_hub_alexa_tab",
+        "g": "global_observer_coverage__notification_hub_alexa_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
         ],
-        "x": 64,
-        "y": 600,
-        "w": 1320,
-        "h": 320
+        "x": 2899,
+        "y": 142,
+        "wires": []
     },
     {
         "id": "notification_hub_persistent_contract",
@@ -69680,198 +69478,6 @@
         "x": 1290,
         "y": 790,
         "wires": []
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_mobile_tab__group",
-        "type": "group",
-        "z": "notification_hub_mobile_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__notification_hub_mobile_tab__catch",
-            "global_observer_coverage__notification_hub_mobile_tab__status",
-            "global_observer_coverage__notification_hub_mobile_tab__annotate",
-            "global_observer_coverage__notification_hub_mobile_tab__out"
-        ],
-        "x": 1504,
-        "y": 719,
-        "w": 702,
-        "h": 150
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_mobile_tab__catch",
-        "type": "catch",
-        "z": "notification_hub_mobile_tab",
-        "g": "global_observer_coverage__notification_hub_mobile_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1644,
-        "y": 772,
-        "wires": [
-            [
-                "global_observer_coverage__notification_hub_mobile_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_mobile_tab__status",
-        "type": "status",
-        "z": "notification_hub_mobile_tab",
-        "g": "global_observer_coverage__notification_hub_mobile_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1654,
-        "y": 832,
-        "wires": [
-            [
-                "global_observer_coverage__notification_hub_mobile_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_mobile_tab__annotate",
-        "type": "function",
-        "z": "notification_hub_mobile_tab",
-        "g": "global_observer_coverage__notification_hub_mobile_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"notification_hub_mobile_tab\",\"flow_label\":\"hub_notificacoes_moveis\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1924,
-        "y": 802,
-        "wires": [
-            [
-                "global_observer_coverage__notification_hub_mobile_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_mobile_tab__out",
-        "type": "link out",
-        "z": "notification_hub_mobile_tab",
-        "g": "global_observer_coverage__notification_hub_mobile_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2169,
-        "y": 802,
-        "wires": []
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_alexa_tab__group",
-        "type": "group",
-        "z": "notification_hub_alexa_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__notification_hub_alexa_tab__catch",
-            "global_observer_coverage__notification_hub_alexa_tab__status",
-            "global_observer_coverage__notification_hub_alexa_tab__annotate",
-            "global_observer_coverage__notification_hub_alexa_tab__out"
-        ],
-        "x": 2234,
-        "y": 59,
-        "w": 702,
-        "h": 150
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_alexa_tab__catch",
-        "type": "catch",
-        "z": "notification_hub_alexa_tab",
-        "g": "global_observer_coverage__notification_hub_alexa_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2374,
-        "y": 112,
-        "wires": [
-            [
-                "global_observer_coverage__notification_hub_alexa_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_alexa_tab__status",
-        "type": "status",
-        "z": "notification_hub_alexa_tab",
-        "g": "global_observer_coverage__notification_hub_alexa_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2384,
-        "y": 172,
-        "wires": [
-            [
-                "global_observer_coverage__notification_hub_alexa_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_alexa_tab__annotate",
-        "type": "function",
-        "z": "notification_hub_alexa_tab",
-        "g": "global_observer_coverage__notification_hub_alexa_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"notification_hub_alexa_tab\",\"flow_label\":\"hub_notificacoes_alexa\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2654,
-        "y": 142,
-        "wires": [
-            [
-                "global_observer_coverage__notification_hub_alexa_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_alexa_tab__out",
-        "type": "link out",
-        "z": "notification_hub_alexa_tab",
-        "g": "global_observer_coverage__notification_hub_alexa_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2899,
-        "y": 142,
-        "wires": []
-    },
-    {
-        "id": "global_observer_coverage__notification_hub_persistent_tab__group",
-        "type": "group",
-        "z": "notification_hub_persistent_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__notification_hub_persistent_tab__catch",
-            "global_observer_coverage__notification_hub_persistent_tab__status",
-            "global_observer_coverage__notification_hub_persistent_tab__annotate",
-            "global_observer_coverage__notification_hub_persistent_tab__out"
-        ],
-        "x": 2380,
-        "y": 40,
-        "w": 720,
-        "h": 162
     },
     {
         "id": "global_observer_coverage__notification_hub_persistent_tab__catch",
