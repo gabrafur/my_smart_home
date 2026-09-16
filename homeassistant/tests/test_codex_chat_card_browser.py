@@ -42,16 +42,22 @@ class CodexChatCardBrowserTest(unittest.TestCase):
         for executable in candidates:
             try:
                 with tempfile.TemporaryDirectory(prefix="codex-browser-probe-") as directory:
+                    probe = Path(directory) / "probe.html"
+                    probe.write_text("<body>codex-browser-ready</body>", encoding="utf-8")
                     process = subprocess.run(
                         [
                             executable,
-                            "--headless=new",
+                            "--headless",
                             "--no-sandbox",
                             "--disable-gpu",
                             "--disable-dev-shm-usage",
+                            "--disable-background-networking",
+                            "--no-first-run",
+                            "--no-default-browser-check",
+                            "--timeout=5000",
                             f"--user-data-dir={Path(directory) / 'profile'}",
                             "--dump-dom",
-                            "data:text/html,<body>codex-browser-ready</body>",
+                            probe.as_uri(),
                         ],
                         check=False,
                         capture_output=True,
@@ -154,10 +160,14 @@ window.addEventListener('unhandledrejection',(event)=>pageErrors.push(String(eve
             process = subprocess.run(
                 [
                     self.chromium,
-                    "--headless=new",
+                    "--headless",
                     "--no-sandbox",
                     "--disable-gpu",
                     "--disable-dev-shm-usage",
+                    "--disable-background-networking",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                    "--timeout=10000",
                     f"--user-data-dir={profile}",
                     "--window-size=1000,1200",
                     "--virtual-time-budget=2000",
