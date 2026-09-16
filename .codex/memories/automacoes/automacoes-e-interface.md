@@ -48,9 +48,11 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
 - Se o motor ligar depois da entrada, ou se o bypass se tornar válido durante
   falha comprovada da integração, a autorização reavalia imediatamente o
   morador que ainda esteja armado e atual em `near_home`.
-  Depois que o refletor já estiver ativo, somente o `home` de um morador agenda
-  a leitura extraordinária do veículo 90 s mais tarde; nem `near_home` nem a
-  posição `home` do próprio carro iniciam esse prazo.
+  O evento carrega a própria evidência canônica de `near_home`, evitando corrida
+  com a atualização paralela do contexto. Cada `home` de morador agenda sua
+  própria leitura extraordinária do veículo 90 s mais tarde, mesmo sem
+  lifecycle ativo do refletor; nem `near_home` nem a posição `home` do próprio
+  carro iniciam esse prazo.
 - O botão técnico que resolve `vehicle_primary.force_refresh` não deve publicar
   estado visível; somente o `input_button` manual entra no coordenador. Isso
   evita que um alvo interno pareça uma segunda rotina de atualização.

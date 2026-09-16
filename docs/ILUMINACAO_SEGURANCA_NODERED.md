@@ -226,9 +226,9 @@ incoerente sem substituir a última política válida.
 - Recovery `unknown`/`unavailable -> near_home` só alcança a iluminação quando
   recupera um ciclo externo que já estava armado antes da indisponibilidade.
 - Uma saída curta `home -> near_home` abre um ciclo local por até 90 min, sem
-  ser tratada como chegada e sem acender o refletor. Depois de um `off`
-  observado, um novo `on` com a localização atual do morador ainda em
-  `near_home` ou já em `home` autoriza somente a iluminação.
+  ser tratada como chegada e sem acender o refletor. O fluxo primeiro confirma
+  o `on` da saída; somente um `off` posterior e outro `on`, com a localização
+  atual do morador ainda em `near_home` ou já em `home`, autorizam a iluminação.
 - A chegada do vehicle_primary atualiza o histórico de viagens do dia; no estágio
   `approach`, também tenta um wake pontual do veículo.
 - Atualizações de atributos do tracker também são observadas sem exigir troca
@@ -405,10 +405,16 @@ restritas à iluminação e não são publicadas como chegada geral para o desar
 
 A exceção para uma parada próxima também é restrita à iluminação. A borda
 `home -> near_home` apenas abre o ciclo local configurável (90 min por padrão).
-O primeiro `on` não autoriza nada: o fluxo exige um `off` observado depois do
-início do ciclo e então outro `on`. Assim, a saída inicial não é confundida com
-chegada; o segundo `on` reavalia imediatamente a pessoa com localização atual
-em `near_home` ou `home`.
+O fluxo registra o primeiro `on` como partida e só aceita um `off` posterior a
+ele; então outro `on` pode representar a volta. Um snapshot `off` enquanto o
+carro ainda nem foi ligado não arma o retorno. Assim, a saída inicial não é
+confundida com chegada; o segundo `on` reavalia imediatamente a pessoa com
+localização atual em `near_home` ou `home`.
+
+O evento de chegada leva também um snapshot mínimo da localização canônica que
+o produziu. Se o evento e o contexto percorrerem links diferentes, essa
+evidência monotônica impede que o gate ainda leia por alguns milissegundos a
+posição anterior e bloqueie uma entrada válida em `near_home`.
 
 Se o motor muda para `on` depois que o morador já entrou em `near_home`, o evento
 confirmado de motor reavalia imediatamente a chegada enquanto o ciclo externo
@@ -454,7 +460,8 @@ fique indisponível logo depois.
 | 2 | refletor ativo por 15 min | imediato ao vencer o backstop |
 
 Uma transição confirmada de `resident_primary` ou `resident_secondary` para
-`home` agenda `vehicle_refresh_at` para 90 segundos depois; o estágio
+`home` agenda, em uma pendência independente por morador, `vehicle_refresh_at`
+para 90 segundos depois; o estágio
 `near_home` não cria esse prazo e a posição `home` do próprio veículo também
 não o cria. O agendamento continua válido quando a integração do carro está
 indisponível, pois sua finalidade é justamente pedir uma leitura nova. Uma
@@ -514,8 +521,9 @@ exclusivamente de um `delay` residente em memória.
   busca o estado novo para determinar se o morador está usando o carro. Eventos
   repetidos são deduplicados e uma chamada realmente em andamento continua
   serializada.
-- A transição confirmada de chegada ao estágio `home`, com refletor ativo,
-  agenda para 90 segundos depois uma atualização extraordinária pelo mesmo
+- A transição confirmada de chegada ao estágio `home`, independentemente do
+  lifecycle do refletor, agenda para 90 segundos depois uma atualização
+  extraordinária pelo mesmo
   coordenador. Ela atravessa o intervalo normal de 30 minutos e a pausa
   noturna; `near_home` não agenda essa confirmação. O bypass é uma decisão
   visual nomeada no tab de iluminação; não existe agendador JavaScript

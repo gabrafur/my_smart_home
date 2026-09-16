@@ -1215,6 +1215,76 @@ scenario("33e retorno local exige OFF e novo ON antes de acender", () => {
   assert(run("light_check_vehicle_primary_in_use", prepared, lightFlow, geoEnv));
 });
 
+scenario("33f OFF antes do primeiro ON não transforma saída em retorno", () => {
+  const now = Date.now();
+  const startedAt = now - 2_000;
+  const people = {
+    ready: true,
+    updated_at: now,
+    local_excursions: {
+      resident_primary: { started_at: startedAt, expires_at: now + 90 * 60_000 },
+    },
+    resident_primary: {
+      ready: true, stale: false, state: "near_home", current_home: false,
+      updated_at: now,
+    },
+    resident_secondary: {
+      ready: true, stale: false, state: "home", current_home: true,
+      updated_at: now,
+    },
+  };
+  const flow = readyLightFlow({ people_context_v1: people });
+  const offAt = startedAt + 500;
+  run("light_merge_context", {
+    payload: { kind: "people_context", updated_at: now, context: people },
+  }, flow, geoEnv);
+  run("light_merge_context", {
+    payload: { kind: "vehicle_primary_context", event: "context_update",
+      updated_at: offAt, context: { ready: true, lighting_ready: true,
+        in_use: false, engine_on: false, engine_state_valid: true,
+        engine_updated_at: offAt, updated_at: offAt } },
+  }, flow, geoEnv);
+  const firstOnAt = now + 1_000;
+  const firstOn = run("light_merge_context", {
+    payload: { kind: "vehicle_primary_context", event: "turn_on",
+      updated_at: firstOnAt, context: { ready: true, lighting_ready: true,
+        in_use: true, engine_on: true, engine_state_valid: true,
+        engine_updated_at: firstOnAt, updated_at: firstOnAt } },
+  }, flow, geoEnv);
+  assert.equal(firstOn[2], null,
+    "o primeiro ON após sair com o carro inicialmente OFF ainda é a partida");
+  const state = flow.get("security_light_local_excursion_v1");
+  assert.equal(state.residents.resident_primary.engine_off_seen_at, null);
+  assert.equal(state.residents.resident_primary.departure_engine_on_seen_at, firstOnAt);
+});
+
+scenario("33g evento de chegada leva a posição atual contra corrida de contexto", () => {
+  const now = Date.now();
+  const staleContext = {
+    ready: true,
+    updated_at: now - 1_000,
+    resident_primary: {
+      ready: true, stale: false, state: "not_home", current_home: false,
+      updated_at: now - 1_000,
+    },
+    resident_secondary: {
+      ready: true, stale: false, state: "home", current_home: true,
+      updated_at: now,
+    },
+  };
+  const flow = readyLightFlow({ people_context_v1: staleContext });
+  const event = arrival("resident_primary", "approach");
+  event.payload.event_at = now;
+  event.payload.arrival_resident_snapshot = {
+    ready: true, stale: false, state: "near_home", current_home: false,
+    updated_at: now,
+  };
+  const prepared = run("light_prepare_arrival", event, flow, geoEnv)[0];
+  assert(prepared,
+    "evidência do próprio evento deve vencer o contexto interno imediatamente anterior");
+  assert(run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv));
+});
+
 scenario("34 pessoa near_home aciona com motor ON sem o carro estar near_home", () => {
   for (const source of ["resident_primary", "resident_secondary"]) {
     const flow = readyLightFlow({
@@ -1800,6 +1870,6 @@ scenario("47 decisão canônica publica estado e atributos para o Recorder", () 
     "waiting_location_refresh");
 });
 
-assert.equal(passed.length, 64);
+assert.equal(passed.length, 66);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

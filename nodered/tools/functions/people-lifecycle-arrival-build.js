@@ -15,6 +15,13 @@ data.arrival = {
         arrival_direction: "returning",
         external_cycle_confirmed: true,
         event_at: source?.updated_at ?? Date.now(),
+        arrival_resident_snapshot: {
+            state: source?.state ?? null,
+            current_home: source?.current_home === true,
+            ready: source?.ready === true,
+            stale: source?.stale === true,
+            updated_at: source?.updated_at ?? null
+        },
         refresh_cycle_id: data.refresh_cycle_id
     }
 };

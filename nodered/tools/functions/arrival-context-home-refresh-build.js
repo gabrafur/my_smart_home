@@ -4,8 +4,13 @@ pending.issued_at = data.now;
 pending.next_emit_at = data.now + Number(msg.policy.home_confirmation_retry_s) * 1000;
 pending.attempts = Number(pending.attempts ?? 0) + 1;
 pending.updated_at = data.now;
-if (msg._location_test === true) flow.set(data.pending_key, pending);
-else flow.set(data.pending_key, pending, "persistent");
+data.pending_state.residents = {
+    ...(data.pending_state.residents ?? {}),
+    [pending.source]: pending
+};
+data.pending_state.updated_at = data.now;
+if (msg._location_test === true) flow.set(data.pending_key, data.pending_state);
+else flow.set(data.pending_key, data.pending_state, "persistent");
 msg.payload = {
     kind: "refresh_tick",
     origin: "contexto_chegadas_home_confirmation",

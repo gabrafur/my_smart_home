@@ -6,15 +6,21 @@ const resident = msg.payload?.context?.[source] ?? {};
 const eventCandidate = Number(msg.context_incoming_at ?? resident.updated_at);
 const eventAt = Number.isFinite(eventCandidate) && eventCandidate > 0
     ? eventCandidate : Number(msg.context_now ?? Date.now());
-const pendingKey = testMode ? "resident_home_refresh_v1__test" : "resident_home_refresh_v1";
-const lastKey = testMode ? "resident_home_refresh_last_v1__test" : "resident_home_refresh_last_v1";
-const previous = testMode ? flow.get(lastKey) : flow.get(lastKey, "persistent");
+const pendingKey = testMode ? "resident_home_refresh_v2__test" : "resident_home_refresh_v2";
+const lastKey = testMode ? "resident_home_refresh_last_v2__test" : "resident_home_refresh_last_v2";
+const lastState = testMode ? flow.get(lastKey) : flow.get(lastKey, "persistent");
+const previous = lastState?.version === 2
+    ? lastState.residents?.[source]
+    : null;
 const signature = [source, previousState, currentState, eventAt].join(":");
 const vehicle = flow.get(testMode ? "vehicle_primary_context_v1__test" : "vehicle_primary_context_v1") ?? {};
 msg._location_test = testMode;
 msg.home_refresh = {
     pending_key: pendingKey,
     last_key: lastKey,
+    last_state: lastState?.version === 2
+        ? lastState
+        : { version: 2, residents: {} },
     source,
     previous_state: previousState,
     current_state: currentState,

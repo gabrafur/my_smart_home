@@ -71,7 +71,15 @@ const markEmitted = getFunction("arrival_context_mark_emitted");
 const refreshBuild = getFunction("arrival_context_refresh_build");
 const homeRefreshRead = getFunction("arrival_context_home_refresh_read");
 const homeRefreshStore = getFunction("arrival_context_home_refresh_store");
-const homeRefreshDueRead = getFunction("arrival_context_home_due_read");
+const homeRefreshDueLoad = getFunction("arrival_context_home_due_read");
+const homeRefreshDueSelect = getFunction("arrival_context_home_due_select");
+const homeRefreshDueRead = (msg, flowArg, nodeArg, globalArg) =>
+  homeRefreshDueSelect(
+    homeRefreshDueLoad(msg, flowArg, nodeArg, globalArg),
+    flowArg,
+    nodeArg,
+    globalArg,
+  );
 const homeRefreshBuild = getFunction("arrival_context_home_refresh_build");
 const homeRefreshClear = getFunction("arrival_context_home_clear");
 const defaults = { inflight_timeout_s: 10, future_tolerance_s: 60,
@@ -234,7 +242,8 @@ assert.equal(homeMsg.home_refresh.transition_valid, true,
   "unavailable → home precisa ser uma chegada válida para o refresh extraordinário");
 assert.equal(homeMsg.home_refresh.engine_on_at_arrival, true);
 call(homeRefreshStore, homeMsg, homeFlow);
-let homePending = homeFlow.get("resident_home_refresh_v1", "persistent");
+let homePendingState = homeFlow.get("resident_home_refresh_v2", "persistent");
+let homePending = homePendingState.residents.resident_secondary;
 assert.equal(homePending.due_at, now + 90_000);
 assert.equal(homePending.engine_on_at_arrival, true);
 
@@ -250,7 +259,8 @@ assert.equal(extraordinary.payload.reason, "resident_arrival_confirmation");
 assert.equal(extraordinary.payload.resident_arrival_force, true);
 assert.equal(extraordinary.payload.require_lighting_ready, false,
   "refresh de HOME não pode depender do lifecycle do refletor");
-homePending = homeFlow.get("resident_home_refresh_v1", "persistent");
+homePendingState = homeFlow.get("resident_home_refresh_v2", "persistent");
+homePending = homePendingState.residents.resident_secondary;
 assert.equal(homePending.attempts, 1);
 
 homeFlow.set("vehicle_primary_context_v1", { updated_at: now + 95_000, ready: true,
@@ -259,13 +269,15 @@ homeFlow.set("vehicle_primary_context_v1", { updated_at: now + 95_000, ready: tr
 dueMsg = call(homeRefreshDueRead, { payload: { kind: "home_confirmation_tick" } }, homeFlow);
 assert.equal(dueMsg.home_refresh_due.request_observed, true);
 call(homeRefreshClear, dueMsg, homeFlow);
-assert.equal(homeFlow.get("resident_home_refresh_v1", "persistent"), undefined);
+assert.equal(homeFlow.get("resident_home_refresh_v2", "persistent"), undefined);
 
 const offFlow = context({
   persistent: { arrival_context_policy_v1: { version: 1, ...defaults },
-    resident_home_refresh_v1: { version: 1, source: "resident_primary",
-      arrival_observed_at: now, due_at: now + 90_000, expires_at: now + 990_000,
-      engine_on_at_arrival: true, next_emit_at: now + 90_000 } },
+    resident_home_refresh_v2: { version: 2, residents: {
+      resident_primary: { version: 1, source: "resident_primary",
+        arrival_observed_at: now, due_at: now + 90_000, expires_at: now + 990_000,
+        engine_on_at_arrival: true, next_emit_at: now + 90_000 }
+    } } },
   default: {
     people_context_v1: { resident_primary: { ready: true, stale: false, current_home: true } },
     vehicle_primary_context_v1: { updated_at: now + 30_000, engine_state_valid: true,
@@ -275,6 +287,48 @@ const offFlow = context({
 dueMsg = call(homeRefreshDueRead, { payload: { kind: "home_confirmation_tick" } }, offFlow);
 assert.equal(dueMsg.home_refresh_due.explicit_engine_off, true,
   "OFF confirmado após HOME cancela a consulta desnecessária");
+
+const independentFlow = context({
+  persistent: { arrival_context_policy_v1: { version: 1, ...defaults } },
+  default: { vehicle_primary_context_v1: { updated_at: now - 10_000, ready: true,
+    engine_state_valid: true, engine_on: true, refresh: { last_request_at: null } } },
+});
+for (const [source, offset] of [["resident_primary", 0], ["resident_secondary", 20_000]]) {
+  const eventAt = now + offset;
+  const people = {
+    updated_at: eventAt, ready: true,
+    resident_primary: { state: "home", ready: true, stale: false,
+      current_home: true, updated_at: eventAt },
+    resident_secondary: { state: "home", ready: true, stale: false,
+      current_home: true, updated_at: eventAt },
+  };
+  independentFlow.set("people_context_v1", people);
+  let residentMsg = {
+    policy: { version: 1, ...defaults }, context_domain: "people",
+    context_snapshot_accepted: true, context_incoming_at: eventAt, context_now: eventAt,
+    payload: { kind: "people_context", source, trigger_prev_state: "near_home",
+      trigger_state: "home", ready: true, context: people },
+  };
+  residentMsg = call(homeRefreshRead, residentMsg, independentFlow);
+  call(homeRefreshStore, residentMsg, independentFlow);
+}
+let independentState = independentFlow.get("resident_home_refresh_v2", "persistent");
+assert.deepEqual(Object.keys(independentState.residents).sort(),
+  ["resident_primary", "resident_secondary"],
+  "cada morador precisa manter seu próprio deadline HOME");
+independentFlow.set("people_context_v1", {
+  resident_primary: { ready: true, stale: false, current_home: true, state: "home" },
+  resident_secondary: { ready: true, stale: false, current_home: false, state: "near_home" },
+});
+dueMsg = call(homeRefreshDueRead, {
+  policy: { version: 1, ...defaults }, monitor_now: now + 30_000, payload: {},
+}, independentFlow);
+assert.equal(dueMsg.home_refresh_due.pending.source, "resident_secondary");
+assert.equal(dueMsg.home_refresh_due.explicit_away, true);
+call(homeRefreshClear, dueMsg, independentFlow);
+independentState = independentFlow.get("resident_home_refresh_v2", "persistent");
+assert.ok(independentState.residents.resident_primary,
+  "oscilação do segundo morador não pode cancelar o refresh do primeiro");
 
 const arrivalFlagFlow = context({ persistent: { arrival_context_policy_v1: { version: 1, ...defaults } } });
 started = begin(arrivalFlagFlow, now, { reason: "resident_arrival_confirmation",

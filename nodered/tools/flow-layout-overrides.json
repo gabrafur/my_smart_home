@@ -8181,6 +8181,10 @@
           "x": 1761,
           "y": 277
         },
+        "git_backup_alert_build": {
+          "x": 1510,
+          "y": 300
+        },
         "git_backup_retry_effect_out": {
           "x": 1911,
           "y": 357

@@ -19,7 +19,9 @@ if (action === "vehicle_on") {
     };
     return [msg, null];
 } else if (action === "due") {
-    const pending = flow.get("resident_home_refresh_v1__test");
+    const pendingState = flow.get("resident_home_refresh_v2__test");
+    const pending = Object.values(pendingState?.residents ?? {})
+        .sort((left, right) => Number(left.due_at) - Number(right.due_at))[0];
     if (!pending) return null;
     msg.payload = { kind: "home_confirmation_tick", test_mode: true,
         test_case: msg._location_test_case, test_now: Number(pending.due_at) + 1 };

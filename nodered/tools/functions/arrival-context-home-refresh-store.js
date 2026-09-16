@@ -16,12 +16,23 @@ const record = {
     updated_at: msg.context_now
 };
 const last = { signature: data.signature, observed_at: data.event_at };
-if (msg._location_test === true) {
-    flow.set(data.pending_key, record);
-    flow.set(data.last_key, last);
-} else {
-    flow.set(data.pending_key, record, "persistent");
-    flow.set(data.last_key, last, "persistent");
-}
+const get = (key) => msg._location_test === true
+    ? flow.get(key)
+    : flow.get(key, "persistent");
+const set = (key, value) => msg._location_test === true
+    ? flow.set(key, value)
+    : flow.set(key, value, "persistent");
+const pendingState = get(data.pending_key)?.version === 2
+    ? get(data.pending_key)
+    : { version: 2, residents: {} };
+pendingState.residents = { ...(pendingState.residents ?? {}), [data.source]: record };
+pendingState.updated_at = msg.context_now;
+const lastState = data.last_state?.version === 2
+    ? data.last_state
+    : { version: 2, residents: {} };
+lastState.residents = { ...(lastState.residents ?? {}), [data.source]: last };
+lastState.updated_at = msg.context_now;
+set(data.pending_key, pendingState);
+set(data.last_key, lastState);
 node.status({ fill: "blue", shape: "dot", text: `HOME: refresh em ${policy.home_confirmation_delay_s} s` });
 return null;

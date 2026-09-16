@@ -23,7 +23,20 @@ const physicalFresh = Number.isFinite(observedAt) && observedAt <= now + futureM
 const source = msg.payload?.source;
 const stage = msg.payload?.arrival_stage;
 const residentArrival = ["resident_primary", "resident_secondary"].includes(source);
-const resident = people[source];
+const cachedResident = people[source];
+const eventResident = msg.payload?.arrival_resident_snapshot;
+const cachedObservedAt = Number(cachedResident?.updated_at ?? 0);
+const eventObservedAt = Number(eventResident?.updated_at ?? 0);
+const eventResidentValid = eventResident && typeof eventResident === "object" &&
+    eventResident.ready === true && eventResident.stale !== true &&
+    Number.isFinite(eventObservedAt) && eventObservedAt > 0 &&
+    eventObservedAt <= now + futureMs &&
+    now - eventObservedAt <= Number(locationPolicy.location_fresh_minutes) * 60000;
+/* O contexto e o evento percorrem links independentes. A evidência canônica
+ * carregada pelo próprio evento fecha a corrida sem aceitar dado mais antigo. */
+const resident = eventResidentValid && eventObservedAt >= cachedObservedAt
+    ? { ...(cachedResident ?? {}), ...eventResident }
+    : cachedResident;
 const residentObservedAt = Number(resident?.updated_at);
 const residentCurrent = resident?.ready === true && resident?.stale !== true &&
     Number.isFinite(residentObservedAt) && residentObservedAt > 0 &&

@@ -1,7 +1,8 @@
 if (msg._location_test !== true && msg.payload?.test_mode !== true) return null;
 for (const key of ["refresh_pending__test", "people_context_v1__test", "vehicle_primary_context_v1__test",
     "resident_departure_refresh_v1__test", "resident_home_refresh_v1__test",
-    "resident_home_refresh_last_v1__test", "refresh_cycle_clock__test"]) flow.set(key, undefined);
+    "resident_home_refresh_last_v1__test", "resident_home_refresh_v2__test",
+    "resident_home_refresh_last_v2__test", "refresh_cycle_clock__test"]) flow.set(key, undefined);
 msg._location_test = true;
 msg._location_test_case = msg._location_test_case ?? msg.payload?.test_case ?? "context_coordinator";
 msg._location_test_reset = true;

@@ -237,32 +237,34 @@ sw("arrival_context_home_due_policy", groups.home, "Existe política válida?", 
   [{ t: "true" }, { t: "else" }], 750, 1660, [["arrival_context_home_due_read"], ["arrival_context_home_policy_missing"]]);
 terminal("arrival_context_home_policy_missing", groups.home, "Falha fechada sem política", { fill: "red", shape: "ring", text: "política indisponível" }, 1010, 1730);
 fn("arrival_context_home_due_read", groups.home, "Ler deadline, morador, motor e aceite",
-  "arrival-context-home-refresh-due-read.js", 1, 1020, 1660, [["arrival_context_home_pending"]]);
+  "arrival-context-home-refresh-due-read.js", 1, 1020, 1660, [["arrival_context_home_due_select"]]);
+fn("arrival_context_home_due_select", groups.home, "Selecionar deadline independente por morador",
+  "arrival-context-home-refresh-due-select.js", 1, 1290, 1660, [["arrival_context_home_pending"]]);
 sw("arrival_context_home_pending", groups.home, "Há confirmação HOME pendente?", "home_refresh_due.exists", "msg",
-  [{ t: "true" }, { t: "else" }], 1290, 1660, [["arrival_context_home_ack"], ["arrival_context_home_wait_pending_out"]]);
+  [{ t: "true" }, { t: "else" }], 1560, 1660, [["arrival_context_home_ack"], ["arrival_context_home_wait_pending_out"]]);
 sw("arrival_context_home_ack", groups.home, "Pedido já apareceu no estado do veículo?", "home_refresh_due.request_observed", "msg",
-  [{ t: "true" }, { t: "else" }], 1570, 1660, [["arrival_context_home_clear_ack_out"], ["arrival_context_home_expired"]]);
+  [{ t: "true" }, { t: "else" }], 1840, 1660, [["arrival_context_home_clear_ack_out"], ["arrival_context_home_expired"]]);
 sw("arrival_context_home_expired", groups.home, "Confirmação expirou?", "home_refresh_due.expired", "msg",
-  [{ t: "true" }, { t: "else" }], 1840, 1660, [["arrival_context_home_clear_expired_out"], ["arrival_context_home_away"]]);
+  [{ t: "true" }, { t: "else" }], 2110, 1660, [["arrival_context_home_clear_expired_out"], ["arrival_context_home_away"]]);
 sw("arrival_context_home_away", groups.home, "Morador saiu de home explicitamente?", "home_refresh_due.explicit_away", "msg",
-  [{ t: "true" }, { t: "else" }], 2110, 1660, [["arrival_context_home_clear_away_out"], ["arrival_context_home_engine_off"]]);
+  [{ t: "true" }, { t: "else" }], 2380, 1660, [["arrival_context_home_clear_away_out"], ["arrival_context_home_engine_off"]]);
 sw("arrival_context_home_engine_off", groups.home, "Motor ficou OFF após a chegada?", "home_refresh_due.explicit_engine_off", "msg",
-  [{ t: "true" }, { t: "else" }], 2390, 1660, [["arrival_context_home_clear"], ["arrival_context_home_due"]]);
+  [{ t: "true" }, { t: "else" }], 2650, 1660, [["arrival_context_home_clear"], ["arrival_context_home_due"]]);
 sw("arrival_context_home_due", groups.home, "Já passaram 90 s desde HOME?", "home_refresh_due.due", "msg",
-  [{ t: "true" }, { t: "else" }], 2660, 1660, [["arrival_context_home_engine_allows"], ["arrival_context_home_wait_due_out"]]);
+  [{ t: "true" }, { t: "else" }], 2920, 1660, [["arrival_context_home_engine_allows"], ["arrival_context_home_wait_due_out"]]);
 sw("arrival_context_home_engine_allows", groups.home, "Motor estava ou permanece ON?", "home_refresh_due.engine_allows", "msg",
-  [{ t: "true" }, { t: "else" }], 2930, 1660, [["arrival_context_home_retry_due"], ["arrival_context_home_wait_engine_out"]]);
+  [{ t: "true" }, { t: "else" }], 3190, 1660, [["arrival_context_home_retry_due"], ["arrival_context_home_wait_engine_out"]]);
 sw("arrival_context_home_retry_due", groups.home, "Pode emitir ou repetir agora?", "home_refresh_due.retry_due", "msg",
-  [{ t: "true" }, { t: "else" }], 3200, 1660, [["arrival_context_home_refresh_build"], ["arrival_context_home_wait"]]);
+  [{ t: "true" }, { t: "else" }], 3460, 1660, [["arrival_context_home_refresh_build"], ["arrival_context_home_wait"]]);
 fn("arrival_context_home_refresh_build", groups.home, "Emitir refresh e manter até confirmação",
-  "arrival-context-home-refresh-build.js", 1, 3470, 1660, [["arrival_context_home_refresh_command_out"]]);
+  "arrival-context-home-refresh-build.js", 1, 3730, 1660, [["arrival_context_home_refresh_command_out"]]);
 linkOut("arrival_context_home_refresh_command_out", groups.home, "Refresh HOME → ciclo canônico",
-  "arrival_context_cycle_input_in", 3760, 1660);
+  "arrival_context_cycle_input_in", 4020, 1660);
 fn("arrival_context_home_clear", groups.home, "Encerrar confirmação concluída ou cancelada",
   "arrival-context-home-refresh-clear.js", 0, 2670, 1390, []);
-for (const [id, x] of [["arrival_context_home_clear_ack_out", 1570],
-  ["arrival_context_home_clear_expired_out", 1840],
-  ["arrival_context_home_clear_away_out", 2110]]) {
+for (const [id, x] of [["arrival_context_home_clear_ack_out", 1840],
+  ["arrival_context_home_clear_expired_out", 2110],
+  ["arrival_context_home_clear_away_out", 2380]]) {
   linkOut(id, groups.home, "Encerrar → terminal", "arrival_context_home_clear_in", x, 1720);
 }
 linkIn("arrival_context_home_clear_in", groups.home, "Receber encerramento",
@@ -270,15 +272,15 @@ linkIn("arrival_context_home_clear_in", groups.home, "Receber encerramento",
     "arrival_context_home_clear_away_out"], "arrival_context_home_clear", 2500, 1390);
 terminal("arrival_context_home_wait", groups.home, "Aguardar deadline ou retry", { fill: "yellow", shape: "ring", text: "aguardando" }, 3480, 1410);
 linkOut("arrival_context_home_wait_pending_out", groups.home, "Pendente ausente → aguardar",
-  "arrival_context_home_wait_in", 1290, 1720);
+  "arrival_context_home_wait_in", 1560, 1720);
 linkOut("arrival_context_home_wait_due_out", groups.home, "Antes do prazo → aguardar",
-  "arrival_context_home_wait_in", 2660, 1720);
+  "arrival_context_home_wait_in", 2920, 1720);
 linkIn("arrival_context_home_wait_in", groups.home, "Receber espera",
   ["arrival_context_home_wait_pending_out", "arrival_context_home_wait_due_out"],
   "arrival_context_home_wait", 3300, 1410);
 terminal("arrival_context_home_wait_engine", groups.home, "Aguardar confirmação de motor ON", { fill: "yellow", shape: "ring", text: "motor ainda não confirmado" }, 3480, 1470);
 linkOut("arrival_context_home_wait_engine_out", groups.home, "Motor pendente → aguardar",
-  "arrival_context_home_wait_engine_in", 2930, 1720);
+  "arrival_context_home_wait_engine_in", 3190, 1720);
 linkIn("arrival_context_home_wait_engine_in", groups.home, "Receber espera do motor",
   "arrival_context_home_wait_engine_out", "arrival_context_home_wait_engine", 3300, 1470);
 

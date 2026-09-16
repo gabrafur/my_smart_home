@@ -33,6 +33,7 @@ for (const source of ["resident_primary", "resident_secondary"]) {
         state.residents[source] = {
             started_at: startedAt,
             expires_at: expiresAt,
+            departure_engine_on_seen_at: null,
             engine_off_seen_at: null,
             consumed_at: null
         };
@@ -42,6 +43,21 @@ for (const source of ["resident_primary", "resident_secondary"]) {
 }
 
 const engineObservedAt = Number(data.vehicle?.engine_updated_at);
+const signalFreshMs = Number(data.location_policy.vehicle_signal_fresh_minutes ?? 5) * 60000;
+const currentEngineOn = data.engine_allowed === true &&
+    Number.isFinite(engineObservedAt);
+if (currentEngineOn) {
+    for (const item of Object.values(state.residents)) {
+        const departureOnSeen = timestampDefined(item.departure_engine_on_seen_at);
+        const observationFitsDeparture = engineObservedAt >=
+            Number(item.started_at) - signalFreshMs;
+        if (!departureOnSeen && observationFitsDeparture) {
+            /* O primeiro ON pertence à saída. Somente um OFF posterior e outro
+             * ON podem transformar o passeio em retorno. */
+            item.departure_engine_on_seen_at = engineObservedAt;
+        }
+    }
+}
 const acceptedEngineOff = data.kind === "vehicle_primary_context" &&
     data.accepted === true &&
     data.vehicle?.engine_state_valid === true &&
@@ -49,7 +65,10 @@ const acceptedEngineOff = data.kind === "vehicle_primary_context" &&
     Number.isFinite(engineObservedAt);
 if (acceptedEngineOff) {
     for (const item of Object.values(state.residents)) {
-        if (engineObservedAt >= Number(item.started_at) &&
+        const departureOnAt = Number(item.departure_engine_on_seen_at);
+        if (timestampDefined(item.departure_engine_on_seen_at) &&
+            engineObservedAt > departureOnAt &&
+            engineObservedAt >= Number(item.started_at) &&
             (!timestampDefined(item.engine_off_seen_at) ||
                 engineObservedAt > Number(item.engine_off_seen_at))) {
             item.engine_off_seen_at = engineObservedAt;
