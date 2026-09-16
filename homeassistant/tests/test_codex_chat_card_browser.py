@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-import html
 import json
 import os
-import re
 import shutil
+import socket
 import subprocess
 import tempfile
+import time
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 
@@ -37,41 +39,32 @@ class CodexChatCardBrowserTest(unittest.TestCase):
             if configured:
                 raise RuntimeError(f"Configured CODEX_BROWSER is not executable: {configured}")
             raise unittest.SkipTest("Chromium is not available for browser layout checks")
+        cls.chromium = candidates[0]
 
-        failures = []
-        for executable in candidates:
-            try:
-                with tempfile.TemporaryDirectory(prefix="codex-browser-probe-") as directory:
-                    probe = Path(directory) / "probe.html"
-                    probe.write_text("<body>codex-browser-ready</body>", encoding="utf-8")
-                    process = subprocess.run(
-                        [
-                            executable,
-                            "--headless",
-                            "--no-sandbox",
-                            "--disable-gpu",
-                            "--disable-dev-shm-usage",
-                            "--disable-background-networking",
-                            "--no-first-run",
-                            "--no-default-browser-check",
-                            "--timeout=5000",
-                            f"--user-data-dir={Path(directory) / 'profile'}",
-                            "--dump-dom",
-                            probe.as_uri(),
-                        ],
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                    )
-                if process.returncode == 0 and "codex-browser-ready" in process.stdout:
-                    cls.chromium = executable
-                    return
-                failures.append(f"{Path(executable).name}: exit {process.returncode}")
-            except subprocess.TimeoutExpired:
-                failures.append(f"{Path(executable).name}: timed out")
+        configured_driver = os.environ.get("CODEX_CHROMEDRIVER")
+        cls.chromedriver = shutil.which(configured_driver or "chromedriver")
+        if not cls.chromedriver:
+            if configured_driver:
+                raise RuntimeError(
+                    f"Configured CODEX_CHROMEDRIVER is not executable: {configured_driver}"
+                )
+            raise unittest.SkipTest("ChromeDriver is not available for browser layout checks")
 
-        raise RuntimeError("No installed browser passed the headless probe: " + "; ".join(failures))
+    @staticmethod
+    def webdriver_request(base_url: str, method: str, path: str, payload=None) -> dict:
+        data = None if payload is None else json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            f"{base_url}{path}",
+            data=data,
+            method=method,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"ChromeDriver request failed ({error.code}): {detail}") from error
 
     def render_viewport(self, width: int, height: int) -> dict:
         card = CARD.read_text(encoding="utf-8")
@@ -157,33 +150,92 @@ window.addEventListener('unhandledrejection',(event)=>pageErrors.push(String(eve
 <script>addEventListener('message',(event)=>{{document.body.textContent=JSON.stringify(event.data)}})</script></body></html>""",
                 encoding="utf-8",
             )
-            process = subprocess.run(
-                [
-                    self.chromium,
-                    "--headless",
-                    "--no-sandbox",
-                    "--disable-gpu",
-                    "--disable-dev-shm-usage",
-                    "--disable-background-networking",
-                    "--no-first-run",
-                    "--no-default-browser-check",
-                    "--timeout=10000",
-                    f"--user-data-dir={profile}",
-                    "--window-size=1000,1200",
-                    "--virtual-time-budget=2000",
-                    "--dump-dom",
-                    page.as_uri(),
-                ],
-                check=True,
+            with socket.socket() as listener:
+                listener.bind(("127.0.0.1", 0))
+                port = listener.getsockname()[1]
+            base_url = f"http://127.0.0.1:{port}"
+            driver = subprocess.Popen(
+                [self.chromedriver, f"--port={port}"],
                 cwd=ROOT,
-                capture_output=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 text=True,
-                timeout=30,
             )
-        match = re.search(r"<body[^>]*>(.*?)</body>", process.stdout, re.DOTALL)
-        self.assertIsNotNone(match, process.stdout[-2000:])
-        payload = html.unescape(re.sub(r"<[^>]+>", "", match.group(1))).strip()
-        result = json.loads(payload)
+            session_id = None
+            try:
+                deadline = time.monotonic() + 10
+                while True:
+                    try:
+                        self.webdriver_request(base_url, "GET", "/status")
+                        break
+                    except (OSError, RuntimeError):
+                        if driver.poll() is not None:
+                            self.fail(f"ChromeDriver exited during startup with {driver.returncode}")
+                        if time.monotonic() >= deadline:
+                            self.fail("ChromeDriver did not become ready")
+                        time.sleep(0.1)
+
+                response = self.webdriver_request(
+                    base_url,
+                    "POST",
+                    "/session",
+                    {
+                        "capabilities": {
+                            "alwaysMatch": {
+                                "browserName": "chrome",
+                                "goog:chromeOptions": {
+                                    "binary": self.chromium,
+                                    "args": [
+                                        "--headless",
+                                        "--no-sandbox",
+                                        "--disable-gpu",
+                                        "--disable-dev-shm-usage",
+                                        "--disable-background-networking",
+                                        "--no-first-run",
+                                        "--no-default-browser-check",
+                                        f"--user-data-dir={profile}",
+                                        "--window-size=1000,1200",
+                                    ],
+                                },
+                            }
+                        }
+                    },
+                )
+                session_id = response["value"]["sessionId"]
+                self.webdriver_request(
+                    base_url,
+                    "POST",
+                    f"/session/{session_id}/url",
+                    {"url": page.as_uri()},
+                )
+                deadline = time.monotonic() + 10
+                while True:
+                    response = self.webdriver_request(
+                        base_url,
+                        "POST",
+                        f"/session/{session_id}/execute/sync",
+                        {"script": "return document.body.textContent", "args": []},
+                    )
+                    payload = response.get("value", "").strip()
+                    try:
+                        result = json.loads(payload)
+                        break
+                    except json.JSONDecodeError:
+                        if time.monotonic() >= deadline:
+                            self.fail(f"Browser harness did not return JSON: {payload[-2000:]}")
+                        time.sleep(0.1)
+            finally:
+                if session_id:
+                    try:
+                        self.webdriver_request(base_url, "DELETE", f"/session/{session_id}")
+                    except (OSError, RuntimeError):
+                        pass
+                driver.terminate()
+                try:
+                    driver.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    driver.kill()
+                    driver.wait(timeout=5)
         self.assertNotIn("fatal", result, result.get("fatal"))
         return result
 

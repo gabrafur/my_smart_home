@@ -32,8 +32,11 @@ jobs:
       - name: Install deterministic Chrome for layout checks
         id: setup-chrome
         uses: browser-actions/setup-chrome@v2
+        with:
+          install-chromedriver: true
 
       - name: Run canonical validation
         run: make validate-public
         env:
           CODEX_BROWSER: ${{ steps.setup-chrome.outputs.chrome-path }}
+          CODEX_CHROMEDRIVER: ${{ steps.setup-chrome.outputs.chromedriver-path }}
