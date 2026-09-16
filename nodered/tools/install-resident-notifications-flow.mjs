@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -12,8 +13,12 @@ const functionsDir = path.join(here, "functions");
 const TAB = "resident_notifications_tab";
 const SERVER = "4126427d5e161a03";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+const originalFlows = structuredClone(flows);
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
-const owned = (node) => node.id === TAB || node.z === TAB || node.id.startsWith("resident_notifications_");
+const isObserverCoverage = (id) => typeof id === "string" && id.startsWith("global_observer_coverage__");
+const owned = (node) => node.id === TAB ||
+  (node.z === TAB && !isObserverCoverage(node.id)) ||
+  node.id.startsWith("resident_notifications_");
 const removed = new Set(flows.filter(owned).map((node) => node.id));
 const next = flows.filter((node) => !owned(node));
 for (const node of next) {
@@ -250,5 +255,32 @@ for (const [linkNode, target] of [
   linkNode.links ??= [];
   if (!linkNode.links.includes(target)) linkNode.links.push(target);
 }
-fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
+const desired = installNotificationHubs(next);
+const linkedInputs = new Set([peopleOut.id, peopleTestOut.id, "global_observer_events_in"]);
+const originalById = new Map(originalFlows.map((node) => [node.id, node]));
+const desiredById = new Map(desired.map((node) => [node.id, node]));
+for (const routeOut of originalFlows.filter((node) =>
+  node.z === TAB && node.type === "link out" && node.notification_hub_wire_route
+)) {
+  if (desiredById.has(routeOut.id)) continue;
+  const route = routeOut.notification_hub_wire_route;
+  const sourceNode = desiredById.get(route.source);
+  const targetIndex = sourceNode?.wires?.[route.output]?.indexOf(route.target) ?? -1;
+  const routeIn = (routeOut.links ?? []).map((id) => originalById.get(id))
+    .find((node) => node?.type === "link in");
+  if (targetIndex < 0 || !routeIn) continue;
+  sourceNode.wires[route.output][targetIndex] = routeOut.id;
+  for (const routeNode of [routeOut, routeIn]) {
+    const restored = structuredClone(routeNode);
+    desired.push(restored);
+    desiredById.set(restored.id, restored);
+    const owner = desiredById.get(restored.g);
+    if (owner?.type === "group" && !owner.nodes.includes(restored.id)) owner.nodes.push(restored.id);
+  }
+}
+const reconciled = reconcileGeneratedFlows(originalFlows, desired, {
+  isOwned: owned,
+  shouldUpdate: (current) => owned(current) || linkedInputs.has(current.id),
+});
+fs.writeFileSync(outputPath, `${JSON.stringify(reconciled, null, 4)}\n`);
 console.log(`Resident notification visual flow installed in ${outputPath}`);

@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const inputPath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -11,6 +12,7 @@ const functionsDir = path.join(here, "functions");
 const PEOPLE_TAB = "ea0a6aa0d24ff863";
 const VEHICLE_TAB = "c22d8b12055e87f7";
 let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
+const originalFlows = structuredClone(flows);
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const generated = new Set(flows.filter((node) =>
   node.id.startsWith("people_visual_") || node.id.startsWith("vehicle_visual_") ||
@@ -556,5 +558,8 @@ executionGroup.nodes = executionGroup.nodes.filter((id) => id !== "b33e117e55bdb
     "vehicle_primary_refresh_notification_requested_out_v1"].includes(id));
 required(VEHICLE_TAB).info = "Localização, evidência de uso, direção, armamento, dedupe e confirmação semântica do wake são explícitos. Funções apenas adaptam payloads, calculam distância e persistem contratos; efeitos permanecem em gates próprios.";
 
+flows = reconcileGeneratedFlows(originalFlows, flows, {
+  isOwned: (node) => generated.has(node.id),
+});
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Location lifecycle visual flow installed in ${outputPath}`);

@@ -163,7 +163,10 @@ for (const filename of [
   "update-vehicle-primary-manual-engine-tests.mjs",
 ]) {
   const generator = fs.readFileSync(new URL(filename, import.meta.url), "utf8");
-  assert.match(generator, /JSON\.stringify\(installNotificationHubs\(/,
+  const finalizesInline = /JSON\.stringify\(installNotificationHubs\(/.test(generator);
+  const finalizesBeforeReconciliation = /const desired = installNotificationHubs\(/.test(generator) &&
+    /reconcileGeneratedFlows\(originalFlows, desired,/.test(generator);
+  assert.ok(finalizesInline || finalizesBeforeReconciliation,
     `${filename}: gerador pode reintroduzir saída direta sem o finalizador canônico`);
 }
 

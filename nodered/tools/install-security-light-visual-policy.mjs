@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const inputPath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -11,6 +12,7 @@ const functionsDir = path.join(here, "functions");
 const TAB = "6b7552efb85343f4";
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
+const originalFlows = structuredClone(flows);
 const fixedGenerated = new Set([
   "security_light_arrival_direction_gate_v1",
   "security_light_arrival_direction_blocked_v1",
@@ -442,5 +444,8 @@ for (const id of reconcile.nodes ?? []) {
   if (Number.isFinite(node.y)) node.y += 60;
 }
 required(TAB).info = "Decisões de contexto, replay, direção, recovery e políticas de tempo são visíveis. A confirmação HOME de 90 s e o refresh extraordinário pertencem a contexto_chegadas; este tab apenas usa o contexto atualizado para decidir o desligamento. JavaScript remanescente adapta estruturas e aplica transações de estado; produção e teste divergem somente na fronteira final de efeitos.";
+flows = reconcileGeneratedFlows(originalFlows, flows, {
+  isOwned: (node) => generated.has(node.id),
+});
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Security light visual policy installed in ${outputPath}`);

@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -11,8 +12,10 @@ const functionsDir = path.join(here, "functions");
 const TAB = "62bb822e033d1623";
 const PRESERVED = new Set(["3514854bb1279cbb", "45cb8ce559f5a522", "9f9a1fe3c4afc387", "1ba5ecf650ac79b8", "6473697c19342f07", "9f109b7076619124"]);
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+const originalFlows = structuredClone(flows);
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
-const owned = (node) => node.id === TAB || node.z === TAB;
+const isObserverCoverage = (id) => typeof id === "string" && id.startsWith("global_observer_coverage__");
+const owned = (node) => node.id === TAB || (node.z === TAB && !isObserverCoverage(node.id));
 const removed = new Set(flows.filter(owned).map((node) => node.id));
 const next = flows.filter((node) => !owned(node));
 for (const node of next) {
@@ -309,5 +312,6 @@ for (const [groupId, deltaY] of [[groups.home, 600], [groups.test, 600]]) {
 }
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+const reconciled = reconcileGeneratedFlows(originalFlows, next, { isOwned: owned });
+fs.writeFileSync(outputPath, `${JSON.stringify(reconciled, null, 4)}\n`);
 console.log(`Arrival context visual flow installed in ${outputPath}`);

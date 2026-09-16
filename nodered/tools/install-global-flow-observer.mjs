@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { NOTIFICATION_HUBS, installNotificationHubs, refreshNotificationWireRoutes } from "./install-notification-hubs.mjs";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -1338,18 +1339,9 @@ next.push(...coverageNodes, ...observerNodes);
 // Existing hubs do not imply that their old routes still belong to the newly
 // generated groups; keeping them would leave `g` and `group.nodes` divergent.
 const finalizedUnordered = refreshNotificationWireRoutes(next);
-const originalOrder = new Map(
-  parsedFlows.map((node, index) => [node.id, index]),
-);
-const appendedOrder = new Map();
-let appendedIndex = parsedFlows.length;
-for (const node of finalizedUnordered) {
-  if (!originalOrder.has(node.id)) appendedOrder.set(node.id, appendedIndex++);
-}
-const finalized = finalizedUnordered.sort((left, right) =>
-  (originalOrder.get(left.id) ?? appendedOrder.get(left.id)) -
-  (originalOrder.get(right.id) ?? appendedOrder.get(right.id)),
-);
+const finalized = reconcileGeneratedFlows(parsedFlows, finalizedUnordered, {
+  isOwned: (node) => owned(node.id),
+});
 fs.writeFileSync(outputPath, `${JSON.stringify(finalized, null, 4)}\n`);
 console.log(
   `Global flow observer installed for ${tabs.length} tabs in ${outputPath}`,
