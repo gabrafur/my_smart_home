@@ -5,8 +5,9 @@ if (!text) {
     return null;
 }
 const status = text.match(/\bstatus=(success|failed|deferred)\b/)?.[1] ?? "invalid";
+const reason = text.match(/\breason=([a-z0-9_]+)\b/)?.[1] ?? "unknown";
 const finishedAt = text.match(/\bfinished_at=([^ ]+)\b/)?.[1] ?? null;
-const result = { status, finished_at: finishedAt };
+const result = { status, reason, finished_at: finishedAt };
 if (testMode) flow.set("git_backup_last_result_v1__test", result);
 else flow.set("git_backup_last_result_v1", result, "persistent");
 msg.git_backup_status = status;

@@ -42,9 +42,13 @@ while [ "$elapsed" -lt "$timeout_seconds" ]; do
   if [ -f "$result_file" ] \
     && grep -qx "request_id=$request_id" "$result_file"; then
     status=$(sed -n 's/^status=//p' "$result_file" | head -n 1)
+    reason=$(sed -n 's/^reason=//p' "$result_file" | head -n 1)
     finished_at=$(sed -n 's/^finished_at=//p' "$result_file" | head -n 1)
-    printf 'git-backup status=%s request_id=%s finished_at=%s\n' \
-      "$status" "$request_id" "$finished_at"
+    case "$reason" in
+      ''|*[!a-z0-9_]*) reason=unknown ;;
+    esac
+    printf 'git-backup status=%s reason=%s request_id=%s finished_at=%s\n' \
+      "$status" "$reason" "$request_id" "$finished_at"
     case "$status" in
       success|deferred) exit 0 ;;
       failed) exit 1 ;;

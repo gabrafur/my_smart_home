@@ -29,14 +29,18 @@ esac
 
 status=success
 exit_code=0
+backup_output=""
 # The cron bridge uses RESOURCE_SAFE_LOCK_FILE for its lightweight worker
 # serialization. Do not leak that private lock into git push: the pre-push
 # hook starts the canonical validation through run-resource-safe.sh and must
 # use the independent public-validation lock.
-if (unset RESOURCE_SAFE_LOCK_FILE; "$backup_script"); then
+if backup_output=$(unset RESOURCE_SAFE_LOCK_FILE; "$backup_script" 2>&1); then
   :
 else
   exit_code=$?
+  reason=$(printf '%s\n' "$backup_output" |
+    sed -n 's/^git-backup-reason=\([a-z0-9_][a-z0-9_]*\)$/\1/p' |
+    tail -n 1)
   if [ "$exit_code" -eq 75 ]; then
     # Keep the claimed request in place, but publish the recoverable state so
     # Node-RED can stop waiting and schedule a new observation without raising
@@ -47,6 +51,7 @@ else
       printf 'request_id=%s\n' "$request_id"
       printf 'status=deferred\n'
       printf 'exit_code=%s\n' "$exit_code"
+      printf 'reason=%s\n' "${reason:-validation_busy}"
       printf 'finished_at=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     } > "$result_tmp"
     mv "$result_tmp" "$result_file"
@@ -55,11 +60,18 @@ else
   status=failed
 fi
 
+if [ "$status" = "success" ]; then
+  reason=none
+else
+  reason=${reason:-unknown_failure}
+fi
+
 result_tmp="$trigger_dir/result.tmp.$$"
 {
   printf 'request_id=%s\n' "$request_id"
   printf 'status=%s\n' "$status"
   printf 'exit_code=%s\n' "$exit_code"
+  printf 'reason=%s\n' "$reason"
   printf 'finished_at=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 } > "$result_tmp"
 mv "$result_tmp" "$result_file"

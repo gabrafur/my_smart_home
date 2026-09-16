@@ -14,6 +14,31 @@ log() {
   printf '[%s] %s\n' "$(date -Is)" "$*" >> "$LOG_FILE"
 }
 
+emit_reason() {
+  printf 'git-backup-reason=%s\n' "$1"
+}
+
+classify_remote_error() {
+  local output="$1"
+  case "$output" in
+    *"Connection timed out"*|*"Could not resolve hostname"*|*"Could not resolve host"*|*"Network is unreachable"*|*"Connection refused"*)
+      printf '%s\n' "network_unavailable"
+      ;;
+    *"Permission denied"*|*"Could not read from remote repository"*|*"Authentication failed"*)
+      printf '%s\n' "authentication_or_access"
+      ;;
+    *"non-fast-forward"*|*"fetch first"*|*"behind or diverged"*)
+      printf '%s\n' "remote_diverged"
+      ;;
+    *"pre-push:"*|*"validate-public"*|*"make: ***"*|*"hook declined"*)
+      printf '%s\n' "validation_failed"
+      ;;
+    *)
+      printf '%s\n' "remote_operation_failed"
+      ;;
+  esac
+}
+
 cd "$REPO_DIR"
 
 # A operadora residencial bloqueia a porta SSH 22, mas permite o endpoint
@@ -38,13 +63,16 @@ fi
 
   log "backup started"
 
-  git fetch "$REMOTE" "$BRANCH" --quiet || {
-    log "backup failed: could not fetch $REMOTE/$BRANCH"
+  if ! fetch_output=$(git fetch "$REMOTE" "$BRANCH" --quiet 2>&1); then
+    failure_reason=$(classify_remote_error "$fetch_output")
+    log "backup failed: could not fetch $REMOTE/$BRANCH reason=$failure_reason"
+    emit_reason "$failure_reason"
     exit 1
-  }
+  fi
 
   if ! git merge-base --is-ancestor "$REMOTE/$BRANCH" HEAD; then
-    log "backup failed: local branch is behind or diverged from $REMOTE/$BRANCH"
+    log "backup failed: local branch is behind or diverged from $REMOTE/$BRANCH reason=remote_diverged"
+    emit_reason "remote_diverged"
     exit 1
   fi
 
@@ -57,6 +85,7 @@ fi
     log "backup aborted: staged security scan failed"
     printf '%s\n' "$security_scan" >> "$LOG_FILE"
     git reset --quiet
+    emit_reason "security_scan_failed"
     exit 1
   fi
 
@@ -81,11 +110,14 @@ fi
     case "$push_output" in
       *"resource-safe: another broad validation is already running"*|\
       *"resource-safe: refusing validation"*)
-        log "backup deferred: canonical validation resources are busy"
+        log "backup deferred: canonical validation resources are busy reason=validation_busy"
+        emit_reason "validation_busy"
         exit 75
         ;;
       *)
-        log "backup failed: could not push $REMOTE/$BRANCH"
+        failure_reason=$(classify_remote_error "$push_output")
+        log "backup failed: could not push $REMOTE/$BRANCH reason=$failure_reason"
+        emit_reason "$failure_reason"
         exit 1
         ;;
     esac

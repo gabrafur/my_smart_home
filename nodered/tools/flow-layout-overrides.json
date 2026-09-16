@@ -2212,7 +2212,7 @@
           "y": 99
         },
         "global_observer_coverage__storage_health_tab__group": {
-          "x": 11000,
+          "x": 11520,
           "y": 59
         }
       },
@@ -8201,6 +8201,38 @@
           "x": 1761,
           "y": 447
         },
+        "git_backup_result_out": {
+          "x": 2248,
+          "y": 600
+        },
+        "git_backup_notify_primary": {
+          "x": 1998,
+          "y": 810
+        },
+        "git_backup_notify_primary__hub_call": {
+          "x": 2278,
+          "y": 810
+        },
+        "git_backup_notify_persistent": {
+          "x": 1998,
+          "y": 890
+        },
+        "git_backup_notify_persistent__hub_call": {
+          "x": 2278,
+          "y": 890
+        },
+        "git_backup_retry_effect_in": {
+          "x": 1698,
+          "y": 970
+        },
+        "git_backup_retry_delay": {
+          "x": 1998,
+          "y": 970
+        },
+        "git_backup_retry_out": {
+          "x": 2278,
+          "y": 970
+        },
         "notification_hub_wire_out_96c34caf8ddc": {
           "x": 2251,
           "y": 930
@@ -8358,8 +8390,8 @@
           "y": 600
         },
         "git_backup_result_out": {
-          "x": 3428,
-          "y": 580
+          "x": 2248,
+          "y": 600
         },
         "git_backup_error": {
           "x": 3428,
@@ -8387,23 +8419,27 @@
         },
         "git_backup_notify_primary": {
           "x": 1998,
-          "y": 820
+          "y": 810
         },
         "git_backup_notify_persistent": {
-          "x": 2628,
-          "y": 870
+          "x": 1998,
+          "y": 890
+        },
+        "git_backup_notify_persistent__hub_call": {
+          "x": 2278,
+          "y": 890
         },
         "git_backup_retry_effect_in": {
           "x": 1698,
-          "y": 930
+          "y": 970
         },
         "git_backup_retry_delay": {
           "x": 1998,
-          "y": 930
+          "y": 970
         },
         "git_backup_retry_out": {
-          "x": 3458,
-          "y": 930
+          "x": 2278,
+          "y": 970
         },
         "git_backup_test_instructions": {
           "x": 968,

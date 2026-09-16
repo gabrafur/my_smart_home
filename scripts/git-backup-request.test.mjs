@@ -77,6 +77,7 @@ test("Node-RED request is executed once by the host bridge", async () => {
   const result = await requestDone;
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /git-backup status=success/);
+  assert.match(result.stdout, /reason=none/);
   assert.equal(fs.readFileSync(calls, "utf8"), "called\n");
   assert.equal(spawnSync(processScript, [], { encoding: "utf8", env }).status, 0);
   assert.equal(fs.readFileSync(calls, "utf8"), "called\n");
@@ -118,7 +119,7 @@ test("host bridge publishes a failed result without retaining the request", () =
   const backup = path.join(fixture, "backup.sh");
   fs.mkdirSync(triggerDir);
   fs.writeFileSync(path.join(triggerDir, "requested"), "20260818T003000Z-42\n");
-  fs.writeFileSync(backup, "#!/bin/sh\nexit 23\n");
+  fs.writeFileSync(backup, "#!/bin/sh\nprintf 'git-backup-reason=network_unavailable\\n'\nexit 23\n");
   fs.chmodSync(backup, 0o755);
   const result = spawnSync(processScript, [], {
     encoding: "utf8",
@@ -127,6 +128,7 @@ test("host bridge publishes a failed result without retaining the request", () =
   assert.equal(result.status, 1);
   assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /status=failed/);
   assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /exit_code=23/);
+  assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /reason=network_unavailable/);
   assert.equal(fs.existsSync(path.join(triggerDir, "processing")), false);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
@@ -140,7 +142,7 @@ test("host bridge retains a temporarily deferred backup for retry", () => {
   fs.writeFileSync(path.join(triggerDir, "requested"), "20260818T003000Z-43\n");
   fs.writeFileSync(
     backup,
-    `#!/bin/sh\ncount=$(cat "${attempts}" 2>/dev/null || echo 0)\ncount=$((count + 1))\nprintf '%s\\n' "$count" > "${attempts}"\n[ "$count" -gt 1 ] || exit 75\n`,
+    `#!/bin/sh\ncount=$(cat "${attempts}" 2>/dev/null || echo 0)\ncount=$((count + 1))\nprintf '%s\\n' "$count" > "${attempts}"\n[ "$count" -gt 1 ] || { printf 'git-backup-reason=validation_busy\\n'; exit 75; }\n`,
   );
   fs.chmodSync(backup, 0o755);
   const env = {
@@ -152,6 +154,7 @@ test("host bridge retains a temporarily deferred backup for retry", () => {
   assert.equal(deferred.status, 75);
   assert.equal(fs.existsSync(path.join(triggerDir, "processing")), true);
   assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /status=deferred/);
+  assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /reason=validation_busy/);
 
   const completed = spawnSync(processScript, [], { encoding: "utf8", env });
   assert.equal(completed.status, 0, completed.stderr);
@@ -165,7 +168,7 @@ test("Node-RED observes a deferred request without reporting failure", async () 
   const triggerDir = path.join(fixture, "trigger");
   const backup = path.join(fixture, "backup.sh");
   fs.mkdirSync(triggerDir);
-  fs.writeFileSync(backup, "#!/bin/sh\nexit 75\n");
+  fs.writeFileSync(backup, "#!/bin/sh\nprintf 'git-backup-reason=validation_busy\\n'\nexit 75\n");
   fs.chmodSync(backup, 0o755);
   const env = {
     ...process.env,
@@ -182,6 +185,7 @@ test("Node-RED observes a deferred request without reporting failure", async () 
   const result = await requestDone;
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /git-backup status=deferred/);
+  assert.match(result.stdout, /reason=validation_busy/);
   assert.equal(fs.existsSync(path.join(triggerDir, "processing")), true);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
@@ -227,11 +231,24 @@ test("backup retries an existing local commit after validation contention", () =
 
   const first = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
   assert.equal(first.status, 75, first.stderr);
+  assert.match(first.stdout, /git-backup-reason=validation_busy/);
   assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "1");
   const second = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
   assert.equal(second.status, 0, second.stderr);
   assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "0");
   assert.match(fs.readFileSync(path.join(repo, ".git-backup.log"), "utf8"), /backup deferred/);
+
+  fs.writeFileSync(
+    hook,
+    "#!/bin/sh\necho 'ssh: connect to host github.com port 443: Connection timed out' >&2\nexit 1\n",
+  );
+  fs.chmodSync(hook, 0o755);
+  fs.writeFileSync(path.join(repo, "state.txt"), "changed again\n");
+  const failed = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
+  assert.equal(failed.status, 1, failed.stderr);
+  assert.match(failed.stdout, /git-backup-reason=network_unavailable/);
+  assert.match(fs.readFileSync(path.join(repo, ".git-backup.log"), "utf8"),
+    /reason=network_unavailable/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

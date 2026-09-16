@@ -43,6 +43,10 @@ updates chama um novo backup ao final para registrar o Compose reconciliado.
   updates nem notificação.
 - `.git-backup.log` registra o resultado do script no host.
 - `.git-backup-request.cron.log` registra falhas do worker da ponte.
+- Falhas de fetch ou push recebem uma razão sanitizada (`network_unavailable`,
+  `authentication_or_access`, `remote_diverged`, `validation_failed` ou
+  `remote_operation_failed`). A ponte inclui essa razão no resultado entregue
+  ao Node-RED e nas notificações, sem persistir a saída bruta do Git.
 - A aba não publica nem altera entidades de estado do Home Assistant; somente
   cria o aviso persistente de falha descrito acima.
 - Os sensores e cards de **Revisão documental semanal** continuam pertencendo

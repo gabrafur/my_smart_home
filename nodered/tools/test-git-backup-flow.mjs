@@ -11,6 +11,7 @@ const functionDir = path.join(here, "functions");
 const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8");
 const flows = JSON.parse(fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"));
 const byId = new Map(flows.map((entry) => [entry.id, entry]));
+assert.equal(byId.size, flows.length, "o gerador não pode deixar IDs duplicados");
 const node = (id) => {
   const found = byId.get(id);
   assert.ok(found, `missing node ${id}`);
@@ -104,13 +105,18 @@ assert.ok(!JSON.stringify(node("git_backup_test_success")).includes("git_backup_
 
 const flow = memory();
 const normalize = source("git-backup-result-normalize.js");
-for (const [status, testMode] of [["success", true], ["failed", true], ["deferred", false]]) {
+for (const [status, reason, testMode] of [
+  ["success", "none", true],
+  ["failed", "network_unavailable", true],
+  ["deferred", "validation_busy", false],
+]) {
   const result = execute(normalize, {
     _git_backup_test: testMode,
-    payload: `git-backup status=${status} request_id=test finished_at=synthetic`,
+    payload: `git-backup status=${status} reason=${reason} request_id=test finished_at=synthetic`,
   }, flow).result;
   assert.equal(result.git_backup_status, status);
   assert.equal(result.payload.status, status);
+  assert.equal(result.payload.reason, reason);
   const key = testMode ? "git_backup_last_result_v1__test" : "git_backup_last_result_v1";
   const store = testMode ? "default" : "persistent";
   assert.equal(flow.get(key, store).status, status);
@@ -122,8 +128,11 @@ assert.equal(emptyStdout.result, null);
 assert.match(emptyStdout.events.statuses[0].text, /erro tratado separadamente/);
 assert.equal(flow.get("git_backup_last_result_v1", "persistent").status, "deferred");
 
-const alert = execute(source("git-backup-alert-build.js"), { payload: { status: "failed" } }, flow).result;
+const alert = execute(source("git-backup-alert-build.js"), {
+  payload: { status: "failed", reason: "network_unavailable" },
+}, flow).result;
 assert.match(alert.alert.title, /Falha no backup Git/);
+assert.match(alert.alert.message, /conexão com o GitHub estava indisponível/);
 const bridgeError = execute(source("git-backup-error-build.js"), { payload: "synthetic timeout" }, flow);
 assert.equal(bridgeError.events.errors.length, 1);
 assert.match(bridgeError.result.alert.message, /worker do host/);

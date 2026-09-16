@@ -12,7 +12,10 @@ const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const TAB = "git_backup_tab";
 const SERVER = "4126427d5e161a03";
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
-const owned = (node) => node.id === TAB || node.id.startsWith("git_backup_");
+const generatedNotificationRoute = (node) => node.z === TAB &&
+  /^notification_hub_wire_(?:out|in)_[a-f0-9]{12}$/.test(node.id);
+const owned = (node) => node.id === TAB || node.id.startsWith("git_backup_") ||
+  generatedNotificationRoute(node);
 const removed = new Set(flows.filter(owned).map((node) => node.id));
 const next = flows.filter((node) => !owned(node));
 for (const node of next) {
