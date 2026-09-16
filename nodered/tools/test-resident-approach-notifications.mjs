@@ -322,6 +322,15 @@ assert.deepEqual(
   byId.get("resident_notifications_test_delivery_secondary").wires,
   [["resident_notifications_test_notify_secondary"]],
 );
+assert.deepEqual(
+  byId.get("resident_notifications_test_delivery_secondary").props,
+  [{ p: "payload" }],
+);
+assert.equal(
+  byId.get("resident_notifications_test_delivery_secondary").payload,
+  "TESTE — confirmação do push de chegada para o celular.",
+);
+assert.equal(byId.get("resident_notifications_test_delivery_secondary").payloadType, "str");
 for (const id of [
   "resident_notifications_test_primary",
   "resident_notifications_test_home",

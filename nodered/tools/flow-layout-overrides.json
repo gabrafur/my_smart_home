@@ -3361,8 +3361,8 @@
           "y": 600
         },
         "people_location_discovery_start_v1": {
-          "x": 835,
-          "y": 660
+          "x": 840,
+          "y": 620
         },
         "people_location_policy_publish_in_v1": {
           "x": 710,
@@ -3461,7 +3461,7 @@
           "y": 480
         },
         "people_visual_recovery_gate": {
-          "x": 3695,
+          "x": 3750,
           "y": 560
         },
         "people_visual_blocked_gate": {
@@ -4860,8 +4860,8 @@
           "y": 95
         },
         "ed8fa1d49205cbdb": {
-          "x": 1506,
-          "y": 911
+          "x": 1554,
+          "y": 899
         },
         "light_location_policy_group_v1": {
           "x": 1520,
@@ -4872,12 +4872,12 @@
           "y": 1075
         },
         "32a89192d93735b1": {
-          "x": 128,
-          "y": 1699
+          "x": 78,
+          "y": 1719
         },
         "6013a28eaa95addd": {
-          "x": 134,
-          "y": 2399
+          "x": 74,
+          "y": 2279
         },
         "global_observer_coverage__6b7552efb85343f4__group": {
           "x": 2118,
@@ -4886,8 +4886,8 @@
       },
       "node_positions": {
         "security_visual_people_refresh_out": {
-          "x": 2469,
-          "y": 2250
+          "x": 2755,
+          "y": 2020
         },
         "notification_hub_wire_in_60f0f8f4dde5": {
           "x": 2529,
@@ -5046,8 +5046,8 @@
           "y": 410
         },
         "2405a253853fa82e": {
-          "x": 2925,
-          "y": 2520
+          "x": 2865,
+          "y": 2400
         },
         "notification_hub_wire_out_4a052cb333c8": {
           "x": 2530,
@@ -5066,32 +5066,32 @@
           "y": 410
         },
         "security_visual_replay_ready": {
-          "x": 1728,
-          "y": 1863
+          "x": 1890,
+          "y": 1820
         },
         "security_visual_replay_build": {
-          "x": 1938,
-          "y": 1803
+          "x": 2100,
+          "y": 1760
         },
         "48a5f40d806f6950": {
-          "x": 2228,
-          "y": 1863
+          "x": 2390,
+          "y": 1820
         },
         "notification_hub_wire_out_60f0f8f4dde5": {
           "x": 2350,
           "y": 1740
         },
         "77f539388438547c": {
-          "x": 2528,
-          "y": 1803
+          "x": 2690,
+          "y": 1760
         },
         "68a67feb7cc57957": {
-          "x": 2528,
-          "y": 1863
+          "x": 2690,
+          "y": 1820
         },
         "light_arrival_replay_route_out_v1": {
-          "x": 2528,
-          "y": 1923
+          "x": 2690,
+          "y": 1880
         },
         "aaeec8223d98ab0b": {
           "x": 190,
@@ -5210,10 +5210,10 @@
           "h": 342
         },
         "32a89192d93735b1": {
-          "x": 128,
-          "y": 1699,
-          "w": 6142,
-          "h": 592
+          "x": 78,
+          "y": 1719,
+          "w": 5919,
+          "h": 512
         },
         "95e7527bc7a0a9a1": {
           "x": 789,
@@ -5228,14 +5228,14 @@
           "h": 322
         },
         "ed8fa1d49205cbdb": {
-          "x": 1506,
-          "y": 911,
+          "x": 1554,
+          "y": 899,
           "w": 547,
           "h": 82
         },
         "6013a28eaa95addd": {
-          "x": 134,
-          "y": 2399,
+          "x": 74,
+          "y": 2279,
           "w": 2832,
           "h": 262
         },
@@ -5284,24 +5284,24 @@
           "y": 396
         },
         "48a5f40d806f6950": {
-          "x": 2228,
-          "y": 1863
+          "x": 2390,
+          "y": 1820
         },
         "62f77a1ad440639d": {
-          "x": 2769,
-          "y": 2030
+          "x": 3060,
+          "y": 1980
         },
         "e7542f3caa4a99e2": {
-          "x": 3109,
-          "y": 1950
+          "x": 3400,
+          "y": 1900
         },
         "276ba50ad0e36bab": {
-          "x": 3389,
-          "y": 1950
+          "x": 3680,
+          "y": 1900
         },
         "87b2f8eb75cb6359": {
-          "x": 5909,
-          "y": 1950
+          "x": 3991,
+          "y": 2050
         },
         "354c9839bfca592f": {
           "x": 1080,
@@ -5352,60 +5352,60 @@
           "y": 830
         },
         "2f8ac8be8e84a548": {
-          "x": 1742,
-          "y": 952
+          "x": 1790,
+          "y": 940
         },
         "556814a7d5379621": {
-          "x": 2012,
-          "y": 952
+          "x": 2060,
+          "y": 940
         },
         "336b58c50f842082": {
           "x": 460,
           "y": 396
         },
         "78753a34fe418682": {
-          "x": 310,
-          "y": 2440
+          "x": 250,
+          "y": 2320
         },
         "bfcddf998d4e3a53": {
-          "x": 680,
-          "y": 2440
+          "x": 620,
+          "y": 2320
         },
         "eb9ffff62431e1c3": {
-          "x": 310,
-          "y": 2580
+          "x": 250,
+          "y": 2460
         },
         "a0a4977052d1ce06": {
-          "x": 2470,
-          "y": 2520
+          "x": 2410,
+          "y": 2400
         },
         "704af53cd84ba2a2": {
-          "x": 2750,
-          "y": 2520
+          "x": 2690,
+          "y": 2400
         },
         "2405a253853fa82e": {
-          "x": 2925,
-          "y": 2520
+          "x": 2865,
+          "y": 2400
         },
         "f59d2ceb5ba88ddf": {
           "x": 790,
           "y": 970
         },
         "68a67feb7cc57957": {
-          "x": 2528,
-          "y": 1863
+          "x": 2690,
+          "y": 1820
         },
         "cd40f5f8e40b07af": {
-          "x": 680,
-          "y": 2620
+          "x": 620,
+          "y": 2500
         },
         "e10a4b1a9880e827": {
-          "x": 3109,
-          "y": 1870
+          "x": 3400,
+          "y": 1820
         },
         "81994a8c6c38a4c1": {
-          "x": 3109,
-          "y": 2030
+          "x": 3400,
+          "y": 1980
         },
         "04007cc1732f60c9": {
           "x": 1550,
@@ -5420,44 +5420,44 @@
           "y": 480
         },
         "54b3d667ae845416": {
-          "x": 3109,
-          "y": 2110
+          "x": 3400,
+          "y": 2060
         },
         "1bdb8c52397de8a9": {
-          "x": 2859,
-          "y": 1750
+          "x": 3080,
+          "y": 2120
         },
         "aaeec8223d98ab0b": {
           "x": 190,
           "y": 830
         },
         "77f539388438547c": {
-          "x": 2528,
-          "y": 1803
+          "x": 2690,
+          "y": 1760
         },
         "light_full_dry_run_terminal_v1": {
           "x": 3080,
           "y": 410
         },
         "light_unavailable_test_dry_run_out_v1": {
-          "x": 6229,
-          "y": 2030
+          "x": 4311,
+          "y": 2130
         },
         "light_unavailable_test_dry_run_in_v1": {
           "x": 1250,
           "y": 620
         },
         "light_available_to_output_out_v1": {
-          "x": 6229,
-          "y": 1870
+          "x": 4311,
+          "y": 1970
         },
         "light_available_to_output_in_v1": {
           "x": 830,
           "y": 100
         },
         "light_unavailable_to_output_out_v1": {
-          "x": 6229,
-          "y": 1950
+          "x": 4311,
+          "y": 2050
         },
         "light_unavailable_to_output_in_v1": {
           "x": 1300,
@@ -5500,8 +5500,8 @@
           "y": 1390
         },
         "security_light_engine_bypass_reevaluate_in_v1": {
-          "x": 169,
-          "y": 1750
+          "x": 119,
+          "y": 1790
         },
         "light_location_policy_in_v1": {
           "x": 1561,
@@ -5512,16 +5512,16 @@
           "y": 832
         },
         "light_arrival_replay_route_out_v1": {
-          "x": 2528,
-          "y": 1923
+          "x": 2690,
+          "y": 1880
         },
         "light_arrival_replay_gate_in_v1": {
-          "x": 169,
-          "y": 1970
+          "x": 119,
+          "y": 2010
         },
         "light_arrival_replay_debug_in_v1": {
-          "x": 2409,
-          "y": 1750
+          "x": 2865,
+          "y": 2120
         },
         "light_off_decision_route_out_v1": {
           "x": 680,
@@ -5656,76 +5656,76 @@
           "y": 280
         },
         "security_visual_context_route_in": {
-          "x": 169,
-          "y": 1810
+          "x": 119,
+          "y": 1850
         },
         "security_visual_arrival_route_in": {
-          "x": 169,
-          "y": 2050
-        },
-        "security_visual_context_cache": {
-          "x": 399,
-          "y": 1810
-        },
-        "security_visual_pending_validate": {
-          "x": 1429,
-          "y": 1810
-        },
-        "security_visual_replay_ready": {
-          "x": 1728,
-          "y": 1863
-        },
-        "security_visual_replay_build": {
-          "x": 1938,
-          "y": 1803
-        },
-        "security_visual_arrival_facts": {
-          "x": 399,
-          "y": 2010
-        },
-        "security_light_arrival_direction_gate_v1": {
-          "x": 709,
-          "y": 2010
-        },
-        "security_light_arrival_direction_blocked_v1": {
-          "x": 999,
-          "y": 2130
-        },
-        "security_visual_arrival_pending": {
-          "x": 999,
-          "y": 1990
-        },
-        "security_visual_arrival_logic_ready": {
-          "x": 1289,
-          "y": 1990
-        },
-        "security_visual_arrival_ready": {
-          "x": 1569,
-          "y": 1930
-        },
-        "security_visual_arrival_recovery_needed": {
-          "x": 1569,
-          "y": 2050
-        },
-        "security_visual_arrival_pending_only": {
-          "x": 1849,
-          "y": 2130
-        },
-        "security_visual_arrival_recovery_allowed": {
-          "x": 1849,
-          "y": 2030
-        },
-        "security_visual_arrival_recovery": {
-          "x": 2149,
-          "y": 1990
-        },
-        "security_visual_arrival_throttled": {
-          "x": 2149,
+          "x": 119,
           "y": 2090
         },
+        "security_visual_context_cache": {
+          "x": 350,
+          "y": 1820
+        },
+        "security_visual_pending_validate": {
+          "x": 1560,
+          "y": 1820
+        },
+        "security_visual_replay_ready": {
+          "x": 1890,
+          "y": 1820
+        },
+        "security_visual_replay_build": {
+          "x": 2100,
+          "y": 1760
+        },
+        "security_visual_arrival_facts": {
+          "x": 349,
+          "y": 2050
+        },
+        "security_light_arrival_direction_gate_v1": {
+          "x": 659,
+          "y": 2050
+        },
+        "security_light_arrival_direction_blocked_v1": {
+          "x": 1090,
+          "y": 2160
+        },
+        "security_visual_arrival_pending": {
+          "x": 1090,
+          "y": 2020
+        },
+        "security_visual_arrival_logic_ready": {
+          "x": 1431,
+          "y": 2010
+        },
+        "security_visual_arrival_ready": {
+          "x": 1790,
+          "y": 1980
+        },
+        "security_visual_arrival_recovery_needed": {
+          "x": 1711,
+          "y": 2070
+        },
+        "security_visual_arrival_pending_only": {
+          "x": 1991,
+          "y": 2150
+        },
+        "security_visual_arrival_recovery_allowed": {
+          "x": 1991,
+          "y": 2050
+        },
+        "security_visual_arrival_recovery": {
+          "x": 2291,
+          "y": 2010
+        },
+        "security_visual_arrival_throttled": {
+          "x": 2291,
+          "y": 2110
+        },
         "security_visual_arrival_ready_out": {
-          "x": 1849,
-          "y": 1930
+          "x": 2005,
+          "y": 1980
         },
         "security_visual_arrival_final_confirmation_needed": {
           "x": 3113,
@@ -5744,88 +5744,88 @@
           "y": 2163
         },
         "security_visual_arrival_recovery_out": {
-          "x": 2389,
-          "y": 1990
+          "x": 2531,
+          "y": 2010
         },
         "security_visual_arrival_throttled_out": {
-          "x": 2389,
-          "y": 2090
+          "x": 2531,
+          "y": 2110
         },
         "security_visual_arrival_pending_out": {
-          "x": 2089,
-          "y": 2170
+          "x": 2231,
+          "y": 2190
         },
         "security_visual_arrival_blocked_out": {
-          "x": 1289,
-          "y": 2150
+          "x": 1305,
+          "y": 2160
         },
         "security_visual_arrival_result_in": {
-          "x": 2519,
-          "y": 2030
+          "x": 2861,
+          "y": 1970
         },
         "security_visual_availability_facts": {
-          "x": 3679,
-          "y": 1950
-        },
-        "security_visual_availability_latched": {
-          "x": 3969,
-          "y": 1810
-        },
-        "security_visual_availability_on": {
-          "x": 4239,
+          "x": 4021,
           "y": 1890
         },
+        "security_visual_availability_latched": {
+          "x": 4260,
+          "y": 1760
+        },
+        "security_visual_availability_on": {
+          "x": 4530,
+          "y": 1840
+        },
         "security_visual_availability_cycle": {
-          "x": 4509,
-          "y": 1970
+          "x": 4800,
+          "y": 1920
         },
         "security_visual_availability_ready": {
-          "x": 4779,
-          "y": 1970
+          "x": 5121,
+          "y": 1910
         },
         "security_visual_availability_ready_build": {
-          "x": 5059,
-          "y": 1870
+          "x": 5401,
+          "y": 1810
         },
         "security_visual_availability_duplicate": {
-          "x": 5059,
-          "y": 2070
+          "x": 5401,
+          "y": 2010
         },
         "security_visual_availability_unavailable_build": {
-          "x": 5359,
-          "y": 2050
+          "x": 5741,
+          "y": 2010
         },
         "security_visual_availability_ready_out": {
-          "x": 5309,
-          "y": 1870
+          "x": 5651,
+          "y": 1810
         },
         "security_visual_availability_unavailable_out": {
-          "x": 5629,
-          "y": 2050
+          "x": 5956,
+          "y": 2010
         },
         "security_visual_availability_result_in": {
-          "x": 5689,
-          "y": 1950
+          "x": 3811,
+          "y": 2070
         },
         "security_visual_lifecycle_load": {
-          "x": 900,
-          "y": 2560
+          "x": 840,
+          "y": 2440
         },
         "security_visual_physical_apply": {
-          "x": 1250,
-          "y": 2520
+          "x": 1190,
+          "y": 2400
         },
         "security_visual_recovery_facts": {
-          "x": 1550,
-          "y": 2520
+          "x": 1490,
+          "y": 2400
         },
         "security_visual_recovery_needed": {
-          "x": 1880,
-          "y": 2520
+          "x": 1820,
+          "y": 2400
         },
         "security_visual_recovery_build": {
-          "x": 2200,
-          "y": 2520
+          "x": 2140,
+          "y": 2400
         },
         "global_observer_coverage__6b7552efb85343f4__catch": {
           "x": 2274,
@@ -5868,54 +5868,54 @@
           "y": 2250
         },
         "security_visual_local_excursion": {
-          "x": 659,
-          "y": 1810
+          "x": 680,
+          "y": 1820
         },
         "security_visual_engine_on_near_home": {
-          "x": 919,
-          "y": 1810
+          "x": 980,
+          "y": 1820
         },
         "security_visual_arrival_watch": {
-          "x": 1169,
-          "y": 1810
+          "x": 1290,
+          "y": 1820
         },
         "security_visual_people_refresh_out": {
-          "x": 2469,
-          "y": 2250
+          "x": 2755,
+          "y": 2020
         },
         "security_visual_context_decision_out": {
-          "x": 2709,
-          "y": 1890
+          "x": 2765,
+          "y": 1940
         },
         "security_visual_arrival_decision_out": {
-          "x": 3269,
-          "y": 2030
+          "x": 3560,
+          "y": 1980
         },
         "security_visual_turned_on_decision_out": {
           "x": 1280,
           "y": 300
         },
         "security_visual_decision_diagnostic_group_v1": {
-          "x": 4494,
-          "y": 1079,
+          "x": 2894,
+          "y": 719,
           "w": 1052,
           "h": 202
         },
         "security_visual_decision_discovery": {
-          "x": 4660,
-          "y": 1120
+          "x": 3060,
+          "y": 760
         },
         "security_visual_decision_route_in": {
-          "x": 4660,
-          "y": 1240
+          "x": 3060,
+          "y": 880
         },
         "security_visual_decision_publish": {
-          "x": 5040,
-          "y": 1180
+          "x": 3440,
+          "y": 820
         },
         "security_visual_decision_mqtt": {
-          "x": 5420,
-          "y": 1180
+          "x": 3820,
+          "y": 820
         },
         "notification_hub_wire_out_33aba8ee0945": {
           "x": 1380,
@@ -12885,7 +12885,7 @@
         "global_observer_production_group": {
           "x": 64,
           "y": 39,
-          "w": 4142,
+          "w": 4432,
           "h": 522
         },
         "global_observer_policy_group": {
@@ -12901,7 +12901,7 @@
           "h": 342
         },
         "global_observer_architecture": {
-          "x": 1790,
+          "x": 1930,
           "y": 80
         },
         "global_observer_events_in": {
@@ -12921,52 +12921,52 @@
           "y": 140
         },
         "global_observer_error_accepted_save": {
-          "x": 1140,
+          "x": 1280,
           "y": 100
         },
         "global_observer_error_connection_gate": {
-          "x": 1140,
+          "x": 1280,
           "y": 180
         },
         "global_observer_error_connection_save": {
-          "x": 1390,
+          "x": 1680,
           "y": 140
         },
         "global_observer_error_mutate": {
-          "x": 1390,
+          "x": 1680,
           "y": 220
         },
         "global_observer_error_notification_gate": {
-          "x": 1630,
+          "x": 1960,
           "y": 220
         },
         "global_observer_error_alert": {
-          "x": 1870,
+          "x": 2240,
           "y": 220
         },
         "global_observer_status_monitored_gate": {
-          "x": 900,
-          "y": 300
+          "x": 920,
+          "y": 220
         },
         "global_observer_status_unmonitored": {
-          "x": 1110,
+          "x": 1250,
           "y": 380
         },
         "global_observer_status_failure_gate": {
-          "x": 1140,
+          "x": 1280,
           "y": 280
         },
         "global_observer_status_failure": {
-          "x": 1390,
+          "x": 1680,
           "y": 280
         },
         "global_observer_status_recovery": {
-          "x": 1440,
+          "x": 1730,
           "y": 340
         },
         "global_observer_unknown_ignore": {
-          "x": 810,
-          "y": 400
+          "x": 900,
+          "y": 300
         },
         "global_observer_tick": {
           "x": 270,
@@ -12981,79 +12981,79 @@
           "y": 460
         },
         "global_observer_evaluate_corroboration_gate": {
-          "x": 880,
+          "x": 910,
           "y": 460
         },
         "global_observer_evaluate_clear_uncorroborated": {
-          "x": 1140,
+          "x": 1280,
           "y": 520
         },
         "global_observer_evaluate_duration_gate": {
-          "x": 1140,
+          "x": 1280,
           "y": 440
         },
         "global_observer_evaluate_clear_transient": {
-          "x": 1450,
+          "x": 1740,
           "y": 520
         },
         "global_observer_evaluate_confirm": {
-          "x": 1390,
+          "x": 1680,
           "y": 420
         },
         "global_observer_evaluate_notification_gate": {
-          "x": 1630,
+          "x": 1980,
           "y": 420
         },
         "global_observer_evaluate_alert": {
-          "x": 1870,
+          "x": 2280,
           "y": 420
         },
         "global_observer_alert_to_dispatch_out": {
-          "x": 2050,
+          "x": 2340,
           "y": 320
         },
         "global_observer_alert_to_dispatch_in": {
-          "x": 2330,
+          "x": 2620,
           "y": 300
         },
         "global_observer_test_delivery_in": {
-          "x": 2330,
+          "x": 2620,
           "y": 160
         },
         "global_observer_dispatch_guard": {
-          "x": 2640,
+          "x": 2930,
           "y": 240
         },
         "global_observer_dry_run_out": {
-          "x": 2810,
+          "x": 3100,
           "y": 360
         },
         "global_observer_notify_primary": {
-          "x": 3020,
+          "x": 3310,
           "y": 180
         },
         "global_observer_notify_persistent": {
-          "x": 3110,
+          "x": 3400,
           "y": 280
         },
         "global_observer_notification_ack": {
-          "x": 4030,
+          "x": 4320,
           "y": 180
         },
         "global_observer_notification_catch": {
-          "x": 3250,
+          "x": 3540,
           "y": 400
         },
         "global_observer_notification_failure": {
-          "x": 4020,
+          "x": 4310,
           "y": 300
         },
         "global_observer_internal_catch": {
-          "x": 2280,
+          "x": 2570,
           "y": 480
         },
         "global_observer_internal_failure": {
-          "x": 2570,
+          "x": 2860,
           "y": 480
         },
         "global_observer_policy_comment": {
@@ -13147,19 +13147,19 @@
           "h": 262
         },
         "global_observer_notify_primary__hub_call": {
-          "x": 3430,
+          "x": 3720,
           "y": 180
         },
         "global_observer_notify_primary__hub_result": {
-          "x": 3680,
+          "x": 3970,
           "y": 180
         },
         "global_observer_notify_persistent__hub_call": {
-          "x": 3430,
+          "x": 3720,
           "y": 300
         },
         "global_observer_notify_persistent__hub_result": {
-          "x": 3680,
+          "x": 3970,
           "y": 300
         },
         "global_observer_integration_architecture": {
@@ -13211,69 +13211,69 @@
           "y": 1170
         },
         "global_observer_uncorroborated_recovery_out": {
-          "x": 1550,
-          "y": 480
+          "x": 1495,
+          "y": 520
         },
         "global_observer_transient_recovery_out": {
-          "x": 1860,
-          "y": 480
+          "x": 1965,
+          "y": 520
         },
         "notification_hub_wire_out_5ff53957a24f": {
-          "x": 2750,
+          "x": 3040,
           "y": 480
         },
         "notification_hub_wire_in_5ff53957a24f": {
-          "x": 2840,
+          "x": 3130,
           "y": 164
         },
         "notification_hub_wire_out_ec2aa148678e": {
-          "x": 2750,
+          "x": 3040,
           "y": 380
         },
         "notification_hub_wire_in_ec2aa148678e": {
-          "x": 2865,
+          "x": 3155,
           "y": 300
         }
       },
       "node_positions": {
         "global_observer_alert_to_dispatch_out": {
-          "x": 2050,
+          "x": 2340,
           "y": 320
         },
         "global_observer_dispatch_guard": {
-          "x": 2640,
+          "x": 2930,
           "y": 240
         },
         "global_observer_notify_primary": {
-          "x": 3020,
+          "x": 3310,
           "y": 180
         },
         "global_observer_notify_primary__hub_call": {
-          "x": 3430,
+          "x": 3720,
           "y": 180
         },
         "global_observer_notify_primary__hub_result": {
-          "x": 3680,
+          "x": 3970,
           "y": 180
         },
         "global_observer_notify_persistent": {
-          "x": 3110,
+          "x": 3400,
           "y": 280
         },
         "global_observer_notify_persistent__hub_call": {
-          "x": 3430,
+          "x": 3720,
           "y": 300
         },
         "global_observer_notify_persistent__hub_result": {
-          "x": 3680,
+          "x": 3970,
           "y": 300
         },
         "notification_hub_wire_in_5ff53957a24f": {
-          "x": 2840,
+          "x": 3130,
           "y": 164
         },
         "notification_hub_wire_in_ec2aa148678e": {
-          "x": 2865,
+          "x": 3155,
           "y": 300
         }
       },
@@ -13286,105 +13286,105 @@
       "group_positions": {
         "resident_notifications_input_group": {
           "x": 64,
-          "y": 409
+          "y": 439
         },
         "resident_notifications_state_group": {
           "x": 100,
           "y": 1581
         },
         "resident_notifications_output_group": {
-          "x": 104,
-          "y": 2199
+          "x": 129,
+          "y": 1959
         },
         "resident_notifications_test_group": {
           "x": 94,
           "y": 792
         },
         "global_observer_coverage__resident_notifications_tab__group": {
-          "x": 2314,
-          "y": 1579
+          "x": 1904,
+          "y": 799
         }
       },
       "node_positions": {
         "resident_notifications_policy_store": {
-          "x": 1330,
-          "y": 190
+          "x": 1500,
+          "y": 200
         },
         "resident_notifications_policy_reject": {
-          "x": 1330,
-          "y": 290
+          "x": 1500,
+          "y": 300
         },
         "resident_notifications_source_switch": {
-          "x": 3255,
-          "y": 340
+          "x": 2950,
+          "y": 520
         },
         "resident_notifications_source_invalid": {
-          "x": 3605,
-          "y": 680
+          "x": 3255,
+          "y": 600
         },
         "resident_notifications_recipient_primary": {
-          "x": 3735,
-          "y": 210
+          "x": 3270,
+          "y": 550
         },
         "resident_notifications_recipient_secondary": {
-          "x": 3725,
-          "y": 480
+          "x": 3265,
+          "y": 500
         },
         "resident_notifications_decision_out": {
-          "x": 3855,
-          "y": 430
+          "x": 3510,
+          "y": 540
         },
         "resident_notifications_stale_terminal": {
-          "x": 1158,
-          "y": 1650
+          "x": 1270,
+          "y": 1740
         },
         "resident_notifications_state_migrate": {
-          "x": 1158,
-          "y": 1830
+          "x": 1227,
+          "y": 1838
         },
         "resident_notifications_retry_in": {
-          "x": 1108,
-          "y": 2100
+          "x": 1294,
+          "y": 1888
         },
         "resident_notifications_state_read": {
-          "x": 1458,
-          "y": 1830
+          "x": 1609,
+          "y": 1828
         },
         "resident_notifications_duplicate_switch": {
-          "x": 1758,
-          "y": 1830
+          "x": 1909,
+          "y": 1828
         },
         "resident_notifications_duplicate_terminal": {
-          "x": 2058,
-          "y": 1760
+          "x": 2200,
+          "y": 1800
         },
         "resident_notifications_state_write": {
-          "x": 2058,
-          "y": 1900
+          "x": 2240,
+          "y": 1860
         },
         "resident_notifications_delivery_out": {
-          "x": 2258,
-          "y": 1900
+          "x": 2440,
+          "y": 1860
         },
         "resident_notifications_delivery_catch": {
-          "x": 1017,
-          "y": 2554
+          "x": 345,
+          "y": 2160
         },
         "notification_hub_wire_in_1ecb0204c49e": {
-          "x": 1167,
-          "y": 2644
+          "x": 495,
+          "y": 2250
         },
         "notification_hub_wire_in_be8bb6bde419": {
-          "x": 1167,
-          "y": 2704
+          "x": 495,
+          "y": 2310
         },
         "resident_notifications_delivery_failure": {
-          "x": 1467,
-          "y": 2674
+          "x": 795,
+          "y": 2280
         },
         "notification_hub_wire_out_3e1229d83eeb": {
-          "x": 1767,
-          "y": 2674
+          "x": 995,
+          "y": 2280
         },
         "resident_notifications_test_cycle_in": {
           "x": 470,
@@ -13402,38 +13402,38 @@
         "resident_notifications_config_group": {
           "x": 64,
           "y": 39,
-          "w": 1412,
+          "w": 1582,
           "h": 332
         },
         "resident_notifications_input_group": {
           "x": 64,
-          "y": 409,
-          "w": 1272,
-          "h": 282
+          "y": 439,
+          "w": 1222,
+          "h": 202
         },
         "resident_notifications_decision_group": {
-          "x": 1504,
-          "y": 159,
-          "w": 2407,
-          "h": 562
+          "x": 1314,
+          "y": 459,
+          "w": 2237,
+          "h": 262
         },
         "resident_notifications_state_group": {
           "x": 100,
           "y": 1581,
-          "w": 2199,
-          "h": 560
+          "w": 2381,
+          "h": 348
         },
         "resident_notifications_output_group": {
-          "x": 104,
-          "y": 2199,
-          "w": 2557,
-          "h": 546
+          "x": 129,
+          "y": 1959,
+          "w": 2592,
+          "h": 392
         },
         "resident_notifications_test_group": {
           "x": 94,
           "y": 792,
-          "w": 3582,
-          "h": 699
+          "w": 1772,
+          "h": 769
         },
         "resident_notifications_note": {
           "x": 680,
@@ -13460,20 +13460,20 @@
           "y": 240
         },
         "resident_notifications_policy_validate": {
-          "x": 830,
+          "x": 880,
           "y": 240
         },
         "resident_notifications_policy_switch": {
-          "x": 1090,
+          "x": 1210,
           "y": 240
         },
         "resident_notifications_policy_store": {
-          "x": 1330,
-          "y": 190
+          "x": 1500,
+          "y": 200
         },
         "resident_notifications_policy_reject": {
-          "x": 1330,
-          "y": 290
+          "x": 1500,
+          "y": 300
         },
         "resident_notifications_canonical_in_v1": {
           "x": 105,
@@ -13484,96 +13484,96 @@
           "y": 560
         },
         "resident_notifications_contract_switch": {
-          "x": 565,
-          "y": 520
+          "x": 610,
+          "y": 560
         },
         "resident_notifications_contract_invalid": {
-          "x": 825,
-          "y": 450
+          "x": 910,
+          "y": 600
         },
         "resident_notifications_kind_switch": {
-          "x": 825,
-          "y": 560
+          "x": 880,
+          "y": 540
         },
         "resident_notifications_kind_invalid": {
-          "x": 1085,
-          "y": 650
+          "x": 1140,
+          "y": 540
         },
         "resident_notifications_canonical_out": {
-          "x": 1295,
-          "y": 560
-        },
-        "resident_notifications_event_in": {
-          "x": 1545,
-          "y": 320
-        },
-        "resident_notifications_policy_load": {
-          "x": 1745,
-          "y": 320
-        },
-        "resident_notifications_policy_available": {
-          "x": 1965,
-          "y": 280
-        },
-        "resident_notifications_policy_missing": {
-          "x": 2205,
-          "y": 200
-        },
-        "resident_notifications_direction_switch": {
-          "x": 2245,
-          "y": 320
-        },
-        "resident_notifications_direction_invalid": {
-          "x": 2525,
-          "y": 200
-        },
-        "resident_notifications_cycle_switch": {
-          "x": 2525,
-          "y": 320
-        },
-        "resident_notifications_cycle_invalid": {
-          "x": 2805,
-          "y": 200
-        },
-        "resident_notifications_stage_switch": {
-          "x": 2805,
-          "y": 320
-        },
-        "resident_notifications_stage_invalid": {
-          "x": 3085,
-          "y": 200
-        },
-        "resident_notifications_source_switch": {
-          "x": 3255,
-          "y": 340
-        },
-        "resident_notifications_recipient_secondary": {
-          "x": 3725,
+          "x": 1065,
           "y": 480
         },
-        "resident_notifications_recipient_primary": {
-          "x": 3735,
-          "y": 210
+        "resident_notifications_event_in": {
+          "x": 1355,
+          "y": 580
         },
-        "resident_notifications_source_invalid": {
-          "x": 3605,
+        "resident_notifications_policy_load": {
+          "x": 1520,
+          "y": 580
+        },
+        "resident_notifications_policy_available": {
+          "x": 1770,
+          "y": 580
+        },
+        "resident_notifications_policy_missing": {
+          "x": 2050,
+          "y": 560
+        },
+        "resident_notifications_direction_switch": {
+          "x": 2030,
+          "y": 620
+        },
+        "resident_notifications_direction_invalid": {
+          "x": 2325,
           "y": 680
         },
+        "resident_notifications_cycle_switch": {
+          "x": 2310,
+          "y": 620
+        },
+        "resident_notifications_cycle_invalid": {
+          "x": 2640,
+          "y": 640
+        },
+        "resident_notifications_stage_switch": {
+          "x": 2630,
+          "y": 580
+        },
+        "resident_notifications_stage_invalid": {
+          "x": 2960,
+          "y": 640
+        },
+        "resident_notifications_source_switch": {
+          "x": 2950,
+          "y": 520
+        },
+        "resident_notifications_recipient_secondary": {
+          "x": 3265,
+          "y": 500
+        },
+        "resident_notifications_recipient_primary": {
+          "x": 3270,
+          "y": 550
+        },
+        "resident_notifications_source_invalid": {
+          "x": 3255,
+          "y": 600
+        },
         "resident_notifications_decision_out": {
-          "x": 3855,
-          "y": 430
+          "x": 3510,
+          "y": 540
         },
         "resident_notifications_state_in": {
           "x": 141,
           "y": 1752
         },
         "resident_notifications_retry_in": {
-          "x": 1108,
-          "y": 2100
+          "x": 1294,
+          "y": 1888
         },
         "resident_notifications_state_migrate": {
-          "x": 1158,
-          "y": 1830
+          "x": 1227,
+          "y": 1838
         },
         "resident_notifications_event_time_switch": {
           "x": 361,
@@ -13588,120 +13588,120 @@
           "y": 1732
         },
         "resident_notifications_future_terminal": {
-          "x": 921,
-          "y": 1622
+          "x": 950,
+          "y": 1680
         },
         "resident_notifications_stale_switch": {
-          "x": 921,
-          "y": 1752
-        },
-        "resident_notifications_stale_terminal": {
-          "x": 1158,
-          "y": 1650
-        },
-        "resident_notifications_state_read": {
-          "x": 1458,
-          "y": 1830
-        },
-        "resident_notifications_duplicate_switch": {
-          "x": 1758,
-          "y": 1830
-        },
-        "resident_notifications_duplicate_terminal": {
-          "x": 2058,
+          "x": 990,
           "y": 1760
         },
+        "resident_notifications_stale_terminal": {
+          "x": 1270,
+          "y": 1740
+        },
+        "resident_notifications_state_read": {
+          "x": 1609,
+          "y": 1828
+        },
+        "resident_notifications_duplicate_switch": {
+          "x": 1909,
+          "y": 1828
+        },
+        "resident_notifications_duplicate_terminal": {
+          "x": 2200,
+          "y": 1800
+        },
         "resident_notifications_state_write": {
-          "x": 2058,
-          "y": 1900
+          "x": 2240,
+          "y": 1860
         },
         "resident_notifications_delivery_out": {
-          "x": 2258,
-          "y": 1900
+          "x": 2440,
+          "y": 1860
         },
         "resident_notifications_delivery_in": {
-          "x": 145,
-          "y": 2400
+          "x": 170,
+          "y": 2080
         },
         "resident_notifications_message_build": {
-          "x": 365,
-          "y": 2400
+          "x": 390,
+          "y": 2080
         },
         "resident_notifications_test_gate": {
-          "x": 625,
-          "y": 2400
+          "x": 685,
+          "y": 2080
         },
         "resident_notifications_dry_run_out": {
-          "x": 825,
-          "y": 2310
+          "x": 890,
+          "y": 2060
         },
         "resident_notifications_recipient_switch": {
-          "x": 920,
-          "y": 2440
+          "x": 980,
+          "y": 2120
         },
         "resident_notifications_primary_out": {
-          "x": 1130,
-          "y": 2390
+          "x": 1190,
+          "y": 2070
         },
         "resident_notifications_secondary_out": {
-          "x": 1130,
-          "y": 2470
+          "x": 1190,
+          "y": 2150
         },
         "resident_notifications_recipient_invalid": {
-          "x": 1055,
-          "y": 2290
+          "x": 1280,
+          "y": 2200
         },
         "resident_notifications_primary_in": {
-          "x": 1220,
-          "y": 2390
+          "x": 1280,
+          "y": 2070
         },
         "resident_notifications_notify_primary": {
-          "x": 1460,
-          "y": 2390
+          "x": 1520,
+          "y": 2070
         },
         "resident_notifications_secondary_in": {
-          "x": 1220,
-          "y": 2470
+          "x": 1280,
+          "y": 2150
         },
         "resident_notifications_notify_secondary": {
-          "x": 1460,
-          "y": 2470
+          "x": 1520,
+          "y": 2150
         },
         "resident_notifications_delivery_ack": {
-          "x": 2380,
-          "y": 2430
+          "x": 2470,
+          "y": 2080
         },
         "resident_notifications_delivery_catch": {
-          "x": 1017,
-          "y": 2554
+          "x": 345,
+          "y": 2160
         },
         "notification_hub_wire_in_be8bb6bde419": {
-          "x": 1167,
-          "y": 2704
+          "x": 495,
+          "y": 2310
         },
         "resident_notifications_delivery_failure": {
-          "x": 1467,
-          "y": 2674
+          "x": 795,
+          "y": 2280
         },
         "resident_notifications_retry_switch": {
-          "x": 2110,
-          "y": 2570
+          "x": 2170,
+          "y": 2250
         },
         "resident_notifications_retry_delay": {
-          "x": 2350,
-          "y": 2520
+          "x": 2410,
+          "y": 2200
         },
         "resident_notifications_retry_out": {
-          "x": 2620,
-          "y": 2520
+          "x": 2680,
+          "y": 2200
         },
         "resident_notifications_retry_exhausted": {
-          "x": 2350,
-          "y": 2610
+          "x": 2410,
+          "y": 2290
         },
         "resident_notifications_output_note": {
-          "x": 965,
-          "y": 2240
+          "x": 955,
+          "y": 2000
         },
         "resident_notifications_test_instructions": {
           "x": 1520,
@@ -13760,90 +13760,90 @@
           "y": 1143
         },
         "resident_notifications_dry_run_in": {
-          "x": 1500,
-          "y": 1003
+          "x": 770,
+          "y": 1000
         },
         "resident_notifications_dry_run_terminal": {
-          "x": 1800,
-          "y": 1003
+          "x": 1070,
+          "y": 1000
         },
         "global_observer_coverage__resident_notifications_tab__group": {
-          "x": 2314,
-          "y": 1579,
-          "w": 722,
+          "x": 1904,
+          "y": 799,
+          "w": 640,
           "h": 142
         },
         "global_observer_coverage__resident_notifications_tab__catch": {
-          "x": 2470,
-          "y": 1620
+          "x": 2060,
+          "y": 840
         },
         "global_observer_coverage__resident_notifications_tab__status": {
-          "x": 2480,
-          "y": 1680
+          "x": 2070,
+          "y": 900
         },
         "global_observer_coverage__resident_notifications_tab__annotate": {
-          "x": 2750,
-          "y": 1650
+          "x": 2340,
+          "y": 870
         },
         "global_observer_coverage__resident_notifications_tab__out": {
-          "x": 2995,
-          "y": 1650
+          "x": 2503,
+          "y": 880
         },
         "resident_notifications_notify_primary__hub_call": {
-          "x": 1740,
-          "y": 2390
+          "x": 1800,
+          "y": 2070
         },
         "resident_notifications_notify_primary__hub_result": {
-          "x": 2010,
-          "y": 2390
+          "x": 2070,
+          "y": 2070
         },
         "resident_notifications_notify_secondary__hub_call": {
-          "x": 1740,
-          "y": 2470
+          "x": 1800,
+          "y": 2150
         },
         "resident_notifications_notify_secondary__hub_result": {
-          "x": 2010,
-          "y": 2470
+          "x": 2070,
+          "y": 2150
         },
         "resident_notifications_test_delivery_secondary": {
-          "x": 2180,
-          "y": 1303
+          "x": 870,
+          "y": 1260
         },
         "resident_notifications_test_notify_secondary": {
-          "x": 2520,
-          "y": 1303
+          "x": 860,
+          "y": 1340
         },
         "resident_notifications_test_notify_secondary__hub_call": {
-          "x": 2800,
-          "y": 1303
+          "x": 1060,
+          "y": 1400
         },
         "resident_notifications_test_notify_secondary__hub_result": {
-          "x": 3070,
-          "y": 1303
+          "x": 1250,
+          "y": 1460
         },
         "resident_notifications_test_delivery_accepted": {
-          "x": 3440,
-          "y": 1303
+          "x": 1530,
+          "y": 1520
         },
         "notification_hub_wire_out_1ecb0204c49e": {
-          "x": 2190,
-          "y": 2390
+          "x": 2225,
+          "y": 2100
         },
         "notification_hub_wire_in_1ecb0204c49e": {
-          "x": 1167,
-          "y": 2644
+          "x": 495,
+          "y": 2250
         },
         "notification_hub_wire_out_be8bb6bde419": {
-          "x": 2190,
-          "y": 2470
+          "x": 2250,
+          "y": 2150
         },
         "notification_hub_wire_out_3e1229d83eeb": {
-          "x": 1767,
-          "y": 2674
+          "x": 995,
+          "y": 2280
         },
         "notification_hub_wire_in_3e1229d83eeb": {
-          "x": 1930,
-          "y": 2570
+          "x": 1990,
+          "y": 2250
         },
         "notification_hub_wire_out_45e544bc24a6": {
           "x": 450,

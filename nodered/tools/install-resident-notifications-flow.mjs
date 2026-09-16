@@ -226,8 +226,11 @@ linkIn("resident_notifications_dry_run_in", groups.test, "Receber notificação 
 fn("resident_notifications_dry_run_terminal", groups.test, "TESTE FINAL: nenhum push enviado", "resident-notifications-dry-run.js", 0, 1730, 780, []);
 inject("resident_notifications_test_delivery_secondary", groups.test,
   "TESTE 10: enviar push real para mobile_secondary",
-  [{ p: "payload", v: "TESTE — confirmação do push de chegada para o celular.", vt: "str" }],
-  2110, 1080, [["resident_notifications_test_notify_secondary"]]);
+  [{ p: "payload" }],
+  2110, 1080, [["resident_notifications_test_notify_secondary"]], {
+    payload: "TESTE — confirmação do push de chegada para o celular.",
+    payloadType: "str",
+  });
 grouped(groups.test, {
   id: "resident_notifications_test_notify_secondary", type: "api-call-service",
   z: TAB, g: groups.test, name: "EFEITO DE TESTE: push real mobile_secondary",
