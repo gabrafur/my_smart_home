@@ -6,6 +6,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { nodeDimensions } from "./flow-layout-validator.mjs";
+import { connectedComponents, semanticEdges } from "./flow-layout-graph.mjs";
 
 const MAX_GROUP_NEAREST_GAP = 160;
 const TARGET_GROUP_NEAREST_GAP = 80;
@@ -158,6 +159,7 @@ export function auditFlows(flows) {
     const groupHullHeight = groups.length === 0 ? 0 : Math.max(...groups.map((group) => group.y + group.h)) - Math.min(...groups.map((group) => group.y));
     let closePairs = 0;
     let testClosePairs = 0;
+    const nodeSpacings = [];
 
     for (let index = 0; index < nodes.length; index += 1) {
       for (let candidate = index + 1; candidate < nodes.length; candidate += 1) {
@@ -172,7 +174,9 @@ export function auditFlows(flows) {
           issueWeight.set(right.id, issueWeight.get(right.id) + 5);
           continue;
         }
-        if (edgeGap(leftBounds, rightBounds) < 20) {
+        const spacing = edgeGap(leftBounds, rightBounds);
+        nodeSpacings.push(spacing);
+        if (spacing < 20) {
           closePairs += 1;
           if (isTestNode(left) && isTestNode(right)) testClosePairs += 1;
           issueWeight.set(left.id, issueWeight.get(left.id) + 1);
@@ -291,6 +295,23 @@ export function auditFlows(flows) {
       .slice(0, 4)
       .map(([id]) => label(byId.get(id)));
     const testNodes = nodes.filter(isTestNode);
+    const semantic = semanticEdges(flows, root.id);
+    const components = connectedComponents(nodes.map((node) => node.id), semantic);
+    const componentHulls = components.map((component) => {
+      const bounds = component.map((id) => nodeBounds.get(id)).filter(Boolean);
+      return {
+        left: Math.min(...bounds.map((item) => item.left)),
+        right: Math.max(...bounds.map((item) => item.right)),
+        top: Math.min(...bounds.map((item) => item.top)),
+        bottom: Math.max(...bounds.map((item) => item.bottom)),
+      };
+    });
+    let componentIntersections = 0;
+    for (let index = 0; index < componentHulls.length; index += 1) {
+      for (let candidate = index + 1; candidate < componentHulls.length; candidate += 1) {
+        if (overlaps(componentHulls[index], componentHulls[candidate])) componentIntersections += 1;
+      }
+    }
     const metrics = {
       id: root.id,
       name: root.label || root.name || root.id,
@@ -313,6 +334,10 @@ export function auditFlows(flows) {
       groupHullHeight: Math.round(groupHullHeight),
       groupHullArea: Math.round(groupHullWidth * groupHullHeight),
       closePairs,
+      minimumNodeSpacing: nodeSpacings.length === 0 ? 0 : Math.round(Math.min(...nodeSpacings)),
+      averageNodeSpacing: nodeSpacings.length === 0 ? 0 : Math.round(nodeSpacings.reduce((sum, value) => sum + value, 0) / nodeSpacings.length),
+      components: components.length,
+      componentIntersections,
       longWires,
       reverseWires,
       zigZags,

@@ -99,7 +99,7 @@ test("rejects a wire crossing a node in a changed canvas", () => {
   after[3].y = 100;
   const result = compareLayoutOnly(before, after);
   assert.deepEqual(result.functionalDifferences, []);
-  assert.match(renderComparison(result).text, /wire\(s\) cross node\(s\)/);
+  assert.match(renderComparison(result).text, /wire-node intersections regressed/);
 });
 
 test("rejects long and right-to-left wires in a changed canvas", () => {
@@ -110,11 +110,24 @@ test("rejects long and right-to-left wires in a changed canvas", () => {
   ];
   const longAfter = clone(before);
   longAfter[2].x = 800;
-  assert.match(renderComparison(compareLayoutOnly(before, longAfter)).text, /exceed 500px/);
+  assert.match(renderComparison(compareLayoutOnly(before, longAfter)).text, /wires over 500px regressed/);
 
   const reverseAfter = clone(before);
   reverseAfter[1].x = 600;
   assert.match(renderComparison(compareLayoutOnly(before, reverseAfter)).text, /right-to-left/);
+});
+
+test("accepts an incremental improvement without hiding legacy findings", () => {
+  const before = [
+    { id: "tab", type: "tab", label: "example" },
+    { id: "source", type: "function", z: "tab", name: "Source", x: 180, y: 100, wires: [["far"], ["near"]], func: "return msg;" },
+    { id: "far", type: "debug", z: "tab", name: "Far", x: 900, y: 100, wires: [] },
+    { id: "near", type: "debug", z: "tab", name: "Near", x: 500, y: 180, wires: [] },
+  ];
+  const after = clone(before);
+  after[2].x = 760;
+  const rendered = renderComparison(compareLayoutOnly(before, after));
+  assert.equal(rendered.ok, true);
 });
 
 test("reports possible wire crossings as a render warning", () => {
@@ -155,7 +168,7 @@ test("rejects a group isolated by an excessive empty gap", () => {
   after[2].x = 700;
   const rendered = renderComparison(compareLayoutOnly(before, after));
   assert.equal(rendered.ok, false);
-  assert.match(rendered.text, /farther than 160px/);
+  assert.match(rendered.text, /isolated groups regressed/);
 });
 
 test("rejects separated group chains even when every group has a close neighbor", () => {
@@ -172,7 +185,7 @@ test("rejects separated group chains even when every group has a close neighbor"
   const rendered = renderComparison(compareLayoutOnly(before, after));
   assert.equal(rendered.ok, false);
   assert.doesNotMatch(rendered.text, /farther than 160px/);
-  assert.match(rendered.text, /disconnected group cluster/);
+  assert.match(rendered.text, /separated group chains regressed/);
 });
 
 
@@ -213,10 +226,10 @@ test("rejects output branches whose vertical order contradicts the port order", 
   after[2].y = 260;
   const rendered = renderComparison(compareLayoutOnly(before, after));
   assert.equal(rendered.ok, false);
-  assert.match(rendered.text, /invert the vertical order of output branches/);
+  assert.match(rendered.text, /output-order inversions regressed/);
 });
 
-test("accepts top-level node reordering performed by the Node-RED editor", () => {
+test("rejects top-level object reordering", () => {
   const before = [
     { id: "tab", type: "tab", label: "example" },
     { id: "first", type: "inject", z: "tab", x: 100, y: 100, wires: [[]] },
@@ -224,8 +237,8 @@ test("accepts top-level node reordering performed by the Node-RED editor", () =>
   ];
   const after = [clone(before[2]), clone(before[0]), clone(before[1])];
   const rendered = renderComparison(compareLayoutOnly(before, after));
-  assert.equal(rendered.ok, true);
-  assert.match(rendered.text, /Only approved visual properties changed/);
+  assert.equal(rendered.ok, false);
+  assert.match(rendered.text, /top-level object order changed/);
 });
 
 test("rejects a node removed while the editor also reorders the flow", () => {

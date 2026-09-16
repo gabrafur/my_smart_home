@@ -60,18 +60,24 @@ export function compareLayoutOnly(before, after) {
       )) {
         const beforeById = new Map(beforeValue.map((item) => [item.id, item]));
         const afterById = new Map(afterValue.map((item) => [item.id, item]));
+        if (beforeValue.length !== afterValue.length) {
+          recordDifference("$.length", beforeValue.length, afterValue.length, "array length changed");
+        }
         for (const [id, itemBefore] of beforeById) {
-          const itemAfter = afterById.get(id);
-          if (!itemAfter) {
-            recordDifference(`$[id=${id}]`, itemBefore, undefined, "node removed");
-            continue;
-          }
-          compareValue(itemBefore, itemAfter, `$[id=${id}]`, itemBefore);
+          if (!afterById.has(id)) recordDifference(`$[id=${id}]`, itemBefore, undefined, "node removed");
         }
         for (const [id, itemAfter] of afterById) {
-          if (!beforeById.has(id)) {
-            recordDifference(`$[id=${id}]`, undefined, itemAfter, "node added");
+          if (!beforeById.has(id)) recordDifference(`$[id=${id}]`, undefined, itemAfter, "node added");
+        }
+        const commonLength = Math.min(beforeValue.length, afterValue.length);
+        for (let index = 0; index < commonLength; index += 1) {
+          const itemBefore = beforeValue[index];
+          const itemAfter = afterValue[index];
+          if (itemBefore.id !== itemAfter.id) {
+            recordDifference(`$[${index}].id`, itemBefore.id, itemAfter.id, "top-level object order changed");
+            continue;
           }
+          compareValue(itemBefore, itemAfter, `$[${index}]`, itemBefore);
         }
         return;
       }
@@ -146,14 +152,14 @@ export function compareLayoutOnly(before, after) {
   }
   for (const audit of auditFlows(after).filter((canvas) => changedCanvasIds.has(canvas.id))) {
     const beforeAudit = beforeAudits.get(audit.id);
-    if (audit.wireNodeIntersections > 0) {
-      geometryProblems.push(`${audit.name}: ${audit.wireNodeIntersections} wire(s) cross node(s)`);
+    if (beforeAudit && audit.wireNodeIntersections > beforeAudit.wireNodeIntersections) {
+      geometryProblems.push(`${audit.name}: wire-node intersections regressed from ${beforeAudit.wireNodeIntersections} to ${audit.wireNodeIntersections}`);
     }
-    if (audit.isolatedGroups > 0) {
-      geometryProblems.push(`${audit.name}: ${audit.isolatedGroups} group(s) farther than 160px from the nearest group`);
+    if (beforeAudit && audit.isolatedGroups > beforeAudit.isolatedGroups) {
+      geometryProblems.push(`${audit.name}: isolated groups regressed from ${beforeAudit.isolatedGroups} to ${audit.isolatedGroups}`);
     }
-    if (audit.separatedGroupClusters > 0) {
-      geometryProblems.push(`${audit.name}: ${audit.separatedGroupClusters + 1} disconnected group cluster(s) exceed the 160px chain gap`);
+    if (beforeAudit && audit.separatedGroupClusters > beforeAudit.separatedGroupClusters) {
+      geometryProblems.push(`${audit.name}: separated group chains regressed from ${beforeAudit.separatedGroupClusters} to ${audit.separatedGroupClusters}`);
     }
     if (beforeAudit && audit.maxGroupNearestGap > Math.max(80, beforeAudit.maxGroupNearestGap + 1)) {
       geometryProblems.push(`${audit.name}: nearest-group gutter regressed from ${beforeAudit.maxGroupNearestGap}px to ${audit.maxGroupNearestGap}px (target <=80px)`);
@@ -164,9 +170,9 @@ export function compareLayoutOnly(before, after) {
     if (beforeAudit && audit.groupHullArea - beforeAudit.groupHullArea > 50000 && audit.groupHullArea > beforeAudit.groupHullArea * 1.08) {
       geometryProblems.push(`${audit.name}: group envelope area regressed from ${beforeAudit.groupHullArea}px² to ${audit.groupHullArea}px²`);
     }
-    if (audit.longWires > 0) geometryProblems.push(`${audit.name}: ${audit.longWires} wire(s) exceed 500px`);
-    if (audit.reverseWires > 0) geometryProblems.push(`${audit.name}: ${audit.reverseWires} right-to-left wire(s)`);
-    if (audit.branchOrderInversions > 0) geometryProblems.push(`${audit.name}: ${audit.branchOrderInversions} node(s) invert the vertical order of output branches`);
+    if (beforeAudit && audit.longWires > beforeAudit.longWires) geometryProblems.push(`${audit.name}: wires over 500px regressed from ${beforeAudit.longWires} to ${audit.longWires}`);
+    if (beforeAudit && audit.reverseWires > beforeAudit.reverseWires) geometryProblems.push(`${audit.name}: right-to-left wires regressed from ${beforeAudit.reverseWires} to ${audit.reverseWires}`);
+    if (beforeAudit && audit.branchOrderInversions > beforeAudit.branchOrderInversions) geometryProblems.push(`${audit.name}: output-order inversions regressed from ${beforeAudit.branchOrderInversions} to ${audit.branchOrderInversions}`);
     if (audit.crossings > 0) {
       geometryWarnings.push(`${audit.name}: inspect ${audit.crossings} possible wire crossing(s) in the rendered canvas`);
     }

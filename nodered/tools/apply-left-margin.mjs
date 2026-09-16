@@ -47,30 +47,28 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     .filter((node) => node.z === canvasId && node.type === "group" && node.notification_hub_layout_version === 1)
     .map((node) => node.id));
   const canvasHasManagedNotifications = managedGroups.size > 0;
+  const finalGeometry = canvas.geometry_final === true;
   const managedGroupOverrides = new Set(canvas.managed_group_overrides ?? []);
   const managedNodeOverrides = new Set(canvas.managed_node_overrides ?? []);
   for (const [nodeId, geometry] of Object.entries(canvas.apply_nodes === false || !applyBaseNodes ? {} : (canvas.nodes ?? {}))) {
     const node = byId.get(nodeId);
     if (!node && isGeneratedNotificationRoute(nodeId)) continue;
     if (!node || node.z !== canvasId) throw new Error(`Nó do override ausente: ${nodeId}`);
-    if (
-      managedGroups.has(node.id) ||
+    if (!finalGeometry && (
+      (managedGroups.has(node.id) && !managedGroupOverrides.has(node.id)) ||
       (managedGroups.has(node.g) && !managedGroupOverrides.has(node.g) && !managedNodeOverrides.has(node.id)) ||
-      (canvasHasManagedNotifications && node.id.startsWith(`global_observer_coverage__${canvasId}__`))
-    ) continue;
+      (canvasHasManagedNotifications && node.id.startsWith(`global_observer_coverage__${canvasId}__`) && !managedNodeOverrides.has(node.id))
+    )) continue;
     for (const field of ["x", "y", "w", "h"]) {
       if (geometry[field] !== undefined) {
         if (!Number.isFinite(geometry[field])) throw new Error(`Geometria inválida: ${nodeId}.${field}`);
         node[field] = geometry[field];
-        if (field === "y" && Number.isFinite(node.notification_hub_anchor_y)) {
-          node.notification_hub_anchor_y = geometry[field];
-        }
       }
     }
     overridden += 1;
   }
 
-  for (const [groupId, target] of Object.entries(canvas.group_positions ?? {})) {
+  for (const [groupId, target] of Object.entries(finalGeometry ? {} : (canvas.group_positions ?? {}))) {
     if (selectedGroupIds.size > 0 && !selectedGroupIds.has(groupId)) continue;
     const group = byId.get(groupId);
     if (!group || group.z !== canvasId || group.type !== "group") {
@@ -87,14 +85,11 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     for (const child of flows.filter((node) => node.z === canvasId && node.g === groupId && Number.isFinite(node.x) && Number.isFinite(node.y))) {
       child.x += deltaX;
       child.y += deltaY;
-      if (Number.isFinite(child.notification_hub_anchor_y)) {
-        child.notification_hub_anchor_y += deltaY;
-      }
     }
     overridden += 1;
   }
 
-  for (const [nodeId, target] of Object.entries(applyNodePositions ? (canvas.node_positions ?? {}) : {})) {
+  for (const [nodeId, target] of Object.entries(finalGeometry || !applyNodePositions ? {} : (canvas.node_positions ?? {}))) {
     const node = byId.get(nodeId);
     if (!node && isGeneratedNotificationRoute(nodeId)) continue;
     if (!node || node.z !== canvasId || node.type === "group") {
@@ -105,13 +100,10 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     }
     node.x = target.x;
     node.y = target.y;
-    if (Number.isFinite(node.notification_hub_anchor_y)) {
-      node.notification_hub_anchor_y = target.y;
-    }
     overridden += 1;
   }
 
-  if (!compactGroups) continue;
+  if (!compactGroups || finalGeometry) continue;
   for (const group of flows.filter((node) => node.z === canvasId && node.type === "group")) {
     const children = flows.filter((node) =>
       node.z === canvasId && node.g === group.id && Number.isFinite(node.x) && Number.isFinite(node.y)

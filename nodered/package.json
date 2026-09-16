@@ -70,6 +70,9 @@
         "flows:validate-layout": "node tools/validate-flow-layout.mjs",
         "flows:validate-layout-only": "node tools/validate-layout-only.mjs",
         "flows:audit-layout": "node tools/audit-flow-layout.mjs",
+        "layout": "node tools/layout-flows-elk.mjs",
+        "layout:check": "node tools/layout-flows-elk.mjs --check",
+        "layout:dry-run": "node tools/layout-flows-elk.mjs --dry-run",
         "flows:validate": "node tools/validate-flows.mjs && node tools/test-notification-hubs.mjs && node tools/validate-manual-test-policy.mjs && node tools/validate-global-flow-observer.mjs",
         "flows:validate-observability": "node tools/validate-global-flow-observer.mjs",
         "flows:validate-manual-tests": "node tools/validate-manual-test-policy.mjs",
@@ -77,6 +80,7 @@
         "test:all": "node tools/test-all.mjs"
     },
     "dependencies": {
+        "elkjs": "0.12.0",
         "node-red-contrib-dulonode": "~1.0.11",
         "node-red-contrib-home-assistant-websocket": "~0.80.3"
     },

@@ -26,6 +26,7 @@ physical identifiers must appear only as placeholders.
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee, Tuya, and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Global Node-RED failure notifications](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Portuguese runbook for flow errors, runtime unavailability, and the mandatory mobile delivery test | Portuguese source |
 | [Canonical Node-RED notification hubs](NODERED_NOTIFICATION_HUBS.md) | Portuguese contracts for mobile, Alexa, and HA persistent hubs, fail-closed recipients, and the migration equivalence matrix | Portuguese source |
+| [Node-RED ELK layout engine](node-red/ELK_LAYOUT_ENGINE.md) | Portuguese runbook for dry-run planning, the visual-only allowlist, quality gates, idempotency, and safe rollback | Portuguese source |
 | [VPN health notifications](VPN_HEALTH_NOTIFICATIONS.md) | Portuguese runbook for sanitized host health, internet-outage suppression, and deduplicated VPN alerts | Portuguese source |
 | [Home Assistant agent bridge](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex in the UI | summarized in [Containers](CONTAINERS.en.md) |
 | [Codex + Local AI with RTX 4070](LOCAL_AI_RTX_4070.md) | Local inference, network, telemetry, and fork reproduction | detailed Portuguese guide |

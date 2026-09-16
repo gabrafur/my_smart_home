@@ -1716,34 +1716,34 @@
       },
       "nodes": {
         "c8f8e5b532232a4f": {
-          "x": 74,
-          "y": 39,
-          "w": 1737,
-          "h": 352
+          "x": 103,
+          "y": 30,
+          "w": 1704,
+          "h": 357
         },
         "5ae977feca8f9b01": {
-          "x": 74,
-          "y": 419,
-          "w": 4637,
-          "h": 442
+          "x": 85,
+          "y": 407,
+          "w": 4622,
+          "h": 447
         },
         "4afb66a093b1940d": {
-          "x": 74,
-          "y": 879,
-          "w": 4707,
-          "h": 422
+          "x": 96,
+          "y": 870,
+          "w": 4681,
+          "h": 427
         },
         "f79ed8df25162bcf": {
-          "x": 64,
-          "y": 1359,
-          "w": 4852,
-          "h": 222
+          "x": 68,
+          "y": 1347,
+          "w": 4822,
+          "h": 230
         },
         "global_observer_coverage__456b32bd5d59b0d6__group": {
           "x": 1834,
           "y": 59,
-          "w": 722,
-          "h": 142
+          "w": 702,
+          "h": 150
         },
         "9b0dbe523189f263": {
           "x": 220,
@@ -1978,7 +1978,7 @@
           "y": 1480
         },
         "a240a1bb42481943": {
-          "x": 2900,
+          "x": 2930,
           "y": 1440
         },
         "ab4f85af1ed94f86": {
@@ -1990,11 +1990,11 @@
           "y": 1540
         },
         "36968b4881eab9d3": {
-          "x": 1900,
+          "x": 1620,
           "y": 1540
         },
         "4b48bc3c0c58d87c": {
-          "x": 3580,
+          "x": 3280,
           "y": 1540
         },
         "f9be08e865d2c10e": {
@@ -2006,7 +2006,7 @@
           "y": 1440
         },
         "fb7ee906fa3b1033": {
-          "x": 2745,
+          "x": 2690,
           "y": 1440
         },
         "12141375e10fc751": {
@@ -2018,11 +2018,11 @@
           "y": 1540
         },
         "ed15af8740df7acc": {
-          "x": 1125,
+          "x": 1380,
           "y": 1540
         },
         "1e4e450ccd8e4ab6": {
-          "x": 2765,
+          "x": 3040,
           "y": 1540
         },
         "aa1a0d2a4b3dfd43": {
@@ -2182,30 +2182,94 @@
           "y": 1080
         },
         "global_observer_coverage__456b32bd5d59b0d6__catch": {
-          "x": 1990,
-          "y": 100
+          "x": 1974,
+          "y": 112
         },
         "global_observer_coverage__456b32bd5d59b0d6__status": {
-          "x": 2000,
-          "y": 160
+          "x": 1984,
+          "y": 172
         },
         "global_observer_coverage__456b32bd5d59b0d6__annotate": {
-          "x": 2270,
-          "y": 130
+          "x": 2254,
+          "y": 142
         },
         "global_observer_coverage__456b32bd5d59b0d6__out": {
-          "x": 2515,
-          "y": 130
+          "x": 2499,
+          "y": 142
+        },
+        "349bc099633fee5d__hub_call": {
+          "x": 1560,
+          "y": 1400
+        },
+        "a240a1bb42481943__hub_call": {
+          "x": 3230,
+          "y": 1440
+        },
+        "ab4f85af1ed94f86__hub_call": {
+          "x": 4800,
+          "y": 1440
+        },
+        "5dd0deebdc474035__hub_call": {
+          "x": 560,
+          "y": 1540
+        },
+        "36968b4881eab9d3__hub_call": {
+          "x": 1930,
+          "y": 1540
+        },
+        "4b48bc3c0c58d87c__hub_call": {
+          "x": 3590,
+          "y": 1540
+        },
+        "rpi_emergency_cooling_push_primary__hub_call": {
+          "x": 1560,
+          "y": 1440
+        },
+        "rpi_emergency_cooling_alexa_primary__hub_call": {
+          "x": 1560,
+          "y": 1480
         }
-      }
+      },
+      "geometry_final": true,
+      "managed_node_overrides": [
+        "global_observer_coverage__456b32bd5d59b0d6__group",
+        "ca55bd1e9433732e",
+        "349bc099633fee5d",
+        "349bc099633fee5d__hub_call",
+        "a240a1bb42481943",
+        "a240a1bb42481943__hub_call",
+        "ab4f85af1ed94f86",
+        "ab4f85af1ed94f86__hub_call",
+        "5dd0deebdc474035",
+        "5dd0deebdc474035__hub_call",
+        "36968b4881eab9d3",
+        "36968b4881eab9d3__hub_call",
+        "4b48bc3c0c58d87c",
+        "4b48bc3c0c58d87c__hub_call",
+        "f9be08e865d2c10e",
+        "adb240fe59ad2ae7",
+        "fb7ee906fa3b1033",
+        "12141375e10fc751",
+        "7e7a1b1cebdb498a",
+        "ed15af8740df7acc",
+        "1e4e450ccd8e4ab6",
+        "rpi_emergency_cooling_push_primary",
+        "rpi_emergency_cooling_push_primary__hub_call",
+        "rpi_emergency_cooling_alexa_primary",
+        "rpi_emergency_cooling_alexa_primary__hub_call",
+        "global_observer_coverage__456b32bd5d59b0d6__catch",
+        "global_observer_coverage__456b32bd5d59b0d6__status",
+        "global_observer_coverage__456b32bd5d59b0d6__annotate",
+        "global_observer_coverage__456b32bd5d59b0d6__out"
+      ]
     },
     "storage_health_tab": {
       "label": "storage_health",
       "compact_groups": true,
       "group_positions": {
         "storage_visual_decision_group": {
-          "x": 1306,
-          "y": 269
+          "x": 1310,
+          "y": 260
         },
         "storage_group_alerts": {
           "x": 8676,
@@ -2256,46 +2320,46 @@
       },
       "nodes": {
         "storage_group_config": {
-          "x": 104,
-          "y": 39,
-          "w": 1552,
-          "h": 212
+          "x": 135,
+          "y": 23,
+          "w": 1492,
+          "h": 224
         },
         "storage_group_health": {
-          "x": 84,
-          "y": 279,
-          "w": 1167,
-          "h": 552
+          "x": 145,
+          "y": 267,
+          "w": 1102,
+          "h": 560
         },
         "storage_group_alerts": {
           "x": 8676,
           "y": 99,
-          "w": 1587,
-          "h": 502
+          "w": 3357,
+          "h": 510
         },
         "storage_group_maintenance": {
-          "x": 64,
-          "y": 939,
-          "w": 1687,
-          "h": 562
+          "x": 101,
+          "y": 930,
+          "w": 1646,
+          "h": 564
         },
         "storage_group_tests": {
-          "x": 1784,
-          "y": 939,
-          "w": 1506,
-          "h": 282
+          "x": 1820,
+          "y": 923,
+          "w": 1424,
+          "h": 294
         },
         "storage_visual_decision_group": {
-          "x": 1306,
-          "y": 269,
-          "w": 7225,
-          "h": 622
+          "x": 1310,
+          "y": 260,
+          "w": 7217,
+          "h": 627
         },
         "global_observer_coverage__storage_health_tab__group": {
-          "x": 10344,
+          "x": 12120,
           "y": 59,
-          "w": 722,
-          "h": 142
+          "w": 702,
+          "h": 150
         },
         "storage_comment_architecture": {
           "x": 790,
@@ -2326,16 +2390,16 @@
           "y": 360
         },
         "storage_mqtt_state": {
-          "x": 8997,
-          "y": 140
+          "x": 8993,
+          "y": 152
         },
         "storage_notify": {
-          "x": 9067,
-          "y": 320
+          "x": 9760,
+          "y": 360
         },
         "storage_notify_secondary": {
-          "x": 9067,
-          "y": 380
+          "x": 9760,
+          "y": 230
         },
         "storage_daily_maintenance": {
           "x": 190,
@@ -2374,28 +2438,28 @@
           "y": 1240
         },
         "storage_notify_persistent": {
-          "x": 9067,
-          "y": 440
+          "x": 9760,
+          "y": 500
         },
         "storage_notification_ack": {
-          "x": 10087,
-          "y": 380
+          "x": 11070,
+          "y": 300
         },
         "storage_notification_catch": {
-          "x": 8887,
-          "y": 560
+          "x": 10460,
+          "y": 570
         },
         "storage_notification_failure": {
-          "x": 9887,
-          "y": 560
+          "x": 11060,
+          "y": 500
         },
         "storage_manual_start": {
           "x": 530,
           "y": 510
         },
         "storage_manual_status_mqtt": {
-          "x": 8997,
-          "y": 220
+          "x": 8960,
+          "y": 230
         },
         "storage_manual_complete": {
           "x": 1470,
@@ -2406,7 +2470,7 @@
           "y": 400
         },
         "storage_test_input_in": {
-          "x": 210,
+          "x": 340,
           "y": 610
         },
         "storage_test_decision_out": {
@@ -2438,7 +2502,7 @@
           "y": 1050
         },
         "storage_test_reset_state": {
-          "x": 2170,
+          "x": 2180,
           "y": 1050
         },
         "storage_test_normal": {
@@ -2502,7 +2566,7 @@
           "y": 360
         },
         "storage_visual_test_input_out": {
-          "x": 600,
+          "x": 470,
           "y": 610
         },
         "storage_visual_history_seed_tick": {
@@ -2754,12 +2818,12 @@
           "y": 730
         },
         "storage_visual_mqtt_in": {
-          "x": 8717,
-          "y": 140
+          "x": 8713,
+          "y": 152
         },
         "storage_visual_notify_in": {
-          "x": 8717,
-          "y": 380
+          "x": 9520,
+          "y": 500
         },
         "storage_visual_manual_exec_out": {
           "x": 930,
@@ -2818,26 +2882,148 @@
           "y": 1380
         },
         "storage_visual_manual_status_in": {
-          "x": 8717,
-          "y": 220
+          "x": 8740,
+          "y": 230
         },
         "global_observer_coverage__storage_health_tab__catch": {
-          "x": 10500,
-          "y": 100
+          "x": 12260,
+          "y": 112
         },
         "global_observer_coverage__storage_health_tab__status": {
-          "x": 10510,
-          "y": 160
+          "x": 12270,
+          "y": 172
         },
         "global_observer_coverage__storage_health_tab__annotate": {
-          "x": 10780,
-          "y": 130
+          "x": 12540,
+          "y": 142
         },
         "global_observer_coverage__storage_health_tab__out": {
-          "x": 11025,
-          "y": 130
+          "x": 12785,
+          "y": 142
+        },
+        "storage_notify__hub_call": {
+          "x": 10120,
+          "y": 360
+        },
+        "storage_notify__hub_result": {
+          "x": 10460,
+          "y": 360
+        },
+        "storage_notify_secondary__hub_call": {
+          "x": 10120,
+          "y": 230
+        },
+        "storage_notify_secondary__hub_result": {
+          "x": 10460,
+          "y": 230
+        },
+        "storage_notify_persistent__hub_call": {
+          "x": 10120,
+          "y": 500
+        },
+        "storage_notify_persistent__hub_result": {
+          "x": 10460,
+          "y": 500
+        },
+        "notification_hub_wire_out_b5cbe7a52037": {
+          "x": 10690,
+          "y": 300
+        },
+        "notification_hub_wire_in_b5cbe7a52037": {
+          "x": 10830,
+          "y": 300
+        },
+        "notification_hub_wire_out_578212e7a55b": {
+          "x": 10690,
+          "y": 370
+        },
+        "notification_hub_wire_in_578212e7a55b": {
+          "x": 10830,
+          "y": 370
+        },
+        "notification_hub_wire_out_168dc6db5cd7": {
+          "x": 10690,
+          "y": 160
+        },
+        "notification_hub_wire_in_168dc6db5cd7": {
+          "x": 10830,
+          "y": 160
+        },
+        "notification_hub_wire_out_3eb3db66ab38": {
+          "x": 10690,
+          "y": 230
+        },
+        "notification_hub_wire_in_3eb3db66ab38": {
+          "x": 10830,
+          "y": 230
+        },
+        "notification_hub_wire_out_0f2bad790b49": {
+          "x": 10690,
+          "y": 440
+        },
+        "notification_hub_wire_in_0f2bad790b49": {
+          "x": 10830,
+          "y": 440
+        },
+        "notification_hub_wire_out_6d962ba6b125": {
+          "x": 10690,
+          "y": 500
+        },
+        "notification_hub_wire_in_6d962ba6b125": {
+          "x": 10830,
+          "y": 500
+        },
+        "notification_hub_wire_out_34604f022367": {
+          "x": 10690,
+          "y": 570
+        },
+        "notification_hub_wire_in_34604f022367": {
+          "x": 10830,
+          "y": 570
         }
-      }
+      },
+      "geometry_final": true,
+      "managed_group_overrides": [
+        "storage_group_alerts"
+      ],
+      "managed_node_overrides": [
+        "global_observer_coverage__storage_health_tab__group",
+        "storage_mqtt_state",
+        "storage_notify",
+        "storage_notify__hub_call",
+        "storage_notify__hub_result",
+        "storage_notify_secondary",
+        "storage_notify_secondary__hub_call",
+        "storage_notify_secondary__hub_result",
+        "storage_notify_persistent",
+        "storage_notify_persistent__hub_call",
+        "storage_notify_persistent__hub_result",
+        "storage_notification_ack",
+        "storage_notification_catch",
+        "storage_notification_failure",
+        "storage_manual_status_mqtt",
+        "storage_visual_mqtt_in",
+        "storage_visual_notify_in",
+        "storage_visual_manual_status_in",
+        "global_observer_coverage__storage_health_tab__catch",
+        "global_observer_coverage__storage_health_tab__status",
+        "global_observer_coverage__storage_health_tab__annotate",
+        "global_observer_coverage__storage_health_tab__out",
+        "notification_hub_wire_out_b5cbe7a52037",
+        "notification_hub_wire_in_b5cbe7a52037",
+        "notification_hub_wire_out_578212e7a55b",
+        "notification_hub_wire_in_578212e7a55b",
+        "notification_hub_wire_out_168dc6db5cd7",
+        "notification_hub_wire_in_168dc6db5cd7",
+        "notification_hub_wire_out_3eb3db66ab38",
+        "notification_hub_wire_in_3eb3db66ab38",
+        "notification_hub_wire_out_0f2bad790b49",
+        "notification_hub_wire_in_0f2bad790b49",
+        "notification_hub_wire_out_6d962ba6b125",
+        "notification_hub_wire_in_6d962ba6b125",
+        "notification_hub_wire_out_34604f022367",
+        "notification_hub_wire_in_34604f022367"
+      ]
     },
     "ea0a6aa0d24ff863": {
       "label": "localizacao_pessoas",
@@ -5422,40 +5608,40 @@
       "compact_groups": true,
       "group_positions": {
         "daily_update_core_group": {
-          "x": 68,
-          "y": 660
+          "x": 82,
+          "y": 644
         },
         "daily_update_containers_group": {
-          "x": 68,
-          "y": 1120
+          "x": 82,
+          "y": 1104
         },
         "daily_update_test_group": {
-          "x": 102,
-          "y": 1580
+          "x": 140,
+          "y": 1564
         },
         "daily_update_inventory_group": {
-          "x": 68,
-          "y": 2260
+          "x": 82,
+          "y": 2244
         },
         "daily_update_hacs_group": {
-          "x": 68,
-          "y": 3050
+          "x": 72,
+          "y": 3041
         },
         "daily_update_unknown_group": {
-          "x": 1474,
-          "y": 3059
+          "x": 1478,
+          "y": 3050
         },
         "daily_update_firmware_group": {
-          "x": 68,
-          "y": 3980
+          "x": 82,
+          "y": 3964
         },
         "daily_update_kia_group": {
-          "x": 68,
-          "y": 4560
+          "x": 72,
+          "y": 4544
         },
         "daily_update_kia_codex_group": {
-          "x": 90,
-          "y": 5180
+          "x": 131,
+          "y": 5164
         },
         "daily_update_repository_dependency_group": {
           "x": 64,
@@ -5466,11 +5652,11 @@
           "y": 6866
         },
         "global_observer_coverage__daily_host_updates_tab__group": {
-          "x": 1784,
-          "y": 59
+          "x": 1800,
+          "y": 47
         },
         "daily_update_alexa_media_group": {
-          "x": 68,
+          "x": 224,
           "y": 3380
         }
       },
@@ -5574,76 +5760,76 @@
       },
       "nodes": {
         "daily_update_production_group": {
-          "x": 124,
-          "y": 39,
-          "w": 1212,
-          "h": 302
+          "x": 128,
+          "y": 23,
+          "w": 1197,
+          "h": 314
         },
         "daily_update_result_group": {
-          "x": 74,
-          "y": 359,
-          "w": 1072,
-          "h": 282
+          "x": 106,
+          "y": 350,
+          "w": 1036,
+          "h": 287
         },
         "daily_update_test_group": {
-          "x": 102,
-          "y": 1580,
-          "w": 1132,
-          "h": 582
+          "x": 140,
+          "y": 1564,
+          "w": 1076,
+          "h": 594
         },
         "daily_update_kia_group": {
-          "x": 68,
-          "y": 4560,
-          "w": 1402,
-          "h": 552
+          "x": 72,
+          "y": 4544,
+          "w": 1933,
+          "h": 564
         },
         "daily_update_kia_codex_group": {
-          "x": 90,
-          "y": 5180,
-          "w": 1122,
-          "h": 772
+          "x": 131,
+          "y": 5164,
+          "w": 1077,
+          "h": 784
         },
         "daily_update_core_group": {
-          "x": 68,
-          "y": 660,
-          "w": 1332,
-          "h": 422
+          "x": 82,
+          "y": 644,
+          "w": 1300,
+          "h": 434
         },
         "daily_update_containers_group": {
-          "x": 68,
-          "y": 1120,
-          "w": 1382,
-          "h": 402
+          "x": 82,
+          "y": 1104,
+          "w": 1351,
+          "h": 414
         },
         "daily_update_inventory_group": {
-          "x": 68,
-          "y": 2260,
-          "w": 1607,
-          "h": 742
+          "x": 82,
+          "y": 2244,
+          "w": 1589,
+          "h": 754
         },
         "daily_update_hacs_group": {
-          "x": 68,
-          "y": 3050,
-          "w": 1358,
-          "h": 322
+          "x": 72,
+          "y": 3041,
+          "w": 1328,
+          "h": 327
         },
         "daily_update_unknown_group": {
-          "x": 1474,
-          "y": 3059,
-          "w": 632,
-          "h": 262
+          "x": 1478,
+          "y": 3050,
+          "w": 592,
+          "h": 267
         },
         "daily_update_firmware_group": {
-          "x": 68,
-          "y": 3980,
-          "w": 1932,
-          "h": 522
+          "x": 82,
+          "y": 3964,
+          "w": 1892,
+          "h": 534
         },
         "global_observer_coverage__daily_host_updates_tab__group": {
-          "x": 1784,
-          "y": 59,
-          "w": 722,
-          "h": 142
+          "x": 1800,
+          "y": 47,
+          "w": 702,
+          "h": 150
         },
         "daily_update_architecture": {
           "x": 670,
@@ -5770,32 +5956,32 @@
           "y": 4861
         },
         "daily_update_kia_prepare": {
-          "x": 494,
-          "y": 4741
+          "x": 1080,
+          "y": 4680
         },
         "daily_update_kia_route_test": {
-          "x": 734,
-          "y": 4741
+          "x": 1320,
+          "y": 4680
         },
         "daily_update_kia_request_host": {
-          "x": 1044,
-          "y": 4721
+          "x": 1580,
+          "y": 4720
         },
         "daily_update_kia_request_ack": {
-          "x": 1314,
-          "y": 4641
+          "x": 1880,
+          "y": 4640
         },
         "daily_update_kia_request_error": {
-          "x": 1324,
-          "y": 4721
+          "x": 1880,
+          "y": 4720
         },
         "daily_update_kia_request_complete": {
-          "x": 1304,
-          "y": 4781
+          "x": 1880,
+          "y": 4800
         },
         "daily_update_kia_test_out": {
-          "x": 909,
-          "y": 4681
+          "x": 1530,
+          "y": 4640
         },
         "daily_update_kia_result_startup": {
           "x": 224,
@@ -6235,11 +6421,11 @@
         },
         "daily_update_inventory_hacs_out": {
           "x": 1544,
-          "y": 2831
+          "y": 2881
         },
         "daily_update_inventory_unknown_out": {
           "x": 1544,
-          "y": 2881
+          "y": 2931
         },
         "daily_update_hacs_in": {
           "x": 109,
@@ -6418,8 +6604,8 @@
           "y": 6250
         },
         "daily_update_dependency_summary_test_out": {
-          "x": 1830,
-          "y": 6367
+          "x": 1840,
+          "y": 6330
         },
         "daily_update_dependency_read_complete": {
           "x": 760,
@@ -6442,12 +6628,361 @@
           "y": 130
         },
         "daily_update_alexa_media_group": {
-          "x": 64,
+          "x": 224,
           "y": 3380,
-          "w": 1582,
-          "h": 542
+          "w": 1824,
+          "h": 534
+        },
+        "daily_update_repository_dependency_group": {
+          "x": 64,
+          "y": 6066,
+          "w": 2437,
+          "h": 748
+        },
+        "daily_update_repository_dependency_test_group": {
+          "x": 84,
+          "y": 6866,
+          "w": 1089,
+          "h": 294
+        },
+        "daily_update_dependency_chain_out": {
+          "x": 1260,
+          "y": 1460
+        },
+        "daily_update_dependency_architecture": {
+          "x": 986,
+          "y": 6123
+        },
+        "daily_update_dependency_chain_in": {
+          "x": 101,
+          "y": 6203
+        },
+        "daily_update_dependency_test_source_in": {
+          "x": 101,
+          "y": 6323
+        },
+        "daily_update_dependency_policy": {
+          "x": 516,
+          "y": 6233
+        },
+        "daily_update_dependency_source": {
+          "x": 796,
+          "y": 6233
+        },
+        "daily_update_dependency_scan": {
+          "x": 1076,
+          "y": 6223
+        },
+        "daily_update_dependency_scan_error": {
+          "x": 1366,
+          "y": 6133
+        },
+        "daily_update_dependency_scan_complete": {
+          "x": 1366,
+          "y": 6243
+        },
+        "daily_update_dependency_normalize": {
+          "x": 1266,
+          "y": 6323
+        },
+        "daily_update_dependency_fix_gate": {
+          "x": 236,
+          "y": 6423
+        },
+        "daily_update_dependency_surface_gate": {
+          "x": 496,
+          "y": 6423
+        },
+        "daily_update_dependency_severity_gate": {
+          "x": 776,
+          "y": 6423
+        },
+        "daily_update_dependency_auto_gate": {
+          "x": 1056,
+          "y": 6423
+        },
+        "daily_update_dependency_dedupe": {
+          "x": 1306,
+          "y": 6423
+        },
+        "daily_update_dependency_prepare": {
+          "x": 1526,
+          "y": 6423
+        },
+        "daily_update_dependency_final_gate": {
+          "x": 1786,
+          "y": 6423
+        },
+        "daily_update_dependency_test_out": {
+          "x": 2071,
+          "y": 6383
+        },
+        "daily_update_dependency_request": {
+          "x": 2056,
+          "y": 6463
+        },
+        "daily_update_dependency_request_ack": {
+          "x": 2376,
+          "y": 6423
+        },
+        "daily_update_dependency_request_error": {
+          "x": 2376,
+          "y": 6483
+        },
+        "daily_update_dependency_request_complete": {
+          "x": 2376,
+          "y": 6543
+        },
+        "daily_update_dependency_blocked": {
+          "x": 1096,
+          "y": 6543
+        },
+        "daily_update_dependency_blocked_test_out": {
+          "x": 1311,
+          "y": 6503
+        },
+        "daily_update_dependency_result_startup": {
+          "x": 226,
+          "y": 6623
+        },
+        "daily_update_dependency_result_poll": {
+          "x": 236,
+          "y": 6683
+        },
+        "daily_update_dependency_read_result": {
+          "x": 526,
+          "y": 6653
+        },
+        "daily_update_dependency_read_error": {
+          "x": 766,
+          "y": 6733
+        },
+        "daily_update_dependency_test_result_in": {
+          "x": 836,
+          "y": 6573
+        },
+        "daily_update_dependency_parse_result": {
+          "x": 1016,
+          "y": 6653
+        },
+        "daily_update_dependency_result_test_out": {
+          "x": 1276,
+          "y": 6613
+        },
+        "daily_update_dependency_retry": {
+          "x": 1336,
+          "y": 6703
+        },
+        "daily_update_dependency_backup_out": {
+          "x": 1436,
+          "y": 6613
+        },
+        "daily_update_dependency_test_instructions": {
+          "x": 656,
+          "y": 6923
+        },
+        "daily_update_dependency_test_reset": {
+          "x": 206,
+          "y": 7003
+        },
+        "daily_update_dependency_test_safe": {
+          "x": 216,
+          "y": 7063
+        },
+        "daily_update_dependency_test_blocked": {
+          "x": 226,
+          "y": 7123
+        },
+        "daily_update_dependency_test_source_out": {
+          "x": 526,
+          "y": 7093
+        },
+        "daily_update_dependency_test_result": {
+          "x": 836,
+          "y": 7063
+        },
+        "daily_update_dependency_test_result_out": {
+          "x": 1136,
+          "y": 7063
+        },
+        "daily_update_dependency_candidate_out": {
+          "x": 1526,
+          "y": 6323
+        },
+        "daily_update_dependency_candidate_in": {
+          "x": 101,
+          "y": 6423
+        },
+        "daily_update_dependency_blocked_from_fix": {
+          "x": 406,
+          "y": 6483
+        },
+        "daily_update_dependency_blocked_from_surface": {
+          "x": 676,
+          "y": 6483
+        },
+        "daily_update_dependency_blocked_from_severity": {
+          "x": 946,
+          "y": 6483
+        },
+        "daily_update_dependency_blocked_from_auto": {
+          "x": 1206,
+          "y": 6483
+        },
+        "daily_update_dependency_blocked_in": {
+          "x": 866,
+          "y": 6543
+        },
+        "daily_update_dependency_retry_out": {
+          "x": 1546,
+          "y": 6703
+        },
+        "daily_update_dependency_retry_in": {
+          "x": 321,
+          "y": 6773
+        },
+        "daily_update_dependency_test_reset_in": {
+          "x": 1146,
+          "y": 6363
+        },
+        "daily_update_dependency_test_reset_out": {
+          "x": 476,
+          "y": 7003
+        },
+        "daily_update_inventory_apply_schedule": {
+          "x": 260,
+          "y": 2500
+        },
+        "daily_update_inventory_apply_manual": {
+          "x": 340,
+          "y": 2560
+        },
+        "daily_update_inventory_alexa_out": {
+          "x": 1544,
+          "y": 2831
+        },
+        "daily_update_alexa_media_architecture": {
+          "x": 976,
+          "y": 3437
+        },
+        "daily_update_alexa_media_in": {
+          "x": 261,
+          "y": 3537
+        },
+        "daily_update_alexa_media_authorized": {
+          "x": 526,
+          "y": 3537
+        },
+        "daily_update_alexa_media_policy": {
+          "x": 826,
+          "y": 3497
+        },
+        "daily_update_alexa_media_pending_rbe": {
+          "x": 856,
+          "y": 3577
+        },
+        "daily_update_alexa_media_pending": {
+          "x": 1106,
+          "y": 3577
+        },
+        "daily_update_alexa_media_prepare": {
+          "x": 1096,
+          "y": 3497
+        },
+        "daily_update_alexa_media_final_gate": {
+          "x": 1366,
+          "y": 3497
+        },
+        "daily_update_alexa_media_test_out": {
+          "x": 1686,
+          "y": 3457
+        },
+        "daily_update_alexa_media_request": {
+          "x": 1626,
+          "y": 3537
+        },
+        "daily_update_alexa_media_request_ack": {
+          "x": 1646,
+          "y": 3597
+        },
+        "daily_update_alexa_media_request_error": {
+          "x": 1916,
+          "y": 3637
+        },
+        "daily_update_alexa_media_request_complete": {
+          "x": 1646,
+          "y": 3657
+        },
+        "daily_update_alexa_media_result_startup": {
+          "x": 376,
+          "y": 3737
+        },
+        "daily_update_alexa_media_result_poll": {
+          "x": 396,
+          "y": 3797
+        },
+        "daily_update_alexa_media_read_result": {
+          "x": 686,
+          "y": 3767
+        },
+        "daily_update_alexa_media_read_error": {
+          "x": 966,
+          "y": 3717
+        },
+        "daily_update_alexa_media_read_complete": {
+          "x": 966,
+          "y": 3837
+        },
+        "daily_update_alexa_media_parse_result": {
+          "x": 1006,
+          "y": 3767
+        },
+        "daily_update_alexa_media_result_test": {
+          "x": 1246,
+          "y": 3877
+        },
+        "daily_update_alexa_media_result_test_out": {
+          "x": 1526,
+          "y": 3877
+        },
+        "daily_update_alexa_media_result_test_in": {
+          "x": 751,
+          "y": 3877
+        },
+        "daily_update_alexa_media_result_dry_out": {
+          "x": 1286,
+          "y": 3727
+        },
+        "daily_update_alexa_media_backup_out": {
+          "x": 1306,
+          "y": 3807
+        },
+        "daily_update_kia_authorized": {
+          "x": 370,
+          "y": 4680
+        },
+        "daily_update_kia_auto_policy": {
+          "x": 650,
+          "y": 4640
+        },
+        "daily_update_kia_mode_audit": {
+          "x": 650,
+          "y": 4720
+        },
+        "daily_update_kia_mode_install": {
+          "x": 890,
+          "y": 4640
+        },
+        "daily_update_kia_test_request_route_out": {
+          "x": 500,
+          "y": 4800
+        },
+        "daily_update_kia_test_request_route_in": {
+          "x": 840,
+          "y": 4780
         }
-      }
+      },
+      "geometry_final": true
     },
     "codex_alertas_tab": {
       "label": "alertas_codex",
@@ -7255,20 +7790,20 @@
       "compact_groups": true,
       "group_positions": {
         "vpn_monitor_test_group": {
-          "x": 104,
-          "y": 426
+          "x": 132,
+          "y": 410
         },
         "vpn_monitor_decision_group": {
-          "x": 2527,
-          "y": 179
+          "x": 2531,
+          "y": 167
         },
         "vpn_monitor_notify_group": {
           "x": 95,
           "y": 1169
         },
         "vpn_monitor_publish_group": {
-          "x": 100,
-          "y": 859
+          "x": 109,
+          "y": 847
         },
         "global_observer_coverage__monitoramento_vpn_tab__group": {
           "x": 8055,
@@ -7303,46 +7838,46 @@
       },
       "nodes": {
         "vpn_monitor_policy_group": {
-          "x": 64,
-          "y": 19,
-          "w": 1062,
-          "h": 192
+          "x": 95,
+          "y": 3,
+          "w": 1027,
+          "h": 204
         },
         "vpn_monitor_input_group": {
-          "x": 1165,
-          "y": 59,
-          "w": 1307,
-          "h": 312
+          "x": 1187,
+          "y": 47,
+          "w": 1281,
+          "h": 320
         },
         "vpn_monitor_decision_group": {
-          "x": 2527,
-          "y": 179,
-          "w": 3442,
-          "h": 482
+          "x": 2531,
+          "y": 167,
+          "w": 3434,
+          "h": 490
         },
         "vpn_monitor_notify_group": {
           "x": 95,
           "y": 1169,
-          "w": 1927,
-          "h": 572
+          "w": 1906,
+          "h": 568
         },
         "vpn_monitor_publish_group": {
-          "x": 100,
-          "y": 859,
-          "w": 1002,
-          "h": 282
+          "x": 109,
+          "y": 847,
+          "w": 979,
+          "h": 290
         },
         "vpn_monitor_test_group": {
-          "x": 104,
-          "y": 426,
-          "w": 1892,
-          "h": 412
+          "x": 132,
+          "y": 410,
+          "w": 1838,
+          "h": 424
         },
         "global_observer_coverage__monitoramento_vpn_tab__group": {
           "x": 8055,
           "y": 59,
-          "w": 722,
-          "h": 142
+          "w": 702,
+          "h": 150
         },
         "vpn_monitor_policy_note": {
           "x": 570,
@@ -7385,27 +7920,27 @@
           "y": 120
         },
         "vpn_monitor_internet_in": {
-          "x": 1381,
-          "y": 230
+          "x": 1370,
+          "y": 220
         },
         "vpn_monitor_test_internet_in": {
-          "x": 1261,
-          "y": 280
+          "x": 1470,
+          "y": 290
         },
         "vpn_monitor_internet_ingest": {
-          "x": 1671,
-          "y": 250
+          "x": 1690,
+          "y": 220
         },
         "vpn_monitor_internet_eval_out": {
-          "x": 1941,
-          "y": 250
+          "x": 1920,
+          "y": 220
         },
         "vpn_monitor_tick": {
-          "x": 2131,
+          "x": 2170,
           "y": 330
         },
         "vpn_monitor_tick_out": {
-          "x": 2431,
+          "x": 2400,
           "y": 330
         },
         "vpn_monitor_evaluate_in": {
@@ -7529,20 +8064,20 @@
           "y": 620
         },
         "vpn_monitor_notify_in": {
-          "x": 136,
-          "y": 1400
+          "x": 132,
+          "y": 1652
         },
         "vpn_monitor_notify_guard": {
-          "x": 386,
-          "y": 1400
+          "x": 382,
+          "y": 1652
         },
         "vpn_monitor_notify_dispatch": {
           "x": 549,
           "y": 1360
         },
         "vpn_monitor_dry_out": {
-          "x": 696,
-          "y": 1440
+          "x": 692,
+          "y": 1692
         },
         "vpn_monitor_publish_in": {
           "x": 146,
@@ -7565,15 +8100,15 @@
           "y": 980
         },
         "vpn_monitor_discovery_tick": {
-          "x": 246,
+          "x": 290,
           "y": 1100
         },
         "vpn_monitor_discovery": {
-          "x": 526,
+          "x": 590,
           "y": 1100
         },
         "vpn_monitor_discovery_out": {
-          "x": 956,
+          "x": 910,
           "y": 1100
         },
         "vpn_monitor_test_instructions": {
@@ -7582,11 +8117,11 @@
         },
         "vpn_monitor_test_reset": {
           "x": 230,
-          "y": 537
+          "y": 540
         },
         "vpn_monitor_test_reset_state": {
           "x": 490,
-          "y": 537
+          "y": 540
         },
         "vpn_monitor_test_internet_online": {
           "x": 260,
@@ -7629,30 +8164,110 @@
           "y": 747
         },
         "vpn_monitor_dry_in": {
-          "x": 1550,
-          "y": 687
+          "x": 1570,
+          "y": 690
         },
         "vpn_monitor_dry_run_terminal": {
-          "x": 1820,
-          "y": 687
+          "x": 1810,
+          "y": 690
         },
         "global_observer_coverage__monitoramento_vpn_tab__catch": {
-          "x": 8211,
-          "y": 100
+          "x": 8195,
+          "y": 112
         },
         "global_observer_coverage__monitoramento_vpn_tab__status": {
-          "x": 8221,
-          "y": 160
+          "x": 8205,
+          "y": 172
         },
         "global_observer_coverage__monitoramento_vpn_tab__annotate": {
-          "x": 8491,
-          "y": 130
+          "x": 8475,
+          "y": 142
         },
         "global_observer_coverage__monitoramento_vpn_tab__out": {
-          "x": 8736,
-          "y": 130
+          "x": 8720,
+          "y": 142
+        },
+        "vpn_monitor_notify_dispatch__contract_gate": {
+          "x": 849,
+          "y": 1360
+        },
+        "vpn_monitor_notify_dispatch__contract_reject": {
+          "x": 1089,
+          "y": 1700
+        },
+        "vpn_monitor_notify_dispatch__mobile_prepare": {
+          "x": 1149,
+          "y": 1222
+        },
+        "vpn_monitor_notify_dispatch__mobile_call": {
+          "x": 1429,
+          "y": 1222
+        },
+        "vpn_monitor_notify_dispatch__mobile_secondary_prepare": {
+          "x": 1149,
+          "y": 1282
+        },
+        "vpn_monitor_notify_dispatch__mobile_secondary_call": {
+          "x": 1429,
+          "y": 1282
+        },
+        "vpn_monitor_notify_dispatch__alexa_prepare": {
+          "x": 1149,
+          "y": 1352
+        },
+        "vpn_monitor_notify_dispatch__alexa_call": {
+          "x": 1429,
+          "y": 1352
+        },
+        "vpn_monitor_notify_dispatch__persistent_prepare": {
+          "x": 1149,
+          "y": 1432
+        },
+        "vpn_monitor_notify_dispatch__persistent_call": {
+          "x": 1429,
+          "y": 1432
+        },
+        "vpn_monitor_notify_dispatch__dismiss_gate": {
+          "x": 1296,
+          "y": 1520
+        },
+        "vpn_monitor_notify_dispatch__dismiss_prepare": {
+          "x": 1596,
+          "y": 1520
+        },
+        "vpn_monitor_notify_dispatch__dismiss_call": {
+          "x": 1876,
+          "y": 1520
         }
-      }
+      },
+      "geometry_final": true,
+      "managed_group_overrides": [
+        "vpn_monitor_notify_group"
+      ],
+      "managed_node_overrides": [
+        "global_observer_coverage__monitoramento_vpn_tab__group",
+        "vpn_monitor_notify_in",
+        "vpn_monitor_notify_guard",
+        "vpn_monitor_notify_dispatch",
+        "vpn_monitor_notify_dispatch__contract_gate",
+        "vpn_monitor_notify_dispatch__contract_reject",
+        "vpn_monitor_notify_dispatch__mobile_prepare",
+        "vpn_monitor_notify_dispatch__mobile_call",
+        "vpn_monitor_notify_dispatch__mobile_secondary_prepare",
+        "vpn_monitor_notify_dispatch__mobile_secondary_call",
+        "vpn_monitor_notify_dispatch__alexa_prepare",
+        "vpn_monitor_notify_dispatch__alexa_call",
+        "vpn_monitor_notify_dispatch__persistent_prepare",
+        "vpn_monitor_notify_dispatch__persistent_call",
+        "vpn_monitor_notify_dispatch__dismiss_gate",
+        "vpn_monitor_notify_dispatch__dismiss_prepare",
+        "vpn_monitor_notify_dispatch__dismiss_call",
+        "vpn_monitor_dry_out",
+        "global_observer_coverage__monitoramento_vpn_tab__catch",
+        "global_observer_coverage__monitoramento_vpn_tab__status",
+        "global_observer_coverage__monitoramento_vpn_tab__annotate",
+        "global_observer_coverage__monitoramento_vpn_tab__out"
+      ]
     },
     "1f468eaeef0733dd": {
       "label": "alarme_desarme_chegada",
@@ -8137,7 +8752,7 @@
         },
         "git_backup_decision_group": {
           "x": 777,
-          "y": 26
+          "y": 17
         },
         "global_observer_coverage__git_backup_tab__group": {
           "x": 2337,
@@ -8206,35 +8821,35 @@
           "y": 447
         },
         "git_backup_result_out": {
-          "x": 2248,
-          "y": 600
+          "x": 2190,
+          "y": 630
         },
         "git_backup_notify_primary": {
-          "x": 1998,
-          "y": 810
+          "x": 3320,
+          "y": 780
         },
         "git_backup_notify_primary__hub_call": {
-          "x": 2278,
-          "y": 810
+          "x": 3660,
+          "y": 780
         },
         "git_backup_notify_persistent": {
-          "x": 1998,
-          "y": 890
+          "x": 3320,
+          "y": 700
         },
         "git_backup_notify_persistent__hub_call": {
-          "x": 2278,
-          "y": 890
+          "x": 3610,
+          "y": 700
         },
         "git_backup_retry_effect_in": {
-          "x": 1698,
+          "x": 1740,
           "y": 970
         },
         "git_backup_retry_delay": {
-          "x": 1998,
+          "x": 1980,
           "y": 970
         },
         "git_backup_retry_out": {
-          "x": 2278,
+          "x": 2230,
           "y": 970
         },
         "notification_hub_wire_out_96c34caf8ddc": {
@@ -8260,82 +8875,82 @@
       },
       "nodes": {
         "git_backup_input_group": {
-          "x": 64,
+          "x": 140,
           "y": 36,
-          "w": 652,
-          "h": 302
+          "w": 477,
+          "h": 311
         },
         "git_backup_decision_group": {
           "x": 777,
-          "y": 26,
-          "w": 1525,
-          "h": 462
+          "y": 17,
+          "w": 1521,
+          "h": 520
         },
         "git_backup_effect_group": {
           "x": 1657,
           "y": 539,
-          "w": 2177,
-          "h": 432
+          "w": 2152,
+          "h": 468
         },
         "git_backup_test_group": {
           "x": 92,
-          "y": 516,
-          "w": 1492,
-          "h": 462
+          "y": 576,
+          "w": 1414,
+          "h": 491
         },
         "global_observer_coverage__git_backup_tab__group": {
           "x": 2337,
           "y": 19,
-          "w": 722,
-          "h": 142
+          "w": 702,
+          "h": 150
         },
         "git_backup_architecture": {
           "x": 390,
-          "y": 77
+          "y": 93
         },
         "git_backup_schedule": {
-          "x": 290,
-          "y": 147
+          "x": 310,
+          "y": 170
         },
         "git_backup_manual": {
-          "x": 290,
-          "y": 217
+          "x": 310,
+          "y": 240
         },
         "git_backup_retry_in": {
-          "x": 200,
-          "y": 297
+          "x": 420,
+          "y": 310
         },
         "git_backup_request_out": {
-          "x": 580,
-          "y": 197
+          "x": 560,
+          "y": 240
         },
         "git_backup_request_in": {
-          "x": 818,
-          "y": 100
+          "x": 830,
+          "y": 140
         },
         "git_backup_request_gate": {
-          "x": 1018,
-          "y": 100
+          "x": 1010,
+          "y": 140
         },
         "git_backup_request_dry_out": {
-          "x": 1228,
-          "y": 80
+          "x": 1200,
+          "y": 130
         },
         "git_backup_worker_out": {
-          "x": 1228,
-          "y": 120
+          "x": 1200,
+          "y": 200
         },
         "git_backup_result_in": {
-          "x": 818,
-          "y": 230
+          "x": 814,
+          "y": 280
         },
         "git_backup_result": {
-          "x": 988,
-          "y": 230
+          "x": 1024,
+          "y": 280
         },
         "git_backup_status_switch": {
-          "x": 1278,
-          "y": 230
+          "x": 1274,
+          "y": 280
         },
         "git_backup_success_origin": {
           "x": 1561,
@@ -8354,8 +8969,8 @@
           "y": 177
         },
         "git_backup_alert_build": {
-          "x": 1588,
-          "y": 230
+          "x": 1510,
+          "y": 300
         },
         "git_backup_failure_gate": {
           "x": 1761,
@@ -8363,11 +8978,11 @@
         },
         "git_backup_deferred_gate": {
           "x": 1548,
-          "y": 330
+          "y": 370
         },
         "git_backup_invalid_gate": {
-          "x": 1481,
-          "y": 397
+          "x": 1520,
+          "y": 500
         },
         "git_backup_invalid_result": {
           "x": 1761,
@@ -8386,132 +9001,132 @@
           "y": 67
         },
         "git_backup_worker_in": {
-          "x": 1698,
-          "y": 600
+          "x": 1700,
+          "y": 640
         },
         "git_backup_request": {
-          "x": 1958,
-          "y": 600
+          "x": 1940,
+          "y": 640
         },
         "git_backup_result_out": {
-          "x": 2248,
-          "y": 600
+          "x": 2190,
+          "y": 630
         },
         "git_backup_error": {
-          "x": 3428,
-          "y": 650
-        },
-        "git_backup_notification_direct": {
-          "x": 3688,
-          "y": 650
-        },
-        "git_backup_complete": {
-          "x": 3428,
-          "y": 720
-        },
-        "git_backup_complete_ok": {
-          "x": 3688,
+          "x": 2540,
           "y": 700
         },
+        "git_backup_notification_direct": {
+          "x": 2850,
+          "y": 700
+        },
+        "git_backup_complete": {
+          "x": 2540,
+          "y": 780
+        },
+        "git_backup_complete_ok": {
+          "x": 2820,
+          "y": 770
+        },
         "git_backup_complete_failed": {
-          "x": 3688,
-          "y": 750
+          "x": 2850,
+          "y": 850
         },
         "git_backup_notification_in": {
-          "x": 1698,
-          "y": 840
+          "x": 3070,
+          "y": 700
         },
         "git_backup_notify_primary": {
-          "x": 1998,
-          "y": 810
+          "x": 3320,
+          "y": 780
         },
         "git_backup_notify_persistent": {
-          "x": 1998,
-          "y": 890
+          "x": 3320,
+          "y": 700
         },
         "git_backup_notify_persistent__hub_call": {
-          "x": 2278,
-          "y": 890
+          "x": 3610,
+          "y": 700
         },
         "git_backup_retry_effect_in": {
-          "x": 1698,
+          "x": 1740,
           "y": 970
         },
         "git_backup_retry_delay": {
-          "x": 1998,
+          "x": 1980,
           "y": 970
         },
         "git_backup_retry_out": {
-          "x": 2278,
+          "x": 2230,
           "y": 970
         },
         "git_backup_test_instructions": {
-          "x": 968,
-          "y": 557
+          "x": 916,
+          "y": 633
         },
         "git_backup_test_reset": {
-          "x": 238,
-          "y": 637
+          "x": 180,
+          "y": 710
         },
         "git_backup_test_reset_state": {
-          "x": 478,
-          "y": 637
+          "x": 440,
+          "y": 710
         },
         "git_backup_test_request": {
-          "x": 268,
-          "y": 707
+          "x": 240,
+          "y": 780
         },
         "git_backup_test_request_out": {
-          "x": 548,
-          "y": 707
+          "x": 470,
+          "y": 780
         },
         "git_backup_test_request_in": {
-          "x": 818,
-          "y": 160
+          "x": 830,
+          "y": 210
         },
         "git_backup_test_success": {
           "x": 268,
-          "y": 777
+          "y": 850
         },
         "git_backup_test_failure": {
           "x": 268,
-          "y": 827
+          "y": 910
         },
         "git_backup_test_deferred": {
           "x": 268,
-          "y": 877
+          "y": 970
         },
         "git_backup_test_invalid": {
           "x": 268,
-          "y": 937
+          "y": 1030
         },
         "git_backup_test_result_out": {
-          "x": 748,
-          "y": 827
+          "x": 696,
+          "y": 983
         },
         "git_backup_dry_in": {
-          "x": 1128,
-          "y": 707
+          "x": 1100,
+          "y": 780
         },
         "git_backup_dry_run_terminal": {
-          "x": 1408,
-          "y": 707
+          "x": 1340,
+          "y": 780
         },
         "global_observer_coverage__git_backup_tab__catch": {
-          "x": 2493,
-          "y": 60
+          "x": 2477,
+          "y": 72
         },
         "global_observer_coverage__git_backup_tab__status": {
-          "x": 2503,
-          "y": 120
+          "x": 2487,
+          "y": 132
         },
         "global_observer_coverage__git_backup_tab__annotate": {
-          "x": 2773,
-          "y": 90
+          "x": 2757,
+          "y": 102
         },
         "global_observer_coverage__git_backup_tab__out": {
-          "x": 3018,
-          "y": 90
+          "x": 3002,
+          "y": 102
         },
         "git_backup_dry_out": {
           "x": 1961,
@@ -8520,8 +9135,59 @@
         "notification_hub_wire_out_96c34caf8ddc": {
           "x": 2251,
           "y": 930
+        },
+        "git_backup_notify_primary__hub_call": {
+          "x": 3660,
+          "y": 780
+        },
+        "notification_hub_wire_out_0501ea75369a": {
+          "x": 2190,
+          "y": 700
+        },
+        "notification_hub_wire_in_0501ea75369a": {
+          "x": 2320,
+          "y": 700
+        },
+        "notification_hub_wire_out_3a0e38c6f0ed": {
+          "x": 2190,
+          "y": 780
+        },
+        "notification_hub_wire_in_3a0e38c6f0ed": {
+          "x": 2320,
+          "y": 780
         }
-      }
+      },
+      "geometry_final": true,
+      "managed_group_overrides": [
+        "git_backup_effect_group"
+      ],
+      "managed_node_overrides": [
+        "global_observer_coverage__git_backup_tab__group",
+        "global_observer_coverage__git_backup_tab__catch",
+        "global_observer_coverage__git_backup_tab__status",
+        "global_observer_coverage__git_backup_tab__annotate",
+        "global_observer_coverage__git_backup_tab__out",
+        "git_backup_worker_in",
+        "git_backup_request",
+        "git_backup_result_out",
+        "git_backup_error",
+        "git_backup_notification_direct",
+        "git_backup_complete",
+        "git_backup_complete_ok",
+        "git_backup_complete_failed",
+        "git_backup_notification_in",
+        "git_backup_notify_primary",
+        "git_backup_notify_primary__hub_call",
+        "git_backup_notify_persistent",
+        "git_backup_notify_persistent__hub_call",
+        "git_backup_retry_effect_in",
+        "git_backup_retry_delay",
+        "git_backup_retry_out",
+        "notification_hub_wire_out_0501ea75369a",
+        "notification_hub_wire_in_0501ea75369a",
+        "notification_hub_wire_out_3a0e38c6f0ed",
+        "notification_hub_wire_in_3a0e38c6f0ed"
+      ]
     },
     "monitoramento_internet_tab": {
       "label": "monitoramento_internet",
@@ -9531,34 +10197,34 @@
       },
       "nodes": {
         "grp_tuya_triggers": {
-          "x": 64,
-          "y": 19,
-          "w": 1162,
-          "h": 612
+          "x": 95,
+          "y": 3,
+          "w": 1127,
+          "h": 628
         },
         "grp_tuya_state": {
-          "x": 1259,
-          "y": 34,
-          "w": 4263,
-          "h": 927
+          "x": 1263,
+          "y": 22,
+          "w": 4255,
+          "h": 935
         },
         "grp_tuya_notify": {
           "x": 95,
           "y": 1649,
-          "w": 2637,
-          "h": 952
+          "w": 2612,
+          "h": 948
         },
         "grp_tuya_tests": {
-          "x": 94,
-          "y": 1059,
-          "w": 2962,
-          "h": 532
+          "x": 134,
+          "y": 1043,
+          "w": 2905,
+          "h": 544
         },
         "global_observer_coverage__monitoramento_tuya_tab__group": {
           "x": 8335,
           "y": 59,
-          "w": 722,
-          "h": 142
+          "w": 702,
+          "h": 150
         },
         "tuya_policy_note": {
           "x": 590,
@@ -9605,23 +10271,23 @@
           "y": 260
         },
         "tuya_query_catch": {
-          "x": 280,
+          "x": 300,
           "y": 360
         },
         "tuya_query_failure_out": {
-          "x": 550,
+          "x": 530,
           "y": 360
         },
         "tuya_discovery_tick": {
-          "x": 270,
+          "x": 280,
           "y": 470
         },
         "tuya_discovery": {
-          "x": 540,
+          "x": 580,
           "y": 470
         },
         "tuya_discovery_out": {
-          "x": 800,
+          "x": 790,
           "y": 470
         },
         "tuya_source_note": {
@@ -9829,96 +10495,96 @@
           "y": 820
         },
         "tuya_summary_in": {
-          "x": 136,
-          "y": 1880
+          "x": 132,
+          "y": 1892
         },
         "tuya_summary_publish_build": {
-          "x": 376,
-          "y": 1880
+          "x": 372,
+          "y": 1892
         },
         "tuya_phase_switch": {
-          "x": 646,
-          "y": 1745
+          "x": 642,
+          "y": 1757
         },
         "tuya_status_online": {
-          "x": 926,
-          "y": 1690
+          "x": 922,
+          "y": 1702
         },
         "tuya_status_offline": {
-          "x": 926,
-          "y": 1745
+          "x": 922,
+          "y": 1757
         },
         "tuya_status_transition": {
-          "x": 926,
-          "y": 1800
+          "x": 922,
+          "y": 1812
         },
         "tuya_publications_expand": {
-          "x": 646,
-          "y": 1930
+          "x": 642,
+          "y": 1942
         },
         "tuya_publication_test_gate": {
-          "x": 916,
-          "y": 1930
+          "x": 912,
+          "y": 1942
         },
         "tuya_mqtt_state_out": {
-          "x": 1176,
-          "y": 1970
+          "x": 1172,
+          "y": 1982
         },
         "tuya_mqtt_state_in": {
-          "x": 1146,
-          "y": 2420
+          "x": 1142,
+          "y": 2432
         },
         "tuya_publication_dry_out": {
-          "x": 1176,
-          "y": 1900
+          "x": 1172,
+          "y": 1912
         },
         "tuya_query_failure_in": {
-          "x": 136,
-          "y": 2090
+          "x": 132,
+          "y": 2102
         },
         "tuya_query_failure": {
-          "x": 376,
-          "y": 2090
+          "x": 372,
+          "y": 2102
         },
         "tuya_query_publications_expand": {
-          "x": 646,
-          "y": 2090
+          "x": 642,
+          "y": 2102
         },
         "tuya_device_event_in": {
-          "x": 136,
-          "y": 2310
+          "x": 132,
+          "y": 2322
         },
         "tuya_device_event_switch": {
-          "x": 386,
-          "y": 2310
+          "x": 382,
+          "y": 2322
         },
         "tuya_device_notification_build": {
-          "x": 676,
-          "y": 2280
+          "x": 672,
+          "y": 2292
         },
         "tuya_no_notification": {
-          "x": 676,
-          "y": 2355
+          "x": 672,
+          "y": 2367
         },
         "tuya_notification_test_gate": {
-          "x": 966,
-          "y": 2280
+          "x": 962,
+          "y": 2292
         },
         "tuya_notification_dry_out": {
-          "x": 1226,
-          "y": 2240
+          "x": 1222,
+          "y": 2252
         },
         "tuya_notify_effect": {
-          "x": 1406,
-          "y": 2320
+          "x": 1402,
+          "y": 2332
         },
         "tuya_discovery_in": {
-          "x": 916,
-          "y": 2460
+          "x": 912,
+          "y": 2472
         },
         "tuya_mqtt_publish": {
-          "x": 1386,
-          "y": 2460
+          "x": 1382,
+          "y": 2472
         },
         "tuya_test_note": {
           "x": 1150,
@@ -9993,38 +10659,137 @@
           "y": 1460
         },
         "tuya_test_query_failure": {
-          "x": 1800,
+          "x": 1830,
           "y": 1430
         },
         "tuya_test_query_failure_out": {
-          "x": 2100,
+          "x": 2070,
           "y": 1430
         },
         "tuya_dry_in": {
-          "x": 2630,
+          "x": 2650,
           "y": 1290
         },
         "tuya_dry_run_terminal": {
-          "x": 2900,
+          "x": 2880,
           "y": 1290
         },
         "global_observer_coverage__monitoramento_tuya_tab__catch": {
-          "x": 8491,
-          "y": 100
+          "x": 8475,
+          "y": 112
         },
         "global_observer_coverage__monitoramento_tuya_tab__status": {
-          "x": 8501,
-          "y": 160
+          "x": 8485,
+          "y": 172
         },
         "global_observer_coverage__monitoramento_tuya_tab__annotate": {
-          "x": 8771,
-          "y": 130
+          "x": 8755,
+          "y": 142
         },
         "global_observer_coverage__monitoramento_tuya_tab__out": {
-          "x": 9016,
-          "y": 130
+          "x": 9000,
+          "y": 142
+        },
+        "tuya_notify_effect__contract_gate": {
+          "x": 1702,
+          "y": 2332
+        },
+        "tuya_notify_effect__contract_reject": {
+          "x": 1979,
+          "y": 2560
+        },
+        "tuya_notify_effect__mobile_prepare": {
+          "x": 2002,
+          "y": 2182
+        },
+        "tuya_notify_effect__mobile_call": {
+          "x": 2282,
+          "y": 2182
+        },
+        "tuya_notify_effect__mobile_secondary_prepare": {
+          "x": 2002,
+          "y": 2242
+        },
+        "tuya_notify_effect__mobile_secondary_call": {
+          "x": 2282,
+          "y": 2242
+        },
+        "tuya_notify_effect__alexa_prepare": {
+          "x": 2002,
+          "y": 2312
+        },
+        "tuya_notify_effect__alexa_call": {
+          "x": 2282,
+          "y": 2312
+        },
+        "tuya_notify_effect__persistent_prepare": {
+          "x": 2002,
+          "y": 2392
+        },
+        "tuya_notify_effect__persistent_call": {
+          "x": 2282,
+          "y": 2392
+        },
+        "tuya_notify_effect__dismiss_gate": {
+          "x": 2002,
+          "y": 2492
+        },
+        "tuya_notify_effect__dismiss_prepare": {
+          "x": 2302,
+          "y": 2492
+        },
+        "tuya_notify_effect__dismiss_call": {
+          "x": 2582,
+          "y": 2492
         }
-      }
+      },
+      "geometry_final": true,
+      "managed_group_overrides": [
+        "grp_tuya_notify"
+      ],
+      "managed_node_overrides": [
+        "global_observer_coverage__monitoramento_tuya_tab__group",
+        "tuya_summary_in",
+        "tuya_summary_publish_build",
+        "tuya_phase_switch",
+        "tuya_status_online",
+        "tuya_status_offline",
+        "tuya_status_transition",
+        "tuya_publications_expand",
+        "tuya_publication_test_gate",
+        "tuya_mqtt_state_out",
+        "tuya_mqtt_state_in",
+        "tuya_publication_dry_out",
+        "tuya_query_failure_in",
+        "tuya_query_failure",
+        "tuya_query_publications_expand",
+        "tuya_device_event_in",
+        "tuya_device_event_switch",
+        "tuya_device_notification_build",
+        "tuya_no_notification",
+        "tuya_notification_test_gate",
+        "tuya_notification_dry_out",
+        "tuya_notify_effect",
+        "tuya_notify_effect__contract_gate",
+        "tuya_notify_effect__contract_reject",
+        "tuya_notify_effect__mobile_prepare",
+        "tuya_notify_effect__mobile_call",
+        "tuya_notify_effect__mobile_secondary_prepare",
+        "tuya_notify_effect__mobile_secondary_call",
+        "tuya_notify_effect__alexa_prepare",
+        "tuya_notify_effect__alexa_call",
+        "tuya_notify_effect__persistent_prepare",
+        "tuya_notify_effect__persistent_call",
+        "tuya_notify_effect__dismiss_gate",
+        "tuya_notify_effect__dismiss_prepare",
+        "tuya_notify_effect__dismiss_call",
+        "tuya_discovery_in",
+        "tuya_mqtt_publish",
+        "global_observer_coverage__monitoramento_tuya_tab__catch",
+        "global_observer_coverage__monitoramento_tuya_tab__status",
+        "global_observer_coverage__monitoramento_tuya_tab__annotate",
+        "global_observer_coverage__monitoramento_tuya_tab__out"
+      ]
     },
     "62bb822e033d1623": {
       "label": "contexto_chegadas",

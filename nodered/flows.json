@@ -14076,7 +14076,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 2900,
+        "x": 2930,
         "y": 1440,
         "wires": [
             [
@@ -14096,7 +14096,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 3180,
+        "x": 3230,
         "y": 1440,
         "wires": [
             []
@@ -14256,7 +14256,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1900,
+        "x": 1620,
         "y": 1540,
         "wires": [
             [
@@ -14276,7 +14276,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 2180,
+        "x": 1930,
         "y": 1540,
         "wires": [
             []
@@ -14316,7 +14316,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3580,
+        "x": 3280,
         "y": 1540,
         "wires": [
             [
@@ -14336,7 +14336,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 3860,
+        "x": 3590,
         "y": 1540,
         "wires": [
             []
@@ -14390,7 +14390,7 @@
         "links": [
             "c23c6d5c4ce5c532"
         ],
-        "x": 2745,
+        "x": 2690,
         "y": 1440,
         "wires": [
             [
@@ -14444,7 +14444,7 @@
             "787769d2959d6ad5",
             "rpi_layout_finalize_failure_clear_out"
         ],
-        "x": 1125,
+        "x": 1380,
         "y": 1540,
         "wires": [
             [
@@ -14462,7 +14462,7 @@
             "048e2325e2e65944",
             "rpi_layout_finalize_recovery_clear_out"
         ],
-        "x": 2765,
+        "x": 3040,
         "y": 1540,
         "wires": [
             [
@@ -15477,8 +15477,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 9063,
-        "y": 332,
+        "x": 9760,
+        "y": 360,
         "wires": [
             [
                 "storage_notify__hub_call"
@@ -15497,8 +15497,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 9343,
-        "y": 332,
+        "x": 10120,
+        "y": 360,
         "wires": [
             [
                 "storage_notify__hub_result"
@@ -15526,8 +15526,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 9613,
-        "y": 332,
+        "x": 10460,
+        "y": 360,
         "wires": [
             [
                 "notification_hub_wire_out_b5cbe7a52037"
@@ -15571,8 +15571,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 9063,
-        "y": 392,
+        "x": 9760,
+        "y": 230,
         "wires": [
             [
                 "storage_notify_secondary__hub_call"
@@ -15591,8 +15591,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 9343,
-        "y": 392,
+        "x": 10120,
+        "y": 230,
         "wires": [
             [
                 "storage_notify_secondary__hub_result"
@@ -15620,8 +15620,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 9613,
-        "y": 392,
+        "x": 10460,
+        "y": 230,
         "wires": [
             [
                 "notification_hub_wire_out_168dc6db5cd7"
@@ -15879,8 +15879,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 9063,
-        "y": 452,
+        "x": 9760,
+        "y": 500,
         "wires": [
             [
                 "storage_notify_persistent__hub_call"
@@ -15899,8 +15899,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 9343,
-        "y": 452,
+        "x": 10120,
+        "y": 500,
         "wires": [
             [
                 "storage_notify_persistent__hub_result"
@@ -15928,8 +15928,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 9613,
-        "y": 452,
+        "x": 10460,
+        "y": 500,
         "wires": [
             [
                 "notification_hub_wire_out_0f2bad790b49"
@@ -15952,8 +15952,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 11883,
-        "y": 392,
+        "x": 11070,
+        "y": 300,
         "wires": []
     },
     {
@@ -15968,8 +15968,8 @@
             "storage_notify_persistent__hub_call"
         ],
         "uncaught": false,
-        "x": 8883,
-        "y": 572,
+        "x": 10460,
+        "y": 570,
         "wires": [
             [
                 "notification_hub_wire_out_34604f022367"
@@ -15989,8 +15989,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 11683,
-        "y": 572,
+        "x": 11060,
+        "y": 500,
         "wires": []
     },
     {
@@ -16038,8 +16038,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 8993,
-        "y": 232,
+        "x": 8960,
+        "y": 230,
         "wires": []
     },
     {
@@ -16089,7 +16089,7 @@
         "links": [
             "storage_test_input_out"
         ],
-        "x": 210,
+        "x": 340,
         "y": 610,
         "wires": [
             [
@@ -16242,7 +16242,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2170,
+        "x": 2180,
         "y": 1050,
         "wires": []
     },
@@ -16653,7 +16653,7 @@
         "links": [
             "storage_visual_input_in"
         ],
-        "x": 600,
+        "x": 470,
         "y": 610,
         "wires": []
     },
@@ -18036,8 +18036,8 @@
             "storage_visual_invalid_notify_out",
             "storage_visual_maintenance_notify_out"
         ],
-        "x": 8713,
-        "y": 392,
+        "x": 9520,
+        "y": 500,
         "wires": [
             [
                 "storage_notify",
@@ -18269,8 +18269,8 @@
             "storage_visual_manual_status_out",
             "storage_visual_manual_complete_status_out"
         ],
-        "x": 8713,
-        "y": 232,
+        "x": 8740,
+        "y": 230,
         "wires": [
             [
                 "storage_manual_status_mqtt"
@@ -29827,8 +29827,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 1381,
-        "y": 230,
+        "x": 1370,
+        "y": 220,
         "wires": [
             [
                 "vpn_monitor_internet_ingest"
@@ -29844,8 +29844,8 @@
         "links": [
             "vpn_monitor_test_internet_out"
         ],
-        "x": 1261,
-        "y": 280,
+        "x": 1470,
+        "y": 290,
         "wires": [
             [
                 "vpn_monitor_internet_ingest"
@@ -29865,8 +29865,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1671,
-        "y": 250,
+        "x": 1690,
+        "y": 220,
         "wires": [
             [
                 "vpn_monitor_internet_eval_out"
@@ -29883,8 +29883,8 @@
         "links": [
             "vpn_monitor_evaluate_in"
         ],
-        "x": 1941,
-        "y": 250,
+        "x": 1920,
+        "y": 220,
         "wires": []
     },
     {
@@ -29905,7 +29905,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 2131,
+        "x": 2170,
         "y": 330,
         "wires": [
             [
@@ -29923,7 +29923,7 @@
         "links": [
             "vpn_monitor_evaluate_in"
         ],
-        "x": 2431,
+        "x": 2400,
         "y": 330,
         "wires": []
     },
@@ -31125,7 +31125,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 246,
+        "x": 290,
         "y": 1100,
         "wires": [
             [
@@ -31146,7 +31146,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 526,
+        "x": 590,
         "y": 1100,
         "wires": [
             [
@@ -31169,7 +31169,7 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 956,
+        "x": 910,
         "y": 1100,
         "wires": []
     },
@@ -31203,7 +31203,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 230,
-        "y": 537,
+        "y": 540,
         "wires": [
             [
                 "vpn_monitor_test_reset_state"
@@ -31224,7 +31224,7 @@
         "finalize": "",
         "libs": [],
         "x": 490,
-        "y": 537,
+        "y": 540,
         "wires": [
             []
         ]
@@ -31566,8 +31566,8 @@
             "vpn_monitor_dry_out",
             "vpn_monitor_publish_dry_out"
         ],
-        "x": 1550,
-        "y": 687,
+        "x": 1570,
+        "y": 690,
         "wires": [
             [
                 "vpn_monitor_dry_run_terminal"
@@ -31587,8 +31587,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1820,
-        "y": 687,
+        "x": 1810,
+        "y": 690,
         "wires": [
             []
         ]
@@ -44347,7 +44347,7 @@
             "tuya_states"
         ],
         "uncaught": false,
-        "x": 280,
+        "x": 300,
         "y": 360,
         "wires": [
             [
@@ -44365,7 +44365,7 @@
         "links": [
             "tuya_query_failure_in"
         ],
-        "x": 550,
+        "x": 530,
         "y": 360,
         "wires": []
     },
@@ -44387,7 +44387,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 270,
+        "x": 280,
         "y": 470,
         "wires": [
             [
@@ -44408,7 +44408,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 540,
+        "x": 580,
         "y": 470,
         "wires": [
             [
@@ -44426,7 +44426,7 @@
         "links": [
             "tuya_discovery_in"
         ],
-        "x": 800,
+        "x": 790,
         "y": 470,
         "wires": []
     },
@@ -47082,7 +47082,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 1800,
+        "x": 1830,
         "y": 1430,
         "wires": [
             [
@@ -47100,7 +47100,7 @@
         "links": [
             "tuya_query_failure_in"
         ],
-        "x": 2100,
+        "x": 2070,
         "y": 1430,
         "wires": []
     },
@@ -47114,7 +47114,7 @@
             "tuya_publication_dry_out",
             "tuya_notification_dry_out"
         ],
-        "x": 2630,
+        "x": 2650,
         "y": 1290,
         "wires": [
             [
@@ -47135,7 +47135,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2900,
+        "x": 2880,
         "y": 1290,
         "wires": []
     },
@@ -64017,8 +64017,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 290,
-        "y": 163,
+        "x": 310,
+        "y": 170,
         "wires": [
             [
                 "git_backup_request_out"
@@ -64048,8 +64048,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 290,
-        "y": 233,
+        "x": 310,
+        "y": 240,
         "wires": [
             [
                 "git_backup_request_out"
@@ -64065,8 +64065,8 @@
         "links": [
             "git_backup_retry_out"
         ],
-        "x": 200,
-        "y": 313,
+        "x": 420,
+        "y": 310,
         "wires": [
             [
                 "git_backup_request_out"
@@ -64083,8 +64083,8 @@
         "links": [
             "git_backup_request_in"
         ],
-        "x": 580,
-        "y": 213,
+        "x": 560,
+        "y": 240,
         "wires": []
     },
     {
@@ -64098,8 +64098,8 @@
             "daily_update_dependency_backup_out",
             "daily_update_alexa_media_backup_out"
         ],
-        "x": 814,
-        "y": 150,
+        "x": 830,
+        "y": 140,
         "wires": [
             [
                 "git_backup_request_gate"
@@ -64125,8 +64125,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1014,
-        "y": 150,
+        "x": 1010,
+        "y": 140,
         "wires": [
             [
                 "git_backup_request_dry_out"
@@ -64146,7 +64146,7 @@
         "links": [
             "git_backup_dry_in"
         ],
-        "x": 1224,
+        "x": 1200,
         "y": 130,
         "wires": []
     },
@@ -64160,8 +64160,8 @@
         "links": [
             "git_backup_worker_in"
         ],
-        "x": 1224,
-        "y": 170,
+        "x": 1200,
+        "y": 200,
         "wires": []
     },
     {
@@ -64558,8 +64558,8 @@
         "links": [
             "git_backup_worker_out"
         ],
-        "x": 1694,
-        "y": 592,
+        "x": 1700,
+        "y": 640,
         "wires": [
             [
                 "git_backup_request"
@@ -64579,8 +64579,8 @@
         "winHide": false,
         "oldrc": false,
         "name": "EFEITO: solicitar backup ao host",
-        "x": 1954,
-        "y": 592,
+        "x": 1940,
+        "y": 640,
         "wires": [
             [
                 "git_backup_result_out"
@@ -64603,8 +64603,8 @@
         "links": [
             "git_backup_result_in"
         ],
-        "x": 2248,
-        "y": 600,
+        "x": 2190,
+        "y": 630,
         "wires": []
     },
     {
@@ -64620,8 +64620,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3424,
-        "y": 642,
+        "x": 2540,
+        "y": 700,
         "wires": [
             [
                 "git_backup_notification_direct"
@@ -64638,8 +64638,8 @@
         "links": [
             "git_backup_notification_in"
         ],
-        "x": 3684,
-        "y": 642,
+        "x": 2850,
+        "y": 700,
         "wires": []
     },
     {
@@ -64663,8 +64663,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3424,
-        "y": 712,
+        "x": 2540,
+        "y": 780,
         "wires": [
             [
                 "git_backup_complete_ok"
@@ -64687,8 +64687,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3684,
-        "y": 692,
+        "x": 2820,
+        "y": 770,
         "wires": []
     },
     {
@@ -64704,8 +64704,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3684,
-        "y": 742,
+        "x": 2850,
+        "y": 850,
         "wires": []
     },
     {
@@ -64718,8 +64718,8 @@
             "git_backup_notification_out",
             "git_backup_notification_direct"
         ],
-        "x": 1694,
-        "y": 832,
+        "x": 3070,
+        "y": 700,
         "wires": [
             [
                 "git_backup_notify_primary",
@@ -64761,8 +64761,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1998,
-        "y": 810,
+        "x": 3320,
+        "y": 780,
         "wires": [
             [
                 "git_backup_notify_primary__hub_call"
@@ -64781,8 +64781,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 2278,
-        "y": 810,
+        "x": 3660,
+        "y": 780,
         "wires": [
             []
         ]
@@ -64821,8 +64821,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1998,
-        "y": 890,
+        "x": 3320,
+        "y": 700,
         "wires": [
             [
                 "git_backup_notify_persistent__hub_call"
@@ -64841,8 +64841,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 2278,
-        "y": 890,
+        "x": 3610,
+        "y": 700,
         "wires": [
             []
         ]
@@ -64856,7 +64856,7 @@
         "links": [
             "git_backup_retry_effect_out"
         ],
-        "x": 1698,
+        "x": 1740,
         "y": 970,
         "wires": [
             [
@@ -64882,7 +64882,7 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 1998,
+        "x": 1980,
         "y": 970,
         "wires": [
             [
@@ -64900,7 +64900,7 @@
         "links": [
             "git_backup_retry_in"
         ],
-        "x": 2278,
+        "x": 2230,
         "y": 970,
         "wires": []
     },
@@ -64933,8 +64933,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 186,
-        "y": 713,
+        "x": 180,
+        "y": 710,
         "wires": [
             [
                 "git_backup_test_reset_state"
@@ -64954,8 +64954,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 426,
-        "y": 713,
+        "x": 440,
+        "y": 710,
         "wires": []
     },
     {
@@ -64988,8 +64988,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 216,
-        "y": 783,
+        "x": 240,
+        "y": 780,
         "wires": [
             [
                 "git_backup_test_request_out"
@@ -65006,8 +65006,8 @@
         "links": [
             "git_backup_test_request_in"
         ],
-        "x": 496,
-        "y": 783,
+        "x": 470,
+        "y": 780,
         "wires": []
     },
     {
@@ -65019,7 +65019,7 @@
         "links": [
             "git_backup_test_request_out"
         ],
-        "x": 814,
+        "x": 830,
         "y": 210,
         "wires": [
             [
@@ -65198,8 +65198,8 @@
             "git_backup_dry_out",
             "git_backup_request_dry_out"
         ],
-        "x": 1076,
-        "y": 783,
+        "x": 1100,
+        "y": 780,
         "wires": [
             [
                 "git_backup_dry_run_terminal"
@@ -65219,8 +65219,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1356,
-        "y": 783,
+        "x": 1340,
+        "y": 780,
         "wires": []
     },
     {
@@ -65356,8 +65356,8 @@
         "links": [
             "notification_hub_wire_in_b5cbe7a52037"
         ],
-        "x": 9793,
-        "y": 332,
+        "x": 10690,
+        "y": 300,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify__hub_result",
@@ -65374,8 +65374,8 @@
         "links": [
             "notification_hub_wire_out_b5cbe7a52037"
         ],
-        "x": 11703,
-        "y": 392,
+        "x": 10830,
+        "y": 300,
         "wires": [
             [
                 "storage_notification_ack"
@@ -65397,8 +65397,8 @@
         "links": [
             "notification_hub_wire_in_578212e7a55b"
         ],
-        "x": 9793,
-        "y": 432,
+        "x": 10690,
+        "y": 370,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify__hub_result",
@@ -65415,8 +65415,8 @@
         "links": [
             "notification_hub_wire_out_578212e7a55b"
         ],
-        "x": 11503,
-        "y": 572,
+        "x": 10830,
+        "y": 370,
         "wires": [
             [
                 "storage_notification_failure"
@@ -65438,8 +65438,8 @@
         "links": [
             "notification_hub_wire_in_168dc6db5cd7"
         ],
-        "x": 9793,
-        "y": 492,
+        "x": 10690,
+        "y": 160,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify_secondary__hub_result",
@@ -65456,8 +65456,8 @@
         "links": [
             "notification_hub_wire_out_168dc6db5cd7"
         ],
-        "x": 11703,
-        "y": 492,
+        "x": 10830,
+        "y": 160,
         "wires": [
             [
                 "storage_notification_ack"
@@ -65479,8 +65479,8 @@
         "links": [
             "notification_hub_wire_in_3eb3db66ab38"
         ],
-        "x": 9793,
-        "y": 242,
+        "x": 10690,
+        "y": 230,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify_secondary__hub_result",
@@ -65497,8 +65497,8 @@
         "links": [
             "notification_hub_wire_out_3eb3db66ab38"
         ],
-        "x": 11503,
-        "y": 472,
+        "x": 10830,
+        "y": 230,
         "wires": [
             [
                 "storage_notification_failure"
@@ -65520,8 +65520,8 @@
         "links": [
             "notification_hub_wire_in_0f2bad790b49"
         ],
-        "x": 9793,
-        "y": 552,
+        "x": 10690,
+        "y": 440,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify_persistent__hub_result",
@@ -65538,8 +65538,8 @@
         "links": [
             "notification_hub_wire_out_0f2bad790b49"
         ],
-        "x": 11703,
-        "y": 292,
+        "x": 10830,
+        "y": 440,
         "wires": [
             [
                 "storage_notification_ack"
@@ -65561,8 +65561,8 @@
         "links": [
             "notification_hub_wire_in_6d962ba6b125"
         ],
-        "x": 9793,
-        "y": 152,
+        "x": 10690,
+        "y": 500,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notify_persistent__hub_result",
@@ -65579,8 +65579,8 @@
         "links": [
             "notification_hub_wire_out_6d962ba6b125"
         ],
-        "x": 11503,
-        "y": 372,
+        "x": 10830,
+        "y": 500,
         "wires": [
             [
                 "storage_notification_failure"
@@ -65602,8 +65602,8 @@
         "links": [
             "notification_hub_wire_in_34604f022367"
         ],
-        "x": 9063,
-        "y": 572,
+        "x": 10690,
+        "y": 570,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "storage_notification_catch",
@@ -65620,8 +65620,8 @@
         "links": [
             "notification_hub_wire_out_34604f022367"
         ],
-        "x": 11503,
-        "y": 272,
+        "x": 10830,
+        "y": 570,
         "wires": [
             [
                 "storage_notification_failure"
@@ -66545,8 +66545,8 @@
         "links": [
             "notification_hub_wire_in_0501ea75369a"
         ],
-        "x": 2134,
-        "y": 592,
+        "x": 2190,
+        "y": 700,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "git_backup_request",
@@ -66563,8 +66563,8 @@
         "links": [
             "notification_hub_wire_out_0501ea75369a"
         ],
-        "x": 3244,
-        "y": 642,
+        "x": 2320,
+        "y": 700,
         "wires": [
             [
                 "git_backup_error"
@@ -66586,8 +66586,8 @@
         "links": [
             "notification_hub_wire_in_3a0e38c6f0ed"
         ],
-        "x": 2134,
-        "y": 692,
+        "x": 2190,
+        "y": 780,
         "wires": [],
         "notification_hub_wire_route": {
             "source": "git_backup_request",
@@ -66604,8 +66604,8 @@
         "links": [
             "notification_hub_wire_out_3a0e38c6f0ed"
         ],
-        "x": 3244,
-        "y": 712,
+        "x": 2320,
+        "y": 780,
         "wires": [
             [
                 "git_backup_complete"
