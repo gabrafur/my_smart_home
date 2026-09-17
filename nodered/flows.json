@@ -3479,9 +3479,9 @@
             "zigbee_notify_effect__dismiss_call"
         ],
         "x": 91,
-        "y": 1991,
+        "y": 1999,
         "w": 2534,
-        "h": 832
+        "h": 824
     },
     {
         "id": "grp_zigbee_tests",
@@ -3686,9 +3686,9 @@
             "tuya_notify_effect__dismiss_call"
         ],
         "x": 91,
-        "y": 1661,
+        "y": 1659,
         "w": 2637,
-        "h": 940
+        "h": 942
     },
     {
         "id": "grp_tuya_tests",
@@ -4345,7 +4345,7 @@
         "x": 2174,
         "y": 579,
         "w": 1517,
-        "h": 262
+        "h": 242
     },
     {
         "id": "e53f5ed6c320c591",
@@ -44875,8 +44875,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 980,
-        "y": 210,
+        "x": 1030,
+        "y": 200,
         "wires": [
             [
                 "zigbee_network_cycle_out"
@@ -44896,8 +44896,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1030,
-        "y": 320,
+        "x": 1050,
+        "y": 360,
         "wires": []
     },
     {
@@ -44910,8 +44910,8 @@
         "links": [
             "zigbee_network_cycle_in"
         ],
-        "x": 1160,
-        "y": 250,
+        "x": 1175,
+        "y": 280,
         "wires": []
     },
     {
@@ -46527,8 +46527,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 632,
-        "y": 2032,
+        "x": 710,
+        "y": 2040,
         "wires": []
     },
     {
@@ -46544,8 +46544,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 632,
-        "y": 2082,
+        "x": 710,
+        "y": 2090,
         "wires": []
     },
     {
@@ -46561,8 +46561,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 632,
-        "y": 2132,
+        "x": 710,
+        "y": 2140,
         "wires": []
     },
     {
@@ -48095,8 +48095,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 260,
-        "y": 260,
+        "x": 270,
+        "y": 220,
         "wires": [
             [
                 "tuya_entity_registry"
@@ -48126,8 +48126,8 @@
                 "valueType": "results"
             }
         ],
-        "x": 520,
-        "y": 260,
+        "x": 590,
+        "y": 220,
         "wires": [
             [
                 "tuya_device_registry"
@@ -48157,8 +48157,8 @@
                 "valueType": "results"
             }
         ],
-        "x": 780,
-        "y": 260,
+        "x": 770,
+        "y": 300,
         "wires": [
             [
                 "tuya_states"
@@ -48188,8 +48188,8 @@
                 "valueType": "results"
             }
         ],
-        "x": 1030,
-        "y": 260,
+        "x": 950,
+        "y": 360,
         "wires": [
             [
                 "tuya_snapshot_out"
@@ -48206,8 +48206,8 @@
         "links": [
             "tuya_snapshot_in"
         ],
-        "x": 1170,
-        "y": 260,
+        "x": 1115,
+        "y": 360,
         "wires": []
     },
     {
@@ -49629,8 +49629,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 922,
-        "y": 1702,
+        "x": 1010,
+        "y": 1700,
         "wires": []
     },
     {
@@ -49646,8 +49646,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 922,
-        "y": 1757,
+        "x": 1010,
+        "y": 1755,
         "wires": []
     },
     {
@@ -49663,8 +49663,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 922,
-        "y": 1812,
+        "x": 1010,
+        "y": 1810,
         "wires": []
     },
     {
@@ -49707,8 +49707,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 912,
-        "y": 1942,
+        "x": 970,
+        "y": 1940,
         "wires": [
             [
                 "tuya_publication_dry_out"
@@ -49728,8 +49728,8 @@
         "links": [
             "tuya_mqtt_state_in"
         ],
-        "x": 1172,
-        "y": 1982,
+        "x": 1230,
+        "y": 1980,
         "wires": []
     },
     {
@@ -49759,8 +49759,8 @@
         "links": [
             "tuya_dry_in"
         ],
-        "x": 1172,
-        "y": 1912,
+        "x": 1230,
+        "y": 1910,
         "wires": []
     },
     {
@@ -52674,8 +52674,8 @@
         "links": [
             "global_observer_integration_test_out"
         ],
-        "x": 2535,
-        "y": 800,
+        "x": 2795,
+        "y": 780,
         "wires": [
             [
                 "global_observer_integration_normalize"
@@ -53556,7 +53556,7 @@
         "z": "6b7552efb85343f4",
         "g": "a610d085d27ea80d",
         "name": "Desligar quando o carro confirmar OFF",
-        "func": "const LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst contextKey = (base) => TEST_MODE ? `${base}__test` : base;\nconst lifecycleKey = contextKey(\"security_light_lifecycle_v1\");\nconst lifecycle = TEST_MODE\n    ? flow.get(lifecycleKey) ?? {}\n    : flow.get(lifecycleKey, \"persistent\") ?? {};\nconst now = Date.now();\nconst vehicle = flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {};\nconst physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(physicalObservedAt) &&\n    physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    now - physicalObservedAt <= PHYSICAL_FRESH_MS;\nconst ready = flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true &&\n    physicalFresh;\nif (lifecycle.active_by_arrival !== true || !ready) return null;\n\nconst vehicleEventCanStop = msg.payload?.event === \"turn_off\" ||\n    msg.payload?.event === \"location_update\";\nif (vehicleEventCanStop && vehicle.ready === true &&\n    msg.payload?.vehicle_primary_ready === true &&\n    msg.payload?.vehicle_primary_engine_on === false &&\n    msg.payload?.vehicle_primary_unlocked === true) {\n    msg.payload.off_reason = \"vehicle_primary_desligado_e_destravado\";\n    msg.payload.deadline_type = \"immediate\";\n    return msg;\n}\nreturn null;",
+        "func": "const LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst contextKey = (base) => TEST_MODE ? `${base}__test` : base;\nconst lifecycleKey = contextKey(\"security_light_lifecycle_v1\");\nconst lifecycle = TEST_MODE\n    ? flow.get(lifecycleKey) ?? {}\n    : flow.get(lifecycleKey, \"persistent\") ?? {};\nconst now = Date.now();\nconst vehicle = flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {};\nconst physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(physicalObservedAt) &&\n    physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    now - physicalObservedAt <= PHYSICAL_FRESH_MS;\nconst ready = flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true &&\n    physicalFresh;\nif (lifecycle.active_by_arrival !== true || !ready) return null;\n\n/* Somente um snapshot novo e aceito do próprio veículo pode encerrar o\n * lifecycle. A trava não participa desta decisão: motor OFF confiável já é a\n * evidência de que a viagem terminou, inclusive quando o carro foi trancado. */\nconst acceptedVehicleContext = msg._light_context?.kind === \"vehicle_primary_context\" &&\n    msg._light_context?.accepted === true;\nif (acceptedVehicleContext && vehicle.ready === true &&\n    vehicle.engine_state_valid === true &&\n    msg.payload?.vehicle_primary_ready === true &&\n    msg.payload?.vehicle_primary_engine_state_valid === true &&\n    msg.payload?.vehicle_primary_engine_on === false) {\n    msg.payload.off_reason = \"vehicle_primary_motor_off_confirmado\";\n    msg.payload.deadline_type = \"immediate\";\n    return msg;\n}\nreturn null;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -53577,7 +53577,7 @@
         "z": "6b7552efb85343f4",
         "g": "a610d085d27ea80d",
         "name": "Desativar somente se foi ligado por chegada",
-        "func": "const LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst key = \"security_light_lifecycle_v1\";\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst contextKey = (base) => TEST_MODE ? `${base}__test` : base;\nconst lifecycle = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nconst type = msg.payload?.deadline_type ?? \"immediate\";\n\nif (msg.payload?.recovered === true) {\n    const scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\n    delete scheduled[type];\n    flow.set(\"security_light_recovery_scheduled\", scheduled);\n}\nif (lifecycle.active_by_arrival !== true) return null;\n\n/* O backstop é uma garantia do atuador que já foi ligado pela automação.\n * Ele não depende do frescor de pessoas, veículo ou sol para desligar. */\nif (type === \"backstop\") {\n    const forceOffAt = Number(lifecycle.force_off_at);\n    if (Number.isFinite(forceOffAt) && now < forceOffAt) return null;\n} else {\n    const physical = flow.get(\"security_light_physical_state\");\n    const physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\n    const physicalFresh = Number.isFinite(physicalObservedAt) &&\n        physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n        now - physicalObservedAt <= PHYSICAL_FRESH_MS;\n    const vehicleContext = flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {};\n    const ready = flow.get(\"light_reconciled\") === true && physicalFresh &&\n        type === \"immediate\" && vehicleContext.ready === true &&\n        vehicleContext.engine_state_valid === true &&\n        vehicleContext.engine_on === false && vehicleContext.unlocked === true;\n    if (!ready || physical !== \"on\") return null;\n}\n\nlifecycle.active_by_arrival = false;\nlifecycle.on_since = null;\nlifecycle.force_off_at = null;\nlifecycle.pending_off_at = null;\nlifecycle.pending_off_reason = null;\nlifecycle.pending_off_source = null;\nlifecycle.vehicle_refresh_at = null;\nlifecycle.vehicle_refresh_reason = null;\nlifecycle.vehicle_refresh_source = null;\nlifecycle.cooldown_until = now + Number(LIGHT_POLICY.post_off_cooldown_minutes) * 60000;\nlifecycle.updated_at = now;\nflow.set(key, lifecycle, \"persistent\");\nmsg.payload.off_reason = msg.payload.off_reason ?? msg.payload.reason ?? type;\nif (type === \"backstop\") {\n    msg.payload.backstop_forced = true;\n    node.warn(\"iluminacao_seguranca: backstop venceu; desligamento obrigatório enviado\");\n}\nreturn msg;",
+        "func": "const LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst key = \"security_light_lifecycle_v1\";\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst contextKey = (base) => TEST_MODE ? `${base}__test` : base;\nconst lifecycleKey = contextKey(key);\nconst lifecycle = TEST_MODE\n    ? flow.get(lifecycleKey) ?? {}\n    : flow.get(lifecycleKey, \"persistent\") ?? {};\nconst now = Date.now();\nconst type = msg.payload?.deadline_type ?? \"immediate\";\n\nif (msg.payload?.recovered === true) {\n    const scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\n    delete scheduled[type];\n    flow.set(\"security_light_recovery_scheduled\", scheduled);\n}\nif (lifecycle.active_by_arrival !== true) return null;\n\n/* O backstop é uma garantia do atuador que já foi ligado pela automação.\n * Ele não depende do frescor de pessoas, veículo ou sol para desligar. */\nif (type === \"backstop\") {\n    const forceOffAt = Number(lifecycle.force_off_at);\n    if (Number.isFinite(forceOffAt) && now < forceOffAt) return null;\n} else {\n    const physical = flow.get(\"security_light_physical_state\");\n    const physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\n    const physicalFresh = Number.isFinite(physicalObservedAt) &&\n        physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n        now - physicalObservedAt <= PHYSICAL_FRESH_MS;\n    const vehicleContext = flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {};\n    const ready = flow.get(\"light_reconciled\") === true && physicalFresh &&\n        type === \"immediate\" && vehicleContext.ready === true &&\n        vehicleContext.engine_state_valid === true &&\n        vehicleContext.engine_on === false;\n    if (!ready || physical !== \"on\") return null;\n}\n\nlifecycle.active_by_arrival = false;\nlifecycle.on_since = null;\nlifecycle.force_off_at = null;\nlifecycle.pending_off_at = null;\nlifecycle.pending_off_reason = null;\nlifecycle.pending_off_source = null;\nlifecycle.vehicle_refresh_at = null;\nlifecycle.vehicle_refresh_reason = null;\nlifecycle.vehicle_refresh_source = null;\nlifecycle.cooldown_until = now + Number(LIGHT_POLICY.post_off_cooldown_minutes) * 60000;\nlifecycle.updated_at = now;\nif (TEST_MODE) flow.set(lifecycleKey, lifecycle);\nelse flow.set(lifecycleKey, lifecycle, \"persistent\");\nmsg.payload.off_reason = msg.payload.off_reason ?? msg.payload.reason ?? type;\nif (type === \"backstop\") {\n    msg.payload.backstop_forced = true;\n    node.warn(\"iluminacao_seguranca: backstop venceu; desligamento obrigatório enviado\");\n}\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -54498,7 +54498,8 @@
         "mode": "link",
         "links": [
             "light_arrival_replay_gate_in_v1",
-            "light_arrival_replay_debug_in_v1"
+            "light_arrival_replay_debug_in_v1",
+            "resident_notifications_canonical_in_v1"
         ],
         "x": 2690,
         "y": 1880,
@@ -59361,7 +59362,8 @@
         "name": "Receber security.arrival.v1 real ou sintético",
         "links": [
             "people_location_notification_out_v1",
-            "resident_notifications_test_event_out"
+            "resident_notifications_test_event_out",
+            "light_arrival_replay_route_out_v1"
         ],
         "x": 105,
         "y": 560,
@@ -59377,7 +59379,7 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_input_group",
         "name": "Adaptar estrutura do contrato",
-        "func": "const input = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst source = input.source;\nconst testMode = msg._location_test === true || input.test_mode === true;\nconst numericEventAt = Number(input.event_at);\nconst parsedEventAt = Date.parse(input.event_at ?? \"\");\nconst eventAt = Number.isFinite(numericEventAt) && numericEventAt > 0\n    ? numericEventAt\n    : parsedEventAt;\n\nmsg._location_test = testMode;\nmsg.resident_source = source;\nmsg.arrival_stage = input.arrival_stage;\nmsg.event_at = eventAt;\nmsg.arrival_contract_valid = input.contract === \"security.arrival.v1\";\nmsg.arrival_kind_valid = input.kind === \"arrival\" && input.arrival_source_type === \"person\";\nmsg.arrival_returning = input.arrival_direction === \"returning\";\nmsg.arrival_external_cycle_confirmed = input.external_cycle_confirmed === true;\nmsg.arrival_event_time_valid = Number.isFinite(eventAt) && eventAt > 0;\nmsg.notification_key = [source, input.arrival_stage, eventAt].join(\":\");\nreturn msg;",
+        "func": "const input = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst source = input.source;\nconst testMode = msg._location_test === true || input.test_mode === true;\nconst numericEventAt = Number(input.event_at);\nconst parsedEventAt = Date.parse(input.event_at ?? \"\");\nconst eventAt = Number.isFinite(numericEventAt) && numericEventAt > 0\n    ? numericEventAt\n    : parsedEventAt;\nconst localReturn = input.arrival_stage === \"local_return\" &&\n    input.arrival_direction === \"returning_local_excursion\" &&\n    input.local_excursion_return === true;\n\nmsg._location_test = testMode;\nmsg.resident_source = source;\nmsg.arrival_stage = input.arrival_stage;\nmsg.event_at = eventAt;\nmsg.arrival_contract_valid = input.contract === \"security.arrival.v1\";\nmsg.arrival_kind_valid = input.kind === \"arrival\" && input.arrival_source_type === \"person\";\nmsg.arrival_returning = input.arrival_direction === \"returning\" || localReturn;\nmsg.arrival_external_cycle_confirmed = input.external_cycle_confirmed === true || localReturn;\nmsg.arrival_cycle_confirmed = input.external_cycle_confirmed === true || localReturn;\nmsg.arrival_local_return_valid = localReturn;\nmsg.arrival_event_time_valid = Number.isFinite(eventAt) && eventAt > 0;\nmsg.notification_key = [source, input.arrival_stage, eventAt].join(\":\");\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -59637,8 +59639,8 @@
         "type": "switch",
         "z": "resident_notifications_tab",
         "g": "resident_notifications_decision_group",
-        "name": "Ciclo externo foi confirmado?",
-        "property": "arrival_external_cycle_confirmed",
+        "name": "Ciclo de retorno foi confirmado?",
+        "property": "arrival_cycle_confirmed",
         "propertyType": "msg",
         "rules": [
             {
@@ -59667,8 +59669,8 @@
         "type": "function",
         "z": "resident_notifications_tab",
         "g": "resident_notifications_decision_group",
-        "name": "Bloquear chegada sem ciclo externo",
-        "func": "node.status({\"fill\":\"yellow\",\"shape\":\"ring\",\"text\":\"ciclo externo não confirmado\"});\nreturn null;",
+        "name": "Bloquear chegada sem ciclo confirmado",
+        "func": "node.status({\"fill\":\"yellow\",\"shape\":\"ring\",\"text\":\"ciclo de retorno não confirmado\"});\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -59684,13 +59686,18 @@
         "type": "switch",
         "z": "resident_notifications_tab",
         "g": "resident_notifications_decision_group",
-        "name": "Etapa é approach ou home?",
+        "name": "Etapa é approach, retorno local ou home?",
         "property": "arrival_stage",
         "propertyType": "msg",
         "rules": [
             {
                 "t": "eq",
                 "v": "approach",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "local_return",
                 "vt": "str"
             },
             {
@@ -59704,10 +59711,13 @@
         ],
         "checkall": "true",
         "repair": false,
-        "outputs": 3,
+        "outputs": 4,
         "x": 2630,
         "y": 580,
         "wires": [
+            [
+                "resident_notifications_source_switch"
+            ],
             [
                 "resident_notifications_source_switch"
             ],
@@ -60044,7 +60054,7 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_state_group",
         "name": "Migrar recibos para estado por destinatário",
-        "func": "const testMode = msg._location_test === true;\nconst key = testMode\n    ? \"resident_notification_delivery_v4__test\"\n    : \"resident_notification_delivery_v4\";\nconst current = testMode ? flow.get(key) : flow.get(key, \"persistent\");\nif (current?.version === 4 && typeof current.deliveries === \"object\") return msg;\n\nconst v3 = testMode ? null : flow.get(\"resident_notification_delivery_v3\", \"persistent\");\nconst v2 = testMode ? null : flow.get(\"resident_notification_delivery_v2\", \"persistent\");\nconst previous = v3?.version === 3 ? v3 : v2?.version === 2 ? v2 : null;\nconst deliveries = {};\nfor (const [source, item] of Object.entries(previous?.residents ?? {})) {\n    const recipient = source === \"resident_primary\" ? \"resident_secondary\" : \"resident_primary\";\n    deliveries[source + \":\" + recipient] = {\n        accepted_key: item?.accepted_key ?? item?.delivered_key ?? null,\n        accepted_at: Number(item?.accepted_at ?? item?.delivered_at ?? 0),\n        pending_key: item?.pending_key ?? null,\n        pending_at: Number(item?.pending_at ?? 0)\n    };\n}\nconst migrated = { version: 4, deliveries, updated_at: Date.now() };\nif (testMode) flow.set(key, migrated);\nelse flow.set(key, migrated, \"persistent\");\nreturn msg;",
+        "func": "const testMode = msg._location_test === true;\nconst key = testMode\n    ? \"resident_notification_delivery_v4__test\"\n    : \"resident_notification_delivery_v4\";\nconst current = testMode ? flow.get(key) : flow.get(key, \"persistent\");\nif (current?.version === 4 && typeof current.deliveries === \"object\") return msg;\n\nconst v3 = testMode ? null : flow.get(\"resident_notification_delivery_v3\", \"persistent\");\nconst v2 = testMode ? null : flow.get(\"resident_notification_delivery_v2\", \"persistent\");\nconst previous = v3?.version === 3 ? v3 : v2?.version === 2 ? v2 : null;\nconst deliveries = {};\nfor (const [source, item] of Object.entries(previous?.residents ?? {})) {\n    const recipient = source === \"resident_primary\" ? \"resident_secondary\" : \"resident_primary\";\n    deliveries[source + \":\" + recipient] = {\n        accepted_key: item?.accepted_key ?? item?.delivered_key ?? null,\n        accepted_at: Number(item?.accepted_at ?? item?.delivered_at ?? 0),\n        accepted_stage: null,\n        pending_key: item?.pending_key ?? null,\n        pending_at: Number(item?.pending_at ?? 0)\n    };\n}\nconst migrated = { version: 4, deliveries, updated_at: Date.now() };\nif (testMode) flow.set(key, migrated);\nelse flow.set(key, migrated, \"persistent\");\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -60065,7 +60075,7 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_state_group",
         "name": "Ler recibo e reserva do destinatário",
-        "func": "const testMode = msg._location_test === true;\nconst key = testMode\n    ? \"resident_notification_delivery_v4__test\"\n    : \"resident_notification_delivery_v4\";\nlet state = testMode ? flow.get(key) : flow.get(key, \"persistent\");\nif (!state || state.version !== 4 || typeof state.deliveries !== \"object\") {\n    state = { version: 4, deliveries: {} };\n}\nconst deliveryId = msg.resident_source + \":\" + msg.resident_recipient;\nconst recipient = state.deliveries[deliveryId] ?? {\n    accepted_key: null,\n    accepted_at: 0,\n    pending_key: null,\n    pending_at: 0\n};\nconst now = Date.now();\n\nmsg.notification_state_key = key;\nmsg.notification_delivery_state = state;\nmsg.notification_delivery_id = deliveryId;\nmsg.notification_recipient_state = recipient;\nmsg.notification_duplicate = recipient.accepted_key === msg.notification_key &&\n    Number.isFinite(recipient.accepted_at) &&\n    now - recipient.accepted_at < msg.policy.dedupe_ttl_ms ||\n    recipient.pending_key === msg.notification_key &&\n    Number.isFinite(recipient.pending_at) &&\n    now - recipient.pending_at < msg.policy.service_retry_seconds * 1000;\nreturn msg;",
+        "func": "const testMode = msg._location_test === true;\nconst key = testMode\n    ? \"resident_notification_delivery_v4__test\"\n    : \"resident_notification_delivery_v4\";\nlet state = testMode ? flow.get(key) : flow.get(key, \"persistent\");\nif (!state || state.version !== 4 || typeof state.deliveries !== \"object\") {\n    state = { version: 4, deliveries: {} };\n}\nconst deliveryId = msg.resident_source + \":\" + msg.resident_recipient;\nconst recipient = state.deliveries[deliveryId] ?? {\n    accepted_key: null,\n    accepted_at: 0,\n    accepted_stage: null,\n    pending_key: null,\n    pending_at: 0\n};\nconst now = Date.now();\nconst acceptedRecently = Number.isFinite(recipient.accepted_at) &&\n    now - recipient.accepted_at < msg.policy.dedupe_ttl_ms;\nconst laterHomeForSameArrival = msg.arrival_stage === \"home\" &&\n    [\"approach\", \"local_return\"].includes(recipient.accepted_stage) &&\n    acceptedRecently;\n\nmsg.notification_state_key = key;\nmsg.notification_delivery_state = state;\nmsg.notification_delivery_id = deliveryId;\nmsg.notification_recipient_state = recipient;\nmsg.notification_duplicate = recipient.accepted_key === msg.notification_key &&\n    acceptedRecently || laterHomeForSameArrival ||\n    recipient.pending_key === msg.notification_key &&\n    Number.isFinite(recipient.pending_at) &&\n    now - recipient.pending_at < msg.policy.service_retry_seconds * 1000;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -60555,7 +60565,7 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_output_group",
         "name": "Registrar aceite do Home Assistant",
-        "func": "const stored = flow.get(msg.notification_state_key, \"persistent\");\nconst delivery = stored?.version === 4 ? stored : msg.notification_delivery_state;\nconst recipient = delivery.deliveries[msg.notification_delivery_id] || msg.notification_recipient_state;\nrecipient.accepted_key = msg.notification_key;\nrecipient.accepted_at = Date.now();\nrecipient.pending_key = null;\nrecipient.pending_at = 0;\ndelivery.deliveries[msg.notification_delivery_id] = recipient;\ndelivery.updated_at = Date.now();\nflow.set(msg.notification_state_key, delivery, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"push aceito: \" + msg.resident_recipient });\nreturn null;",
+        "func": "const stored = flow.get(msg.notification_state_key, \"persistent\");\nconst delivery = stored?.version === 4 ? stored : msg.notification_delivery_state;\nconst recipient = delivery.deliveries[msg.notification_delivery_id] || msg.notification_recipient_state;\nrecipient.accepted_key = msg.notification_key;\nrecipient.accepted_at = Date.now();\nrecipient.accepted_stage = msg.arrival_stage;\nrecipient.pending_key = null;\nrecipient.pending_at = 0;\ndelivery.deliveries[msg.notification_delivery_id] = recipient;\ndelivery.updated_at = Date.now();\nflow.set(msg.notification_state_key, delivery, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"push aceito: \" + msg.resident_recipient });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,

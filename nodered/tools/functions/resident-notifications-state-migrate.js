@@ -14,6 +14,7 @@ for (const [source, item] of Object.entries(previous?.residents ?? {})) {
     deliveries[source + ":" + recipient] = {
         accepted_key: item?.accepted_key ?? item?.delivered_key ?? null,
         accepted_at: Number(item?.accepted_at ?? item?.delivered_at ?? 0),
+        accepted_stage: null,
         pending_key: item?.pending_key ?? null,
         pending_at: Number(item?.pending_at ?? 0)
     };

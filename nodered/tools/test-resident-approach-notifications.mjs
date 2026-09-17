@@ -96,6 +96,8 @@ const peopleFinalizer = byId.get("554cb653b2fa4504");
 const peopleClassifier = byId.get("people_location_classify_near_home_v1");
 assert.ok(peopleOut.links.includes(canonicalIn.id));
 assert.ok(canonicalIn.links.includes(peopleOut.id));
+assert.ok(canonicalIn.links.includes("light_arrival_replay_route_out_v1"));
+assert.ok(byId.get("light_arrival_replay_route_out_v1").links.includes(canonicalIn.id));
 assert.ok(canonicalIn.links.includes("resident_notifications_test_event_out"));
 assert.ok(byId.get("resident_notifications_test_event_out").links.includes(canonicalIn.id));
 assert.deepEqual(byId.get("resident_notifications_event_in").links, ["resident_notifications_canonical_out"]);
@@ -199,6 +201,7 @@ assert.equal(message.arrival_contract_valid, true);
 assert.equal(message.arrival_kind_valid, true);
 assert.equal(message.arrival_returning, true);
 assert.equal(message.arrival_external_cycle_confirmed, true);
+assert.equal(message.arrival_cycle_confirmed, true);
 assert.equal(message.arrival_event_time_valid, true);
 assert.equal(message.event_at, NOW);
 message = readState(message, flow, mock, {});
@@ -253,13 +256,47 @@ assert.equal(
   "migração não pode inventar aceite para destinatário que não existia no v3",
 );
 
-let directHome = recipient(normalize(arrival("resident_secondary", "home", 1000), flow, mock, {}), "resident_primary");
+const directHomeFlow = context({ persistent: {
+  resident_notifications_policy_v2: { version: 2, ...defaults },
+} });
+let directHome = recipient(normalize(arrival("resident_secondary", "home", 1000), directHomeFlow, mock, {}), "resident_primary");
 assert.equal(directHome.arrival_stage, "home");
-directHome = readState(directHome, flow, mock, {});
+directHome = readState(directHome, directHomeFlow, mock, {});
 assert.equal(directHome.notification_duplicate, false, "not_home → home deve avisar");
-directHome = reserve(directHome, flow, mock, {});
-directHome = buildMessage(directHome, flow, mock, privateBindings);
+directHome = reserve(directHome, directHomeFlow, mock, {});
+directHome = buildMessage(directHome, directHomeFlow, mock, privateBindings);
 assert.equal(directHome.payload.message, "Example Secondary chegou em casa.");
+
+let localReturn = recipient(normalize(arrival(
+  "resident_secondary",
+  "local_return",
+  2000,
+  false,
+  {
+    arrival_previous_state: "near_home",
+    arrival_direction: "returning_local_excursion",
+    external_cycle_confirmed: false,
+    local_excursion_return: true,
+  },
+), flow, mock, {}), "resident_primary");
+assert.equal(localReturn.arrival_returning, true);
+assert.equal(localReturn.arrival_external_cycle_confirmed, true);
+assert.equal(localReturn.arrival_cycle_confirmed, true);
+assert.equal(localReturn.arrival_local_return_valid, true);
+localReturn = readState(localReturn, flow, mock, {});
+assert.equal(localReturn.notification_duplicate, false,
+  "retorno local em near_home deve gerar um novo aviso");
+localReturn = reserve(localReturn, flow, mock, {});
+localReturn = buildMessage(localReturn, flow, mock, privateBindings);
+assert.equal(localReturn.payload.message, "Example Secondary está perto de casa.");
+assert.equal(acknowledge(localReturn, flow, mock, {}), null);
+
+let localReturnHome = recipient(normalize(arrival(
+  "resident_secondary", "home", 2500,
+), flow, mock, {}), "resident_primary");
+localReturnHome = readState(localReturnHome, flow, mock, {});
+assert.equal(localReturnHome.notification_duplicate, true,
+  "home posterior ao aviso em near_home não deve repetir a mesma chegada");
 
 for (const [overrides, field] of [
   [{ contract: "other.v1" }, "arrival_contract_valid"],

@@ -635,16 +635,32 @@ scenario("10 vehicle_primary desligado ao chegar", () => {
   assert.equal(result.payload.context.in_use, false);
 });
 
-scenario("11 vehicle_primary travado ao chegar nao apaga imediatamente", () => {
-  const decision = run("light_evaluate_off", { payload: { active: true, event: "location_update", vehicle_primary_engine_on: false, vehicle_primary_unlocked: false } }, activeLightFlow(), geoEnv);
-  assert.equal(decision, null);
+scenario("11 motor OFF confiável apaga mesmo com vehicle_primary travado", () => {
+  const flow = activeLightFlow({ vehicle_primary_context_v1: {
+    ready: true, lighting_ready: true, engine_on: false, engine_state_valid: true,
+    unlocked: false, updated_at: Date.now(), home: true, in_use: false,
+  } });
+  const decision = run("light_evaluate_off", {
+    _light_context: { kind: "vehicle_primary_context", accepted: true },
+    payload: { active: true, event: "turn_off", vehicle_primary_ready: true,
+      vehicle_primary_engine_state_valid: true, vehicle_primary_engine_on: false,
+      vehicle_primary_unlocked: false },
+  }, flow, geoEnv);
+  assert.equal(decision.payload.off_reason, "vehicle_primary_motor_off_confirmado");
 });
 
-scenario("12 vehicle_primary destravado em casa apaga apos filtro do evento", () => {
+scenario("12 contexto que não é do vehicle_primary não apaga com OFF antigo", () => {
   const eventNode = byId.get("vehicle_primary_unlock_event");
   assert.equal(eventNode.for, "5");
-  const decision = run("light_evaluate_off", { payload: { active: true, event: "turn_off", vehicle_primary_ready: true, vehicle_primary_engine_on: false, vehicle_primary_unlocked: true } }, activeLightFlow(), geoEnv);
-  assert.equal(decision.payload.off_reason, "vehicle_primary_desligado_e_destravado");
+  const decision = run("light_evaluate_off", {
+    _light_context: { kind: "people_context", accepted: true },
+    payload: { active: true, event: "location_update", vehicle_primary_ready: true,
+      vehicle_primary_engine_state_valid: true, vehicle_primary_engine_on: false,
+      vehicle_primary_unlocked: true },
+  }, activeLightFlow({ vehicle_primary_context_v1: {
+    ready: true, engine_state_valid: true, engine_on: false, unlocked: true,
+  } }), geoEnv);
+  assert.equal(decision, null);
 });
 
 scenario("13 refletor ja ligado antes da chegada", () => {
@@ -690,11 +706,41 @@ scenario("18 somente motor OFF continua desligando imediatamente", () => {
   "posição home do carro não pode iniciar a confirmação extraordinária");
   const immediateFlow = activeLightFlow({ vehicle_primary_context_v1: {
     ready: true, lighting_ready: true, engine_on: false, engine_state_valid: true,
-    unlocked: true, updated_at: Date.now(), home: true, in_use: false,
+    unlocked: false, updated_at: Date.now(), home: true, in_use: false,
   } });
-  const immediate = run("light_evaluate_off", { payload: { event: "turn_off", vehicle_primary_ready: true, vehicle_primary_engine_on: false, vehicle_primary_unlocked: true } }, immediateFlow, geoEnv);
-  assert.equal(immediate.payload.off_reason, "vehicle_primary_desligado_e_destravado");
+  const immediate = run("light_evaluate_off", {
+    _light_context: { kind: "vehicle_primary_context", accepted: true },
+    payload: { event: "turn_off", vehicle_primary_ready: true,
+      vehicle_primary_engine_state_valid: true, vehicle_primary_engine_on: false,
+      vehicle_primary_unlocked: false },
+  }, immediateFlow, geoEnv);
+  assert.equal(immediate.payload.off_reason, "vehicle_primary_motor_off_confirmado");
+  const command = run("light_turn_off_if_active", immediate, immediateFlow, geoEnv);
+  assert(command, "motor OFF confiável deve alcançar o comando mesmo com o carro travado");
+  assert.equal(immediateFlow.get("security_light_lifecycle_v1").active_by_arrival, false);
   assert.equal(byId.get("light_auto_off").timeout, "15");
+});
+
+scenario("18a dry-run de OFF não altera o lifecycle de produção", () => {
+  const now = Date.now();
+  const productionLifecycle = {
+    version: 1, active_by_arrival: true, on_since: now,
+    force_off_at: now + 15 * 60_000, updated_at: now,
+  };
+  const flow = activeLightFlow({
+    security_light_lifecycle_v1: productionLifecycle,
+    security_light_lifecycle_v1__test: structuredClone(productionLifecycle),
+    vehicle_primary_context_v1__test: {
+      ready: true, engine_state_valid: true, engine_on: false, unlocked: false,
+    },
+  });
+  const command = run("light_turn_off_if_active", {
+    _location_test: true,
+    payload: { test_mode: true, deadline_type: "immediate" },
+  }, flow, geoEnv);
+  assert(command);
+  assert.equal(flow.get("security_light_lifecycle_v1__test").active_by_arrival, false);
+  assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, true);
 });
 
 scenario("19 localizacao de resident_primary unknown/unavailable", () => {
@@ -1905,6 +1951,6 @@ scenario("47 decisão canônica publica estado e atributos para o Recorder", () 
     "waiting_location_refresh");
 });
 
-assert.equal(passed.length, 66);
+assert.equal(passed.length, 67);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

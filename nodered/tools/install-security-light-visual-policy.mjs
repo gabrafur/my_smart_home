@@ -248,6 +248,14 @@ for (const [id, x, y] of [["77f539388438547c", 2460, 1560],
   Object.assign(required(id), { g: decision.id, x, y });
   if (!decision.nodes.includes(id)) decision.nodes.push(id);
 }
+const arrivalReplayOut = required("light_arrival_replay_route_out_v1");
+const residentNotificationIn = required("resident_notifications_canonical_in_v1");
+arrivalReplayOut.links = Array.from(new Set([
+  ...(arrivalReplayOut.links ?? []), residentNotificationIn.id,
+]));
+residentNotificationIn.links = Array.from(new Set([
+  ...(residentNotificationIn.links ?? []), arrivalReplayOut.id,
+]));
 linkOut("security_visual_people_refresh_out", decision.id,
   "Atualizar iPhone da chegada", "people_visual_arrival_refresh_in", 2460, 1740);
 required("people_visual_arrival_refresh_in").links = Array.from(new Set([

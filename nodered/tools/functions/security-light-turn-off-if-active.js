@@ -10,7 +10,10 @@ const PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;
 const key = "security_light_lifecycle_v1";
 const TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;
 const contextKey = (base) => TEST_MODE ? `${base}__test` : base;
-const lifecycle = flow.get(key, "persistent") ?? {};
+const lifecycleKey = contextKey(key);
+const lifecycle = TEST_MODE
+    ? flow.get(lifecycleKey) ?? {}
+    : flow.get(lifecycleKey, "persistent") ?? {};
 const now = Date.now();
 const type = msg.payload?.deadline_type ?? "immediate";
 
@@ -36,7 +39,7 @@ if (type === "backstop") {
     const ready = flow.get("light_reconciled") === true && physicalFresh &&
         type === "immediate" && vehicleContext.ready === true &&
         vehicleContext.engine_state_valid === true &&
-        vehicleContext.engine_on === false && vehicleContext.unlocked === true;
+        vehicleContext.engine_on === false;
     if (!ready || physical !== "on") return null;
 }
 
@@ -51,7 +54,8 @@ lifecycle.vehicle_refresh_reason = null;
 lifecycle.vehicle_refresh_source = null;
 lifecycle.cooldown_until = now + Number(LIGHT_POLICY.post_off_cooldown_minutes) * 60000;
 lifecycle.updated_at = now;
-flow.set(key, lifecycle, "persistent");
+if (TEST_MODE) flow.set(lifecycleKey, lifecycle);
+else flow.set(lifecycleKey, lifecycle, "persistent");
 msg.payload.off_reason = msg.payload.off_reason ?? msg.payload.reason ?? type;
 if (type === "backstop") {
     msg.payload.backstop_forced = true;

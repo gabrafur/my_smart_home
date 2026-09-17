@@ -3,6 +3,7 @@ const delivery = stored?.version === 4 ? stored : msg.notification_delivery_stat
 const recipient = delivery.deliveries[msg.notification_delivery_id] || msg.notification_recipient_state;
 recipient.accepted_key = msg.notification_key;
 recipient.accepted_at = Date.now();
+recipient.accepted_stage = msg.arrival_stage;
 recipient.pending_key = null;
 recipient.pending_at = 0;
 delivery.deliveries[msg.notification_delivery_id] = recipient;

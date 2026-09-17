@@ -23,13 +23,17 @@ const ready = flow.get("sun_ready") === true && flow.get("light_reconciled") ===
     physicalFresh;
 if (lifecycle.active_by_arrival !== true || !ready) return null;
 
-const vehicleEventCanStop = msg.payload?.event === "turn_off" ||
-    msg.payload?.event === "location_update";
-if (vehicleEventCanStop && vehicle.ready === true &&
+/* Somente um snapshot novo e aceito do próprio veículo pode encerrar o
+ * lifecycle. A trava não participa desta decisão: motor OFF confiável já é a
+ * evidência de que a viagem terminou, inclusive quando o carro foi trancado. */
+const acceptedVehicleContext = msg._light_context?.kind === "vehicle_primary_context" &&
+    msg._light_context?.accepted === true;
+if (acceptedVehicleContext && vehicle.ready === true &&
+    vehicle.engine_state_valid === true &&
     msg.payload?.vehicle_primary_ready === true &&
-    msg.payload?.vehicle_primary_engine_on === false &&
-    msg.payload?.vehicle_primary_unlocked === true) {
-    msg.payload.off_reason = "vehicle_primary_desligado_e_destravado";
+    msg.payload?.vehicle_primary_engine_state_valid === true &&
+    msg.payload?.vehicle_primary_engine_on === false) {
+    msg.payload.off_reason = "vehicle_primary_motor_off_confirmado";
     msg.payload.deadline_type = "immediate";
     return msg;
 }
