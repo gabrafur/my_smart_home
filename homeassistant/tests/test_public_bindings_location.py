@@ -95,6 +95,20 @@ class PublicLocationObservationTest(unittest.TestCase):
         self.assertIn("er.EVENT_ENTITY_REGISTRY_UPDATED", component)
         self.assertIn("hide_private_targets", component)
 
+    def test_service_is_registered_before_recorder_recovery(self):
+        component = COMPONENT_PATH.read_text(encoding="utf-8")
+        manifest = json.loads(
+            COMPONENT_PATH.with_name("manifest.json").read_text(encoding="utf-8")
+        )
+        registration = component.index("hass.services.async_register(")
+        history_recovery = component.index("_load_location_history,")
+
+        self.assertLess(registration, history_recovery)
+        self.assertIn("await binding_service_ready.wait()", component)
+        self.assertIn("binding_service_ready.set()", component)
+        self.assertIn("await wait_for_recorder()", component)
+        self.assertNotIn("recorder", manifest.get("dependencies", []))
+
     def test_mobile_app_restore_is_not_treated_as_source_heartbeat(self):
         component = COMPONENT_PATH.read_text(encoding="utf-8")
         self.assertIn(

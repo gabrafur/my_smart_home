@@ -11,7 +11,11 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_STATE_CHANGED
+from homeassistant.const import (
+    EVENT_COMPONENT_LOADED,
+    EVENT_HOMEASSISTANT_STARTED,
+    EVENT_STATE_CHANGED,
+)
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
@@ -50,6 +54,7 @@ SERVICE_SCHEMA = vol.Schema(
     }
 )
 STARTUP_SERVICE_WAIT_SECONDS = 30
+RECORDER_STARTUP_WAIT_SECONDS = 30
 LOCATION_ATTRIBUTES = {"gps_accuracy", "latitude", "longitude"}
 LOCATION_HISTORY_WINDOW = timedelta(days=7)
 STARTUP_REPORT_GUARD = timedelta(minutes=1)
@@ -113,6 +118,59 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         for action, binding in role_binding.get("services", {}).items():
             if isinstance(binding, dict) and isinstance(binding.get("target_service"), str):
                 services[(role, action)] = binding
+
+    # Node-RED can reconnect as soon as the Home Assistant websocket accepts
+    # clients, before recorder-backed location recovery below has completed.
+    # Publish the stable service name immediately and hold calls until the
+    # fully initialized handler is ready; otherwise queued notifications fail
+    # spuriously with "Service public_bindings.call not found" during startup.
+    binding_service_ready = asyncio.Event()
+    binding_service_handler = None
+
+    async def dispatch_binding(call: ServiceCall) -> None:
+        await binding_service_ready.wait()
+        handler = binding_service_handler
+        if handler is None:
+            raise HomeAssistantError("Public binding service is unavailable")
+        await handler(call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CALL,
+        dispatch_binding,
+        schema=SERVICE_SCHEMA,
+    )
+
+    async def wait_for_recorder() -> None:
+        if "recorder" in hass.config.components:
+            return
+        recorder_ready = asyncio.Event()
+
+        @callback
+        def component_loaded(event: Any) -> None:
+            if event.data.get("component") == "recorder":
+                recorder_ready.set()
+
+        remove_listener = hass.bus.async_listen(
+            EVENT_COMPONENT_LOADED,
+            component_loaded,
+        )
+        if "recorder" in hass.config.components:
+            recorder_ready.set()
+        try:
+            await asyncio.wait_for(
+                recorder_ready.wait(),
+                timeout=RECORDER_STARTUP_WAIT_SECONDS,
+            )
+        except TimeoutError:
+            _LOGGER.warning(
+                "Recorder was not ready during public binding startup; "
+                "location history recovery will fail closed"
+            )
+        finally:
+            remove_listener()
+
+    await wait_for_recorder()
 
     location_target_ids = {
         target
@@ -324,6 +382,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             blocking=not is_best_effort_notification(domain, data),
         )
 
-    hass.services.async_register(DOMAIN, SERVICE_CALL, call_binding, schema=SERVICE_SCHEMA)
+    binding_service_handler = call_binding
+    binding_service_ready.set()
     hass.data[DOMAIN] = {"entities": tuple(entities), "service_count": len(services)}
     return True

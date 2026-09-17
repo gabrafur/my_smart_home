@@ -1477,6 +1477,78 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
         tasks[0].cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
 
+    async def test_force_refresh_duplicate_br_request_reuses_pending_wake(self):
+        calls = []
+        tasks = []
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+            vehicles = {VEHICLE_ID: SimpleNamespace(last_updated_at=None)}
+
+            @staticmethod
+            def force_refresh_vehicle_state(_vehicle_id):
+                calls.append("wake")
+                error = coordinator_module.APIError("400 Client Error: Bad Request")
+                error.response = SimpleNamespace(
+                    json=lambda: {
+                        "retCode": "F",
+                        "resCode": "4004",
+                        "resMsg": "Duplicate request - Duplicate request",
+                    }
+                )
+                raise error
+
+            @staticmethod
+            def update_vehicle_with_cached_state(_vehicle_id):
+                calls.append("cache")
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+            @staticmethod
+            def async_create_background_task(coro, _name):
+                task = asyncio.create_task(coro)
+                tasks.append(task)
+                return task
+
+        async def no_op():
+            return None
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
+            _br_fresh_data_recheck_tasks={},
+            _br_last_button_wake_at=None,
+            async_check_and_refresh_token=no_op,
+            data={"cached": True},
+            async_set_updated_data=lambda _data: None,
+        )
+        coordinator._br_timestamp_is_fresh = (
+            HyundaiKiaConnectDataUpdateCoordinator._br_timestamp_is_fresh
+        )
+        coordinator._async_recheck_br_fresh_data = MethodType(
+            HyundaiKiaConnectDataUpdateCoordinator._async_recheck_br_fresh_data,
+            coordinator,
+        )
+        coordinator._schedule_br_fresh_data_recheck = MethodType(
+            HyundaiKiaConnectDataUpdateCoordinator._schedule_br_fresh_data_recheck,
+            coordinator,
+        )
+
+        await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+            coordinator, VEHICLE_ID
+        )
+
+        assert calls == ["wake", "cache"]
+        assert len(tasks) == 1
+        tasks[0].cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
     async def test_force_refresh_collects_delayed_br_snapshot_without_new_wake(self):
         calls = []
         tasks = []

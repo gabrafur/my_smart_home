@@ -405,6 +405,19 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             return True
         return bool(re.search(r"\b403\b.*\bForbidden\b", str(err), re.IGNORECASE))
 
+    @staticmethod
+    def _is_br_duplicate_request(err: Exception) -> bool:
+        """Return whether the BR provider coalesced an already-running wake."""
+        response = getattr(err, "response", None)
+        if response is not None:
+            try:
+                payload = response.json()
+            except (TypeError, ValueError):
+                payload = None
+            if isinstance(payload, dict) and str(payload.get("resCode", "")) == "4004":
+                return True
+        return bool(re.search(r"\bDuplicate request\b", str(err), re.IGNORECASE))
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Read service cache without competing with a real vehicle wake."""
         if self._force_refresh_lock.locked():
@@ -770,6 +783,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                     and isinstance(err, APIError)
                     and "did not return fresh data in time" in str(err)
                 )
+                duplicate_request = (
+                    type(api).__name__ == "HyundaiBlueLinkApiBR"
+                    and HyundaiKiaConnectDataUpdateCoordinator._is_br_duplicate_request(
+                        err
+                    )
+                )
                 try:
                     async with self._cache_refresh_lock:
                         await self.hass.async_add_executor_job(
@@ -788,22 +807,23 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                         "Cached vehicle read after force-refresh failure also failed"
                     )
                 self.async_set_updated_data(self.data)
-                if no_fresh_data:
+                if no_fresh_data or duplicate_request:
                     # The BR wake is asynchronous and this vehicle has been
-                    # observed publishing more than two minutes after the
-                    # library's fixed 25-second wait. Keep the service call
-                    # bounded, then re-read /latest in the background without
-                    # issuing another wake. Node-RED still requires the
-                    # semantic vehicle timestamp before declaring success.
+                    # observed publishing after the request returns. A 4004
+                    # means an earlier wake is already running, so it follows
+                    # the same bounded /latest recheck path without issuing a
+                    # competing wake. Node-RED still requires the semantic
+                    # vehicle timestamp before declaring success.
                     self._schedule_br_fresh_data_recheck(
                         vehicle_id,
                         baseline_updated_at,
                         requested_at,
                     )
                     _LOGGER.info(
-                        "CRETA_REFRESH_ACCEPTED_PENDING vehicle_id=%s; "
+                        "CRETA_REFRESH_ACCEPTED_PENDING vehicle_id=%s reason=%s; "
                         "scheduled bounded cached rechecks: %s",
                         vehicle_id,
+                        "duplicate_request" if duplicate_request else "no_fresh_data",
                         err,
                     )
                     # The command was accepted and its bounded follow-up is
