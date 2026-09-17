@@ -4738,7 +4738,7 @@
         "id": "b35563e0f73e5b64",
         "type": "group",
         "z": "ea0a6aa0d24ff863",
-        "name": "3. Localização nativa + fallback dos iPhones (máx. 2/h)",
+        "name": "3. Refresh seletivo: Companion + iCloud (máx. 2/h por morador)",
         "style": {
             "label": true,
             "label-position": "nw",
@@ -4764,7 +4764,21 @@
             "notification_hub_wire_out_6a14668fd8dd",
             "notification_hub_wire_in_6a14668fd8dd",
             "notification_hub_wire_out_ea83b8ce73cb",
-            "notification_hub_wire_in_ea83b8ce73cb"
+            "notification_hub_wire_in_ea83b8ce73cb",
+            "people_visual_vehicle_refresh_recheck",
+            "people_visual_vehicle_refresh_recheck_out",
+            "people_visual_vehicle_refresh_recheck_in",
+            "people_visual_primary_icloud_out",
+            "people_visual_primary_icloud_in",
+            "people_visual_secondary_icloud_out",
+            "people_visual_secondary_icloud_in",
+            "people_visual_primary_icloud_gate",
+            "people_visual_secondary_icloud_gate",
+            "people_visual_primary_icloud_update",
+            "people_visual_secondary_icloud_update",
+            "people_visual_primary_icloud_accepted",
+            "people_visual_secondary_icloud_accepted",
+            "people_visual_icloud_dry_run_terminal"
         ],
         "x": 64,
         "y": 759,
@@ -22100,7 +22114,7 @@
         "z": "c22d8b12055e87f7",
         "g": "vehicle_primary_refresh_policy_group_v1",
         "name": "Escolher presença, chegada armada e motor",
-        "func": "const CONFIG_KEY = \"vehicle_primary_refresh_policy_config_v1\";\nconst PERSISTENT = \"persistent\";\n\nif (msg.payload?.kind !== \"refresh_command\") {\n    return [null, null, null, null, null];\n}\n\nconst config = flow.get(CONFIG_KEY, PERSISTENT);\nconst configReady =\n    config?.version === 1 &&\n    config?.complete === true &&\n    Number.isFinite(Number(config.away_interval_minutes)) &&\n    Number.isFinite(Number(config.arrival_armed_interval_minutes)) &&\n    Number.isFinite(Number(config.approaching_interval_minutes)) &&\n    Number.isFinite(Number(config.home_interval_minutes)) &&\n    Number.isInteger(Number(config.quiet_start_hour)) &&\n    Number.isInteger(Number(config.quiet_end_hour)) &&\n    Number.isInteger(Number(config.in_flight_lease_seconds)) &&\n    Number.isInteger(Number(config.cache_probe_settle_seconds)) &&\n    Number.isFinite(Number(config.provider_backoff_max_hours)) &&\n    Number.isFinite(Number(config.semantic_evidence_window_minutes)) &&\n    Number.isInteger(Number(config.unknown_location_start_hour)) &&\n    Number.isInteger(Number(config.unknown_location_end_hour));\n\nif (!configReady) {\n    node.error(\n        \"Política de refresh não configurada; confira todos os blocos numéricos\",\n        msg\n    );\n    return [null, null, null, null];\n}\n\nconst peopleContext = msg.payload?.test_mode === true\n    ? flow.get(\"people_context_v1__test\") ?? {}\n    : flow.get(\"people_context_v1\") ?? {};\nconst vehicleContext = msg.payload?.test_mode === true\n    ? flow.get(\"vehicle_primary_context_v1__test\") ?? {}\n    : flow.get(\"vehicle_primary_context_v1\") ?? {};\nconst residentPrimaryState = String(\n    msg.payload?.resident_primary_state ??\n    peopleContext.resident_primary?.state ??\n    \"\"\n).toLowerCase();\nconst residentSecondaryState = String(\n    msg.payload?.resident_secondary_state ??\n    peopleContext.resident_secondary?.state ??\n    \"\"\n).toLowerCase();\nconst residentStatesKnown =\n    residentPrimaryState.length > 0 &&\n    residentSecondaryState.length > 0;\nconst anyResidentAway =\n    msg.payload?.any_resident_away === true ||\n    peopleContext.best_location_away === true;\nconst bothResidentsHome =\n    residentPrimaryState === \"home\" &&\n    residentSecondaryState === \"home\" &&\n    !anyResidentAway;\nconst anyoneApproaching =\n    residentPrimaryState === \"near_home\" ||\n    residentSecondaryState === \"near_home\";\n/* O comando chega de outro tab, portanto o contexto local deste canvas não é\n * uma fonte confiável para fatos produzidos por localizacao_pessoas. O\n * contrato conjunto transporta esses fatos explicitamente; o fallback existe\n * apenas para comandos legados e testes isolados. */\nconst arrivalArmed = msg.payload?.people_arrival_armed ??\n    peopleContext.arrival_armed ?? {};\nconst localExcursions = msg.payload?.people_local_excursions ??\n    peopleContext.local_excursions ?? {};\nconst localExcursionActive = (source) => {\n    const item = localExcursions?.[source];\n    const startedAt = Number(item?.started_at);\n    const expiresAt = Number(item?.expires_at);\n    const now = Date.now();\n    return Number.isFinite(startedAt) && startedAt > 0 &&\n        Number.isFinite(expiresAt) && expiresAt >= startedAt &&\n        now <= expiresAt;\n};\nconst armedResidentApproaching =\n    (residentPrimaryState === \"near_home\" && arrivalArmed.resident_primary === true) ||\n    (residentSecondaryState === \"near_home\" && arrivalArmed.resident_secondary === true) ||\n    (residentPrimaryState === \"near_home\" && localExcursionActive(\"resident_primary\")) ||\n    (residentSecondaryState === \"near_home\" && localExcursionActive(\"resident_secondary\"));\nconst arrivalRestartPending = armedResidentApproaching && vehicleContext.engine_on !== true;\nconst anyoneAway =\n    anyResidentAway ||\n    msg.payload?.anyone_away === true ||\n    peopleContext.anyone_away === true ||\n    residentPrimaryState === \"not_home\" ||\n    residentSecondaryState === \"not_home\";\n\nmsg.payload.refresh_policy_version = 1;\nmsg.payload.refresh_policy_config = {\n    away_interval_ms:\n        Number(config.away_interval_minutes) * 60 * 1000,\n    arrival_armed_interval_ms:\n        Number(config.arrival_armed_interval_minutes) * 60 * 1000,\n    approaching_interval_ms:\n        Number(config.approaching_interval_minutes) * 60 * 1000,\n    home_interval_ms:\n        Number(config.home_interval_minutes) * 60 * 1000,\n    quiet_start_hour: Number(config.quiet_start_hour),\n    quiet_end_hour: Number(config.quiet_end_hour),\n    in_flight_lease_ms: Number(config.in_flight_lease_seconds) * 1000,\n    cache_probe_settle_ms: Number(config.cache_probe_settle_seconds) * 1000,\n    provider_backoff_max_ms: Number(config.provider_backoff_max_hours) * 3600000,\n    semantic_evidence_window_ms: Number(config.semantic_evidence_window_minutes) * 60000,\n    unknown_location_start_hour: Number(config.unknown_location_start_hour),\n    unknown_location_end_hour: Number(config.unknown_location_end_hour)\n};\nmsg.payload.refresh_resident_states_known = residentStatesKnown;\nmsg.payload.refresh_any_resident_away = anyResidentAway;\nmsg.payload.refresh_both_residents_home = bothResidentsHome;\nmsg.payload.refresh_anyone_approaching = anyoneApproaching;\nmsg.payload.refresh_arrival_restart_pending = arrivalRestartPending;\nmsg.payload.refresh_anyone_away = anyoneAway;\n\nif (bothResidentsHome) {\n    node.status({\n        fill: \"green\",\n        shape: \"dot\",\n        text: `${config.home_interval_minutes} min — ambos em casa`\n    });\n    return [null, null, null, msg, null];\n}\n\nif (anyoneApproaching) {\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text: arrivalRestartPending\n            ? `${config.arrival_armed_interval_minutes} min — retorno armado, aguardando motor`\n            : `${config.approaching_interval_minutes} min — near_home`\n    });\n    return arrivalRestartPending\n        ? [msg, null, null, null, null]\n        : [null, msg, null, null, null];\n}\n\nif (anyoneAway) {\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text: `${config.away_interval_minutes} min — fora`\n    });\n    return [null, null, msg, null, null];\n}\n\nnode.status({\n    fill: \"grey\",\n    shape: \"ring\",\n    text: `${config.away_interval_minutes} min — presença pendente`\n});\nreturn [null, null, null, null, msg];",
+        "func": "const CONFIG_KEY = \"vehicle_primary_refresh_policy_config_v1\";\nconst PERSISTENT = \"persistent\";\n\nif (msg.payload?.kind !== \"refresh_command\") {\n    return [null, null, null, null, null];\n}\n\nconst config = flow.get(CONFIG_KEY, PERSISTENT);\nconst configReady =\n    config?.version === 1 &&\n    config?.complete === true &&\n    Number.isFinite(Number(config.away_interval_minutes)) &&\n    Number.isFinite(Number(config.arrival_armed_interval_minutes)) &&\n    Number.isFinite(Number(config.approaching_interval_minutes)) &&\n    Number.isFinite(Number(config.home_interval_minutes)) &&\n    Number.isInteger(Number(config.quiet_start_hour)) &&\n    Number.isInteger(Number(config.quiet_end_hour)) &&\n    Number.isInteger(Number(config.in_flight_lease_seconds)) &&\n    Number.isInteger(Number(config.cache_probe_settle_seconds)) &&\n    Number.isFinite(Number(config.provider_backoff_max_hours)) &&\n    Number.isFinite(Number(config.semantic_evidence_window_minutes)) &&\n    Number.isInteger(Number(config.unknown_location_start_hour)) &&\n    Number.isInteger(Number(config.unknown_location_end_hour));\n\nif (!configReady) {\n    node.error(\n        \"Política de refresh não configurada; confira todos os blocos numéricos\",\n        msg\n    );\n    return [null, null, null, null];\n}\n\nconst peopleContext = msg.payload?.test_mode === true\n    ? flow.get(\"people_context_v1__test\") ?? {}\n    : flow.get(\"people_context_v1\") ?? {};\nconst vehicleContext = msg.payload?.test_mode === true\n    ? flow.get(\"vehicle_primary_context_v1__test\") ?? {}\n    : flow.get(\"vehicle_primary_context_v1\") ?? {};\nconst residentPrimaryState = String(\n    msg.payload?.resident_primary_state ??\n    peopleContext.resident_primary?.state ??\n    \"\"\n).toLowerCase();\nconst residentSecondaryState = String(\n    msg.payload?.resident_secondary_state ??\n    peopleContext.resident_secondary?.state ??\n    \"\"\n).toLowerCase();\nconst residentPrimaryReady =\n    msg.payload?.resident_primary_ready === true ||\n    (msg.payload?.resident_primary_ready == null &&\n        peopleContext.resident_primary?.ready === true);\nconst residentSecondaryReady =\n    msg.payload?.resident_secondary_ready === true ||\n    (msg.payload?.resident_secondary_ready == null &&\n        peopleContext.resident_secondary?.ready === true);\nconst residentStatesKnown =\n    residentPrimaryReady &&\n    residentSecondaryReady &&\n    residentPrimaryState.length > 0 &&\n    residentSecondaryState.length > 0;\nconst anyResidentAway =\n    (residentPrimaryReady && residentPrimaryState === \"not_home\") ||\n    (residentSecondaryReady && residentSecondaryState === \"not_home\") ||\n    (msg.payload?.any_resident_away === true &&\n        (residentPrimaryReady || residentSecondaryReady));\nconst bothResidentsHome =\n    residentPrimaryReady &&\n    residentSecondaryReady &&\n    residentPrimaryState === \"home\" &&\n    residentSecondaryState === \"home\" &&\n    !anyResidentAway;\nconst anyoneApproaching =\n    (residentPrimaryReady && residentPrimaryState === \"near_home\") ||\n    (residentSecondaryReady && residentSecondaryState === \"near_home\");\n/* O comando chega de outro tab, portanto o contexto local deste canvas não é\n * uma fonte confiável para fatos produzidos por localizacao_pessoas. O\n * contrato conjunto transporta esses fatos explicitamente; o fallback existe\n * apenas para comandos legados e testes isolados. */\nconst arrivalArmed = msg.payload?.people_arrival_armed ??\n    peopleContext.arrival_armed ?? {};\nconst localExcursions = msg.payload?.people_local_excursions ??\n    peopleContext.local_excursions ?? {};\nconst localExcursionActive = (source) => {\n    const item = localExcursions?.[source];\n    const startedAt = Number(item?.started_at);\n    const expiresAt = Number(item?.expires_at);\n    const now = Date.now();\n    return Number.isFinite(startedAt) && startedAt > 0 &&\n        Number.isFinite(expiresAt) && expiresAt >= startedAt &&\n        now <= expiresAt;\n};\nconst armedResidentApproaching =\n    (residentPrimaryReady && residentPrimaryState === \"near_home\" &&\n        arrivalArmed.resident_primary === true) ||\n    (residentSecondaryReady && residentSecondaryState === \"near_home\" &&\n        arrivalArmed.resident_secondary === true) ||\n    (residentPrimaryReady && residentPrimaryState === \"near_home\" &&\n        localExcursionActive(\"resident_primary\")) ||\n    (residentSecondaryReady && residentSecondaryState === \"near_home\" &&\n        localExcursionActive(\"resident_secondary\"));\nconst arrivalRestartPending = armedResidentApproaching && vehicleContext.engine_on !== true;\nconst anyoneAway =\n    anyResidentAway ||\n    msg.payload?.anyone_away === true ||\n    peopleContext.anyone_away === true;\n\nmsg.payload.refresh_policy_version = 1;\nmsg.payload.refresh_policy_config = {\n    away_interval_ms:\n        Number(config.away_interval_minutes) * 60 * 1000,\n    arrival_armed_interval_ms:\n        Number(config.arrival_armed_interval_minutes) * 60 * 1000,\n    approaching_interval_ms:\n        Number(config.approaching_interval_minutes) * 60 * 1000,\n    home_interval_ms:\n        Number(config.home_interval_minutes) * 60 * 1000,\n    quiet_start_hour: Number(config.quiet_start_hour),\n    quiet_end_hour: Number(config.quiet_end_hour),\n    in_flight_lease_ms: Number(config.in_flight_lease_seconds) * 1000,\n    cache_probe_settle_ms: Number(config.cache_probe_settle_seconds) * 1000,\n    provider_backoff_max_ms: Number(config.provider_backoff_max_hours) * 3600000,\n    semantic_evidence_window_ms: Number(config.semantic_evidence_window_minutes) * 60000,\n    unknown_location_start_hour: Number(config.unknown_location_start_hour),\n    unknown_location_end_hour: Number(config.unknown_location_end_hour)\n};\nmsg.payload.refresh_resident_states_known = residentStatesKnown;\nmsg.payload.refresh_resident_primary_ready = residentPrimaryReady;\nmsg.payload.refresh_resident_secondary_ready = residentSecondaryReady;\nmsg.payload.refresh_any_resident_away = anyResidentAway;\nmsg.payload.refresh_both_residents_home = bothResidentsHome;\nmsg.payload.refresh_anyone_approaching = anyoneApproaching;\nmsg.payload.refresh_arrival_restart_pending = arrivalRestartPending;\nmsg.payload.refresh_anyone_away = anyoneAway;\n\nif (bothResidentsHome) {\n    node.status({\n        fill: \"green\",\n        shape: \"dot\",\n        text: `${config.home_interval_minutes} min — ambos em casa`\n    });\n    return [null, null, null, msg, null];\n}\n\nif (anyoneApproaching) {\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text: arrivalRestartPending\n            ? `${config.arrival_armed_interval_minutes} min — retorno armado, aguardando motor`\n            : `${config.approaching_interval_minutes} min — near_home`\n    });\n    return arrivalRestartPending\n        ? [msg, null, null, null, null]\n        : [null, msg, null, null, null];\n}\n\nif (anyoneAway) {\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text: `${config.away_interval_minutes} min — fora`\n    });\n    return [null, null, msg, null, null];\n}\n\nnode.status({\n    fill: \"grey\",\n    shape: \"ring\",\n    text: `${config.away_interval_minutes} min — presença pendente`\n});\nreturn [null, null, null, null, msg];",
         "outputs": 5,
         "timeout": 0,
         "noerr": 0,
@@ -56812,8 +56826,8 @@
         "z": "ea0a6aa0d24ff863",
         "g": "b35563e0f73e5b64",
         "name": "Atualizar iPhones agora?",
-        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (TEST_MODE) {\n    node.status({\n        fill: \"blue\",\n        shape: \"dot\",\n        text: \"TESTE: refresh físico dos iPhones suprimido\"\n    });\n    return null;\n}\n\nif (msg.payload?.kind !== \"refresh_command\") return null;\n\n/* A saída confirmada de um morador é um gatilho exclusivo do veículo.\n * O próprio evento acabou de trazer a posição do telefone; não duplique\n * essa atualização no Companion App. */\nif (\n    msg.payload?.reason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true\n) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"saída recebida; wake reservado ao vehicle_primary\"\n    });\n    return null;\n}\n\nconst peopleContext = flow.get(\"people_context_v1\") ?? {};\nconst residents = [\n    peopleContext.resident_primary,\n    peopleContext.resident_secondary\n];\nconst contextReady = peopleContext.ready === true;\nconst stationaryHome =\n    residents.length === 2 &&\n    residents.every((resident) => resident?.stationary_home === true);\nconst recoveryNeeded =\n    msg.payload?.people_ready === false ||\n    contextReady !== true;\nconst anyoneAway = peopleContext.anyone_away === true;\n\n/* GPS sem movimento não é falha quando ambas as fontes continuam\n * reportando casa e nenhuma delas traz evidência de afastamento. */\nif (!anyoneAway && (contextReady || stationaryHome)) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: stationaryHome\n            ? \"iPhones ativos e parados em casa\"\n            : \"iPhones ready e todos em casa\"\n    });\n    return null;\n}\n\nif (!recoveryNeeded) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: anyoneAway\n            ? \"posição atual; aguardar eventos nativos\"\n            : \"iPhones ready e todos em casa\"\n    });\n    return null;\n}\n\n/* request_location_update é uma notificação silenciosa de melhor esforço.\n * Use-a somente como recovery: geofences e mudanças significativas do iOS\n * continuam sendo a fonte responsiva para saída e aproximação. */\nconst interval = 30 * 60 * 1000;\n\nconst key = \"security_people_last_refresh_at\";\nlet last = Number(flow.get(key, \"persistent\") ?? 0);\nconst now = Date.now();\nif (!Number.isFinite(last) || last > now + 60 * 1000) last = 0;\n\n/* O inject periódico roda a cada 30 s. Uma diferença de poucos\n * milissegundos entre ticks não deve adiar um ciclo nominal por mais 30 s. */\nconst SCHEDULER_JITTER_TOLERANCE_MS = 500;\nif (now - last < interval - SCHEDULER_JITTER_TOLERANCE_MS) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"refresh iPhones em cooldown\"\n    });\n    return null;\n}\n\nflow.set(key, now, \"persistent\");\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nmsg.payload.people_refresh_recovery = recoveryNeeded;\n\nnode.status({\n    fill: \"green\",\n    shape: \"dot\",\n    text: recoveryNeeded\n        ? \"refresh iPhones: recuperar readiness (máx. 2/h)\"\n        : \"refresh iPhones: pessoas fora\"\n});\n\nreturn msg;",
-        "outputs": 1,
+        "func": "if (msg.payload?.kind !== \"refresh_command\") return null;\n\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\n/* A saída confirmada de um morador é um gatilho exclusivo do veículo.\n * O próprio evento acabou de trazer a posição do telefone; não duplique\n * essa atualização nas fontes de localização. */\nif (\n    msg.payload?.reason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true\n) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"saída recebida; wake reservado ao vehicle_primary\"\n    });\n    return null;\n}\n\nconst peopleContext = flow.get(\n    TEST_MODE ? \"people_context_v1__test\" : \"people_context_v1\"\n) ?? {};\nconst roles = [\"resident_primary\", \"resident_secondary\"];\nconst now = Date.now();\nconst interval = 30 * 60 * 1000;\nconst futureTolerance = 60 * 1000;\nconst jitterTolerance = 500;\nconst stateKey = TEST_MODE\n    ? \"security_people_location_refresh_v2__test\"\n    : \"security_people_location_refresh_v2\";\nconst store = TEST_MODE ? undefined : \"persistent\";\nconst rawState = store ? flow.get(stateKey, store) : flow.get(stateKey);\nconst state = rawState?.version === 2 && rawState.residents &&\n    typeof rawState.residents === \"object\"\n    ? rawState\n    : { version: 2, residents: {} };\nconst legacyLast = TEST_MODE\n    ? 0\n    : Number(flow.get(\"security_people_last_refresh_at\", \"persistent\") ?? 0);\n\nfunction validPast(value) {\n    return Number.isFinite(value) && value >= 0 && value <= now + futureTolerance;\n}\n\nconst outputs = [null, null];\nconst requested = [];\nlet stateChanged = rawState !== state;\n\nfor (const [index, role] of roles.entries()) {\n    const resident = peopleContext[role] ?? {};\n    const observedAt = Number(resident.updated_at);\n    const previous = state.residents[role] &&\n        typeof state.residents[role] === \"object\"\n        ? state.residents[role]\n        : {};\n    const entry = { ...previous };\n    let lastRequestAt = Number(entry.last_request_at);\n    if (!validPast(lastRequestAt)) {\n        lastRequestAt = validPast(legacyLast) ? legacyLast : 0;\n        if (entry.last_request_at !== lastRequestAt) stateChanged = true;\n        entry.last_request_at = lastRequestAt;\n    }\n\n    const requestedObservedAt = Number(entry.observed_at_before_request);\n    if (\n        entry.awaiting_evidence === true &&\n        validPast(observedAt) &&\n        (!validPast(requestedObservedAt) || observedAt > requestedObservedAt)\n    ) {\n        entry.awaiting_evidence = false;\n        entry.last_success_at = observedAt;\n        entry.attempts = 0;\n        stateChanged = true;\n    }\n\n    const stale = resident.ready !== true || resident.stale === true;\n    const stationaryHome = resident.stationary_home === true;\n    const recoveryNeeded =\n        stale &&\n        !stationaryHome &&\n        (msg.payload?.people_ready === false || peopleContext.ready !== true);\n    const cooldownActive = now - lastRequestAt < interval - jitterTolerance;\n\n    if (recoveryNeeded && !cooldownActive) {\n        const attempt = Math.min(10, Number(entry.attempts ?? 0) + 1);\n        entry.last_request_at = now;\n        entry.observed_at_before_request = validPast(observedAt)\n            ? observedAt\n            : null;\n        entry.awaiting_evidence = true;\n        entry.attempts = attempt;\n        stateChanged = true;\n\n        const request = {\n            ...msg,\n            payload: {\n                ...msg.payload,\n                origin: msg.payload.origin ?? \"contexto_chegadas\",\n                people_refresh_recovery: true,\n                refresh_source: role,\n                refresh_attempt: attempt,\n                refresh_requested_at: now,\n                refresh_routes: [\"companion\", \"icloud\"]\n            }\n        };\n        outputs[index] = request;\n        requested.push(role);\n    }\n\n    state.residents[role] = entry;\n}\n\nif (stateChanged) {\n    state.updated_at = now;\n    if (store) flow.set(stateKey, state, store);\n    else flow.set(stateKey, state);\n}\n\nif (requested.length > 0) {\n    node.status({\n        fill: TEST_MODE ? \"blue\" : \"green\",\n        shape: \"dot\",\n        text: (TEST_MODE ? \"TESTE: \" : \"\") +\n            \"refresh seletivo \" + requested.join(\" + \") + \" (máx. 2/h cada)\"\n    });\n    return outputs;\n}\n\nconst allStationaryHome = roles.every(\n    (role) => peopleContext[role]?.stationary_home === true\n);\nnode.status({\n    fill: \"grey\",\n    shape: \"ring\",\n    text: allStationaryHome\n        ? \"fontes ativas e paradas em casa\"\n        : \"sem localização vencida fora do cooldown\"\n});\nreturn null;",
+        "outputs": 2,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -56824,7 +56838,11 @@
         "wires": [
             [
                 "564fdc36031eaef8",
-                "e0b7c0ecf1d8ee28"
+                "people_visual_primary_icloud_out"
+            ],
+            [
+                "e0b7c0ecf1d8ee28",
+                "people_visual_secondary_icloud_out"
             ]
         ]
     },
@@ -57015,10 +57033,12 @@
         "type": "catch",
         "z": "ea0a6aa0d24ff863",
         "g": "b35563e0f73e5b64",
-        "name": "Capturar desconexão transitória dos iPhones",
+        "name": "Capturar falhas do refresh ativo dos iPhones",
         "scope": [
             "564fdc36031eaef8__hub_call",
-            "e0b7c0ecf1d8ee28__hub_call"
+            "e0b7c0ecf1d8ee28__hub_call",
+            "people_visual_primary_icloud_update",
+            "people_visual_secondary_icloud_update"
         ],
         "uncaught": false,
         "x": 3052,
@@ -57051,7 +57071,7 @@
         "type": "link in",
         "z": "ea0a6aa0d24ff863",
         "g": "b35563e0f73e5b64",
-        "name": "Sincronizar trackers após refresh do vehicle_primary",
+        "name": "Reavaliar trackers após refresh do vehicle_primary",
         "links": [
             "eb4b8a519ab0bc28"
         ],
@@ -57059,8 +57079,7 @@
         "y": 800,
         "wires": [
             [
-                "564fdc36031eaef8",
-                "e0b7c0ecf1d8ee28"
+                "people_visual_vehicle_refresh_recheck"
             ]
         ]
     },
@@ -58339,10 +58358,12 @@
         "y": 1030,
         "wires": [
             [
-                "564fdc36031eaef8"
+                "564fdc36031eaef8",
+                "people_visual_primary_icloud_out"
             ],
             [
-                "e0b7c0ecf1d8ee28"
+                "e0b7c0ecf1d8ee28",
+                "people_visual_secondary_icloud_out"
             ]
         ]
     },
@@ -58843,7 +58864,7 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 3695,
+        "x": 3780,
         "y": 640,
         "wires": [
             [
@@ -63179,7 +63200,7 @@
         "z": "62bb822e033d1623",
         "g": "arrival_context_departure_group",
         "name": "Persistir dedupe e montar comando",
-        "func": "const record = { key: msg.departure_signature, at: msg.context_now };\nif (msg._location_test === true) flow.set(msg.departure_key, record);\nelse flow.set(msg.departure_key, record, \"persistent\");\nconst people = msg.payload.context || {};\nconst vehicleKey = msg._location_test === true ? \"vehicle_primary_context_v1__test\" : \"vehicle_primary_context_v1\";\nconst vehicle = flow.get(vehicleKey) || {};\nmsg.context_departure_selected = true;\nmsg.context_departure_command = {\n    contract: \"security.refresh-command.v1\", kind: \"refresh_command\",\n    reason: \"resident_departure\", recovery_reason: \"resident_departure\",\n    resident_departure_force: true, departure_source: msg.departure_source,\n    departure_state: msg.payload.trigger_state, departure_event_at: msg.departure_event_at,\n    resident_primary_state: people.resident_primary?.state ?? null,\n    resident_secondary_state: people.resident_secondary?.state ?? null,\n    any_resident_away: people.best_location_away === true,\n    people_ready: msg.payload.ready === true, vehicle_primary_ready: vehicle.ready === true,\n    force_recovery: true, origin: \"resident_departure_transition\", issued_at: msg.context_now,\n    ...(msg._location_test === true ? { test_mode: true, test_case: msg._location_test_case } : {})\n};\nreturn [{ ...msg, payload: msg.context_departure_command }, msg];",
+        "func": "const record = { key: msg.departure_signature, at: msg.context_now };\nif (msg._location_test === true) flow.set(msg.departure_key, record);\nelse flow.set(msg.departure_key, record, \"persistent\");\nconst people = msg.payload.context || {};\nconst vehicleKey = msg._location_test === true ? \"vehicle_primary_context_v1__test\" : \"vehicle_primary_context_v1\";\nconst vehicle = flow.get(vehicleKey) || {};\nmsg.context_departure_selected = true;\nmsg.context_departure_command = {\n    contract: \"security.refresh-command.v1\", kind: \"refresh_command\",\n    reason: \"resident_departure\", recovery_reason: \"resident_departure\",\n    resident_departure_force: true, departure_source: msg.departure_source,\n    departure_state: msg.payload.trigger_state, departure_event_at: msg.departure_event_at,\n    resident_primary_state: people.resident_primary?.state ?? null,\n    resident_secondary_state: people.resident_secondary?.state ?? null,\n    resident_primary_ready: people.resident_primary?.ready === true,\n    resident_secondary_ready: people.resident_secondary?.ready === true,\n    any_resident_away: people.anyone_away === true,\n    people_ready: msg.payload.ready === true, vehicle_primary_ready: vehicle.ready === true,\n    force_recovery: true, origin: \"resident_departure_transition\", issued_at: msg.context_now,\n    ...(msg._location_test === true ? { test_mode: true, test_case: msg._location_test_case } : {})\n};\nreturn [{ ...msg, payload: msg.context_departure_command }, msg];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -63909,7 +63930,7 @@
         "z": "62bb822e033d1623",
         "g": "arrival_context_pending_group",
         "name": "Montar contrato conjunto",
-        "func": "const pending = msg.context_pending;\nconst people = msg.context_people;\nconst vehicle = msg.context_vehicle;\nconst testMode = msg._location_test === true;\nmsg.payload = {\n    contract: \"security.refresh-command.v1\", kind: \"refresh_command\",\n    refresh_cycle_id: pending.cycle,\n    anyone_away: people.anyone_away === true || vehicle.away === true,\n    resident_primary_state: people.resident_primary?.state ?? null,\n    resident_secondary_state: people.resident_secondary?.state ?? null,\n    any_resident_away: people.best_location_away === true,\n    people_arrival_armed: { ...(people.arrival_armed ?? {}) },\n    people_local_excursions: { ...(people.local_excursions ?? {}) },\n    people_ready: pending.people_ready === true,\n    people_recovery_needed: msg.context_people_recovery_needed,\n    vehicle_primary_ready: pending.vehicle_primary_ready === true,\n    contexts_ready: msg.context_contexts_ready,\n    recovery_needed: msg.context_recovery_needed,\n    force_recovery: pending.force_recovery === true,\n    require_lighting_ready: pending.require_lighting_ready === true,\n    resident_arrival_force: pending.resident_arrival_force === true,\n    arrival_source: pending.arrival_source ?? null,\n    arrival_stage: pending.arrival_stage ?? null,\n    recovery_reason: msg.context_recovery_reason,\n    origin: \"contexto_chegadas\",\n    reason: pending.request_reason || (testMode\n        ? (msg.context_recovery_needed ? \"test_readiness_recovery_needed\" : \"paired_ready_test_snapshots\")\n        : (msg.context_recovery_needed ? msg.context_recovery_reason : \"paired_ready_snapshots\")),\n    issued_at: msg.context_now,\n    ready: msg.context_contexts_ready,\n    rejected_snapshot_reason: msg.context_rejected_reason || null,\n    ...(testMode ? { test_mode: true, test_case: msg._location_test_case } : {})\n};\nreturn msg;",
+        "func": "const pending = msg.context_pending;\nconst people = msg.context_people;\nconst vehicle = msg.context_vehicle;\nconst testMode = msg._location_test === true;\nmsg.payload = {\n    contract: \"security.refresh-command.v1\", kind: \"refresh_command\",\n    refresh_cycle_id: pending.cycle,\n    anyone_away: people.anyone_away === true || vehicle.away === true,\n    resident_primary_state: people.resident_primary?.state ?? null,\n    resident_secondary_state: people.resident_secondary?.state ?? null,\n    resident_primary_ready: people.resident_primary?.ready === true,\n    resident_secondary_ready: people.resident_secondary?.ready === true,\n    any_resident_away: people.anyone_away === true,\n    people_arrival_armed: { ...(people.arrival_armed ?? {}) },\n    people_local_excursions: { ...(people.local_excursions ?? {}) },\n    people_ready: pending.people_ready === true,\n    people_recovery_needed: msg.context_people_recovery_needed,\n    vehicle_primary_ready: pending.vehicle_primary_ready === true,\n    contexts_ready: msg.context_contexts_ready,\n    recovery_needed: msg.context_recovery_needed,\n    force_recovery: pending.force_recovery === true,\n    require_lighting_ready: pending.require_lighting_ready === true,\n    resident_arrival_force: pending.resident_arrival_force === true,\n    arrival_source: pending.arrival_source ?? null,\n    arrival_stage: pending.arrival_stage ?? null,\n    recovery_reason: msg.context_recovery_reason,\n    origin: \"contexto_chegadas\",\n    reason: pending.request_reason || (testMode\n        ? (msg.context_recovery_needed ? \"test_readiness_recovery_needed\" : \"paired_ready_test_snapshots\")\n        : (msg.context_recovery_needed ? msg.context_recovery_reason : \"paired_ready_snapshots\")),\n    issued_at: msg.context_now,\n    ready: msg.context_contexts_ready,\n    rejected_snapshot_reason: msg.context_rejected_reason || null,\n    ...(testMode ? { test_mode: true, test_case: msg._location_test_case } : {})\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -69554,5 +69575,282 @@
         "x": 3055,
         "y": 130,
         "wires": []
+    },
+    {
+        "id": "people_visual_vehicle_refresh_recheck",
+        "type": "function",
+        "name": "Converter sync em reavaliação com cooldown",
+        "func": "msg.payload = {\n    ...(msg.payload && typeof msg.payload === \"object\" ? msg.payload : {}),\n    kind: \"refresh_command\",\n    origin: \"contexto_vehicle_primary\",\n    reason: \"vehicle_primary_refresh_completed\"\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 800,
+        "wires": [
+            [
+                "people_visual_vehicle_refresh_recheck_out"
+            ]
+        ],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_vehicle_refresh_recheck_out",
+        "type": "link out",
+        "name": "Reavaliar → decisão seletiva",
+        "mode": "link",
+        "links": [
+            "people_visual_vehicle_refresh_recheck_in"
+        ],
+        "x": 900,
+        "y": 800,
+        "wires": [],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_vehicle_refresh_recheck_in",
+        "type": "link in",
+        "name": "Receber reavaliação do vehicle_primary",
+        "links": [
+            "people_visual_vehicle_refresh_recheck_out"
+        ],
+        "x": 100,
+        "y": 850,
+        "wires": [
+            [
+                "402fd0cc609443b7"
+            ]
+        ],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_primary_icloud_out",
+        "type": "link out",
+        "name": "resident_primary → iCloud",
+        "mode": "link",
+        "links": [
+            "people_visual_primary_icloud_in"
+        ],
+        "x": 480,
+        "y": 850,
+        "wires": [],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_primary_icloud_in",
+        "type": "link in",
+        "name": "Receber refresh iCloud de resident_primary",
+        "links": [
+            "people_visual_primary_icloud_out"
+        ],
+        "x": 1320,
+        "y": 820,
+        "wires": [
+            [
+                "people_visual_primary_icloud_gate"
+            ]
+        ],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_secondary_icloud_out",
+        "type": "link out",
+        "name": "resident_secondary → iCloud",
+        "mode": "link",
+        "links": [
+            "people_visual_secondary_icloud_in"
+        ],
+        "x": 700,
+        "y": 1030,
+        "wires": [],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_secondary_icloud_in",
+        "type": "link in",
+        "name": "Receber refresh iCloud de resident_secondary",
+        "links": [
+            "people_visual_secondary_icloud_out"
+        ],
+        "x": 1320,
+        "y": 1000,
+        "wires": [
+            [
+                "people_visual_secondary_icloud_gate"
+            ]
+        ],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_primary_icloud_gate",
+        "type": "function",
+        "name": "Produção ou dry-run do iCloud primary?",
+        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nmsg.payload = {\n    ...(msg.payload && typeof msg.payload === \"object\" ? msg.payload : {}),\n    location_refresh_provider: \"icloud\"\n};\n\nif (TEST_MODE) {\n    msg.payload.simulated = true;\n    msg.payload.dispatched = false;\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1580,
+        "y": 820,
+        "wires": [
+            [
+                "people_visual_primary_icloud_update"
+            ],
+            [
+                "people_visual_icloud_dry_run_terminal"
+            ]
+        ],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_secondary_icloud_gate",
+        "type": "function",
+        "name": "Produção ou dry-run do iCloud secondary?",
+        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nmsg.payload = {\n    ...(msg.payload && typeof msg.payload === \"object\" ? msg.payload : {}),\n    location_refresh_provider: \"icloud\"\n};\n\nif (TEST_MODE) {\n    msg.payload.simulated = true;\n    msg.payload.dispatched = false;\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1580,
+        "y": 1000,
+        "wires": [
+            [
+                "people_visual_secondary_icloud_update"
+            ],
+            [
+                "people_visual_icloud_dry_run_terminal"
+            ]
+        ],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_primary_icloud_update",
+        "type": "api-call-service",
+        "name": "EFEITO: atualizar localização iCloud primary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"resident_primary\",\"action\":\"refresh_location\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "first",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1900,
+        "y": 820,
+        "wires": [
+            [
+                "people_visual_primary_icloud_accepted"
+            ]
+        ],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_secondary_icloud_update",
+        "type": "api-call-service",
+        "name": "EFEITO: atualizar localização iCloud secondary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"resident_secondary\",\"action\":\"refresh_location\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "first",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1900,
+        "y": 1000,
+        "wires": [
+            [
+                "people_visual_secondary_icloud_accepted"
+            ]
+        ],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_primary_icloud_accepted",
+        "type": "function",
+        "name": "Aguardar evidência nova de resident_primary",
+        "func": "node.status({\n    fill: \"green\",\n    shape: \"dot\",\n    text: \"iCloud aceitou o pedido; aguardando posição nova\"\n});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2200,
+        "y": 820,
+        "wires": [],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_secondary_icloud_accepted",
+        "type": "function",
+        "name": "Aguardar evidência nova de resident_secondary",
+        "func": "node.status({\n    fill: \"green\",\n    shape: \"dot\",\n    text: \"iCloud aceitou o pedido; aguardando posição nova\"\n});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2200,
+        "y": 1000,
+        "wires": [],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_icloud_dry_run_terminal",
+        "type": "function",
+        "name": "TESTE FINAL: iCloud não acionado",
+        "func": "msg.payload = {\n    ...(msg.payload && typeof msg.payload === \"object\" ? msg.payload : {}),\n    simulated: true,\n    dispatched: false,\n    effect: \"icloud.update\"\n};\nnode.status({\n    fill: \"blue\",\n    shape: \"dot\",\n    text: \"TESTE: iCloud não acionado\"\n});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1900,
+        "y": 920,
+        "wires": [],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
     }
 ]

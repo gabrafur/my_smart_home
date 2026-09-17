@@ -46,19 +46,33 @@ const residentSecondaryState = String(
     peopleContext.resident_secondary?.state ??
     ""
 ).toLowerCase();
+const residentPrimaryReady =
+    msg.payload?.resident_primary_ready === true ||
+    (msg.payload?.resident_primary_ready == null &&
+        peopleContext.resident_primary?.ready === true);
+const residentSecondaryReady =
+    msg.payload?.resident_secondary_ready === true ||
+    (msg.payload?.resident_secondary_ready == null &&
+        peopleContext.resident_secondary?.ready === true);
 const residentStatesKnown =
+    residentPrimaryReady &&
+    residentSecondaryReady &&
     residentPrimaryState.length > 0 &&
     residentSecondaryState.length > 0;
 const anyResidentAway =
-    msg.payload?.any_resident_away === true ||
-    peopleContext.best_location_away === true;
+    (residentPrimaryReady && residentPrimaryState === "not_home") ||
+    (residentSecondaryReady && residentSecondaryState === "not_home") ||
+    (msg.payload?.any_resident_away === true &&
+        (residentPrimaryReady || residentSecondaryReady));
 const bothResidentsHome =
+    residentPrimaryReady &&
+    residentSecondaryReady &&
     residentPrimaryState === "home" &&
     residentSecondaryState === "home" &&
     !anyResidentAway;
 const anyoneApproaching =
-    residentPrimaryState === "near_home" ||
-    residentSecondaryState === "near_home";
+    (residentPrimaryReady && residentPrimaryState === "near_home") ||
+    (residentSecondaryReady && residentSecondaryState === "near_home");
 /* O comando chega de outro tab, portanto o contexto local deste canvas não é
  * uma fonte confiável para fatos produzidos por localizacao_pessoas. O
  * contrato conjunto transporta esses fatos explicitamente; o fallback existe
@@ -77,17 +91,19 @@ const localExcursionActive = (source) => {
         now <= expiresAt;
 };
 const armedResidentApproaching =
-    (residentPrimaryState === "near_home" && arrivalArmed.resident_primary === true) ||
-    (residentSecondaryState === "near_home" && arrivalArmed.resident_secondary === true) ||
-    (residentPrimaryState === "near_home" && localExcursionActive("resident_primary")) ||
-    (residentSecondaryState === "near_home" && localExcursionActive("resident_secondary"));
+    (residentPrimaryReady && residentPrimaryState === "near_home" &&
+        arrivalArmed.resident_primary === true) ||
+    (residentSecondaryReady && residentSecondaryState === "near_home" &&
+        arrivalArmed.resident_secondary === true) ||
+    (residentPrimaryReady && residentPrimaryState === "near_home" &&
+        localExcursionActive("resident_primary")) ||
+    (residentSecondaryReady && residentSecondaryState === "near_home" &&
+        localExcursionActive("resident_secondary"));
 const arrivalRestartPending = armedResidentApproaching && vehicleContext.engine_on !== true;
 const anyoneAway =
     anyResidentAway ||
     msg.payload?.anyone_away === true ||
-    peopleContext.anyone_away === true ||
-    residentPrimaryState === "not_home" ||
-    residentSecondaryState === "not_home";
+    peopleContext.anyone_away === true;
 
 msg.payload.refresh_policy_version = 1;
 msg.payload.refresh_policy_config = {
@@ -109,6 +125,8 @@ msg.payload.refresh_policy_config = {
     unknown_location_end_hour: Number(config.unknown_location_end_hour)
 };
 msg.payload.refresh_resident_states_known = residentStatesKnown;
+msg.payload.refresh_resident_primary_ready = residentPrimaryReady;
+msg.payload.refresh_resident_secondary_ready = residentSecondaryReady;
 msg.payload.refresh_any_resident_away = anyResidentAway;
 msg.payload.refresh_both_residents_home = bothResidentsHome;
 msg.payload.refresh_anyone_approaching = anyoneApproaching;

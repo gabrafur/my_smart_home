@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
+import { installPeopleLocationRefresh } from "./install-people-location-refresh.mjs";
 
 const flowPath = new URL("../flows.json", import.meta.url);
 const outputPath = process.env.NODE_RED_FLOW_OUTPUT
@@ -2234,10 +2235,7 @@ flows.push(
   },
 );
 
-const syncIn = requiredByName("Sincronizar trackers após refresh do vehicle_primary");
-const refreshPrimary = requiredByName("Solicitar localização do iPhone resident_primary");
-const refreshSecondary = requiredByName("Solicitar localização do iPhone resident_secondary");
-syncIn.wires = [[refreshPrimary.id, refreshSecondary.id]];
+installPeopleLocationRefresh(flows);
 
 // Reorganize os grupos existentes sem misturar a política e a seleção.
 const eventGroup = flows.find((node) => node.id === primaryEvent.g);

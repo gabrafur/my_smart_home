@@ -499,9 +499,19 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
 
 {
   const sync = byId.get("555422f47d3a742b");
+  assert.deepEqual(sync.wires, [["people_visual_vehicle_refresh_recheck"]]);
   assert.deepEqual(
-    new Set(sync.wires[0]),
-    new Set(["564fdc36031eaef8", "e0b7c0ecf1d8ee28"]),
+    byId.get("people_visual_vehicle_refresh_recheck_in").wires,
+    [["402fd0cc609443b7"]],
+  );
+  assert.equal(byId.get("402fd0cc609443b7").outputs, 2);
+  assert.match(
+    byId.get("people_visual_primary_icloud_update").data,
+    /"role":"resident_primary","action":"refresh_location"/,
+  );
+  assert.match(
+    byId.get("people_visual_secondary_icloud_update").data,
+    /"role":"resident_secondary","action":"refresh_location"/,
   );
   const notificationTab = byId.get("resident_notifications_tab");
   assert.equal(

@@ -43,6 +43,14 @@
             "longitude"
           ]
         }
+      },
+      "services": {
+        "refresh_location": {
+          "target_service": "icloud.update",
+          "location_refresh_provider": "icloud",
+          "location_refresh_public_entity_id": "device_tracker.mobile_primary_source_2",
+          "data": { "account": "primary@example.invalid" }
+        }
       }
     },
     "resident_secondary": {
@@ -86,6 +94,14 @@
             "latitude",
             "longitude"
           ]
+        }
+      },
+      "services": {
+        "refresh_location": {
+          "target_service": "icloud.update",
+          "location_refresh_provider": "icloud",
+          "location_refresh_public_entity_id": "device_tracker.mobile_secondary_source_2",
+          "data": { "account": "secondary@example.invalid" }
         }
       }
     },

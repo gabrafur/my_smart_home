@@ -75,7 +75,8 @@ const LOCATION_POLICY = {
   vehicle_recovery_hours: 24,
 };
 
-assert.match(code.policy, /peopleContext\.best_location_away === true/);
+assert.match(code.policy, /residentSecondaryReady && residentSecondaryState === "near_home"/);
+assert.doesNotMatch(code.policy, /peopleContext\.best_location_away === true/);
 assert.doesNotMatch(code.policy, /peopleContext\.any_tracker_away/);
 assert.doesNotMatch(code.accepted, /AWAY_INTERVAL_MS|HOME_INTERVAL_MS/);
 assert.doesNotMatch(code.error, /\[15 \* 60 \* 1000, 30 \* 60 \* 1000\]/);
@@ -194,14 +195,20 @@ function readyContext(at) {
 function command(overrides = {}) {
   const primary = String(overrides.resident_primary_state ?? "").toLowerCase();
   const secondary = String(overrides.resident_secondary_state ?? "").toLowerCase();
+  const primaryReady = overrides.resident_primary_ready ?? primary.length > 0;
+  const secondaryReady = overrides.resident_secondary_ready ?? secondary.length > 0;
   const anyResidentAway = overrides.any_resident_away === true;
-  const bothHome = primary === "home" && secondary === "home" && !anyResidentAway;
+  const bothHome = primaryReady && secondaryReady &&
+    primary === "home" && secondary === "home" && !anyResidentAway;
   const awayStates = new Set(["not_home", "near_home"]);
   const anyoneAwayOrApproaching =
     anyResidentAway ||
     overrides.anyone_away === true ||
-    awayStates.has(primary) ||
-    awayStates.has(secondary);
+    (primaryReady && awayStates.has(primary)) ||
+    (secondaryReady && awayStates.has(secondary));
+  const anyoneApproaching =
+    (primaryReady && primary === "near_home") ||
+    (secondaryReady && secondary === "near_home");
   const arrivalRestartPending = overrides.refresh_arrival_restart_pending === true;
   return {
     payload: {
@@ -224,23 +231,25 @@ function command(overrides = {}) {
         unknown_location_start_hour: 7,
         unknown_location_end_hour: 22,
       },
-      refresh_resident_states_known: primary.length > 0 && secondary.length > 0,
+      refresh_resident_states_known: primaryReady && secondaryReady &&
+        primary.length > 0 && secondary.length > 0,
+      refresh_resident_primary_ready: primaryReady,
+      refresh_resident_secondary_ready: secondaryReady,
       refresh_both_residents_home: bothHome,
-      refresh_anyone_approaching:
-        primary === "near_home" || secondary === "near_home",
+      refresh_anyone_approaching: anyoneApproaching,
       refresh_arrival_restart_pending: arrivalRestartPending,
       refresh_anyone_away: anyoneAwayOrApproaching,
       refresh_interval_ms:
         arrivalRestartPending
           ? 1 * 60_000
-          : primary === "near_home" || secondary === "near_home"
+          : anyoneApproaching
             ? 5 * 60_000
           : bothHome ? 30 * 60_000 : 15 * 60_000,
       refresh_interval_policy: arrivalRestartPending
         ? "arrival_armed_engine_pending"
         : bothHome
           ? "both_home"
-        : primary === "near_home" || secondary === "near_home"
+        : anyoneApproaching
           ? "approaching"
           : anyoneAwayOrApproaching
             ? "away"
@@ -413,6 +422,8 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
       kind: "refresh_command",
       resident_primary_state: "home",
       resident_secondary_state: "home",
+      resident_primary_ready: true,
+      resident_secondary_ready: true,
     } },
   });
   assert.equal(selected[0], null);
@@ -469,6 +480,8 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
       kind: "refresh_command",
       resident_primary_state: "home",
       resident_secondary_state: "near_home",
+      resident_primary_ready: true,
+      resident_secondary_ready: true,
     } },
   });
   assert.equal(approaching[0], null);
@@ -628,6 +641,61 @@ scenario("28 estado near_home usa intervalo de 5 minutos", () => {
   assert.equal(store.get(KEY).interval_policy, "approaching");
 });
 
+scenario("28a near_home stale não acelera o refresh do veículo", () => {
+  const store = memory({
+    [POLICY_KEY]: {
+      version: 1,
+      complete: true,
+      arrival_armed_interval_minutes: 1,
+      approaching_interval_minutes: 5,
+      away_interval_minutes: 15,
+      home_interval_minutes: 30,
+      quiet_start_hour: 0,
+      quiet_end_hour: 6,
+      in_flight_lease_seconds: 120,
+      cache_probe_settle_seconds: 15,
+      provider_backoff_max_hours: 6,
+      semantic_evidence_window_minutes: 20,
+      unknown_location_start_hour: 7,
+      unknown_location_end_hour: 22,
+    },
+    vehicle_primary_context_v1: { ready: false },
+  });
+  const selected = execute(code.policy, {
+    now: NIGHT,
+    store,
+    msg: { payload: {
+      kind: "refresh_command",
+      resident_primary_state: "home",
+      resident_secondary_state: "near_home",
+      resident_primary_ready: true,
+      resident_secondary_ready: false,
+      people_ready: false,
+      vehicle_primary_ready: false,
+      recovery_needed: true,
+    } },
+  });
+  assert.equal(selected[0], null);
+  assert.equal(selected[1], null);
+  assert.equal(selected[2], null);
+  assert.equal(selected[3], null);
+  assert(selected[4]);
+  assert.equal(selected[4].payload.refresh_anyone_approaching, false);
+  assert.equal(selected[4].payload.refresh_resident_states_known, false);
+
+  assert(coordinator(store, NIGHT, {
+    resident_primary_state: "home",
+    resident_secondary_state: "near_home",
+    resident_primary_ready: true,
+    resident_secondary_ready: false,
+    people_ready: false,
+    vehicle_primary_ready: false,
+    recovery_needed: true,
+  }));
+  assert.equal(store.get(KEY).interval_ms, 15 * 60_000);
+  assert.equal(store.get(KEY).interval_policy, "recovery");
+});
+
 scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
   const store = memory({
     [POLICY_KEY]: {
@@ -658,6 +726,8 @@ scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
       kind: "refresh_command",
       resident_primary_state: "home",
       resident_secondary_state: "near_home",
+      resident_primary_ready: true,
+      resident_secondary_ready: true,
     } },
   });
   assert(selected[0]);
@@ -696,6 +766,8 @@ scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
       kind: "refresh_command",
       resident_primary_state: "home",
       resident_secondary_state: "near_home",
+      resident_primary_ready: true,
+      resident_secondary_ready: true,
       people_arrival_armed: { resident_secondary: false },
       people_local_excursions: {
         resident_secondary: { started_at: NIGHT - 60_000, expires_at: NIGHT + 60_000 },
@@ -713,6 +785,8 @@ scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
       kind: "refresh_command",
       resident_primary_state: "home",
       resident_secondary_state: "near_home",
+      resident_primary_ready: true,
+      resident_secondary_ready: true,
       people_local_excursions: {
         resident_secondary: { started_at: NIGHT - 120_000, expires_at: NIGHT - 60_000 },
       },
@@ -763,6 +837,8 @@ scenario("28c parada curta reduz cooldown de 5 para 1 minuto", () => {
       kind: "refresh_command",
       resident_primary_state: "near_home",
       resident_secondary_state: "home",
+      resident_primary_ready: true,
+      resident_secondary_ready: true,
       people_local_excursions: {
         resident_primary: {
           started_at: stoppedAt - 5 * 60_000,

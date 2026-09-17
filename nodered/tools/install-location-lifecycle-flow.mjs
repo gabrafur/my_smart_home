@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
+import { installPeopleLocationRefresh } from "./install-people-location-refresh.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const inputPath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -94,6 +95,8 @@ linkIn("people_visual_arrival_refresh_in", "b35563e0f73e5b64",
 fn("people_visual_arrival_refresh_dispatch", "b35563e0f73e5b64",
   "Direcionar somente ao iPhone da chegada", "people-arrival-refresh-dispatch.js", 2,
   330, 1030, [["564fdc36031eaef8"], ["e0b7c0ecf1d8ee28"]]);
+const locationRefresh = installPeopleLocationRefresh(flows);
+for (const id of locationRefresh.ownedIds) generated.add(id);
 
 const config = group(
   "people_location_lifecycle_config_group_v2",
@@ -560,6 +563,19 @@ required(VEHICLE_TAB).info = "Localização, evidência de uso, direção, armam
 
 flows = reconcileGeneratedFlows(originalFlows, flows, {
   isOwned: (node) => generated.has(node.id),
+});
+const requiredAfterReconcile = (id) => {
+  const node = flows.find((candidate) => candidate.id === id);
+  if (!node) throw new Error(`Nó reconciliado obrigatório ausente: ${id}`);
+  return node;
+};
+Object.assign(requiredAfterReconcile("people_visual_secondary_icloud_out"), {
+  x: 700,
+  y: 1030,
+});
+Object.assign(requiredAfterReconcile("people_visual_blocked_gate"), {
+  x: 3780,
+  y: 640,
 });
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Location lifecycle visual flow installed in ${outputPath}`);

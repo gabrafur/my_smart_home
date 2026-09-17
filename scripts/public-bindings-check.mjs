@@ -158,6 +158,26 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
           issues.push(issue("service-target-public-binding", location, "binding"));
         }
       }
+      const refreshProvider = service?.location_refresh_provider;
+      const refreshPublicId = service?.location_refresh_public_entity_id;
+      if ((refreshProvider === undefined) !== (refreshPublicId === undefined)) {
+        issues.push(issue("location-refresh-pair", location, "binding"));
+      }
+      if (refreshProvider !== undefined || refreshPublicId !== undefined) {
+        if (refreshProvider !== "icloud" || service?.target_service !== "icloud.update") {
+          issues.push(issue("location-refresh-provider", location, "binding"));
+        }
+        const refreshEntity = (binding.entities ?? {})[refreshPublicId];
+        if (!entityIdPattern.test(refreshPublicId ?? "") || !refreshEntity) {
+          issues.push(issue("location-refresh-public-binding", location, "binding"));
+        } else if (
+          !["gps_accuracy", "latitude", "longitude"].every((attribute) =>
+            refreshEntity.attributes?.includes(attribute)
+          )
+        ) {
+          issues.push(issue("location-refresh-attributes", location, "binding"));
+        }
+      }
     }
     for (const [key, topic] of Object.entries(binding.topics ?? {})) {
       const location = `$.roles.${role}.topics.${key}`;

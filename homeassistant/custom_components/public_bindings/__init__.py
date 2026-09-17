@@ -26,6 +26,7 @@ from homeassistant.helpers.recorder import get_instance as get_recorder_instance
 from .location import (
     LocationObservations,
     SourceReports,
+    icloud_location_observed_at,
     location_observed_at,
     recover_location_observation,
     recover_source_reported_at,
@@ -58,6 +59,7 @@ RECORDER_STARTUP_WAIT_SECONDS = 30
 LOCATION_ATTRIBUTES = {"gps_accuracy", "latitude", "longitude"}
 LOCATION_HISTORY_WINDOW = timedelta(days=7)
 STARTUP_REPORT_GUARD = timedelta(minutes=1)
+LOCATION_REFRESH_PROVIDERS = {"icloud"}
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -178,6 +180,56 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         if LOCATION_ATTRIBUTES.intersection(binding.get("attributes", []))
         for target in _binding_targets(binding)
     }
+    location_provider_targets: dict[str, str] = {}
+    for (role, _action), service_binding in services.items():
+        provider = service_binding.get("location_refresh_provider")
+        public_id = service_binding.get("location_refresh_public_entity_id")
+        entity_binding = entities.get(public_id) if isinstance(public_id, str) else None
+        if (
+            provider in LOCATION_REFRESH_PROVIDERS
+            and entity_binding is not None
+            and entity_binding[0] == role
+        ):
+            targets = _binding_targets(entity_binding[1])
+            if len(targets) == 1 and targets[0] in location_target_ids:
+                location_provider_targets[targets[0]] = provider
+
+    def provider_location_observed_at(
+        target_entity_id: str,
+    ) -> datetime | None:
+        """Read the observation timestamp from the configured provider runtime."""
+        if location_provider_targets.get(target_entity_id) != "icloud":
+            return None
+        registry_entry = er.async_get(hass).async_get(target_entity_id)
+        if registry_entry is None or registry_entry.config_entry_id is None:
+            return None
+        config_entry = hass.config_entries.async_get_entry(
+            registry_entry.config_entry_id
+        )
+        if config_entry is None or config_entry.domain != "icloud":
+            return None
+        account = getattr(config_entry, "runtime_data", None)
+        devices = getattr(account, "devices", {})
+        device = devices.get(registry_entry.unique_id)
+        return icloud_location_observed_at(getattr(device, "location", None))
+
+    async def force_icloud_location_refresh(account_identifier: Any) -> None:
+        """Make Find My fetch current data instead of republishing its cache."""
+        if not isinstance(account_identifier, str) or not account_identifier:
+            raise HomeAssistantError("iCloud location refresh account is unavailable")
+        for config_entry in hass.config_entries.async_loaded_entries("icloud"):
+            account = getattr(config_entry, "runtime_data", None)
+            if getattr(account, "username", None) != account_identifier:
+                continue
+            api = getattr(account, "api", None)
+            manager = getattr(api, "devices", None)
+            refresh = getattr(manager, "refresh", None)
+            if not callable(refresh):
+                break
+            await hass.async_add_executor_job(refresh, True)
+            return
+        raise HomeAssistantError("iCloud location refresh provider is unavailable")
+
     location_observations: LocationObservations = {}
     source_reports: SourceReports = {}
     try:
@@ -199,7 +251,13 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 source_reports[target] = reported_at
     for target in location_target_ids:
         if source := hass.states.get(target):
-            update_location_observation(location_observations, source)
+            provider = location_provider_targets.get(target)
+            update_location_observation(
+                location_observations,
+                source,
+                authoritative_observed_at=provider_location_observed_at(target),
+                authoritative=provider is not None,
+            )
             source_reports.setdefault(target, source_reported_at(source))
             if (
                 source.attributes.get("tracking_type") == "position"
@@ -296,9 +354,14 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         changed_location = False
         if changed_target_id in location_target_ids:
             if changed_source := hass.states.get(changed_target_id):
+                provider = location_provider_targets.get(changed_target_id)
                 changed_location = update_location_observation(
                     location_observations,
                     changed_source,
+                    authoritative_observed_at=provider_location_observed_at(
+                        changed_target_id
+                    ),
+                    authoritative=provider is not None,
                 )
                 startup_mobile_restore = (
                     changed_source.attributes.get("tracking_type") == "position"
@@ -364,6 +427,24 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         domain, service = binding["target_service"].split(".", 1)
         data = dict(binding.get("data", {}))
         data.update(call.data.get("data", {}))
+        refresh_provider = binding.get("location_refresh_provider")
+        refresh_public_id = binding.get("location_refresh_public_entity_id")
+        if refresh_provider is not None or refresh_public_id is not None:
+            entity_binding = entities.get(refresh_public_id)
+            if (
+                refresh_provider not in LOCATION_REFRESH_PROVIDERS
+                or entity_binding is None
+                or entity_binding[0] != call.data["role"]
+                or len(_binding_targets(entity_binding[1])) != 1
+                or _binding_targets(entity_binding[1])[0] not in location_target_ids
+            ):
+                raise HomeAssistantError(
+                    "Public binding location refresh target is unavailable"
+                )
+            if refresh_provider == "icloud":
+                configured_account = binding.get("data", {}).get("account")
+                data["account"] = configured_account
+                await force_icloud_location_refresh(configured_account)
         target_public_id = binding.get("target_public_entity_id")
         if target_public_id:
             entity_binding = entities.get(target_public_id)

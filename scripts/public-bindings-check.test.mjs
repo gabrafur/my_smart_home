@@ -304,6 +304,46 @@ test("resolves a service through an entity binding in the same role", () => {
   assert.deepEqual(validateBindings(document), []);
 });
 
+test("requires an active iCloud refresh to identify its location source", () => {
+  const publicId = "device_tracker.mobile_secondary_source_2";
+  const service = {
+    target_service: "icloud.update",
+    location_refresh_provider: "icloud",
+    location_refresh_public_entity_id: publicId,
+    data: { account: "secondary@example.invalid" },
+  };
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      resident_secondary: {
+        entities: {
+          [publicId]: {
+            target_entity_id: "device_tracker.example_secondary_icloud",
+            state_mode: "passthrough",
+            attributes: ["gps_accuracy", "latitude", "longitude", "source_type"],
+            string_attributes: ["gps_accuracy", "latitude", "longitude"],
+          },
+        },
+        services: { refresh_location: service },
+      },
+    },
+  };
+
+  assert.deepEqual(validateBindings(document), []);
+  delete service.location_refresh_public_entity_id;
+  assert.ok(validateBindings(document).some((item) =>
+    item.rule === "location-refresh-pair"));
+  service.location_refresh_public_entity_id = publicId;
+  service.target_service = "homeassistant.update_entity";
+  assert.ok(validateBindings(document).some((item) =>
+    item.rule === "location-refresh-provider"));
+  service.target_service = "icloud.update";
+  service.location_refresh_public_entity_id = "device_tracker.mobile_secondary_source_1";
+  assert.ok(validateBindings(document).some((item) =>
+    item.rule === "location-refresh-public-binding"));
+});
+
 test("requires modern mobile notification entities", () => {
   const document = {
     schema_version: 1,

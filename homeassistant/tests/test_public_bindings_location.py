@@ -169,6 +169,123 @@ class PublicLocationObservationTest(unittest.TestCase):
             NOW,
         )
 
+    def test_zone_label_change_does_not_make_coordinates_current(self):
+        observations = {}
+        original = state(
+            "location_update_ring",
+            age=timedelta(hours=4),
+            entity_id="device_tracker.mobile_secondary_source_2",
+        )
+        LOCATION.update_location_observation(observations, original)
+        relabeled = state(
+            "home",
+            entity_id="device_tracker.mobile_secondary_source_2",
+        )
+
+        self.assertFalse(
+            LOCATION.update_location_observation(observations, relabeled)
+        )
+        self.assertEqual(
+            LOCATION.location_observed_at(observations, relabeled),
+            NOW - timedelta(hours=4),
+        )
+
+    def test_unavailable_report_does_not_erase_last_valid_signature(self):
+        observations = {}
+        original = state(
+            "home",
+            age=timedelta(hours=4),
+            entity_id="device_tracker.mobile_secondary_source_2",
+        )
+        LOCATION.update_location_observation(observations, original)
+        unavailable = state(
+            "unavailable",
+            coordinates=False,
+            entity_id="device_tracker.mobile_secondary_source_2",
+        )
+        restored = state(
+            "home",
+            entity_id="device_tracker.mobile_secondary_source_2",
+        )
+
+        self.assertFalse(
+            LOCATION.update_location_observation(observations, unavailable)
+        )
+        self.assertFalse(
+            LOCATION.update_location_observation(observations, restored)
+        )
+        self.assertEqual(
+            LOCATION.location_observed_at(observations, restored),
+            NOW - timedelta(hours=4),
+        )
+
+    def test_provider_timestamp_confirms_unchanged_coordinates(self):
+        observations = {}
+        icloud = state(
+            "home",
+            age=timedelta(hours=4),
+            entity_id="device_tracker.mobile_secondary_source_2",
+        )
+        LOCATION.update_location_observation(
+            observations,
+            icloud,
+            authoritative_observed_at=NOW - timedelta(hours=4),
+            authoritative=True,
+        )
+        confirmed = state(
+            "home",
+            entity_id="device_tracker.mobile_secondary_source_2",
+        )
+
+        self.assertTrue(
+            LOCATION.update_location_observation(
+                observations,
+                confirmed,
+                authoritative_observed_at=NOW - timedelta(seconds=15),
+                authoritative=True,
+            )
+        )
+        self.assertEqual(
+            LOCATION.location_observed_at(observations, confirmed),
+            NOW - timedelta(seconds=15),
+        )
+
+    def test_icloud_timestamp_rejects_cached_and_implausible_fixes(self):
+        timestamp = int((NOW - timedelta(seconds=15)).timestamp() * 1000)
+        location = {
+            "timeStamp": timestamp,
+            "isOld": False,
+            "locationFinished": True,
+            "latitude": -10.0,
+            "longitude": -20.0,
+        }
+
+        self.assertEqual(
+            LOCATION.icloud_location_observed_at(
+                location,
+                now=NOW,
+            ),
+            NOW - timedelta(seconds=15),
+        )
+        self.assertIsNone(
+            LOCATION.icloud_location_observed_at(
+                {**location, "isOld": True},
+                now=NOW,
+            )
+        )
+        self.assertIsNone(
+            LOCATION.icloud_location_observed_at(
+                {**location, "timeStamp": "invalid"},
+                now=NOW,
+            )
+        )
+        self.assertIsNone(
+            LOCATION.icloud_location_observed_at(
+                {**location, "locationFinished": False},
+                now=NOW,
+            )
+        )
+
     def test_recorder_history_recovers_last_location_change(self):
         history = [
             state(
@@ -243,6 +360,13 @@ class PublicLocationObservationTest(unittest.TestCase):
         component = COMPONENT_PATH.read_text(encoding="utf-8")
         self.assertIn('binding.get("expose_state", True) is False', component)
         self.assertIn("hass.states.async_remove(public_id)", component)
+
+    def test_icloud_refresh_forces_find_my_and_uses_provider_timestamp(self):
+        component = COMPONENT_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("await hass.async_add_executor_job(refresh, True)", component)
+        self.assertIn("provider_location_observed_at", component)
+        self.assertIn("authoritative_observed_at", component)
 
 
 class ServicePolicyTest(unittest.TestCase):

@@ -95,7 +95,26 @@ if (!contextCoordinator.func.includes("resident_primary_state:")) {
                     resident_primary_state:
                         people?.resident_primary?.state ?? null,
                     resident_secondary_state:
-                        people?.resident_secondary?.state ?? null,`,
+                        people?.resident_secondary?.state ?? null,
+                    resident_primary_ready:
+                        people?.resident_primary?.ready === true,
+                    resident_secondary_ready:
+                        people?.resident_secondary?.ready === true,`,
+  );
+}
+if (!contextCoordinator.func.includes("resident_primary_ready:")) {
+  const readinessMarker = `                    resident_secondary_state:
+                        people?.resident_secondary?.state ?? null,`;
+  if (!contextCoordinator.func.includes(readinessMarker)) {
+    throw new Error("Estados dos moradores não encontrados para readiness");
+  }
+  contextCoordinator.func = contextCoordinator.func.replace(
+    readinessMarker,
+    `${readinessMarker}
+                    resident_primary_ready:
+                        people?.resident_primary?.ready === true,
+                    resident_secondary_ready:
+                        people?.resident_secondary?.ready === true,`,
   );
 }
 if (!contextCoordinator.func.includes("any_resident_away:")) {
@@ -108,7 +127,7 @@ if (!contextCoordinator.func.includes("any_resident_away:")) {
     residentPresenceMarker,
     `${residentPresenceMarker}
                     any_resident_away:
-                        people?.best_location_away === true,`,
+                        people?.anyone_away === true,`,
   );
 }
 if (!contextCoordinator.func.includes("resident_departure_force:")) {
@@ -167,8 +186,12 @@ if (!contextCoordinator.func.includes("resident_departure_force:")) {
                     msg.payload.context?.resident_primary?.state ?? null,
                 resident_secondary_state:
                     msg.payload.context?.resident_secondary?.state ?? null,
+                resident_primary_ready:
+                    msg.payload.context?.resident_primary?.ready === true,
+                resident_secondary_ready:
+                    msg.payload.context?.resident_secondary?.ready === true,
                 any_resident_away:
-                    msg.payload.context?.best_location_away === true,
+                    msg.payload.context?.anyone_away === true,
                 people_ready: msg.payload.ready === true,
                 vehicle_primary_ready:
                     ctxGet("vehicle_primary_context_v1")?.ready === true,

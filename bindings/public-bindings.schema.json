@@ -117,6 +117,16 @@
         "target_public_entity_id": {
           "type": "string",
           "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+        },
+        "location_refresh_provider": {
+          "enum": ["icloud"]
+        },
+        "location_refresh_public_entity_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+        },
+        "data": {
+          "type": "object"
         }
       }
     },

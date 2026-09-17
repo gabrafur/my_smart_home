@@ -245,6 +245,7 @@
             ],
             "dry_run_terminal_ids": [
                 "people_arrival_departure_blocked_v1",
+                "people_visual_icloud_dry_run_terminal",
                 "resident_notifications_dry_run_terminal",
                 "light_full_dry_run_terminal_v1",
                 "vehicle_primary_refresh_dry_run_terminal_v1"

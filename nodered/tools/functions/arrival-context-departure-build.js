@@ -12,7 +12,9 @@ msg.context_departure_command = {
     departure_state: msg.payload.trigger_state, departure_event_at: msg.departure_event_at,
     resident_primary_state: people.resident_primary?.state ?? null,
     resident_secondary_state: people.resident_secondary?.state ?? null,
-    any_resident_away: people.best_location_away === true,
+    resident_primary_ready: people.resident_primary?.ready === true,
+    resident_secondary_ready: people.resident_secondary?.ready === true,
+    any_resident_away: people.anyone_away === true,
     people_ready: msg.payload.ready === true, vehicle_primary_ready: vehicle.ready === true,
     force_recovery: true, origin: "resident_departure_transition", issued_at: msg.context_now,
     ...(msg._location_test === true ? { test_mode: true, test_case: msg._location_test_case } : {})

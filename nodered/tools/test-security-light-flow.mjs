@@ -868,16 +868,30 @@ scenario("30a fontes ativas e paradas em casa nao solicitam GPS", () => {
 });
 
 scenario("30b recovery de localizacao respeita cooldown de 30 minutos", () => {
+  const oldLocation = Date.now() - 60 * 60_000;
   const flow = memoryFlow({
-    people_context_v1: { ready: false },
-    security_people_last_refresh_at: Date.now() - 60_000,
+    people_context_v1: {
+      ready: false,
+      resident_primary: { ready: false, stale: true, updated_at: oldLocation },
+      resident_secondary: { ready: true, stale: false, updated_at: Date.now() },
+    },
+    security_people_location_refresh_v2: {
+      version: 2,
+      residents: {
+        resident_primary: { last_request_at: Date.now() - 60_000 },
+      },
+    },
   });
   const command = {
     payload: { kind: "refresh_command", anyone_away: false, people_ready: false },
   };
   assert.equal(run("people_refresh_decide", structuredClone(command), flow, geoEnv), null);
-  flow.set("security_people_last_refresh_at", Date.now() - 31 * 60_000);
-  assert(run("people_refresh_decide", structuredClone(command), flow, geoEnv));
+  flow.get("security_people_location_refresh_v2").residents.resident_primary.last_request_at =
+    Date.now() - 31 * 60_000;
+  const requested = run("people_refresh_decide", structuredClone(command), flow, geoEnv);
+  assert(requested[0]);
+  assert.equal(requested[0].payload.refresh_source, "resident_primary");
+  assert.equal(requested[1], null);
 });
 
 scenario("30b1 jitter do tick nao adia recovery por mais 30 segundos", () => {
@@ -887,10 +901,12 @@ scenario("30b1 jitter do tick nao adia recovery por mais 30 segundos", () => {
   const early = memoryFlow({
     people_context_v1: {
       ready: false,
-      anyone_away: true,
-      nearest_distance_m: 5_000,
+      resident_primary: { ready: false, stale: true, updated_at: Date.now() - 60 * 60_000 },
+      resident_secondary: { ready: true, stale: false, updated_at: Date.now() },
     },
-    security_people_last_refresh_at: Date.now() - (30 * 60_000 - 750),
+    security_people_location_refresh_v2: { version: 2, residents: {
+      resident_primary: { last_request_at: Date.now() - (30 * 60_000 - 750) },
+    } },
   });
   assert.equal(
     run("people_refresh_decide", structuredClone(command), early, geoEnv),
@@ -900,20 +916,91 @@ scenario("30b1 jitter do tick nao adia recovery por mais 30 segundos", () => {
   const schedulerJitter = memoryFlow({
     people_context_v1: {
       ready: false,
-      anyone_away: true,
-      nearest_distance_m: 5_000,
+      resident_primary: { ready: false, stale: true, updated_at: Date.now() - 60 * 60_000 },
+      resident_secondary: { ready: true, stale: false, updated_at: Date.now() },
     },
-    security_people_last_refresh_at: Date.now() - (30 * 60_000 - 250),
+    security_people_location_refresh_v2: { version: 2, residents: {
+      resident_primary: { last_request_at: Date.now() - (30 * 60_000 - 250) },
+    } },
   });
-  assert(run(
+  const requested = run(
     "people_refresh_decide",
     structuredClone(command),
     schedulerJitter,
     geoEnv,
-  ));
+  );
+  assert(requested[0]);
+  assert.equal(requested[1], null);
 });
 
-scenario("30b2 posição atual fora não força polling silencioso", () => {
+scenario("30b2 recovery solicita somente o morador com localização vencida", () => {
+  const flow = memoryFlow({ people_context_v1: {
+    ready: false,
+    resident_primary: { ready: true, stale: false, updated_at: Date.now() },
+    resident_secondary: {
+      ready: false,
+      stale: true,
+      updated_at: Date.now() - 60 * 60_000,
+    },
+  } });
+  const requested = run("people_refresh_decide", {
+    payload: { kind: "refresh_command", people_ready: false },
+  }, flow, geoEnv);
+  assert.equal(requested[0], null);
+  assert.equal(requested[1].payload.refresh_source, "resident_secondary");
+  assert.deepEqual(requested[1].payload.refresh_routes, ["companion", "icloud"]);
+});
+
+scenario("30b3 observação posterior confirma semanticamente o refresh", () => {
+  const before = Date.now() - 60 * 60_000;
+  const state = {
+    version: 2,
+    residents: {
+      resident_secondary: {
+        last_request_at: Date.now() - 60_000,
+        observed_at_before_request: before,
+        awaiting_evidence: true,
+        attempts: 1,
+      },
+    },
+  };
+  const flow = memoryFlow({
+    people_context_v1: {
+      ready: true,
+      resident_primary: { ready: true, stale: false, updated_at: Date.now() },
+      resident_secondary: { ready: true, stale: false, updated_at: before + 5 * 60_000 },
+    },
+    security_people_location_refresh_v2: state,
+  });
+  assert.equal(run("people_refresh_decide", {
+    payload: { kind: "refresh_command", people_ready: true },
+  }, flow, geoEnv), null);
+  const confirmed = flow.get("security_people_location_refresh_v2").residents.resident_secondary;
+  assert.equal(confirmed.awaiting_evidence, false);
+  assert.equal(confirmed.attempts, 0);
+  assert.equal(confirmed.last_success_at, before + 5 * 60_000);
+});
+
+scenario("30b4 TESTE percorre a decisão e termina antes do iCloud", () => {
+  const flow = memoryFlow({ people_context_v1__test: {
+    ready: false,
+    resident_primary: { ready: false, stale: true, updated_at: Date.now() - 60 * 60_000 },
+    resident_secondary: { ready: true, stale: false, updated_at: Date.now() },
+  } });
+  const requested = run("people_refresh_decide", {
+    _location_test: true,
+    payload: { kind: "refresh_command", people_ready: false, test_mode: true },
+  }, flow, geoEnv);
+  assert(requested[0]);
+  const gated = runDirect("people_visual_primary_icloud_gate", requested[0], flow, geoEnv);
+  assert.equal(gated[0], null);
+  assert.equal(gated[1].payload.simulated, true);
+  assert.equal(gated[1].payload.dispatched, false);
+  assert(flow.get("security_people_location_refresh_v2__test"));
+  assert.equal(flow.get("security_people_location_refresh_v2"), undefined);
+});
+
+scenario("30b5 posição atual fora não força polling silencioso", () => {
   const flow = memoryFlow({
     people_context_v1: {
       ready: true,
@@ -959,10 +1046,14 @@ scenario("31 desconexão transitória do HA é enfileirada e tratada", () => {
     assert.equal(byId.get(id)?.queue, "first");
   }
 
-  const catcher = flows.find((item) => item.name === "Capturar desconexão transitória dos iPhones");
+  const catcher = byId.get("people_refresh_connection_catch");
   const handler = flows.find((item) => item.name === "Tratar desconexão transitória do HA");
   assert(catcher && handler, "tratamento de desconexão ausente");
-  assert.deepEqual(new Set(catcher.scope), new Set(calls.map((item) => item.id)));
+  assert.deepEqual(new Set(catcher.scope), new Set([
+    ...calls.map((item) => item.id),
+    "people_visual_primary_icloud_update",
+    "people_visual_secondary_icloud_update",
+  ]));
   assert.equal(catcher.wires[0][0], handler.id);
   assert.match(handler.func, /connection lost/);
   assert.match(handler.func, /noconnectionerror/);
@@ -1925,7 +2016,14 @@ scenario("45 refresh extraordinário é por morador e ignora cooldown genérico"
   });
   assert.equal(secondary[0], null); assert(secondary[1]);
   assert.deepEqual(byId.get("people_visual_arrival_refresh_dispatch").wires,
-    [["564fdc36031eaef8"], ["e0b7c0ecf1d8ee28"]]);
+    [
+      ["564fdc36031eaef8", "people_visual_primary_icloud_out"],
+      ["e0b7c0ecf1d8ee28", "people_visual_secondary_icloud_out"],
+    ]);
+  assert.equal(byId.get("people_visual_primary_icloud_update").action,
+    "public_bindings.call");
+  assert.equal(byId.get("people_visual_secondary_icloud_update").action,
+    "public_bindings.call");
 });
 
 scenario("46 política alinha retenção e refresh preventivo ao frescor", () => {
@@ -1951,6 +2049,6 @@ scenario("47 decisão canônica publica estado e atributos para o Recorder", () 
     "waiting_location_refresh");
 });
 
-assert.equal(passed.length, 67);
+assert.equal(passed.length, 70);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);
