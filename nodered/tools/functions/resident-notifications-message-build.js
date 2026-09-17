@@ -18,7 +18,7 @@ msg.payload = {
     event_at: msg.event_at,
     arrival_stage: msg.arrival_stage,
     message: (testMode ? "[TESTE] " : "") + display + (
-        msg.arrival_stage === "home" ? " chegou em casa." : " está perto de casa."
+        msg.arrival_stage === "home" ? " chegou em casa." : " está chegando em casa."
     ),
     test_mode: testMode,
     simulated: testMode,

@@ -161,7 +161,7 @@
         "type": "tab",
         "label": "localizacao_pessoas",
         "disabled": false,
-        "info": "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.",
+        "info": "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; somente uma posição canônica em near_home publica o aviso antecipado. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.",
         "env": []
     },
     {
@@ -169,7 +169,7 @@
         "type": "tab",
         "label": "notificacoes_chegadas_residentes",
         "disabled": false,
-        "info": "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, encaminha cada chegada somente ao outro morador (resident_primary → mobile_secondary; resident_secondary → mobile_primary), solicita push visível e urgente ao iOS, registra o aceite do Home Assistant por destinatário e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.",
+        "info": "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Antes de afirmar que alguém chegou em casa, exige HOME contínuo e localização fresca; oscilações near_home reiniciam a confirmação dentro de uma janela limitada. Encaminha cada chegada somente ao outro morador (resident_primary → mobile_secondary; resident_secondary → mobile_primary), registra o aceite do Home Assistant e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.",
         "env": []
     },
     {
@@ -4727,11 +4727,19 @@
             "people_visual_recovery_out",
             "people_visual_blocked_out",
             "people_visual_unchanged_out",
-            "people_visual_finalize_in"
+            "people_visual_finalize_in",
+            "people_visual_wake_ring_candidate_out",
+            "people_visual_wake_ring_candidate_in",
+            "people_visual_wake_ring_gate",
+            "people_visual_wake_ring_refresh_build",
+            "people_visual_wake_ring_first_delay",
+            "people_visual_wake_ring_second_delay",
+            "people_visual_wake_ring_first_out",
+            "people_visual_wake_ring_second_out"
         ],
         "x": 2084,
         "y": 439,
-        "w": 3337,
+        "w": 4720,
         "h": 302
     },
     {
@@ -4936,12 +4944,23 @@
             "resident_notifications_policy_validate",
             "resident_notifications_policy_switch",
             "resident_notifications_policy_store",
-            "resident_notifications_policy_reject"
+            "resident_notifications_policy_reject",
+            "resident_notifications_policy_home_stable",
+            "resident_notifications_policy_home_window",
+            "resident_notifications_policy_home_recheck",
+            "notification_hub_wire_out_55f2da08c526",
+            "notification_hub_wire_in_55f2da08c526",
+            "notification_hub_wire_out_123f371264b3",
+            "notification_hub_wire_in_123f371264b3",
+            "notification_hub_wire_out_2e942a9dd0b3",
+            "notification_hub_wire_in_2e942a9dd0b3",
+            "notification_hub_wire_out_52a178a632e3",
+            "notification_hub_wire_in_52a178a632e3"
         ],
         "x": 64,
-        "y": 39,
-        "w": 1582,
-        "h": 332
+        "y": 40,
+        "w": 1300,
+        "h": 450
     },
     {
         "id": "resident_notifications_input_group",
@@ -4966,16 +4985,16 @@
             "resident_notifications_kind_invalid",
             "resident_notifications_canonical_out"
         ],
-        "x": 64,
-        "y": 439,
-        "w": 1222,
-        "h": 202
+        "x": 1370,
+        "y": 40,
+        "w": 1360,
+        "h": 450
     },
     {
         "id": "resident_notifications_decision_group",
         "type": "group",
         "z": "resident_notifications_tab",
-        "name": "2. Validação da chegada e fan-out de destinatários",
+        "name": "2. Validar contrato, direção e ciclo",
         "style": {
             "label": true,
             "label-position": "nw",
@@ -4996,22 +5015,19 @@
             "resident_notifications_cycle_invalid",
             "resident_notifications_stage_switch",
             "resident_notifications_stage_invalid",
-            "resident_notifications_source_switch",
-            "resident_notifications_recipient_secondary",
-            "resident_notifications_recipient_primary",
-            "resident_notifications_source_invalid",
-            "resident_notifications_decision_out"
+            "resident_notifications_confirmation_bypass_out",
+            "resident_notifications_home_candidate_out"
         ],
-        "x": 1314,
-        "y": 459,
-        "w": 2237,
-        "h": 262
+        "x": 2780,
+        "y": 40,
+        "w": 1550,
+        "h": 450
     },
     {
         "id": "resident_notifications_state_group",
         "type": "group",
         "z": "resident_notifications_tab",
-        "name": "3. Frescor, reserva e deduplicação da entrega",
+        "name": "4. Frescor, reserva e deduplicação da entrega",
         "style": {
             "label": true,
             "label-position": "nw",
@@ -5037,16 +5053,16 @@
             "resident_notifications_state_write",
             "resident_notifications_delivery_out"
         ],
-        "x": 100,
-        "y": 1581,
-        "w": 2381,
-        "h": 348
+        "x": 7430,
+        "y": 40,
+        "w": 1700,
+        "h": 450
     },
     {
         "id": "resident_notifications_output_group",
         "type": "group",
         "z": "resident_notifications_tab",
-        "name": "4. Gate final, efeitos e retry",
+        "name": "5. Gate final, efeitos e retry",
         "style": {
             "label": true,
             "label-position": "nw",
@@ -5085,13 +5101,15 @@
             "notification_hub_wire_in_1ecb0204c49e",
             "notification_hub_wire_out_be8bb6bde419",
             "notification_hub_wire_in_be8bb6bde419",
-            "notification_hub_wire_out_3e1229d83eeb",
-            "notification_hub_wire_in_3e1229d83eeb"
+            "notification_hub_wire_out_13a5ed93253b",
+            "notification_hub_wire_in_13a5ed93253b",
+            "notification_hub_wire_out_5ad6d4860f8a",
+            "notification_hub_wire_in_5ad6d4860f8a"
         ],
-        "x": 129,
-        "y": 1959,
-        "w": 2592,
-        "h": 392
+        "x": 9180,
+        "y": 40,
+        "w": 2480,
+        "h": 450
     },
     {
         "id": "resident_notifications_test_group",
@@ -5128,16 +5146,12 @@
             "resident_notifications_test_notify_secondary",
             "resident_notifications_test_notify_secondary__hub_call",
             "resident_notifications_test_notify_secondary__hub_result",
-            "resident_notifications_test_delivery_accepted",
-            "notification_hub_wire_out_45e544bc24a6",
-            "notification_hub_wire_in_45e544bc24a6",
-            "notification_hub_wire_out_c9536c199169",
-            "notification_hub_wire_in_c9536c199169"
+            "resident_notifications_test_delivery_accepted"
         ],
-        "x": 94,
-        "y": 792,
-        "w": 1772,
-        "h": 769
+        "x": 64,
+        "y": 560,
+        "w": 3466,
+        "h": 680
     },
     {
         "id": "arrival_context_input_group",
@@ -5481,11 +5495,13 @@
             "people_visual_external_confirm",
             "people_visual_lifecycle_config_left_out",
             "people_visual_lifecycle_config_middle_out",
-            "people_visual_lifecycle_config_right_out"
+            "people_visual_lifecycle_config_right_out",
+            "people_visual_wake_ring_delay",
+            "people_visual_wake_ring_repeat"
         ],
         "x": 2189,
         "y": 59,
-        "w": 1147,
+        "w": 1190,
         "h": 312
     },
     {
@@ -5659,10 +5675,10 @@
             "global_observer_coverage__resident_notifications_tab__annotate",
             "global_observer_coverage__resident_notifications_tab__out"
         ],
-        "x": 1904,
-        "y": 799,
-        "w": 640,
-        "h": 142
+        "x": 11720,
+        "y": 40,
+        "w": 720,
+        "h": 162
     },
     {
         "id": "global_observer_coverage__62bb822e033d1623__group",
@@ -57994,7 +58010,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "people_location_selection_group_v1",
         "name": "Aplicar raios home e near_home",
-        "func": "if (\n    msg._location_test === true ||\n    msg.payload?.test_mode === true\n) {\n    return msg;\n}\n\nconst policy = msg._location_policy ??\n    global.get(\"location_policy_v1\", \"persistent\");\nconst homeRadiusM = Number(policy?.home_radius_m);\nconst nearHomeRadiusM = Number(policy?.near_home_radius_m);\nif (\n    policy?.version !== 1 ||\n    policy?.complete !== true ||\n    !Number.isFinite(homeRadiusM) ||\n    !Number.isFinite(nearHomeRadiusM)\n) {\n    node.error(\"Raios canônicos de localização ausentes\", msg);\n    return null;\n}\n\nconst HOME_LAT = Number(env.get(\"HOME_LAT\"));\nconst HOME_LON = Number(env.get(\"HOME_LON\"));\nconst GATE_LAT = Number(env.get(\"GATE_LAT\"));\nconst GATE_LON = Number(env.get(\"GATE_LON\"));\nconst HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);\nconst GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);\nconst WAKE_RING_STATE = \"location_update_ring\";\nconst KEY = \"canonical_near_home_people_v1\";\nconst PERSISTENT = \"persistent\";\nconst previous = flow.get(KEY, PERSISTENT) ?? {};\nconst next = { ...previous };\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a =\n        Math.sin(dLat / 2) ** 2 +\n        Math.cos(toRad(lat1)) *\n        Math.cos(toRad(lat2)) *\n        Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\n\nfunction rawFallback(state) {\n    const value = String(state ?? \"\");\n    if ([\"unknown\", \"unavailable\"].includes(value)) return value;\n    if ([\"home\", \"near_home\", WAKE_RING_STATE].includes(value)) return value;\n    return \"not_home\";\n}\n\nfunction classify(candidate) {\n    if (!candidate) return null;\n    const rawState = String(candidate.state ?? \"unknown\");\n    let distanceHomeM = null;\n    let distanceGateM = null;\n    if (\n        candidate.reliable_coordinates === true &&\n        Number.isFinite(candidate.latitude) &&\n        Number.isFinite(candidate.longitude)\n    ) {\n        if (HOME_KNOWN) {\n            distanceHomeM = Math.round(distanceMeters(\n                HOME_LAT,\n                HOME_LON,\n                candidate.latitude,\n                candidate.longitude\n            ));\n        }\n        if (GATE_KNOWN) {\n            distanceGateM = Math.round(distanceMeters(\n                GATE_LAT,\n                GATE_LON,\n                candidate.latitude,\n                candidate.longitude\n            ));\n        }\n    }\n    const nearReference = [distanceHomeM, distanceGateM]\n        .filter(Number.isFinite);\n    const nearestM = nearReference.length > 0\n        ? Math.min(...nearReference)\n        : null;\n    let state = rawFallback(rawState);\n    if (distanceHomeM !== null && distanceHomeM <= homeRadiusM) {\n        state = \"home\";\n    } else if (nearestM !== null && nearestM <= nearHomeRadiusM) {\n        state = \"near_home\";\n    } else if ([\"home\", \"near_home\", WAKE_RING_STATE].includes(rawState)) {\n        state = \"not_home\";\n    }\n    const entity = {\n        ...candidate.entity,\n        state,\n        attributes: {\n            ...(candidate.entity?.attributes ?? {}),\n            raw_location_state: rawState,\n            canonical_distance_home_m: distanceHomeM,\n            canonical_distance_gate_m: distanceGateM,\n            home_radius_m: homeRadiusM,\n            near_home_radius_m: nearHomeRadiusM,\n            decision_owner: \"node_red\"\n        }\n    };\n    return {\n        ...candidate,\n        entity,\n        raw_state: rawState,\n        state,\n        distance_home_m: distanceHomeM,\n        distance_gate_m: distanceGateM\n    };\n}\n\nconst changedRoles = [];\nfor (const role of [\"resident_primary\", \"resident_secondary\"]) {\n    const decision = msg._canonical_locations?.[role];\n    if (!decision) continue;\n    const selected = classify(decision.selected);\n    const previousState = previous[role]?.state ??\n        rawFallback(decision.previous_state);\n    const stateChanged = Boolean(\n        selected &&\n        previous[role]?.state &&\n        selected.state !== previous[role].state\n    );\n    if (stateChanged) changedRoles.push(role);\n    decision.selected = selected;\n    decision.previous_state = previousState;\n    decision.canonical_state_changed = stateChanged;\n    msg.payload[role + \"_selected\"] = selected?.entity ?? null;\n    next[role] = {\n        state: selected?.state ?? null,\n        raw_state: selected?.raw_state ?? null,\n        observed_at: selected?.observed_at ?? null,\n        updated_at: Date.now()\n    };\n    if (msg.payload?.source === role && selected) {\n        msg.payload.trigger_prev_state = previousState;\n        msg.payload.trigger_state = selected.state;\n        msg.payload.trigger_entity = \"device_tracker.\" + role + \"_location\";\n        if (selected.state === previousState) {\n            msg.payload.event = \"context_update\";\n        }\n    }\n}\n\nif (\n    msg.payload?.event === \"context_snapshot\" &&\n    changedRoles.length === 1\n) {\n    const role = changedRoles[0];\n    const selected = msg._canonical_locations?.[role]?.selected;\n    msg.payload.event = \"location_update\";\n    msg.payload.source = role;\n    msg.payload.trigger_prev_state = previous[role].state;\n    msg.payload.trigger_state = selected.state;\n    msg.payload.trigger_entity = \"device_tracker.\" + role + \"_location\";\n}\n\nflow.set(KEY, next, PERSISTENT);\nconst source = msg.payload?.source;\nconst selected = msg._canonical_locations?.[source]?.selected;\nnode.status({\n    fill: selected?.state === \"near_home\" ? \"blue\" : \"green\",\n    shape: selected ? \"dot\" : \"ring\",\n    text: selected\n        ? source + \": \" + selected.state +\n          \" (home \" + homeRadiusM + \" / near_home \" + nearHomeRadiusM + \" m)\"\n        : \"snapshot canônico atualizado\"\n});\nreturn msg;",
+        "func": "if (msg._location_test === true || msg.payload?.test_mode === true) return msg;\n\nconst policy = msg._location_policy ?? global.get(\"location_policy_v1\", \"persistent\");\nconst homeRadius = Number(policy?.home_radius_m);\nconst nearRadius = Number(policy?.near_home_radius_m);\nif (policy?.version !== 1 || policy?.complete !== true ||\n    !Number.isFinite(homeRadius) || !Number.isFinite(nearRadius)) {\n    node.error(\"Raios canônicos de localização ausentes\", msg);\n    return null;\n}\nconst homeLat = Number(env.get(\"HOME_LAT\"));\nconst homeLon = Number(env.get(\"HOME_LON\"));\nconst gateLat = Number(env.get(\"GATE_LAT\"));\nconst gateLon = Number(env.get(\"GATE_LON\"));\nconst known = (lat, lon) => Number.isFinite(lat) && Number.isFinite(lon);\nconst RING = \"location_update_ring\";\nconst KEY = \"canonical_near_home_people_v1\";\nconst previous = flow.get(KEY, \"persistent\") ?? {};\nconst next = { ...previous };\nconst rawFallback = (value) => {\n    const state = String(value ?? \"\");\n    if ([\"unknown\", \"unavailable\", \"home\", \"near_home\", RING].includes(state)) return state;\n    return \"not_home\";\n};\nconst distance = (a, b, c, d) => {\n    const rad = (value) => value * Math.PI / 180;\n    const lat = rad(c - a);\n    const lon = rad(d - b);\n    const h = Math.sin(lat / 2) ** 2 + Math.cos(rad(a)) *\n        Math.cos(rad(c)) * Math.sin(lon / 2) ** 2;\n    return Math.round(6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)));\n};\nfunction classify(candidate) {\n    if (!candidate) return null;\n    const rawState = String(candidate.state ?? \"unknown\");\n    const coordinates = candidate.reliable_coordinates === true &&\n        Number.isFinite(candidate.latitude) && Number.isFinite(candidate.longitude);\n    const homeDistance = coordinates && known(homeLat, homeLon)\n        ? distance(homeLat, homeLon, candidate.latitude, candidate.longitude) : null;\n    const gateDistance = coordinates && known(gateLat, gateLon)\n        ? distance(gateLat, gateLon, candidate.latitude, candidate.longitude) : null;\n    const nearest = [homeDistance, gateDistance].filter(Number.isFinite);\n    let state = rawFallback(rawState);\n    if (homeDistance !== null && homeDistance <= homeRadius) state = \"home\";\n    else if (nearest.length && Math.min(...nearest) <= nearRadius) state = \"near_home\";\n    else if ([\"home\", \"near_home\", RING].includes(rawState)) state = \"not_home\";\n    return {\n        ...candidate,\n        raw_state: rawState,\n        state,\n        distance_home_m: homeDistance,\n        distance_gate_m: gateDistance,\n        entity: {\n            ...candidate.entity,\n            state,\n            attributes: {\n                ...(candidate.entity?.attributes ?? {}),\n                raw_location_state: rawState,\n                canonical_distance_home_m: homeDistance,\n                canonical_distance_gate_m: gateDistance,\n                home_radius_m: homeRadius,\n                near_home_radius_m: nearRadius,\n                decision_owner: \"node_red\"\n            }\n        }\n    };\n}\n\nconst changedRoles = [];\nfor (const role of [\"resident_primary\", \"resident_secondary\"]) {\n    const decision = msg._canonical_locations?.[role];\n    if (!decision) continue;\n    const selected = classify(decision.selected);\n    const prior = previous[role] ?? {};\n    const previousState = prior.state ?? rawFallback(decision.previous_state);\n    const previousRawState = prior.raw_state ?? String(decision.previous_state ?? \"\");\n    const stateChanged = Boolean(prior.state && selected?.state !== prior.state);\n    const rawStateChanged = Boolean(prior.raw_state && selected?.raw_state !== prior.raw_state);\n    if (stateChanged) changedRoles.push(role);\n    Object.assign(decision, {\n        selected,\n        previous_state: previousState,\n        canonical_state_changed: stateChanged,\n        raw_state_changed: rawStateChanged\n    });\n    msg.payload[role + \"_selected\"] = selected?.entity ?? null;\n    next[role] = {\n        state: selected?.state ?? null,\n        raw_state: selected?.raw_state ?? null,\n        observed_at: selected?.observed_at ?? null,\n        updated_at: Date.now()\n    };\n    if (msg.payload?.source === role && selected) {\n        Object.assign(msg.payload, {\n            trigger_prev_state: previousState,\n            trigger_state: selected.state,\n            trigger_raw_prev_state: previousRawState,\n            trigger_raw_state: selected.raw_state,\n            trigger_entity: \"device_tracker.\" + role + \"_location\"\n        });\n        if (selected.state === previousState && !rawStateChanged) {\n            msg.payload.event = \"context_update\";\n        }\n    }\n}\nif (msg.payload?.event === \"context_snapshot\" && changedRoles.length === 1) {\n    const role = changedRoles[0];\n    const selected = msg._canonical_locations?.[role]?.selected;\n    Object.assign(msg.payload, {\n        event: \"location_update\",\n        source: role,\n        trigger_prev_state: previous[role].state,\n        trigger_state: selected.state,\n        trigger_raw_prev_state: previous[role].raw_state,\n        trigger_raw_state: selected.raw_state,\n        trigger_entity: \"device_tracker.\" + role + \"_location\"\n    });\n}\nflow.set(KEY, next, \"persistent\");\nconst selected = msg._canonical_locations?.[msg.payload?.source]?.selected;\nnode.status({\n    fill: selected?.state === \"near_home\" ? \"blue\" : \"green\",\n    shape: selected ? \"dot\" : \"ring\",\n    text: selected ? msg.payload.source + \": \" + selected.state +\n        \" (home \" + homeRadius + \" / near_home \" + nearRadius + \" m)\" :\n        \"snapshot canônico atualizado\"\n});\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -58329,8 +58345,10 @@
         "type": "link in",
         "z": "ea0a6aa0d24ff863",
         "g": "b35563e0f73e5b64",
-        "name": "Refresh da chegada por morador",
+        "name": "Refresh da aproximação por morador",
         "links": [
+            "people_visual_wake_ring_first_out",
+            "people_visual_wake_ring_second_out",
             "security_visual_people_refresh_out"
         ],
         "x": 105,
@@ -58373,7 +58391,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "people_location_lifecycle_config_group_v2",
         "name": "Valores inválidos são rejeitados; a última política válida permanece ativa para todos os consumidores.",
-        "info": "Dedupe: 1–60 min; graça: 1–60 min; retorno local: 15–180 min; ciclo externo: 15–600 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
+        "info": "Dedupe: 1–60 min; graça: 1–60 min; retorno local: 15–180 min; ciclo externo: 15–600 s; sondas do anel: 15–180 s e 30–180 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
         "x": 2745,
         "y": 100,
         "wires": []
@@ -58666,7 +58684,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "people_location_policy_group_v1",
         "name": "Validar valor, unidade e limites",
-        "func": "const DEFAULTS = {\n    near_home_radius_m: 700,\n    home_radius_m: 100,\n    location_fresh_minutes: 15,\n    source_report_fresh_minutes: 75,\n    recency_tie_seconds: 60,\n    max_gps_accuracy_m: 100,\n    vehicle_location_fresh_minutes: 30,\n    movement_threshold_m: 250,\n    arrival_recovery_minutes: 15,\n    local_excursion_minutes: 90,\n    near_home_refresh_minutes: 10,\n    arrival_dedupe_minutes: 10,\n    primary_home_grace_minutes: 10,\n    external_cycle_confirm_seconds: 60,\n    future_tolerance_seconds: 60,\n    vehicle_signal_fresh_minutes: 5,\n    vehicle_recovery_hours: 24\n};\nconst LIMITS = {\n    near_home_radius_m: [50, 1500],\n    home_radius_m: [20, 500],\n    location_fresh_minutes: [1, 120],\n    source_report_fresh_minutes: [5, 1440],\n    recency_tie_seconds: [0, 300],\n    max_gps_accuracy_m: [5, 1000],\n    vehicle_location_fresh_minutes: [5, 180],\n    movement_threshold_m: [10, 2000],\n    arrival_recovery_minutes: [3, 30],\n    local_excursion_minutes: [15, 180],\n    near_home_refresh_minutes: [3, 14],\n    arrival_dedupe_minutes: [1, 60],\n    primary_home_grace_minutes: [1, 60],\n    external_cycle_confirm_seconds: [15, 600],\n    future_tolerance_seconds: [0, 300],\n    vehicle_signal_fresh_minutes: [1, 30],\n    vehicle_recovery_hours: [1, 168]\n};\nconst topic = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[topic];\nif (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {\n    msg.location_policy_rejection = {\n        parameter: topic || null,\n        rejected_value: msg.payload,\n        limits: bounds ?? null,\n        preserved: true\n    };\n    return [null, msg];\n}\nconst previous = global.get(\"location_policy_v1\", \"persistent\");\nconst base = previous?.version === 1 && previous?.complete === true\n    ? previous\n    : DEFAULTS;\nmsg.location_policy_candidate = {\n    ...DEFAULTS,\n    ...base,\n    [topic]: value,\n    version: 1,\n    owner: \"node_red\",\n    complete: true,\n    updated_at: Date.now()\n};\nif (msg.location_policy_candidate.near_home_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes) {\n    msg.location_policy_rejection = {\n        parameter: topic,\n        rejected_value: msg.payload,\n        reason: \"near_home_refresh_must_precede_location_stale\",\n        preserved: true\n    };\n    return [null, msg];\n}\ndelete msg.location_policy_candidate.people_fast_refresh_radius_m;\nreturn [msg, null];",
+        "func": "const DEFAULTS = {\n    near_home_radius_m: 700,\n    home_radius_m: 100,\n    location_fresh_minutes: 15,\n    source_report_fresh_minutes: 75,\n    recency_tie_seconds: 60,\n    max_gps_accuracy_m: 100,\n    vehicle_location_fresh_minutes: 30,\n    movement_threshold_m: 250,\n    arrival_recovery_minutes: 15,\n    local_excursion_minutes: 90,\n    near_home_refresh_minutes: 10,\n    arrival_dedupe_minutes: 10,\n    primary_home_grace_minutes: 10,\n    external_cycle_confirm_seconds: 60,\n    wake_ring_refresh_delay_seconds: 45,\n    wake_ring_refresh_repeat_seconds: 60,\n    future_tolerance_seconds: 60,\n    vehicle_signal_fresh_minutes: 5,\n    vehicle_recovery_hours: 24\n};\nconst LIMITS = {\n    near_home_radius_m: [50, 1500],\n    home_radius_m: [20, 500],\n    location_fresh_minutes: [1, 120],\n    source_report_fresh_minutes: [5, 1440],\n    recency_tie_seconds: [0, 300],\n    max_gps_accuracy_m: [5, 1000],\n    vehicle_location_fresh_minutes: [5, 180],\n    movement_threshold_m: [10, 2000],\n    arrival_recovery_minutes: [3, 30],\n    local_excursion_minutes: [15, 180],\n    near_home_refresh_minutes: [3, 14],\n    arrival_dedupe_minutes: [1, 60],\n    primary_home_grace_minutes: [1, 60],\n    external_cycle_confirm_seconds: [15, 600],\n    wake_ring_refresh_delay_seconds: [15, 180],\n    wake_ring_refresh_repeat_seconds: [30, 180],\n    future_tolerance_seconds: [0, 300],\n    vehicle_signal_fresh_minutes: [1, 30],\n    vehicle_recovery_hours: [1, 168]\n};\nconst topic = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[topic];\nif (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {\n    msg.location_policy_rejection = {\n        parameter: topic || null,\n        rejected_value: msg.payload,\n        limits: bounds ?? null,\n        preserved: true\n    };\n    return [null, msg];\n}\nconst previous = global.get(\"location_policy_v1\", \"persistent\");\nconst base = previous?.version === 1 && previous?.complete === true\n    ? previous\n    : DEFAULTS;\nmsg.location_policy_candidate = {\n    ...DEFAULTS,\n    ...base,\n    [topic]: value,\n    version: 1,\n    owner: \"node_red\",\n    complete: true,\n    updated_at: Date.now()\n};\nif (msg.location_policy_candidate.near_home_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes) {\n    msg.location_policy_rejection = {\n        parameter: topic,\n        rejected_value: msg.payload,\n        reason: \"near_home_refresh_must_precede_location_stale\",\n        preserved: true\n    };\n    return [null, msg];\n}\ndelete msg.location_policy_candidate.people_fast_refresh_radius_m;\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -58728,7 +58746,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "8e1c3a19399ad44d",
         "name": "Normalizar decisão canônica em fatos",
-        "func": "const policy = global.get(\"location_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"Política canônica de localização ausente\", msg);\n    return null;\n}\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst futureMs = Number(policy.future_tolerance_seconds) * 1000;\nconst locationFreshMs = Number(policy.location_fresh_minutes) * 60000;\nconst reportFreshMs = Number(policy.source_report_fresh_minutes) * 60000;\nconst validState = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst timestamp = (entity, attribute, fallback) => {\n    const value = Date.parse(entity?.attributes?.[attribute] ?? entity?.[fallback] ?? \"\");\n    return Number.isFinite(value) ? value : null;\n};\nconst fresh = (value, ttl) => value !== null &&\n    value <= Date.now() + futureMs && Date.now() - value <= ttl;\nfunction position(selected, primary, fallback) {\n    const attrs = selected?.attributes ?? {};\n    const observedAt = timestamp(selected, \"location_observed_at\", \"last_changed\");\n    const reportedAt = timestamp(selected, \"source_reported_at\", \"last_updated\");\n    const latitude = Number(attrs.latitude);\n    const longitude = Number(attrs.longitude);\n    const accuracy = Number(attrs.gps_accuracy);\n    const distanceHome = Number(attrs.canonical_distance_home_m);\n    const distanceGate = Number(attrs.canonical_distance_gate_m);\n    const state = selected?.state;\n    const ready = validState(state) && fresh(observedAt, locationFreshMs);\n    const home = Number.isFinite(distanceHome)\n        ? distanceHome <= Number(policy.home_radius_m)\n        : state === \"home\";\n    const away = Number.isFinite(distanceHome)\n        ? distanceHome > Number(policy.home_radius_m)\n        : [\"not_home\", \"near_home\"].includes(state);\n    const sourceReporting = [primary, fallback].some((entity) =>\n        fresh(timestamp(entity, \"source_reported_at\", \"last_updated\"), reportFreshMs));\n    const changedAt = Date.parse(selected?.last_changed ?? \"\");\n    return {\n        entity_id: selected?.entity_id,\n        state,\n        latitude: Number.isFinite(latitude) ? latitude : null,\n        longitude: Number.isFinite(longitude) ? longitude : null,\n        gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,\n        location_reliable: Number.isFinite(latitude) && Number.isFinite(longitude),\n        state_valid: ready,\n        updated_at: observedAt,\n        source_updated_at: reportedAt,\n        source_stale: !fresh(reportedAt, reportFreshMs),\n        any_source_reporting: sourceReporting,\n        stale: !fresh(observedAt, locationFreshMs),\n        ready,\n        distance_m: Number.isFinite(distanceHome) ? distanceHome : null,\n        gate_distance_m: Number.isFinite(distanceGate) ? distanceGate : null,\n        current_home: ready ? home : null,\n        primary_home: home,\n        best_location_away: away,\n        any_tracker_home: home,\n        any_tracker_away: away,\n        stationary_home: state === \"home\" && home && !away && sourceReporting,\n        primary_home_for_ms: Number.isFinite(changedAt) ? Date.now() - changedAt : null\n    };\n}\nconst people = {\n    resident_primary: position(msg.payload?.resident_primary_selected,\n        msg.payload?.resident_primary, msg.payload?.resident_primary_icloud),\n    resident_secondary: position(msg.payload?.resident_secondary_selected,\n        msg.payload?.resident_secondary, msg.payload?.resident_secondary_icloud)\n};\nmsg._people = {\n    test_mode: TEST_MODE,\n    policy,\n    people,\n    source: msg.payload?.source,\n    trigger_state: msg.payload?.trigger_state,\n    trigger_prev_state: msg.payload?.trigger_prev_state,\n    refresh_cycle_id: msg.payload?.refresh_cycle_id,\n    trigger_entity: msg.payload?.trigger_entity,\n    is_location_event: msg.payload?.event === \"location_update\"\n};\nreturn msg;",
+        "func": "const policy = global.get(\"location_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"Política canônica de localização ausente\", msg);\n    return null;\n}\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst futureMs = Number(policy.future_tolerance_seconds) * 1000;\nconst locationFreshMs = Number(policy.location_fresh_minutes) * 60000;\nconst reportFreshMs = Number(policy.source_report_fresh_minutes) * 60000;\nconst validState = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst timestamp = (entity, attribute, fallback) => {\n    const value = Date.parse(entity?.attributes?.[attribute] ?? entity?.[fallback] ?? \"\");\n    return Number.isFinite(value) ? value : null;\n};\nconst fresh = (value, ttl) => value !== null &&\n    value <= Date.now() + futureMs && Date.now() - value <= ttl;\nfunction position(selected, primary, fallback) {\n    const attrs = selected?.attributes ?? {};\n    const observedAt = timestamp(selected, \"location_observed_at\", \"last_changed\");\n    const reportedAt = timestamp(selected, \"source_reported_at\", \"last_updated\");\n    const latitude = Number(attrs.latitude);\n    const longitude = Number(attrs.longitude);\n    const accuracy = Number(attrs.gps_accuracy);\n    const distanceHome = Number(attrs.canonical_distance_home_m);\n    const distanceGate = Number(attrs.canonical_distance_gate_m);\n    const state = selected?.state;\n    const ready = validState(state) && fresh(observedAt, locationFreshMs);\n    const home = Number.isFinite(distanceHome)\n        ? distanceHome <= Number(policy.home_radius_m)\n        : state === \"home\";\n    const away = Number.isFinite(distanceHome)\n        ? distanceHome > Number(policy.home_radius_m)\n        : [\"not_home\", \"near_home\"].includes(state);\n    const sourceReporting = [primary, fallback].some((entity) =>\n        fresh(timestamp(entity, \"source_reported_at\", \"last_updated\"), reportFreshMs));\n    const changedAt = Date.parse(selected?.last_changed ?? \"\");\n    return {\n        entity_id: selected?.entity_id,\n        state,\n        raw_state: String(attrs.raw_location_state ?? state ?? \"\"),\n        latitude: Number.isFinite(latitude) ? latitude : null,\n        longitude: Number.isFinite(longitude) ? longitude : null,\n        gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,\n        location_reliable: Number.isFinite(latitude) && Number.isFinite(longitude),\n        state_valid: ready,\n        updated_at: observedAt,\n        source_updated_at: reportedAt,\n        source_stale: !fresh(reportedAt, reportFreshMs),\n        any_source_reporting: sourceReporting,\n        stale: !fresh(observedAt, locationFreshMs),\n        ready,\n        distance_m: Number.isFinite(distanceHome) ? distanceHome : null,\n        gate_distance_m: Number.isFinite(distanceGate) ? distanceGate : null,\n        current_home: ready ? home : null,\n        primary_home: home,\n        best_location_away: away,\n        any_tracker_home: home,\n        any_tracker_away: away,\n        stationary_home: state === \"home\" && home && !away && sourceReporting,\n        primary_home_for_ms: Number.isFinite(changedAt) ? Date.now() - changedAt : null\n    };\n}\nconst people = {\n    resident_primary: position(msg.payload?.resident_primary_selected,\n        msg.payload?.resident_primary, msg.payload?.resident_primary_icloud),\n    resident_secondary: position(msg.payload?.resident_secondary_selected,\n        msg.payload?.resident_secondary, msg.payload?.resident_secondary_icloud)\n};\nmsg._people = {\n    test_mode: TEST_MODE,\n    policy,\n    people,\n    source: msg.payload?.source,\n    trigger_state: msg.payload?.trigger_state,\n    trigger_prev_state: msg.payload?.trigger_prev_state,\n    trigger_raw_state: msg.payload?.trigger_raw_state,\n    trigger_raw_prev_state: msg.payload?.trigger_raw_prev_state,\n    refresh_cycle_id: msg.payload?.refresh_cycle_id,\n    trigger_entity: msg.payload?.trigger_entity,\n    is_location_event: msg.payload?.event === \"location_update\"\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -58770,7 +58788,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "8e1c3a19399ad44d",
         "name": "Derivar direção, proximidade e validade",
-        "func": "const data = msg._people;\nif (!data) return null;\nconst validZone = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst external = (state) => validZone(state) && ![\"home\", \"near_home\"].includes(state);\nconst now = Date.now();\nconst futureMs = Number(data.policy.future_tolerance_seconds) * 1000;\nconst confirmMs = Number(data.policy.external_cycle_confirm_seconds ?? 60) * 1000;\nconst validObservedAt = (value) => Number.isFinite(value) && value > 0 &&\n    value <= now + futureMs;\nconst near = (item) => item?.ready === true && (\n    (item.gate_distance_m !== null && item.gate_distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (item.distance_m !== null && item.distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (item.distance_m === null && item.gate_distance_m === null && item.state === \"home\")\n);\n\n/* O evento e o snapshot pareado podem carregar a mesma observação externa.\n * Uma segunda mensagem idêntica não confirma que a pessoa realmente saiu. */\nfor (const [role, item] of Object.entries(data.people)) {\n    if (item?.ready !== true || !external(item.state)) continue;\n    const observedAt = Number(item.updated_at);\n    const previous = Number(data.external_since[role]);\n    if (!validObservedAt(previous)) {\n        data.external_since[role] = validObservedAt(observedAt) ? observedAt : now;\n    }\n    const externalSince = Number(data.external_since[role]);\n    if (validObservedAt(observedAt) && validObservedAt(externalSince) &&\n        observedAt - externalSince >= confirmMs) data.armed[role] = true;\n}\n\nconst source = data.people[data.source];\nconst sourceObservedAt = Number(source?.updated_at);\nconst sourceExternalSince = Number(data.external_since[data.source]);\nif (data.is_location_event && source?.ready === true &&\n    external(data.trigger_prev_state) && !external(data.trigger_state) &&\n    validObservedAt(sourceObservedAt) && validObservedAt(sourceExternalSince) &&\n    sourceObservedAt - sourceExternalSince >= confirmMs) {\n    data.armed[data.source] = true;\n}\n\nconst approach = data.trigger_state === \"near_home\" &&\n    external(data.trigger_prev_state) && source?.current_home !== true;\nconst departure = data.trigger_prev_state === \"home\" && data.trigger_state !== \"home\";\nconst localExcursionStart = departure && data.trigger_state === \"near_home\" &&\n    source?.ready === true && source?.current_home !== true;\nif (localExcursionStart) {\n    const startedAt = validObservedAt(sourceObservedAt) ? sourceObservedAt : now;\n    data.local_excursions[data.source] = {\n        started_at: startedAt,\n        expires_at: startedAt +\n            Number(data.policy.local_excursion_minutes ?? 90) * 60000\n    };\n}\nif (source?.ready === true && external(source.state)) {\n    delete data.local_excursions[data.source];\n}\nconst graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;\ndata.facts = {\n    source_ready: source?.ready === true,\n    trigger_prev_valid: validZone(data.trigger_prev_state),\n    trigger_prev_unavailable: [\"unknown\", \"unavailable\"].includes(data.trigger_prev_state),\n    approach_entry: approach,\n    departure,\n    stale_catchup: !approach && source?.primary_home === true &&\n        typeof source.primary_home_for_ms === \"number\" && source.primary_home_for_ms > graceMs,\n    near_home: near(source),\n    external_cycle_confirmed: data.armed[data.source] === true,\n    directional_candidate: source?.ready === true &&\n        data.trigger_state !== data.trigger_prev_state &&\n        [\"home\", \"near_home\"].includes(data.trigger_state),\n    local_excursion_start: localExcursionStart\n};\nif (source?.ready === true && !external(source.state)) {\n    data.external_since[data.source] = null;\n}\nif (departure) data.armed[data.source] = false;\nif (!data.is_location_event) {\n    for (const [role, item] of Object.entries(data.people)) {\n        if (item?.ready === true && (item.distance_m !== null\n            ? item.distance_m <= Number(data.policy.home_radius_m)\n            : item.state === \"home\")) {\n            data.armed[role] = false;\n            data.external_since[role] = null;\n        }\n    }\n}\nreturn msg;",
+        "func": "const data = msg._people;\nif (!data) return null;\nconst validZone = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst external = (state) => validZone(state) && ![\"home\", \"near_home\"].includes(state);\nconst now = Date.now();\nconst futureMs = Number(data.policy.future_tolerance_seconds) * 1000;\nconst confirmMs = Number(data.policy.external_cycle_confirm_seconds ?? 60) * 1000;\nconst validObservedAt = (value) => Number.isFinite(value) && value > 0 &&\n    value <= now + futureMs;\nconst near = (item) => item?.ready === true && (\n    (item.gate_distance_m !== null && item.gate_distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (item.distance_m !== null && item.distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (item.distance_m === null && item.gate_distance_m === null && item.state === \"home\")\n);\n\n/* O evento e o snapshot pareado podem carregar a mesma observação externa.\n * Uma segunda mensagem idêntica não confirma que a pessoa realmente saiu. */\nfor (const [role, item] of Object.entries(data.people)) {\n    if (item?.ready !== true || !external(item.state)) continue;\n    const observedAt = Number(item.updated_at);\n    const previous = Number(data.external_since[role]);\n    if (!validObservedAt(previous)) {\n        data.external_since[role] = validObservedAt(observedAt) ? observedAt : now;\n    }\n    const externalSince = Number(data.external_since[role]);\n    if (validObservedAt(observedAt) && validObservedAt(externalSince) &&\n        observedAt - externalSince >= confirmMs) data.armed[role] = true;\n}\n\nconst source = data.people[data.source];\nconst sourceObservedAt = Number(source?.updated_at);\nconst sourceExternalSince = Number(data.external_since[data.source]);\nif (data.is_location_event && source?.ready === true &&\n    external(data.trigger_prev_state) && !external(data.trigger_state) &&\n    validObservedAt(sourceObservedAt) && validObservedAt(sourceExternalSince) &&\n    sourceObservedAt - sourceExternalSince >= confirmMs) {\n    data.armed[data.source] = true;\n}\n\nconst approach = data.trigger_state === \"near_home\" &&\n    external(data.trigger_prev_state) && source?.current_home !== true;\nconst wakeRingEntry = data.trigger_raw_state === \"location_update_ring\" &&\n    data.trigger_raw_prev_state !== \"location_update_ring\" &&\n    external(source?.state) && source?.current_home !== true;\nconst departure = data.trigger_prev_state === \"home\" && data.trigger_state !== \"home\";\nconst localExcursionStart = departure && data.trigger_state === \"near_home\" &&\n    source?.ready === true && source?.current_home !== true;\nif (localExcursionStart) {\n    const startedAt = validObservedAt(sourceObservedAt) ? sourceObservedAt : now;\n    data.local_excursions[data.source] = {\n        started_at: startedAt,\n        expires_at: startedAt +\n            Number(data.policy.local_excursion_minutes ?? 90) * 60000\n    };\n}\nif (source?.ready === true && external(source.state)) {\n    delete data.local_excursions[data.source];\n}\nconst graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;\ndata.facts = {\n    source_ready: source?.ready === true,\n    trigger_prev_valid: validZone(data.trigger_prev_state),\n    trigger_prev_unavailable: [\"unknown\", \"unavailable\"].includes(data.trigger_prev_state),\n    approach_entry: approach,\n    wake_ring_entry: wakeRingEntry,\n    departure,\n    stale_catchup: !approach && source?.primary_home === true &&\n        typeof source.primary_home_for_ms === \"number\" && source.primary_home_for_ms > graceMs,\n    near_home: near(source),\n    external_cycle_confirmed: data.armed[data.source] === true,\n    directional_candidate: source?.ready === true &&\n        data.trigger_state !== data.trigger_prev_state &&\n        [\"home\", \"near_home\"].includes(data.trigger_state),\n    local_excursion_start: localExcursionStart\n};\nif (source?.ready === true && !external(source.state)) {\n    data.external_since[data.source] = null;\n}\nif (departure) data.armed[data.source] = false;\nif (!data.is_location_event) {\n    for (const [role, item] of Object.entries(data.people)) {\n        if (item?.ready === true && (item.distance_m !== null\n            ? item.distance_m <= Number(data.policy.home_radius_m)\n            : item.state === \"home\")) {\n            data.armed[role] = false;\n            data.external_since[role] = null;\n        }\n    }\n}\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -58781,7 +58799,8 @@
         "y": 560,
         "wires": [
             [
-                "people_visual_decision"
+                "people_visual_decision",
+                "people_visual_wake_ring_candidate_out"
             ]
         ]
     },
@@ -59124,8 +59143,8 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_config_group",
         "name": "Duplo clique para editar; defaults e limites estão em cada bloco",
-        "info": "Os quatro valores formam uma única política. Após o deploy, o join acumula os valores e alterações individuais também recompõem a política. Inválidos não substituem a última versão válida.",
-        "x": 680,
+        "info": "Os sete valores formam uma única política. Após o deploy, o join acumula os valores e alterações individuais também recompõem a política. Inválidos não substituem a última versão válida.",
+        "x": 650,
         "y": 80,
         "wires": []
     },
@@ -59154,13 +59173,14 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 280,
+        "x": 200,
         "y": 150,
         "wires": [
             [
-                "resident_notifications_policy_join"
+                "notification_hub_wire_out_55f2da08c526"
             ]
-        ]
+        ],
+        "w": 200
     },
     {
         "id": "resident_notifications_policy_age",
@@ -59187,13 +59207,14 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 280,
+        "x": 200,
         "y": 210,
         "wires": [
             [
-                "resident_notifications_policy_join"
+                "notification_hub_wire_out_123f371264b3"
             ]
-        ]
+        ],
+        "w": 200
     },
     {
         "id": "resident_notifications_policy_future",
@@ -59220,13 +59241,14 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 280,
+        "x": 200,
         "y": 270,
         "wires": [
             [
-                "resident_notifications_policy_join"
+                "notification_hub_wire_out_2e942a9dd0b3"
             ]
-        ]
+        ],
+        "w": 200
     },
     {
         "id": "resident_notifications_policy_retry",
@@ -59253,13 +59275,14 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 280,
+        "x": 200,
         "y": 330,
         "wires": [
             [
-                "resident_notifications_policy_join"
+                "notification_hub_wire_out_52a178a632e3"
             ]
-        ]
+        ],
+        "w": 200
     },
     {
         "id": "resident_notifications_policy_join",
@@ -59276,19 +59299,20 @@
         "joinerType": "str",
         "accumulate": true,
         "timeout": "",
-        "count": "4",
+        "count": "7",
         "reduceRight": false,
         "reduceExp": "",
         "reduceInit": "",
         "reduceInitType": "",
         "reduceFixup": "",
-        "x": 600,
+        "x": 750,
         "y": 240,
         "wires": [
             [
                 "resident_notifications_policy_validate"
             ]
-        ]
+        ],
+        "w": 100
     },
     {
         "id": "resident_notifications_policy_validate",
@@ -59296,20 +59320,21 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_config_group",
         "name": "Validar unidades, limites e relações",
-        "func": "const candidate = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst dedupe = Number(candidate.dedupe_ttl_ms);\nconst maxAge = Number(candidate.max_event_age_ms);\nconst future = Number(candidate.future_tolerance_ms);\nconst retry = Number(candidate.service_retry_seconds);\nconst errors = [];\n\nif (!Number.isInteger(dedupe) || dedupe < 60000 || dedupe > 3600000) errors.push(\"dedupe_ttl_ms\");\nif (!Number.isInteger(maxAge) || maxAge < 60000 || maxAge > 3600000) errors.push(\"max_event_age_ms\");\nif (!Number.isInteger(future) || future < 0 || future > 300000) errors.push(\"future_tolerance_ms\");\nif (!Number.isInteger(retry) || retry < 10 || retry > 600) errors.push(\"service_retry_seconds\");\nif (Number.isInteger(maxAge) && Number.isInteger(future) && future >= maxAge) errors.push(\"future_tolerance_lt_max_age\");\n\nmsg.policy_valid = errors.length === 0;\nmsg.policy_error = errors.join(\",\");\nmsg.policy_candidate = msg.policy_valid ? {\n    version: 2,\n    dedupe_ttl_ms: dedupe,\n    max_event_age_ms: maxAge,\n    future_tolerance_ms: future,\n    service_retry_seconds: retry\n} : null;\nreturn msg;",
+        "func": "const input = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst bounds = {\n    dedupe_ttl_ms: [60000, 3600000],\n    max_event_age_ms: [60000, 3600000],\n    future_tolerance_ms: [0, 300000],\n    service_retry_seconds: [10, 600],\n    home_confirmation_seconds: [30, 300],\n    home_confirmation_window_seconds: [90, 900],\n    home_confirmation_recheck_seconds: [10, 60]\n};\nconst values = {};\nconst errors = [];\nfor (const [field, limits] of Object.entries(bounds)) {\n    const value = Number(input[field]);\n    values[field] = value;\n    if (!Number.isInteger(value) || value < limits[0] || value > limits[1]) {\n        errors.push(field);\n    }\n}\nif (values.future_tolerance_ms >= values.max_event_age_ms) {\n    errors.push(\"future_tolerance_lt_max_age\");\n}\nif (values.home_confirmation_window_seconds < values.home_confirmation_seconds) {\n    errors.push(\"home_window_gte_confirmation\");\n}\nif (values.home_confirmation_recheck_seconds >= values.home_confirmation_seconds) {\n    errors.push(\"home_recheck_lt_confirmation\");\n}\nmsg.policy_valid = errors.length === 0;\nmsg.policy_error = errors.join(\",\");\nmsg.policy_candidate = msg.policy_valid ? { version: 3, ...values } : null;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 880,
-        "y": 240,
+        "x": 970,
+        "y": 160,
         "wires": [
             [
                 "resident_notifications_policy_switch"
             ]
-        ]
+        ],
+        "w": 160
     },
     {
         "id": "resident_notifications_policy_switch",
@@ -59330,8 +59355,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1210,
-        "y": 240,
+        "x": 970,
+        "y": 320,
         "wires": [
             [
                 "resident_notifications_policy_store"
@@ -59339,7 +59364,8 @@
             [
                 "resident_notifications_policy_reject"
             ]
-        ]
+        ],
+        "w": 160
     },
     {
         "id": "resident_notifications_policy_store",
@@ -59347,16 +59373,17 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_config_group",
         "name": "Guardar última política válida",
-        "func": "const record = {\n    version: 2,\n    policy: msg.policy_candidate,\n    updated_at: Date.now()\n};\nflow.set(\"resident_notifications_policy_v2\", record, \"persistent\");\nmsg.policy = record.policy;\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política válida aplicada\" });\nreturn null;",
+        "func": "const record = {\n    version: 3,\n    policy: msg.policy_candidate,\n    updated_at: Date.now()\n};\nflow.set(\"resident_notifications_policy_v3\", record, \"persistent\");\nmsg.policy = record.policy;\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política válida aplicada\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1500,
-        "y": 200,
-        "wires": []
+        "x": 1230,
+        "y": 160,
+        "wires": [],
+        "w": 160
     },
     {
         "id": "resident_notifications_policy_reject",
@@ -59371,9 +59398,10 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1500,
-        "y": 300,
-        "wires": []
+        "x": 1230,
+        "y": 320,
+        "wires": [],
+        "w": 160
     },
     {
         "id": "resident_notifications_canonical_in_v1",
@@ -59386,8 +59414,8 @@
             "resident_notifications_test_event_out",
             "light_arrival_replay_route_out_v1"
         ],
-        "x": 105,
-        "y": 560,
+        "x": 1420,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_prepare"
@@ -59407,8 +59435,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 325,
-        "y": 560,
+        "x": 1640,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_contract_switch"
@@ -59434,8 +59462,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 610,
-        "y": 560,
+        "x": 1880,
+        "y": 200,
         "wires": [
             [
                 "resident_notifications_kind_switch"
@@ -59458,8 +59486,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 910,
-        "y": 600,
+        "x": 2140,
+        "y": 130,
         "wires": []
     },
     {
@@ -59481,8 +59509,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 880,
-        "y": 540,
+        "x": 2140,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_canonical_out"
@@ -59505,8 +59533,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1140,
-        "y": 540,
+        "x": 2400,
+        "y": 330,
         "wires": []
     },
     {
@@ -59519,8 +59547,8 @@
         "links": [
             "resident_notifications_event_in"
         ],
-        "x": 1065,
-        "y": 480,
+        "x": 2610,
+        "y": 240,
         "wires": []
     },
     {
@@ -59532,8 +59560,8 @@
         "links": [
             "resident_notifications_canonical_out"
         ],
-        "x": 1355,
-        "y": 580,
+        "x": 2830,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_policy_load"
@@ -59546,15 +59574,15 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_decision_group",
         "name": "Carregar política canônica",
-        "func": "const record = flow.get(\"resident_notifications_policy_v2\", \"persistent\");\nmsg.policy_available = record?.version === 2 && record.policy?.version === 2;\nmsg.policy = msg.policy_available ? record.policy : null;\nreturn msg;",
+        "func": "const record = flow.get(\"resident_notifications_policy_v3\", \"persistent\");\nmsg.policy_available = record?.version === 3 && record.policy?.version === 3;\nmsg.policy = msg.policy_available ? record.policy : null;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1520,
-        "y": 580,
+        "x": 3030,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_policy_available"
@@ -59580,8 +59608,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1770,
-        "y": 580,
+        "x": 3250,
+        "y": 200,
         "wires": [
             [
                 "resident_notifications_direction_switch"
@@ -59604,8 +59632,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2050,
-        "y": 560,
+        "x": 3490,
+        "y": 120,
         "wires": []
     },
     {
@@ -59627,8 +59655,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2030,
-        "y": 620,
+        "x": 3500,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_cycle_switch"
@@ -59636,7 +59664,8 @@
             [
                 "resident_notifications_direction_invalid"
             ]
-        ]
+        ],
+        "w": 180
     },
     {
         "id": "resident_notifications_direction_invalid",
@@ -59651,8 +59680,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2325,
-        "y": 680,
+        "x": 3810,
+        "y": 120,
         "wires": []
     },
     {
@@ -59674,8 +59703,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2310,
-        "y": 620,
+        "x": 3750,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_stage_switch"
@@ -59683,7 +59712,8 @@
             [
                 "resident_notifications_cycle_invalid"
             ]
-        ]
+        ],
+        "w": 180
     },
     {
         "id": "resident_notifications_cycle_invalid",
@@ -59698,8 +59728,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2640,
-        "y": 640,
+        "x": 4090,
+        "y": 120,
         "wires": []
     },
     {
@@ -59733,22 +59763,23 @@
         "checkall": "true",
         "repair": false,
         "outputs": 4,
-        "x": 2630,
-        "y": 580,
+        "x": 4050,
+        "y": 250,
         "wires": [
             [
-                "resident_notifications_source_switch"
+                "resident_notifications_confirmation_bypass_out"
             ],
             [
-                "resident_notifications_source_switch"
+                "resident_notifications_confirmation_bypass_out"
             ],
             [
-                "resident_notifications_source_switch"
+                "resident_notifications_home_candidate_out"
             ],
             [
                 "resident_notifications_stage_invalid"
             ]
-        ]
+        ],
+        "w": 190
     },
     {
         "id": "resident_notifications_stage_invalid",
@@ -59763,15 +59794,15 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2960,
-        "y": 640,
+        "x": 4210,
+        "y": 400,
         "wires": []
     },
     {
         "id": "resident_notifications_source_switch",
         "type": "switch",
         "z": "resident_notifications_tab",
-        "g": "resident_notifications_decision_group",
+        "g": "resident_notifications_confirmation_group",
         "name": "Quem está chegando?",
         "property": "resident_source",
         "propertyType": "msg",
@@ -59793,8 +59824,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 2950,
-        "y": 520,
+        "x": 6920,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_recipient_secondary"
@@ -59805,13 +59836,14 @@
             [
                 "resident_notifications_source_invalid"
             ]
-        ]
+        ],
+        "w": 180
     },
     {
         "id": "resident_notifications_recipient_secondary",
         "type": "change",
         "z": "resident_notifications_tab",
-        "g": "resident_notifications_decision_group",
+        "g": "resident_notifications_confirmation_group",
         "name": "primary chegando → avisar secondary",
         "rules": [
             {
@@ -59827,8 +59859,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3265,
-        "y": 500,
+        "x": 7180,
+        "y": 180,
         "wires": [
             [
                 "resident_notifications_decision_out"
@@ -59839,7 +59871,7 @@
         "id": "resident_notifications_recipient_primary",
         "type": "change",
         "z": "resident_notifications_tab",
-        "g": "resident_notifications_decision_group",
+        "g": "resident_notifications_confirmation_group",
         "name": "secondary chegando → avisar primary",
         "rules": [
             {
@@ -59855,8 +59887,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3270,
-        "y": 550,
+        "x": 7180,
+        "y": 310,
         "wires": [
             [
                 "resident_notifications_decision_out"
@@ -59867,7 +59899,7 @@
         "id": "resident_notifications_source_invalid",
         "type": "function",
         "z": "resident_notifications_tab",
-        "g": "resident_notifications_decision_group",
+        "g": "resident_notifications_confirmation_group",
         "name": "Ignorar origem desconhecida",
         "func": "node.status({\"fill\":\"grey\",\"shape\":\"ring\",\"text\":\"origem não canônica\"});\nreturn null;",
         "outputs": 0,
@@ -59876,22 +59908,22 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3255,
-        "y": 600,
+        "x": 7170,
+        "y": 410,
         "wires": []
     },
     {
         "id": "resident_notifications_decision_out",
         "type": "link out",
         "z": "resident_notifications_tab",
-        "g": "resident_notifications_decision_group",
+        "g": "resident_notifications_confirmation_group",
         "name": "Chegada válida → frescor e entrega",
         "mode": "link",
         "links": [
             "resident_notifications_state_in"
         ],
-        "x": 3510,
-        "y": 540,
+        "x": 7340,
+        "y": 240,
         "wires": []
     },
     {
@@ -59903,8 +59935,8 @@
         "links": [
             "resident_notifications_decision_out"
         ],
-        "x": 141,
-        "y": 1752,
+        "x": 7500,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_event_time_switch"
@@ -59920,8 +59952,8 @@
         "links": [
             "resident_notifications_retry_out"
         ],
-        "x": 1294,
-        "y": 1888,
+        "x": 8250,
+        "y": 410,
         "wires": [
             [
                 "resident_notifications_state_read"
@@ -59947,8 +59979,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 361,
-        "y": 1712,
+        "x": 7660,
+        "y": 200,
         "wires": [
             [
                 "resident_notifications_future_switch"
@@ -59971,8 +60003,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 641,
-        "y": 1622,
+        "x": 7900,
+        "y": 110,
         "wires": []
     },
     {
@@ -59994,8 +60026,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 641,
-        "y": 1732,
+        "x": 7910,
+        "y": 220,
         "wires": [
             [
                 "resident_notifications_future_terminal"
@@ -60018,8 +60050,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 950,
-        "y": 1680,
+        "x": 8180,
+        "y": 110,
         "wires": []
     },
     {
@@ -60041,8 +60073,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 990,
-        "y": 1760,
+        "x": 8170,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_stale_terminal"
@@ -60065,8 +60097,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1270,
-        "y": 1740,
+        "x": 8440,
+        "y": 110,
         "wires": []
     },
     {
@@ -60082,13 +60114,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1227,
-        "y": 1838,
+        "x": 8210,
+        "y": 330,
         "wires": [
             [
                 "resident_notifications_state_read"
             ]
-        ]
+        ],
+        "w": 160
     },
     {
         "id": "resident_notifications_state_read",
@@ -60103,13 +60136,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1609,
-        "y": 1828,
+        "x": 8470,
+        "y": 330,
         "wires": [
             [
                 "resident_notifications_duplicate_switch"
             ]
-        ]
+        ],
+        "w": 160
     },
     {
         "id": "resident_notifications_duplicate_switch",
@@ -60130,8 +60164,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1909,
-        "y": 1828,
+        "x": 8730,
+        "y": 330,
         "wires": [
             [
                 "resident_notifications_duplicate_terminal"
@@ -60139,7 +60173,8 @@
             [
                 "resident_notifications_state_write"
             ]
-        ]
+        ],
+        "w": 160
     },
     {
         "id": "resident_notifications_duplicate_terminal",
@@ -60154,8 +60189,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2200,
-        "y": 1800,
+        "x": 8740,
+        "y": 150,
         "wires": []
     },
     {
@@ -60171,13 +60206,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2240,
-        "y": 1860,
+        "x": 8990,
+        "y": 410,
         "wires": [
             [
                 "resident_notifications_delivery_out"
             ]
-        ]
+        ],
+        "w": 160
     },
     {
         "id": "resident_notifications_delivery_out",
@@ -60189,8 +60225,8 @@
         "links": [
             "resident_notifications_delivery_in"
         ],
-        "x": 2440,
-        "y": 1860,
+        "x": 9100,
+        "y": 470,
         "wires": []
     },
     {
@@ -60202,8 +60238,8 @@
         "links": [
             "resident_notifications_delivery_out"
         ],
-        "x": 170,
-        "y": 2080,
+        "x": 9250,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_message_build"
@@ -60216,15 +60252,15 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_output_group",
         "name": "Montar envelope da notificação",
-        "func": "const role = msg.resident_source;\nconst alias = global.get(\"publicBindings\")?.roles?.[role]?.source_alias;\nconst words = typeof alias === \"string\"\n    ? alias.trim().split(/[\\s_-]+/u).filter(Boolean)\n    : [];\nconst safeAlias = words.length > 0 && words.every((word) => /^[\\p{L}\\p{M}.'’]+$/u.test(word));\nconst display = safeAlias\n    ? words.map((word) => word.charAt(0).toLocaleUpperCase(\"pt-BR\") + word.slice(1)).join(\" \")\n    : role;\nconst testMode = msg._location_test === true;\n\nmsg.payload = {\n    contract: \"security.resident-approach-notification.v1\",\n    kind: \"resident_approach_notification\",\n    source: role,\n    recipient: msg.resident_recipient,\n    notification_key: msg.notification_key,\n    event_at: msg.event_at,\n    arrival_stage: msg.arrival_stage,\n    message: (testMode ? \"[TESTE] \" : \"\") + display + (\n        msg.arrival_stage === \"home\" ? \" chegou em casa.\" : \" está perto de casa.\"\n    ),\n    test_mode: testMode,\n    simulated: testMode,\n    dispatched: false\n};\nreturn msg;",
+        "func": "const role = msg.resident_source;\nconst alias = global.get(\"publicBindings\")?.roles?.[role]?.source_alias;\nconst words = typeof alias === \"string\"\n    ? alias.trim().split(/[\\s_-]+/u).filter(Boolean)\n    : [];\nconst safeAlias = words.length > 0 && words.every((word) => /^[\\p{L}\\p{M}.'’]+$/u.test(word));\nconst display = safeAlias\n    ? words.map((word) => word.charAt(0).toLocaleUpperCase(\"pt-BR\") + word.slice(1)).join(\" \")\n    : role;\nconst testMode = msg._location_test === true;\n\nmsg.payload = {\n    contract: \"security.resident-approach-notification.v1\",\n    kind: \"resident_approach_notification\",\n    source: role,\n    recipient: msg.resident_recipient,\n    notification_key: msg.notification_key,\n    event_at: msg.event_at,\n    arrival_stage: msg.arrival_stage,\n    message: (testMode ? \"[TESTE] \" : \"\") + display + (\n        msg.arrival_stage === \"home\" ? \" chegou em casa.\" : \" está chegando em casa.\"\n    ),\n    test_mode: testMode,\n    simulated: testMode,\n    dispatched: false\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 2080,
+        "x": 9470,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_test_gate"
@@ -60250,8 +60286,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 685,
-        "y": 2080,
+        "x": 9730,
+        "y": 240,
         "wires": [
             [
                 "resident_notifications_dry_run_out"
@@ -60271,8 +60307,8 @@
         "links": [
             "resident_notifications_dry_run_in"
         ],
-        "x": 890,
-        "y": 2060,
+        "x": 9920,
+        "y": 150,
         "wires": []
     },
     {
@@ -60301,8 +60337,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 980,
-        "y": 2120,
+        "x": 9990,
+        "y": 280,
         "wires": [
             [
                 "resident_notifications_primary_out"
@@ -60325,8 +60361,8 @@
         "links": [
             "resident_notifications_primary_in"
         ],
-        "x": 1190,
-        "y": 2070,
+        "x": 10220,
+        "y": 230,
         "wires": []
     },
     {
@@ -60339,8 +60375,8 @@
         "links": [
             "resident_notifications_secondary_in"
         ],
-        "x": 1190,
-        "y": 2150,
+        "x": 10220,
+        "y": 310,
         "wires": []
     },
     {
@@ -60356,8 +60392,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1280,
-        "y": 2200,
+        "x": 10220,
+        "y": 130,
         "wires": []
     },
     {
@@ -60369,8 +60405,8 @@
         "links": [
             "resident_notifications_primary_out"
         ],
-        "x": 1280,
-        "y": 2070,
+        "x": 10300,
+        "y": 230,
         "wires": [
             [
                 "resident_notifications_notify_primary"
@@ -60411,8 +60447,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1520,
-        "y": 2070,
+        "x": 10520,
+        "y": 230,
         "wires": [
             [
                 "resident_notifications_notify_primary__hub_call"
@@ -60430,8 +60466,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 1800,
-        "y": 2070,
+        "x": 10800,
+        "y": 230,
         "wires": [
             [
                 "resident_notifications_notify_primary__hub_result"
@@ -60459,8 +60495,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2070,
-        "y": 2070,
+        "x": 11070,
+        "y": 230,
         "wires": [
             [
                 "resident_notifications_delivery_ack"
@@ -60479,8 +60515,8 @@
         "links": [
             "resident_notifications_secondary_out"
         ],
-        "x": 1280,
-        "y": 2150,
+        "x": 10300,
+        "y": 310,
         "wires": [
             [
                 "resident_notifications_notify_secondary"
@@ -60521,8 +60557,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1520,
-        "y": 2150,
+        "x": 10520,
+        "y": 310,
         "wires": [
             [
                 "resident_notifications_notify_secondary__hub_call"
@@ -60540,8 +60576,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 1800,
-        "y": 2150,
+        "x": 10800,
+        "y": 310,
         "wires": [
             [
                 "resident_notifications_notify_secondary__hub_result"
@@ -60569,8 +60605,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2070,
-        "y": 2150,
+        "x": 11070,
+        "y": 310,
         "wires": [
             [
                 "resident_notifications_delivery_ack"
@@ -60593,8 +60629,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2470,
-        "y": 2080,
+        "x": 11400,
+        "y": 270,
         "wires": []
     },
     {
@@ -60608,8 +60644,8 @@
             "resident_notifications_notify_secondary__hub_call"
         ],
         "uncaught": false,
-        "x": 345,
-        "y": 2160,
+        "x": 9890,
+        "y": 410,
         "wires": [
             [
                 "resident_notifications_delivery_failure"
@@ -60629,11 +60665,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 795,
-        "y": 2280,
+        "x": 10150,
+        "y": 410,
         "wires": [
             [
-                "notification_hub_wire_out_3e1229d83eeb"
+                "resident_notifications_retry_switch"
             ]
         ]
     },
@@ -60656,14 +60692,14 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2170,
-        "y": 2250,
+        "x": 10420,
+        "y": 410,
         "wires": [
             [
-                "resident_notifications_retry_delay"
+                "notification_hub_wire_out_13a5ed93253b"
             ],
             [
-                "resident_notifications_retry_exhausted"
+                "notification_hub_wire_out_5ad6d4860f8a"
             ]
         ]
     },
@@ -60685,8 +60721,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 2410,
-        "y": 2200,
+        "x": 11250,
+        "y": 360,
         "wires": [
             [
                 "resident_notifications_retry_out"
@@ -60703,8 +60739,8 @@
         "links": [
             "resident_notifications_retry_in"
         ],
-        "x": 2680,
-        "y": 2200,
+        "x": 11500,
+        "y": 360,
         "wires": []
     },
     {
@@ -60720,8 +60756,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2410,
-        "y": 2290,
+        "x": 11250,
+        "y": 450,
         "wires": []
     },
     {
@@ -60731,8 +60767,8 @@
         "g": "resident_notifications_output_group",
         "name": "Cada chegada avisa somente o outro morador; nunca o próprio.",
         "info": "queue: all preserva eventos durante queda temporária do HA. O recibo confirma somente o aceite do serviço; a entrega no iOS continua best-effort. Nenhum botão manual possui ligação com estes serviços.",
-        "x": 955,
-        "y": 2000,
+        "x": 10000,
+        "y": 80,
         "wires": []
     },
     {
@@ -60742,8 +60778,8 @@
         "g": "resident_notifications_test_group",
         "name": "TESTES 1–9: dry-run. TESTE 10: único push real, marcado TESTE, para mobile_secondary.",
         "info": "Os casos 1–9 usam security.arrival.v1 e percorrem contrato, direção, ciclo externo, etapa, frescor, reserva, dedupe, destinatário e gate final sem efeitos. O caso 10 existe somente para conferir a entrega ponta a ponta no celular secundário.",
-        "x": 1520,
-        "y": 833,
+        "x": 1450,
+        "y": 610,
         "wires": []
     },
     {
@@ -60766,8 +60802,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 260,
-        "y": 903,
+        "x": 190,
+        "y": 680,
         "wires": [
             [
                 "resident_notifications_reset_test"
@@ -60787,8 +60823,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 520,
-        "y": 903,
+        "x": 450,
+        "y": 680,
         "wires": []
     },
     {
@@ -60811,8 +60847,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 320,
-        "y": 973,
+        "x": 250,
+        "y": 750,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -60839,8 +60875,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 320,
-        "y": 1028,
+        "x": 250,
+        "y": 805,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -60867,8 +60903,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 320,
-        "y": 1083,
+        "x": 250,
+        "y": 860,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -60895,8 +60931,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 300,
-        "y": 1138,
+        "x": 230,
+        "y": 915,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -60923,8 +60959,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 310,
-        "y": 1193,
+        "x": 240,
+        "y": 970,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -60951,8 +60987,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 270,
-        "y": 1248,
+        "x": 200,
+        "y": 1025,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -60979,11 +61015,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 270,
-        "y": 1303,
+        "x": 200,
+        "y": 1080,
         "wires": [
             [
-                "notification_hub_wire_out_45e544bc24a6"
+                "resident_notifications_test_adapter"
             ]
         ]
     },
@@ -61007,11 +61043,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 290,
-        "y": 1353,
+        "x": 220,
+        "y": 1130,
         "wires": [
             [
-                "notification_hub_wire_out_c9536c199169"
+                "resident_notifications_test_adapter"
             ]
         ]
     },
@@ -61024,8 +61060,8 @@
         "links": [
             "bc2afbce89f5a9d5"
         ],
-        "x": 470,
-        "y": 1450,
+        "x": 620,
+        "y": 750,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -61045,8 +61081,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 750,
-        "y": 1150,
+        "x": 670,
+        "y": 920,
         "wires": [
             [
                 "resident_notifications_test_event_out"
@@ -61063,8 +61099,8 @@
         "links": [
             "resident_notifications_canonical_in_v1"
         ],
-        "x": 1110,
-        "y": 1143,
+        "x": 1040,
+        "y": 920,
         "wires": []
     },
     {
@@ -61076,8 +61112,8 @@
         "links": [
             "resident_notifications_dry_run_out"
         ],
-        "x": 770,
-        "y": 1000,
+        "x": 1430,
+        "y": 780,
         "wires": [
             [
                 "resident_notifications_dry_run_terminal"
@@ -61097,8 +61133,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1070,
-        "y": 1000,
+        "x": 1730,
+        "y": 780,
         "wires": []
     },
     {
@@ -61119,8 +61155,8 @@
         "topic": "",
         "payload": "TESTE — confirmação do push de chegada para o celular.",
         "payloadType": "str",
-        "x": 870,
-        "y": 1260,
+        "x": 2110,
+        "y": 1080,
         "wires": [
             [
                 "resident_notifications_test_notify_secondary"
@@ -61161,8 +61197,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 860,
-        "y": 1340,
+        "x": 2450,
+        "y": 1080,
         "wires": [
             [
                 "resident_notifications_test_notify_secondary__hub_call"
@@ -61180,8 +61216,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 1060,
-        "y": 1400,
+        "x": 2730,
+        "y": 1080,
         "wires": [
             [
                 "resident_notifications_test_notify_secondary__hub_result"
@@ -61209,8 +61245,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1250,
-        "y": 1460,
+        "x": 3000,
+        "y": 1080,
         "wires": [
             [
                 "resident_notifications_test_delivery_accepted"
@@ -61232,8 +61268,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1530,
-        "y": 1520,
+        "x": 3370,
+        "y": 1080,
         "wires": []
     },
     {
@@ -61244,8 +61280,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 2060,
-        "y": 840,
+        "x": 11860,
+        "y": 100,
         "wires": [
             [
                 "global_observer_coverage__resident_notifications_tab__annotate"
@@ -61259,8 +61295,8 @@
         "g": "global_observer_coverage__resident_notifications_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 2070,
-        "y": 900,
+        "x": 11870,
+        "y": 160,
         "wires": [
             [
                 "global_observer_coverage__resident_notifications_tab__annotate"
@@ -61280,8 +61316,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2340,
-        "y": 870,
+        "x": 12140,
+        "y": 130,
         "wires": [
             [
                 "global_observer_coverage__resident_notifications_tab__out"
@@ -61298,8 +61334,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2503,
-        "y": 880,
+        "x": 12385,
+        "y": 130,
         "wires": []
     },
     {
@@ -61312,8 +61348,8 @@
         "links": [
             "notification_hub_wire_in_1ecb0204c49e"
         ],
-        "x": 2225,
-        "y": 2100,
+        "x": 11250,
+        "y": 180,
         "wires": []
     },
     {
@@ -61325,8 +61361,8 @@
         "links": [
             "notification_hub_wire_out_1ecb0204c49e"
         ],
-        "x": 495,
-        "y": 2250,
+        "x": 9970,
+        "y": 210,
         "wires": [
             [
                 "resident_notifications_delivery_failure"
@@ -61343,8 +61379,8 @@
         "links": [
             "notification_hub_wire_in_be8bb6bde419"
         ],
-        "x": 2250,
-        "y": 2150,
+        "x": 11250,
+        "y": 110,
         "wires": []
     },
     {
@@ -61356,104 +61392,11 @@
         "links": [
             "notification_hub_wire_out_be8bb6bde419"
         ],
-        "x": 495,
-        "y": 2310,
+        "x": 9890,
+        "y": 210,
         "wires": [
             [
                 "resident_notifications_delivery_failure"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_3e1229d83eeb",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Encurtar: Liberar reserva e limitar tentativas",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_3e1229d83eeb"
-        ],
-        "x": 995,
-        "y": 2280,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_3e1229d83eeb",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
-        "name": "Continuar: Ainda restam tentativas?",
-        "links": [
-            "notification_hub_wire_out_3e1229d83eeb"
-        ],
-        "x": 1990,
-        "y": 2250,
-        "wires": [
-            [
-                "resident_notifications_retry_switch"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_45e544bc24a6",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_test_group",
-        "name": "Encurtar: TESTE 8: evento futuro",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_45e544bc24a6"
-        ],
-        "x": 450,
-        "y": 1253,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_45e544bc24a6",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_test_group",
-        "name": "Continuar: Adaptar somente cenário sintético",
-        "links": [
-            "notification_hub_wire_out_45e544bc24a6"
-        ],
-        "x": 570,
-        "y": 1150,
-        "wires": [
-            [
-                "resident_notifications_test_adapter"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_c9536c199169",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_test_group",
-        "name": "Encurtar: TESTE 9: repetir última chegada",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_c9536c199169"
-        ],
-        "x": 470,
-        "y": 1353,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_c9536c199169",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_test_group",
-        "name": "Continuar: Adaptar somente cenário sintético",
-        "links": [
-            "notification_hub_wire_out_c9536c199169"
-        ],
-        "x": 570,
-        "y": 1250,
-        "wires": [
-            [
-                "resident_notifications_test_adapter"
             ]
         ]
     },
@@ -69852,5 +69795,1028 @@
         "wires": [],
         "z": "ea0a6aa0d24ff863",
         "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "resident_notifications_confirmation_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "3. Confirmar HOME contínuo antes de afirmar chegada",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0e7490",
+            "stroke-opacity": "1",
+            "fill": "#cffafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "resident_notifications_home_candidate_in",
+            "resident_notifications_home_confirmation_retry_in",
+            "resident_notifications_home_confirmation_prepare",
+            "resident_notifications_home_confirmation_delay",
+            "resident_notifications_home_confirmation_test_switch",
+            "resident_notifications_home_confirmation_source",
+            "resident_notifications_home_confirmation_primary",
+            "resident_notifications_home_confirmation_secondary",
+            "resident_notifications_home_confirmation_source_invalid",
+            "resident_notifications_home_confirmation_test_state",
+            "resident_notifications_home_confirmation_evaluate",
+            "resident_notifications_home_confirmation_result",
+            "resident_notifications_home_confirmation_retry_out",
+            "resident_notifications_home_confirmation_rejected",
+            "resident_notifications_source_switch",
+            "resident_notifications_recipient_secondary",
+            "resident_notifications_recipient_primary",
+            "resident_notifications_source_invalid",
+            "resident_notifications_decision_out",
+            "notification_hub_wire_out_cbcd8c2a1171",
+            "notification_hub_wire_in_cbcd8c2a1171",
+            "resident_notifications_home_confirmation_confirmed_out",
+            "resident_notifications_confirmation_routing_in"
+        ],
+        "x": 4380,
+        "y": 40,
+        "w": 3000,
+        "h": 450
+    },
+    {
+        "id": "resident_notifications_policy_home_stable",
+        "type": "inject",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "HOME contínuo — padrão 90 s [30..300]",
+        "props": [
+            {
+                "p": "payload",
+                "v": "90",
+                "vt": "num"
+            },
+            {
+                "p": "topic",
+                "v": "home_confirmation_seconds",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 500,
+        "y": 160,
+        "wires": [
+            [
+                "resident_notifications_policy_join"
+            ]
+        ],
+        "w": 200
+    },
+    {
+        "id": "resident_notifications_policy_home_window",
+        "type": "inject",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Janela de confirmação — padrão 300 s [90..900]",
+        "props": [
+            {
+                "p": "payload",
+                "v": "300",
+                "vt": "num"
+            },
+            {
+                "p": "topic",
+                "v": "home_confirmation_window_seconds",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 500,
+        "y": 240,
+        "wires": [
+            [
+                "resident_notifications_policy_join"
+            ]
+        ],
+        "w": 200
+    },
+    {
+        "id": "resident_notifications_policy_home_recheck",
+        "type": "inject",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Rechecagem — padrão 30 s [10..60]",
+        "props": [
+            {
+                "p": "payload",
+                "v": "30",
+                "vt": "num"
+            },
+            {
+                "p": "topic",
+                "v": "home_confirmation_recheck_seconds",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 500,
+        "y": 320,
+        "wires": [
+            [
+                "resident_notifications_policy_join"
+            ]
+        ],
+        "w": 200
+    },
+    {
+        "id": "resident_notifications_confirmation_bypass_out",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_decision_group",
+        "name": "Approach válido → destinatário",
+        "mode": "link",
+        "links": [
+            "resident_notifications_confirmation_routing_in"
+        ],
+        "x": 4240,
+        "y": 190,
+        "wires": []
+    },
+    {
+        "id": "resident_notifications_home_candidate_out",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_decision_group",
+        "name": "HOME candidato → confirmar",
+        "mode": "link",
+        "links": [
+            "resident_notifications_home_candidate_in"
+        ],
+        "x": 4240,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "resident_notifications_home_candidate_in",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Receber HOME candidato",
+        "links": [
+            "resident_notifications_home_candidate_out"
+        ],
+        "x": 4450,
+        "y": 220,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "resident_notifications_home_confirmation_retry_in",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Reavaliar HOME dentro da janela",
+        "links": [
+            "resident_notifications_home_confirmation_retry_out"
+        ],
+        "x": 4470,
+        "y": 360,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_delay"
+            ]
+        ]
+    },
+    {
+        "id": "resident_notifications_home_confirmation_prepare",
+        "type": "function",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Iniciar janela de HOME contínuo",
+        "func": "const stableMs = Number(msg.policy?.home_confirmation_seconds) * 1000;\nconst windowMs = Number(msg.policy?.home_confirmation_window_seconds) * 1000;\nmsg.home_confirmation_started_at = Date.now();\nmsg.home_confirmation_deadline_at = Date.now() + windowMs;\nmsg.home_confirmation_required_ms = stableMs;\nmsg.home_confirmation_recheck_ms =\n    Number(msg.policy?.home_confirmation_recheck_seconds) * 1000;\nmsg.delay = msg._location_test === true ? 1 : stableMs;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 4680,
+        "y": 220,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_delay"
+            ]
+        ],
+        "w": 190
+    },
+    {
+        "id": "resident_notifications_home_confirmation_delay",
+        "type": "delay",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Aguardar estabilidade configurada",
+        "pauseType": "delayv",
+        "timeout": "60",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 4940,
+        "y": 250,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_test_switch"
+            ]
+        ]
+    },
+    {
+        "id": "resident_notifications_home_confirmation_test_switch",
+        "type": "switch",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Usar estado sintético em TESTE?",
+        "property": "_location_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 5200,
+        "y": 250,
+        "wires": [
+            [
+                "notification_hub_wire_out_cbcd8c2a1171"
+            ],
+            [
+                "resident_notifications_home_confirmation_source"
+            ]
+        ],
+        "w": 190
+    },
+    {
+        "id": "resident_notifications_home_confirmation_source",
+        "type": "switch",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Consultar qual tracker canônico?",
+        "property": "resident_source",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "resident_primary",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "resident_secondary",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 3,
+        "x": 5480,
+        "y": 250,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_primary"
+            ],
+            [
+                "resident_notifications_home_confirmation_secondary"
+            ],
+            [
+                "resident_notifications_home_confirmation_source_invalid"
+            ]
+        ],
+        "w": 190
+    },
+    {
+        "id": "resident_notifications_home_confirmation_primary",
+        "type": "api-current-state",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Ler resident_primary atual",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "device_tracker.resident_primary_location",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "home_confirmation_state",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "home_confirmation_entity",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "seconds",
+        "override_topic": false,
+        "state_location": "home_confirmation_state",
+        "override_payload": "none",
+        "entity_location": "home_confirmation_entity",
+        "override_data": "none",
+        "x": 5750,
+        "y": 200,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "resident_notifications_home_confirmation_secondary",
+        "type": "api-current-state",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Ler resident_secondary atual",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "device_tracker.resident_secondary_location",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "home_confirmation_state",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "home_confirmation_entity",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "seconds",
+        "override_topic": false,
+        "state_location": "home_confirmation_state",
+        "override_payload": "none",
+        "entity_location": "home_confirmation_entity",
+        "override_data": "none",
+        "x": 5750,
+        "y": 280,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "resident_notifications_home_confirmation_source_invalid",
+        "type": "function",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Bloquear tracker desconhecido",
+        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"fonte inválida\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5750,
+        "y": 370,
+        "wires": []
+    },
+    {
+        "id": "resident_notifications_home_confirmation_test_state",
+        "type": "function",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Montar HOME sintético estável",
+        "func": "const now = Date.now();\nmsg.home_confirmation_state = \"home\";\nmsg.home_confirmation_entity = {\n    state: \"home\",\n    last_changed: new Date(now - msg.home_confirmation_required_ms).toISOString(),\n    attributes: {\n        location_fresh: true,\n        location_observed_at: new Date(now).toISOString()\n    }\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5750,
+        "y": 450,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_evaluate"
+            ]
+        ],
+        "w": 190
+    },
+    {
+        "id": "resident_notifications_home_confirmation_evaluate",
+        "type": "function",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Validar frescor e permanência em HOME",
+        "func": "const now = Date.now();\nconst entity = msg.home_confirmation_entity ?? {};\nconst state = String(msg.home_confirmation_state ?? entity.state ?? \"\");\nconst lastChanged = Date.parse(entity.last_changed ?? \"\");\nconst observedAt = Date.parse(entity.attributes?.location_observed_at ?? \"\");\nconst fresh = entity.attributes?.location_fresh === true;\nconst stable = Number.isFinite(lastChanged) &&\n    now - lastChanged >= msg.home_confirmation_required_ms;\nconst currentObservation = Number.isFinite(observedAt) &&\n    observedAt >= Number(msg.event_at);\nconst eventAt = Number(msg.event_at);\nconst eventCurrent = Number.isFinite(eventAt) &&\n    eventAt <= now + Number(msg.policy?.future_tolerance_ms) &&\n    now - eventAt <= Number(msg.policy?.max_event_age_ms);\nconst withinWindow = now <= Number(msg.home_confirmation_deadline_at);\nconst confirmed = state === \"home\" && fresh && stable &&\n    currentObservation && eventCurrent && withinWindow;\nconst retryable = eventCurrent && now < msg.home_confirmation_deadline_at &&\n    [\"\", \"home\", \"near_home\", \"unknown\", \"unavailable\"].includes(state);\n\nmsg.home_confirmation_result = confirmed\n    ? \"confirmed\"\n    : retryable ? \"retry\" : \"rejected\";\nif (confirmed) {\n    msg.home_confirmation_confirmed_at = now;\n} else if (retryable) {\n    msg.delay = msg._location_test === true\n        ? 1 : msg.home_confirmation_recheck_ms;\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 6040,
+        "y": 250,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_result"
+            ]
+        ],
+        "w": 210
+    },
+    {
+        "id": "resident_notifications_home_confirmation_result",
+        "type": "switch",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "HOME foi confirmado?",
+        "property": "home_confirmation_result",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "confirmed",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "retry",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 3,
+        "x": 6320,
+        "y": 250,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_confirmed_out"
+            ],
+            [
+                "resident_notifications_home_confirmation_retry_out"
+            ],
+            [
+                "resident_notifications_home_confirmation_rejected"
+            ]
+        ],
+        "w": 180
+    },
+    {
+        "id": "resident_notifications_home_confirmation_retry_out",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Oscilação → reavaliar",
+        "mode": "link",
+        "links": [
+            "resident_notifications_home_confirmation_retry_in"
+        ],
+        "x": 6550,
+        "y": 350,
+        "wires": []
+    },
+    {
+        "id": "resident_notifications_home_confirmation_rejected",
+        "type": "function",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Não afirmar chegada sem HOME contínuo",
+        "func": "node.status({\"fill\":\"yellow\",\"shape\":\"ring\",\"text\":\"HOME não confirmado\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 6550,
+        "y": 430,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_cbcd8c2a1171",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Encurtar: Usar estado sintético em TESTE?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_cbcd8c2a1171"
+        ],
+        "x": 5380,
+        "y": 350,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_cbcd8c2a1171",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Continuar: Montar HOME sintético estável",
+        "links": [
+            "notification_hub_wire_out_cbcd8c2a1171"
+        ],
+        "x": 5570,
+        "y": 450,
+        "wires": [
+            [
+                "resident_notifications_home_confirmation_test_state"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_13a5ed93253b",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Encurtar: Ainda restam tentativas?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_13a5ed93253b"
+        ],
+        "x": 10600,
+        "y": 410,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_13a5ed93253b",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Continuar: Aguardar retry da política",
+        "links": [
+            "notification_hub_wire_out_13a5ed93253b"
+        ],
+        "x": 11070,
+        "y": 410,
+        "wires": [
+            [
+                "resident_notifications_retry_delay"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_5ad6d4860f8a",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Encurtar: Ainda restam tentativas?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_5ad6d4860f8a"
+        ],
+        "x": 10600,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_5ad6d4860f8a",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
+        "name": "Continuar: Falha após três tentativas",
+        "links": [
+            "notification_hub_wire_out_5ad6d4860f8a"
+        ],
+        "x": 11070,
+        "y": 150,
+        "wires": [
+            [
+                "resident_notifications_retry_exhausted"
+            ]
+        ]
+    },
+    {
+        "id": "resident_notifications_home_confirmation_confirmed_out",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "HOME confirmado → destinatário",
+        "mode": "link",
+        "links": [
+            "resident_notifications_confirmation_routing_in"
+        ],
+        "x": 6550,
+        "y": 250,
+        "wires": []
+    },
+    {
+        "id": "resident_notifications_confirmation_routing_in",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_confirmation_group",
+        "name": "Convergir approach ou HOME confirmado",
+        "links": [
+            "resident_notifications_confirmation_bypass_out",
+            "resident_notifications_home_confirmation_confirmed_out"
+        ],
+        "x": 6710,
+        "y": 120,
+        "wires": [
+            [
+                "resident_notifications_source_switch"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_wake_ring_delay",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_location_lifecycle_config_group_v2",
+        "name": "1ª sonda do anel — 45 s [15..180]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "wake_ring_refresh_delay_seconds",
+        "payload": "45",
+        "payloadType": "num",
+        "x": 3110,
+        "y": 260,
+        "wires": [
+            [
+                "people_visual_lifecycle_config_right_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_wake_ring_repeat",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_location_lifecycle_config_group_v2",
+        "name": "2ª sonda após — 60 s [30..180]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "wake_ring_refresh_repeat_seconds",
+        "payload": "60",
+        "payloadType": "num",
+        "x": 3110,
+        "y": 310,
+        "wires": [
+            [
+                "people_visual_lifecycle_config_right_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_wake_ring_candidate_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Anel técnico → avaliar sondas",
+        "mode": "link",
+        "links": [
+            "people_visual_wake_ring_candidate_in"
+        ],
+        "x": 3540,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "people_visual_wake_ring_candidate_in",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Receber candidato do anel",
+        "links": [
+            "people_visual_wake_ring_candidate_out"
+        ],
+        "x": 5480,
+        "y": 560,
+        "wires": [
+            [
+                "people_visual_wake_ring_gate"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_wake_ring_gate",
+        "type": "switch",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Entrada nova no anel com ciclo externo confirmado?",
+        "property": "_people.is_location_event = true and _people.facts.source_ready = true and _people.facts.wake_ring_entry = true and _people.facts.external_cycle_confirmed = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 5700,
+        "y": 560,
+        "wires": [
+            [
+                "people_visual_wake_ring_refresh_build"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "people_visual_wake_ring_refresh_build",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Preparar duas sondas atuais e limitadas",
+        "func": "const data = msg._people;\nif (!data?.facts?.wake_ring_entry || !data.facts.external_cycle_confirmed) {\n    return [null, null];\n}\nconst firstDelay = Number(data.policy.wake_ring_refresh_delay_seconds ?? 45) * 1000;\nconst repeatDelay = Number(data.policy.wake_ring_refresh_repeat_seconds ?? 60) * 1000;\nconst base = {\n    contract: \"security.location-refresh.v1\",\n    kind: \"arrival_location_refresh\",\n    reason: \"wake_ring_approach_probe\",\n    source: data.source,\n    test_mode: data.test_mode,\n    simulated: data.test_mode,\n    dispatched: false,\n    trigger_observed_at: data.people?.[data.source]?.updated_at ?? null\n};\nconst request = (probe, delayMs) => ({\n    ...msg,\n    delay: data.test_mode ? 1 : delayMs,\n    payload: { ...base, refresh_probe: probe }\n});\nreturn [request(1, firstDelay), request(2, firstDelay + repeatDelay)];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5980,
+        "y": 560,
+        "wires": [
+            [
+                "people_visual_wake_ring_first_delay"
+            ],
+            [
+                "people_visual_wake_ring_second_delay"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_wake_ring_first_delay",
+        "type": "delay",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Aguardar 1ª sonda configurada",
+        "pauseType": "delayv",
+        "timeout": "60",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 6260,
+        "y": 510,
+        "wires": [
+            [
+                "people_visual_wake_ring_first_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_wake_ring_second_delay",
+        "type": "delay",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Aguardar 2ª sonda configurada",
+        "pauseType": "delayv",
+        "timeout": "60",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 6260,
+        "y": 630,
+        "wires": [
+            [
+                "people_visual_wake_ring_second_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_wake_ring_first_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "1ª sonda → refresh seletivo",
+        "mode": "link",
+        "links": [
+            "people_visual_arrival_refresh_in"
+        ],
+        "x": 6570,
+        "y": 510,
+        "wires": []
+    },
+    {
+        "id": "people_visual_wake_ring_second_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "2ª sonda → refresh seletivo",
+        "mode": "link",
+        "links": [
+            "people_visual_arrival_refresh_in"
+        ],
+        "x": 6570,
+        "y": 630,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_55f2da08c526",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Encurtar: Dedupe da entrega — padrão 10 min [1..60]",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_55f2da08c526"
+        ],
+        "x": 380,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_55f2da08c526",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Continuar: Reunir política única",
+        "links": [
+            "notification_hub_wire_out_55f2da08c526"
+        ],
+        "x": 570,
+        "y": 390,
+        "wires": [
+            [
+                "resident_notifications_policy_join"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_123f371264b3",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Encurtar: Idade máxima — padrão 15 min [1..60]",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_123f371264b3"
+        ],
+        "x": 380,
+        "y": 410,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_123f371264b3",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Continuar: Reunir política única",
+        "links": [
+            "notification_hub_wire_out_123f371264b3"
+        ],
+        "x": 490,
+        "y": 390,
+        "wires": [
+            [
+                "resident_notifications_policy_join"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_2e942a9dd0b3",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Encurtar: Tolerância futura — padrão 60 s [0..300]",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_2e942a9dd0b3"
+        ],
+        "x": 300,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_2e942a9dd0b3",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Continuar: Reunir política única",
+        "links": [
+            "notification_hub_wire_out_2e942a9dd0b3"
+        ],
+        "x": 650,
+        "y": 390,
+        "wires": [
+            [
+                "resident_notifications_policy_join"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_52a178a632e3",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Encurtar: Retry do serviço — padrão 60 s [10..600]",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_52a178a632e3"
+        ],
+        "x": 200,
+        "y": 430,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_52a178a632e3",
+        "type": "link in",
+        "z": "resident_notifications_tab",
+        "g": "resident_notifications_config_group",
+        "name": "Continuar: Reunir política única",
+        "links": [
+            "notification_hub_wire_out_52a178a632e3"
+        ],
+        "x": 450,
+        "y": 90,
+        "wires": [
+            [
+                "resident_notifications_policy_join"
+            ]
+        ]
     }
 ]

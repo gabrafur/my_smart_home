@@ -23,6 +23,8 @@ const LOCATION_POLICY = {
   arrival_dedupe_minutes: 10,
   primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
+  wake_ring_refresh_delay_seconds: 45,
+  wake_ring_refresh_repeat_seconds: 60,
   future_tolerance_seconds: 60,
   vehicle_signal_fresh_minutes: 5,
   vehicle_recovery_hours: 24,
@@ -472,6 +474,12 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   assert.equal(byId.get("bc70805a5fe2f35d").outputOnlyOnStateChange, false);
   assert.equal(byId.get("people_visual_external_confirm").topic, "external_cycle_confirm_seconds");
   assert.equal(byId.get("people_visual_external_confirm").payload, "60");
+  assert.equal(byId.get("people_visual_wake_ring_delay").topic,
+    "wake_ring_refresh_delay_seconds");
+  assert.equal(byId.get("people_visual_wake_ring_delay").payload, "45");
+  assert.equal(byId.get("people_visual_wake_ring_repeat").topic,
+    "wake_ring_refresh_repeat_seconds");
+  assert.equal(byId.get("people_visual_wake_ring_repeat").payload, "60");
 
   const flow = memory({ vehicle_primary_arrival_armed: true });
   const changed = iso();
@@ -495,6 +503,103 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   const vehicleResult = runVehicleLifecycle(classifiedVehicleResult, flow);
   assert.equal(vehicleResult[1].payload.arrival_stage, "approach");
   assert.equal(vehicleResult[0].payload.context.movement_threshold_m, 250);
+}
+
+{
+  const flow = memory({
+    people_arrival_armed: { resident_primary: true, resident_secondary: false },
+  });
+  select(input(
+    tracker(primaryId, "not_home", { distanceM: 2000 }),
+    tracker(fallbackId, "unavailable", { coordinates: false }),
+    "resident_primary",
+  ), flow);
+  clock += 1000;
+  let ring = select(input(
+    tracker(primaryId, "location_update_ring", { distanceM: 1450 }),
+    tracker(fallbackId, "unavailable", { coordinates: false }),
+    "resident_primary",
+  ), flow);
+  assert.equal(ring.payload.trigger_state, "not_home",
+    "anel técnico não pode se tornar near_home fora do raio canônico");
+  assert.equal(ring.payload.trigger_raw_prev_state, "not_home");
+  assert.equal(ring.payload.trigger_raw_state, "location_update_ring");
+  assert.equal(ring.payload.event, "location_update",
+    "entrada nova no anel precisa alcançar a decisão de sondas");
+  ring = run("people_visual_test_adapter", ring, flow);
+  ring = run("people_visual_normalize", ring, flow);
+  ring = run("people_visual_state_load", ring, flow);
+  ring = run("people_visual_facts", ring, flow);
+  assert.equal(ring._people.facts.wake_ring_entry, true);
+  assert.equal(ring._people.facts.external_cycle_confirmed, true);
+  assert.equal(ring._people.facts.approach_entry, false,
+    "anel técnico não pode publicar aproximação sozinho");
+  const probes = run("people_visual_wake_ring_refresh_build", ring, flow);
+  assert.equal(probes[0].delay, 45_000);
+  assert.equal(probes[1].delay, 105_000);
+  assert.deepEqual(probes.map((probe) => probe.payload.refresh_probe), [1, 2]);
+  assert.ok(probes.every((probe) =>
+    probe.payload.kind === "arrival_location_refresh" &&
+    probe.payload.source === "resident_primary"));
+  const noArrival = run("554cb653b2fa4504", structuredClone(ring), flow);
+  assert.equal(noArrival[1], null,
+    "anel fora de near_home não pode emitir contrato de chegada");
+  const unarmed = structuredClone(ring);
+  unarmed._people.facts.external_cycle_confirmed = false;
+  assert.deepEqual(
+    run("people_visual_wake_ring_refresh_build", unarmed, flow),
+    [null, null],
+    "anel sem ciclo externo confirmado não pode consultar localização",
+  );
+  const dryRunRing = structuredClone(ring);
+  dryRunRing._people.test_mode = true;
+  const dryRunProbes = run("people_visual_wake_ring_refresh_build", dryRunRing, flow);
+  assert.ok(dryRunProbes.every((probe) =>
+    probe.delay === 1 && probe.payload.simulated === true &&
+    probe.payload.dispatched === false));
+
+  clock += 1000;
+  const repeatedRing = select(input(
+    tracker(primaryId, "location_update_ring", { distanceM: 1400 }),
+    tracker(fallbackId, "unavailable", { coordinates: false }),
+    "resident_primary",
+  ), flow);
+  assert.equal(repeatedRing.payload.event, "context_update",
+    "atualização dentro do mesmo anel não pode reagendar as duas sondas");
+  assert.deepEqual(
+    byId.get("people_visual_arrival_refresh_in").links.sort(),
+    [
+      "people_visual_wake_ring_first_out",
+      "people_visual_wake_ring_second_out",
+      "security_visual_people_refresh_out",
+    ].sort(),
+  );
+}
+
+{
+  const flow = memory({
+    people_arrival_armed: { resident_primary: true, resident_secondary: false },
+  });
+  select(input(
+    tracker(primaryId, "not_home", { distanceM: 2000 }),
+    tracker(fallbackId, "unavailable", { coordinates: false }),
+    "resident_primary",
+  ), flow);
+  clock += 1000;
+  let nearRing = select(input(
+    tracker(primaryId, "location_update_ring", { distanceM: 650 }),
+    tracker(fallbackId, "unavailable", { coordinates: false }),
+    "resident_primary",
+  ), flow);
+  assert.equal(nearRing.payload.trigger_state, "near_home");
+  nearRing = run("people_visual_test_adapter", nearRing, flow);
+  nearRing = run("people_visual_normalize", nearRing, flow);
+  nearRing = run("people_visual_state_load", nearRing, flow);
+  nearRing = run("people_visual_facts", nearRing, flow);
+  assert.equal(nearRing._people.facts.approach_entry, true,
+    "posição atual dentro de 700 m deve continuar gerando aproximação");
+  assert.equal(nearRing._people.facts.wake_ring_entry, false,
+    "posição já canônica em near_home não precisa das sondas do anel");
 }
 
 {

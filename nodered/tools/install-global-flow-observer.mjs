@@ -78,6 +78,13 @@ const HOME_ASSISTANT_SERVER = homeAssistantServers[0].id;
 const coverageOutIds = [];
 const coverageNodes = [];
 const coverageLayoutOverrides = new Map([
+  ["resident_notifications_tab", {
+    group: { x: 11720, y: 40, w: 720, h: 162 },
+    catch: { x: 11860, y: 100 },
+    status: { x: 11870, y: 160 },
+    annotate: { x: 12140, y: 130 },
+    out: { x: 12385, y: 130 },
+  }],
   ["weekly_docs_review_tab", {
     group: { x: 2600, y: 59, w: 752, h: 142 },
     catch: { x: 2786, y: 100 },
@@ -1350,6 +1357,20 @@ const finalized = reconcileGeneratedFlows(parsedFlows, finalizedUnordered, {
   isOwned: observerManaged,
   shouldUpdate: (node) => observerManaged(node) || externalEventOutIds.includes(node.id),
 });
+const residentCoverage = coverageLayoutOverrides.get("resident_notifications_tab");
+for (const [suffix, position] of [
+  ["__group", residentCoverage.group],
+  ["__catch", residentCoverage.catch],
+  ["__status", residentCoverage.status],
+  ["__annotate", residentCoverage.annotate],
+  ["__out", residentCoverage.out],
+]) {
+  Object.assign(
+    finalized.find((node) =>
+      node.id === `global_observer_coverage__resident_notifications_tab${suffix}`),
+    position,
+  );
+}
 fs.writeFileSync(outputPath, `${JSON.stringify(finalized, null, 4)}\n`);
 console.log(
   `Global flow observer installed for ${tabs.length} tabs in ${outputPath}`,

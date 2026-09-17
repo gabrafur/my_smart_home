@@ -620,15 +620,23 @@ for (const role of ["resident_primary", "resident_secondary"]) {
     const selected = classify(decision.selected);
     const previousState = previous[role]?.state ??
         rawFallback(decision.previous_state);
+    const previousRawState = previous[role]?.raw_state ??
+        String(decision.previous_state ?? "");
     const stateChanged = Boolean(
         selected &&
         previous[role]?.state &&
         selected.state !== previous[role].state
     );
+    const rawStateChanged = Boolean(
+        selected &&
+        previous[role]?.raw_state &&
+        selected.raw_state !== previous[role].raw_state
+    );
     if (stateChanged) changedRoles.push(role);
     decision.selected = selected;
     decision.previous_state = previousState;
     decision.canonical_state_changed = stateChanged;
+    decision.raw_state_changed = rawStateChanged;
     msg.payload[role + "_selected"] = selected?.entity ?? null;
     next[role] = {
         state: selected?.state ?? null,
@@ -639,8 +647,10 @@ for (const role of ["resident_primary", "resident_secondary"]) {
     if (msg.payload?.source === role && selected) {
         msg.payload.trigger_prev_state = previousState;
         msg.payload.trigger_state = selected.state;
+        msg.payload.trigger_raw_prev_state = previousRawState;
+        msg.payload.trigger_raw_state = selected.raw_state;
         msg.payload.trigger_entity = "device_tracker." + role + "_location";
-        if (selected.state === previousState) {
+        if (selected.state === previousState && !rawStateChanged) {
             msg.payload.event = "context_update";
         }
     }

@@ -38,6 +38,7 @@ function position(selected, primary, fallback) {
     return {
         entity_id: selected?.entity_id,
         state,
+        raw_state: String(attrs.raw_location_state ?? state ?? ""),
         latitude: Number.isFinite(latitude) ? latitude : null,
         longitude: Number.isFinite(longitude) ? longitude : null,
         gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,
@@ -73,6 +74,8 @@ msg._people = {
     source: msg.payload?.source,
     trigger_state: msg.payload?.trigger_state,
     trigger_prev_state: msg.payload?.trigger_prev_state,
+    trigger_raw_state: msg.payload?.trigger_raw_state,
+    trigger_raw_prev_state: msg.payload?.trigger_raw_prev_state,
     refresh_cycle_id: msg.payload?.refresh_cycle_id,
     trigger_entity: msg.payload?.trigger_entity,
     is_location_event: msg.payload?.event === "location_update"

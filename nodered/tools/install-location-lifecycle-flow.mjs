@@ -42,7 +42,12 @@ const required = (id) => {
   if (!node) throw new Error(`Nó obrigatório ausente: ${id}`);
   return node;
 };
-const add = (node) => { flows.push(node); byId.set(node.id, node); return node; };
+const add = (node) => {
+  flows.push(node);
+  byId.set(node.id, node);
+  generated.add(node.id);
+  return node;
+};
 const moveGroup = (id, x, y) => {
   const target = required(id);
   const dx = x - target.x;
@@ -76,6 +81,13 @@ const linkIn = (id, g, name, origins, destination, x, y) => grouped(g, {
   id, type: "link in", z: PEOPLE_TAB, g, name, links: origins,
   x, y, wires: [[destination]]
 });
+const delay = (id, g, name, x, y, wires) => grouped(g, {
+  id, type: "delay", z: PEOPLE_TAB, g, name, pauseType: "delayv",
+  timeout: "60", timeoutUnits: "seconds", rate: "1", nbRateUnits: "1",
+  rateUnits: "second", randomFirst: "1", randomLast: "5",
+  randomUnits: "seconds", drop: false, allowrate: false, outputs: 1,
+  x, y, wires
+});
 const inject = (id, g, name, topic, payload, x, y, destination) => grouped(g, {
   id, type: "inject", z: PEOPLE_TAB, g, name,
   props: [{ p: "payload" }, { p: "topic", vt: "str" }],
@@ -86,11 +98,17 @@ const inject = (id, g, name, topic, payload, x, y, destination) => grouped(g, {
 
 required("402fd0cc609443b7").func = source("people-refresh-decide.js");
 required("people_location_publish_state_v1").func = source("people-location-publish.js");
+required("people_location_classify_near_home_v1").func =
+  source("people-location-classify-near-home.js");
 required("b35563e0f73e5b64").name =
   "3. Localização nativa + fallback dos iPhones (máx. 2/h)";
 Object.assign(required("b35563e0f73e5b64"), { h: 382 });
 linkIn("people_visual_arrival_refresh_in", "b35563e0f73e5b64",
-  "Refresh da chegada por morador", ["security_visual_people_refresh_out"],
+  "Refresh da aproximação por morador", [
+    "security_visual_people_refresh_out",
+    "people_visual_wake_ring_first_out",
+    "people_visual_wake_ring_second_out"
+  ],
   "people_visual_arrival_refresh_dispatch", 100, 1030);
 fn("people_visual_arrival_refresh_dispatch", "b35563e0f73e5b64",
   "Direcionar somente ao iPhone da chegada", "people-arrival-refresh-dispatch.js", 2,
@@ -106,7 +124,7 @@ const config = group(
 grouped(config.id, {
   id: "people_visual_lifecycle_help", type: "comment", z: PEOPLE_TAB, g: config.id,
   name: "Valores inválidos são rejeitados; a última política válida permanece ativa para todos os consumidores.",
-  info: "Dedupe: 1–60 min; graça: 1–60 min; retorno local: 15–180 min; ciclo externo: 15–600 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
+  info: "Dedupe: 1–60 min; graça: 1–60 min; retorno local: 15–180 min; ciclo externo: 15–600 s; sondas do anel: 15–180 s e 30–180 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
   x: 2740, y: 100, wires: []
 });
 inject("people_visual_arrival_dedupe_config", config.id, "Dedupe chegada — 10 min [1..60]", "arrival_dedupe_minutes", 10, 2370, 160, "people_visual_lifecycle_config_left_out");
@@ -120,9 +138,11 @@ const nearHomeRefresh = inject("people_visual_near_home_refresh", config.id,
 nearHomeRefresh.onceDelay = "1.6";
 inject("people_visual_vehicle_recovery", config.id, "Recovery veículo — 24 h [1..168]", "vehicle_recovery_hours", 24, 3110, 160, "people_visual_lifecycle_config_right_out");
 inject("people_visual_external_confirm", config.id, "Confirmar ciclo externo — 60 s [15..600]", "external_cycle_confirm_seconds", 60, 3110, 210, "people_visual_lifecycle_config_right_out");
-linkOut("people_visual_lifecycle_config_left_out", config.id, "Tempos de chegada → política", "people_location_values_route_in_v1", 2550, 330);
-linkOut("people_visual_lifecycle_config_middle_out", config.id, "Validade → política", "people_location_values_route_in_v1", 2920, 330);
-linkOut("people_visual_lifecycle_config_right_out", config.id, "Recovery → política", "people_location_values_route_in_v1", 3290, 330);
+inject("people_visual_wake_ring_delay", config.id, "1ª sonda do anel — 45 s [15..180]", "wake_ring_refresh_delay_seconds", 45, 3110, 260, "people_visual_lifecycle_config_right_out");
+inject("people_visual_wake_ring_repeat", config.id, "2ª sonda após — 60 s [30..180]", "wake_ring_refresh_repeat_seconds", 60, 3110, 310, "people_visual_lifecycle_config_right_out");
+linkOut("people_visual_lifecycle_config_left_out", config.id, "Tempos de chegada → política", "people_location_values_route_in_v1", 2550, 380);
+linkOut("people_visual_lifecycle_config_middle_out", config.id, "Validade → política", "people_location_values_route_in_v1", 2920, 380);
+linkOut("people_visual_lifecycle_config_right_out", config.id, "Recovery → política", "people_location_values_route_in_v1", 3290, 380);
 
 const policyIn = required("people_location_values_route_in_v1");
 policyIn.x = 900;
@@ -167,7 +187,7 @@ const lifecycle = required("8e1c3a19399ad44d");
 lifecycle.name = "3. Lifecycle visual de presença e chegada canônica";
 lifecycle.x = 2050;
 lifecycle.y = 419;
-lifecycle.w = 3400;
+lifecycle.w = 4720;
 lifecycle.h = 322;
 lifecycle.nodes = lifecycle.nodes.filter((id) => !generated.has(id));
 Object.assign(required("people_arrival_direction_note_v1"), {
@@ -180,7 +200,7 @@ input.x = 2120; input.y = 560; input.wires = [["people_visual_test_adapter"]];
 fn("people_visual_test_adapter", lifecycle.id, "Adaptar somente o estado sintético", "people-lifecycle-test-adapter.js", 1, 2360, 560, [["people_visual_normalize"]]);
 fn("people_visual_normalize", lifecycle.id, "Normalizar decisão canônica em fatos", "people-lifecycle-normalize.js", 1, 2670, 560, [["people_visual_state_load"]]);
 fn("people_visual_state_load", lifecycle.id, "Recuperar armamento e dedupe", "people-lifecycle-state-load.js", 1, 3000, 560, [["people_visual_facts"]]);
-fn("people_visual_facts", lifecycle.id, "Derivar direção, proximidade e validade", "people-lifecycle-facts.js", 1, 3330, 560, [["people_visual_decision"]]);
+fn("people_visual_facts", lifecycle.id, "Derivar direção, proximidade e validade", "people-lifecycle-facts.js", 1, 3330, 560, [["people_visual_decision", "people_visual_wake_ring_candidate_out"]]);
 const arrivalRule = '_people.is_location_event = true and _people.facts.source_ready = true and _people.facts.trigger_prev_valid = true and _people.facts.departure != true and _people.facts.stale_catchup != true and _people.facts.external_cycle_confirmed = true and (_people.facts.approach_entry = true or _people.facts.near_home = true)';
 const recoveryRule = '_people.is_location_event = true and _people.facts.source_ready = true and _people.facts.trigger_prev_unavailable = true and _people.trigger_state = "near_home" and _people.people[_people.source].current_home != true and _people.facts.external_cycle_confirmed = true';
 const blockedRule = '_people.is_location_event = true and _people.facts.directional_candidate = true';
@@ -206,6 +226,29 @@ linkIn("people_visual_finalize_in", lifecycle.id, "Convergir exatamente um camin
   "people_visual_arrival_out", "people_visual_recovery_out",
   "people_visual_blocked_out", "people_visual_unchanged_out"
 ], "554cb653b2fa4504", 4680, 590);
+linkOut("people_visual_wake_ring_candidate_out", lifecycle.id,
+  "Anel técnico → avaliar sondas", "people_visual_wake_ring_candidate_in", 3540, 700);
+linkIn("people_visual_wake_ring_candidate_in", lifecycle.id,
+  "Receber candidato do anel", ["people_visual_wake_ring_candidate_out"],
+  "people_visual_wake_ring_gate", 5480, 560);
+const wakeRingRule = '_people.is_location_event = true and _people.facts.source_ready = true and _people.facts.wake_ring_entry = true and _people.facts.external_cycle_confirmed = true';
+sw("people_visual_wake_ring_gate", lifecycle.id,
+  "Entrada nova no anel com ciclo externo confirmado?", wakeRingRule, "jsonata",
+  [{ t: "true" }, { t: "else" }], "false", 5700, 560,
+  [["people_visual_wake_ring_refresh_build"], []]);
+fn("people_visual_wake_ring_refresh_build", lifecycle.id,
+  "Preparar duas sondas atuais e limitadas", "people-wake-ring-refresh-build.js", 2,
+  5980, 560, [["people_visual_wake_ring_first_delay"], ["people_visual_wake_ring_second_delay"]]);
+delay("people_visual_wake_ring_first_delay", lifecycle.id,
+  "Aguardar 1ª sonda configurada", 6260, 510,
+  [["people_visual_wake_ring_first_out"]]);
+delay("people_visual_wake_ring_second_delay", lifecycle.id,
+  "Aguardar 2ª sonda configurada", 6260, 630,
+  [["people_visual_wake_ring_second_out"]]);
+linkOut("people_visual_wake_ring_first_out", lifecycle.id,
+  "1ª sonda → refresh seletivo", "people_visual_arrival_refresh_in", 6570, 510);
+linkOut("people_visual_wake_ring_second_out", lifecycle.id,
+  "2ª sonda → refresh seletivo", "people_visual_arrival_refresh_in", 6570, 630);
 const finalizer = required("554cb653b2fa4504");
 const notificationOut = required("people_location_notification_out_v1");
 const peopleClassifier = required("people_location_classify_near_home_v1");
@@ -237,7 +280,7 @@ for (const [id, x, y] of [
   if (!lifecycle.nodes.includes(id)) lifecycle.nodes.push(id);
 }
 notificationOut.name = "RETORNO confirmado → avisos de residentes";
-required(PEOPLE_TAB).info = "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.";
+required(PEOPLE_TAB).info = "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; somente uma posição canônica em near_home publica o aviso antecipado. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.";
 
 const vehicleLifecycle = required("d860cb4ad0d1fd89");
 vehicleLifecycle.name = "2. Lifecycle visual do veículo, chegada e confirmação de refresh";
@@ -569,6 +612,14 @@ const requiredAfterReconcile = (id) => {
   if (!node) throw new Error(`Nó reconciliado obrigatório ausente: ${id}`);
   return node;
 };
+Object.assign(requiredAfterReconcile("people_location_lifecycle_config_group_v2"), {
+  w: 1190,
+  h: 312,
+});
+Object.assign(requiredAfterReconcile("8e1c3a19399ad44d"), {
+  w: 4720,
+  h: 302,
+});
 Object.assign(requiredAfterReconcile("people_visual_secondary_icloud_out"), {
   x: 700,
   y: 1030,

@@ -66,6 +66,9 @@ for (const id of [
   "resident_notifications_direction_switch",
   "resident_notifications_cycle_switch",
   "resident_notifications_stage_switch",
+  "resident_notifications_home_confirmation_test_switch",
+  "resident_notifications_home_confirmation_source",
+  "resident_notifications_home_confirmation_result",
   "resident_notifications_source_switch",
   "resident_notifications_event_time_switch",
   "resident_notifications_future_switch",
@@ -81,13 +84,16 @@ const policyControls = [
   ["resident_notifications_policy_age", "max_event_age_ms", "900000"],
   ["resident_notifications_policy_future", "future_tolerance_ms", "60000"],
   ["resident_notifications_policy_retry", "service_retry_seconds", "60"],
+  ["resident_notifications_policy_home_stable", "home_confirmation_seconds", "90"],
+  ["resident_notifications_policy_home_window", "home_confirmation_window_seconds", "300"],
+  ["resident_notifications_policy_home_recheck", "home_confirmation_recheck_seconds", "30"],
 ];
 assert.match(byId.get("resident_notifications_config_group")?.name ?? "", /PARÂMETROS AJUSTÁVEIS/);
 for (const [id, topic, payload] of policyControls) {
   const control = byId.get(id);
   assert.equal(control?.props.find((item) => item.p === "topic")?.v, topic);
   assert.equal(control?.props.find((item) => item.p === "payload")?.v, payload);
-  assert.deepEqual(byId.get(id)?.wires, [["resident_notifications_policy_join"]]);
+  assert.deepEqual(resolvedWireTargets(id), ["resident_notifications_policy_join"]);
 }
 
 const peopleOut = byId.get("people_location_notification_out_v1");
@@ -103,11 +109,18 @@ assert.ok(byId.get("resident_notifications_test_event_out").links.includes(canon
 assert.deepEqual(byId.get("resident_notifications_event_in").links, ["resident_notifications_canonical_out"]);
 assert.ok(peopleFinalizer.wires[1].includes(peopleOut.id), "avisos devem receber apenas retorno confirmado");
 assert.ok(!peopleClassifier.wires.flat().includes(peopleOut.id), "classificação bruta não pode decidir aviso");
+assert.equal(byId.get("resident_notifications_home_confirmation_primary")?.entity_id,
+  "device_tracker.resident_primary_location");
+assert.equal(byId.get("resident_notifications_home_confirmation_secondary")?.entity_id,
+  "device_tracker.resident_secondary_location");
 
 const validatePolicy = getFunction("resident_notifications_policy_validate");
 const storePolicy = getFunction("resident_notifications_policy_store");
 const loadPolicy = getFunction("resident_notifications_policy_load");
 const normalize = getFunction("resident_notifications_prepare");
+const prepareHome = getFunction("resident_notifications_home_confirmation_prepare");
+const testHomeState = getFunction("resident_notifications_home_confirmation_test_state");
+const evaluateHome = getFunction("resident_notifications_home_confirmation_evaluate");
 const migrateState = getFunction("resident_notifications_state_migrate");
 const readState = getFunction("resident_notifications_state_read");
 const reserve = getFunction("resident_notifications_state_write");
@@ -128,21 +141,25 @@ const privateBindings = context({
   },
 });
 const NOW = Date.parse("2026-09-12T01:00:00.000Z");
+let clock = NOW;
 const originalNow = Date.now;
-Date.now = () => NOW;
+Date.now = () => clock;
 
 const defaults = {
   dedupe_ttl_ms: 600000,
   max_event_age_ms: 900000,
   future_tolerance_ms: 60000,
   service_retry_seconds: 60,
+  home_confirmation_seconds: 90,
+  home_confirmation_window_seconds: 300,
+  home_confirmation_recheck_seconds: 30,
 };
 let message = validatePolicy({ payload: defaults }, flow, mock, {});
 assert.equal(message.policy_valid, true);
 assert.equal(storePolicy(message, flow, mock, {}), null);
 message = loadPolicy({}, flow, mock, {});
 assert.equal(message.policy_available, true);
-assert.deepEqual(message.policy, { version: 2, ...defaults });
+assert.deepEqual(message.policy, { version: 3, ...defaults });
 
 for (const payload of [
   { ...defaults, dedupe_ttl_ms: 59999 },
@@ -152,16 +169,24 @@ for (const payload of [
   { ...defaults, future_tolerance_ms: 300001 },
   { ...defaults, service_retry_seconds: 9 },
   { ...defaults, service_retry_seconds: 601 },
+  { ...defaults, home_confirmation_seconds: 29 },
+  { ...defaults, home_confirmation_seconds: 301 },
+  { ...defaults, home_confirmation_window_seconds: 89 },
+  { ...defaults, home_confirmation_window_seconds: 901 },
+  { ...defaults, home_confirmation_recheck_seconds: 9 },
+  { ...defaults, home_confirmation_recheck_seconds: 61 },
+  { ...defaults, home_confirmation_seconds: 120, home_confirmation_window_seconds: 90 },
+  { ...defaults, home_confirmation_seconds: 30, home_confirmation_recheck_seconds: 30 },
   { ...defaults, max_event_age_ms: 60000, future_tolerance_ms: 60000 },
 ]) assert.equal(validatePolicy({ payload }, flow, mock, {}).policy_valid, false);
 assert.equal(validatePolicy({ payload: { ...defaults, dedupe_ttl_ms: 60000, max_event_age_ms: 60000, future_tolerance_ms: 0, service_retry_seconds: 10 } }, flow, mock, {}).policy_valid, true);
 assert.equal(validatePolicy({ payload: { ...defaults, dedupe_ttl_ms: 3600000, max_event_age_ms: 3600000, future_tolerance_ms: 300000, service_retry_seconds: 600 } }, flow, mock, {}).policy_valid, true);
-assert.deepEqual(loadPolicy({}, flow, mock, {}).policy, { version: 2, ...defaults }, "inválidos não substituem a última política");
+assert.deepEqual(loadPolicy({}, flow, mock, {}).policy, { version: 3, ...defaults }, "inválidos não substituem a última política");
 
 function arrival(source, stage = "approach", offset = 0, testMode = false, overrides = {}) {
   return {
     _location_test: testMode,
-    policy: { version: 2, ...defaults },
+    policy: { version: 3, ...defaults },
     payload: {
       contract: "security.arrival.v1",
       kind: "arrival",
@@ -185,6 +210,12 @@ function recipient(msg, role) {
 }
 
 const sourceSwitch = byId.get("resident_notifications_source_switch");
+const stageSwitch = byId.get("resident_notifications_stage_switch");
+assert.deepEqual(stageSwitch.wires[0], ["resident_notifications_confirmation_bypass_out"]);
+assert.deepEqual(stageSwitch.wires[1], ["resident_notifications_confirmation_bypass_out"]);
+assert.deepEqual(stageSwitch.wires[2], ["resident_notifications_home_candidate_out"]);
+assert.deepEqual(byId.get("resident_notifications_home_confirmation_result").wires[0],
+  ["resident_notifications_home_confirmation_confirmed_out"]);
 assert.deepEqual(sourceSwitch.wires[0], ["resident_notifications_recipient_secondary"]);
 assert.deepEqual(sourceSwitch.wires[1], ["resident_notifications_recipient_primary"]);
 assert.ok(
@@ -209,7 +240,7 @@ assert.equal(message.notification_duplicate, false);
 message = reserve(message, flow, mock, {});
 message = buildMessage(message, flow, mock, privateBindings);
 assert.equal(message.payload.recipient, "resident_primary");
-assert.equal(message.payload.message, "Example Secondary está perto de casa.");
+assert.equal(message.payload.message, "Example Secondary está chegando em casa.");
 assert.equal(message.payload.dispatched, false);
 assert.equal(acknowledge(message, flow, mock, {}), null);
 
@@ -222,7 +253,7 @@ assert.equal(primaryApproach.notification_duplicate, false);
 primaryApproach = reserve(primaryApproach, flow, mock, {});
 primaryApproach = buildMessage(primaryApproach, flow, mock, privateBindings);
 assert.equal(primaryApproach.payload.recipient, "resident_secondary");
-assert.equal(primaryApproach.payload.message, "Example Primary está perto de casa.");
+assert.equal(primaryApproach.payload.message, "Example Primary está chegando em casa.");
 assert.equal(acknowledge(primaryApproach, flow, mock, {}), null);
 const crossRecipientState = flow.get("resident_notification_delivery_v4", "persistent");
 assert.equal(crossRecipientState.deliveries["resident_primary:resident_primary"], undefined);
@@ -257,15 +288,120 @@ assert.equal(
 );
 
 const directHomeFlow = context({ persistent: {
-  resident_notifications_policy_v2: { version: 2, ...defaults },
+  resident_notifications_policy_v3: { version: 3, ...defaults },
 } });
 let directHome = recipient(normalize(arrival("resident_secondary", "home", 1000), directHomeFlow, mock, {}), "resident_primary");
 assert.equal(directHome.arrival_stage, "home");
+directHome = prepareHome(directHome, directHomeFlow, mock, {});
+clock = NOW + 91_000;
+directHome.home_confirmation_entity = {
+  state: "home",
+  last_changed: new Date(NOW + 1000).toISOString(),
+  attributes: {
+    location_fresh: true,
+    location_observed_at: new Date(NOW + 1000).toISOString(),
+  },
+};
+directHome.home_confirmation_state = "home";
+directHome = evaluateHome(directHome, directHomeFlow, mock, {});
+assert.equal(directHome.home_confirmation_result, "confirmed");
 directHome = readState(directHome, directHomeFlow, mock, {});
 assert.equal(directHome.notification_duplicate, false, "not_home → home deve avisar");
 directHome = reserve(directHome, directHomeFlow, mock, {});
 directHome = buildMessage(directHome, directHomeFlow, mock, privateBindings);
 assert.equal(directHome.payload.message, "Example Secondary chegou em casa.");
+
+clock = NOW;
+let bouncedHome = prepareHome(
+  normalize(arrival("resident_secondary", "home"), directHomeFlow, mock, {}),
+  directHomeFlow, mock, {},
+);
+bouncedHome.home_confirmation_state = "near_home";
+bouncedHome.home_confirmation_entity = {
+  state: "near_home",
+  last_changed: new Date(clock).toISOString(),
+  attributes: { location_fresh: true, location_observed_at: new Date(clock).toISOString() },
+};
+bouncedHome = evaluateHome(bouncedHome, directHomeFlow, mock, {});
+assert.equal(bouncedHome.home_confirmation_result, "retry",
+  "rebote imediato para near_home não pode afirmar chegada");
+clock = NOW + 60_000;
+bouncedHome.home_confirmation_state = "home";
+bouncedHome.home_confirmation_entity = {
+  state: "home",
+  last_changed: new Date(clock - 30_000).toISOString(),
+  attributes: { location_fresh: true, location_observed_at: new Date(clock).toISOString() },
+};
+bouncedHome = evaluateHome(bouncedHome, directHomeFlow, mock, {});
+assert.equal(bouncedHome.home_confirmation_result, "retry",
+  "HOME por apenas 30 s ainda não pode afirmar chegada");
+clock = NOW + 151_000;
+bouncedHome.home_confirmation_entity.last_changed = new Date(clock - 91_000).toISOString();
+bouncedHome.home_confirmation_entity.attributes.location_observed_at =
+  new Date(clock).toISOString();
+bouncedHome = evaluateHome(bouncedHome, directHomeFlow, mock, {});
+assert.equal(bouncedHome.home_confirmation_result, "confirmed",
+  "HOME fresco e contínuo deve confirmar a chegada dentro da janela");
+
+clock = NOW;
+let departedHome = prepareHome(
+  normalize(arrival("resident_secondary", "home"), directHomeFlow, mock, {}),
+  directHomeFlow, mock, {},
+);
+departedHome.home_confirmation_state = "not_home";
+departedHome.home_confirmation_entity = {
+  state: "not_home",
+  last_changed: new Date(clock).toISOString(),
+  attributes: { location_fresh: true, location_observed_at: new Date(clock).toISOString() },
+};
+departedHome = evaluateHome(departedHome, directHomeFlow, mock, {});
+assert.equal(departedHome.home_confirmation_result, "rejected",
+  "retorno para not_home deve encerrar a confirmação sem aviso");
+
+function confirmationCase({
+  state = "home",
+  checkedAfter = 90_000,
+  stableFor = 90_000,
+  observedAfter = checkedAfter,
+  fresh = true,
+  eventOffset = 0,
+}) {
+  clock = NOW;
+  let candidate = prepareHome(
+    normalize(arrival("resident_secondary", "home", eventOffset),
+      directHomeFlow, mock, {}),
+    directHomeFlow, mock, {},
+  );
+  clock = NOW + checkedAfter;
+  candidate.home_confirmation_state = state;
+  candidate.home_confirmation_entity = {
+    state,
+    last_changed: new Date(clock - stableFor).toISOString(),
+    attributes: {
+      location_fresh: fresh,
+      location_observed_at: new Date(NOW + observedAfter).toISOString(),
+    },
+  };
+  return evaluateHome(candidate, directHomeFlow, mock, {})
+    .home_confirmation_result;
+}
+
+const confirmationBacktest = [
+  ["HOME fresco por 90 s", {}, "confirmed"],
+  ["HOME fresco no limite de 300 s", { checkedAfter: 300_000, stableFor: 90_000 }, "confirmed"],
+  ["HOME somente após expirar a janela", { checkedAfter: 301_000, stableFor: 90_000 }, "rejected"],
+  ["HOME sem frescor", { fresh: false }, "retry"],
+  ["HOME com observação anterior ao evento", { observedAfter: -1 }, "retry"],
+  ["near_home durante a janela", { state: "near_home", stableFor: 0 }, "retry"],
+  ["unavailable durante a janela", { state: "unavailable", stableFor: 0 }, "retry"],
+  ["unknown depois da janela", { state: "unknown", checkedAfter: 301_000, stableFor: 0 }, "rejected"],
+  ["retorno explícito a not_home", { state: "not_home", checkedAfter: 10_000, stableFor: 0 }, "rejected"],
+  ["evento além da tolerância futura", { eventOffset: 60_001, checkedAfter: 0, stableFor: 90_000, observedAfter: 60_001 }, "rejected"],
+  ["evento mais velho que a idade máxima", { eventOffset: -900_001, checkedAfter: 0, stableFor: 90_000, observedAfter: 0 }, "rejected"],
+];
+for (const [name, options, expected] of confirmationBacktest) {
+  assert.equal(confirmationCase(options), expected, name);
+}
 
 let localReturn = recipient(normalize(arrival(
   "resident_secondary",
@@ -288,7 +424,7 @@ assert.equal(localReturn.notification_duplicate, false,
   "retorno local em near_home deve gerar um novo aviso");
 localReturn = reserve(localReturn, flow, mock, {});
 localReturn = buildMessage(localReturn, flow, mock, privateBindings);
-assert.equal(localReturn.payload.message, "Example Secondary está perto de casa.");
+assert.equal(localReturn.payload.message, "Example Secondary está chegando em casa.");
 assert.equal(acknowledge(localReturn, flow, mock, {}), null);
 
 let localReturnHome = recipient(normalize(arrival(
@@ -323,7 +459,12 @@ failed.notification_retry_count = 2;
 failed = failDelivery(failed, flow, mock, {});
 assert.equal(failed.notification_retry_allowed, false, "terceira falha deve encerrar retries");
 
+clock = NOW + 5000;
 let synthetic = recipient(normalize(arrival("resident_primary", "home", 5000, true), flow, mock, {}), "resident_secondary");
+synthetic = prepareHome(synthetic, flow, mock, {});
+synthetic = testHomeState(synthetic, flow, mock, {});
+synthetic = evaluateHome(synthetic, flow, mock, {});
+assert.equal(synthetic.home_confirmation_result, "confirmed");
 synthetic = readState(synthetic, flow, mock, {});
 synthetic = reserve(synthetic, flow, mock, {});
 synthetic = buildMessage(synthetic, flow, mock, privateBindings);
@@ -387,4 +528,4 @@ const maxFunctionSize = Math.max(...tabNodes.filter((node) => node.type === "fun
 assert.ok(maxFunctionSize < 1500, `JavaScript residual grande: ${maxFunctionSize}`);
 
 Date.now = originalNow;
-console.log("Resident notification canonical-arrival tests passed.");
+console.log(`Resident notification tests passed, including ${confirmationBacktest.length} adversarial HOME cases.`);

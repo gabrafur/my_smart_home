@@ -40,6 +40,9 @@ if (data.is_location_event && source?.ready === true &&
 
 const approach = data.trigger_state === "near_home" &&
     external(data.trigger_prev_state) && source?.current_home !== true;
+const wakeRingEntry = data.trigger_raw_state === "location_update_ring" &&
+    data.trigger_raw_prev_state !== "location_update_ring" &&
+    external(source?.state) && source?.current_home !== true;
 const departure = data.trigger_prev_state === "home" && data.trigger_state !== "home";
 const localExcursionStart = departure && data.trigger_state === "near_home" &&
     source?.ready === true && source?.current_home !== true;
@@ -60,6 +63,7 @@ data.facts = {
     trigger_prev_valid: validZone(data.trigger_prev_state),
     trigger_prev_unavailable: ["unknown", "unavailable"].includes(data.trigger_prev_state),
     approach_entry: approach,
+    wake_ring_entry: wakeRingEntry,
     departure,
     stale_catchup: !approach && source?.primary_home === true &&
         typeof source.primary_home_for_ms === "number" && source.primary_home_for_ms > graceMs,
