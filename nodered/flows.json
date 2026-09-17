@@ -77,14 +77,6 @@
         "env": []
     },
     {
-        "id": "host_memory_guardian_tab",
-        "type": "tab",
-        "label": "guardiao_memoria_host",
-        "disabled": false,
-        "info": "Node-RED agenda, valida, deduplica e observa. O helper allowlisted conserva a decisão de segurança junto ao acesso privilegiado ao host. Testes atravessam o mesmo caminho e terminam em dry-run.",
-        "env": []
-    },
-    {
         "id": "monitoramento_vpn_tab",
         "type": "tab",
         "label": "monitoramento_vpn",
@@ -1895,165 +1887,6 @@
         "y": 1026,
         "w": 1602,
         "h": 262
-    },
-    {
-        "id": "host_memory_guardian_input_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "0. Parâmetros, agendas e fonte sanitizada",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#2563eb",
-            "stroke-opacity": "1",
-            "fill": "#dbeafe",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "host_memory_guardian_architecture",
-            "host_memory_guardian_tick",
-            "host_memory_guardian_request_schedule_out",
-            "host_memory_guardian_result_tick",
-            "host_memory_guardian_read_result",
-            "host_memory_guardian_result_out",
-            "host_memory_guardian_result_error",
-            "host_memory_guardian_result_complete",
-            "host_memory_guardian_result_complete_switch",
-            "host_memory_guardian_read_ok",
-            "host_memory_guardian_read_failed"
-        ],
-        "x": 89,
-        "y": 19,
-        "w": 1427,
-        "h": 462
-    },
-    {
-        "id": "host_memory_guardian_decision_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "1. Normalização, estado e decisões visuais",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0f766e",
-            "stroke-opacity": "1",
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "host_memory_guardian_request_in",
-            "host_memory_guardian_prepare_request",
-            "host_memory_guardian_request_contract",
-            "host_memory_guardian_side_effect_guard",
-            "host_memory_guardian_invalid_request",
-            "host_memory_guardian_request_dry_out",
-            "host_memory_guardian_request_host_out",
-            "host_memory_guardian_result_in",
-            "host_memory_guardian_parse_result",
-            "host_memory_guardian_result_presence",
-            "host_memory_guardian_no_result",
-            "host_memory_guardian_result_protocol",
-            "host_memory_guardian_protocol_error_out",
-            "host_memory_guardian_protocol_error_in",
-            "host_memory_guardian_result_state",
-            "host_memory_guardian_duplicate_switch",
-            "host_memory_guardian_duplicate_mode",
-            "host_memory_guardian_mark_duplicate",
-            "host_memory_guardian_duplicate_dry_out",
-            "host_memory_guardian_duplicate_terminal",
-            "host_memory_guardian_status_switch",
-            "host_memory_guardian_mark_error",
-            "host_memory_guardian_mark_audit",
-            "host_memory_guardian_mark_healthy",
-            "host_memory_guardian_mark_pressure",
-            "host_memory_guardian_effect_mode",
-            "host_memory_guardian_effect_out",
-            "host_memory_guardian_dry_out"
-        ],
-        "x": 1546,
-        "y": 19,
-        "w": 3042,
-        "h": 502
-    },
-    {
-        "id": "host_memory_guardian_effect_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "2. Fronteiras de efeito e observabilidade",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#dc2626",
-            "stroke-opacity": "1",
-            "fill": "#fee2e2",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "host_memory_guardian_request_host_in",
-            "host_memory_guardian_request_host",
-            "host_memory_guardian_request_ack",
-            "host_memory_guardian_request_ack_switch",
-            "host_memory_guardian_request_accepted",
-            "host_memory_guardian_request_coalesced",
-            "host_memory_guardian_request_invalid",
-            "host_memory_guardian_request_error",
-            "host_memory_guardian_request_complete",
-            "host_memory_guardian_request_complete_switch",
-            "host_memory_guardian_request_ok",
-            "host_memory_guardian_request_failed",
-            "host_memory_guardian_effect_in",
-            "host_memory_guardian_effect_switch",
-            "host_memory_guardian_effect_error",
-            "host_memory_guardian_effect_log",
-            "host_memory_guardian_effect_healthy",
-            "host_memory_guardian_effect_pressure",
-            "host_memory_guardian_effect_invalid"
-        ],
-        "x": 4636,
-        "y": 4,
-        "w": 1497,
-        "h": 547
-    },
-    {
-        "id": "host_memory_guardian_test_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "3. Replay manual completo — dry-run",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0891b2",
-            "stroke-opacity": "1",
-            "fill": "#cffafe",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "host_memory_guardian_test_instructions",
-            "host_memory_guardian_test_reset",
-            "host_memory_guardian_reset_test",
-            "host_memory_guardian_test_request",
-            "host_memory_guardian_test_request_out",
-            "host_memory_guardian_test_healthy",
-            "host_memory_guardian_test_healthy_out",
-            "host_memory_guardian_test_candidate",
-            "host_memory_guardian_test_candidate_out",
-            "host_memory_guardian_test_terminated",
-            "host_memory_guardian_test_terminated_out",
-            "host_memory_guardian_test_duplicate",
-            "host_memory_guardian_test_duplicate_out",
-            "host_memory_guardian_test_failed",
-            "host_memory_guardian_test_result_out",
-            "host_memory_guardian_dry_in",
-            "host_memory_guardian_dry_run_terminal"
-        ],
-        "x": 64,
-        "y": 579,
-        "w": 2422,
-        "h": 312
     },
     {
         "id": "vpn_monitor_policy_group",
@@ -4018,26 +3851,6 @@
         ],
         "x": 1363,
         "y": 59,
-        "w": 722,
-        "h": 142
-    },
-    {
-        "id": "global_observer_coverage__host_memory_guardian_tab__group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__host_memory_guardian_tab__catch",
-            "global_observer_coverage__host_memory_guardian_tab__status",
-            "global_observer_coverage__host_memory_guardian_tab__annotate",
-            "global_observer_coverage__host_memory_guardian_tab__out"
-        ],
-        "x": 2544,
-        "y": 579,
         "w": 722,
         "h": 142
     },
@@ -31476,1747 +31289,6 @@
         ],
         "x": 2044,
         "y": 130,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_architecture",
-        "type": "comment",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "Parâmetros ativos: solicitar 60 s (início 75 s); ler 30 s (início 90 s); timeout 15 s.",
-        "info": "Valores inválidos de agenda/timeout são rejeitados pelo editor do Node-RED. O Node-RED nunca recebe /proc, sudo, CAP_KILL ou PID namespace. O worker usa allowlist fechada, idade/RSS mínimos, dois ciclos ociosos, revalidação, cooldown e proteção de sessão conectada.",
-        "x": 620,
-        "y": 60,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_tick",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "POLÍTICA: solicitar a cada 60 s",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "60",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "75",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 275,
-        "y": 140,
-        "wires": [
-            [
-                "host_memory_guardian_request_schedule_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_request_schedule_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "Agenda → validar pedido",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_request_in"
-        ],
-        "x": 640,
-        "y": 140,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_result_tick",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "POLÍTICA: ler resultado a cada 30 s",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "30",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "90",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 285,
-        "y": 250,
-        "wires": [
-            [
-                "host_memory_guardian_read_result"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_read_result",
-        "type": "exec",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "command": "/opt/read-host-memory-guardian-result.sh",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "15",
-        "winHide": false,
-        "oldrc": false,
-        "name": "FONTE: ler resultado (timeout 15 s)",
-        "x": 580,
-        "y": 250,
-        "wires": [
-            [
-                "host_memory_guardian_result_out"
-            ],
-            [
-                "host_memory_guardian_result_error"
-            ],
-            [
-                "host_memory_guardian_result_complete"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_result_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "Resultado → normalização",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_result_in"
-        ],
-        "x": 1050,
-        "y": 210,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_result_error",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "Falha de leitura",
-        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"resultado indisponível\" });\nnode.error(\"host_memory_guardian_result_unavailable detail=\" + detail, msg);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 870,
-        "y": 280,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_result_complete",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "Adaptar código da leitura",
-        "func": "const raw = msg.payload && typeof msg.payload === \"object\" ? msg.payload.code : msg.payload;\nconst parsed = String(raw ?? \"\").trim() === \"\" ? Number.NaN : Number(raw);\nmsg.guardian_exit_code = Number.isFinite(parsed) ? parsed : -1;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 840,
-        "y": 390,
-        "wires": [
-            [
-                "host_memory_guardian_result_complete_switch"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_result_complete_switch",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "Leitura terminou com código zero?",
-        "property": "guardian_exit_code",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "0",
-                "vt": "num"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1120,
-        "y": 390,
-        "wires": [
-            [
-                "host_memory_guardian_read_ok"
-            ],
-            [
-                "host_memory_guardian_read_failed"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_read_ok",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "Leitura concluída",
-        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"leitura concluída\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1390,
-        "y": 350,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_read_failed",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_input_group",
-        "name": "Leitura retornou falha",
-        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"leitura falhou\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1390,
-        "y": 440,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_in",
-        "type": "link in",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Receber pedido agendado ou TESTE",
-        "links": [
-            "host_memory_guardian_request_schedule_out",
-            "host_memory_guardian_test_request_out"
-        ],
-        "x": 1587,
-        "y": 110,
-        "wires": [
-            [
-                "host_memory_guardian_prepare_request"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_prepare_request",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Adaptar pedido ao contrato",
-        "func": "const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;\nmsg._host_memory_guardian_test = testMode;\nmsg.payload = {\n    version: 1,\n    event: \"host_memory_guardian_requested\",\n    source: testMode ? \"manual_test\" : \"node_red_schedule\",\n    test_mode: testMode,\n    requested_at: new Date().toISOString()\n};\nnode.status({\n    fill: testMode ? \"blue\" : \"green\",\n    shape: \"dot\",\n    text: testMode ? \"TESTE preparado\" : \"verificação solicitada\"\n});\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1847,
-        "y": 110,
-        "wires": [
-            [
-                "host_memory_guardian_request_contract"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_request_contract",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Contrato do pedido é válido?",
-        "property": "payload.event",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "host_memory_guardian_requested",
-                "vt": "str"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2137,
-        "y": 110,
-        "wires": [
-            [
-                "host_memory_guardian_side_effect_guard"
-            ],
-            [
-                "host_memory_guardian_invalid_request"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_side_effect_guard",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Pedido está em TESTE?",
-        "property": "_host_memory_guardian_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2437,
-        "y": 90,
-        "wires": [
-            [
-                "host_memory_guardian_request_dry_out"
-            ],
-            [
-                "host_memory_guardian_request_host_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_invalid_request",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Rejeitar pedido inválido",
-        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"pedido inválido rejeitado\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2437,
-        "y": 150,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_dry_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Pedido TESTE → dry-run",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_dry_in"
-        ],
-        "x": 2757,
-        "y": 60,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_host_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Produção → worker allowlisted",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_request_host_in"
-        ],
-        "x": 2837,
-        "y": 100,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_result_in",
-        "type": "link in",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Receber resultado real ou sintético",
-        "links": [
-            "host_memory_guardian_result_out",
-            "host_memory_guardian_test_healthy_out",
-            "host_memory_guardian_test_candidate_out",
-            "host_memory_guardian_test_terminated_out",
-            "host_memory_guardian_test_duplicate_out",
-            "host_memory_guardian_test_result_out"
-        ],
-        "x": 1587,
-        "y": 285,
-        "wires": [
-            [
-                "host_memory_guardian_parse_result"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_parse_result",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Adaptar resposta estrutural",
-        "func": "const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;\nconst raw = typeof msg.payload === \"string\"\n    ? msg.payload.replace(/[\\r\\n]+/g, \" \").trim().slice(0, 800)\n    : \"\";\nconst synthetic = !raw && testMode && msg.payload && typeof msg.payload === \"object\"\n    ? msg.payload\n    : null;\n\nmsg._host_memory_guardian_test = testMode;\nif (!raw && !synthetic) {\n    msg.guardian_result_present = false;\n    msg.guardian_protocol_valid = false;\n    msg.guardian_status = \"no_result\";\n    msg.payload = { version: 1, status: \"no_result\", test_mode: testMode };\n    return msg;\n}\n\nconst allowed = new Set([\n    \"running\", \"healthy\", \"pressure_no_safe_duplicate\", \"pressure_no_safe_candidate\",\n    \"candidate_observed\", \"candidate_active\", \"pressure_cooldown\", \"terminated\", \"failed\"\n]);\nconst status = synthetic?.status ?? raw.match(/\\bstatus=([a-z_]+)\\b/)?.[1] ?? \"invalid\";\nconst numberFrom = (name) => {\n    const value = synthetic?.[name] ?? raw.match(new RegExp(\"\\\\b\" + name + \"=([0-9.]+)\\\\b\"))?.[1];\n    const parsed = Number(value);\n    return Number.isFinite(parsed) ? parsed : null;\n};\n\nmsg.guardian_result_present = true;\nmsg.guardian_protocol_valid = allowed.has(status);\nmsg.guardian_status = status;\nmsg.payload = {\n    version: 1,\n    status,\n    request_id: synthetic?.request_id ?? raw.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"test\",\n    available_mib: numberFrom(\"available_mib\"),\n    available_percent: numberFrom(\"available_percent\"),\n    candidate_pid: synthetic?.candidate_pid ?? raw.match(/\\bcandidate_pid=([^ ]+)\\b/)?.[1] ?? \"none\",\n    candidate_mib: numberFrom(\"candidate_mib\"),\n    terminated: numberFrom(\"terminated\") ?? 0,\n    checked_at: synthetic?.checked_at ?? raw.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? new Date().toISOString(),\n    test_mode: testMode,\n    simulated: testMode,\n    dispatched: !testMode && status === \"terminated\"\n};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1847,
-        "y": 285,
-        "wires": [
-            [
-                "host_memory_guardian_result_presence"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_result_presence",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Existe resultado novo para avaliar?",
-        "property": "guardian_result_present",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2137,
-        "y": 285,
-        "wires": [
-            [
-                "host_memory_guardian_result_protocol"
-            ],
-            [
-                "host_memory_guardian_no_result"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_no_result",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Sem resultado — encerrar ciclo",
-        "func": "node.status({\"fill\":\"grey\",\"shape\":\"ring\",\"text\":\"nenhum resultado novo\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2437,
-        "y": 240,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_result_protocol",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Resposta respeita o contrato?",
-        "property": "guardian_protocol_valid",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2437,
-        "y": 310,
-        "wires": [
-            [
-                "host_memory_guardian_result_state"
-            ],
-            [
-                "host_memory_guardian_protocol_error_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_protocol_error_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Contrato inválido → erro",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_protocol_error_in"
-        ],
-        "x": 2687,
-        "y": 350,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_protocol_error_in",
-        "type": "link in",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Receber erro estrutural",
-        "links": [
-            "host_memory_guardian_protocol_error_out"
-        ],
-        "x": 3657,
-        "y": 240,
-        "wires": [
-            [
-                "host_memory_guardian_mark_error"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_result_state",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Manter assinatura persistente",
-        "func": "const result = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst testMode = msg._host_memory_guardian_test === true || result.test_mode === true;\nconst signature = [result.request_id, result.status, result.checked_at].join(\":\");\nconst key = testMode ? \"host_memory_guardian_last_result_v1__test\" : \"host_memory_guardian_last_result_v1\";\nconst previous = testMode ? flow.get(key) : flow.get(key, \"persistent\");\n\nmsg.guardian_duplicate = previous?.signature === signature;\nresult.signature = signature;\nmsg.payload = result;\nif (!msg.guardian_duplicate) {\n    if (testMode) flow.set(key, result);\n    else flow.set(key, result, \"persistent\");\n}\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2737,
-        "y": 285,
-        "wires": [
-            [
-                "host_memory_guardian_duplicate_switch"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_duplicate_switch",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Assinatura já foi processada?",
-        "property": "guardian_duplicate",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 3037,
-        "y": 285,
-        "wires": [
-            [
-                "host_memory_guardian_duplicate_mode"
-            ],
-            [
-                "host_memory_guardian_status_switch"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_duplicate_mode",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Duplicata pertence a TESTE?",
-        "property": "_host_memory_guardian_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 3437,
-        "y": 220,
-        "wires": [
-            [
-                "host_memory_guardian_mark_duplicate"
-            ],
-            [
-                "host_memory_guardian_duplicate_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_mark_duplicate",
-        "type": "change",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Marcar deduplicação simulada",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload.status",
-                "pt": "msg",
-                "to": "duplicate",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 3837,
-        "y": 200,
-        "wires": [
-            [
-                "host_memory_guardian_duplicate_dry_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_duplicate_dry_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Duplicata TESTE → dry-run",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_dry_in"
-        ],
-        "x": 4157,
-        "y": 200,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_duplicate_terminal",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Duplicata descartada",
-        "func": "node.status({\"fill\":\"grey\",\"shape\":\"ring\",\"text\":\"resultado duplicado\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 3837,
-        "y": 140,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_status_switch",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Status: falha, encerramento, saudável ou pressão?",
-        "property": "guardian_status",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "failed",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "terminated",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "healthy",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "running",
-                "vt": "str"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 5,
-        "x": 3437,
-        "y": 370,
-        "wires": [
-            [
-                "host_memory_guardian_mark_error"
-            ],
-            [
-                "host_memory_guardian_mark_audit"
-            ],
-            [
-                "host_memory_guardian_mark_healthy"
-            ],
-            [
-                "host_memory_guardian_mark_healthy"
-            ],
-            [
-                "host_memory_guardian_mark_pressure"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_mark_error",
-        "type": "change",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Decisão: registrar erro",
-        "rules": [
-            {
-                "t": "set",
-                "p": "guardian_effect",
-                "pt": "msg",
-                "to": "error",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 3837,
-        "y": 310,
-        "wires": [
-            [
-                "host_memory_guardian_effect_mode"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_mark_audit",
-        "type": "change",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Decisão: auditar encerramento",
-        "rules": [
-            {
-                "t": "set",
-                "p": "guardian_effect",
-                "pt": "msg",
-                "to": "audit",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 3837,
-        "y": 355,
-        "wires": [
-            [
-                "host_memory_guardian_effect_mode"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_mark_healthy",
-        "type": "change",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Decisão: estado saudável",
-        "rules": [
-            {
-                "t": "set",
-                "p": "guardian_effect",
-                "pt": "msg",
-                "to": "healthy",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 3837,
-        "y": 410,
-        "wires": [
-            [
-                "host_memory_guardian_effect_mode"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_mark_pressure",
-        "type": "change",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Decisão: observar pressão",
-        "rules": [
-            {
-                "t": "set",
-                "p": "guardian_effect",
-                "pt": "msg",
-                "to": "pressure",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 3837,
-        "y": 465,
-        "wires": [
-            [
-                "host_memory_guardian_effect_mode"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_effect_mode",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Efeito pertence a TESTE?",
-        "property": "_host_memory_guardian_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 4237,
-        "y": 380,
-        "wires": [
-            [
-                "host_memory_guardian_dry_out"
-            ],
-            [
-                "host_memory_guardian_effect_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_effect_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "Produção → observabilidade",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_effect_in"
-        ],
-        "x": 4547,
-        "y": 420,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_dry_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_decision_group",
-        "name": "TESTE → terminal dry-run",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_dry_in"
-        ],
-        "x": 4547,
-        "y": 480,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_host_in",
-        "type": "link in",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Receber pedido de produção",
-        "links": [
-            "host_memory_guardian_request_host_out"
-        ],
-        "x": 4677,
-        "y": 100,
-        "wires": [
-            [
-                "host_memory_guardian_request_host"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_request_host",
-        "type": "exec",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "command": "/opt/request-host-memory-guardian.sh",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "15",
-        "winHide": false,
-        "oldrc": false,
-        "name": "EFEITO: solicitar worker (timeout 15 s)",
-        "x": 4977,
-        "y": 100,
-        "wires": [
-            [
-                "host_memory_guardian_request_ack"
-            ],
-            [
-                "host_memory_guardian_request_error"
-            ],
-            [
-                "host_memory_guardian_request_complete"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_request_ack",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Adaptar aceite da ponte",
-        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nmsg.guardian_request_status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1] ?? \"invalid\";\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5267,
-        "y": 75,
-        "wires": [
-            [
-                "host_memory_guardian_request_ack_switch"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_request_ack_switch",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Ponte aceitou, coalesceu ou rejeitou?",
-        "property": "guardian_request_status",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "accepted",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "coalesced",
-                "vt": "str"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 3,
-        "x": 5577,
-        "y": 75,
-        "wires": [
-            [
-                "host_memory_guardian_request_accepted"
-            ],
-            [
-                "host_memory_guardian_request_coalesced"
-            ],
-            [
-                "host_memory_guardian_request_invalid"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_request_accepted",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Solicitação aceita",
-        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"verificação aceita\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5987,
-        "y": 45,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_coalesced",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Solicitação já pendente",
-        "func": "node.status({\"fill\":\"yellow\",\"shape\":\"dot\",\"text\":\"verificação já pendente\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5987,
-        "y": 95,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_invalid",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Resposta da ponte inválida",
-        "func": "node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\nnode.error(\"host_memory_guardian_request_unrecognized\", msg);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5987,
-        "y": 145,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_error",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Falha da ponte",
-        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"host_memory_guardian_bridge_unavailable detail=\" + detail, msg);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5267,
-        "y": 155,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_complete",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Adaptar código da solicitação",
-        "func": "const raw = msg.payload && typeof msg.payload === \"object\" ? msg.payload.code : msg.payload;\nconst parsed = String(raw ?? \"\").trim() === \"\" ? Number.NaN : Number(raw);\nmsg.guardian_exit_code = Number.isFinite(parsed) ? parsed : -1;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5287,
-        "y": 225,
-        "wires": [
-            [
-                "host_memory_guardian_request_complete_switch"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_request_complete_switch",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Solicitação terminou com código zero?",
-        "property": "guardian_exit_code",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "0",
-                "vt": "num"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 5587,
-        "y": 225,
-        "wires": [
-            [
-                "host_memory_guardian_request_ok"
-            ],
-            [
-                "host_memory_guardian_request_failed"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_request_ok",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Worker solicitado",
-        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"worker solicitado\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5987,
-        "y": 205,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_failed",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Solicitação retornou falha",
-        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"solicitação falhou\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5987,
-        "y": 255,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_effect_in",
-        "type": "link in",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Receber decisão canônica",
-        "links": [
-            "host_memory_guardian_effect_out"
-        ],
-        "x": 4677,
-        "y": 370,
-        "wires": [
-            [
-                "host_memory_guardian_effect_switch"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_effect_switch",
-        "type": "switch",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Executar erro, auditoria ou status",
-        "property": "guardian_effect",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "error",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "audit",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "healthy",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "pressure",
-                "vt": "str"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 5,
-        "x": 4977,
-        "y": 370,
-        "wires": [
-            [
-                "host_memory_guardian_effect_error"
-            ],
-            [
-                "host_memory_guardian_effect_log"
-            ],
-            [
-                "host_memory_guardian_effect_healthy"
-            ],
-            [
-                "host_memory_guardian_effect_pressure"
-            ],
-            [
-                "host_memory_guardian_effect_invalid"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_effect_error",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "OBSERVAR: falha canônica",
-        "func": "const result = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst status = String(result.status ?? \"invalid\");\nnode.status({ fill: \"red\", shape: \"ring\", text: status === \"failed\" ? \"worker falhou\" : \"resultado inválido\" });\nconst event = status === \"failed\" ? \"host_memory_guardian_failed\" : \"host_memory_guardian_result_unrecognized\";\nnode.error(event + \" request_id=\" + String(result.request_id ?? \"unknown\"), msg);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5367,
-        "y": 315,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_effect_log",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "AUDITAR: árvore encerrada",
-        "func": "const result = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nnode.status({ fill: \"yellow\", shape: \"dot\", text: \"árvore ociosa encerrada\" });\nnode.warn(\n    \"HOST_MEMORY_GUARDIAN_TERMINATED count=\" + String(result.terminated ?? 0) +\n    \" reclaimed_candidate_mib=\" + String(result.candidate_mib ?? 0) +\n    \" available_mib=\" + String(result.available_mib ?? 0)\n);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5367,
-        "y": 365,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_effect_healthy",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "OBSERVAR: memória saudável",
-        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"memória saudável\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5367,
-        "y": 415,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_effect_pressure",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "OBSERVAR: pressão segura",
-        "func": "node.status({\"fill\":\"yellow\",\"shape\":\"dot\",\"text\":\"pressão sem ação insegura\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5367,
-        "y": 465,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_effect_invalid",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_effect_group",
-        "name": "Rejeitar efeito desconhecido",
-        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"efeito desconhecido\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5367,
-        "y": 510,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_test_instructions",
-        "type": "comment",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Ordem: reset → pedido → saudável → candidato → encerramento → duplicata → falha. Tudo termina com dispatched:false.",
-        "info": "Os resultados percorrem o adaptador, validação estrutural, estado persistente isolado, dedupe, classificação e gate de efeitos. O algoritmo privilegiado do host mantém fixtures separadas.",
-        "x": 1020,
-        "y": 620,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_test_reset",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "TESTE 1: reset",
-        "props": [
-            {
-                "p": "_host_memory_guardian_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 220,
-        "y": 700,
-        "wires": [
-            [
-                "host_memory_guardian_reset_test"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_reset_test",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Resetar estado sintético",
-        "func": "flow.set(\"host_memory_guardian_last_result_v1__test\", undefined);\nflow.set(\"host_memory_guardian_last_dry_run_v1\", {\n    version: 1,\n    status: \"reset\",\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 450,
-        "y": 700,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_test_request",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "TESTE 2: solicitar limpeza",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "_host_memory_guardian_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 235,
-        "y": 770,
-        "wires": [
-            [
-                "host_memory_guardian_test_request_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_test_request_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Pedido TESTE → decisões reais",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_request_in"
-        ],
-        "x": 540,
-        "y": 770,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_test_healthy",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "TESTE 3: memória saudável",
-        "props": [
-            {
-                "p": "payload",
-                "v": "{\"status\":\"healthy\",\"request_id\":\"test-healthy\",\"checked_at\":\"2026-01-01T00:00:00Z\",\"available_mib\":4096,\"available_percent\":50,\"terminated\":0,\"test_mode\":true}",
-                "vt": "json"
-            },
-            {
-                "p": "_host_memory_guardian_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 230,
-        "y": 850,
-        "wires": [
-            [
-                "host_memory_guardian_test_healthy_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_test_healthy_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Saudável → decisões",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_result_in"
-        ],
-        "x": 440,
-        "y": 850,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_test_candidate",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "TESTE 4: candidato observado",
-        "props": [
-            {
-                "p": "payload",
-                "v": "{\"status\":\"candidate_observed\",\"request_id\":\"test-candidate\",\"checked_at\":\"2026-01-01T00:01:00Z\",\"available_mib\":4096,\"available_percent\":50,\"candidate_pid\":\"synthetic\",\"candidate_mib\":640,\"terminated\":0,\"test_mode\":true}",
-                "vt": "json"
-            },
-            {
-                "p": "_host_memory_guardian_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 660,
-        "y": 850,
-        "wires": [
-            [
-                "host_memory_guardian_test_candidate_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_test_candidate_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Candidato → decisões",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_result_in"
-        ],
-        "x": 890,
-        "y": 850,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_test_terminated",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "TESTE 5: encerramento aprovado",
-        "props": [
-            {
-                "p": "payload",
-                "v": "{\"status\":\"terminated\",\"request_id\":\"test-terminated\",\"checked_at\":\"2026-01-01T00:02:00Z\",\"available_mib\":4096,\"available_percent\":50,\"candidate_pid\":\"synthetic\",\"candidate_mib\":640,\"terminated\":4,\"test_mode\":true}",
-                "vt": "json"
-            },
-            {
-                "p": "_host_memory_guardian_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 1100,
-        "y": 850,
-        "wires": [
-            [
-                "host_memory_guardian_test_terminated_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_test_terminated_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Encerramento → decisões",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_result_in"
-        ],
-        "x": 1340,
-        "y": 850,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_test_duplicate",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "TESTE 6: repetir encerramento",
-        "props": [
-            {
-                "p": "payload",
-                "v": "{\"status\":\"terminated\",\"request_id\":\"test-terminated\",\"checked_at\":\"2026-01-01T00:02:00Z\",\"available_mib\":4096,\"available_percent\":50,\"candidate_pid\":\"synthetic\",\"candidate_mib\":640,\"terminated\":4,\"test_mode\":true}",
-                "vt": "json"
-            },
-            {
-                "p": "_host_memory_guardian_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 1540,
-        "y": 850,
-        "wires": [
-            [
-                "host_memory_guardian_test_duplicate_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_test_duplicate_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Duplicata → decisões",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_result_in"
-        ],
-        "x": 1770,
-        "y": 850,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_test_failed",
-        "type": "inject",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "TESTE 7: falha do worker",
-        "props": [
-            {
-                "p": "payload",
-                "v": "{\"status\":\"failed\",\"request_id\":\"test-failed\",\"checked_at\":\"2026-01-01T00:03:00Z\",\"available_mib\":900,\"available_percent\":11,\"terminated\":0,\"test_mode\":true}",
-                "vt": "json"
-            },
-            {
-                "p": "_host_memory_guardian_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 1950,
-        "y": 850,
-        "wires": [
-            [
-                "host_memory_guardian_test_result_out"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_test_result_out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Falha → decisões",
-        "mode": "link",
-        "links": [
-            "host_memory_guardian_result_in"
-        ],
-        "x": 2190,
-        "y": 850,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_dry_in",
-        "type": "link in",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "Receber efeito TESTE",
-        "links": [
-            "host_memory_guardian_dry_out",
-            "host_memory_guardian_request_dry_out",
-            "host_memory_guardian_duplicate_dry_out"
-        ],
-        "x": 2030,
-        "y": 760,
-        "wires": [
-            [
-                "host_memory_guardian_dry_run_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "host_memory_guardian_dry_run_terminal",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "host_memory_guardian_test_group",
-        "name": "TESTE FINAL: sinais e host bloqueados",
-        "func": "const input = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst result = {\n    version: 1,\n    status: input.status ?? input.event ?? \"request_prepared\",\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    signal_sent: false,\n    candidate_pid: input.candidate_pid ?? \"none\",\n    candidate_mib: Number(input.candidate_mib ?? 0),\n    completed_at: Date.now()\n};\nflow.set(\"host_memory_guardian_last_dry_run_v1\", result);\nnode.status({\n    fill: \"blue\",\n    shape: \"dot\",\n    text: \"TESTE: \" + result.status + \"; sinais bloqueados\"\n});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2300,
-        "y": 760,
-        "wires": []
-    },
-    {
-        "id": "global_observer_coverage__host_memory_guardian_tab__catch",
-        "type": "catch",
-        "z": "host_memory_guardian_tab",
-        "g": "global_observer_coverage__host_memory_guardian_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2700,
-        "y": 620,
-        "wires": [
-            [
-                "global_observer_coverage__host_memory_guardian_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__host_memory_guardian_tab__status",
-        "type": "status",
-        "z": "host_memory_guardian_tab",
-        "g": "global_observer_coverage__host_memory_guardian_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2710,
-        "y": 680,
-        "wires": [
-            [
-                "global_observer_coverage__host_memory_guardian_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__host_memory_guardian_tab__annotate",
-        "type": "function",
-        "z": "host_memory_guardian_tab",
-        "g": "global_observer_coverage__host_memory_guardian_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"host_memory_guardian_tab\",\"flow_label\":\"guardiao_memoria_host\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2980,
-        "y": 650,
-        "wires": [
-            [
-                "global_observer_coverage__host_memory_guardian_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__host_memory_guardian_tab__out",
-        "type": "link out",
-        "z": "host_memory_guardian_tab",
-        "g": "global_observer_coverage__host_memory_guardian_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 3225,
-        "y": 650,
         "wires": []
     },
     {
@@ -70818,5 +68890,2186 @@
                 "resident_notifications_policy_join"
             ]
         ]
+    },
+    {
+        "id": "host_memory_guardian_input_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "0. Parâmetros, agendas e fonte sanitizada",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "host_memory_guardian_architecture",
+            "host_memory_guardian_tick",
+            "host_memory_guardian_request_schedule_out",
+            "host_memory_guardian_result_tick",
+            "host_memory_guardian_read_result",
+            "host_memory_guardian_result_out",
+            "host_memory_guardian_result_error",
+            "host_memory_guardian_result_complete",
+            "host_memory_guardian_result_complete_switch",
+            "host_memory_guardian_read_ok",
+            "host_memory_guardian_read_failed"
+        ],
+        "x": 64,
+        "y": 20,
+        "w": 1100,
+        "h": 510
+    },
+    {
+        "id": "host_memory_guardian_decision_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "1. Normalização, estado e decisões visuais",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "host_memory_guardian_request_in",
+            "host_memory_guardian_prepare_request",
+            "host_memory_guardian_request_contract",
+            "host_memory_guardian_side_effect_guard",
+            "host_memory_guardian_invalid_request",
+            "host_memory_guardian_request_dry_out",
+            "host_memory_guardian_request_host_out",
+            "host_memory_guardian_result_in",
+            "host_memory_guardian_parse_result",
+            "host_memory_guardian_result_presence",
+            "host_memory_guardian_no_result",
+            "host_memory_guardian_result_protocol",
+            "host_memory_guardian_protocol_error_out",
+            "host_memory_guardian_protocol_error_in",
+            "host_memory_guardian_result_age_policy",
+            "host_memory_guardian_result_freshness",
+            "host_memory_guardian_result_freshness_switch",
+            "host_memory_guardian_mark_stale",
+            "host_memory_guardian_result_state",
+            "host_memory_guardian_duplicate_switch",
+            "host_memory_guardian_duplicate_mode",
+            "host_memory_guardian_mark_duplicate",
+            "host_memory_guardian_duplicate_dry_out",
+            "host_memory_guardian_duplicate_terminal",
+            "host_memory_guardian_status_switch",
+            "host_memory_guardian_mark_error",
+            "host_memory_guardian_mark_audit",
+            "host_memory_guardian_mark_healthy",
+            "host_memory_guardian_mark_pressure",
+            "host_memory_guardian_effect_mode",
+            "host_memory_guardian_effect_out",
+            "host_memory_guardian_dry_out"
+        ],
+        "x": 1200,
+        "y": 20,
+        "w": 3200,
+        "h": 510
+    },
+    {
+        "id": "host_memory_guardian_effect_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "2. Fronteiras de efeito e observabilidade",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#dc2626",
+            "stroke-opacity": "1",
+            "fill": "#fee2e2",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "host_memory_guardian_request_host_in",
+            "host_memory_guardian_request_host",
+            "host_memory_guardian_request_ack",
+            "host_memory_guardian_request_ack_switch",
+            "host_memory_guardian_request_accepted",
+            "host_memory_guardian_request_coalesced",
+            "host_memory_guardian_request_invalid",
+            "host_memory_guardian_request_error",
+            "host_memory_guardian_request_complete",
+            "host_memory_guardian_request_complete_switch",
+            "host_memory_guardian_request_ok",
+            "host_memory_guardian_request_failed",
+            "host_memory_guardian_effect_in",
+            "host_memory_guardian_effect_switch",
+            "host_memory_guardian_effect_error",
+            "host_memory_guardian_effect_log",
+            "host_memory_guardian_effect_healthy",
+            "host_memory_guardian_effect_pressure",
+            "host_memory_guardian_effect_invalid"
+        ],
+        "x": 4440,
+        "y": 20,
+        "w": 1600,
+        "h": 510
+    },
+    {
+        "id": "host_memory_guardian_test_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "3. Replay manual completo — dry-run",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0891b2",
+            "stroke-opacity": "1",
+            "fill": "#cffafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "host_memory_guardian_test_instructions",
+            "host_memory_guardian_test_reset",
+            "host_memory_guardian_reset_test",
+            "host_memory_guardian_test_request",
+            "host_memory_guardian_test_request_out",
+            "host_memory_guardian_test_healthy",
+            "host_memory_guardian_test_healthy_out",
+            "host_memory_guardian_test_reclaimed",
+            "host_memory_guardian_test_reclaimed_out",
+            "host_memory_guardian_test_candidate",
+            "host_memory_guardian_test_candidate_out",
+            "host_memory_guardian_test_terminated",
+            "host_memory_guardian_test_terminated_out",
+            "host_memory_guardian_test_duplicate",
+            "host_memory_guardian_test_duplicate_out",
+            "host_memory_guardian_test_failed",
+            "host_memory_guardian_test_result_out",
+            "host_memory_guardian_test_stale",
+            "host_memory_guardian_test_stale_out",
+            "host_memory_guardian_dry_in",
+            "host_memory_guardian_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 580,
+        "w": 2600,
+        "h": 440
+    },
+    {
+        "id": "host_memory_guardian_tab",
+        "type": "tab",
+        "label": "guardiao_memoria_host",
+        "disabled": false,
+        "info": "Node-RED agenda, valida, deduplica e observa. O helper allowlisted conserva a decisão de segurança junto ao acesso privilegiado ao host. Testes atravessam o mesmo caminho e terminam em dry-run.",
+        "env": []
+    },
+    {
+        "id": "host_memory_guardian_architecture",
+        "type": "comment",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "Parâmetros: solicitar 60 s; ler 30 s; resultado válido por 180 s; temporários com idade mínima de 2 h.",
+        "info": "O Node-RED nunca recebe /proc, sudo, CAP_KILL ou PID namespace. O worker usa allowlist fechada para sessões remotas e temporários do repositório, valida proprietário, idade, uso ativo, symlinks, limites por ciclo, dois ciclos ociosos, revalidação e proteção de serviços essenciais.",
+        "x": 580,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_tick",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "POLÍTICA: solicitar a cada 60 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "75",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 235,
+        "y": 140,
+        "wires": [
+            [
+                "host_memory_guardian_request_schedule_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_request_schedule_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "Agenda → validar pedido",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_request_in"
+        ],
+        "x": 600,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_result_tick",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "POLÍTICA: ler resultado a cada 30 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "90",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 245,
+        "y": 250,
+        "wires": [
+            [
+                "host_memory_guardian_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_read_result",
+        "type": "exec",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "FONTE: ler resultado (timeout 15 s)",
+        "command": "/opt/read-host-memory-guardian-result.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "x": 540,
+        "y": 250,
+        "wires": [
+            [
+                "host_memory_guardian_result_out"
+            ],
+            [
+                "host_memory_guardian_result_error"
+            ],
+            [
+                "host_memory_guardian_result_complete"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_result_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "Resultado → normalização",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_result_in"
+        ],
+        "x": 1010,
+        "y": 210,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_result_error",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "Falha de leitura",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"resultado indisponível\" });\nnode.error(\"host_memory_guardian_result_unavailable detail=\" + detail, msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_result_complete",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "Adaptar código da leitura",
+        "func": "const raw = msg.payload && typeof msg.payload === \"object\" ? msg.payload.code : msg.payload;\nconst parsed = String(raw ?? \"\").trim() === \"\" ? Number.NaN : Number(raw);\nmsg.guardian_exit_code = Number.isFinite(parsed) ? parsed : -1;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 390,
+        "wires": [
+            [
+                "host_memory_guardian_result_complete_switch"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_result_complete_switch",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "Leitura terminou com código zero?",
+        "property": "guardian_exit_code",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "num"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 800,
+        "y": 390,
+        "wires": [
+            [
+                "host_memory_guardian_read_ok"
+            ],
+            [
+                "host_memory_guardian_read_failed"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_read_ok",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "Leitura concluída",
+        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"leitura concluída\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 350,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_read_failed",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_input_group",
+        "name": "Leitura retornou falha",
+        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"leitura falhou\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_in",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Receber pedido agendado ou TESTE",
+        "links": [
+            "host_memory_guardian_request_schedule_out",
+            "host_memory_guardian_test_request_out"
+        ],
+        "x": 1250,
+        "y": 110,
+        "wires": [
+            [
+                "host_memory_guardian_prepare_request"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_prepare_request",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Adaptar pedido ao contrato",
+        "func": "const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;\nmsg._host_memory_guardian_test = testMode;\nmsg.payload = {\n    version: 1,\n    event: \"host_memory_guardian_requested\",\n    source: testMode ? \"manual_test\" : \"node_red_schedule\",\n    test_mode: testMode,\n    requested_at: new Date().toISOString()\n};\nnode.status({\n    fill: testMode ? \"blue\" : \"green\",\n    shape: \"dot\",\n    text: testMode ? \"TESTE preparado\" : \"verificação solicitada\"\n});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1510,
+        "y": 110,
+        "wires": [
+            [
+                "host_memory_guardian_request_contract"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_request_contract",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Contrato do pedido é válido?",
+        "property": "payload.event",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "host_memory_guardian_requested",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1800,
+        "y": 110,
+        "wires": [
+            [
+                "host_memory_guardian_side_effect_guard"
+            ],
+            [
+                "host_memory_guardian_invalid_request"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_side_effect_guard",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Pedido está em TESTE?",
+        "property": "_host_memory_guardian_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2100,
+        "y": 90,
+        "wires": [
+            [
+                "host_memory_guardian_request_dry_out"
+            ],
+            [
+                "host_memory_guardian_request_host_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_invalid_request",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Rejeitar pedido inválido",
+        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"pedido inválido rejeitado\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2100,
+        "y": 150,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_dry_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Pedido TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_dry_in"
+        ],
+        "x": 2420,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_host_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Produção → worker allowlisted",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_request_host_in"
+        ],
+        "x": 2500,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_result_in",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Receber resultado real ou sintético",
+        "links": [
+            "host_memory_guardian_result_out",
+            "host_memory_guardian_test_healthy_out",
+            "host_memory_guardian_test_reclaimed_out",
+            "host_memory_guardian_test_candidate_out",
+            "host_memory_guardian_test_terminated_out",
+            "host_memory_guardian_test_duplicate_out",
+            "host_memory_guardian_test_result_out",
+            "host_memory_guardian_test_stale_out"
+        ],
+        "x": 1250,
+        "y": 285,
+        "wires": [
+            [
+                "host_memory_guardian_parse_result"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_parse_result",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Adaptar resposta estrutural",
+        "func": "const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;\nconst raw = typeof msg.payload === \"string\" ? msg.payload.replace(/[\\r\\n]+/g, \" \").trim().slice(0, 800) : \"\";\nconst data = !raw && testMode && msg.payload && typeof msg.payload === \"object\" ? msg.payload : null;\n\nmsg._host_memory_guardian_test = testMode;\nif (!raw && !data) {\n    msg.guardian_result_present = false;\n    msg.guardian_protocol_valid = false;\n    msg.guardian_status = \"no_result\";\n    msg.payload = { version: 1, status: \"no_result\", test_mode: testMode };\n    return msg;\n}\n\nconst allowed = new Set(\"running healthy pressure_no_safe_duplicate pressure_no_safe_candidate candidate_observed candidate_active pressure_cooldown terminated reclaimed cleanup_partial failed\".split(\" \"));\nconst text = (name, fallback = \"\") => data?.[name] ?? raw.match(new RegExp(\"\\\\b\" + name + \"=([^ ]+)\\\\b\"))?.[1] ?? fallback;\nconst status = text(\"status\", \"invalid\");\nconst num = (name) => {\n    const value = data?.[name] ?? raw.match(new RegExp(\"\\\\b\" + name + \"=([0-9.]+)\\\\b\"))?.[1];\n    const parsed = Number(value);\n    return Number.isFinite(parsed) ? parsed : null;\n};\n\nmsg.guardian_result_present = true;\nmsg.guardian_protocol_valid = allowed.has(status);\nmsg.guardian_status = status;\nmsg.payload = {\n    version: 1,\n    status,\n    reason: text(\"reason\", \"none\"),\n    request_id: text(\"request_id\", \"test\"),\n    available_mib: num(\"available_mib\"),\n    available_percent: num(\"available_percent\"),\n    candidate_pid: text(\"candidate_pid\", \"none\"),\n    candidate_mib: num(\"candidate_mib\"),\n    terminated: num(\"terminated\") ?? 0,\n    temp_removed: num(\"temp_removed\") ?? 0,\n    temp_reclaimed_mib: num(\"temp_reclaimed_mib\") ?? 0,\n    cleanup_errors: num(\"cleanup_errors\") ?? 0,\n    checked_at: text(\"checked_at\", \"invalid\"),\n    test_mode: testMode,\n    simulated: testMode,\n    dispatched: !testMode && (status === \"terminated\" || status === \"reclaimed\" || num(\"temp_removed\") > 0)\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1510,
+        "y": 285,
+        "wires": [
+            [
+                "host_memory_guardian_result_presence"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_result_presence",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Existe resultado novo para avaliar?",
+        "property": "guardian_result_present",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1800,
+        "y": 285,
+        "wires": [
+            [
+                "host_memory_guardian_result_protocol"
+            ],
+            [
+                "host_memory_guardian_no_result"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_no_result",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Sem resultado — encerrar ciclo",
+        "func": "node.status({\"fill\":\"grey\",\"shape\":\"ring\",\"text\":\"nenhum resultado novo\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2100,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_result_protocol",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Resposta respeita o contrato?",
+        "property": "guardian_protocol_valid",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2100,
+        "y": 310,
+        "wires": [
+            [
+                "host_memory_guardian_result_age_policy"
+            ],
+            [
+                "host_memory_guardian_protocol_error_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_protocol_error_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Contrato inválido → erro",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_protocol_error_in"
+        ],
+        "x": 2350,
+        "y": 350,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_protocol_error_in",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Receber erro estrutural",
+        "links": [
+            "host_memory_guardian_protocol_error_out"
+        ],
+        "x": 3810,
+        "y": 315,
+        "wires": [
+            [
+                "host_memory_guardian_mark_error"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_result_age_policy",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "POLÍTICA: resultado com até 180 s",
+        "rules": [
+            {
+                "t": "set",
+                "p": "guardian_max_age_seconds",
+                "pt": "msg",
+                "to": "180",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2380,
+        "y": 285,
+        "wires": [
+            [
+                "host_memory_guardian_result_freshness"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_result_freshness",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Classificar idade do resultado",
+        "func": "const result = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst testMode = msg._host_memory_guardian_test === true || result.test_mode === true;\nconst forceStale = testMode && msg._host_memory_guardian_force_stale === true;\nconst maximumAgeSeconds = Number(msg.guardian_max_age_seconds);\nconst checkedAt = Date.parse(String(result.checked_at ?? \"\"));\nconst ageMs = Date.now() - checkedAt;\nmsg.guardian_result_age_seconds = Number.isFinite(ageMs) ? Math.round(ageMs / 1000) : null;\nmsg.guardian_result_fresh = !forceStale && (testMode || (\n    Number.isFinite(maximumAgeSeconds) && maximumAgeSeconds > 0 &&\n    Number.isFinite(ageMs) && ageMs >= -30000 && ageMs <= maximumAgeSeconds * 1000\n));\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2660,
+        "y": 285,
+        "wires": [
+            [
+                "host_memory_guardian_result_freshness_switch"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_result_freshness_switch",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Resultado ainda está vigente?",
+        "property": "guardian_result_fresh",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2930,
+        "y": 285,
+        "wires": [
+            [
+                "host_memory_guardian_result_state"
+            ],
+            [
+                "host_memory_guardian_mark_stale"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_mark_stale",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Marcar resultado vencido",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload.original_status",
+                "pt": "msg",
+                "to": "payload.status",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "payload.status",
+                "pt": "msg",
+                "to": "failed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload.reason",
+                "pt": "msg",
+                "to": "stale_result",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "guardian_status",
+                "pt": "msg",
+                "to": "failed",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 3210,
+        "y": 335,
+        "wires": [
+            [
+                "host_memory_guardian_result_state"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_result_state",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Manter assinatura persistente",
+        "func": "const result = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst testMode = msg._host_memory_guardian_test === true || result.test_mode === true;\nconst signature = [result.request_id, result.status, result.checked_at].join(\":\");\nconst key = testMode ? \"host_memory_guardian_last_result_v1__test\" : \"host_memory_guardian_last_result_v1\";\nconst previous = testMode ? flow.get(key) : flow.get(key, \"persistent\");\n\nmsg.guardian_duplicate = previous?.signature === signature;\nresult.signature = signature;\nmsg.payload = result;\nif (!msg.guardian_duplicate) {\n    if (testMode) flow.set(key, result);\n    else flow.set(key, result, \"persistent\");\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3210,
+        "y": 285,
+        "wires": [
+            [
+                "host_memory_guardian_duplicate_switch"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_duplicate_switch",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Assinatura já foi processada?",
+        "property": "guardian_duplicate",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 3490,
+        "y": 285,
+        "wires": [
+            [
+                "host_memory_guardian_duplicate_mode"
+            ],
+            [
+                "host_memory_guardian_status_switch"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_duplicate_mode",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Duplicata pertence a TESTE?",
+        "property": "_host_memory_guardian_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 3750,
+        "y": 220,
+        "wires": [
+            [
+                "host_memory_guardian_mark_duplicate"
+            ],
+            [
+                "host_memory_guardian_duplicate_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_mark_duplicate",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Marcar deduplicação simulada",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload.status",
+                "pt": "msg",
+                "to": "duplicate",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4010,
+        "y": 200,
+        "wires": [
+            [
+                "host_memory_guardian_duplicate_dry_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_duplicate_dry_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Duplicata TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_dry_in"
+        ],
+        "x": 4290,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_duplicate_terminal",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Duplicata descartada",
+        "func": "node.status({\"fill\":\"grey\",\"shape\":\"ring\",\"text\":\"resultado duplicado\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 4010,
+        "y": 250,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_status_switch",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Status: falha, recuperação, saudável ou pressão?",
+        "property": "guardian_status",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "failed",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "cleanup_partial",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "terminated",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "reclaimed",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "healthy",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "running",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 7,
+        "x": 3750,
+        "y": 390,
+        "wires": [
+            [
+                "host_memory_guardian_mark_error"
+            ],
+            [
+                "host_memory_guardian_mark_error"
+            ],
+            [
+                "host_memory_guardian_mark_audit"
+            ],
+            [
+                "host_memory_guardian_mark_audit"
+            ],
+            [
+                "host_memory_guardian_mark_healthy"
+            ],
+            [
+                "host_memory_guardian_mark_healthy"
+            ],
+            [
+                "host_memory_guardian_mark_pressure"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_mark_error",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Decisão: registrar erro",
+        "rules": [
+            {
+                "t": "set",
+                "p": "guardian_effect",
+                "pt": "msg",
+                "to": "error",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4040,
+        "y": 310,
+        "wires": [
+            [
+                "host_memory_guardian_effect_mode"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_mark_audit",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Decisão: auditar memória recuperada",
+        "rules": [
+            {
+                "t": "set",
+                "p": "guardian_effect",
+                "pt": "msg",
+                "to": "audit",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4040,
+        "y": 355,
+        "wires": [
+            [
+                "host_memory_guardian_effect_mode"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_mark_healthy",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Decisão: estado saudável",
+        "rules": [
+            {
+                "t": "set",
+                "p": "guardian_effect",
+                "pt": "msg",
+                "to": "healthy",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4040,
+        "y": 410,
+        "wires": [
+            [
+                "host_memory_guardian_effect_mode"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_mark_pressure",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Decisão: observar pressão",
+        "rules": [
+            {
+                "t": "set",
+                "p": "guardian_effect",
+                "pt": "msg",
+                "to": "pressure",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4040,
+        "y": 465,
+        "wires": [
+            [
+                "host_memory_guardian_effect_mode"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_effect_mode",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Efeito pertence a TESTE?",
+        "property": "_host_memory_guardian_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 4280,
+        "y": 380,
+        "wires": [
+            [
+                "host_memory_guardian_dry_out"
+            ],
+            [
+                "host_memory_guardian_effect_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_effect_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Produção → observabilidade",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_effect_in"
+        ],
+        "x": 4370,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_dry_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_dry_in"
+        ],
+        "x": 4370,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_host_in",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Receber pedido de produção",
+        "links": [
+            "host_memory_guardian_request_host_out"
+        ],
+        "x": 4490,
+        "y": 100,
+        "wires": [
+            [
+                "host_memory_guardian_request_host"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_request_host",
+        "type": "exec",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "EFEITO: solicitar worker (timeout 15 s)",
+        "command": "/opt/request-host-memory-guardian.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "x": 4790,
+        "y": 100,
+        "wires": [
+            [
+                "host_memory_guardian_request_ack"
+            ],
+            [
+                "host_memory_guardian_request_error"
+            ],
+            [
+                "host_memory_guardian_request_complete"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_request_ack",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Adaptar aceite da ponte",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nmsg.guardian_request_status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1] ?? \"invalid\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5080,
+        "y": 75,
+        "wires": [
+            [
+                "host_memory_guardian_request_ack_switch"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_request_ack_switch",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Ponte aceitou, coalesceu ou rejeitou?",
+        "property": "guardian_request_status",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "accepted",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "coalesced",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 3,
+        "x": 5390,
+        "y": 75,
+        "wires": [
+            [
+                "host_memory_guardian_request_accepted"
+            ],
+            [
+                "host_memory_guardian_request_coalesced"
+            ],
+            [
+                "host_memory_guardian_request_invalid"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_request_accepted",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Solicitação aceita",
+        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"verificação aceita\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5800,
+        "y": 45,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_coalesced",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Solicitação já pendente",
+        "func": "node.status({\"fill\":\"yellow\",\"shape\":\"dot\",\"text\":\"verificação já pendente\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5800,
+        "y": 95,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_invalid",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Resposta da ponte inválida",
+        "func": "node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\nnode.error(\"host_memory_guardian_request_unrecognized\", msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5800,
+        "y": 145,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_error",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Falha da ponte",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"host_memory_guardian_bridge_unavailable detail=\" + detail, msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5080,
+        "y": 155,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_complete",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Adaptar código da solicitação",
+        "func": "const raw = msg.payload && typeof msg.payload === \"object\" ? msg.payload.code : msg.payload;\nconst parsed = String(raw ?? \"\").trim() === \"\" ? Number.NaN : Number(raw);\nmsg.guardian_exit_code = Number.isFinite(parsed) ? parsed : -1;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5100,
+        "y": 225,
+        "wires": [
+            [
+                "host_memory_guardian_request_complete_switch"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_request_complete_switch",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Solicitação terminou com código zero?",
+        "property": "guardian_exit_code",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "num"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 5400,
+        "y": 225,
+        "wires": [
+            [
+                "host_memory_guardian_request_ok"
+            ],
+            [
+                "host_memory_guardian_request_failed"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_request_ok",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Worker solicitado",
+        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"worker solicitado\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5800,
+        "y": 205,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_failed",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Solicitação retornou falha",
+        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"solicitação falhou\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5800,
+        "y": 255,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_effect_in",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Receber decisão canônica",
+        "links": [
+            "host_memory_guardian_effect_out"
+        ],
+        "x": 4490,
+        "y": 370,
+        "wires": [
+            [
+                "host_memory_guardian_effect_switch"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_effect_switch",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Executar erro, auditoria ou status",
+        "property": "guardian_effect",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "error",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "audit",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "healthy",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "pressure",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 5,
+        "x": 4790,
+        "y": 370,
+        "wires": [
+            [
+                "host_memory_guardian_effect_error"
+            ],
+            [
+                "host_memory_guardian_effect_log"
+            ],
+            [
+                "host_memory_guardian_effect_healthy"
+            ],
+            [
+                "host_memory_guardian_effect_pressure"
+            ],
+            [
+                "host_memory_guardian_effect_invalid"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_effect_error",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "OBSERVAR: falha canônica",
+        "func": "const result = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst status = String(result.status ?? \"invalid\");\nconst reason = String(result.reason ?? \"none\");\nconst stale = reason === \"stale_result\";\nnode.status({ fill: \"red\", shape: \"ring\", text: stale ? \"resultado vencido\" : status === \"cleanup_partial\" ? \"limpeza parcial\" : status === \"failed\" ? \"worker falhou\" : \"resultado inválido\" });\nconst event = stale ? \"host_memory_guardian_result_stale\" : status === \"cleanup_partial\" ? \"host_memory_guardian_cleanup_partial\" : status === \"failed\" ? \"host_memory_guardian_failed\" : \"host_memory_guardian_result_unrecognized\";\nnode.error(event + \" request_id=\" + String(result.request_id ?? \"unknown\") + \" reason=\" + reason, msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5180,
+        "y": 315,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_effect_log",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "AUDITAR: memória recuperada",
+        "func": "const result = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst terminated = Number(result.terminated ?? 0);\nconst tempRemoved = Number(result.temp_removed ?? 0);\nconst event = terminated > 0 ? \"HOST_MEMORY_GUARDIAN_TERMINATED\" : \"HOST_MEMORY_GUARDIAN_RECLAIMED\";\nnode.status({\n    fill: \"yellow\",\n    shape: \"dot\",\n    text: terminated > 0 ? \"sessão ociosa encerrada\" : \"temporários abandonados removidos\"\n});\nnode.warn(event +\n    \" terminated=\" + String(terminated) +\n    \" candidate_mib=\" + String(result.candidate_mib ?? 0) +\n    \" temp_removed=\" + String(tempRemoved) +\n    \" temp_reclaimed_mib=\" + String(result.temp_reclaimed_mib ?? 0) +\n    \" available_mib=\" + String(result.available_mib ?? 0));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5180,
+        "y": 365,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_effect_healthy",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "OBSERVAR: memória saudável",
+        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"memória saudável\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5180,
+        "y": 415,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_effect_pressure",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "OBSERVAR: pressão segura",
+        "func": "node.status({\"fill\":\"yellow\",\"shape\":\"dot\",\"text\":\"pressão sem ação insegura\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5180,
+        "y": 465,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_effect_invalid",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_effect_group",
+        "name": "Rejeitar efeito desconhecido",
+        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"efeito desconhecido\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5180,
+        "y": 510,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_instructions",
+        "type": "comment",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Ordem: reset → pedido → saudável → temporários → candidato → encerramento → duplicata → falha → vencido.",
+        "info": "Os resultados percorrem o adaptador, validação estrutural, vigência, estado persistente isolado, dedupe, classificação e gate de efeitos. Tudo termina com dispatched:false; o algoritmo do host mantém fixtures separadas.",
+        "x": 980,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_reset",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 700,
+        "wires": [
+            [
+                "host_memory_guardian_reset_test"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_reset_test",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Resetar estado sintético",
+        "func": "flow.set(\"host_memory_guardian_last_result_v1__test\", undefined);\nflow.set(\"host_memory_guardian_last_dry_run_v1\", {\n    version: 1,\n    status: \"reset\",\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_request",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 2: solicitar limpeza",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 195,
+        "y": 770,
+        "wires": [
+            [
+                "host_memory_guardian_test_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_test_request_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Pedido TESTE → decisões reais",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_request_in"
+        ],
+        "x": 500,
+        "y": 770,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_healthy",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 3: memória saudável",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"healthy\",\"request_id\":\"test-healthy\",\"checked_at\":\"2026-01-01T00:00:00Z\",\"available_mib\":4096,\"available_percent\":50,\"terminated\":0,\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 850,
+        "wires": [
+            [
+                "host_memory_guardian_test_healthy_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_test_healthy_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Saudável → decisões",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_result_in"
+        ],
+        "x": 400,
+        "y": 850,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_reclaimed",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 4: temporários recuperados",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"reclaimed\",\"request_id\":\"test-reclaimed\",\"checked_at\":\"2026-01-01T00:00:30Z\",\"available_mib\":4600,\"available_percent\":56,\"temp_removed\":12,\"temp_reclaimed_mib\":512,\"terminated\":0,\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 620,
+        "y": 930,
+        "wires": [
+            [
+                "host_memory_guardian_test_reclaimed_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_test_reclaimed_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Recuperação → decisões",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_result_in"
+        ],
+        "x": 860,
+        "y": 930,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_candidate",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 5: candidato observado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"candidate_observed\",\"request_id\":\"test-candidate\",\"checked_at\":\"2026-01-01T00:01:00Z\",\"available_mib\":4096,\"available_percent\":50,\"candidate_pid\":\"synthetic\",\"candidate_mib\":640,\"terminated\":0,\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 620,
+        "y": 850,
+        "wires": [
+            [
+                "host_memory_guardian_test_candidate_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_test_candidate_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Candidato → decisões",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_result_in"
+        ],
+        "x": 850,
+        "y": 850,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_terminated",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 6: encerramento aprovado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"terminated\",\"request_id\":\"test-terminated\",\"checked_at\":\"2026-01-01T00:02:00Z\",\"available_mib\":4096,\"available_percent\":50,\"candidate_pid\":\"synthetic\",\"candidate_mib\":640,\"terminated\":4,\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1060,
+        "y": 850,
+        "wires": [
+            [
+                "host_memory_guardian_test_terminated_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_test_terminated_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Encerramento → decisões",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_result_in"
+        ],
+        "x": 1300,
+        "y": 850,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_duplicate",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 7: repetir encerramento",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"terminated\",\"request_id\":\"test-terminated\",\"checked_at\":\"2026-01-01T00:02:00Z\",\"available_mib\":4096,\"available_percent\":50,\"candidate_pid\":\"synthetic\",\"candidate_mib\":640,\"terminated\":4,\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1500,
+        "y": 850,
+        "wires": [
+            [
+                "host_memory_guardian_test_duplicate_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_test_duplicate_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Duplicata → decisões",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_result_in"
+        ],
+        "x": 1730,
+        "y": 850,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_failed",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 8: falha do worker",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"failed\",\"request_id\":\"test-failed\",\"checked_at\":\"2026-01-01T00:03:00Z\",\"available_mib\":900,\"available_percent\":11,\"terminated\":0,\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1910,
+        "y": 850,
+        "wires": [
+            [
+                "host_memory_guardian_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_test_result_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Falha → decisões",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_result_in"
+        ],
+        "x": 2150,
+        "y": 850,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_test_stale",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE 9: resultado vencido",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"healthy\",\"request_id\":\"test-stale\",\"checked_at\":\"2020-01-01T00:00:00Z\",\"available_mib\":4096,\"available_percent\":50,\"terminated\":0,\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_host_memory_guardian_force_stale",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1120,
+        "y": 930,
+        "wires": [
+            [
+                "host_memory_guardian_test_stale_out"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_test_stale_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Vencido → decisões",
+        "mode": "link",
+        "links": [
+            "host_memory_guardian_result_in"
+        ],
+        "x": 1360,
+        "y": 930,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_dry_in",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "Receber efeito TESTE",
+        "links": [
+            "host_memory_guardian_dry_out",
+            "host_memory_guardian_request_dry_out",
+            "host_memory_guardian_duplicate_dry_out"
+        ],
+        "x": 1990,
+        "y": 760,
+        "wires": [
+            [
+                "host_memory_guardian_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "host_memory_guardian_dry_run_terminal",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_test_group",
+        "name": "TESTE FINAL: sinais e host bloqueados",
+        "func": "const input = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst result = {\n    version: 1,\n    status: input.status ?? input.event ?? \"request_prepared\",\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    signal_sent: false,\n    candidate_pid: input.candidate_pid ?? \"none\",\n    candidate_mib: Number(input.candidate_mib ?? 0),\n    temp_removed: Number(input.temp_removed ?? 0),\n    temp_reclaimed_mib: Number(input.temp_reclaimed_mib ?? 0),\n    completed_at: Date.now()\n};\nflow.set(\"host_memory_guardian_last_dry_run_v1\", result);\nnode.status({\n    fill: \"blue\",\n    shape: \"dot\",\n    text: \"TESTE: \" + result.status + \"; sinais bloqueados\"\n});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2260,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__host_memory_guardian_tab__group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__host_memory_guardian_tab__catch",
+            "global_observer_coverage__host_memory_guardian_tab__status",
+            "global_observer_coverage__host_memory_guardian_tab__annotate",
+            "global_observer_coverage__host_memory_guardian_tab__out"
+        ],
+        "x": 6080,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__host_memory_guardian_tab__catch",
+        "type": "catch",
+        "z": "host_memory_guardian_tab",
+        "g": "global_observer_coverage__host_memory_guardian_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 6220,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__host_memory_guardian_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__host_memory_guardian_tab__status",
+        "type": "status",
+        "z": "host_memory_guardian_tab",
+        "g": "global_observer_coverage__host_memory_guardian_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 6230,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__host_memory_guardian_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__host_memory_guardian_tab__annotate",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "global_observer_coverage__host_memory_guardian_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"host_memory_guardian_tab\",\"flow_label\":\"guardiao_memoria_host\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 6500,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__host_memory_guardian_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__host_memory_guardian_tab__out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "global_observer_coverage__host_memory_guardian_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 6745,
+        "y": 130,
+        "wires": []
     }
 ]

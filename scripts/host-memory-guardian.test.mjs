@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
@@ -8,11 +11,22 @@ import {
   parseMeminfo,
   parseProcStat,
   parseSshConnection,
+  reclaimTemporaryArtifacts,
   runGuardian,
   sshConnectionState,
 } from "./host-memory-guardian.mjs";
 
 const MiB = 1024;
+
+function ageTree(root, date = new Date(0)) {
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const target = path.join(root, entry.name);
+    if (entry.isDirectory()) ageTree(target, date);
+    if (entry.isSymbolicLink()) fs.lutimesSync(target, date, date);
+    else fs.utimesSync(target, date, date);
+  }
+  fs.utimesSync(root, date, date);
+}
 
 function extensionHost({
   pid,
@@ -214,4 +228,70 @@ test("production invokes only the prevalidated candidate once", () => {
   assert.deepEqual(seen, [100]);
   assert.equal(result.decision.status, "terminated");
   assert.equal(result.state.lastActionAt, ready.nowMs);
+});
+
+test("temporary cleanup removes only old allowlisted and inactive trees", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "host-memory-cleanup-test-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const temporaryRoot = path.join(root, "tmp");
+  const procRoot = path.join(root, "proc");
+  const prefixFile = path.join(root, "prefixes.txt");
+  fs.mkdirSync(temporaryRoot);
+  fs.mkdirSync(procRoot);
+  fs.writeFileSync(prefixFile, "safe-fixture-\n");
+
+  const create = (name, old = true) => {
+    const directory = path.join(temporaryRoot, name);
+    fs.mkdirSync(directory);
+    fs.writeFileSync(path.join(directory, "payload"), Buffer.alloc(8192, 1));
+    if (old) ageTree(directory);
+    return directory;
+  };
+  const removable = create("safe-fixture-removable");
+  const active = create("safe-fixture-active");
+  const recent = create("safe-fixture-recent", false);
+  const unknown = create("other-fixture-old");
+  const external = path.join(root, "must-survive");
+  fs.writeFileSync(external, "preserved");
+  fs.symlinkSync(external, path.join(removable, "external-link"));
+  ageTree(removable);
+
+  const pidRoot = path.join(procRoot, "123");
+  fs.mkdirSync(path.join(pidRoot, "fd"), { recursive: true });
+  fs.writeFileSync(path.join(pidRoot, "status"), `Name:\ttest\nUid:\t${process.getuid()}\t${process.getuid()}\t${process.getuid()}\t${process.getuid()}\n`);
+  fs.symlinkSync(path.join(active, "payload"), path.join(pidRoot, "fd", "3"));
+
+  const input = {
+    snapshot: { ...snapshot({ availableMiB: 1024 }), selfUid: process.getuid() },
+    temporaryRoot,
+    prefixFile,
+    procRoot,
+    nowMs: Date.now(),
+    config: { temporaryMinimumAgeSeconds: 60, maximumTemporaryReclaimKiB: 1024 },
+  };
+  const preview = reclaimTemporaryArtifacts({ ...input, dryRun: true });
+  assert.equal(preview.selectedCount, 1);
+  assert.ok(fs.existsSync(removable));
+
+  const applied = reclaimTemporaryArtifacts(input);
+  assert.equal(applied.removedCount, 1);
+  assert.ok(applied.reclaimedBytes > 0);
+  assert.ok(!fs.existsSync(removable));
+  assert.ok(fs.existsSync(active));
+  assert.ok(fs.existsSync(recent));
+  assert.ok(fs.existsSync(unknown));
+  assert.equal(fs.readFileSync(external, "utf8"), "preserved");
+});
+
+test("temporary cleanup fails closed for an invalid prefix contract", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "host-memory-prefix-test-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const prefixFile = path.join(root, "prefixes.txt");
+  fs.writeFileSync(prefixFile, "../\n");
+  assert.throws(() => reclaimTemporaryArtifacts({
+    snapshot: { ...snapshot(), selfUid: process.getuid() },
+    temporaryRoot: root,
+    prefixFile,
+    procRoot: path.join(root, "missing-proc"),
+  }), /temporary_prefix_invalid/);
 });

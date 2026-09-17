@@ -52,6 +52,7 @@ for (const [id, type] of [
   ["host_memory_guardian_side_effect_guard", "switch"],
   ["host_memory_guardian_result_presence", "switch"],
   ["host_memory_guardian_result_protocol", "switch"],
+  ["host_memory_guardian_result_freshness_switch", "switch"],
   ["host_memory_guardian_duplicate_switch", "switch"],
   ["host_memory_guardian_status_switch", "switch"],
   ["host_memory_guardian_effect_mode", "switch"],
@@ -62,6 +63,7 @@ for (const [id, type] of [
 
 const prepare = getFunction("host_memory_guardian_prepare_request");
 const normalize = getFunction("host_memory_guardian_parse_result");
+const freshness = getFunction("host_memory_guardian_result_freshness");
 const dedupe = getFunction("host_memory_guardian_result_state");
 const audit = getFunction("host_memory_guardian_effect_log");
 const dryRun = getFunction("host_memory_guardian_dry_run_terminal");
@@ -74,6 +76,20 @@ assert.equal(message.payload.event, "host_memory_guardian_requested");
 assert.equal(message.payload.test_mode, true);
 assert.equal(normalizeCompletion({ payload: { code: 0 } }, flow, mock, {}).guardian_exit_code, 0);
 assert.equal(normalizeCompletion({ payload: "" }, flow, mock, {}).guardian_exit_code, -1);
+
+message = normalize({
+  payload: `host-memory-guardian status=healthy available_mib=4096 available_percent=50.0 candidate_pid=none candidate_mib=0 terminated=0 temp_removed=0 temp_reclaimed_mib=0 cleanup_errors=0 request_id=fresh checked_at=${new Date().toISOString()}`,
+}, flow, mock, {});
+message.guardian_max_age_seconds = 180;
+message = freshness(message, flow, mock, {});
+assert.equal(message.guardian_result_fresh, true);
+
+message = normalize({
+  payload: "host-memory-guardian status=healthy available_mib=4096 available_percent=50.0 candidate_pid=none candidate_mib=0 terminated=0 temp_removed=0 temp_reclaimed_mib=0 cleanup_errors=0 request_id=stale checked_at=2020-01-01T00:00:00Z",
+}, flow, mock, {});
+message.guardian_max_age_seconds = 180;
+message = freshness(message, flow, mock, {});
+assert.equal(message.guardian_result_fresh, false);
 
 const terminated = {
   _host_memory_guardian_test: true,
@@ -117,6 +133,15 @@ assert.equal(productionNode.warnings.length, 1);
 assert.match(productionNode.warnings[0], /HOST_MEMORY_GUARDIAN_TERMINATED/);
 
 message = normalize({
+  payload: "host-memory-guardian status=reclaimed available_mib=4096 available_percent=50.0 candidate_pid=none candidate_mib=0 terminated=0 temp_removed=12 temp_reclaimed_mib=512 cleanup_errors=0 request_id=req-2 checked_at=2026-08-31T21:01:00Z",
+}, productionFlow, productionNode, {});
+assert.equal(message.payload.temp_removed, 12);
+assert.equal(message.payload.temp_reclaimed_mib, 512);
+assert.equal(message.payload.dispatched, true);
+assert.equal(audit(message, productionFlow, productionNode, {}), null);
+assert.match(productionNode.warnings.at(-1), /HOST_MEMORY_GUARDIAN_RECLAIMED/);
+
+message = normalize({
   payload: "host-memory-guardian status=terminated available_mib=1800 available_percent=22.0 candidate_pid=123 candidate_mib=700 terminated=5 request_id=req-1 checked_at=2026-08-31T21:00:00Z",
 }, productionFlow, productionNode, {});
 message = dedupe(message, productionFlow, productionNode, {});
@@ -141,10 +166,12 @@ for (const id of [
   "host_memory_guardian_test_reset",
   "host_memory_guardian_test_request",
   "host_memory_guardian_test_healthy",
+  "host_memory_guardian_test_reclaimed",
   "host_memory_guardian_test_candidate",
   "host_memory_guardian_test_terminated",
   "host_memory_guardian_test_duplicate",
   "host_memory_guardian_test_failed",
+  "host_memory_guardian_test_stale",
 ]) assert.ok(byId.has(id), `evidência manual ausente: ${id}`);
 
 const maxFunctionLength = Math.max(...tabNodes.filter((node) => node.type === "function").map((node) => node.func.length));

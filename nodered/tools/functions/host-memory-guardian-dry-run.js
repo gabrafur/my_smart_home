@@ -8,6 +8,8 @@ const result = {
     signal_sent: false,
     candidate_pid: input.candidate_pid ?? "none",
     candidate_mib: Number(input.candidate_mib ?? 0),
+    temp_removed: Number(input.temp_removed ?? 0),
+    temp_reclaimed_mib: Number(input.temp_reclaimed_mib ?? 0),
     completed_at: Date.now()
 };
 flow.set("host_memory_guardian_last_dry_run_v1", result);

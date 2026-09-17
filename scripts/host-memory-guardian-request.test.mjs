@@ -34,6 +34,33 @@ test("request bridge accepts one request and coalesces overlap", () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test("request bridge recovers an orphaned lock but preserves a recent lock", () => {
+  const { root, trigger } = fixture();
+  const lock = path.join(trigger, "request.lock");
+  fs.mkdirSync(lock);
+  const old = new Date(Date.now() - 10 * 60 * 1000);
+  fs.utimesSync(lock, old, old);
+  const env = {
+    ...process.env,
+    HOST_MEMORY_GUARDIAN_TRIGGER_DIR: trigger,
+    HOST_MEMORY_GUARDIAN_STALE_LOCK_SECONDS: "120",
+  };
+  const recovered = spawnSync(requestScript, [], { encoding: "utf8", env });
+  assert.equal(recovered.status, 0, recovered.stderr);
+  assert.match(recovered.stdout, /status=accepted/);
+  assert.match(recovered.stdout, /lock_recovered=true/);
+  assert.ok(fs.existsSync(path.join(trigger, "requested")));
+  assert.ok(!fs.existsSync(lock));
+
+  fs.rmSync(path.join(trigger, "requested"));
+  fs.mkdirSync(lock);
+  const coalesced = spawnSync(requestScript, [], { encoding: "utf8", env });
+  assert.equal(coalesced.status, 0, coalesced.stderr);
+  assert.match(coalesced.stdout, /status=coalesced/);
+  assert.ok(fs.existsSync(lock));
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("host worker publishes only the guardian's sanitized result", () => {
   const { root, trigger } = fixture();
   const guardian = path.join(root, "guardian.mjs");

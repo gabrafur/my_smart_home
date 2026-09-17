@@ -7819,383 +7819,416 @@
       "label": "guardiao_memoria_host",
       "compact_groups": true,
       "group_positions": {
-        "host_memory_guardian_decision_group": {
-          "x": 1546,
-          "y": 19
-        },
-        "host_memory_guardian_effect_group": {
-          "x": 4636,
-          "y": 4
-        },
-        "global_observer_coverage__host_memory_guardian_tab__group": {
-          "x": 2544,
-          "y": 579
-        }
-      },
-      "node_positions": {
-        "host_memory_guardian_result_complete": {
-          "x": 840,
-          "y": 390
-        },
-        "host_memory_guardian_result_complete_switch": {
-          "x": 1120,
-          "y": 390
-        },
-        "host_memory_guardian_read_ok": {
-          "x": 1390,
-          "y": 350
-        },
-        "host_memory_guardian_read_failed": {
-          "x": 1390,
-          "y": 440
-        }
-      },
-      "nodes": {
         "host_memory_guardian_input_group": {
-          "x": 89,
-          "y": 19,
-          "w": 1427,
-          "h": 462
+          "x": 64,
+          "y": 20,
+          "w": 1100,
+          "h": 510
         },
         "host_memory_guardian_decision_group": {
-          "x": 1546,
-          "y": 19,
-          "w": 3042,
-          "h": 502
+          "x": 1200,
+          "y": 20,
+          "w": 3200,
+          "h": 510
         },
         "host_memory_guardian_effect_group": {
-          "x": 4636,
-          "y": 4,
-          "w": 1497,
-          "h": 547
+          "x": 4440,
+          "y": 20,
+          "w": 1600,
+          "h": 510
         },
         "host_memory_guardian_test_group": {
           "x": 64,
-          "y": 579,
-          "w": 2422,
-          "h": 312
+          "y": 580,
+          "w": 2600,
+          "h": 440
         },
         "global_observer_coverage__host_memory_guardian_tab__group": {
-          "x": 2544,
-          "y": 579,
-          "w": 722,
-          "h": 142
+          "x": 6080,
+          "y": 40,
+          "w": 720,
+          "h": 162
+        }
+      },
+      "node_positions": {},
+      "nodes": {
+        "host_memory_guardian_input_group": {
+          "x": 64,
+          "y": 20,
+          "w": 1100,
+          "h": 510
+        },
+        "host_memory_guardian_decision_group": {
+          "x": 1200,
+          "y": 20,
+          "w": 3200,
+          "h": 510
+        },
+        "host_memory_guardian_effect_group": {
+          "x": 4440,
+          "y": 20,
+          "w": 1600,
+          "h": 510
+        },
+        "host_memory_guardian_test_group": {
+          "x": 64,
+          "y": 580,
+          "w": 2600,
+          "h": 440
         },
         "host_memory_guardian_architecture": {
-          "x": 620,
+          "x": 580,
           "y": 60
         },
         "host_memory_guardian_tick": {
-          "x": 275,
+          "x": 235,
           "y": 140
         },
         "host_memory_guardian_request_schedule_out": {
-          "x": 640,
+          "x": 600,
           "y": 140
         },
         "host_memory_guardian_result_tick": {
-          "x": 285,
+          "x": 245,
           "y": 250
         },
         "host_memory_guardian_read_result": {
-          "x": 580,
+          "x": 540,
           "y": 250
         },
         "host_memory_guardian_result_out": {
-          "x": 1050,
+          "x": 1010,
           "y": 210
         },
         "host_memory_guardian_result_error": {
-          "x": 870,
+          "x": 830,
           "y": 280
         },
         "host_memory_guardian_result_complete": {
-          "x": 840,
+          "x": 560,
           "y": 390
         },
         "host_memory_guardian_result_complete_switch": {
-          "x": 1120,
+          "x": 800,
           "y": 390
         },
         "host_memory_guardian_read_ok": {
-          "x": 1390,
+          "x": 1050,
           "y": 350
         },
         "host_memory_guardian_read_failed": {
-          "x": 1390,
+          "x": 1050,
           "y": 440
         },
         "host_memory_guardian_request_in": {
-          "x": 1587,
+          "x": 1250,
           "y": 110
         },
         "host_memory_guardian_prepare_request": {
-          "x": 1847,
+          "x": 1510,
           "y": 110
         },
         "host_memory_guardian_request_contract": {
-          "x": 2137,
+          "x": 1800,
           "y": 110
         },
         "host_memory_guardian_side_effect_guard": {
-          "x": 2437,
+          "x": 2100,
           "y": 90
         },
         "host_memory_guardian_invalid_request": {
-          "x": 2437,
+          "x": 2100,
           "y": 150
         },
         "host_memory_guardian_request_dry_out": {
-          "x": 2757,
+          "x": 2420,
           "y": 60
         },
         "host_memory_guardian_request_host_out": {
-          "x": 2837,
+          "x": 2500,
           "y": 100
         },
         "host_memory_guardian_result_in": {
-          "x": 1587,
+          "x": 1250,
           "y": 285
         },
         "host_memory_guardian_parse_result": {
-          "x": 1847,
+          "x": 1510,
           "y": 285
         },
         "host_memory_guardian_result_presence": {
-          "x": 2137,
+          "x": 1800,
           "y": 285
         },
         "host_memory_guardian_no_result": {
-          "x": 2437,
+          "x": 2100,
           "y": 240
         },
         "host_memory_guardian_result_protocol": {
-          "x": 2437,
+          "x": 2100,
           "y": 310
         },
         "host_memory_guardian_protocol_error_out": {
-          "x": 2687,
+          "x": 2350,
           "y": 350
         },
         "host_memory_guardian_protocol_error_in": {
-          "x": 3657,
-          "y": 240
+          "x": 3810,
+          "y": 315
+        },
+        "host_memory_guardian_result_age_policy": {
+          "x": 2380,
+          "y": 285
+        },
+        "host_memory_guardian_result_freshness": {
+          "x": 2660,
+          "y": 285
+        },
+        "host_memory_guardian_result_freshness_switch": {
+          "x": 2930,
+          "y": 285
+        },
+        "host_memory_guardian_mark_stale": {
+          "x": 3210,
+          "y": 335
         },
         "host_memory_guardian_result_state": {
-          "x": 2737,
+          "x": 3210,
           "y": 285
         },
         "host_memory_guardian_duplicate_switch": {
-          "x": 3037,
+          "x": 3490,
           "y": 285
         },
         "host_memory_guardian_duplicate_mode": {
-          "x": 3437,
+          "x": 3750,
           "y": 220
         },
         "host_memory_guardian_mark_duplicate": {
-          "x": 3837,
+          "x": 4010,
           "y": 200
         },
         "host_memory_guardian_duplicate_dry_out": {
-          "x": 4157,
+          "x": 4290,
           "y": 200
         },
         "host_memory_guardian_duplicate_terminal": {
-          "x": 3837,
-          "y": 140
+          "x": 4010,
+          "y": 250
         },
         "host_memory_guardian_status_switch": {
-          "x": 3437,
-          "y": 370
+          "x": 3750,
+          "y": 390
         },
         "host_memory_guardian_mark_error": {
-          "x": 3837,
+          "x": 4040,
           "y": 310
         },
         "host_memory_guardian_mark_audit": {
-          "x": 3837,
+          "x": 4040,
           "y": 355
         },
         "host_memory_guardian_mark_healthy": {
-          "x": 3837,
+          "x": 4040,
           "y": 410
         },
         "host_memory_guardian_mark_pressure": {
-          "x": 3837,
+          "x": 4040,
           "y": 465
         },
         "host_memory_guardian_effect_mode": {
-          "x": 4237,
+          "x": 4280,
           "y": 380
         },
         "host_memory_guardian_effect_out": {
-          "x": 4547,
+          "x": 4370,
           "y": 420
         },
         "host_memory_guardian_dry_out": {
-          "x": 4547,
+          "x": 4370,
           "y": 480
         },
         "host_memory_guardian_request_host_in": {
-          "x": 4677,
+          "x": 4490,
           "y": 100
         },
         "host_memory_guardian_request_host": {
-          "x": 4977,
+          "x": 4790,
           "y": 100
         },
         "host_memory_guardian_request_ack": {
-          "x": 5267,
+          "x": 5080,
           "y": 75
         },
         "host_memory_guardian_request_ack_switch": {
-          "x": 5577,
+          "x": 5390,
           "y": 75
         },
         "host_memory_guardian_request_accepted": {
-          "x": 5987,
+          "x": 5800,
           "y": 45
         },
         "host_memory_guardian_request_coalesced": {
-          "x": 5987,
+          "x": 5800,
           "y": 95
         },
         "host_memory_guardian_request_invalid": {
-          "x": 5987,
+          "x": 5800,
           "y": 145
         },
         "host_memory_guardian_request_error": {
-          "x": 5267,
+          "x": 5080,
           "y": 155
         },
         "host_memory_guardian_request_complete": {
-          "x": 5287,
+          "x": 5100,
           "y": 225
         },
         "host_memory_guardian_request_complete_switch": {
-          "x": 5587,
+          "x": 5400,
           "y": 225
         },
         "host_memory_guardian_request_ok": {
-          "x": 5987,
+          "x": 5800,
           "y": 205
         },
         "host_memory_guardian_request_failed": {
-          "x": 5987,
+          "x": 5800,
           "y": 255
         },
         "host_memory_guardian_effect_in": {
-          "x": 4677,
+          "x": 4490,
           "y": 370
         },
         "host_memory_guardian_effect_switch": {
-          "x": 4977,
+          "x": 4790,
           "y": 370
         },
         "host_memory_guardian_effect_error": {
-          "x": 5367,
+          "x": 5180,
           "y": 315
         },
         "host_memory_guardian_effect_log": {
-          "x": 5367,
+          "x": 5180,
           "y": 365
         },
         "host_memory_guardian_effect_healthy": {
-          "x": 5367,
+          "x": 5180,
           "y": 415
         },
         "host_memory_guardian_effect_pressure": {
-          "x": 5367,
+          "x": 5180,
           "y": 465
         },
         "host_memory_guardian_effect_invalid": {
-          "x": 5367,
+          "x": 5180,
           "y": 510
         },
         "host_memory_guardian_test_instructions": {
-          "x": 1020,
+          "x": 980,
           "y": 620
         },
         "host_memory_guardian_test_reset": {
-          "x": 220,
+          "x": 180,
           "y": 700
         },
         "host_memory_guardian_reset_test": {
-          "x": 450,
+          "x": 410,
           "y": 700
         },
         "host_memory_guardian_test_request": {
-          "x": 235,
+          "x": 195,
           "y": 770
         },
         "host_memory_guardian_test_request_out": {
-          "x": 540,
+          "x": 500,
           "y": 770
         },
         "host_memory_guardian_test_healthy": {
-          "x": 230,
+          "x": 190,
           "y": 850
         },
         "host_memory_guardian_test_healthy_out": {
-          "x": 440,
+          "x": 400,
           "y": 850
         },
+        "host_memory_guardian_test_reclaimed": {
+          "x": 620,
+          "y": 930
+        },
+        "host_memory_guardian_test_reclaimed_out": {
+          "x": 860,
+          "y": 930
+        },
         "host_memory_guardian_test_candidate": {
-          "x": 660,
+          "x": 620,
           "y": 850
         },
         "host_memory_guardian_test_candidate_out": {
-          "x": 890,
+          "x": 850,
           "y": 850
         },
         "host_memory_guardian_test_terminated": {
-          "x": 1100,
+          "x": 1060,
           "y": 850
         },
         "host_memory_guardian_test_terminated_out": {
-          "x": 1340,
+          "x": 1300,
           "y": 850
         },
         "host_memory_guardian_test_duplicate": {
-          "x": 1540,
+          "x": 1500,
           "y": 850
         },
         "host_memory_guardian_test_duplicate_out": {
-          "x": 1770,
+          "x": 1730,
           "y": 850
         },
         "host_memory_guardian_test_failed": {
-          "x": 1950,
+          "x": 1910,
           "y": 850
         },
         "host_memory_guardian_test_result_out": {
-          "x": 2190,
+          "x": 2150,
           "y": 850
         },
+        "host_memory_guardian_test_stale": {
+          "x": 1120,
+          "y": 930
+        },
+        "host_memory_guardian_test_stale_out": {
+          "x": 1360,
+          "y": 930
+        },
         "host_memory_guardian_dry_in": {
-          "x": 2030,
+          "x": 1990,
           "y": 760
         },
         "host_memory_guardian_dry_run_terminal": {
-          "x": 2300,
+          "x": 2260,
           "y": 760
         },
+        "global_observer_coverage__host_memory_guardian_tab__group": {
+          "x": 6080,
+          "y": 40,
+          "w": 720,
+          "h": 162
+        },
         "global_observer_coverage__host_memory_guardian_tab__catch": {
-          "x": 2700,
-          "y": 620
+          "x": 6220,
+          "y": 100
         },
         "global_observer_coverage__host_memory_guardian_tab__status": {
-          "x": 2710,
-          "y": 680
+          "x": 6230,
+          "y": 160
         },
         "global_observer_coverage__host_memory_guardian_tab__annotate": {
-          "x": 2980,
-          "y": 650
+          "x": 6500,
+          "y": 130
         },
         "global_observer_coverage__host_memory_guardian_tab__out": {
-          "x": 3225,
-          "y": 650
+          "x": 6745,
+          "y": 130
         }
       },
       "geometry_final": true

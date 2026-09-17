@@ -421,14 +421,16 @@
                 "host_memory_guardian_test_reset",
                 "host_memory_guardian_test_request",
                 "host_memory_guardian_test_healthy",
+                "host_memory_guardian_test_reclaimed",
                 "host_memory_guardian_test_candidate",
                 "host_memory_guardian_test_terminated",
                 "host_memory_guardian_test_duplicate",
-                "host_memory_guardian_test_failed"
+                "host_memory_guardian_test_failed",
+                "host_memory_guardian_test_stale"
             ],
             "dry_run_terminal_ids": ["host_memory_guardian_dry_run_terminal"],
             "automated_test": "test-host-memory-guardian-flow.mjs",
-            "reason": "Pedido, memória saudável, pressão, candidato ocioso, encerramento, duplicidade e falha atravessam adaptação, validação, estado, decisões visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."
+            "reason": "Pedido, memória saudável, recuperação temporária, pressão, candidato ocioso, encerramento, duplicidade, falha e resultado vencido atravessam adaptação, vigência, estado, decisões visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."
         }
     }
 }

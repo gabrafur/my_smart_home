@@ -15,6 +15,12 @@ export const DEFAULT_CONFIG = Object.freeze({
   maximumIdleCpuTicksPerSecond: 0.5,
   cooldownSeconds: 15 * 60,
   terminateGraceMs: 2000,
+  temporaryMinimumAgeSeconds: 2 * 60 * 60,
+  temporaryCleanupAvailablePercent: 60,
+  temporaryCleanupMinimumKiB: 256 * 1024,
+  maximumTemporaryReclaimKiB: 768 * 1024,
+  maximumTemporaryDirectories: 1000,
+  maximumTemporaryEntriesPerDirectory: 100_000,
 });
 
 const ESSENTIAL_PATTERN = /(?:^|\s|\/)(?:systemd|sshd|dockerd|containerd|tailscaled|node-red|homeassistant|mosquitto|zigbee2mqtt|matter-server)(?:\s|$)/i;
@@ -27,6 +33,162 @@ function readText(filePath) {
   } catch {
     return null;
   }
+}
+
+export function loadTemporaryPrefixes(filePath) {
+  const prefixes = String(fs.readFileSync(filePath, "utf8"))
+    .split("\n")
+    .map((line) => line.replace(/#.*$/, "").trim())
+    .filter(Boolean);
+  if (prefixes.length === 0) throw new Error("temporary_prefix_file_empty");
+  if (prefixes.some((prefix) => !/^[A-Za-z0-9][A-Za-z0-9._-]*[-.]$/.test(prefix))) {
+    throw new Error("temporary_prefix_invalid");
+  }
+  return [...new Set(prefixes)];
+}
+
+function pathWithin(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative !== "" && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative);
+}
+
+function activeTemporaryRoots({ procRoot, temporaryRoot, ownerUid }) {
+  const active = new Set();
+  const mark = (target) => {
+    const normalized = String(target ?? "").replace(/ \(deleted\)$/, "");
+    if (!pathWithin(temporaryRoot, normalized)) return;
+    const [name] = path.relative(temporaryRoot, normalized).split(path.sep);
+    if (name) active.add(path.join(temporaryRoot, name));
+  };
+  let processes = [];
+  try {
+    processes = fs.readdirSync(procRoot, { withFileTypes: true });
+  } catch {
+    throw new Error("temporary_process_scan_unavailable");
+  }
+  for (const processEntry of processes) {
+    if (!processEntry.isDirectory() || !/^\d+$/.test(processEntry.name)) continue;
+    const processRoot = path.join(procRoot, processEntry.name);
+    const processUid = Number(readText(path.join(processRoot, "status"))?.match(/^Uid:\s+(\d+)/m)?.[1]);
+    if (!Number.isFinite(processUid) || processUid !== ownerUid) continue;
+    for (const linkName of ["cwd", "root"]) {
+      try { mark(fs.readlinkSync(path.join(processRoot, linkName))); } catch { /* process changed */ }
+    }
+    for (const argument of String(readText(path.join(processRoot, "cmdline")) ?? "").split("\0")) mark(argument);
+    let descriptors = [];
+    try { descriptors = fs.readdirSync(path.join(processRoot, "fd")); } catch { /* inaccessible process */ }
+    for (const descriptor of descriptors) {
+      try { mark(fs.readlinkSync(path.join(processRoot, "fd", descriptor))); } catch { /* descriptor changed */ }
+    }
+  }
+  return active;
+}
+
+function temporaryTreeMetrics(root, ownerUid, maximumEntries) {
+  const rootStat = fs.lstatSync(root);
+  const device = rootStat.dev;
+  const pending = [root];
+  let entries = 0;
+  let allocatedBytes = 0;
+  let newestMtimeMs = 0;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    const stat = fs.lstatSync(current);
+    entries += 1;
+    if (entries > maximumEntries || stat.uid !== ownerUid || stat.dev !== device) {
+      return { safe: false, entries, allocatedBytes, newestMtimeMs };
+    }
+    allocatedBytes += Number(stat.blocks ?? 0) * 512;
+    newestMtimeMs = Math.max(newestMtimeMs, stat.mtimeMs);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) continue;
+    for (const name of fs.readdirSync(current)) pending.push(path.join(current, name));
+  }
+  return { safe: true, entries, allocatedBytes, newestMtimeMs, device, inode: rootStat.ino };
+}
+
+export function reclaimTemporaryArtifacts({
+  snapshot,
+  temporaryRoot = os.tmpdir(),
+  prefixFile,
+  procRoot = "/proc",
+  nowMs = Date.now(),
+  dryRun = false,
+  config: overrides = {},
+} = {}) {
+  const config = { ...DEFAULT_CONFIG, ...overrides };
+  const root = fs.realpathSync(temporaryRoot);
+  const prefixes = loadTemporaryPrefixes(prefixFile);
+  const ownerUid = snapshot.selfUid;
+  const active = activeTemporaryRoots({ procRoot, temporaryRoot: root, ownerUid });
+  const cutoff = nowMs - config.temporaryMinimumAgeSeconds * 1000;
+  const candidates = [];
+  for (const name of fs.readdirSync(root)) {
+    if (!prefixes.some((prefix) => name.startsWith(prefix))) continue;
+    const candidatePath = path.join(root, name);
+    let stat;
+    try { stat = fs.lstatSync(candidatePath); } catch { continue; }
+    if (!stat.isDirectory() || stat.isSymbolicLink() || stat.uid !== ownerUid || active.has(candidatePath)) continue;
+    let real;
+    let metrics;
+    try {
+      real = fs.realpathSync(candidatePath);
+      if (!pathWithin(root, real) || path.dirname(real) !== root) continue;
+      metrics = temporaryTreeMetrics(real, ownerUid, config.maximumTemporaryEntriesPerDirectory);
+    } catch {
+      continue;
+    }
+    if (!metrics.safe || metrics.newestMtimeMs > cutoff) continue;
+    candidates.push({ name, path: real, ...metrics });
+  }
+  candidates.sort((left, right) => left.newestMtimeMs - right.newestMtimeMs || left.name.localeCompare(right.name));
+  const eligibleBytes = candidates.reduce((sum, item) => sum + item.allocatedBytes, 0);
+  const availablePercent = (snapshot.availableKiB / snapshot.totalKiB) * 100;
+  const shouldReclaim = availablePercent < config.temporaryCleanupAvailablePercent ||
+    eligibleBytes >= config.temporaryCleanupMinimumKiB * 1024;
+  const result = {
+    eligibleCount: candidates.length,
+    eligibleBytes,
+    selectedCount: 0,
+    selectedBytes: 0,
+    removedCount: 0,
+    reclaimedBytes: 0,
+    errors: 0,
+    triggered: shouldReclaim,
+  };
+  if (!shouldReclaim) return result;
+
+  const maximumBytes = config.maximumTemporaryReclaimKiB * 1024;
+  const selected = [];
+  for (const candidate of candidates) {
+    if (selected.length >= config.maximumTemporaryDirectories) break;
+    if (candidate.allocatedBytes > maximumBytes - result.selectedBytes) continue;
+    selected.push(candidate);
+    result.selectedCount += 1;
+    result.selectedBytes += candidate.allocatedBytes;
+  }
+  if (dryRun) return result;
+
+  let currentActive = activeTemporaryRoots({ procRoot, temporaryRoot: root, ownerUid });
+  for (const [index, candidate] of selected.entries()) {
+    if (currentActive.has(candidate.path)) continue;
+    const quarantine = path.join(root, `host-memory-guardian-delete-${process.pid}-${index}`);
+    try {
+      const fresh = fs.lstatSync(candidate.path);
+      if (!fresh.isDirectory() || fresh.isSymbolicLink() || fresh.uid !== ownerUid ||
+          fresh.dev !== candidate.device || fresh.ino !== candidate.inode) continue;
+      fs.renameSync(candidate.path, quarantine);
+      fs.rmSync(quarantine, { recursive: true, force: false });
+      result.removedCount += 1;
+      result.reclaimedBytes += candidate.allocatedBytes;
+    } catch {
+      result.errors += 1;
+      try {
+        if (fs.existsSync(quarantine) && !fs.existsSync(candidate.path)) fs.renameSync(quarantine, candidate.path);
+      } catch { /* preserve the error count and leave the quarantine allowlisted */ }
+    }
+    if ((index + 1) % 100 === 0) currentActive = activeTemporaryRoots({ procRoot, temporaryRoot: root, ownerUid });
+  }
+  return result;
 }
 
 export function parseMeminfo(text) {
@@ -380,7 +542,7 @@ function scenarioSnapshot(name, nowMs) {
   return base;
 }
 
-function formatResult(decision, snapshot, terminated = 0) {
+function formatResult(decision, snapshot, terminated = 0, temporary = {}) {
   const fields = [
     "memory-guardian",
     `status=${decision.status}`,
@@ -389,19 +551,36 @@ function formatResult(decision, snapshot, terminated = 0) {
     `candidate_pid=${decision.candidate?.pid ?? "none"}`,
     `candidate_mib=${Math.round((decision.candidate?.rssKiB ?? 0) / 1024)}`,
     `terminated=${terminated}`,
+    `temp_removed=${Number(temporary.removedCount ?? 0)}`,
+    `temp_reclaimed_mib=${Math.round(Number(temporary.reclaimedBytes ?? 0) / 1024 / 1024)}`,
+    `cleanup_errors=${Number(temporary.errors ?? 0)}`,
   ];
   return fields.join(" ");
 }
 
 function parseArgs(argv) {
-  const options = { dryRun: false, scenario: null, stateFile: null, procRoot: "/proc" };
+  const options = {
+    dryRun: false,
+    scenario: null,
+    stateFile: null,
+    procRoot: "/proc",
+    temporaryRoot: null,
+    temporaryPrefixFile: null,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") options.dryRun = true;
-    else if (["--scenario", "--state-file", "--proc-root"].includes(argument)) {
+    else if (["--scenario", "--state-file", "--proc-root", "--temporary-root", "--temporary-prefix-file"].includes(argument)) {
       const value = argv[index + 1];
       if (!value) throw new Error(`missing_value_for_${argument.slice(2)}`);
-      options[argument === "--scenario" ? "scenario" : argument === "--state-file" ? "stateFile" : "procRoot"] = value;
+      const key = {
+        "--scenario": "scenario",
+        "--state-file": "stateFile",
+        "--proc-root": "procRoot",
+        "--temporary-root": "temporaryRoot",
+        "--temporary-prefix-file": "temporaryPrefixFile",
+      }[argument];
+      options[key] = value;
       index += 1;
     } else throw new Error(`unknown_argument_${argument}`);
   }
@@ -430,11 +609,23 @@ async function main() {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.dirname(here);
   const stateFile = options.stateFile ?? path.join(repoRoot, ".local-state", "host-memory-guardian", "state.json");
+  const temporaryPrefixFile = options.temporaryPrefixFile ?? path.join(here, "temporary-artifact-prefixes.txt");
   const previousState = loadState(stateFile);
   const nowMs = Date.now();
-  const snapshot = options.scenario
+  let snapshot = options.scenario
     ? scenarioSnapshot(options.scenario, nowMs)
     : collectSnapshot({ procRoot: options.procRoot, nowMs });
+  const temporary = options.scenario
+    ? { eligibleCount: 0, eligibleBytes: 0, selectedCount: 0, selectedBytes: 0, removedCount: 0, reclaimedBytes: 0, errors: 0, triggered: false }
+    : reclaimTemporaryArtifacts({
+        snapshot,
+        temporaryRoot: options.temporaryRoot ?? os.tmpdir(),
+        prefixFile: temporaryPrefixFile,
+        procRoot: options.procRoot,
+        nowMs,
+        dryRun: options.dryRun,
+      });
+  if (temporary.removedCount > 0) snapshot = collectSnapshot({ procRoot: options.procRoot, nowMs: Date.now() });
   const result = runGuardian({
     snapshot,
     previousState,
@@ -450,8 +641,15 @@ async function main() {
       return terminateCandidate(revalidated.decision.candidate, { procRoot: options.procRoot });
     },
   });
+  if (temporary.errors > 0) {
+    result.decision = { ...result.decision, status: "cleanup_partial" };
+  } else if (temporary.removedCount > 0 && result.decision.status !== "terminated") {
+    result.decision = { ...result.decision, status: "reclaimed" };
+  } else if (options.dryRun && temporary.selectedCount > 0 && result.decision.status === "healthy") {
+    result.decision = { ...result.decision, status: "would_reclaim" };
+  }
   saveState(stateFile, result.state);
-  console.log(formatResult(result.decision, snapshot, result.terminated));
+  console.log(formatResult(result.decision, snapshot, result.terminated, temporary));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

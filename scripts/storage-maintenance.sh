@@ -13,6 +13,7 @@ LOCK_PATH="${STORAGE_MAINTENANCE_LOCK_PATH-/tmp}"
 METRICS_ROOT="${STORAGE_MAINTENANCE_METRICS_ROOT-$REPO_ROOT/homeassistant}"
 METRICS_FILE="${STORAGE_MAINTENANCE_METRICS_FILE-$METRICS_ROOT/storage-maintenance-status.json}"
 TEMP_ROOT="${STORAGE_MAINTENANCE_TEMP_ROOT-/tmp}"
+TEMP_PREFIX_FILE="${STORAGE_MAINTENANCE_TEMP_PREFIX_FILE-$SCRIPT_DIR/temporary-artifact-prefixes.txt}"
 NODE_RED_ROOT="${STORAGE_MAINTENANCE_NODE_RED_ROOT-$REPO_ROOT/nodered}"
 DOCKER_BIN="${STORAGE_MAINTENANCE_DOCKER_BIN-docker}"
 JOURNALCTL_BIN="${STORAGE_MAINTENANCE_JOURNALCTL_BIN-journalctl}"
@@ -51,11 +52,7 @@ declare -a DEFAULT_CATEGORIES=(
   home-assistant-backups
 )
 declare -A CATEGORY_RECLAIMED=()
-declare -a TEMP_PREFIXES=(
-  local-ai-mcp- privacy-git-fixture- public-memory-check- security-scan-test-
-  storage-maintenance-test- storage-request-test- storage-request-retry-test-
-  weekly-review-test-
-)
+declare -a TEMP_PREFIXES=()
 WARNINGS=0
 REMOVED_COUNT=0
 REMOVED_BYTES=0
@@ -495,9 +492,23 @@ known_temp_name() {
   return 1
 }
 
+load_temp_prefixes() {
+  local line
+  [[ -f "$TEMP_PREFIX_FILE" && ! -L "$TEMP_PREFIX_FILE" ]] || die "temporary-prefix-file-unavailable" 66
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line=${line%%#*}
+    line=${line%$'\r'}
+    [[ -n "$line" ]] || continue
+    [[ "$line" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*[-.]$ ]] || die "temporary-prefix-invalid" 65
+    TEMP_PREFIXES+=("$line")
+  done < "$TEMP_PREFIX_FILE"
+  (( ${#TEMP_PREFIXES[@]} > 0 )) || die "temporary-prefix-file-empty" 65
+}
+
 clean_temporary_files() {
   local before candidate name size candidate_real temp_real
   STEP="category-temporary-files"
+  (( ${#TEMP_PREFIXES[@]} > 0 )) || load_temp_prefixes
   before=$(filesystem_used_bytes)
   temp_real=$(realpath -e -- "$TEMP_ROOT")
   find "$TEMP_ROOT" -xdev -mindepth 1 -maxdepth 1 -type d -mtime "+$TEMP_RETENTION_DAYS" -print0 |
