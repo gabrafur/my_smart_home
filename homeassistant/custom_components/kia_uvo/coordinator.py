@@ -1337,6 +1337,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
         api.ccsp_application_id = BR_CURRENT_APPLICATION_ID
         api.api_headers["User-Agent"] = BR_CURRENT_USER_AGENT
         registration_lock = threading.Lock()
+        access_token_refresh_lock = threading.Lock()
         refresh_context = threading.local()
         request_context = threading.local()
         original_request = api.session.request
@@ -1420,6 +1421,69 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                 return False
             return isinstance(payload, dict) and payload.get("resCode") == "4002"
 
+        def _is_expired_access_token(response, url: str) -> bool:
+            """Recognize the BR server-side access-token expiry response."""
+            if (
+                response.status_code != 401
+                or "/user/oauth2/token" in url
+                or getattr(refresh_context, "access_token_recovery", False)
+            ):
+                return False
+            try:
+                payload = response.json()
+            except ValueError:
+                return False
+            message = str(payload).lower()
+            return "token has expired" in message or "token expired" in message
+
+        def _recover_expired_access_token(response, method, url, kwargs):
+            """Refresh an unexpectedly expired token and retry one HTTP request."""
+            if not _is_expired_access_token(response, url):
+                return response
+
+            retry_kwargs = dict(kwargs)
+            rejected_headers = dict(retry_kwargs.get("headers") or {})
+            rejected_authorization = rejected_headers.get("Authorization")
+            with access_token_refresh_lock:
+                token = coordinator.vehicle_manager.token
+                current_authorization = (
+                    f"Bearer {token.access_token}"
+                    if token is not None and getattr(token, "access_token", None)
+                    else None
+                )
+                if current_authorization == rejected_authorization:
+                    refresh_context.access_token_recovery = True
+                    try:
+                        refreshed_token = api.refresh_access_token(token)
+                    finally:
+                        refresh_context.access_token_recovery = False
+                    if not getattr(refreshed_token, "access_token", None):
+                        raise AuthenticationError(
+                            "Brazilian Hyundai token refresh returned no access token"
+                        )
+                    coordinator.vehicle_manager.token = refreshed_token
+                    token = refreshed_token
+                    _LOGGER.warning(
+                        "CRETA_ACCESS_TOKEN_RECOVERED reason=server_expired; "
+                        "retried_request=true"
+                    )
+                    if hasattr(coordinator, "hass"):
+                        coordinator.hass.loop.call_soon_threadsafe(
+                            coordinator._save_token_if_changed
+                        )
+
+                if token is None or not getattr(token, "access_token", None):
+                    raise AuthenticationError(
+                        "Brazilian Hyundai access token unavailable after recovery"
+                    )
+
+                retry_headers = dict(retry_kwargs.get("headers") or {})
+                retry_headers["Authorization"] = f"Bearer {token.access_token}"
+                if getattr(token, "device_id", None):
+                    retry_headers["ccsp-device-id"] = token.device_id
+                retry_kwargs["headers"] = retry_headers
+                return original_request(method, url, **retry_kwargs)
+
         def _refresh_rate_limit_message(response, request_data) -> str | None:
             is_refresh_grant = (
                 isinstance(request_data, str)
@@ -1492,6 +1556,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                 )
                 if rate_limit_message:
                     refresh_context.rate_limit_message = rate_limit_message
+            response = _recover_expired_access_token(
+                response,
+                method,
+                url,
+                kwargs,
+            )
             if (
                 BR_DEVICE_REGISTRATION_PATH in url
                 or not _is_invalid_device(response)

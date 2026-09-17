@@ -117,6 +117,12 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   BR, preserva o token no formato correto e, se o refresh receber `5091`,
   propaga o rate limit sem cair imediatamente em um login completo. Isso evita
   varias chamadas de autenticacao dentro de uma unica tentativa do coordinator.
+- O backend também pode invalidar o access token antes do `valid_until` local.
+  Quando uma chamada autenticada recebe o `401` explícito de token expirado, o
+  adaptador renova a sessão e repete somente a requisição HTTP rejeitada, uma
+  vez. Assim, uma expiração entre o teste preventivo e o wake não gera alerta
+  falso nem repete o ciclo completo — e nunca envia um segundo wake caso o
+  primeiro já tenha sido aceito.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
   odometro avanca e na chegada do vehicle_primary. O dashboard nao depende mais de press
   manual para voltar a exibir viagens depois de restart.

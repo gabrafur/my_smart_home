@@ -770,6 +770,89 @@ class VehiclePrimaryBrazilDeviceRecoveryTest(unittest.TestCase):
         assert api.ccsp_application_id.endswith("a2df127d73b0")
         assert api.api_headers["User-Agent"].endswith("_CCS_APP_AOS")
 
+    def test_expired_access_token_is_refreshed_and_failed_request_retried_once(self):
+        api = HyundaiBlueLinkApiBR(
+            [
+                FakeResponse(
+                    401,
+                    {
+                        "retCode": "F",
+                        "resCode": "401",
+                        "resMsg": "Key not authorized: token has expired",
+                    },
+                ),
+                FakeResponse(200, {"access_token": "synthetic"}),
+                FakeResponse(200, {"retCode": "S", "resCode": "0000"}),
+            ]
+        )
+        token = SimpleNamespace(
+            access_token="expired-token",
+            refresh_token="refresh-token",
+            device_id="registered-device",
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(api=api, token=token)
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+        response = api.session.get(
+            "https://example.invalid/api/v1/spa/vehicles/vehicle-1/ccs2/carstatus/latest",
+            headers={
+                "Authorization": "Bearer expired-token",
+                "ccsp-device-id": "registered-device",
+            },
+        )
+
+        assert response.status_code == 200
+        assert coordinator.vehicle_manager.token.access_token == "refreshed-token"
+        assert len(api.session.requests) == 3
+        assert api.session.requests[0][1].endswith("/ccs2/carstatus/latest")
+        assert api.session.requests[1][1].endswith("/user/oauth2/token")
+        assert api.session.requests[2][1].endswith("/ccs2/carstatus/latest")
+        assert (
+            api.session.requests[2][2]["headers"]["Authorization"]
+            == "Bearer refreshed-token"
+        )
+
+    def test_other_http_401_is_not_treated_as_expired_access_token(self):
+        api = HyundaiBlueLinkApiBR(
+            [
+                FakeResponse(
+                    401,
+                    {
+                        "retCode": "F",
+                        "resCode": "401",
+                        "resMsg": "Authentication rejected for another reason",
+                    },
+                )
+            ]
+        )
+        token = SimpleNamespace(
+            access_token="current-token",
+            refresh_token="refresh-token",
+            device_id="registered-device",
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(api=api, token=token)
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+        response = api.session.get(
+            "https://example.invalid/api/v1/spa/vehicles/vehicle-1/ccs2/carstatus/latest",
+            headers={
+                "Authorization": "Bearer current-token",
+                "ccsp-device-id": "registered-device",
+            },
+        )
+
+        assert response.status_code == 401
+        assert coordinator.vehicle_manager.token is token
+        assert len(api.session.requests) == 1
+
     def test_invalid_device_in_http_403_is_registered_and_retried_once(self):
         api = HyundaiBlueLinkApiBR(
             [
