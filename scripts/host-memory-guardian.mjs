@@ -52,6 +52,30 @@ function pathWithin(root, candidate) {
   return relative !== "" && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative);
 }
 
+export function readProcessEntries(
+  procRoot,
+  {
+    attempts = 3,
+    retryDelayMs = 25,
+    readDirectory = fs.readdirSync,
+    wait = (delayMs) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs),
+  } = {},
+) {
+  const retryableCodes = new Set(["EAGAIN", "EBUSY", "EINTR", "EMFILE", "ENFILE"]);
+  const boundedAttempts = Math.max(1, Math.min(3, Number(attempts) || 1));
+  for (let attempt = 1; attempt <= boundedAttempts; attempt += 1) {
+    try {
+      return readDirectory(procRoot, { withFileTypes: true });
+    } catch (error) {
+      if (attempt === boundedAttempts || !retryableCodes.has(error?.code)) {
+        throw new Error("temporary_process_scan_unavailable", { cause: error });
+      }
+      wait(Math.max(0, Number(retryDelayMs) || 0) * attempt);
+    }
+  }
+  throw new Error("temporary_process_scan_unavailable");
+}
+
 function activeTemporaryRoots({ procRoot, temporaryRoot, ownerUid }) {
   const active = new Set();
   const mark = (target) => {
@@ -60,12 +84,7 @@ function activeTemporaryRoots({ procRoot, temporaryRoot, ownerUid }) {
     const [name] = path.relative(temporaryRoot, normalized).split(path.sep);
     if (name) active.add(path.join(temporaryRoot, name));
   };
-  let processes = [];
-  try {
-    processes = fs.readdirSync(procRoot, { withFileTypes: true });
-  } catch {
-    throw new Error("temporary_process_scan_unavailable");
-  }
+  const processes = readProcessEntries(procRoot);
   for (const processEntry of processes) {
     if (!processEntry.isDirectory() || !/^\d+$/.test(processEntry.name)) continue;
     const processRoot = path.join(procRoot, processEntry.name);

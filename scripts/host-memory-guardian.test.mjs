@@ -11,6 +11,7 @@ import {
   parseMeminfo,
   parseProcStat,
   parseSshConnection,
+  readProcessEntries,
   reclaimTemporaryArtifacts,
   runGuardian,
   sshConnectionState,
@@ -92,6 +93,43 @@ test("SSH activity is proven by the exact four-tuple", () => {
   );
   assert.equal(sshConnectionState(connection, ""), "disconnected");
   assert.equal(sshConnectionState(null, ""), "unknown");
+});
+
+test("temporary process scan retries transient failures and still fails closed", () => {
+  let calls = 0;
+  const waits = [];
+  const expected = [{ name: "123", isDirectory: () => true }];
+  const recovered = readProcessEntries("/proc", {
+    retryDelayMs: 10,
+    readDirectory(root, options) {
+      calls += 1;
+      assert.equal(root, "/proc");
+      assert.deepEqual(options, { withFileTypes: true });
+      if (calls < 3) {
+        const error = new Error("temporarily unavailable");
+        error.code = "EAGAIN";
+        throw error;
+      }
+      return expected;
+    },
+    wait(delayMs) { waits.push(delayMs); },
+  });
+  assert.equal(recovered, expected);
+  assert.equal(calls, 3);
+  assert.deepEqual(waits, [10, 20]);
+
+  let permanentCalls = 0;
+  assert.throws(() => readProcessEntries("/missing-proc", {
+    retryDelayMs: 0,
+    readDirectory() {
+      permanentCalls += 1;
+      const error = new Error("missing");
+      error.code = "ENOENT";
+      throw error;
+    },
+    wait() {},
+  }), /temporary_process_scan_unavailable/);
+  assert.equal(permanentCalls, 1);
 });
 
 test("healthy memory and a single active session never arm cleanup", () => {

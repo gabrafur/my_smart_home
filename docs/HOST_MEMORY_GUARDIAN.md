@@ -32,6 +32,12 @@ Cada ciclo remove no máximo 1.000 diretórios e 768 MiB; a limpeza é acionada
 quando a memória disponível cai abaixo de 60% ou quando os candidatos somam ao
 menos 256 MiB. O diretório é renomeado atomicamente antes da remoção.
 
+A enumeração inicial de `/proc`, usada para impedir a remoção de temporários
+ativos, aceita no máximo três tentativas com espera curta e limitada. Isso
+absorve falhas transitórias do kernel sem ampliar o escopo da limpeza; se as
+três leituras falharem, o ciclo continua falhando fechado e nenhuma remoção é
+executada.
+
 Home Assistant, Node-RED, Docker, containerd, SSH, MQTT, Zigbee2MQTT, Matter,
 Tailscale, systemd e qualquer processo de outro usuário são bloqueados pela
 denylist e pelas verificações de UID. Um descendente essencial torna toda a
