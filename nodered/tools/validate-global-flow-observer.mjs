@@ -76,6 +76,7 @@ for (const id of [
   "global_observer_integration_alert_out",
   "local_ai_rtx_alert_out",
   "internet_remote_access_alert_out",
+  "weekly_docs_review_alert_out",
   "notification_hub_mobile_observer_out",
   "notification_hub_alexa_observer_out",
   "notification_hub_persistent_observer_out",

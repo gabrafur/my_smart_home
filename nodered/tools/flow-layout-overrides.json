@@ -337,7 +337,7 @@
           "x": 84,
           "y": 439,
           "w": 1502,
-          "h": 252
+          "h": 352
         },
         "global_observer_coverage__weekly_docs_review_tab__group": {
           "x": 1614,
@@ -376,6 +376,14 @@
         "weekly_docs_review_track_status": {
           "x": 560,
           "y": 320
+        },
+        "weekly_docs_review_alert_out": {
+          "x": 825,
+          "y": 320
+        },
+        "weekly_docs_review_test_worker_status_in": {
+          "x": 435,
+          "y": 360
         },
         "weekly_docs_review_test_request_in": {
           "x": 535,
@@ -440,6 +448,18 @@
         "weekly_docs_review_test_failure_out": {
           "x": 1025,
           "y": 620
+        },
+        "weekly_docs_review_test_worker_unavailable": {
+          "x": 780,
+          "y": 730
+        },
+        "weekly_docs_review_test_worker_recovered": {
+          "x": 1080,
+          "y": 730
+        },
+        "weekly_docs_review_test_worker_status_out": {
+          "x": 1250,
+          "y": 730
         },
         "weekly_docs_review_dry_run_in": {
           "x": 1175,

@@ -15,6 +15,7 @@ const OBSERVER_TAB = "global_flow_observer_tab";
 const externalEventOutIds = [
   "local_ai_rtx_alert_out",
   "internet_remote_access_alert_out",
+  "weekly_docs_review_alert_out",
   "notification_hub_mobile_observer_out",
   "notification_hub_alexa_observer_out",
   "notification_hub_persistent_observer_out",

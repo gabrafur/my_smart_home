@@ -305,6 +305,8 @@
             "weekly_docs_review_test_mode_switch",
             "weekly_docs_review_status_watch",
             "weekly_docs_review_track_status",
+            "weekly_docs_review_alert_out",
+            "weekly_docs_review_test_worker_status_in",
             "weekly_docs_review_test_request_in",
             "weekly_docs_review_request",
             "weekly_docs_review_result",
@@ -323,9 +325,9 @@
             "weekly_docs_review_test_failure_in"
         ],
         "x": 64,
-        "y": 19,
+        "y": 39,
         "w": 2482,
-        "h": 382
+        "h": 392
     },
     {
         "id": "weekly_docs_review_test_group",
@@ -345,13 +347,16 @@
             "weekly_docs_review_test_request_out",
             "weekly_docs_review_test_failure",
             "weekly_docs_review_test_failure_out",
+            "weekly_docs_review_test_worker_unavailable",
+            "weekly_docs_review_test_worker_recovered",
+            "weekly_docs_review_test_worker_status_out",
             "weekly_docs_review_dry_run_in",
             "weekly_docs_review_dry_run_terminal"
         ],
         "x": 84,
         "y": 439,
         "w": 1502,
-        "h": 252
+        "h": 352
     },
     {
         "id": "storage_group_config",
@@ -6824,8 +6829,8 @@
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_production_group",
         "name": "Exibir lifecycle do worker",
-        "func": "const state = String(msg.payload ?? \"indisponível\");\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nconst key = \"weekly_docs_review_worker_failure_v1\";\nif ([\"falha\", \"indisponível\"].includes(state)) {\n    const previous = flow.get(key, \"persistent\");\n    if (previous?.state !== state) {\n        flow.set(key, { state, observed_at: Date.now() }, \"persistent\");\n        node.error(\"weekly_docs_review_worker_failed state=\" + state, msg);\n    }\n} else {\n    flow.set(key, undefined, \"persistent\");\n}\nreturn null;",
-        "outputs": 0,
+        "func": "const state = String(msg.payload ?? \"indisponível\");\nconst testMode = msg._weekly_docs_test === true;\nconst store = testMode ? undefined : \"persistent\";\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nconst key = testMode ? \"weekly_docs_review_worker_incident_v2__test\" : \"weekly_docs_review_worker_incident_v2\";\nconst legacyMigrationKey = \"weekly_docs_review_notification_migration_v2\";\nconst incidentKey = \"weekly_docs_review_worker\";\nconst previous = flow.get(key, store);\nconst output = [];\nconst envelope = (payload, title, message) => ({\n    _global_observer_test: testMode,\n    payload: { test_mode: testMode, incident_key: incidentKey, ...payload },\n    alert: { title, message }\n});\nif ([\"falha\", \"indisponível\"].includes(state)) {\n    if (previous?.active !== true) {\n        flow.set(key, { version: 2, active: true, state, observed_at: Date.now() }, store);\n        output.push(envelope(\n            {\n                observer_kind: \"weekly_docs_worker_unavailable\",\n                persistent_notification_operation: \"create\",\n                mobile_notification: true,\n                worker_state: state\n            },\n            testMode ? \"TESTE — Revisão documental indisponível\" : \"Revisão documental indisponível\",\n            \"O worker da revisão documental semanal está \" + state + \". O alerta será removido automaticamente quando o serviço voltar.\"\n        ));\n    }\n} else {\n    if (previous?.active === true) {\n        output.push(envelope(\n            {\n                observer_kind: \"weekly_docs_worker_recovery\",\n                persistent_incident_kind: \"weekly_docs_worker_unavailable\",\n                persistent_notification_operation: \"dismiss\",\n                mobile_notification: false,\n                resolution: \"recovered\",\n                worker_state: state\n            },\n            testMode ? \"TESTE — Revisão documental recuperada\" : \"Revisão documental recuperada\",\n            \"O worker da revisão documental semanal voltou ao estado \" + state + \".\"\n        ));\n    }\n    flow.set(key, undefined, store);\n\n    if (!testMode && flow.get(legacyMigrationKey, \"persistent\") !== true) {\n        flow.set(legacyMigrationKey, true, \"persistent\");\n        output.push({\n            payload: {\n                test_mode: false,\n                observer_kind: \"weekly_docs_worker_recovery\",\n                persistent_incident_kind: \"node_error\",\n                persistent_notification_operation: \"dismiss\",\n                mobile_notification: false,\n                incident_key: \"weekly_docs_review_tab_weekly_docs_review_track_status\",\n                resolution: \"legacy_notification_migrated\"\n            },\n            alert: {\n                title: \"Revisão documental recuperada\",\n                message: \"O alerta legado do worker foi encerrado.\"\n            }\n        });\n    }\n}\nreturn output.length ? [output] : null;",
+        "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -6833,7 +6838,42 @@
         "libs": [],
         "x": 560,
         "y": 320,
+        "wires": [
+            [
+                "weekly_docs_review_alert_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_alert_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Lifecycle do worker → observador global",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 825,
+        "y": 320,
         "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_worker_status_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Receber lifecycle TESTE",
+        "links": [
+            "weekly_docs_review_test_worker_status_out"
+        ],
+        "x": 435,
+        "y": 360,
+        "wires": [
+            [
+                "weekly_docs_review_track_status"
+            ]
+        ]
     },
     {
         "id": "weekly_docs_review_test_request_in",
@@ -6984,8 +7024,8 @@
         "type": "comment",
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_test_group",
-        "name": "TESTE: 1) reset 2) agendada/manual/falha 3) confira terminal; nenhum Codex, Git, commit, push ou trigger é executado",
-        "info": "Os cenários usam a mesma normalização e tratamento de erro da produção. O link final desvia antes do helper externo e registra simulated=true/dispatched=false.",
+        "name": "TESTE: 1) reset 2) solicitação/falha ou lifecycle indisponível→recuperado 3) confira os terminais dry-run",
+        "info": "Os cenários usam a mesma normalização e lifecycle da produção. O helper externo e a entrega central permanecem bloqueados e registram simulated=true/dispatched=false.",
         "x": 780,
         "y": 480,
         "wires": []
@@ -7022,7 +7062,7 @@
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_test_group",
         "name": "Resetar teste",
-        "func": "flow.set(\"weekly_docs_review_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "func": "flow.set(\"weekly_docs_review_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nflow.set(\"weekly_docs_review_worker_incident_v2__test\", undefined);\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -7163,6 +7203,86 @@
         ],
         "x": 1025,
         "y": 620,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_worker_unavailable",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 3A: worker indisponível",
+        "props": [
+            {
+                "p": "payload",
+                "v": "indisponível",
+                "vt": "str"
+            },
+            {
+                "p": "_weekly_docs_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 780,
+        "y": 730,
+        "wires": [
+            [
+                "weekly_docs_review_test_worker_status_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_worker_recovered",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 3B: worker recuperado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "aguardando",
+                "vt": "str"
+            },
+            {
+                "p": "_weekly_docs_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1080,
+        "y": 730,
+        "wires": [
+            [
+                "weekly_docs_review_test_worker_status_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_worker_status_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Lifecycle TESTE → produção",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_test_worker_status_in"
+        ],
+        "x": 1250,
+        "y": 730,
         "wires": []
     },
     {
@@ -42687,6 +42807,7 @@
             "global_observer_integration_alert_out",
             "local_ai_rtx_alert_out",
             "internet_remote_access_alert_out",
+            "weekly_docs_review_alert_out",
             "notification_hub_mobile_observer_out",
             "notification_hub_alexa_observer_out",
             "notification_hub_persistent_observer_out"

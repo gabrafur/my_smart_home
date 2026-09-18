@@ -98,11 +98,13 @@
                 "weekly_docs_review_test_reset",
                 "weekly_docs_review_test_scheduled",
                 "weekly_docs_review_test_manual",
-                "weekly_docs_review_test_failure"
+                "weekly_docs_review_test_failure",
+                "weekly_docs_review_test_worker_unavailable",
+                "weekly_docs_review_test_worker_recovered"
             ],
             "automated_test": "test-weekly-docs-review-flow.mjs",
-            "dry_run_terminal_ids": ["weekly_docs_review_dry_run_terminal"],
-            "reason": "Agendamento, acionamento manual e falha sintéticos usam a normalização real; Codex, Git, commit, push e o trigger externo permanecem bloqueados no terminal dry-run."
+            "dry_run_terminal_ids": ["weekly_docs_review_dry_run_terminal", "global_observer_dry_run_terminal"],
+            "reason": "Agendamento, acionamento manual, falha da ponte e lifecycle indisponível/recuperado usam os caminhos reais; Codex, Git, commit, push, trigger externo e entrega de notificação permanecem bloqueados nos terminais dry-run."
         },
         "29d64664bf8cbde8": {
             "strategy": "manual_full_dry_run",
