@@ -794,6 +794,20 @@ scenario("25 restart sem reconciliação não presume refletor ativo", () => {
   assert.equal(merged.payload.active, false);
 });
 
+scenario("25a estado inicial do refletor aguarda o cache do Home Assistant", () => {
+  assert.equal(byId.has("78753a34fe418682"), false,
+    "o polling por relógio não deve competir com o carregamento do cache");
+  assert.equal(byId.has("bfcddf998d4e3a53"), false,
+    "api-current-state não deve consultar a entidade durante o startup");
+  const physicalState = byId.get("eb9ffff62431e1c3");
+  assert(physicalState, "o observador físico do refletor deve existir");
+  assert.equal(physicalState.type, "server-state-changed");
+  assert.equal(physicalState.outputInitially, true,
+    "o estado inicial deve ser emitido após o Home Assistant ficar pronto");
+  assert.equal(physicalState.outputOnlyOnStateChange, true);
+  assert.deepEqual(physicalState.entities.entity, ["switch.refletor_portao_carros"]);
+});
+
 scenario("26 eventos fora de ordem atualizam caches sem emitir refresh", () => {
   const flow = memoryFlow();
   assert.equal(run("context_coordinator", { payload: { kind: "vehicle_primary_context", context: { away: true } } }, flow, geoEnv), null);
@@ -2396,6 +2410,6 @@ scenario("47 decisão canônica publica estado e atributos para o Recorder", () 
     "waiting_location_refresh");
 });
 
-assert.equal(passed.length, 76);
+assert.equal(passed.length, 77);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

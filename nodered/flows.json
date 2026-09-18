@@ -325,9 +325,9 @@
             "weekly_docs_review_test_failure_in"
         ],
         "x": 64,
-        "y": 39,
+        "y": 19,
         "w": 2482,
-        "h": 392
+        "h": 382
     },
     {
         "id": "weekly_docs_review_test_group",
@@ -3908,8 +3908,6 @@
             "label": true
         },
         "nodes": [
-            "78753a34fe418682",
-            "bfcddf998d4e3a53",
             "eb9ffff62431e1c3",
             "a0a4977052d1ce06",
             "704af53cd84ba2a2",
@@ -44684,76 +44682,11 @@
         ]
     },
     {
-        "id": "78753a34fe418682",
-        "type": "inject",
-        "z": "6b7552efb85343f4",
-        "g": "6013a28eaa95addd",
-        "name": "Reconciliar refletor a cada 60 s",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "60",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "1",
-        "topic": "",
-        "payload": "{\"kind\":\"startup\"}",
-        "payloadType": "json",
-        "x": 250,
-        "y": 2320,
-        "wires": [
-            [
-                "bfcddf998d4e3a53"
-            ]
-        ]
-    },
-    {
-        "id": "bfcddf998d4e3a53",
-        "type": "api-current-state",
-        "z": "6b7552efb85343f4",
-        "g": "6013a28eaa95addd",
-        "name": "Consultar estado físico atual do refletor",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "outputs": 1,
-        "halt_if": "",
-        "halt_if_type": "str",
-        "halt_if_compare": "is",
-        "entity_id": "switch.refletor_portao_carros",
-        "state_type": "str",
-        "blockInputOverrides": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "({\"kind\":\"light_physical\",\"state\":$entity().state,\"updated_at\":$toMillis($entity().last_updated),\"source\":\"physical_query\"})",
-                "valueType": "jsonata"
-            }
-        ],
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "override_topic": false,
-        "state_location": "payload",
-        "override_payload": "msg",
-        "entity_location": "data",
-        "override_data": "msg",
-        "x": 620,
-        "y": 2320,
-        "wires": [
-            [
-                "security_visual_lifecycle_load"
-            ]
-        ]
-    },
-    {
         "id": "eb9ffff62431e1c3",
         "type": "server-state-changed",
         "z": "6b7552efb85343f4",
         "g": "6013a28eaa95addd",
-        "name": "Estado físico do refletor mudou",
+        "name": "Estado inicial e mudanças físicas do refletor",
         "server": "4126427d5e161a03",
         "version": 6,
         "outputs": 1,

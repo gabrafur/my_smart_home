@@ -17,6 +17,12 @@ const fixedGenerated = new Set([
   "security_light_arrival_direction_gate_v1",
   "security_light_arrival_direction_blocked_v1",
   "71976ffe382e6d7d",
+  // A consulta por relógio podia disparar antes de o cache do Home Assistant
+  // estar pronto durante o startup. O state-changed abaixo já publica o
+  // estado inicial somente após a conexão ficar operacional e novamente em
+  // cada reconexão, além de acompanhar mudanças em tempo real.
+  "78753a34fe418682",
+  "bfcddf998d4e3a53",
 ]);
 const generated = new Set(flows.filter((node) =>
   node.id.startsWith("security_visual_") || fixedGenerated.has(node.id)
@@ -416,11 +422,11 @@ const reconcile = required("6013a28eaa95addd");
 reconcile.name = "0. Startup e recovery visual do lifecycle";
 reconcile.x = 64; reconcile.y = 2100; reconcile.w = 3150; reconcile.h = 322;
 reconcile.nodes = reconcile.nodes.filter((id) => !generated.has(id));
-for (const id of ["bfcddf998d4e3a53", "eb9ffff62431e1c3", "cd40f5f8e40b07af"]) {
+for (const id of ["eb9ffff62431e1c3", "cd40f5f8e40b07af"]) {
   required(id).wires = [["security_visual_lifecycle_load"]];
 }
+required("eb9ffff62431e1c3").name = "Estado inicial e mudanças físicas do refletor";
 for (const [id, x, y] of [
-  ["78753a34fe418682", 210, 2160], ["bfcddf998d4e3a53", 470, 2160],
   ["eb9ffff62431e1c3", 210, 2300], ["cd40f5f8e40b07af", 470, 2340]
 ]) Object.assign(required(id), { x, y, g: reconcile.id });
 fn("security_visual_lifecycle_load", reconcile.id, "Validar lifecycle persistido e limites",
