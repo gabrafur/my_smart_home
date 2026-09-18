@@ -13,6 +13,8 @@ serial:
   disable_led: false
 advanced:
   log_level: info
+  # Required by the reviewed converter in external_converters/.
+  enable_external_js: true
   channel: 26
   transmit_power: 20
   # For a NEW network only. Restore the original values for an existing one;
