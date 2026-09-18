@@ -19,7 +19,7 @@ services:
 
   mosquitto:
     logging: *default-logging
-    image: eclipse-mosquitto@sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797
+    image: eclipse-mosquitto@sha256:772e7b27d51cf2547a399fffa93ffa0075420fcc1eae84c4b422c72233c3ebb6
     container_name: mosquitto
     restart: always
     ports:
