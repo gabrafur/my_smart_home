@@ -43,6 +43,10 @@ const physicalFresh =
     Number.isFinite(physicalObservedAt) &&
     physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&
     now - physicalObservedAt <= PHYSICAL_FRESH_MS;
+const physicalState = flow.get("security_light_physical_state") ?? "unknown";
+const attemptingUnavailable = physicalState === "unavailable";
+const physicalAttemptAllowed = attemptingUnavailable ||
+    (physicalState === "off" && flow.get("light_reconciled") === true && physicalFresh);
 const people = ctxGet("people_context_v1") ?? {};
 const arrivalSource = String(msg.payload?.source ?? "");
 const residentArrival = ["resident_primary", "resident_secondary"].includes(
@@ -73,17 +77,20 @@ const bypassAllowed =
         "manual_bypass_for_unreliable_engine" &&
     msg.payload?.engine_bypass_allowed === true &&
     msg.payload?.engine_data_unreliable === true;
+const staleEngineHomeFallback =
+    msg.payload?.vehicle_primary_gate ===
+        "confirmed_home_arrival_with_stale_engine_fallback" &&
+    msg.payload?.stale_engine_home_fallback === true &&
+    msg.payload?.engine_data_unreliable === true;
 const ready =
     peopleReadyForArrival &&
     flow.get("sun_ready") === true &&
     flow.get("sun_below_horizon") === true &&
-    flow.get("light_reconciled") === true &&
-    physicalFresh &&
-    (engineGateAllowed || bypassAllowed);
+    physicalAttemptAllowed &&
+    (engineGateAllowed || bypassAllowed || staleEngineHomeFallback);
 
 if (
     !ready ||
-    flow.get("security_light_physical_state") !== "off" ||
     lifecycle.active_by_arrival === true
 ) {
     return null;
@@ -126,7 +133,9 @@ ctxSet(
     {
         version: 1,
         latched: true,
-        reason: "turn_on_dispatched",
+        reason: attemptingUnavailable
+            ? "turn_on_dispatched_while_unavailable"
+            : "turn_on_dispatched",
         latched_at: now,
         arrival_key: arrivalKey ?? null
     },
@@ -136,22 +145,33 @@ ctxSet(
 msg.delay = BACKSTOP_MS;
 msg.payload.deadline_type = "backstop";
 msg.payload.deadline_at = lifecycle.force_off_at;
-msg.payload.reason = bypassAllowed
+msg.payload.reflector_state_before_attempt = physicalState;
+msg.payload.actuator_available = !attemptingUnavailable;
+msg.payload.actuator_confirmation_pending = attemptingUnavailable;
+msg.payload.reason = staleEngineHomeFallback
+    ? (TEST_MODE
+        ? "test_confirmed_home_arrival_with_stale_engine_fallback"
+        : "confirmed_home_arrival_with_stale_engine_fallback")
+    : bypassAllowed
     ? (TEST_MODE
         ? "test_arrival_after_dark_with_engine_bypass"
         : "arrival_after_dark_with_engine_bypass")
     : (TEST_MODE
         ? "test_arrival_with_vehicle_primary_engine_on_after_dark"
         : "arrival_with_vehicle_primary_engine_on_after_dark");
-msg._security_light_decision_state = "turned_on";
+msg._security_light_decision_state = attemptingUnavailable
+    ? "turn_on_attempted_while_unavailable"
+    : "turned_on";
 
 if (TEST_MODE) {
     msg.payload.simulated = true;
     msg.payload.dispatched = false;
     node.status({
-        fill: bypassAllowed ? "yellow" : "green",
+        fill: bypassAllowed || staleEngineHomeFallback ? "yellow" : "green",
         shape: "dot",
-        text: bypassAllowed
+        text: staleEngineHomeFallback
+            ? "TESTE: lifecycle criado com chegada confirmada — despacho simulado"
+            : bypassAllowed
             ? "TESTE: lifecycle criado com bypass — despacho simulado"
             : "TESTE: lifecycle criado — despacho simulado"
     });

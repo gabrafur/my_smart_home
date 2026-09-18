@@ -28,6 +28,7 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250,
   home_radius_m: 100,
   arrival_recovery_minutes: 15,
+  local_excursion_minutes: 90,
   near_home_refresh_minutes: 10,
   arrival_dedupe_minutes: 10,
   primary_home_grace_minutes: 10,
@@ -258,8 +259,8 @@ assert.equal(queued[0], null, "sem motor confiável a chegada deve aguardar");
 assert.equal(gateFlow.get(pendingKey).version, 2);
 assert.equal(gateFlow.get(pendingKey).retention, "while_approaching");
 assert(
-  gateFlow.get(pendingKey).expires_at >= Date.now() + 14 * 60_000,
-  "chegada deve usar a retenção visual de 15 minutos",
+  gateFlow.get(pendingKey).expires_at >= Date.now() + 89 * 60_000,
+  "aproximação deve usar a retenção visual de 90 minutos",
 );
 
 gateFlow.set("sun_below_horizon", true);

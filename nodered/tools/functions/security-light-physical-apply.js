@@ -40,7 +40,9 @@ if (data.physical_signal) {
         } else {
             flow.set("light_reconciled", false);
             const previous = flow.get("security_light_last_unavailable_state");
-            if (previous !== (state ?? "unknown")) node.warn(`iluminacao_seguranca: refletor ${state ?? "unknown"}; efeitos físicos bloqueados`);
+            if (previous !== (state ?? "unknown")) node.warn(state === "unavailable"
+                ? "iluminacao_seguranca: refletor unavailable; chegada válida ainda pode tentar ligar"
+                : `iluminacao_seguranca: refletor ${state ?? "unknown"}; efeitos físicos bloqueados`);
             flow.set("security_light_last_unavailable_state", state ?? "unknown");
         }
     }

@@ -60,7 +60,8 @@ const LOCATION_POLICY = {
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
-  arrival_recovery_minutes: 15, near_home_refresh_minutes: 10,
+  arrival_recovery_minutes: 15, local_excursion_minutes: 90,
+  near_home_refresh_minutes: 10,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
@@ -1189,7 +1190,7 @@ scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () 
   const pending = flow.get(pendingKey);
   assert(pending, "chegada real deve ser preservada enquanto o motor está OFF");
   assert.equal(pending.retention, "while_approaching");
-  assert.equal(pending.expires_at, pending.queued_at + 15 * 60_000);
+  assert.equal(pending.expires_at, pending.queued_at + 90 * 60_000);
 
   const stillOffAt = now + 1;
   const stillOff = run("light_merge_context", {
@@ -1786,7 +1787,265 @@ scenario("35a gate final recupera away → home e rejeita direção inválida", 
   );
 });
 
-scenario("36 aviso de turn on fica travado até confirmação física de OFF", () => {
+scenario("35b backtest preserva near_home longo e recupera home com OFF vencido", () => {
+  const now = Date.now();
+  const homePeople = {
+    ready: true,
+    updated_at: now,
+    arrival_armed: { resident_primary: false, resident_secondary: true },
+    resident_primary: {
+      ready: true, stale: false, state: "home", current_home: true, updated_at: now,
+    },
+    resident_secondary: {
+      ready: true, stale: false, state: "home", current_home: true, updated_at: now,
+    },
+  };
+  const staleOffAt = now - 50 * 60_000;
+  const flow = readyLightFlow({
+    people_context_v1: homePeople,
+    vehicle_primary_context_v1: {
+      ready: true,
+      lighting_ready: false,
+      in_use: false,
+      engine_on: false,
+      engine_state_valid: true,
+      engine_stale: true,
+      engine_updated_at: staleOffAt,
+      updated_at: now,
+    },
+  });
+  const finalHome = arrival("resident_secondary", "home");
+  finalHome.payload.arrival_previous_state = "unavailable";
+  finalHome.payload.event_at = now;
+  finalHome.payload.arrival_resident_snapshot = {
+    ...homePeople.resident_secondary,
+  };
+  const prepared = run("light_prepare_arrival", finalHome, flow, geoEnv);
+  assert(prepared[0],
+    "chegada home confirmada após perda temporária do GPS deve ser recuperada");
+  assert.equal(prepared[0].payload.stale_engine_home_fallback, true);
+  assert.equal(prepared[0].payload.engine_data_unreliable, true);
+  const gated = run("light_check_vehicle_primary_in_use", prepared[0], flow, geoEnv);
+  assert(gated, "OFF de 50 min não pode vetar o último trecho confirmado");
+  assert.equal(gated.payload.vehicle_primary_gate,
+    "confirmed_home_arrival_with_stale_engine_fallback");
+  const available = run("light_check_inactive", gated, flow, geoEnv);
+  assert(available[0], "refletor OFF deve aceitar a contingência confirmada");
+  const dispatched = run("light_mark_active", available[0], flow, geoEnv);
+  assert(dispatched[0], "contingência deve alcançar o comando real de turn_on");
+  assert.equal(dispatched[0].payload.reason,
+    "confirmed_home_arrival_with_stale_engine_fallback");
+  assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, true);
+
+  const unconfirmed = structuredClone(finalHome);
+  unconfirmed.payload.external_cycle_confirmed = false;
+  assert.equal(run("light_prepare_arrival", unconfirmed, flow, geoEnv)[0], null,
+    "GPS unavailable sem ciclo externo confirmado não pode ligar");
+
+  const nearToHome = structuredClone(finalHome);
+  nearToHome.payload.arrival_previous_state = "near_home";
+  assert.equal(run("light_prepare_arrival", nearToHome, flow, geoEnv)[0], null,
+    "near_home → home comum não pode criar um segundo acendimento");
+
+  const freshOffFlow = readyLightFlow({
+    people_context_v1: homePeople,
+    vehicle_primary_context_v1: {
+      ready: true, lighting_ready: true, in_use: false, engine_on: false,
+      engine_state_valid: true, engine_stale: false, updated_at: now,
+    },
+  });
+  const freshOff = run("light_prepare_arrival", finalHome, freshOffFlow, geoEnv)[0];
+  assert(freshOff, "OFF atual deve alcançar o gate explícito");
+  assert.equal(freshOff.payload.stale_engine_home_fallback, false);
+  assert.equal(run("light_check_vehicle_primary_in_use", freshOff, freshOffFlow, geoEnv), null,
+    "OFF atual continua sendo bloqueio forte");
+});
+
+scenario("35c aproximação sobrevive a GPS stale sem autorizar replay", () => {
+  const now = Date.now();
+  const flow = readyLightFlow({
+    vehicle_primary_context_v1: {
+      ready: true, lighting_ready: true, in_use: false, engine_on: false,
+      engine_state_valid: true, engine_stale: false, updated_at: now,
+    },
+  });
+  const queued = arrival("resident_secondary", "approach");
+  queued.payload.event_at = now - 30 * 60_000;
+  queued.payload.arrival_originally_queued_at = now - 30 * 60_000;
+  assert(run("light_prepare_arrival", queued, flow, geoEnv)[0],
+    "OFF atual deve guardar a aproximação mesmo sem passar pelo gate do motor");
+  const key = "security_light_pending_arrival_v1";
+  const pending = flow.get(key);
+  assert(pending, "aproximação de 30 min deve continuar persistida");
+  assert.equal(pending.expires_at, pending.queued_at + 90 * 60_000);
+
+  const stalePeople = structuredClone(flow.get("people_context_v1"));
+  stalePeople.updated_at = now + 1;
+  stalePeople.resident_secondary = {
+    ready: false, stale: true, state: "unavailable", current_home: false,
+    updated_at: now - 20 * 60_000,
+  };
+  const staleUpdate = run("light_merge_context", {
+    payload: { kind: "people_context", updated_at: now + 1, context: stalePeople },
+  }, flow, geoEnv);
+  assert.equal(staleUpdate[2], null,
+    "localização stale não pode autorizar replay mesmo no escuro");
+  assert(flow.get(key), "perda temporária do GPS não pode apagar a aproximação");
+
+  const freshPeople = structuredClone(stalePeople);
+  freshPeople.updated_at = now + 2;
+  freshPeople.resident_secondary = {
+    ready: true, stale: false, state: "near_home", current_home: false,
+    updated_at: now + 2,
+  };
+  const engineOn = {
+    ready: true, lighting_ready: true, in_use: true, engine_on: true,
+    engine_state_valid: true, engine_stale: false, updated_at: now + 2,
+  };
+  flow.set("vehicle_primary_context_v1", engineOn);
+  const refreshed = run("light_merge_context", {
+    payload: { kind: "people_context", updated_at: now + 2, context: freshPeople },
+  }, flow, geoEnv);
+  assert(refreshed[2], "GPS atual em near_home com motor ON deve reprocessar a aproximação");
+});
+
+scenario("35d matriz de chegada home mantém fallback estritamente delimitado", () => {
+  const previousStates = ["not_home", "work", "unknown", "unavailable", "near_home", "home"];
+  const engineCases = [
+    { name: "on", engine_on: true, in_use: true, engine_stale: false },
+    { name: "off_fresh", engine_on: false, in_use: false, engine_stale: false },
+    { name: "off_stale", engine_on: false, in_use: false, engine_stale: true },
+  ];
+  for (const previous of previousStates) {
+    for (const confirmed of [false, true]) {
+      for (const engine of engineCases) {
+        const now = Date.now();
+        const people = {
+          ready: true, updated_at: now,
+          resident_primary: {
+            ready: true, stale: false, state: "home", current_home: true,
+            updated_at: now,
+          },
+          resident_secondary: {
+            ready: true, stale: false, state: "home", current_home: true,
+            updated_at: now,
+          },
+        };
+        const flow = readyLightFlow({
+          people_context_v1: people,
+          vehicle_primary_context_v1: {
+            ready: true,
+            lighting_ready: !engine.engine_stale,
+            engine_state_valid: true,
+            engine_updated_at: engine.engine_stale ? now - 50 * 60_000 : now,
+            updated_at: now,
+            ...engine,
+          },
+        });
+        const event = arrival("resident_primary", "home");
+        event.payload.arrival_previous_state = previous;
+        event.payload.external_cycle_confirmed = confirmed;
+        event.payload.event_at = now;
+        event.payload.arrival_resident_snapshot = { ...people.resident_primary };
+        const decision = run("light_prepare_arrival", event, flow, geoEnv);
+        const directional = confirmed &&
+          !["near_home", "home"].includes(previous);
+        assert.equal(Boolean(decision[0]), directional,
+          `${previous}/${confirmed}/${engine.name}: decisão direcional inesperada`);
+        if (!directional) continue;
+        const gated = run("light_check_vehicle_primary_in_use", decision[0], flow, geoEnv);
+        const shouldPass = engine.name === "on" || engine.name === "off_stale";
+        assert.equal(Boolean(gated), shouldPass,
+          `${previous}/${confirmed}/${engine.name}: resultado do motor inesperado`);
+        if (engine.name === "off_stale") {
+          assert.equal(gated.payload.vehicle_primary_gate,
+            "confirmed_home_arrival_with_stale_engine_fallback");
+        }
+      }
+    }
+  }
+});
+
+scenario("35e fallback de home tenta ligar mesmo com refletor unavailable", () => {
+  const now = Date.now();
+  const people = {
+    ready: true, updated_at: now,
+    resident_primary: {
+      ready: true, stale: false, state: "home", current_home: true, updated_at: now,
+    },
+    resident_secondary: {
+      ready: true, stale: false, state: "home", current_home: true, updated_at: now,
+    },
+  };
+  const flow = readyLightFlow({
+    people_context_v1: people,
+    vehicle_primary_context_v1: {
+      ready: true, lighting_ready: false, in_use: false, engine_on: false,
+      engine_state_valid: true, engine_stale: true,
+      engine_updated_at: now - 50 * 60_000, updated_at: now,
+    },
+    security_light_physical_state: "unavailable",
+    light_reconciled: false,
+  });
+  const event = arrival("resident_primary", "home");
+  event.payload.arrival_previous_state = "unavailable";
+  event.payload.event_at = now;
+  event.payload.arrival_resident_snapshot = { ...people.resident_primary };
+  const prepared = run("light_prepare_arrival", event, flow, geoEnv)[0];
+  const gated = run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv);
+  const available = run("light_check_inactive", gated, flow, geoEnv)[0];
+  assert(available, "unavailable deve permitir a tentativa após todos os gates");
+  const dispatched = run("light_mark_active", available, flow, geoEnv);
+  assert(dispatched[0], "o comando real deve ser despachado");
+  assert.equal(dispatched[0].payload.actuator_confirmation_pending, true);
+  assert.equal(dispatched[0]._security_light_decision_state,
+    "turn_on_attempted_while_unavailable");
+});
+
+scenario("35f falha de comunicação ainda exige bypass explicitamente ligado", () => {
+  const now = Date.now();
+  const people = {
+    ready: true, updated_at: now,
+    resident_primary: {
+      ready: true, stale: false, state: "home", current_home: true, updated_at: now,
+    },
+    resident_secondary: {
+      ready: true, stale: false, state: "home", current_home: true, updated_at: now,
+    },
+  };
+  const vehicle = {
+    ready: false, lighting_ready: false, in_use: false, engine_on: false,
+    engine_state_valid: true, engine_stale: true,
+    engine_communication_failed: true,
+    engine_updated_at: now - 50 * 60_000, updated_at: now,
+  };
+  const event = arrival("resident_primary", "home");
+  event.payload.arrival_previous_state = "unavailable";
+  event.payload.event_at = now;
+  event.payload.arrival_resident_snapshot = { ...people.resident_primary };
+
+  const blockedFlow = readyLightFlow({
+    people_context_v1: people,
+    vehicle_primary_context_v1: vehicle,
+    security_light_engine_bypass_enabled: false,
+  });
+  const blocked = run("light_prepare_arrival", structuredClone(event), blockedFlow, geoEnv);
+  assert.equal(blocked[0], null,
+    "falha de comunicação não pode usar automaticamente o fallback de OFF stale");
+
+  const bypassFlow = readyLightFlow({
+    people_context_v1: people,
+    vehicle_primary_context_v1: vehicle,
+    security_light_engine_bypass_enabled: true,
+  });
+  const prepared = run("light_prepare_arrival", structuredClone(event), bypassFlow, geoEnv)[0];
+  assert(prepared, "bypass explicitamente ligado deve manter a contingência existente");
+  const gated = run("light_check_vehicle_primary_in_use", prepared, bypassFlow, geoEnv);
+  assert(gated);
+  assert.equal(gated.payload.vehicle_primary_gate, "manual_bypass_for_unreliable_engine");
+});
+
+scenario("36 unavailable tenta ligar uma vez e aguarda reconciliação física", () => {
   const unavailableFlow = readyLightFlow({
     security_light_physical_state: "unavailable",
     light_reconciled: false,
@@ -1795,6 +2054,7 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
     payload: {
       arrival_key: "resident_secondary:approach:1",
       source: "resident_secondary",
+      vehicle_primary_gate: "known_engine_on",
     },
   };
 
@@ -1804,12 +2064,25 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
     unavailableFlow,
     geoEnv,
   );
-  assert(first[1], "primeira falha deve emitir um único aviso de indisponibilidade");
-  assert.equal(first[0], null);
+  assert(first[0], "unavailable deve seguir para uma tentativa real de acendimento");
+  assert.equal(first[0].payload.actuator_available, false);
+  assert.equal(first[0].payload.actuator_confirmation_pending, true);
+  assert.equal(first[0].payload.reflector_state_before_attempt, "unavailable");
+  assert.equal(first[1], null);
   assert.equal(first[2], null);
+  const dispatched = run(
+    "light_mark_active",
+    first[0],
+    unavailableFlow,
+    geoEnv,
+  );
+  assert(dispatched[0], "produção deve despachar turn_on mesmo com unavailable");
+  assert.equal(dispatched[0].payload.actuator_confirmation_pending, true);
+  assert.equal(dispatched[0]._security_light_decision_state,
+    "turn_on_attempted_while_unavailable");
   assert.equal(
-    unavailableFlow.get("security_light_turn_on_notification_latch_v1").latched,
-    true,
+    unavailableFlow.get("security_light_turn_on_notification_latch_v1").reason,
+    "turn_on_dispatched_while_unavailable",
   );
 
   assert.deepEqual(
@@ -1820,7 +2093,7 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
       geoEnv,
     ),
     [null, null, null],
-    "novas chegadas não podem repetir aviso enquanto o latch estiver ativo",
+    "o lifecycle ativo deve impedir tentativas repetidas durante unavailable",
   );
 
   run("light_reconcile", {
@@ -1834,14 +2107,22 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
     unavailableFlow.get("security_light_turn_on_notification_latch_v1"),
     null,
   );
-  assert(
-    run("light_check_inactive", structuredClone(candidate), unavailableFlow, geoEnv)[0],
-    "OFF físico deve liberar um novo ciclo de acendimento",
-  );
+  assert(run("light_check_inactive", structuredClone(candidate), unavailableFlow, geoEnv)[0],
+    "OFF físico deve liberar um novo ciclo de acendimento");
 
   const testFlow = readyLightFlow({
     security_light_physical_state: "unavailable",
     light_reconciled: false,
+    people_context_v1__test: {
+      ready: true,
+      resident_secondary: {
+        ready: true, stale: false, state: "near_home", current_home: false,
+        updated_at: Date.now(),
+      },
+    },
+    security_light_lifecycle_v1__test: {
+      version: 1, active_by_arrival: false, updated_at: Date.now(),
+    },
   });
   const testResult = run("light_check_inactive", {
     _location_test: true,
@@ -1850,8 +2131,14 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
       arrival_key: "test:resident_secondary:approach",
     },
   }, testFlow, geoEnv);
-  assert.equal(testResult[1], null, "TESTE não pode usar o ramo de produção");
-  assert(testResult[2], "TESTE indisponível deve solicitar somente os pushes TESTE");
+  assert(testResult[0], "TESTE deve atravessar a mesma autorização de unavailable");
+  assert.equal(testResult[1], null);
+  assert.equal(testResult[2], null);
+  testResult[0].payload.source = "resident_secondary";
+  testResult[0].payload.vehicle_primary_gate = "known_engine_on";
+  const simulated = run("light_mark_active", testResult[0], testFlow, geoEnv);
+  assert.equal(simulated[0], null, "TESTE não pode usar o ramo de produção");
+  assert(simulated[1], "TESTE deve chegar ao terminal dry-run após todos os gates");
 
   const onFlow = readyLightFlow({
     security_light_physical_state: "on",
@@ -1874,11 +2161,10 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
   );
   onFlow.set("security_light_physical_state", "unavailable");
   onFlow.set("light_reconciled", false);
-  assert.deepEqual(
-    run("light_check_inactive", structuredClone(candidate), onFlow, geoEnv),
-    [null, null, null],
-    "estado ON observado deve continuar suprimindo após indisponibilidade",
-  );
+  const afterOutage = run("light_check_inactive", structuredClone(candidate), onFlow, geoEnv);
+  assert(afterOutage[0],
+    "unavailable após estado ON também deve permitir nova tentativa de ligar");
+  assert.equal(afterOutage[0].payload.actuator_confirmation_pending, true);
 });
 
 scenario("37 tracker stale da outra pessoa não bloqueia chegada válida", () => {
@@ -2088,6 +2374,7 @@ scenario("45 refresh extraordinário é por morador e ignora cooldown genérico"
 
 scenario("46 política alinha retenção e refresh preventivo ao frescor", () => {
   assert.equal(LOCATION_POLICY.arrival_recovery_minutes, 15);
+  assert.equal(LOCATION_POLICY.local_excursion_minutes, 90);
   assert.equal(LOCATION_POLICY.near_home_refresh_minutes, 10);
   assert(LOCATION_POLICY.near_home_refresh_minutes < LOCATION_POLICY.location_fresh_minutes);
 });
@@ -2109,6 +2396,6 @@ scenario("47 decisão canônica publica estado e atributos para o Recorder", () 
     "waiting_location_refresh");
 });
 
-assert.equal(passed.length, 71);
+assert.equal(passed.length, 76);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

@@ -13,7 +13,9 @@ if (pending && data.lifecycle.active_by_arrival === true) {
 if (pending) {
     const queuedAt = Number(pending.queued_at ?? 0);
     const expiresAt = Number(pending.expires_at ?? 0);
-    const ttlMs = Number(data.location_policy.arrival_recovery_minutes) * 60000;
+    const ttlMs = Number(pending.retention === "while_approaching"
+        ? data.location_policy.local_excursion_minutes
+        : data.location_policy.arrival_recovery_minutes) * 60000;
     let valid = Boolean(pending.message) && Number.isFinite(queuedAt) && queuedAt > 0 &&
         queuedAt <= data.now + data.future_ms && Number.isFinite(expiresAt) &&
         data.now <= expiresAt && expiresAt - queuedAt <= ttlMs + 1000;
@@ -26,9 +28,14 @@ if (pending) {
             Number.isFinite(observedAt) && observedAt > 0 &&
             observedAt <= data.now + data.future_ms &&
             data.now - observedAt <= Number(data.location_policy.location_fresh_minutes) * 60000;
-        valid = current && resident?.state === "near_home";
-        if (!valid) reason = resident?.state === "home" ? "resident_home" :
-            !current ? "resident_location_stale" : "resident_left_approach_zone";
+        if (current) {
+            valid = resident?.state === "near_home";
+            if (!valid) reason = resident?.state === "home" ? "resident_home" :
+                "resident_left_approach_zone";
+        }
+        /* Falta temporária de localização não apaga a direção já confirmada.
+         * Ela apenas impede o replay até chegar uma posição atual. */
+        data.pending_replay_allowed = current && resident?.state === "near_home";
     } else if (valid && pending.retention !== "recovery_window") {
         valid = false;
         reason = "invalid_retention";
@@ -40,7 +47,8 @@ if (pending) {
     }
 }
 data.pending = pending;
-data.replay_ready = Boolean((pending || data.engine_on_arrival) &&
+if (data.pending_replay_allowed === undefined) data.pending_replay_allowed = Boolean(pending);
+data.replay_ready = Boolean(((pending && data.pending_replay_allowed) || data.engine_on_arrival) &&
     data.sun_ready && data.dark &&
     (data.engine_allowed || data.bypass_allowed));
 data.reconcile = data.test_mode ? null : { payload: { kind: "reconcile_signal", reason: "context_update" } };

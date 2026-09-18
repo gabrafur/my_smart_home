@@ -337,10 +337,10 @@ sw("security_visual_availability_on", decision.id, "Refletor já está ON e reco
   "_light_availability.physical_known_on", 4230, 1740, [[], ["security_visual_availability_cycle"]]);
 sw("security_visual_availability_cycle", decision.id, "Lifecycle de chegada já está ativo?",
   "_light_availability.cycle_active", 4500, 1820, [[], ["security_visual_availability_ready"]]);
-sw("security_visual_availability_ready", decision.id, "Refletor OFF está disponível?",
+sw("security_visual_availability_ready", decision.id, "Refletor OFF ou unavailable permite tentativa?",
   "_light_availability.available", 4770, 1820,
   [["security_visual_availability_ready_build"], ["security_visual_availability_duplicate"]]);
-fn("security_visual_availability_ready_build", decision.id, "Autorizar acendimento",
+fn("security_visual_availability_ready_build", decision.id, "Autorizar tentativa de acendimento",
   "security-light-availability-ready.js", 1, 5050, 1720, [["security_visual_availability_ready_out"]]);
 sw("security_visual_availability_duplicate", decision.id, "Diagnóstico indisponível já foi emitido?",
   "_light_availability.duplicate_unavailable", 5050, 1920,

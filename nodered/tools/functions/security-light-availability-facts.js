@@ -23,15 +23,21 @@ const decisionKey = msg.payload?.refresh_cycle_id != null
         : `window:${Math.floor(now / 5000)}`;
 const previous = flow.get("security_light_unavailable_decision_v1") ?? {};
 const previousAt = Number(previous.at ?? 0);
+const physicalKnownOff = physical === "off" && physicalFresh &&
+    flow.get("light_reconciled") === true;
+const unavailableAttempt = physical === "unavailable";
 msg._light_availability = {
     now, test_mode: testMode, policy, location_policy: locationPolicy,
     physical, physical_fresh: physicalFresh,
     reconciled: flow.get("light_reconciled") === true,
-    latched: latch.latched === true,
+    /* Uma queda de energia pode deixar a entidade unavailable mesmo depois de
+     * o relé físico voltar. Nesse estado, o latch anterior não prova que a luz
+     * está ON; o lifecycle evita tentativas duplicadas após o novo despacho. */
+    latched: latch.latched === true && !unavailableAttempt,
     physical_known_on: physical === "on" && physicalFresh && flow.get("light_reconciled") === true,
-    cycle_active: lifecycle.active_by_arrival === true && physical === "off" &&
-        physicalFresh && flow.get("light_reconciled") === true,
-    available: physical === "off" && physicalFresh && flow.get("light_reconciled") === true,
+    cycle_active: lifecycle.active_by_arrival === true,
+    available: physicalKnownOff || unavailableAttempt,
+    attempting_unavailable: unavailableAttempt,
     decision_key: decisionKey,
     duplicate_unavailable: previous.key === decisionKey && Number.isFinite(previousAt) &&
         previousAt <= now + futureMs && now - previousAt < Number(policy.unavailable_dedupe_seconds) * 1000

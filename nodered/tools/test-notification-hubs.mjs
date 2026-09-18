@@ -11,6 +11,12 @@ import {
 } from "./install-notification-hubs.mjs";
 
 const sourceFlows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
+const sourceById = new Map(sourceFlows.map((candidate) => [candidate.id, candidate]));
+for (const id of ["2818bf202b397612", "light_notify_on_secondary"]) {
+  const payloadRule = sourceById.get(id)?.rules?.find((rule) => rule.p === "payload");
+  assert.match(payloadRule?.to ?? "", /actuator_confirmation_pending/,
+    `${id}: flows.json precisa preservar a mensagem de confirmação pendente`);
+}
 const migrated = installNotificationHubs(structuredClone(sourceFlows));
 const repeated = installNotificationHubs(structuredClone(migrated));
 assert.deepEqual(repeated, migrated, "o gerador dos hubs precisa ser idempotente");

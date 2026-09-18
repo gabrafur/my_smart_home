@@ -20,6 +20,7 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250,
   home_radius_m: 100,
   arrival_recovery_minutes: 10,
+  local_excursion_minutes: 90,
   arrival_dedupe_minutes: 10,
   primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
@@ -77,7 +78,7 @@ function runtimeGlobal(policyOverrides = {}) {
 
 function runSecurityArrival(message, flow, globalContext = runtimeGlobal()) {
   let msg = run("security_visual_arrival_facts", message, flow, globalContext);
-  if (!msg._light_arrival.direction_valid) {
+  if (!msg._light_arrival.direction_and_arrival_valid) {
     msg = run("security_light_arrival_direction_blocked_v1", msg, flow, globalContext);
   } else {
     msg = run("security_visual_arrival_pending", msg, flow, globalContext);
@@ -638,7 +639,16 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
 {
   const start = clock;
   const flow = memory({
-    people_context_v1: { ready: true },
+    people_context_v1: {
+      ready: true,
+      resident_secondary: {
+        ready: true,
+        stale: false,
+        state: "near_home",
+        current_home: false,
+        updated_at: start,
+      },
+    },
     vehicle_primary_context_v1: {
       ready: false,
       lighting_ready: false,
@@ -657,9 +667,10 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   const prepared = runSecurityArrival({
     payload: {
       kind: "arrival",
-      source: "vehicle_primary",
-      arrival_source_type: "vehicle_primary",
+      source: "resident_secondary",
+      arrival_source_type: "person",
       arrival_stage: "approach",
+      arrival_previous_state: "not_home",
       arrival_direction: "returning",
       external_cycle_confirmed: true,
       event_at: start,
@@ -668,7 +679,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   assert.equal(prepared[0], null);
   assert.equal(
     flow.get("security_light_pending_arrival_v1").expires_at,
-    start + 10 * 60_000,
+    start + 90 * 60_000,
   );
 
   clock = start + 151_000;

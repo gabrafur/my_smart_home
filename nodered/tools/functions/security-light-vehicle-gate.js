@@ -26,10 +26,13 @@ const engineStateKnown =
 const engineUnreliable =
     msg.payload?.engine_communication_failed === true ||
     msg.payload?.engine_data_unreliable === true;
+const staleEngineHomeFallback =
+    msg.payload?.stale_engine_home_fallback === true;
 const engineKnownOff =
     engineStateKnown &&
     msg.payload?.vehicle_primary_engine_on === false &&
-    !engineUnreliable;
+    !engineUnreliable &&
+    !staleEngineHomeFallback;
 const bypassAllowed =
     bypassEnabled &&
     engineUnreliable;
@@ -48,7 +51,7 @@ if (engineKnownOff) {
     return null;
 }
 
-if (!engineGateAllowed && !bypassAllowed) {
+if (!engineGateAllowed && !bypassAllowed && !staleEngineHomeFallback) {
     node.status({
         fill: "yellow",
         shape: "ring",
@@ -74,21 +77,30 @@ if (!TEST_MODE) {
 }
 
 msg.payload.engine_bypass_enabled = bypassEnabled;
-msg.payload.engine_bypass_allowed = bypassAllowed;
-msg.payload.vehicle_primary_gate = bypassAllowed
-    ? "manual_bypass_for_unreliable_engine"
+msg.payload.engine_bypass_allowed = bypassAllowed || staleEngineHomeFallback;
+msg.payload.vehicle_primary_gate = staleEngineHomeFallback
+    ? "confirmed_home_arrival_with_stale_engine_fallback"
+    : bypassAllowed ? "manual_bypass_for_unreliable_engine"
     : "known_engine_on";
 
 if (TEST_MODE) {
     node.status({
-        fill: bypassAllowed ? "yellow" : "green",
+        fill: bypassAllowed || staleEngineHomeFallback ? "yellow" : "green",
         shape: "dot",
-        text: bypassAllowed
+        text: staleEngineHomeFallback
+            ? "TESTE: chegada confirmada; OFF vencido ignorado — continuando dry-run"
+            : bypassAllowed
             ? "TESTE: bypass manual aprovado — continuando dry-run"
             : "TESTE: gate aprovado — continuando dry-run"
     });
     msg.payload.simulated = true;
     msg.payload.dispatched = false;
+} else if (staleEngineHomeFallback) {
+    node.status({
+        fill: "yellow",
+        shape: "dot",
+        text: "chegada confirmada — OFF vencido ignorado"
+    });
 } else if (bypassAllowed) {
     node.status({
         fill: "yellow",

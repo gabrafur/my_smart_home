@@ -11,6 +11,7 @@ Object.assign(msg.payload, {
     engine_data_unreliable: data.engine_unreliable,
     engine_bypass_enabled: data.bypass_enabled,
     engine_bypass_allowed: data.bypass_allowed,
+    stale_engine_home_fallback: data.stale_engine_home_fallback === true,
     active: data.lifecycle.active_by_arrival === true || data.physical === "on",
     reflector_state: data.physical,
     reflector_physical_fresh: data.physical_fresh,

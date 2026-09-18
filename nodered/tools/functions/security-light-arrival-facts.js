@@ -45,8 +45,9 @@ const residentCurrent = resident?.ready === true && resident?.stale !== true &&
 const previousState = msg.payload?.arrival_previous_state;
 const previousAway = typeof previousState === "string" &&
     !["", "home", "near_home", "unknown", "unavailable"].includes(previousState);
+const previousUnavailable = ["unknown", "unavailable"].includes(previousState);
 const recoveredAway = msg.payload?.illumination_only === true &&
-    ["unknown", "unavailable"].includes(previousState) &&
+    previousUnavailable &&
     msg.payload?.external_cycle_confirmed === true;
 const localExcursionReturn = msg.payload?.local_excursion_return === true &&
     msg.payload?.arrival_direction === "returning_local_excursion";
@@ -57,7 +58,7 @@ const localExcursionReturn = msg.payload?.local_excursion_return === true &&
  * um catch-up stale em autorização. */
 const directHomeRecovery =
     stage === "home" &&
-    previousAway &&
+    (previousAway || previousUnavailable) &&
     msg.payload?.arrival_direction === "returning" &&
     msg.payload?.external_cycle_confirmed === true &&
     resident?.state === "home" &&
@@ -76,8 +77,17 @@ const bypassEnabled = get("security_light_engine_bypass_enabled", "persistent") 
 const bypassAutomatic = get("security_light_engine_bypass_automatic", "persistent") === true;
 const engineKnown = vehicle.engine_state_valid === true;
 const communicationFailed = vehicle.engine_communication_failed === true || bypassAutomatic;
-const engineKnownOff = engineKnown && vehicle.engine_on === false && !communicationFailed;
-const bypassAllowed = bypassEnabled && communicationFailed;
+const staleEngineOff = engineKnown && vehicle.engine_on === false &&
+    vehicle.engine_stale === true;
+/* Um ciclo externo confirmado pode terminar diretamente em home depois de uma
+ * parada longa em near_home. Nesse caso, um OFF vencido não prova que o motor
+ * continuou desligado durante o último trecho. A contingência é restrita ao
+ * salto final confirmado; chegadas comuns continuam exigindo ON ou bypass. */
+const staleEngineHomeFallback = directHomeRecovery && staleEngineOff && !communicationFailed;
+const engineKnownOff = engineKnown && vehicle.engine_on === false &&
+    !communicationFailed && !staleEngineOff;
+const manualBypassAllowed = bypassEnabled && communicationFailed;
+const bypassAllowed = manualBypassAllowed || staleEngineHomeFallback;
 const trustedEngine = engineKnown && !communicationFailed;
 const vehicleLightingReady = trustedEngine && residentArrival;
 const vehicleDecisionReady = engineKnownOff || vehicleLightingReady || bypassAllowed;
@@ -116,8 +126,10 @@ msg._light_arrival = {
         : "invalid",
     bypass_enabled: bypassEnabled,
     bypass_allowed: bypassAllowed,
+    manual_bypass_allowed: manualBypassAllowed,
+    stale_engine_home_fallback: staleEngineHomeFallback,
     engine_communication_failed: communicationFailed,
-    engine_unreliable: communicationFailed,
+    engine_unreliable: communicationFailed || staleEngineOff,
     vehicle_lighting_ready: vehicleLightingReady,
     logic_ready: sunReady && vehicleDecisionReady,
     sun_ready: sunReady,
@@ -127,6 +139,8 @@ msg._light_arrival = {
     recovery_needed: !vehicleLightingReady && !bypassAllowed,
     recovery_allowed: !Number.isFinite(lastRecoveryAt) || lastRecoveryAt <= 0 ||
         now - lastRecoveryAt >= recoveryThrottleMs,
-    arrival_recovery_ms: Number(locationPolicy.arrival_recovery_minutes) * 60000
+    arrival_recovery_ms: Number(stage === "approach"
+        ? locationPolicy.local_excursion_minutes
+        : locationPolicy.arrival_recovery_minutes) * 60000
 };
 return msg;
