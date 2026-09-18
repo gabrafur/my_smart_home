@@ -99,8 +99,8 @@ assert.deepEqual(
   "o painel deve atravessar a entrada canônica do hub Alexa",
 );
 
-assert.equal(NOTIFICATION_MIGRATIONS.length, 39, "a matriz explícita deve cobrir os 39 efeitos fora do subflow legado");
-assert.equal(new Set(NOTIFICATION_MIGRATIONS.map(({ id }) => id)).size, 39);
+assert.equal(NOTIFICATION_MIGRATIONS.length, 40, "a matriz explícita deve cobrir os 40 efeitos fora do subflow legado");
+assert.equal(new Set(NOTIFICATION_MIGRATIONS.map(({ id }) => id)).size, 40);
 for (const migration of NOTIFICATION_MIGRATIONS) {
   const adapter = node(migration.id);
   const call = node(`${migration.id}__hub_call`);
@@ -181,7 +181,9 @@ for (const filename of [
   const finalizesInline = /JSON\.stringify\(installNotificationHubs\(/.test(generator);
   const finalizesBeforeReconciliation = /const desired = installNotificationHubs\(/.test(generator) &&
     /reconcileGeneratedFlows\(originalFlows, desired,/.test(generator);
-  assert.ok(finalizesInline || finalizesBeforeReconciliation,
+  const finalizesIsolatedTab = /const installed = installNotificationHubs\(/.test(generator) &&
+    /structuredClone\(next\.filter/.test(generator);
+  assert.ok(finalizesInline || finalizesBeforeReconciliation || finalizesIsolatedTab,
     `${filename}: gerador pode reintroduzir saída direta sem o finalizador canônico`);
 }
 

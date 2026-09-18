@@ -24,6 +24,7 @@ physical identifiers must appear only as placeholders.
 | [Host memory guardian](HOST_MEMORY_GUARDIAN.md) | Bounded memory relief for allowlisted abandoned temporary artifacts and disconnected remote-development sessions | Portuguese detailed guide |
 | [Storage audit — phase 2](operations/storage-audit-phase-2.md) | Developer tools, cache, PM2, Docker cleanup, and recorder analysis | Portuguese detailed record |
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee, Tuya, and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
+| [Codex remote access recovery](CODEX_REMOTE_RECOVERY.md) | Portuguese runbook for SSH/App Server detection, idempotent automatic recovery, and Tailscale separation | Portuguese source |
 | [Global Node-RED failure notifications](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Portuguese runbook for flow errors, runtime unavailability, and the mandatory mobile delivery test | Portuguese source |
 | [Canonical Node-RED notification hubs](NODERED_NOTIFICATION_HUBS.md) | Portuguese contracts for mobile, Alexa, and HA persistent hubs, fail-closed recipients, and the migration equivalence matrix | Portuguese source |
 | [Node-RED ELK layout engine](node-red/ELK_LAYOUT_ENGINE.md) | Portuguese runbook for dry-run planning, the visual-only allowlist, quality gates, idempotency, and safe rollback | Portuguese source |

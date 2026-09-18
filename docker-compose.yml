@@ -149,6 +149,8 @@ services:
       - ./scripts/request-weekly-docs-review.sh:/opt/request-weekly-docs-review.sh:ro
       - ./scripts/request-host-memory-guardian.sh:/opt/request-host-memory-guardian.sh:ro
       - ./scripts/read-host-memory-guardian-result.sh:/opt/read-host-memory-guardian-result.sh:ro
+      - ./homeassistant/.codex-remote-recovery-trigger:/run/codex-remote-recovery
+      - ./scripts/request-host-codex-remote-recovery.sh:/opt/request-host-codex-remote-recovery.sh:ro
       - ./nodered:/data
       - ./bindings/private:/run/private-bindings:ro
       - ./scripts/storage-health-maintenance.sh:/opt/storage-health-maintenance.sh:ro

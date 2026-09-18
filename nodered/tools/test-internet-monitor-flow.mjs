@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
+const flowSource = globalThis.process.argv[2] ?? new URL("../flows.json", import.meta.url);
+const flows = JSON.parse(fs.readFileSync(flowSource, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 const TAB = "monitoramento_internet_tab";
 
@@ -44,6 +45,15 @@ for (const id of [
   "internet_notification_event",
   "internet_notification_test_gate",
   "internet_publication_test_gate",
+  "internet_remote_internet_online",
+  "internet_remote_health_switch",
+  "internet_remote_failure_incident",
+  "internet_remote_failure_threshold",
+  "internet_remote_recoverable",
+  "internet_remote_request_due",
+  "internet_remote_request_gate",
+  "internet_remote_alert_test_gate",
+  "internet_remote_dismiss_test_gate",
 ]) assert.equal(byId.get(id)?.type, "switch", `decisão visual ausente: ${id}`);
 
 const validate = getFunction("internet_policy_validate");
@@ -57,6 +67,11 @@ const buildNotification = getFunction("internet_notification_build");
 const expand = getFunction("internet_publications_expand");
 const restore = getFunction("internet_restore_history");
 const dry = getFunction("internet_dry_run_terminal");
+const remoteIngest = getFunction("internet_remote_access_report_ingest");
+const remoteFacts = getFunction("internet_remote_facts_read");
+const remoteMutate = getFunction("internet_remote_state_mutate");
+const remoteAlert = getFunction("internet_remote_alert_build");
+const remoteDry = getFunction("internet_remote_dry_run_terminal");
 const targets = [
   { name: "cloudflare", address: "1.1.1.1" },
   { name: "google", address: "8.8.8.8" },
@@ -69,6 +84,9 @@ const defaults = {
   recovery_cycles: 2,
   ping_timeout_s: 2,
   exec_timeout_ms: 3000,
+  remote_access_failure_cycles: 1,
+  remote_access_report_stale_s: 180,
+  remote_access_recovery_cooldown_s: 300,
 };
 const flow = context();
 let message = validate({ payload: defaults }, flow, nodeMock, globalMock);
@@ -82,11 +100,14 @@ for (const payload of [
   { ...defaults, recovery_cycles: 11 },
   { ...defaults, ping_timeout_s: 0 },
   { ...defaults, exec_timeout_ms: 2000 },
+  { ...defaults, remote_access_failure_cycles: 0 },
+  { ...defaults, remote_access_report_stale_s: 29 },
+  { ...defaults, remote_access_recovery_cooldown_s: 59 },
   { ...defaults, targets: targets.slice(0, 2) },
   { ...defaults, targets: [targets[0], targets[0], targets[2]] },
 ]) assert.equal(validate({ payload }, flow, nodeMock, globalMock).policy_valid, false);
-assert.equal(validate({ payload: { ...defaults, required_responses: 1, failure_cycles: 1, recovery_cycles: 1, ping_timeout_s: 1, exec_timeout_ms: 1001 } }, flow, nodeMock, globalMock).policy_valid, true);
-assert.equal(validate({ payload: { ...defaults, required_responses: 3, failure_cycles: 10, recovery_cycles: 10, ping_timeout_s: 10, exec_timeout_ms: 15000 } }, flow, nodeMock, globalMock).policy_valid, true);
+assert.equal(validate({ payload: { ...defaults, required_responses: 1, failure_cycles: 1, recovery_cycles: 1, ping_timeout_s: 1, exec_timeout_ms: 1001, remote_access_failure_cycles: 1, remote_access_report_stale_s: 30, remote_access_recovery_cooldown_s: 60 } }, flow, nodeMock, globalMock).policy_valid, true);
+assert.equal(validate({ payload: { ...defaults, required_responses: 3, failure_cycles: 10, recovery_cycles: 10, ping_timeout_s: 10, exec_timeout_ms: 15000, remote_access_failure_cycles: 5, remote_access_report_stale_s: 900, remote_access_recovery_cooldown_s: 3600 } }, flow, nodeMock, globalMock).policy_valid, true);
 assert.deepEqual(load({}, flow, nodeMock, globalMock).policy, { version: 1, ...defaults }, "inválidos não substituem política");
 
 let now = Date.UTC(2026, 8, 12, 1, 0, 0);
@@ -192,6 +213,70 @@ dry(result, testFlow, nodeMock, globalMock);
 assert.equal(testFlow.get("internet_monitor_last_dry_run_v1__test").dispatched, false);
 assert.deepEqual(byId.get("internet_notification_test_gate").wires[0], ["internet_dry_out"]);
 assert.deepEqual(byId.get("internet_publication_test_gate").wires[0], ["internet_publication_dry_out"]);
+
+const remoteFlow = context({ persistent: {
+  internet_monitor_policy_v1: flow.get("internet_monitor_policy_v1", "persistent"),
+  internet_monitor_state_v1: { phase: "online" },
+} });
+const remoteReport = (healthy, checkedAt, testMode = false) => ({
+  schema_version: 1,
+  test_mode: testMode,
+  checked_at: checkedAt,
+  services: {
+    remote_shell: { healthy: true, reason: "service_active" },
+    codex_remote: { installed: true, healthy, reason: healthy ? "app_server_ready" : "app_server_absent" },
+  },
+});
+const remoteNow = Date.UTC(2026, 8, 18, 20, 0, 0);
+let remoteMsg = remoteIngest({ payload: remoteReport(false, new Date(remoteNow).toISOString()) }, remoteFlow, nodeMock, globalMock);
+remoteMsg = load(remoteMsg, remoteFlow, nodeMock, globalMock);
+remoteMsg.remote_access_now = remoteNow;
+remoteMsg = remoteFacts(remoteMsg, remoteFlow, nodeMock, globalMock);
+assert.equal(remoteMsg.remote_access.codex_recoverable, true);
+assert.equal(remoteMsg.remote_access.request_due, true);
+remoteMsg.remote_access_state_action = "failure";
+remoteMsg = remoteMutate(remoteMsg, remoteFlow, nodeMock, globalMock);
+assert.equal(remoteMsg.remote_access_state.consecutive_failures, 1);
+remoteMsg.remote_access_state_action = "open";
+remoteMsg = remoteMutate(remoteMsg, remoteFlow, nodeMock, globalMock);
+assert.equal(remoteMsg.remote_access_event, "down");
+assert.equal(remoteMsg.remote_access_state.incident_open, true);
+const alert = remoteAlert(remoteMsg, remoteFlow, nodeMock, globalMock);
+assert.equal(alert.payload.incident_key, "remote_access_ssh_unavailable");
+assert.match(alert.alert.message, /monitoramento_vpn/);
+remoteMsg.remote_access_state_action = "request";
+remoteMsg = remoteMutate(remoteMsg, remoteFlow, nodeMock, globalMock);
+assert.equal(remoteMsg.remote_access_state.last_request_at, remoteNow);
+
+let recoveredRemote = remoteIngest({ payload: remoteReport(true, new Date(remoteNow + 60_000).toISOString()) }, remoteFlow, nodeMock, globalMock);
+recoveredRemote = load(recoveredRemote, remoteFlow, nodeMock, globalMock);
+recoveredRemote.remote_access_now = remoteNow + 60_000;
+recoveredRemote = remoteFacts(recoveredRemote, remoteFlow, nodeMock, globalMock);
+recoveredRemote.remote_access_state_action = "healthy";
+recoveredRemote = remoteMutate(recoveredRemote, remoteFlow, nodeMock, globalMock);
+assert.equal(recoveredRemote.remote_access_event, "recovery");
+assert.equal(recoveredRemote.remote_access_state.incident_open, false);
+
+const remoteTestFlow = context({ default: { internet_monitor_state_v1__test: { phase: "online" } }, persistent: {
+  internet_monitor_policy_v1: flow.get("internet_monitor_policy_v1", "persistent"),
+} });
+let remoteTest = remoteIngest({ _internet_test: true, payload: remoteReport(false, new Date(remoteNow).toISOString(), true) }, remoteTestFlow, nodeMock, globalMock);
+remoteTest = load(remoteTest, remoteTestFlow, nodeMock, globalMock);
+remoteTest.remote_access_now = remoteNow;
+remoteTest = remoteFacts(remoteTest, remoteTestFlow, nodeMock, globalMock);
+remoteTest.remote_access_state_action = "failure";
+remoteTest = remoteMutate(remoteTest, remoteTestFlow, nodeMock, globalMock);
+remoteTest.remote_access_state_action = "open";
+remoteTest = remoteMutate(remoteTest, remoteTestFlow, nodeMock, globalMock);
+remoteDry(remoteTest, remoteTestFlow, nodeMock, globalMock);
+assert.equal(remoteTestFlow.get("internet_remote_access_last_dry_run_v1__test").dispatched, false);
+assert.equal(remoteTestFlow.get("internet_remote_access_state_v1", "persistent"), undefined, "TESTE não contamina recovery real");
+assert.deepEqual(byId.get("internet_remote_request_gate").wires[0], ["internet_remote_dry_out"]);
+assert.deepEqual(byId.get("internet_remote_alert_test_gate").wires[0], ["internet_remote_dry_out"]);
+assert.deepEqual(byId.get("internet_remote_dismiss_test_gate").wires[0], ["internet_remote_dry_out"]);
+assert.equal(byId.get("internet_remote_alert_dismiss").type, "change", "dismiss deve usar o hub persistente");
+assert.equal(byId.get("internet_remote_alert_dismiss__hub_call").type, "link call", "chamada do hub persistente ausente");
+assert.equal(byId.get("internet_remote_request_worker").command, "/opt/request-host-codex-remote-recovery.sh");
 
 const ping = getFunction("internet_ping");
 async function testLock(throwFirst = false) {

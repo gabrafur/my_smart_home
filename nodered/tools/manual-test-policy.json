@@ -194,11 +194,16 @@
                 "internet_test_fail_2",
                 "internet_test_fail_3",
                 "internet_test_success_1",
-                "internet_test_success_2"
+                "internet_test_success_2",
+                "internet_test_codex_absent",
+                "internet_test_codex_ready"
             ],
-            "dry_run_terminal_ids": ["internet_dry_run_terminal"],
+            "dry_run_terminal_ids": [
+                "internet_dry_run_terminal",
+                "internet_remote_dry_run_terminal"
+            ],
             "automated_test": "test-internet-monitor-flow.mjs",
-            "reason": "Três falhas e dois sucessos percorrem quorum, estado persistente, limiares e gates reais; MQTT e os três hubs canônicos de notificação terminam em dry-run."
+            "reason": "Três falhas e dois sucessos percorrem quorum e alertas de internet; os relatórios sintéticos de Codex ausente/pronto percorrem telemetria, estado, cooldown, pedido de recovery e encerramento do alerta. MQTT, notificações e worker terminam em dry-run."
         },
         "monitoramento_vpn_tab": {
             "strategy": "manual_full_dry_run",

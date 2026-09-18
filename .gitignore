@@ -24,6 +24,7 @@ homeassistant/.storage-maintenance-trigger/
 homeassistant/storage-maintenance-status.json
 homeassistant/.git-backup-trigger/
 homeassistant/.daily-update-trigger/
+homeassistant/.codex-remote-recovery-trigger/
 .daily-update-request-worker.lock
 .daily-update-request.cron.log
 .kia-uvo-update-request-worker.lock

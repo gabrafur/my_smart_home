@@ -68,6 +68,7 @@ export const NOTIFICATION_MIGRATIONS = Object.freeze([
   mobile("3b95712a74512929", "alarme_desarme_chegada", "resident_primary", "actionable", "notification_title", "notification_message", '{"tag":notification_tag,"actions":[{"action":confirm_action,"title":confirm_action_title},{"action":cancel_action,"title":cancel_action_title}]}', { testMode: "_alarm_arrival_test = true" }),
   mobile("370622ddaaf3fcab", "alarme_desarme_chegada", "resident_secondary", "actionable", "notification_title", "notification_message", '{"tag":notification_tag,"actions":[{"action":confirm_action,"title":confirm_action_title},{"action":cancel_action,"title":cancel_action_title}]}', { testMode: "_alarm_arrival_test = true" }),
   persistent("local_ai_rtx_alert_dismiss", "recuperacao_rtx", "dismiss", "queued", '"nodered_observabilidade_global_domain_alert_local_ai_rtx_unavailable"'),
+  persistent("internet_remote_alert_dismiss", "monitoramento_internet", "dismiss", "queued", '"nodered_observabilidade_global_domain_alert_remote_access_ssh_unavailable"'),
   mobile("codex_alert_push", "alertas_codex", "resident_primary", "simple", "alert.title", "alert.message", null, { testMode: "_codex_test = true" }),
   persistent("codex_alert_persistent", "alertas_codex", "create", "queued", '"codex_alert_" & alert.kind', "alert.title", "alert.message", { testMode: "_codex_test = true" }),
   mobile("git_backup_notify_primary", "backup_git", "resident_primary", "simple", "alert.title", "alert.message", null, { testMode: "_git_backup_test = true" }),

@@ -25,6 +25,7 @@ placeholders.
 | [Guardião de memória do host](HOST_MEMORY_GUARDIAN.md) | Alívio conservador de memória para sessões remotas abandonadas | resumo no [índice em inglês](README.en.md) |
 | [Auditoria de armazenamento — fase 2](operations/storage-audit-phase-2.md) | Limpeza de ferramentas de desenvolvimento, caches, PM2, Docker e análise do recorder | resumo no [índice em inglês](README.en.md) |
 | [Monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md) | Queda e recuperação de Zigbee, Tuya e Internet no Node-RED | [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
+| [Recuperação do acesso remoto ao Codex](CODEX_REMOTE_RECOVERY.md) | Detecção de SSH/App Server, recuperação automática idempotente e separação do Tailscale | Português |
 | [Notificações globais de falha do Node-RED](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Erros de fluxos, indisponibilidade do runtime e teste obrigatório de entrega ao celular | Resumo em inglês abaixo |
 | [Hubs canônicos de notificação](NODERED_NOTIFICATION_HUBS.md) | Contratos móveis, Alexa e HA persistente, destinatários fail-closed e matriz de equivalência | Resumo em inglês abaixo |
 | [Motor de layout ELK do Node-RED](node-red/ELK_LAYOUT_ENGINE.md) | Dry-run, allowlist visual, métricas, idempotência e rollback seguro | Resumo em inglês abaixo |

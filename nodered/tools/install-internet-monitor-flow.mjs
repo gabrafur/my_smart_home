@@ -11,14 +11,21 @@ const outputPath = path.resolve(process.argv[3] ?? sourcePath);
 const functionsDir = path.join(here, "functions");
 const TAB = "monitoramento_internet_tab";
 const MQTT = "721c47f31046b8bc";
+const SERVER = "4126427d5e161a03";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
-const owned = (node) => node.id === TAB || node.z === TAB || node.id.startsWith("internet_") || node.id.startsWith("grp_internet_");
+const observerPrefix = `global_observer_coverage__${TAB}__`;
+const observerNode = (node) => String(node.id).startsWith(observerPrefix);
+const owned = (node) => !observerNode(node) &&
+  (node.id === TAB || node.z === TAB || node.id.startsWith("internet_") || node.id.startsWith("grp_internet_"));
 const removed = new Set(flows.filter(owned).map((node) => node.id));
 const next = flows.filter((node) => !owned(node));
 for (const node of next) {
   for (const field of ["nodes", "scope", "links"]) {
-    if (Array.isArray(node[field])) node[field] = node[field].filter((id) => !removed.has(id));
+    if (Array.isArray(node[field])) node[field] = node[field].filter((id) =>
+      !removed.has(id) ||
+      (field === "links" && node.id === "global_observer_alert_to_dispatch_in" && id === "internet_remote_access_alert_out")
+    );
   }
   if (Array.isArray(node.wires)) node.wires = node.wires.map((wire) =>
     Array.isArray(wire) ? wire.filter((id) => !removed.has(id)) : wire
@@ -34,10 +41,11 @@ const group = (id, name, x, y, w, h, stroke, fill) => add({
   nodes: [], x, y, w, h,
 });
 const groups = {
-  input: group("grp_internet_triggers", "0. Política, agenda e fontes", 64, 20, 1100, 510, "#2563eb", "#dbeafe"),
+  input: group("grp_internet_triggers", "0. Política, agenda e fontes", 64, 20, 1100, 590, "#2563eb", "#dbeafe"),
   decision: group("grp_internet_state", "1. Quorum, estado e decisões visuais", 1200, 20, 3900, 510, "#0f766e", "#ccfbf1"),
   effect: group("grp_internet_publish", "2. Publicação, alerta e observabilidade", 5140, 20, 1700, 510, "#dc2626", "#fee2e2"),
-  test: group("grp_internet_tests", "3. Replay manual completo — dry-run", 64, 580, 2500, 470, "#0891b2", "#cffafe"),
+  remote: group("grp_internet_remote_access", "3. Recuperação automática do acesso Codex/SSH", 6900, 20, 3600, 650, "#7c3aed", "#ede9fe"),
+  test: group("grp_internet_tests", "4. Replay manual completo — dry-run", 64, 700, 3500, 560, "#0891b2", "#cffafe"),
 };
 const grouped = (g, node) => { add(node); nodes.find((entry) => entry.id === g).nodes.push(node.id); return node.id; };
 const fn = (id, g, name, file, outputs, x, y, wires, extra = {}) => grouped(g, {
@@ -66,6 +74,16 @@ const linkOut = (id, g, name, targets, x, y) => grouped(g, {
 const linkIn = (id, g, name, origins, destination, x, y) => grouped(g, {
   id, type: "link in", z: TAB, g, name, links: Array.isArray(origins) ? origins : [origins], x, y, wires: [[destination]],
 });
+const execNode = (id, g, name, command, x, y, wires) => grouped(g, {
+  id, type: "exec", z: TAB, g, name, command, addpay: "", append: "",
+  useSpawn: "false", timer: "15", winHide: false, oldrc: false, x, y, wires,
+});
+const callService = (id, g, name, action, data, x, y, wires) => grouped(g, {
+  id, type: "api-call-service", z: TAB, g, name, server: SERVER, version: 7,
+  debugenabled: false, action, floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
+  data, dataType: "json", mergeContext: "", mustacheAltTags: false, outputProperties: [],
+  queue: "all", blockInputOverrides: true, domain: action.split(".")[0], service: action.split(".")[1], x, y, wires,
+});
 const policy = {
   targets: [
     { name: "cloudflare", address: "1.1.1.1" },
@@ -77,16 +95,19 @@ const policy = {
   recovery_cycles: 2,
   ping_timeout_s: 2,
   exec_timeout_ms: 3000,
+  remote_access_failure_cycles: 1,
+  remote_access_report_stale_s: 180,
+  remote_access_recovery_cooldown_s: 300,
 };
 
 add({
   id: TAB, type: "tab", label: "monitoramento_internet", disabled: false,
-  info: "Três destinos e quorum visual; estado persistente confirma 3 falhas e 2 sucessos. Testes percorrem as mesmas decisões até a fronteira MQTT/notificação e terminam em dry-run.", env: [],
+  info: "Três destinos e quorum visual confirmam queda/retorno. Relatório sanitizado do host confirma SSH e App Server, e solicita recovery idempotente do Codex quando a internet está online. Tailscale pertence somente ao tab monitoramento_vpn.", env: [],
 });
 grouped(groups.input, {
   id: "internet_policy_note", type: "comment", z: TAB, g: groups.input,
-  name: "Padrões: 3 alvos; quorum 2; queda 3 ciclos; retorno 2; ping 2 s; execução 3 s; ciclo 30 s.",
-  info: "Limites: quorum 1–3; falha/retorno 1–10 ciclos; ping 1–10 s; execução 1–15 s e maior que o timeout do ping. Configuração inválida não substitui a última válida.", x: 560, y: 60, wires: [],
+  name: "Padrões: internet 3/2/3/2; SSH/Codex 1 ciclo; telemetria 180 s; retry 300 s.",
+  info: "Limites: quorum 1–3; falha/retorno 1–10 ciclos; ping 1–10 s; execução 1–15 s; acesso 1–5 ciclos; relatório 30–900 s; retry 60–3.600 s. Tailscale fica no monitoramento_vpn.", x: 560, y: 60, wires: [],
 });
 inject("internet_policy_default", groups.input, "CONFIG: aplicar política visual", [{ p: "payload", v: JSON.stringify(policy), vt: "json" }], 220, 125, [["internet_policy_validate"]], { once: true, onceDelay: "1" });
 fn("internet_policy_validate", groups.input, "Validar limites e alvos", "internet-policy-validate.js", 1, 450, 125, [["internet_policy_switch"]]);
@@ -105,6 +126,17 @@ fn("internet_restore_history", groups.input, "Restaurar somente histórico", "in
 inject("internet_discovery_tick", groups.input, "Publicar discovery no startup", [{ p: "payload" }], 230, 440, [["internet_discovery"]], { once: true, onceDelay: "2" });
 fn("internet_discovery", groups.input, "Adaptar discovery HA", "internet-discovery.js", 1, 500, 440, [["internet_discovery_out"]]);
 linkOut("internet_discovery_out", groups.input, "Discovery → MQTT retained", "internet_discovery_in", 760, 440);
+grouped(groups.input, {
+  id: "internet_remote_access_health_in", type: "mqtt in", z: TAB, g: groups.input,
+  name: "Saúde sanitizada de SSH e Codex", topic: "nodered/infrastructure/remote-access/host-health",
+  qos: "1", datatype: "auto-detect", broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0,
+  x: 260, y: 535, wires: [["internet_remote_access_report_ingest"]],
+});
+linkIn("internet_remote_test_report_in", groups.input, "Receber relatório TESTE", "internet_test_remote_report_out", "internet_remote_access_report_ingest", 100, 570);
+fn("internet_remote_access_report_ingest", groups.input, "Validar relatório do host", "internet-remote-access-report-ingest.js", 1, 550, 535, [["internet_remote_report_valid"]]);
+sw("internet_remote_report_valid", groups.input, "Relatório respeita o contrato?", "remote_access_report_valid", "msg", [{ t: "true" }, { t: "else" }], 800, 535, [["internet_remote_report_out"], ["internet_remote_report_invalid"]]);
+linkOut("internet_remote_report_out", groups.input, "Relatório válido → recovery", "internet_remote_evaluate_in", 1030, 510);
+terminal("internet_remote_report_invalid", groups.input, "Rejeitar relatório inválido", { fill: "red", shape: "ring", text: "relatório inválido" }, 960, 590);
 
 linkIn("internet_cycle_in", groups.decision, "Receber agenda ou TESTE", ["internet_cycle_out", "internet_test_out"], "internet_policy_load", 1250, 270);
 fn("internet_policy_load", groups.decision, "Carregar política canônica", "internet-policy-load.js", 1, 1450, 270, [["internet_policy_available"]]);
@@ -131,9 +163,10 @@ sw("internet_failure_threshold", groups.decision, "Atingiu 3 falhas consecutivas
 change("internet_mark_down", groups.decision, "Abrir incidente confirmado", [{ t: "set", p: "internet_state_action", pt: "msg", to: "open_failure", tot: "str" }, { t: "set", p: "internet_event", pt: "msg", to: "down", tot: "str" }], 4630, 350, [["internet_mutate_again_out"]]);
 linkOut("internet_mutate_again_out", groups.decision, "Conclusão → aplicar estado", "internet_mutate_in", 4890, 275);
 linkOut("internet_finalize_route_out", groups.decision, "Estado pronto → publicar", "internet_finalize_in", 4500, 465);
-linkIn("internet_finalize_in", groups.decision, "Receber estado pronto", "internet_finalize_route_out", "internet_finalize", 4760, 440);
-fn("internet_finalize", groups.decision, "Persistir e montar estado canônico", "internet-state-publish-build.js", 1, 4930, 440, [["internet_effect_out"]]);
+linkIn("internet_finalize_in", groups.decision, "Receber estado pronto", "internet_finalize_route_out", "internet_finalize", 4580, 440);
+fn("internet_finalize", groups.decision, "Persistir e montar estado canônico", "internet-state-publish-build.js", 1, 4820, 440, [["internet_effect_out", "internet_remote_state_out"]]);
 linkOut("internet_effect_out", groups.decision, "Estado canônico → fronteiras", "internet_effect_in", 5040, 490);
+linkOut("internet_remote_state_out", groups.decision, "Internet decidida → recovery", "internet_remote_evaluate_in", 5040, 420);
 
 grouped(groups.effect, {
   id: "internet_effect_in", type: "link in", z: TAB, g: groups.effect,
@@ -163,26 +196,126 @@ grouped(groups.effect, {
 });
 linkOut("internet_dry_out", groups.effect, "Alerta TESTE → dry-run", "internet_dry_in", 6250, 280);
 
+linkIn("internet_remote_evaluate_in", groups.remote, "Receber internet ou saúde do host", ["internet_remote_report_out", "internet_remote_state_out"], "internet_remote_policy_load", 6950, 320);
+fn("internet_remote_policy_load", groups.remote, "Carregar política canônica", "internet-policy-load.js", 1, 7140, 320, [["internet_remote_policy_available"]]);
+sw("internet_remote_policy_available", groups.remote, "Existe política válida?", "policy_available", "msg", [{ t: "true" }, { t: "else" }], 7380, 320, [["internet_remote_facts_read"], ["internet_remote_policy_missing"]]);
+terminal("internet_remote_policy_missing", groups.remote, "Falha fechada sem política", { fill: "red", shape: "ring", text: "política ausente" }, 7620, 240);
+fn("internet_remote_facts_read", groups.remote, "Ler internet, relatório e estado", "internet-remote-access-facts-read.js", 1, 7640, 340, [["internet_remote_internet_online"]]);
+sw("internet_remote_internet_online", groups.remote, "Internet canônica está online?", "remote_access.internet.phase", "msg", [{ t: "eq", v: "online", vt: "str" }, { t: "else" }], 7910, 340, [["internet_remote_health_switch"], ["internet_remote_mark_suppress"]]);
+change("internet_remote_mark_suppress", groups.remote, "Suprimir enquanto internet não está online", [{ t: "set", p: "remote_access_state_action", pt: "msg", to: "suppress", tot: "str" }], 8190, 220, [["internet_remote_suppress_mutate_out"]]);
+linkOut("internet_remote_suppress_mutate_out", groups.remote, "Supressão → estado", "internet_remote_mutate_late_in", 8430, 220);
+sw("internet_remote_health_switch", groups.remote, "SSH e App Server estão prontos?", "remote_access.healthy", "msg", [{ t: "true" }, { t: "else" }], 8190, 360, [["internet_remote_healthy_incident"], ["internet_remote_failure_incident"]]);
+sw("internet_remote_healthy_incident", groups.remote, "Existe incidente para encerrar?", "remote_access.state.incident_open", "msg", [{ t: "true" }, { t: "else" }], 8450, 290, [["internet_remote_mark_healthy"], ["internet_remote_mark_healthy"]]);
+change("internet_remote_mark_healthy", groups.remote, "Confirmar prontidão do acesso remoto", [{ t: "set", p: "remote_access_state_action", pt: "msg", to: "healthy", tot: "str" }], 8710, 290, [["internet_remote_state_mutate"]]);
+sw("internet_remote_failure_incident", groups.remote, "Incidente já está aberto?", "remote_access.state.incident_open", "msg", [{ t: "true" }, { t: "else" }], 8450, 430, [["internet_remote_recoverable"], ["internet_remote_mark_failure"]]);
+change("internet_remote_mark_failure", groups.remote, "Contabilizar falha confirmável", [{ t: "set", p: "remote_access_state_action", pt: "msg", to: "failure", tot: "str" }], 8710, 410, [["internet_remote_state_mutate"]]);
+linkIn("internet_remote_mutate_late_in", groups.remote, "Receber mutação posterior", ["internet_remote_suppress_mutate_out", "internet_remote_open_mutate_out", "internet_remote_request_mutate_out"], "internet_remote_state_mutate", 8780, 250);
+fn("internet_remote_state_mutate", groups.remote, "Aplicar mutação mínima de estado", "internet-remote-access-state-mutate.js", 1, 8970, 330, [["internet_remote_action_switch"]]);
+sw("internet_remote_action_switch", groups.remote, "Qual mutação foi aplicada?", "remote_access_state_action", "msg", [{ t: "eq", v: "failure", vt: "str" }, { t: "eq", v: "healthy", vt: "str" }, { t: "eq", v: "open", vt: "str" }, { t: "eq", v: "request", vt: "str" }, { t: "else" }], 9230, 330, [["internet_remote_failure_threshold"], ["internet_remote_recovery_event"], ["internet_remote_open_fanout"], ["internet_remote_request_gate"], ["internet_remote_status_late_out"]]);
+sw("internet_remote_failure_threshold", groups.remote, "Atingiu ciclos de falha configurados?", "remote_access_state.consecutive_failures >= policy.remote_access_failure_cycles", "jsonata", [{ t: "true" }, { t: "else" }], 9470, 190, [["internet_remote_mark_open"], ["internet_remote_status_late_out"]]);
+change("internet_remote_mark_open", groups.remote, "Abrir incidente de acesso remoto", [{ t: "set", p: "remote_access_state_action", pt: "msg", to: "open", tot: "str" }], 9750, 180, [["internet_remote_open_mutate_out"]]);
+linkOut("internet_remote_open_mutate_out", groups.remote, "Incidente → estado", "internet_remote_mutate_late_in", 9980, 180);
+grouped(groups.remote, { id: "internet_remote_open_fanout", type: "change", z: TAB, g: groups.remote, name: "Alertar e tentar recovery seguro", rules: [], action: "", property: "", from: "", to: "", reg: false, x: 9490, y: 255, wires: [["internet_remote_alert_build", "internet_remote_recovery_route_out"]] });
+linkOut("internet_remote_recovery_route_out", groups.remote, "Incidente → recovery", "internet_remote_recovery_route_in", 9720, 290);
+linkIn("internet_remote_recovery_route_in", groups.remote, "Receber pedido de recovery", "internet_remote_recovery_route_out", "internet_remote_recoverable", 8500, 540);
+fn("internet_remote_alert_build", groups.remote, "Adaptar alerta de domínio", "internet-remote-access-alert-build.js", 1, 9760, 250, [["internet_remote_alert_test_gate"]]);
+sw("internet_remote_alert_test_gate", groups.remote, "Alerta pertence a TESTE?", "_internet_test", "msg", [{ t: "true" }, { t: "else" }], 9990, 250, [["internet_remote_dry_out"], ["internet_remote_access_alert_out"]]);
+linkOut("internet_remote_access_alert_out", groups.remote, "Falha → observador global", "global_observer_alert_to_dispatch_in", 10150, 225);
+sw("internet_remote_recovery_event", groups.remote, "Prontidão recuperou um incidente?", "remote_access_event", "msg", [{ t: "eq", v: "recovery", vt: "str" }, { t: "else" }], 9470, 360, [["internet_remote_dismiss_test_gate"], ["internet_remote_status_late_out"]]);
+sw("internet_remote_dismiss_test_gate", groups.remote, "Encerramento pertence a TESTE?", "_internet_test", "msg", [{ t: "true" }, { t: "else" }], 9750, 350, [["internet_remote_dry_out"], ["internet_remote_alert_dismiss"]]);
+callService("internet_remote_alert_dismiss", groups.remote, "EFEITO: encerrar alerta recuperado", "persistent_notification.dismiss", '{"notification_id":"nodered_observabilidade_global_domain_alert_remote_access_ssh_unavailable"}', 10020, 335, [["internet_remote_status"]]);
+sw("internet_remote_recoverable", groups.remote, "Codex pode ser recuperado sem tocar no SSH?", "remote_access.codex_recoverable", "msg", [{ t: "true" }, { t: "else" }], 8720, 500, [["internet_remote_request_due"], ["internet_remote_status_out"]]);
+sw("internet_remote_request_due", groups.remote, "Cooldown de recovery terminou?", "remote_access.request_due", "msg", [{ t: "true" }, { t: "else" }], 9000, 500, [["internet_remote_mark_request"], ["internet_remote_status_out"]]);
+change("internet_remote_mark_request", groups.remote, "Registrar pedido antes do efeito", [{ t: "set", p: "remote_access_state_action", pt: "msg", to: "request", tot: "str" }], 9320, 485, [["internet_remote_request_mutate_out"]]);
+linkOut("internet_remote_request_mutate_out", groups.remote, "Pedido → persistência", "internet_remote_mutate_late_in", 9530, 465);
+sw("internet_remote_request_gate", groups.remote, "Pedido pertence a TESTE?", "_internet_test", "msg", [{ t: "true" }, { t: "else" }], 9600, 500, [["internet_remote_dry_out"], ["internet_remote_request_worker"]]);
+execNode("internet_remote_request_worker", groups.remote, "EFEITO: solicitar recovery allowlisted", "/opt/request-host-codex-remote-recovery.sh", 10000, 485, [["internet_remote_request_ack"], ["internet_remote_request_failed"], ["internet_remote_request_done"]]);
+fn("internet_remote_request_ack", groups.remote, "Normalizar aceite do worker", "internet-remote-access-request-ack.js", 0, 10350, 460, []);
+terminal("internet_remote_request_failed", groups.remote, "Ponte de recovery falhou", { fill: "red", shape: "ring", text: "recovery não solicitado" }, 10350, 510);
+terminal("internet_remote_request_done", groups.remote, "Pedido finalizado", { fill: "green", shape: "dot", text: "recovery solicitado" }, 10350, 555);
+linkOut("internet_remote_status_out", groups.remote, "Estado → terminal", "internet_remote_status_in", 9000, 610);
+linkOut("internet_remote_status_late_out", groups.remote, "Decisão final → terminal", "internet_remote_status_in", 9600, 610);
+linkIn("internet_remote_status_in", groups.remote, "Receber estado final", ["internet_remote_status_out", "internet_remote_status_late_out"], "internet_remote_status", 9750, 600);
+fn("internet_remote_status", groups.remote, "Estado visível do acesso remoto", "internet-remote-access-status.js", 0, 10000, 565, []);
+linkOut("internet_remote_dry_out", groups.remote, "Efeito TESTE → dry-run", "internet_remote_dry_in", 10050, 620);
+
 grouped(groups.test, {
   id: "internet_test_note", type: "comment", z: TAB, g: groups.test,
-  name: "Ordem: reset → falha 1 → falha 2 → falha 3 → sucesso 1 → sucesso 2. MQTT e alertas ficam bloqueados.",
-  info: "Cada amostra percorre política, quorum, estado persistente isolado, limiares e fronteiras finais.", x: 930, y: 620, wires: [],
+  name: "Ordem: reset → 3 falhas → 2 sucessos → Codex ausente → Codex pronto. Todos os efeitos ficam em dry-run.",
+  info: "Internet e acesso remoto usam estado sintético separado. Recovery do Codex, MQTT, alertas e dismiss terminam antes do efeito real.", x: 1100, y: 740, wires: [],
 });
-inject("internet_test_reset", groups.test, "TESTE 1: reset", [{ p: "_internet_test", v: "true", vt: "bool" }], 170, 700, [["internet_test_reset_state"]]);
-fn("internet_test_reset_state", groups.test, "Resetar estado sintético", "internet-test-reset.js", 0, 390, 700, []);
+inject("internet_test_reset", groups.test, "TESTE 1: reset", [{ p: "_internet_test", v: "true", vt: "bool" }], 170, 820, [["internet_test_reset_state"]]);
+fn("internet_test_reset_state", groups.test, "Resetar estado sintético", "internet-test-reset.js", 0, 390, 820, []);
 const failed = { test_mode: true, checked_at: "2026-01-01T00:00:00Z", results: policy.targets.map((target) => ({ ...target, ok: false })) };
 const success = { test_mode: true, checked_at: "2026-01-01T00:01:00Z", results: policy.targets.map((target) => ({ ...target, ok: true })) };
 for (const [id, name, payload, x, y] of [
-  ["internet_test_fail_1", "TESTE 2: falha 1/3", failed, 170, 780],
-  ["internet_test_fail_2", "TESTE 3: falha 2/3", failed, 170, 835],
-  ["internet_test_fail_3", "TESTE 4: falha 3/3", failed, 170, 890],
-  ["internet_test_success_1", "TESTE 5: sucesso 1/2", success, 170, 945],
-  ["internet_test_success_2", "TESTE 6: sucesso 2/2", success, 170, 1000],
+  ["internet_test_fail_1", "TESTE 2: falha 1/3", failed, 170, 900],
+  ["internet_test_fail_2", "TESTE 3: falha 2/3", failed, 170, 955],
+  ["internet_test_fail_3", "TESTE 4: falha 3/3", failed, 170, 1010],
+  ["internet_test_success_1", "TESTE 5: sucesso 1/2", success, 170, 1065],
+  ["internet_test_success_2", "TESTE 6: sucesso 2/2", success, 170, 1120],
 ]) inject(id, groups.test, name, [{ p: "payload", v: JSON.stringify(payload), vt: "json" }, { p: "_internet_test", v: "true", vt: "bool" }], x, y, [["internet_test_out"]]);
-linkOut("internet_test_out", groups.test, "Amostra TESTE → ciclo real", "internet_cycle_in", 470, 890);
-linkIn("internet_dry_in", groups.test, "Receber efeito TESTE", ["internet_dry_out", "internet_publication_dry_out"], "internet_dry_run_terminal", 780, 760);
-fn("internet_dry_run_terminal", groups.test, "TESTE FINAL: MQTT e alertas bloqueados", "internet-dry-run.js", 0, 1080, 760, []);
+linkOut("internet_test_out", groups.test, "Amostra TESTE → ciclo real", "internet_cycle_in", 470, 1010);
+const remoteReport = (healthy) => ({ schema_version: 1, test_mode: true, checked_at: "2026-01-01T00:02:00Z", services: {
+  remote_shell: { healthy: true, reason: "service_active" },
+  codex_remote: { installed: true, healthy, reason: healthy ? "app_server_ready" : "app_server_absent" },
+} });
+inject("internet_test_codex_absent", groups.test, "TESTE 7: Codex ausente", [{ p: "payload", v: JSON.stringify(remoteReport(false)), vt: "json" }, { p: "_internet_test", v: "true", vt: "bool" }], 750, 900, [["internet_test_remote_report_out"]]);
+inject("internet_test_codex_ready", groups.test, "TESTE 8: Codex pronto", [{ p: "payload", v: JSON.stringify(remoteReport(true)), vt: "json" }, { p: "_internet_test", v: "true", vt: "bool" }], 750, 965, [["internet_test_remote_report_out"]]);
+linkOut("internet_test_remote_report_out", groups.test, "Relatório TESTE → normalização real", "internet_remote_test_report_in", 1030, 930);
+linkIn("internet_dry_in", groups.test, "Receber efeito de internet TESTE", ["internet_dry_out", "internet_publication_dry_out"], "internet_dry_run_terminal", 1250, 840);
+fn("internet_dry_run_terminal", groups.test, "TESTE FINAL: MQTT e alertas bloqueados", "internet-dry-run.js", 0, 1540, 840, []);
+linkIn("internet_remote_dry_in", groups.test, "Receber recovery TESTE", "internet_remote_dry_out", "internet_remote_dry_run_terminal", 1250, 920);
+fn("internet_remote_dry_run_terminal", groups.test, "TESTE FINAL: recovery Codex bloqueado", "internet-remote-access-dry-run.js", 0, 1540, 920, []);
+
+const remoteShift = -3200;
+const remoteShiftY = 810;
+const remoteGroup = nodes.find((node) => node.id === groups.remote);
+remoteGroup.x += remoteShift;
+remoteGroup.y += remoteShiftY;
+for (const node of nodes) {
+  if (node.g === groups.remote && Number.isFinite(node.x)) {
+    node.x += remoteShift;
+    node.y += remoteShiftY;
+  }
+}
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
+const installed = installNotificationHubs(
+  structuredClone(next.filter((node) => !observerNode(node) && (node.id === TAB || node.z === TAB))),
+  { routeWires: true },
+);
+const installedTab = installed.filter((node) => node.id === TAB || node.z === TAB);
+const installedById = new Map(installedTab.map((node) => [node.id, node]));
+Object.assign(installedById.get(groups.remote), { h: 720 });
+Object.assign(installedById.get("internet_remote_access_alert_out"), { x: 7100, y: 950 });
+Object.assign(installedById.get("internet_remote_dry_out"), { x: 6800, y: 1510 });
+const observerSeen = new Set();
+const preserved = next.filter((node) => {
+  if (!observerNode(node)) return node.id !== TAB && node.z !== TAB;
+  if (observerSeen.has(node.id)) return false;
+  observerSeen.add(node.id);
+  return true;
+});
+const observerGroup = preserved.find((node) => node.id === `${observerPrefix}group`);
+if (observerGroup) {
+  Object.assign(observerGroup, { x: 64, y: 1280, w: 722, h: 142 });
+  const positions = {
+    [`${observerPrefix}catch`]: [220, 1321],
+    [`${observerPrefix}status`]: [230, 1381],
+    [`${observerPrefix}annotate`]: [500, 1351],
+    [`${observerPrefix}out`]: [745, 1351],
+  };
+  for (const node of preserved) {
+    if (positions[node.id]) [node.x, node.y] = positions[node.id];
+  }
+}
+const observerInput = preserved.find((node) => node.id === "global_observer_alert_to_dispatch_in");
+if (observerInput) {
+  const links = [...new Set((observerInput.links ?? []).filter((id) => id !== "internet_remote_access_alert_out"))];
+  const insertion = links.findIndex((id) => id.startsWith("notification_hub_"));
+  links.splice(insertion < 0 ? links.length : insertion, 0, "internet_remote_access_alert_out");
+  observerInput.links = links;
+}
+fs.writeFileSync(outputPath, `${JSON.stringify([...preserved, ...installedTab], null, 4)}\n`);
 console.log(`Internet monitor visual flow installed in ${outputPath}`);

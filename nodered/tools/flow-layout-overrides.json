@@ -9698,18 +9698,43 @@
       "label": "monitoramento_internet",
       "compact_groups": true,
       "apply_nodes": false,
+      "geometry_final": true,
       "group_positions": {
+        "grp_internet_triggers": {
+          "x": 64,
+          "y": 20,
+          "w": 1100,
+          "h": 590
+        },
+        "grp_internet_state": {
+          "x": 1200,
+          "y": 20,
+          "w": 3900,
+          "h": 510
+        },
         "grp_internet_publish": {
-          "x": 1474,
-          "y": 439
+          "x": 5140,
+          "y": 20,
+          "w": 2760,
+          "h": 760
+        },
+        "grp_internet_remote_access": {
+          "x": 3700,
+          "y": 830,
+          "w": 3600,
+          "h": 720
         },
         "grp_internet_tests": {
-          "x": 94,
-          "y": 559
+          "x": 64,
+          "y": 700,
+          "w": 3500,
+          "h": 560
         },
         "global_observer_coverage__monitoramento_internet_tab__group": {
-          "x": 84,
-          "y": 1059
+          "x": 64,
+          "y": 1280,
+          "w": 722,
+          "h": 142
         }
       },
       "node_positions": {
@@ -10181,8 +10206,7 @@
           "x": 4065,
           "y": 1180
         }
-      },
-      "geometry_final": true
+      }
     },
     "monitoramento_zigbee_tab": {
       "label": "monitoramento_zigbee",
