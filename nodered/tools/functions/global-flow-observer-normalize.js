@@ -62,7 +62,7 @@ if (msg.error) {
 } else if (msg.status) {
     const text = String(msg.status.text ?? "").toLowerCase();
     const shared = haSource || mqttSource;
-    const connectionFailure = /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect|connecting|conectando)/.test(text);
+    const connectionFailure = /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect)/.test(text);
     const nodeFailure = connectionFailure || msg.status.fill === "red" ||
         /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);
     Object.assign(data, { kind: "status", monitored: shared || sourceType === "DuloNodeDevice" || sourceType === "DuloNodeHub",

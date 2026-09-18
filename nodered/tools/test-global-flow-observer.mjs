@@ -340,6 +340,27 @@ assert.deepEqual(
   "status vermelho de domínio ou erro de serviço não é queda do Home Assistant",
 );
 
+const mqttStartupStore = memory();
+for (const text of ["connecting", "conectando"]) {
+  assert.equal(runIngest({
+    _global_observer_test: true,
+    observer_now: 300_000,
+    _global_observer: { flow_id: "flow_test", flow_label: "Fluxo teste" },
+    status: {
+      fill: "yellow",
+      text,
+      source: { id: `mqtt_${text}`, type: "mqtt out", name: "MQTT teste" },
+    },
+  }, mqttStartupStore), null);
+}
+assert.deepEqual(
+  Object.keys(
+    mqttStartupStore.values.get("global_flow_observer_v1__test").status_sources,
+  ),
+  [],
+  "status transitório connecting não deve abrir incidente MQTT sem desconexão explícita",
+);
+
 const reconnectStore = memory();
 const reconnectFailure = structuredClone(statusFailure);
 reconnectFailure.observer_now = 400_000;
