@@ -24,7 +24,7 @@ const peopleContext = flow.get(
 ) ?? {};
 const roles = ["resident_primary", "resident_secondary"];
 const now = Date.now();
-const interval = 30 * 60 * 1000;
+const baseInterval = 30 * 60 * 1000;
 const futureTolerance = 60 * 1000;
 const jitterTolerance = 500;
 const stateKey = TEST_MODE
@@ -56,6 +56,12 @@ for (const [index, role] of roles.entries()) {
         ? state.residents[role]
         : {};
     const entry = { ...previous };
+    const previousAttempts = Math.min(
+        10,
+        Math.max(0, Number(entry.attempts ?? 0))
+    );
+    const backoffStep = Math.min(3, Math.max(0, previousAttempts - 1));
+    const interval = baseInterval * (2 ** backoffStep);
     let lastRequestAt = Number(entry.last_request_at);
     if (!validPast(lastRequestAt)) {
         lastRequestAt = validPast(legacyLast) ? legacyLast : 0;
@@ -76,10 +82,8 @@ for (const [index, role] of roles.entries()) {
     }
 
     const stale = resident.ready !== true || resident.stale === true;
-    const stationaryHome = resident.stationary_home === true;
     const recoveryNeeded =
         stale &&
-        !stationaryHome &&
         (msg.payload?.people_ready === false || peopleContext.ready !== true);
     const cooldownActive = now - lastRequestAt < interval - jitterTolerance;
 
@@ -102,6 +106,7 @@ for (const [index, role] of roles.entries()) {
                 refresh_source: role,
                 refresh_attempt: attempt,
                 refresh_requested_at: now,
+                refresh_cooldown_minutes: interval / 60000,
                 refresh_routes: ["companion", "icloud"]
             }
         };
@@ -128,14 +133,16 @@ if (requested.length > 0) {
     return outputs;
 }
 
-const allStationaryHome = roles.every(
-    (role) => peopleContext[role]?.stationary_home === true
+const allCurrentAtHome = roles.every(
+    (role) => peopleContext[role]?.stationary_home === true &&
+        peopleContext[role]?.ready === true &&
+        peopleContext[role]?.stale !== true
 );
 node.status({
     fill: "grey",
     shape: "ring",
-    text: allStationaryHome
-        ? "fontes ativas e paradas em casa"
+    text: allCurrentAtHome
+        ? "fontes atuais e paradas em casa"
         : "sem localização vencida fora do cooldown"
 });
 return null;

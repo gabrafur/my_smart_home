@@ -476,9 +476,14 @@ exclusivamente de um `delay` residente em memória.
 - iPhones: geofences e mudanças significativas do iOS produzem os eventos
   responsivos. O veículo fora, sozinho, não solicita localização dos telefones.
   Se o contexto precisar de recuperação, o pedido explícito tem cooldown de
-  30 min, limitado a duas vezes por hora. GPS sem mudança não inicia recovery
-  quando os dois residentes continuam em `home`, nenhuma fonte indica saída e
-  ao menos uma fonte de cada residente reportou nos últimos 75 min.
+  30 min, limitado a duas vezes por hora. Uma posição vencida inicia recovery
+  mesmo quando a última observação indicava `home`: um heartbeat recente sem
+  avanço de `location_observed_at` não prova uma posição atual e não bloqueia
+  o pedido seletivo ao telefone correspondente. O cooldown impede que o tick
+  de 30 s transforme essa recuperação em polling contínuo. As duas primeiras
+  tentativas podem ocorrer com 30 min de intervalo; sem evidência nova, o
+  backoff cresce para 1 h, 2 h e no máximo 4 h. Uma observação realmente nova
+  zera o backoff.
   A única exceção é a vigília de uma chegada já comprovada: aos 10 minutos em
   `near_home`, ou quando motor/bypass se tornam válidos com posição vencida,
   ela pede atualização ao telefone correspondente, com dedupe próprio. A

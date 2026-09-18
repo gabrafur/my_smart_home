@@ -840,7 +840,7 @@ scenario("30 tick de 30 segundos sem mudanca nao cria loop", () => {
   }
 });
 
-scenario("30a fontes ativas e paradas em casa nao solicitam GPS", () => {
+scenario("30a posição vencida em casa solicita GPS sem criar polling contínuo", () => {
   const oldLocation = new Date(Date.now() - 4 * 60 * 60_000).toISOString();
   const currentReport = new Date().toISOString();
   const stationary = () => {
@@ -861,10 +861,21 @@ scenario("30a fontes ativas e paradas em casa nao solicitam GPS", () => {
   assert.equal(normalized.resident_secondary.stationary_home, true);
 
   const flow = memoryFlow({ people_context_v1: normalized });
-  assert.equal(run("people_refresh_decide", {
+  const command = {
     payload: { kind: "refresh_command", anyone_away: false, people_ready: false },
-  }, flow, geoEnv), null);
-  assert.equal(flow.get("security_people_last_refresh_at"), undefined);
+  };
+  const requested = run("people_refresh_decide", structuredClone(command), flow, geoEnv);
+  assert(requested[0]);
+  assert(requested[1]);
+  assert.equal(requested[0].payload.refresh_source, "resident_primary");
+  assert.equal(requested[1].payload.refresh_source, "resident_secondary");
+  assert.equal(requested[0].payload.refresh_routes.join(","), "companion,icloud");
+  assert.equal(requested[1].payload.refresh_routes.join(","), "companion,icloud");
+  assert.equal(
+    run("people_refresh_decide", structuredClone(command), flow, geoEnv),
+    null,
+    "o tick seguinte precisa respeitar o cooldown de 30 minutos",
+  );
 });
 
 scenario("30b recovery de localizacao respeita cooldown de 30 minutos", () => {
@@ -979,6 +990,55 @@ scenario("30b3 observação posterior confirma semanticamente o refresh", () => 
   assert.equal(confirmed.awaiting_evidence, false);
   assert.equal(confirmed.attempts, 0);
   assert.equal(confirmed.last_success_at, before + 5 * 60_000);
+});
+
+scenario("30b3a falhas sem posição nova ampliam o backoff até quatro horas", () => {
+  const oldLocation = Date.now() - 6 * 60 * 60_000;
+  const command = {
+    payload: { kind: "refresh_command", people_ready: false },
+  };
+  const flow = memoryFlow({
+    people_context_v1: {
+      ready: false,
+      resident_primary: { ready: true, stale: false, updated_at: Date.now() },
+      resident_secondary: { ready: false, stale: true, updated_at: oldLocation },
+    },
+    security_people_location_refresh_v2: {
+      version: 2,
+      residents: {
+        resident_secondary: {
+          last_request_at: Date.now() - 31 * 60_000,
+          observed_at_before_request: oldLocation,
+          awaiting_evidence: true,
+          attempts: 2,
+        },
+      },
+    },
+  });
+  assert.equal(
+    run("people_refresh_decide", structuredClone(command), flow, geoEnv),
+    null,
+    "duas falhas devem elevar o cooldown para uma hora",
+  );
+  flow.get("security_people_location_refresh_v2").residents.resident_secondary.last_request_at =
+    Date.now() - 61 * 60_000;
+  const third = run("people_refresh_decide", structuredClone(command), flow, geoEnv);
+  assert(third[1]);
+  assert.equal(third[1].payload.refresh_attempt, 3);
+  assert.equal(third[1].payload.refresh_cooldown_minutes, 60);
+
+  const state = flow.get("security_people_location_refresh_v2");
+  state.residents.resident_secondary.attempts = 5;
+  state.residents.resident_secondary.last_request_at = Date.now() - 239 * 60_000;
+  assert.equal(
+    run("people_refresh_decide", structuredClone(command), flow, geoEnv),
+    null,
+    "o backoff máximo precisa segurar por quatro horas",
+  );
+  state.residents.resident_secondary.last_request_at = Date.now() - 241 * 60_000;
+  const capped = run("people_refresh_decide", structuredClone(command), flow, geoEnv);
+  assert(capped[1]);
+  assert.equal(capped[1].payload.refresh_cooldown_minutes, 240);
 });
 
 scenario("30b4 TESTE percorre a decisão e termina antes do iCloud", () => {
@@ -2049,6 +2109,6 @@ scenario("47 decisão canônica publica estado e atributos para o Recorder", () 
     "waiting_location_refresh");
 });
 
-assert.equal(passed.length, 70);
+assert.equal(passed.length, 71);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

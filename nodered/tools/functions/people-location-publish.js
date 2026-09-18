@@ -42,10 +42,7 @@ for (const role of ["resident_primary", "resident_secondary"]) {
         location_fresh_minutes: Number(policy.location_fresh_minutes),
         source_report_fresh_minutes:
             Number(policy.source_report_fresh_minutes),
-        location_fresh: current,
-        latitude: null,
-        longitude: null,
-        gps_accuracy: null
+        location_fresh: current
     };
     if (
         current &&

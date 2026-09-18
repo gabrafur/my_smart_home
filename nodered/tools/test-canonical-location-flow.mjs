@@ -442,9 +442,9 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   assert.equal(attributes.state, "unavailable");
   assert.equal(attributes.raw_location_state, "location_update_ring");
   assert.equal(attributes.location_fresh, false);
-  assert.equal(attributes.latitude, null);
-  assert.equal(attributes.longitude, null);
-  assert.equal(attributes.gps_accuracy, null);
+  assert.equal("latitude" in attributes, false);
+  assert.equal("longitude" in attributes, false);
+  assert.equal("gps_accuracy" in attributes, false);
 }
 
 {
