@@ -9721,7 +9721,7 @@
         "grp_internet_remote_access": {
           "x": 3700,
           "y": 830,
-          "w": 3600,
+          "w": 4400,
           "h": 720
         },
         "grp_internet_tests": {
@@ -10210,19 +10210,20 @@
     },
     "monitoramento_zigbee_tab": {
       "label": "monitoramento_zigbee",
-      "compact_groups": true,
+      "apply_nodes": false,
+      "compact_groups": false,
       "group_positions": {
         "grp_zigbee_notify": {
-          "x": 91,
-          "y": 1991
+          "x": 5140,
+          "y": 20
         },
         "grp_zigbee_tests": {
-          "x": 94,
-          "y": 1416
+          "x": 64,
+          "y": 2020
         },
         "global_observer_coverage__monitoramento_zigbee_tab__group": {
-          "x": 64,
-          "y": 759
+          "x": 7900,
+          "y": 59
         }
       },
       "node_positions": {
@@ -13342,24 +13343,24 @@
       "apply_nodes": false,
       "group_positions": {
         "resident_notifications_input_group": {
-          "x": 64,
-          "y": 439
+          "x": 1370,
+          "y": 40
         },
         "resident_notifications_state_group": {
-          "x": 100,
-          "y": 1581
+          "x": 7430,
+          "y": 40
         },
         "resident_notifications_output_group": {
-          "x": 129,
-          "y": 1959
+          "x": 9180,
+          "y": 40
         },
         "resident_notifications_test_group": {
-          "x": 94,
-          "y": 792
+          "x": 64,
+          "y": 560
         },
         "global_observer_coverage__resident_notifications_tab__group": {
-          "x": 1904,
-          "y": 799
+          "x": 11720,
+          "y": 40
         }
       },
       "node_positions": {

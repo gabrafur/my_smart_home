@@ -522,6 +522,15 @@ export function restoreGeneratedWireRoutes(inputFlows) {
         }
       }
       const targets = routeIn?.wires?.[0] ?? [];
+      /* Um gerador de tab pode ter removido e recriado o destino depois que o
+       * editor serializou esta rota. Sem nenhuma origem apontando para o link
+       * out, o par ficou órfão e deve ser descartado mesmo que o link in já
+       * tenha perdido seu destino; preservá-lo duplicaria o ID no refresh. */
+      if (sources.length === 0 && routeIn?.type === "link in") {
+        removed.add(routeOut.id);
+        removed.add(routeIn.id);
+        continue;
+      }
       if (
         routeIn?.type !== "link in" ||
         routeIn.z !== routeOut.z ||
@@ -529,11 +538,6 @@ export function restoreGeneratedWireRoutes(inputFlows) {
         !routeIn.links?.includes(routeOut.id) ||
         targets.length !== 1
       ) continue;
-      if (sources.length === 0) {
-        removed.add(routeOut.id);
-        removed.add(routeIn.id);
-        continue;
-      }
       if (sources.length !== 1) continue;
       route = { source: sources[0].candidate.id, target: targets[0], output: sources[0].output };
     } else {

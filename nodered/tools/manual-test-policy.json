@@ -232,11 +232,18 @@
                 "zigbee_test_component_down",
                 "zigbee_test_component_duplicate",
                 "zigbee_test_component_reminder",
-                "zigbee_test_component_up"
+                "zigbee_test_component_up",
+                "zigbee_test_route_failure",
+                "zigbee_test_route_duplicate",
+                "zigbee_test_route_scan_response",
+                "zigbee_test_route_failed_response",
+                "zigbee_test_route_retry",
+                "zigbee_test_route_scan_retry_response",
+                "zigbee_test_route_success_response"
             ],
             "dry_run_terminal_ids": ["zigbee_dry_run_terminal"],
             "automated_test": "test-zigbee-monitor-flow.mjs",
-            "reason": "Rede e componentes percorrem parsing, política, estado, dedupe, recovery e as fronteiras reais; MQTT e notificações são obrigatoriamente desviados ao dry-run."
+            "reason": "Rede, disponibilidade e NWK_NO_ROUTE percorrem parsing, política, estado, dedupe, cooldown, varredura de rotas, reconfiguração correlacionada e recovery; MQTT e notificações são obrigatoriamente desviados ao dry-run."
         },
         "ea0a6aa0d24ff863": {
             "strategy": "manual_full_dry_run",

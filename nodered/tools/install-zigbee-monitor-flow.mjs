@@ -34,11 +34,11 @@ const group = (id, name, x, y, w, h, stroke, fill) => add({
   nodes: [], x, y, w, h,
 });
 const groups = {
-  input: group("grp_zigbee_triggers", "0. Política, agenda e fontes", 64, 20, 1100, 700, "#2563eb", "#dbeafe"),
+  input: group("grp_zigbee_triggers", "0. Política, agenda e fontes", 64, 20, 1100, 980, "#2563eb", "#dbeafe"),
   network: group("grp_zigbee_state", "1. Rede: decisões e estado", 1200, 20, 3900, 700, "#0f766e", "#ccfbf1"),
-  component: group("grp_zigbee_detect", "2. Componentes: dedupe e lembretes", 1200, 760, 3900, 540, "#7c3aed", "#ede9fe"),
-  effect: group("grp_zigbee_notify", "3. Efeitos, estados e observabilidade", 5140, 20, 1860, 1280, "#dc2626", "#fee2e2"),
-  test: group("grp_zigbee_tests", "4. Replay manual completo — dry-run", 64, 1360, 3200, 560, "#0891b2", "#cffafe"),
+  component: group("grp_zigbee_detect", "2. Componentes: disponibilidade, rota e recuperação", 1200, 760, 3900, 1200, "#7c3aed", "#ede9fe"),
+  effect: group("grp_zigbee_notify", "3. Efeitos, estados e observabilidade", 5140, 20, 1860, 1940, "#dc2626", "#fee2e2"),
+  test: group("grp_zigbee_tests", "4. Replay manual completo — dry-run", 64, 2020, 5000, 560, "#0891b2", "#cffafe"),
 };
 const grouped = (g, node) => { add(node); nodes.find((entry) => entry.id === g).nodes.push(node.id); return node.id; };
 const fn = (id, g, name, file, outputs, x, y, wires) => grouped(g, {
@@ -66,7 +66,13 @@ const terminal = (id, g, name, status, x, y) => grouped(g, {
   id, type: "function", z: TAB, g, name, func: `node.status(${JSON.stringify(status)});\nreturn null;`,
   outputs: 0, timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x, y, wires: [],
 });
-const policy = { failure_confirmation_s: 30, recovery_confirmation_s: 60, reminder_interval_h: 24 };
+const policy = {
+  failure_confirmation_s: 30,
+  recovery_confirmation_s: 60,
+  reminder_interval_h: 24,
+  route_recovery_cooldown_min: 15,
+  route_recovery_max_attempts: 3,
+};
 const setAction = (action, event) => [
   { t: "set", p: "zigbee_state_action", pt: "msg", to: action, tot: "str" },
   { t: "set", p: "zigbee_event", pt: "msg", to: event, tot: "str" },
@@ -77,10 +83,10 @@ const setComponentAction = (action, event) => [
 ];
 
 add({ id: TAB, type: "tab", label: "monitoramento_zigbee", disabled: false,
-  info: "Política visual confirma queda e retorno da rede e deduplica componentes. Produção publica MQTT/notifica; todo replay termina no dry-run compartilhado.", env: [] });
+  info: "Política visual confirma queda e retorno da rede, deduplica componentes e trata NWK_NO_ROUTE com alerta, reconstrução de rotas e reconfiguração limitada. Produção publica MQTT/notifica; todo replay termina no dry-run compartilhado.", env: [] });
 grouped(groups.input, { id: "zigbee_policy_note", type: "comment", z: TAB, g: groups.input,
-  name: "Padrões: queda 30 s; retorno 60 s; lembrete 24 h; avaliação 10 s.",
-  info: "Limites: queda 1–300 s, retorno 1–600 s e lembrete 1–168 h. Valor inválido não substitui a última política válida.", x: 540, y: 60, wires: [] });
+  name: "Padrões: queda 30 s; retorno 60 s; lembrete 24 h; rota: 3 tentativas com cooldown 15 min.",
+  info: "Limites: queda 1–300 s, retorno 1–600 s, lembrete 1–168 h, cooldown 1–1.440 min e 1–5 tentativas. Valor inválido não substitui a última política válida.", x: 540, y: 60, wires: [] });
 inject("zigbee_policy_default", groups.input, "CONFIG: aplicar política visual", [{ p: "payload", v: JSON.stringify(policy), vt: "json" }], 190, 120, [["zigbee_policy_validate"]], { once: true, onceDelay: "1" });
 fn("zigbee_policy_validate", groups.input, "Validar unidades e limites", "zigbee-policy-validate.js", 1, 470, 120, [["zigbee_policy_switch"]]);
 sw("zigbee_policy_switch", groups.input, "Configuração é válida?", "policy_valid", "msg", [{ t: "true" }, { t: "else" }], 760, 120, [["zigbee_policy_store"], ["zigbee_policy_reject"]]);
@@ -104,13 +110,32 @@ grouped(groups.input, { id: "zigbee_component_availability", type: "mqtt in", z:
   name: "FONTE: .../availability", topic: "zigbee2mqtt/#", qos: "1", datatype: "auto-detect",
   broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 230, y: 520, wires: [["zigbee_component_input_out"]] });
 linkOut("zigbee_component_input_out", groups.input, "Disponibilidade → componentes", "zigbee_component_input_in", 500, 520);
+grouped(groups.input, { id: "zigbee_devices_source", type: "mqtt in", z: TAB, g: groups.input,
+  name: "FONTE: bridge/devices", topic: "zigbee2mqtt/bridge/devices", qos: "1", datatype: "auto-detect",
+  broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 220, y: 580, wires: [["zigbee_device_map_store"]] });
+fn("zigbee_device_map_store", groups.input, "Mapear IEEE para nome", "zigbee-device-map-store.js", 0, 500, 580, []);
 grouped(groups.input, { id: "zigbee_history_retained", type: "mqtt in", z: TAB, g: groups.input,
   name: "Recuperar histórico retained", topic: "nodered/infrastructure/zigbee/attributes", qos: "1", datatype: "auto-detect",
-  broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 250, y: 600, wires: [["zigbee_restore_history"]] });
-fn("zigbee_restore_history", groups.input, "Restaurar somente histórico", "zigbee-history-restore.js", 0, 530, 600, []);
-inject("zigbee_discovery_tick", groups.input, "Publicar discovery no startup", [{ p: "payload" }], 240, 670, [["zigbee_discovery"]], { once: true, onceDelay: "2" });
-fn("zigbee_discovery", groups.input, "Adaptar discovery HA", "zigbee-discovery.js", 1, 500, 670, [["zigbee_discovery_out"]]);
-linkOut("zigbee_discovery_out", groups.input, "Discovery → MQTT retained", "zigbee_discovery_in", 750, 670);
+  broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 250, y: 640, wires: [["zigbee_restore_history"]] });
+fn("zigbee_restore_history", groups.input, "Restaurar somente histórico", "zigbee-history-restore.js", 0, 530, 640, []);
+grouped(groups.input, { id: "zigbee_route_error_source", type: "mqtt in", z: TAB, g: groups.input,
+  name: "FONTE: bridge/logging", topic: "zigbee2mqtt/bridge/logging", qos: "1", datatype: "auto-detect",
+  broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 220, y: 710, wires: [["zigbee_route_error_normalize"]] });
+fn("zigbee_route_error_normalize", groups.input, "Reconhecer NWK_NO_ROUTE", "zigbee-route-error-normalize.js", 1, 500, 710, [["zigbee_route_error_valid"]]);
+sw("zigbee_route_error_valid", groups.input, "Erro contém dispositivo válido?", "zigbee_route_valid", "msg", [{ t: "true" }, { t: "else" }], 760, 710, [["zigbee_route_error_out"], ["zigbee_route_error_ignored"]]);
+linkOut("zigbee_route_error_out", groups.input, "Falha de rota → recuperação", "zigbee_route_error_in", 1040, 680);
+terminal("zigbee_route_error_ignored", groups.input, "Ignorar log sem rota identificável", { fill: "grey", shape: "ring", text: "log ignorado" }, 1010, 770);
+grouped(groups.input, { id: "zigbee_route_response_source", type: "mqtt in", z: TAB, g: groups.input,
+  name: "FONTE: resposta configure", topic: "zigbee2mqtt/bridge/response/device/configure", qos: "1", datatype: "auto-detect",
+  broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 230, y: 850, wires: [["zigbee_route_response_out"]] });
+linkOut("zigbee_route_response_out", groups.input, "Configure → lifecycle da rota", "zigbee_route_response_in", 520, 850);
+grouped(groups.input, { id: "zigbee_route_scan_response_source", type: "mqtt in", z: TAB, g: groups.input,
+  name: "FONTE: resposta networkmap", topic: "zigbee2mqtt/bridge/response/networkmap", qos: "1", datatype: "auto-detect",
+  broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 240, y: 790, wires: [["zigbee_route_scan_response_out"]] });
+linkOut("zigbee_route_scan_response_out", groups.input, "Mapa → reconstrução da rota", "zigbee_route_scan_response_in", 530, 790);
+inject("zigbee_discovery_tick", groups.input, "Publicar discovery no startup", [{ p: "payload" }], 240, 930, [["zigbee_discovery"]], { once: true, onceDelay: "2" });
+fn("zigbee_discovery", groups.input, "Adaptar discovery HA", "zigbee-discovery.js", 1, 500, 930, [["zigbee_discovery_out"]]);
+linkOut("zigbee_discovery_out", groups.input, "Discovery → MQTT retained", "zigbee_discovery_in", 750, 930);
 
 linkIn("zigbee_network_cycle_in", groups.network, "Receber observação, agenda ou TESTE", ["zigbee_network_cycle_out", "zigbee_tick_network_out", "zigbee_test_network_tick_out"], "zigbee_network_policy_load", 1250, 310);
 fn("zigbee_network_policy_load", groups.network, "Carregar política canônica", "zigbee-policy-load.js", 1, 1430, 310, [["zigbee_network_policy_available"]]);
@@ -167,6 +192,73 @@ linkIn("zigbee_component_mutate_in", groups.component, "Receber mutação", ["zi
 fn("zigbee_component_state_mutate", groups.component, "Persistir estado por componente", "zigbee-component-state-mutate.js", 1, 3790, 930, [["zigbee_component_effect_out"]]);
 linkOut("zigbee_component_effect_out", groups.component, "Evento do componente → fronteira", "zigbee_component_effect_in", 4040, 930);
 
+linkIn("zigbee_route_error_in", groups.component, "Receber NWK_NO_ROUTE", ["zigbee_route_error_out", "zigbee_test_route_error_out"], "zigbee_route_policy_load", 1250, 1430);
+fn("zigbee_route_policy_load", groups.component, "Carregar política de recuperação", "zigbee-policy-load.js", 1, 1480, 1430, [["zigbee_route_policy_available"]]);
+sw("zigbee_route_policy_available", groups.component, "Política de recuperação existe?", "policy_available", "msg", [{ t: "true" }, { t: "else" }], 1740, 1430, [["zigbee_route_state_read"], ["zigbee_route_policy_missing"]]);
+terminal("zigbee_route_policy_missing", groups.component, "Falha fechada sem política", { fill: "red", shape: "ring", text: "política indisponível" }, 2010, 1370);
+fn("zigbee_route_state_read", groups.component, "Ler lifecycle da rota", "zigbee-route-state-read.js", 1, 2010, 1490, [["zigbee_route_decision"]]);
+sw("zigbee_route_decision", groups.component, "Abrir, repetir após cooldown ou deduplicar?", "zigbee_route_decision", "msg", [{ t: "eq", v: "open", vt: "str" }, { t: "eq", v: "retry", vt: "str" }, { t: "else" }], 2290, 1430, [["zigbee_route_open"], ["zigbee_route_retry"], ["zigbee_route_touch"]]);
+change("zigbee_route_open", groups.component, "Abrir incidente e tentativa 1", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "open", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_failure", tot: "str" },
+], 2590, 1360, [["zigbee_route_state_mutate"]]);
+change("zigbee_route_retry", groups.component, "Autorizar nova tentativa", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "retry", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_retry", tot: "str" },
+], 2590, 1430, [["zigbee_route_state_mutate"]]);
+change("zigbee_route_touch", groups.component, "Deduplicar durante cooldown", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "touch", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "none", tot: "str" },
+], 2590, 1500, [["zigbee_route_state_mutate"]]);
+fn("zigbee_route_state_mutate", groups.component, "Persistir lifecycle da rota", "zigbee-route-state-mutate.js", 1, 2920, 1430, [["zigbee_route_event_switch"]]);
+sw("zigbee_route_event_switch", groups.component, "Alertar, recuperar ou encerrar?", "zigbee_route_event", "msg", [
+  { t: "eq", v: "route_failure", vt: "str" }, { t: "eq", v: "route_retry", vt: "str" },
+  { t: "eq", v: "route_recovery_failed", vt: "str" }, { t: "eq", v: "route_recovery", vt: "str" }, { t: "else" },
+], 3220, 1430, [["zigbee_route_notification_build", "zigbee_route_recovery_request_build"], ["zigbee_route_recovery_request_build"], ["zigbee_route_notification_build"], ["zigbee_route_notification_build"], ["zigbee_route_no_event"]]);
+fn("zigbee_route_notification_build", groups.component, "Montar alerta da rota", "zigbee-route-notification-build.js", 1, 3510, 1370, [["zigbee_route_notification_out"]]);
+linkOut("zigbee_route_notification_out", groups.component, "Alerta de rota → gate único", "zigbee_component_notification_route_in", 3780, 1370);
+fn("zigbee_route_recovery_request_build", groups.component, "Montar varredura oficial de rotas", "zigbee-route-recovery-request-build.js", 1, 3520, 1490, [["zigbee_route_recovery_test_gate"]]);
+sw("zigbee_route_recovery_test_gate", groups.component, "Varredura pertence a TESTE?", "_zigbee_test", "msg", [{ t: "true" }, { t: "else" }], 3820, 1490, [["zigbee_route_recovery_dry_out"], ["zigbee_route_recovery_mqtt"]]);
+linkOut("zigbee_route_recovery_dry_out", groups.component, "Networkmap TESTE → dry-run", "zigbee_dry_in", 4100, 1450);
+grouped(groups.component, { id: "zigbee_route_recovery_mqtt", type: "mqtt out", z: TAB, g: groups.component,
+  name: "EFEITO: reconstruir mapa de rotas", topic: "", qos: "1", retain: "false", respTopic: "", contentType: "",
+  userProps: "", correl: "", expiry: "", broker: MQTT, x: 4110, y: 1530, wires: [] });
+terminal("zigbee_route_no_event", groups.component, "Sem novo efeito de rota", { fill: "grey", shape: "ring", text: "dedupe/cooldown" }, 4450, 1600);
+
+linkIn("zigbee_route_scan_response_in", groups.component, "Receber mapa reconstruído", ["zigbee_route_scan_response_out", "zigbee_test_route_scan_response_out"], "zigbee_route_scan_policy_load", 1250, 1650);
+fn("zigbee_route_scan_policy_load", groups.component, "Carregar política da varredura", "zigbee-policy-load.js", 1, 1510, 1650, [["zigbee_route_scan_policy_available"]]);
+sw("zigbee_route_scan_policy_available", groups.component, "Política existe para correlacionar mapa?", "policy_available", "msg", [{ t: "true" }, { t: "else" }], 1780, 1650, [["zigbee_route_scan_response_normalize"], ["zigbee_route_scan_response_invalid"]]);
+fn("zigbee_route_scan_response_normalize", groups.component, "Correlacionar mapa de rotas", "zigbee-route-response-normalize.js", 1, 2050, 1650, [["zigbee_route_scan_response_valid"]]);
+sw("zigbee_route_scan_response_valid", groups.component, "Mapa pertence ao processo?", "zigbee_route_response_valid", "msg", [{ t: "true" }, { t: "else" }], 2310, 1650, [["zigbee_route_scan_response_status"], ["zigbee_route_scan_response_invalid"]]);
+sw("zigbee_route_scan_response_status", groups.component, "Varredura de rotas concluiu?", "zigbee_route_response_status", "msg", [{ t: "eq", v: "ok", vt: "str" }, { t: "else" }], 2570, 1610, [["zigbee_route_configure_request_build"], ["zigbee_route_scan_failed"]]);
+fn("zigbee_route_configure_request_build", groups.component, "Montar reconfiguração do dispositivo", "zigbee-route-configure-request-build.js", 1, 2860, 1580, [["zigbee_route_configure_test_gate"]]);
+sw("zigbee_route_configure_test_gate", groups.component, "Configure pertence a TESTE?", "_zigbee_test", "msg", [{ t: "true" }, { t: "else" }], 3160, 1580, [["zigbee_route_configure_dry_out"], ["zigbee_route_configure_mqtt"]]);
+linkOut("zigbee_route_configure_dry_out", groups.component, "Configure TESTE → dry-run", "zigbee_dry_in", 3440, 1550);
+grouped(groups.component, { id: "zigbee_route_configure_mqtt", type: "mqtt out", z: TAB, g: groups.component,
+  name: "EFEITO: reconfigurar dispositivo", topic: "", qos: "1", retain: "false", respTopic: "", contentType: "",
+  userProps: "", correl: "", expiry: "", broker: MQTT, x: 3460, y: 1620, wires: [] });
+change("zigbee_route_scan_failed", groups.component, "Registrar falha da varredura", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "recovery_failed", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_recovery_failed", tot: "str" },
+], 2860, 1650, [["zigbee_route_state_mutate"]]);
+terminal("zigbee_route_scan_response_invalid", groups.component, "Ignorar mapa não correlacionado", { fill: "grey", shape: "ring", text: "mapa ignorado" }, 2570, 1680);
+
+linkIn("zigbee_route_response_in", groups.component, "Receber resposta de reconfiguração", ["zigbee_route_response_out", "zigbee_test_route_response_out"], "zigbee_route_response_policy_load", 1250, 1780);
+fn("zigbee_route_response_policy_load", groups.component, "Carregar política da resposta", "zigbee-policy-load.js", 1, 1510, 1780, [["zigbee_route_response_policy_available"]]);
+sw("zigbee_route_response_policy_available", groups.component, "Política existe para correlacionar?", "policy_available", "msg", [{ t: "true" }, { t: "else" }], 1770, 1780, [["zigbee_route_response_normalize"], ["zigbee_route_response_invalid"]]);
+fn("zigbee_route_response_normalize", groups.component, "Correlacionar resposta", "zigbee-route-response-normalize.js", 1, 2040, 1780, [["zigbee_route_response_valid"]]);
+sw("zigbee_route_response_valid", groups.component, "Resposta pertence ao processo?", "zigbee_route_response_valid", "msg", [{ t: "true" }, { t: "else" }], 2300, 1780, [["zigbee_route_response_status"], ["zigbee_route_response_invalid"]]);
+sw("zigbee_route_response_status", groups.component, "Reconfiguração concluiu?", "zigbee_route_response_status", "msg", [{ t: "eq", v: "ok", vt: "str" }, { t: "else" }], 2560, 1740, [["zigbee_route_recovered"], ["zigbee_route_recovery_failed"]]);
+change("zigbee_route_recovered", groups.component, "Confirmar recuperação", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "recovered", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_recovery", tot: "str" },
+], 2840, 1710, [["zigbee_route_state_mutate"]]);
+change("zigbee_route_recovery_failed", groups.component, "Registrar falha e cooldown", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "recovery_failed", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_recovery_failed", tot: "str" },
+], 2840, 1810, [["zigbee_route_state_mutate"]]);
+terminal("zigbee_route_response_invalid", groups.component, "Ignorar resposta não correlacionada", { fill: "grey", shape: "ring", text: "resposta ignorada" }, 2570, 1890);
+
 linkIn("zigbee_network_effect_in", groups.effect, "Receber estado da rede", "zigbee_network_effect_out", "zigbee_phase_switch", 5190, 250);
 sw("zigbee_phase_switch", groups.effect, "Estado canônico: online, offline ou transição?", "zigbee_state.phase", "msg", [{ t: "eq", v: "online", vt: "str" }, { t: "eq", v: "offline", vt: "str" }, { t: "else" }], 5430, 120, [["zigbee_status_online"], ["zigbee_status_offline"], ["zigbee_status_transition"]]);
 terminal("zigbee_status_online", groups.effect, "OBSERVAR: rede online", { fill: "green", shape: "dot", text: "Zigbee online" }, 5690, 70);
@@ -186,7 +278,7 @@ linkIn("zigbee_component_effect_in", groups.effect, "Receber evento de component
 sw("zigbee_component_event_switch", groups.effect, "Há queda, retorno ou lembrete de componente?", "zigbee_component_event", "msg", [{ t: "eq", v: "down", vt: "str" }, { t: "eq", v: "recovery", vt: "str" }, { t: "eq", v: "reminder", vt: "str" }, { t: "else" }], 5460, 760, [["zigbee_component_notification_build"], ["zigbee_component_notification_build"], ["zigbee_component_notification_build"], ["zigbee_component_no_event"]]);
 fn("zigbee_component_notification_build", groups.effect, "Montar alerta do componente", "zigbee-component-notification-build.js", 1, 5750, 745, [["zigbee_component_notification_route_out"]]);
 linkOut("zigbee_component_notification_route_out", groups.effect, "Alerta de componente → gate único", "zigbee_component_notification_route_in", 6010, 745);
-linkIn("zigbee_component_notification_route_in", groups.effect, "Receber alerta de componente", "zigbee_component_notification_route_out", "zigbee_notification_test_gate", 5880, 365);
+linkIn("zigbee_component_notification_route_in", groups.effect, "Receber alerta de componente ou rota", ["zigbee_component_notification_route_out", "zigbee_route_notification_out"], "zigbee_notification_test_gate", 5880, 365);
 terminal("zigbee_component_no_event", groups.effect, "Componente sem transição", { fill: "grey", shape: "ring", text: "dedupe ativo" }, 5750, 820);
 sw("zigbee_notification_test_gate", groups.effect, "Alerta pertence a TESTE?", "_zigbee_test", "msg", [{ t: "true" }, { t: "else" }], 6060, 300, [["zigbee_notification_dry_out"], ["zigbee_notify_effect"]]);
 grouped(groups.effect, { id: "zigbee_notify_effect", type: "change", z: TAB, g: groups.effect,
@@ -194,34 +286,52 @@ grouped(groups.effect, { id: "zigbee_notify_effect", type: "change", z: TAB, g: 
 linkOut("zigbee_notification_dry_out", groups.effect, "Alerta TESTE → dry-run", "zigbee_dry_in", 6300, 380);
 
 grouped(groups.test, { id: "zigbee_test_note", type: "comment", z: TAB, g: groups.test,
-  name: "Ordem: reset; rede 2–8; componente 9–12. MQTT e notificações terminam em dry-run.",
-  info: "Os eventos sintéticos atravessam parsing, política, estado persistente isolado, limiares, dedupe e as mesmas fronteiras finais da produção.", x: 1060, y: 1400, wires: [] });
-inject("zigbee_test_reset", groups.test, "TESTE 1: reset", [{ p: "_zigbee_test", v: "true", vt: "bool" }], 170, 1490, [["zigbee_test_reset_state"]]);
-fn("zigbee_test_reset_state", groups.test, "Resetar apenas estado sintético", "zigbee-test-reset.js", 0, 410, 1490, []);
+  name: "Ordem: reset; rede 2–8; componente 9–12; rota 13–19. Todo efeito termina em dry-run.",
+  info: "Os eventos sintéticos atravessam parsing, política, estado persistente isolado, limiares, dedupe, cooldown, varredura de rotas, reconfiguração, correlação de respostas e as mesmas fronteiras finais da produção.", x: 1380, y: 2060, wires: [] });
+inject("zigbee_test_reset", groups.test, "TESTE 1: reset", [{ p: "_zigbee_test", v: "true", vt: "bool" }], 170, 2150, [["zigbee_test_reset_state"]]);
+fn("zigbee_test_reset_state", groups.test, "Resetar apenas estado sintético", "zigbee-test-reset.js", 0, 410, 2150, []);
 const t0 = Date.UTC(2026, 0, 1, 0, 0, 0);
 for (const [id, name, payload, at, y] of [
-  ["zigbee_test_net_online", "TESTE 2: rede online", "online", t0, 1490],
-  ["zigbee_test_net_offline", "TESTE 3: iniciar offline", "offline", t0 + 10000, 1545],
-  ["zigbee_test_net_online_recovery", "TESTE 6: iniciar retorno", "online", t0 + 50000, 1710],
+  ["zigbee_test_net_online", "TESTE 2: rede online", "online", t0, 2150],
+  ["zigbee_test_net_offline", "TESTE 3: iniciar offline", "offline", t0 + 10000, 2205],
+  ["zigbee_test_net_online_recovery", "TESTE 6: iniciar retorno", "online", t0 + 50000, 2370],
 ]) inject(id, groups.test, name, [{ p: "payload", v: payload, vt: "str" }, { p: "monitor_now", v: String(at), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 720, y, [["zigbee_test_network_input_out"]]);
-linkOut("zigbee_test_network_input_out", groups.test, "Estado TESTE → mesma fonte", "zigbee_test_network_input_in", 1000, 1560);
+linkOut("zigbee_test_network_input_out", groups.test, "Estado TESTE → mesma fonte", "zigbee_test_network_input_in", 1000, 2220);
 for (const [id, name, at, y] of [
-  ["zigbee_test_net_29", "TESTE 4: 29 s offline", t0 + 39000, 1600],
-  ["zigbee_test_net_30", "TESTE 5: 30 s offline", t0 + 40000, 1655],
-  ["zigbee_test_net_59", "TESTE 7: 59 s online", t0 + 109000, 1765],
-  ["zigbee_test_net_60", "TESTE 8: 60 s online", t0 + 110000, 1820],
+  ["zigbee_test_net_29", "TESTE 4: 29 s offline", t0 + 39000, 2260],
+  ["zigbee_test_net_30", "TESTE 5: 30 s offline", t0 + 40000, 2315],
+  ["zigbee_test_net_59", "TESTE 7: 59 s online", t0 + 109000, 2425],
+  ["zigbee_test_net_60", "TESTE 8: 60 s online", t0 + 110000, 2480],
 ]) inject(id, groups.test, name, [{ p: "monitor_now", v: String(at), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 1250, y, [["zigbee_test_network_tick_out"]]);
-linkOut("zigbee_test_network_tick_out", groups.test, "Tick TESTE → mesma decisão", "zigbee_network_cycle_in", 1530, 1710);
+linkOut("zigbee_test_network_tick_out", groups.test, "Tick TESTE → mesma decisão", "zigbee_network_cycle_in", 1530, 2370);
 for (const [id, name, payload, at, y] of [
-  ["zigbee_test_component_down", "TESTE 9: componente offline", "offline", t0, 1490],
-  ["zigbee_test_component_duplicate", "TESTE 10: offline duplicado", "offline", t0 + 1000, 1550],
-  ["zigbee_test_component_up", "TESTE 12: componente online", "online", t0 + 86401000, 1765],
+  ["zigbee_test_component_down", "TESTE 9: componente offline", "offline", t0, 2150],
+  ["zigbee_test_component_duplicate", "TESTE 10: offline duplicado", "offline", t0 + 1000, 2210],
+  ["zigbee_test_component_up", "TESTE 12: componente online", "online", t0 + 86401000, 2425],
 ]) inject(id, groups.test, name, [{ p: "payload", v: payload, vt: "str" }, { p: "topic", v: "zigbee2mqtt/teste_visual/availability", vt: "str" }, { p: "monitor_now", v: String(at), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 1910, y, [["zigbee_test_component_out"]]);
-linkOut("zigbee_test_component_out", groups.test, "Componente TESTE → mesma fonte", "zigbee_component_input_in", 2220, 1560);
-inject("zigbee_test_component_reminder", groups.test, "TESTE 11: lembrete após 24 h", [{ p: "monitor_now", v: String(t0 + 86400000), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 1930, 1710, [["zigbee_test_component_reminder_out"]]);
-linkOut("zigbee_test_component_reminder_out", groups.test, "Tick TESTE → lembretes", "zigbee_component_reminder_in", 2240, 1710);
-linkIn("zigbee_dry_in", groups.test, "Receber qualquer efeito TESTE", ["zigbee_notification_dry_out", "zigbee_publication_dry_out"], "zigbee_dry_run_terminal", 2600, 1540);
-fn("zigbee_dry_run_terminal", groups.test, "TESTE FINAL: efeito bloqueado", "zigbee-dry-run.js", 0, 2860, 1540, []);
+linkOut("zigbee_test_component_out", groups.test, "Componente TESTE → mesma fonte", "zigbee_component_input_in", 2220, 2220);
+inject("zigbee_test_component_reminder", groups.test, "TESTE 11: lembrete após 24 h", [{ p: "monitor_now", v: String(t0 + 86400000), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 1930, 2370, [["zigbee_test_component_reminder_out"]]);
+linkOut("zigbee_test_component_reminder_out", groups.test, "Tick TESTE → lembretes", "zigbee_component_reminder_in", 2240, 2370);
+const routeTestMessage = "Publish 'set' 'state' to 'teste_rota' failed: Data request failed with error: 'NWK_NO_ROUTE' (0xcd)";
+for (const [id, name, at, y] of [
+  ["zigbee_test_route_failure", "TESTE 13: NWK_NO_ROUTE", t0, 2150],
+  ["zigbee_test_route_duplicate", "TESTE 14: erro duplicado", t0 + 1000, 2210],
+  ["zigbee_test_route_retry", "TESTE 17: retry após cooldown", t0 + 902000, 2370],
+]) inject(id, groups.test, name, [{ p: "payload", v: JSON.stringify({ level: "error", message: routeTestMessage }), vt: "json" }, { p: "monitor_now", v: String(at), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 2630, y, [["zigbee_test_route_error_out"]]);
+linkOut("zigbee_test_route_error_out", groups.test, "Erro TESTE → mesma recuperação", "zigbee_route_error_in", 2920, 2220);
+const routeTestKey = "teste_rota_59894ed5";
+for (const [id, name, transaction, at, y] of [
+  ["zigbee_test_route_scan_response", "TESTE 15: mapa reconstruído", `nodered-zigbee-route-test-${routeTestKey}-${t0}`, t0 + 1500, 2260],
+  ["zigbee_test_route_scan_retry_response", "TESTE 18: novo mapa reconstruído", `nodered-zigbee-route-test-${routeTestKey}-${t0 + 902000}`, t0 + 902500, 2410],
+]) inject(id, groups.test, name, [{ p: "payload", v: JSON.stringify({ status: "ok", transaction }), vt: "json" }, { p: "monitor_now", v: String(at), vt: "num" }], 3270, y, [["zigbee_test_route_scan_response_out"]]);
+linkOut("zigbee_test_route_scan_response_out", groups.test, "Mapa TESTE → mesma recuperação", "zigbee_route_scan_response_in", 3570, 2320);
+for (const [id, name, status, transaction, at, y] of [
+  ["zigbee_test_route_failed_response", "TESTE 16: configure falhou", "error", `nodered-zigbee-route-test-${routeTestKey}-${t0}`, t0 + 2000, 2320],
+  ["zigbee_test_route_success_response", "TESTE 19: configure concluiu", "ok", `nodered-zigbee-route-test-${routeTestKey}-${t0 + 902000}`, t0 + 903000, 2470],
+]) inject(id, groups.test, name, [{ p: "payload", v: JSON.stringify({ status, transaction, ...(status === "error" ? { error: "NWK_NO_ROUTE" } : {}) }), vt: "json" }, { p: "monitor_now", v: String(at), vt: "num" }], 3270, y, [["zigbee_test_route_response_out"]]);
+linkOut("zigbee_test_route_response_out", groups.test, "Resposta TESTE → mesmo lifecycle", "zigbee_route_response_in", 3560, 2370);
+linkIn("zigbee_dry_in", groups.test, "Receber qualquer efeito TESTE", ["zigbee_notification_dry_out", "zigbee_publication_dry_out", "zigbee_route_recovery_dry_out", "zigbee_route_configure_dry_out"], "zigbee_dry_run_terminal", 4000, 2220);
+fn("zigbee_dry_run_terminal", groups.test, "TESTE FINAL: efeito bloqueado", "zigbee-dry-run.js", 0, 4270, 2220, []);
 
 next.push(...nodes);
 fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);

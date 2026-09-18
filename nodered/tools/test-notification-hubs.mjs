@@ -39,6 +39,16 @@ assert.equal(restoredOrphanRoute.some((candidate) => candidate.id === orphanRout
 assert.equal(restoredOrphanRoute.some((candidate) => candidate.id === orphanRouteIn), false);
 assert.deepEqual(restoredOrphanRoute.find((candidate) => candidate.id === "route-group").nodes, ["route-target"]);
 
+const orphanWithoutTarget = structuredClone(orphanRouteFixture);
+orphanWithoutTarget.find((candidate) => candidate.id === orphanRouteIn).wires = [[]];
+const restoredOrphanWithoutTarget = restoreGeneratedWireRoutes(orphanWithoutTarget);
+assert.equal(restoredOrphanWithoutTarget.some((candidate) => candidate.id === orphanRouteOut), false);
+assert.equal(restoredOrphanWithoutTarget.some((candidate) => candidate.id === orphanRouteIn), false);
+assert.deepEqual(
+  restoredOrphanWithoutTarget.find((candidate) => candidate.id === "route-group").nodes,
+  ["route-target"],
+);
+
 const byId = new Map(migrated.map((node) => [node.id, node]));
 assert.equal(byId.size, migrated.length, "IDs duplicados após instalar os hubs");
 const node = (id) => {
