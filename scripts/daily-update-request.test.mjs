@@ -424,6 +424,9 @@ test("Codex CLI updater resolves an exact version and skips an already current i
   const bin = path.join(prefix, "bin");
   const codex = path.join(bin, "codex");
   const npm = path.join(fixture, "npm");
+  const restart = path.join(fixture, "restart-codex-remote");
+  const restartCalls = path.join(fixture, "restart-calls");
+  const restartMarker = path.join(prefix, ".codex-cli-restart-required");
   const calls = path.join(fixture, "calls");
   fs.mkdirSync(bin, { recursive: true });
   fs.writeFileSync(codex, "#!/bin/sh\necho 'codex-cli 0.151.0'\n");
@@ -442,25 +445,86 @@ EOF
 chmod 0755 "${codex}"
 `,
   );
+  fs.writeFileSync(restart, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${restartCalls}"\n`);
   fs.chmodSync(codex, 0o755);
   fs.chmodSync(npm, 0o755);
+  fs.chmodSync(restart, 0o755);
   const env = {
     ...process.env,
     CODEX_CLI_NPM_BIN: npm,
     CODEX_CLI_PREFIX: prefix,
     CODEX_CLI_BIN: codex,
+    CODEX_CLI_REMOTE_RESTART_BIN: restart,
+    CODEX_CLI_RESTART_MARKER: restartMarker,
   };
 
   const updated = spawnSync(updateCodexCli, [], { encoding: "utf8", env });
   assert.equal(updated.status, 0, updated.stderr);
   assert.match(updated.stdout, /status=success action=updated from=0\.151\.0 to=0\.155\.1/);
+  assert.match(updated.stdout, /remote_restart=completed/);
   assert.match(fs.readFileSync(calls, "utf8"), /install --global --prefix .* @openai\/codex@0\.155\.1/);
+  assert.equal(fs.readFileSync(restartCalls, "utf8").trim(), "--restart");
+  assert.equal(fs.existsSync(restartMarker), false);
 
   fs.writeFileSync(calls, "");
   const current = spawnSync(updateCodexCli, [], { encoding: "utf8", env });
   assert.equal(current.status, 0, current.stderr);
   assert.match(current.stdout, /status=success action=current from=0\.155\.1 to=0\.155\.1/);
   assert.doesNotMatch(fs.readFileSync(calls, "utf8"), /install/);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("Codex CLI updater retains and retries a failed App Server restart", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "codex-cli-restart-test-"));
+  const prefix = path.join(fixture, ".local");
+  const bin = path.join(prefix, "bin");
+  const codex = path.join(bin, "codex");
+  const npm = path.join(fixture, "npm");
+  const restart = path.join(fixture, "restart-codex-remote");
+  const restartCalls = path.join(fixture, "restart-calls");
+  const restartMarker = path.join(prefix, ".codex-cli-restart-required");
+  fs.mkdirSync(bin, { recursive: true });
+  fs.writeFileSync(codex, "#!/bin/sh\necho 'codex-cli 0.151.0'\n");
+  fs.writeFileSync(
+    npm,
+    `#!/bin/sh
+if [ "$1" = "view" ]; then echo '0.155.1'; exit 0; fi
+cat > "${codex}" <<'EOF'
+#!/bin/sh
+echo 'codex-cli 0.155.1'
+EOF
+chmod 0755 "${codex}"
+`,
+  );
+  fs.writeFileSync(
+    restart,
+    `#!/bin/sh
+count=$(wc -l < "${restartCalls}" 2>/dev/null || printf 0)
+printf '%s\n' "$*" >> "${restartCalls}"
+[ "$count" -ge 1 ]
+`,
+  );
+  for (const file of [codex, npm, restart]) fs.chmodSync(file, 0o755);
+  const env = {
+    ...process.env,
+    CODEX_CLI_NPM_BIN: npm,
+    CODEX_CLI_PREFIX: prefix,
+    CODEX_CLI_BIN: codex,
+    CODEX_CLI_REMOTE_RESTART_BIN: restart,
+    CODEX_CLI_RESTART_MARKER: restartMarker,
+  };
+
+  const failed = spawnSync(updateCodexCli, [], { encoding: "utf8", env });
+  assert.equal(failed.status, 71, failed.stderr);
+  assert.match(failed.stdout, /status=failed failure_stage=remote-restart/);
+  assert.equal(fs.existsSync(restartMarker), true);
+
+  const retried = spawnSync(updateCodexCli, [], { encoding: "utf8", env });
+  assert.equal(retried.status, 0, retried.stderr);
+  assert.match(retried.stdout, /status=success action=restarted/);
+  assert.match(retried.stdout, /remote_restart=completed/);
+  assert.equal(fs.existsSync(restartMarker), false);
+  assert.equal(fs.readFileSync(restartCalls, "utf8").trim().split("\n").length, 2);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

@@ -245,9 +245,13 @@ The Codex CLI stage runs after the containers and before the repository npm
 dependencies. Its host bridge resolves the published `@openai/codex` version,
 accepts only a valid semver, installs that exact version into the personal
 `.local` prefix, and verifies the resulting binary. If verification fails, it
-attempts to restore the previous version. The `test_mode` path traverses the
-same preparation, routing, and parser but reaches dry-run before any registry
-lookup or package installation.
+attempts to restore the previous version. After a verified update, the stage
+validates the owner of the App Server Unix socket, stops only that process,
+starts the new version, and confirms that the listener returned. A private
+marker keeps the restart pending for the next run if that handoff fails; runs
+without a new version do not interrupt a healthy session. The `test_mode` path
+traverses the same preparation, routing, and parser but reaches dry-run before
+any registry lookup, package installation, or restart.
 
 The same tab visually inventories every Home Assistant `update.*` entity on
 startup and every 30 minutes by default. These scans are detection-only. A

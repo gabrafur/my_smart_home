@@ -248,9 +248,13 @@ A etapa do Codex CLI roda depois dos containers e antes das dependências npm do
 repositório. A ponte do host consulta a versão publicada de `@openai/codex`,
 aceita somente uma versão semver válida, instala a versão exata no prefixo
 pessoal `.local` e confirma a versão do binário. Se a confirmação falhar, tenta
-restaurar a versão anterior. O caminho `test_mode` atravessa preparação,
-roteamento e parser, mas termina no dry-run antes de consultar ou instalar o
-pacote.
+restaurar a versão anterior. Após uma atualização confirmada, a etapa valida o
+dono do socket Unix do App Server, encerra somente esse processo, inicia a nova
+versão e confirma que o listener voltou. Um marcador privado mantém o reinício
+pendente para a próxima execução caso o handoff falhe; execuções sem versão nova
+não interrompem uma sessão saudável. O caminho `test_mode` atravessa preparação,
+roteamento e parser, mas termina no dry-run antes de consultar, instalar ou
+reiniciar o pacote.
 
 No mesmo tab, um inventário visual consulta todas as entidades `update.*` do
 Home Assistant ao subir e, por padrão, a cada 30 minutos. Essas consultas são

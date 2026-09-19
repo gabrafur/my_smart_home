@@ -893,7 +893,7 @@ const nodes = [
   },
   {
     id: codexCliGroup, type: "group", z: TAB,
-    name: "5. SUBFLUXO Codex CLI: versão oficial exata, validação e rollback",
+    name: "5. SUBFLUXO Codex CLI: versão exata, validação, restart e rollback",
     style: { label: true, color: "#5f78a8" },
     nodes: [
       "daily_update_codex_cli_architecture", "daily_update_codex_cli_request_in",
@@ -912,8 +912,8 @@ const nodes = [
   },
   {
     id: "daily_update_codex_cli_architecture", type: "comment", z: TAB, g: codexCliGroup,
-    name: "POLÍTICA: consultar @openai/codex, instalar versão exata, verificar binário e reverter se falhar",
-    info: "A ponte do host resolve a versão publicada no registro npm, aceita somente semver válido e instala no prefixo pessoal .local. Se a verificação do binário falhar, tenta restaurar a versão anterior. O Node-RED recebe somente lifecycle sanitizado.",
+    name: "POLÍTICA: versão exata, verificar binário e reiniciar somente o App Server",
+    info: "A ponte do host resolve a versão publicada no registro npm, aceita somente semver válido e instala no prefixo pessoal .local. Se a verificação do binário falhar, tenta restaurar a versão anterior. Após update confirmado, valida o dono do socket Unix, encerra somente o App Server do Codex, inicia a nova versão e confirma o listener. Um marcador privado preserva a pendência se o handoff falhar. O Node-RED recebe somente lifecycle sanitizado.",
     x: 720, y: 1580, wires: [],
   },
   {

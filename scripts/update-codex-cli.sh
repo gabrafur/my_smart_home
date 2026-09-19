@@ -4,6 +4,8 @@ set -eu
 npm_bin="${CODEX_CLI_NPM_BIN:-/usr/bin/npm}"
 user_lookup_bin="${CODEX_CLI_USER_LOOKUP_BIN:-/usr/bin/getent}"
 package="@openai/codex"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+remote_restart_bin="${CODEX_CLI_REMOTE_RESTART_BIN:-$script_dir/codex-remote-recovery.mjs}"
 
 [ -x "$npm_bin" ] || {
   echo "codex-cli-update status=failed failure_stage=npm-unavailable"
@@ -32,6 +34,20 @@ esac
 [ "$(basename -- "$codex_prefix")" = ".local" ] || {
   echo "codex-cli-update status=failed failure_stage=prefix-invalid"
   exit 64
+}
+restart_marker="${CODEX_CLI_RESTART_MARKER:-$codex_prefix/.codex-cli-restart-required}"
+case "$restart_marker" in
+  "$codex_prefix"/*) ;;
+  *) echo "codex-cli-update status=failed failure_stage=restart-marker-invalid"; exit 64 ;;
+esac
+case "$remote_restart_bin" in
+  /*) ;;
+  *) echo "codex-cli-update status=failed failure_stage=remote-restart-unavailable"; exit 64 ;;
+esac
+
+restart_remote() {
+  [ -x "$remote_restart_bin" ] || return 66
+  "$remote_restart_bin" --restart >&2
 }
 
 codex_bin="${CODEX_CLI_BIN:-$codex_prefix/bin/codex}"
@@ -68,9 +84,26 @@ if [ "$lookup_status" -ne 0 ] || ! valid_version "$latest_version"; then
 fi
 
 if [ "$current_version" = "$latest_version" ]; then
+  if [ -f "$restart_marker" ]; then
+    set +e
+    restart_remote
+    restart_status=$?
+    set -e
+    if [ "$restart_status" -ne 0 ]; then
+      echo "codex-cli-update status=failed failure_stage=remote-restart from=$current_version target=$latest_version"
+      exit 71
+    fi
+    rm -f -- "$restart_marker"
+    echo "codex-cli-update status=success action=restarted from=$current_version to=$latest_version remote_restart=completed"
+    exit 0
+  fi
   echo "codex-cli-update status=success action=current from=$current_version to=$latest_version"
   exit 0
 fi
+
+mkdir -p -- "$codex_prefix"
+umask 077
+: > "$restart_marker"
 
 rollback() {
   [ -n "$current_version" ] || return 0
@@ -97,4 +130,13 @@ if [ "$installed_version" != "$latest_version" ]; then
   exit 70
 fi
 
-echo "codex-cli-update status=success action=updated from=${current_version:-missing} to=$installed_version"
+set +e
+restart_remote
+restart_status=$?
+set -e
+if [ "$restart_status" -ne 0 ]; then
+  echo "codex-cli-update status=failed failure_stage=remote-restart from=${current_version:-missing} target=$latest_version"
+  exit 71
+fi
+rm -f -- "$restart_marker"
+echo "codex-cli-update status=success action=updated from=${current_version:-missing} to=$installed_version remote_restart=completed"
