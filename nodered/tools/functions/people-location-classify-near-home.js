@@ -103,19 +103,6 @@ for (const role of ["resident_primary", "resident_secondary"]) {
         }
     }
 }
-if (msg.payload?.event === "context_snapshot" && changedRoles.length === 1) {
-    const role = changedRoles[0];
-    const selected = msg._canonical_locations?.[role]?.selected;
-    Object.assign(msg.payload, {
-        event: "location_update",
-        source: role,
-        trigger_prev_state: previous[role].state,
-        trigger_state: selected.state,
-        trigger_raw_prev_state: previous[role].raw_state,
-        trigger_raw_state: selected.raw_state,
-        trigger_entity: "device_tracker." + role + "_location"
-    });
-}
 flow.set(KEY, next, "persistent");
 const selected = msg._canonical_locations?.[msg.payload?.source]?.selected;
 node.status({
@@ -125,4 +112,27 @@ node.status({
         " (home " + homeRadius + " / near_home " + nearRadius + " m)" :
         "snapshot canônico atualizado"
 });
-return msg;
+// A snapshot contains both residents, regardless of which source woke this node.
+// Emit every transition before a later callback can consume its previous state.
+// Arrival authorization, freshness and dedupe remain in the shared lifecycle.
+const events = changedRoles.filter((role) => msg._canonical_locations[role].selected)
+    .map((role) => {
+        const event = JSON.parse(JSON.stringify(msg));
+        const current = event._canonical_locations[role].selected;
+        Object.assign(event.payload, {
+            event: "location_update",
+            source: role,
+            trigger_prev_state: previous[role].state,
+            trigger_state: current.state,
+            trigger_raw_prev_state: previous[role].raw_state,
+            trigger_raw_state: current.raw_state,
+            trigger_entity: "device_tracker." + role + "_location"
+        });
+        return event;
+    });
+// Preserve raw-zone wakeups and first observations even when another role moved.
+if (!events.length) return msg;
+if (msg.payload.event === "location_update" && !changedRoles.includes(msg.payload.source)) {
+    events.push(msg);
+}
+return events.length === 1 ? events[0] : [events];

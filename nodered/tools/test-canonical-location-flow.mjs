@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { runPeopleVisualEvents } from "./visual-flow-test-harness.mjs";
 
 const flows = JSON.parse(
   fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"),
@@ -229,6 +230,114 @@ function select(message, flow = memory(), globalContext = runtimeGlobal()) {
 const primaryId = "device_tracker.mobile_primary_source_1";
 const fallbackId = "device_tracker.mobile_primary_source_2";
 
+// Paired snapshots must emit the resident who moved, not just their wakeup source.
+for (const wakeup of ["resident_primary", "resident_secondary", "refresh"]) {
+  for (const arriving of ["resident_primary", "resident_secondary", "both"]) {
+    const state = memory();
+    const globals = runtimeGlobal();
+    const call = (id, msg) => run(id, msg, state, globals);
+    const paired = (primaryDistance, secondaryDistance, ageMs = 0) => {
+      const message = input(
+        tracker(primaryId, "not_home", { distanceM: primaryDistance, ageMs }),
+        tracker(fallbackId, "unavailable", { coordinates: false }), wakeup,
+      );
+      message.payload.resident_secondary = tracker("device_tracker.mobile_secondary_source_1",
+        "not_home", { distanceM: secondaryDistance, ageMs });
+      message.payload.resident_secondary_icloud = tracker("device_tracker.mobile_secondary_source_2",
+        "unavailable", { coordinates: false });
+      return message;
+    };
+    runPeopleVisualEvents(call, paired(2000, 2000));
+    clock += 60_000;
+    runPeopleVisualEvents(call, paired(2000, 2000));
+    clock += 60_000;
+    const primaryDistance = arriving === "resident_secondary" ? 2000 : 650;
+    const secondaryDistance = arriving === "resident_primary" ? 2000 : 650;
+    const expected = arriving === "both" ? ["resident_primary", "resident_secondary"] : [arriving];
+    const arrivals = runPeopleVisualEvents(call, paired(primaryDistance, secondaryDistance))
+      .map((outputs) => outputs[1]).filter(Boolean);
+    assert.deepEqual(arrivals.map((event) => event.payload.source).sort(), expected,
+      `wakeup ${wakeup} must not consume ${arriving}'s transition`);
+    for (const event of arrivals) {
+      assert.equal(event.payload.arrival_stage, "approach");
+      assert.equal(event.payload.arrival_previous_state, "not_home");
+      assert.equal(event.payload.external_cycle_confirmed, true);
+      // Continue through notification normalization, reservation and dry-run.
+      event.payload.test_mode = true;
+      event.policy = { version: 3, dedupe_ttl_ms: 600000, max_event_age_ms: 900000,
+        future_tolerance_ms: 60000, service_retry_seconds: 60 };
+      let notice = call("resident_notifications_prepare", event);
+      for (const flag of ["arrival_contract_valid", "arrival_kind_valid", "arrival_returning",
+        "arrival_cycle_confirmed", "arrival_event_time_valid"]) assert.equal(notice[flag], true, flag);
+      notice.resident_recipient = event.payload.source === "resident_primary"
+        ? "resident_secondary" : "resident_primary";
+      notice = call("resident_notifications_state_read", notice);
+      assert.equal(notice.notification_duplicate, false);
+      notice = call("resident_notifications_state_write", notice);
+      notice = call("resident_notifications_message_build", notice);
+      assert.equal(call("resident_notifications_dry_run_terminal", notice), null);
+      const result = state.get("resident_notifications_last_dry_run_v2__test")[notice.notification_delivery_id];
+      assert.equal(result.simulated, true);
+      assert.equal(result.dispatched, false);
+      assert.equal(result.recipient, notice.resident_recipient);
+    }
+    assert.equal(runPeopleVisualEvents(call, paired(primaryDistance, secondaryDistance))
+      .filter((outputs) => outputs[1]).length, 0, "paired callback must not duplicate arrivals");
+    clock += 1000;
+    const homes = runPeopleVisualEvents(call, paired(
+      primaryDistance === 650 ? 20 : 2000, secondaryDistance === 650 ? 20 : 2000));
+    assert.deepEqual(homes.map((outputs) => outputs[1]?.payload.source).filter(Boolean).sort(), expected);
+    assert.ok(homes.filter((outputs) => outputs[1]).every((outputs) =>
+      outputs[0].payload.confirmed_home_transition === true), "90 s refresh home trigger preserved");
+  }
+}
+
+// Cross-resident dispatch still requires fresh evidence and a confirmed trip.
+for (const [name, ageMs, elapsed] of [
+  ["unconfirmed departure", 0, 1000],
+  ["stale location", 16 * 60000, 17 * 60000],
+  ["future location", -120000, 120000],
+]) {
+  const state = memory();
+  const globals = runtimeGlobal();
+  const call = (id, message) => run(id, message, state, globals);
+  const message = input(tracker(primaryId, "not_home", { distanceM: 2000 }),
+    tracker(fallbackId, "unavailable", { coordinates: false }), "resident_secondary");
+  runPeopleVisualEvents(call, structuredClone(message));
+  clock += elapsed;
+  message.payload.resident_primary = tracker(primaryId, "near_home", { distanceM: 650, ageMs });
+  const results = runPeopleVisualEvents(call, message);
+  assert.ok(results.every((outputs) => !outputs[1] && !outputs[2]), name);
+}
+
+// Node-RED can interleave sibling messages between load and commit.
+{
+  const state = memory({ security_people_recovery_v1: {
+    version: 1, arrival_armed: { resident_primary: true, resident_secondary: true },
+    external_since: { resident_primary: clock - 120000, resident_secondary: clock - 120000 },
+    recent_arrivals: {},
+  } });
+  const globals = runtimeGlobal();
+  const call = (id, message) => structuredClone(run(id, message, state, globals));
+  let messages = ["resident_primary", "resident_secondary"].map((role) => {
+    const message = input(tracker(primaryId, "home", { distanceM: 20 }),
+      tracker(fallbackId, "unavailable", { coordinates: false }), role);
+    message.payload.trigger_prev_state = "not_home";
+    message.payload.trigger_state = "home";
+    for (const resident of ["resident_primary", "resident_secondary"]) {
+      message.payload[resident + "_selected"] = message.payload[resident];
+    }
+    return message;
+  });
+  for (const id of ["people_visual_normalize", "people_visual_state_load", "people_visual_facts",
+    "people_visual_arrival_gate", "people_visual_arrival_dedupe", "554cb653b2fa4504"]) {
+    messages = messages.map((message) => call(id, message));
+  }
+  const saved = state.get("security_people_recovery_v1");
+  assert.deepEqual(saved.arrival_armed, { resident_primary: false, resident_secondary: false });
+  assert.equal(Object.keys(saved.recent_arrivals).length, 2);
+}
+
 {
   const controls = {
     near: byId.get("people_location_near_home_radius_v1"),
@@ -454,7 +563,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   const peopleClassifier = byId.get("people_location_classify_near_home_v1");
   const vehicleClassifier = byId.get("vehicle_primary_classify_near_home_v1");
   assert.doesNotMatch(people.func, /mergeTrackers|TRACKER_SELECTION_VERSION/);
-  assert.ok(people.func.length < 4000, "finalizador de pessoas deve ser pequeno");
+  assert.ok(people.func.length < 4500, "persistência e merge de eventos concorrentes devem permanecer pequenos");
   assert.ok(vehicle.func.length < 4000, "finalizador do veículo deve ser pequeno");
   assert.match(byId.get("people_visual_normalize").func, /policy\.home_radius_m/);
   assert.match(byId.get("people_visual_facts").func, /external_cycle_confirm_seconds/);

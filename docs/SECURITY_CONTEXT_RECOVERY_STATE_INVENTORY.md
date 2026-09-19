@@ -58,6 +58,19 @@ de verdade depois que a mensagem termina.
 
 ## Startup ordering e convergência
 
+O snapshot de localização contém ambos os moradores. A classificação emite
+uma mensagem `location_update` para cada transição canônica encontrada, mesmo
+quando o snapshot foi solicitado pelo outro morador ou pelo refresh periódico.
+Todas percorrem os mesmos gates de direção, freshness, ciclo externo e dedupe;
+a classificação não envia avisos nem autoriza o refletor diretamente. Callbacks
+pareados sem mudança não repetem a chegada. O finalizador preserva deltas de
+estado do outro morador já confirmados durante o processamento concorrente.
+
+O replay em `test-canonical-location-flow.mjs` cobre as três origens de snapshot,
+chegadas individuais e simultâneas, callbacks repetidos, a confirmação `home`
+usada pelo refresh de 90 s e o aviso ao destinatário oposto até o terminal
+dry-run. Nenhum push ou equipamento real é acionado por esse teste.
+
 | Ordem | Comportamento |
 | --- | --- |
 | HA operacional, Node-RED reinicia | restaura intenção, lê o switch após 1 s, pede snapshots após 2 s, revalida e retoma deadlines |

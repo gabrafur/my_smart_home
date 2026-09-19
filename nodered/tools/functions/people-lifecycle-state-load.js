@@ -57,4 +57,11 @@ for (const role of ["resident_primary", "resident_secondary"]) {
         data.local_excursions[role] = { started_at: startedAt, expires_at: expiresAt };
     }
 }
+// Preserve the read version: sibling events can reach this node before either
+// has committed its lifecycle at the finalizer.
+data.state_baseline = JSON.parse(JSON.stringify({
+    arrival_armed: data.armed,
+    external_since: data.external_since,
+    local_excursions: data.local_excursions
+}));
 return msg;

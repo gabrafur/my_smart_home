@@ -1,7 +1,20 @@
 export function runPeopleVisual(call, message) {
+  const results = runPeopleVisualEvents(call, message);
+  return [0, 1, 2, 3].map((output) => {
+    const messages = results.map((result) => result?.[output]).filter(Boolean);
+    return messages.length > 1 ? messages : messages[0] ?? null;
+  });
+}
+
+export function runPeopleVisualEvents(call, message) {
   let msg = call("people_location_observation_v1", message);
   msg = call("people_location_select_v1", msg);
-  msg = call("people_location_classify_near_home_v1", msg);
+  const classified = call("people_location_classify_near_home_v1", msg);
+  const messages = Array.isArray(classified) ? classified[0] : [classified];
+  return messages.filter(Boolean).map((event) => runPeopleLifecycleVisual(call, event));
+}
+
+export function runPeopleLifecycleVisual(call, msg) {
   msg = call("people_visual_test_adapter", msg);
   msg = call("people_visual_normalize", msg);
   msg = call("people_visual_state_load", msg);
