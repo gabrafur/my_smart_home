@@ -16,6 +16,7 @@ const requestStageScript = path.join(scriptsDir, "request-host-update-stage.sh")
 const readStageScript = path.join(scriptsDir, "read-host-update-stage-result.sh");
 const processStageScript = path.join(scriptsDir, "process-update-stage-request.sh");
 const runScript = path.join(scriptsDir, "run-daily-host-update.sh");
+const updateCodexCli = path.join(scriptsDir, "update-codex-cli.sh");
 const dietpiScript = path.join(scriptsDir, "dietpi-daily-upgrade.sh");
 const installBridge = path.join(scriptsDir, "install-daily-update-nodered-bridge.sh");
 const installHelper = path.join(scriptsDir, "install-dietpi-daily-upgrade-helper.sh");
@@ -65,7 +66,7 @@ test("Node-RED requests are coalesced and expose the final host result", () => {
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
-test("staged bridges isolate DietPi, Home Assistant Core and other containers", () => {
+test("staged bridges isolate DietPi, Home Assistant Core, containers and Codex CLI", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "staged-update-request-test-"));
   const triggerDir = path.join(fixture, "trigger");
   const updater = path.join(fixture, "update.sh");
@@ -79,7 +80,7 @@ test("staged bridges isolate DietPi, Home Assistant Core and other containers", 
     HOST_UPDATE_STAGE_SCRIPT: updater,
   };
 
-  for (const stage of ["dietpi", "home-assistant-core", "containers"]) {
+  for (const stage of ["dietpi", "home-assistant-core", "containers", "codex-cli"]) {
     const requested = spawnSync(requestStageScript, [stage], { encoding: "utf8", env });
     assert.equal(requested.status, 0, requested.stderr);
     assert.match(requested.stdout, new RegExp(`stage=${stage} status=accepted`));
@@ -94,7 +95,7 @@ test("staged bridges isolate DietPi, Home Assistant Core and other containers", 
     assert.match(read.stdout, /stage_exit=0/);
   }
   assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), [
-    "dietpi", "home-assistant-core", "containers",
+    "dietpi", "home-assistant-core", "containers", "codex-cli",
   ]);
   assert.equal(spawnSync(requestStageScript, ["invalid"], { encoding: "utf8", env }).status, 64);
   fs.rmSync(fixture, { recursive: true, force: true });
@@ -389,19 +390,22 @@ test("each host stage invokes only its own updater", () => {
   const helper = path.join(fixture, "dietpi-helper");
   const node = path.join(fixture, "node");
   const dockerUpdater = path.join(fixture, "docker-auto-update.mjs");
+  const codexUpdater = path.join(fixture, "update-codex-cli.sh");
   fs.writeFileSync(sudo, "#!/bin/sh\n[ \"$1\" = \"-n\" ] && shift\n\"$@\"\n");
   fs.writeFileSync(helper, `#!/bin/sh\nprintf 'dietpi\\n' >> "${calls}"\n`);
   fs.writeFileSync(node, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\n`);
+  fs.writeFileSync(codexUpdater, `#!/bin/sh\nprintf 'codex-cli\\n' >> "${calls}"\necho 'codex-cli-update status=success action=current from=1.0.0 to=1.0.0'\n`);
   fs.writeFileSync(dockerUpdater, "fixture\n");
-  for (const file of [sudo, helper, node]) fs.chmodSync(file, 0o755);
+  for (const file of [sudo, helper, node, codexUpdater]) fs.chmodSync(file, 0o755);
   const env = {
     ...process.env,
     DAILY_UPDATE_SUDO_BIN: sudo,
     DIETPI_UPDATE_HELPER: helper,
     DAILY_UPDATE_NODE_BIN: node,
     DOCKER_UPDATE_SCRIPT: dockerUpdater,
+    CODEX_CLI_UPDATE_SCRIPT: codexUpdater,
   };
-  for (const stage of ["dietpi", "home-assistant-core", "containers"]) {
+  for (const stage of ["dietpi", "home-assistant-core", "containers", "codex-cli"]) {
     const result = spawnSync(runScript, [stage], { encoding: "utf8", env });
     assert.equal(result.status, 0, result.stderr);
   }
@@ -409,7 +413,102 @@ test("each host stage invokes only its own updater", () => {
     "dietpi",
     `${dockerUpdater} home-assistant-core`,
     `${dockerUpdater} containers`,
+    "codex-cli",
   ]);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("Codex CLI updater resolves an exact version and skips an already current install", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "codex-cli-update-test-"));
+  const prefix = path.join(fixture, ".local");
+  const bin = path.join(prefix, "bin");
+  const codex = path.join(bin, "codex");
+  const npm = path.join(fixture, "npm");
+  const calls = path.join(fixture, "calls");
+  fs.mkdirSync(bin, { recursive: true });
+  fs.writeFileSync(codex, "#!/bin/sh\necho 'codex-cli 0.151.0'\n");
+  fs.writeFileSync(
+    npm,
+    `#!/bin/sh
+printf '%s\\n' "$*" >> "${calls}"
+if [ "$1" = "view" ]; then
+  echo '0.155.1'
+  exit 0
+fi
+cat > "${codex}" <<'EOF'
+#!/bin/sh
+echo 'codex-cli 0.155.1'
+EOF
+chmod 0755 "${codex}"
+`,
+  );
+  fs.chmodSync(codex, 0o755);
+  fs.chmodSync(npm, 0o755);
+  const env = {
+    ...process.env,
+    CODEX_CLI_NPM_BIN: npm,
+    CODEX_CLI_PREFIX: prefix,
+    CODEX_CLI_BIN: codex,
+  };
+
+  const updated = spawnSync(updateCodexCli, [], { encoding: "utf8", env });
+  assert.equal(updated.status, 0, updated.stderr);
+  assert.match(updated.stdout, /status=success action=updated from=0\.151\.0 to=0\.155\.1/);
+  assert.match(fs.readFileSync(calls, "utf8"), /install --global --prefix .* @openai\/codex@0\.155\.1/);
+
+  fs.writeFileSync(calls, "");
+  const current = spawnSync(updateCodexCli, [], { encoding: "utf8", env });
+  assert.equal(current.status, 0, current.stderr);
+  assert.match(current.stdout, /status=success action=current from=0\.155\.1 to=0\.155\.1/);
+  assert.doesNotMatch(fs.readFileSync(calls, "utf8"), /install/);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("Codex CLI updater rolls back when the installed binary does not verify", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "codex-cli-rollback-test-"));
+  const prefix = path.join(fixture, ".local");
+  const bin = path.join(prefix, "bin");
+  const codex = path.join(bin, "codex");
+  const npm = path.join(fixture, "npm");
+  const calls = path.join(fixture, "calls");
+  fs.mkdirSync(bin, { recursive: true });
+  fs.writeFileSync(codex, "#!/bin/sh\necho 'codex-cli 0.151.0'\n");
+  fs.writeFileSync(
+    npm,
+    `#!/bin/sh
+printf '%s\\n' "$*" >> "${calls}"
+if [ "$1" = "view" ]; then
+  echo '0.155.1'
+  exit 0
+fi
+case "$*" in
+  *'@openai/codex@0.151.0'*) version='0.151.0' ;;
+  *) version='0.154.0' ;;
+esac
+cat > "${codex}" <<EOF
+#!/bin/sh
+echo 'codex-cli $version'
+EOF
+chmod 0755 "${codex}"
+`,
+  );
+  fs.chmodSync(codex, 0o755);
+  fs.chmodSync(npm, 0o755);
+
+  const result = spawnSync(updateCodexCli, [], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CODEX_CLI_NPM_BIN: npm,
+      CODEX_CLI_PREFIX: prefix,
+      CODEX_CLI_BIN: codex,
+    },
+  });
+  assert.equal(result.status, 70, result.stderr);
+  assert.match(result.stdout, /status=failed failure_stage=verify from=0\.151\.0 target=0\.155\.1/);
+  const installed = spawnSync(codex, [], { encoding: "utf8" });
+  assert.match(installed.stdout, /codex-cli 0\.151\.0/);
+  assert.match(fs.readFileSync(calls, "utf8"), /@openai\/codex@0\.151\.0/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
@@ -464,6 +563,7 @@ test("the cron installer migrates direct update schedules to Node-RED bridges", 
   assert.match(installed, /process-update-stage-request\.sh dietpi/);
   assert.match(installed, /process-update-stage-request\.sh home-assistant-core/);
   assert.match(installed, /process-update-stage-request\.sh containers/);
+  assert.match(installed, /process-update-stage-request\.sh codex-cli/);
   assert.match(installed, /process-repository-dependency-update-request\.sh/);
   assert.match(installed, /process-kia-uvo-update-request\.sh/);
   assert.match(installed, /process-alexa-media-update-request\.sh/);

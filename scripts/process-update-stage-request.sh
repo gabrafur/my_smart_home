@@ -3,8 +3,8 @@ set -eu
 
 stage="${1:-}"
 case "$stage" in
-  dietpi|home-assistant-core|containers) ;;
-  *) echo "Usage: $0 dietpi|home-assistant-core|containers" >&2; exit 64 ;;
+  dietpi|home-assistant-core|containers|codex-cli) ;;
+  *) echo "Usage: $0 dietpi|home-assistant-core|containers|codex-cli" >&2; exit 64 ;;
 esac
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)

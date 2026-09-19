@@ -73,7 +73,7 @@
         "type": "tab",
         "label": "atualizacoes_diarias",
         "disabled": false,
-        "info": "Orquestrador canônico de updates. Depois do backup Git, executa serialmente DietPi, Home Assistant Core e demais containers. Também inventaria toda entidade update.*; às 03:00, uma autorização efêmera permite atualizar Alexa Media e Kia UVO somente após auditoria de upstream, staging, backup, rollback e validação. Demais HACS versionados, firmware físico e fontes desconhecidas mantêm políticas visuais próprias. O Node-RED não recebe sudo, checkout, credenciais nem socket Docker.",
+        "info": "Orquestrador canônico de updates. Depois do backup Git, executa serialmente DietPi, Home Assistant Core, demais containers e Codex CLI antes das dependências do repositório. Também inventaria toda entidade update.*; às 03:00, uma autorização efêmera permite atualizar Alexa Media e Kia UVO somente após auditoria de upstream, staging, backup, rollback e validação. Demais HACS versionados, firmware físico e fontes desconhecidas mantêm políticas visuais próprias. O Node-RED não recebe sudo, npm, checkout, credenciais nem socket Docker.",
         "env": []
     },
     {
@@ -1024,7 +1024,7 @@
         "id": "daily_update_test_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "5. TESTES manuais completos sem sudo, apt, Docker, firmware ou reboot",
+        "name": "6. TESTES manuais completos sem sudo, apt, Docker, npm, firmware ou reboot",
         "style": {
             "label": true,
             "color": "#7d6ba8"
@@ -1050,7 +1050,7 @@
             "daily_update_dry_run_terminal"
         ],
         "x": 116,
-        "y": 1580,
+        "y": 2200,
         "w": 1132,
         "h": 582
     },
@@ -1058,7 +1058,7 @@
         "id": "daily_update_kia_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "11. SUBFLUXO HACS Bluelink: alvo exato e promoção segura autorizada",
+        "name": "12. SUBFLUXO HACS Bluelink: alvo exato e promoção segura autorizada",
         "style": {
             "label": true,
             "color": "#b58b3f"
@@ -1093,7 +1093,7 @@
             "daily_update_kia_codex_request_out"
         ],
         "x": 82,
-        "y": 4560,
+        "y": 5180,
         "w": 1958,
         "h": 552
     },
@@ -1101,7 +1101,7 @@
         "id": "daily_update_kia_codex_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "12. Candidato autorizado: Codex prepara; host aplica, valida e promove",
+        "name": "13. Candidato autorizado: Codex prepara; host aplica, valida e promove",
         "style": {
             "label": true,
             "color": "#8f6bb3"
@@ -1135,7 +1135,7 @@
             "daily_update_kia_promotion_result_test_out"
         ],
         "x": 104,
-        "y": 5180,
+        "y": 5800,
         "w": 1122,
         "h": 772
     },
@@ -1288,7 +1288,7 @@
             "daily_update_containers_test_result_in",
             "daily_update_containers_parse_result",
             "daily_update_containers_result_test_out",
-            "daily_update_dependency_chain_out"
+            "daily_update_codex_cli_request_out"
         ],
         "x": 82,
         "y": 1120,
@@ -1299,7 +1299,7 @@
         "id": "daily_update_inventory_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "6. ORQUESTRADOR update.*: parâmetros, inventário e roteamento canônico",
+        "name": "7. ORQUESTRADOR update.*: parâmetros, inventário e roteamento canônico",
         "style": {
             "label": true,
             "color": "#2f78a8"
@@ -1339,7 +1339,7 @@
             "daily_update_inventory_unknown_out"
         ],
         "x": 82,
-        "y": 2260,
+        "y": 2880,
         "w": 1607,
         "h": 742
     },
@@ -1347,7 +1347,7 @@
         "id": "daily_update_hacs_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "7. SUBFLUXO HACS versionado: detectar e exigir auditoria upstream",
+        "name": "8. SUBFLUXO HACS versionado: detectar e exigir auditoria upstream",
         "style": {
             "label": true,
             "color": "#b68c3a"
@@ -1363,7 +1363,7 @@
             "daily_update_hacs_test_out"
         ],
         "x": 82,
-        "y": 3050,
+        "y": 3670,
         "w": 1358,
         "h": 322
     },
@@ -1371,7 +1371,7 @@
         "id": "daily_update_unknown_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "8. SUBFLUXO desconhecido: fail closed sem update.install",
+        "name": "9. SUBFLUXO desconhecido: fail closed sem update.install",
         "style": {
             "label": true,
             "color": "#8a8a8a"
@@ -1384,7 +1384,7 @@
             "daily_update_unknown_test_out"
         ],
         "x": 1488,
-        "y": 3059,
+        "y": 3679,
         "w": 632,
         "h": 262
     },
@@ -1392,7 +1392,7 @@
         "id": "daily_update_firmware_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "10. SUBFLUXO firmware físico: automático desligado; aplicação manual explícita",
+        "name": "11. SUBFLUXO firmware físico: automático desligado; aplicação manual explícita",
         "style": {
             "label": true,
             "color": "#c45a50"
@@ -1424,7 +1424,7 @@
             "daily_update_firmware_queue_test_out"
         ],
         "x": 82,
-        "y": 3980,
+        "y": 4600,
         "w": 1932,
         "h": 522
     },
@@ -2531,7 +2531,7 @@
         "id": "daily_update_repository_dependency_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "13. SUBFLUXO dependências do repositório: audit, política e atualização segura",
+        "name": "14. SUBFLUXO dependências do repositório: audit, política e atualização segura",
         "style": {
             "label": true,
             "color": "#6d8f3f"
@@ -2585,7 +2585,7 @@
             "daily_update_dependency_backup_out"
         ],
         "x": 74,
-        "y": 6082,
+        "y": 6702,
         "w": 2462,
         "h": 736
     },
@@ -2593,7 +2593,7 @@
         "id": "daily_update_repository_dependency_test_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "13. TESTES da atualização de dependências: caminho completo sem npm, restart ou push",
+        "name": "15. TESTES da atualização de dependências: caminho completo sem npm, restart ou push",
         "style": {
             "label": true,
             "color": "#7d6ba8"
@@ -2609,7 +2609,7 @@
             "daily_update_dependency_test_result_out"
         ],
         "x": 64,
-        "y": 6882,
+        "y": 7502,
         "w": 1127,
         "h": 282
     },
@@ -3169,7 +3169,7 @@
         "id": "daily_update_alexa_media_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "9. SUBFLUXO Alexa Media: tag exata, auditoria, overlay, rollback e validação",
+        "name": "10. SUBFLUXO Alexa Media: tag exata, auditoria, overlay, rollback e validação",
         "style": {
             "label": true,
             "color": "#6e78b8"
@@ -3201,7 +3201,7 @@
             "daily_update_alexa_media_backup_out"
         ],
         "x": 234,
-        "y": 3396,
+        "y": 4016,
         "w": 1842,
         "h": 522
     },
@@ -24697,7 +24697,7 @@
         "name": "TESTE: 1) reset 2) solicitação, falha ou indisponibilidade 3) confira o terminal; todos os efeitos ficam bloqueados",
         "info": "Os testes entram nos mesmos validadores, roteadores e parser da produção. O terminal grava simulated=true e dispatched=false.",
         "x": 732,
-        "y": 1621,
+        "y": 2241,
         "wires": []
     },
     {
@@ -24719,7 +24719,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 262,
-        "y": 1701,
+        "y": 2321,
         "wires": [
             [
                 "daily_update_test_reset_state"
@@ -24732,7 +24732,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_test_group",
         "name": "Resetar teste",
-        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"host_update_dietpi_last_result_v1__test\", undefined);\nflow.set(\"host_update_home-assistant-core_last_result_v1__test\", undefined);\nflow.set(\"host_update_containers_last_result_v1__test\", undefined);\nflow.set(\"repository_dependency_last_result_v1__test\", undefined);\nflow.set(\"daily_update_inventory_last_v1__test\", undefined);\nflow.set(\"kia_uvo_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_codex_merge_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_promotion_last_result_v1__test\", undefined);\nflow.set(\"alexa_media_update_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"host_update_dietpi_last_result_v1__test\", undefined);\nflow.set(\"host_update_home-assistant-core_last_result_v1__test\", undefined);\nflow.set(\"host_update_containers_last_result_v1__test\", undefined);\nflow.set(\"host_update_codex-cli_last_result_v1__test\", undefined);\nflow.set(\"repository_dependency_last_result_v1__test\", undefined);\nflow.set(\"daily_update_inventory_last_v1__test\", undefined);\nflow.set(\"kia_uvo_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_codex_merge_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_promotion_last_result_v1__test\", undefined);\nflow.set(\"alexa_media_update_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -24740,7 +24740,7 @@
         "finalize": "",
         "libs": [],
         "x": 532,
-        "y": 1701,
+        "y": 2321,
         "wires": []
     },
     {
@@ -24769,7 +24769,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 292,
-        "y": 1761,
+        "y": 2381,
         "wires": [
             [
                 "daily_update_test_request_out"
@@ -24802,7 +24802,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 272,
-        "y": 1821,
+        "y": 2441,
         "wires": [
             [
                 "daily_update_test_result_out"
@@ -24835,7 +24835,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 292,
-        "y": 1881,
+        "y": 2501,
         "wires": [
             [
                 "daily_update_test_result_out"
@@ -24853,7 +24853,7 @@
             "daily_update_test_request_in"
         ],
         "x": 577,
-        "y": 1761,
+        "y": 2381,
         "wires": []
     },
     {
@@ -24867,7 +24867,7 @@
             "daily_update_test_result_in"
         ],
         "x": 577,
-        "y": 1851,
+        "y": 2471,
         "wires": []
     },
     {
@@ -24883,6 +24883,8 @@
             "daily_update_core_result_test_out",
             "daily_update_containers_request_test_out",
             "daily_update_containers_result_test_out",
+            "daily_update_codex_cli_request_test_out",
+            "daily_update_codex_cli_result_test_out",
             "daily_update_inventory_summary_test_out",
             "daily_update_inventory_nonpending_test_out",
             "daily_update_core_pending_test_out",
@@ -24902,7 +24904,7 @@
             "daily_update_dependency_summary_test_out"
         ],
         "x": 787,
-        "y": 1791,
+        "y": 2411,
         "wires": [
             [
                 "daily_update_dry_run_terminal"
@@ -24915,7 +24917,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_test_group",
         "name": "TESTE FINAL: host simulado",
-        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    apt_commands_sent: false,\n    home_assistant_core_update_sent: false,\n    docker_update_sent: false,\n    repository_dependency_update_sent: false,\n    npm_install_sent: false,\n    hacs_update_install_sent: false,\n    alexa_media_update_requested: false,\n    device_firmware_install_sent: false,\n    kia_uvo_update_check_sent: false,\n    kia_uvo_codex_merge_requested: false,\n    codex_worker_started: false,\n    git_push_sent: false,\n    status: msg.payload?.status ?? msg.payload?.event ?? \"request_prepared\",\n    completed_at: Date.now()\n};\nflow.set(\"daily_update_last_dry_run_v1\", result);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; host bloqueado\" });\nreturn null;",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    apt_commands_sent: false,\n    home_assistant_core_update_sent: false,\n    docker_update_sent: false,\n    codex_cli_update_sent: false,\n    repository_dependency_update_sent: false,\n    npm_install_sent: false,\n    hacs_update_install_sent: false,\n    alexa_media_update_requested: false,\n    device_firmware_install_sent: false,\n    kia_uvo_update_check_sent: false,\n    kia_uvo_codex_merge_requested: false,\n    codex_worker_started: false,\n    git_push_sent: false,\n    status: msg.payload?.status ?? msg.payload?.event ?? \"request_prepared\",\n    completed_at: Date.now()\n};\nflow.set(\"daily_update_last_dry_run_v1\", result);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; host bloqueado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -24923,7 +24925,7 @@
         "finalize": "",
         "libs": [],
         "x": 1102,
-        "y": 1791,
+        "y": 2411,
         "wires": []
     },
     {
@@ -24934,7 +24936,7 @@
         "name": "Inventário passa a versão exata; janela autorizada promove candidato compatível ou reconciliado pelo Codex",
         "info": "A varredura comum executa somente staging. Às 03:00 ou pelo botão PRODUÇÃO, o alvo exato detectado pelo HA segue para o worker Codex, inclusive quando o patch aplica limpo; o host revalida, aplica com backup/rollback, confirma o runtime e então envia main.",
         "x": 708,
-        "y": 4601,
+        "y": 5221,
         "wires": []
     },
     {
@@ -24947,7 +24949,7 @@
             "daily_update_inventory_kia_out"
         ],
         "x": 123,
-        "y": 4681,
+        "y": 5301,
         "wires": [
             [
                 "daily_update_kia_authorized"
@@ -24985,7 +24987,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 258,
-        "y": 4861,
+        "y": 5481,
         "wires": [
             [
                 "daily_update_kia_test_request_route_out"
@@ -25006,7 +25008,7 @@
         "finalize": "",
         "libs": [],
         "x": 1094,
-        "y": 4680,
+        "y": 5300,
         "wires": [
             [
                 "daily_update_kia_route_test"
@@ -25033,7 +25035,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1334,
-        "y": 4680,
+        "y": 5300,
         "wires": [
             [
                 "daily_update_kia_test_out"
@@ -25057,7 +25059,7 @@
         "oldrc": false,
         "name": "Solicitar check ao host",
         "x": 1594,
-        "y": 4720,
+        "y": 5340,
         "wires": [
             [
                 "daily_update_kia_request_ack"
@@ -25084,7 +25086,7 @@
         "finalize": "",
         "libs": [],
         "x": 1894,
-        "y": 4640,
+        "y": 5260,
         "wires": []
     },
     {
@@ -25101,7 +25103,7 @@
         "finalize": "",
         "libs": [],
         "x": 1894,
-        "y": 4720,
+        "y": 5340,
         "wires": []
     },
     {
@@ -25118,7 +25120,7 @@
         "finalize": "",
         "libs": [],
         "x": 1894,
-        "y": 4800,
+        "y": 5420,
         "wires": []
     },
     {
@@ -25132,7 +25134,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1544,
-        "y": 4640,
+        "y": 5260,
         "wires": []
     },
     {
@@ -25154,7 +25156,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 238,
-        "y": 4901,
+        "y": 5521,
         "wires": [
             [
                 "daily_update_kia_read_result"
@@ -25180,7 +25182,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 238,
-        "y": 4961,
+        "y": 5581,
         "wires": [
             [
                 "daily_update_kia_read_result"
@@ -25201,7 +25203,7 @@
         "oldrc": false,
         "name": "Ler resultado Kia seguro",
         "x": 518,
-        "y": 4931,
+        "y": 5551,
         "wires": [
             [
                 "daily_update_kia_parse_result"
@@ -25228,7 +25230,7 @@
         "finalize": "",
         "libs": [],
         "x": 848,
-        "y": 4981,
+        "y": 5601,
         "wires": []
     },
     {
@@ -25245,7 +25247,7 @@
         "finalize": "",
         "libs": [],
         "x": 838,
-        "y": 5041,
+        "y": 5661,
         "wires": []
     },
     {
@@ -25262,7 +25264,7 @@
         "finalize": "",
         "libs": [],
         "x": 868,
-        "y": 4921,
+        "y": 5541,
         "wires": [
             [
                 "daily_update_kia_result_test_out"
@@ -25283,7 +25285,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1133,
-        "y": 4931,
+        "y": 5551,
         "wires": []
     },
     {
@@ -25297,7 +25299,7 @@
             "daily_update_kia_codex_request_in"
         ],
         "x": 1163,
-        "y": 4991,
+        "y": 5611,
         "wires": []
     },
     {
@@ -25326,7 +25328,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 258,
-        "y": 5071,
+        "y": 5691,
         "wires": [
             [
                 "daily_update_kia_test_result_out"
@@ -25344,7 +25346,7 @@
             "daily_update_kia_test_result_in"
         ],
         "x": 543,
-        "y": 5071,
+        "y": 5691,
         "wires": []
     },
     {
@@ -25357,7 +25359,7 @@
             "daily_update_kia_test_result_out"
         ],
         "x": 633,
-        "y": 4861,
+        "y": 5481,
         "wires": [
             [
                 "daily_update_kia_parse_result"
@@ -25372,7 +25374,7 @@
         "name": "Codex isolado publica candidata; host valida runtime antes de promover main",
         "info": "A candidata do Codex não equivale a uma atualização concluída. O host revalida a candidata, instala pelo HACS, confirma a integração ativa e só então envia main e remove a branch. O Codex não recebe Docker nem token HA. O teste sintético nunca alcança este grupo.",
         "x": 735,
-        "y": 5221,
+        "y": 5841,
         "wires": []
     },
     {
@@ -25385,7 +25387,7 @@
             "daily_update_kia_codex_request_out"
         ],
         "x": 220,
-        "y": 5321,
+        "y": 5941,
         "wires": [
             [
                 "daily_update_kia_codex_request"
@@ -25406,7 +25408,7 @@
         "oldrc": false,
         "name": "Solicitar merge ao Codex",
         "x": 575,
-        "y": 5321,
+        "y": 5941,
         "wires": [
             [
                 "daily_update_kia_codex_ack"
@@ -25433,7 +25435,7 @@
         "finalize": "",
         "libs": [],
         "x": 915,
-        "y": 5281,
+        "y": 5901,
         "wires": []
     },
     {
@@ -25450,7 +25452,7 @@
         "finalize": "",
         "libs": [],
         "x": 925,
-        "y": 5341,
+        "y": 5961,
         "wires": []
     },
     {
@@ -25467,7 +25469,7 @@
         "finalize": "",
         "libs": [],
         "x": 915,
-        "y": 5401,
+        "y": 6021,
         "wires": []
     },
     {
@@ -25489,7 +25491,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 280,
-        "y": 5461,
+        "y": 6081,
         "wires": [
             [
                 "daily_update_kia_codex_read_result"
@@ -25515,7 +25517,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 295,
-        "y": 5521,
+        "y": 6141,
         "wires": [
             [
                 "daily_update_kia_codex_read_result"
@@ -25536,7 +25538,7 @@
         "oldrc": false,
         "name": "Ler status final do Codex",
         "x": 575,
-        "y": 5491,
+        "y": 6111,
         "wires": [
             [
                 "daily_update_kia_codex_parse_result"
@@ -25563,7 +25565,7 @@
         "finalize": "",
         "libs": [],
         "x": 875,
-        "y": 5551,
+        "y": 6171,
         "wires": []
     },
     {
@@ -25580,7 +25582,7 @@
         "finalize": "",
         "libs": [],
         "x": 875,
-        "y": 5611,
+        "y": 6231,
         "wires": []
     },
     {
@@ -25597,7 +25599,7 @@
         "finalize": "",
         "libs": [],
         "x": 885,
-        "y": 5491,
+        "y": 6111,
         "wires": [
             [
                 "daily_update_kia_codex_result_test_out"
@@ -25615,7 +25617,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1180,
-        "y": 5491,
+        "y": 6111,
         "wires": []
     },
     {
@@ -25644,7 +25646,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 295,
-        "y": 5571,
+        "y": 6191,
         "wires": [
             [
                 "daily_update_kia_codex_test_result_out"
@@ -25662,7 +25664,7 @@
             "daily_update_kia_codex_test_result_in"
         ],
         "x": 575,
-        "y": 5571,
+        "y": 6191,
         "wires": []
     },
     {
@@ -25675,7 +25677,7 @@
             "daily_update_kia_codex_test_result_out"
         ],
         "x": 685,
-        "y": 5571,
+        "y": 6191,
         "wires": [
             [
                 "daily_update_kia_codex_parse_result"
@@ -25701,7 +25703,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 290,
-        "y": 5671,
+        "y": 6291,
         "wires": [
             [
                 "daily_update_kia_promotion_read_result"
@@ -25727,7 +25729,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 280,
-        "y": 5731,
+        "y": 6351,
         "wires": [
             [
                 "daily_update_kia_promotion_read_result"
@@ -25748,7 +25750,7 @@
         "oldrc": false,
         "name": "Ler promoção segura",
         "x": 575,
-        "y": 5701,
+        "y": 6321,
         "wires": [
             [
                 "daily_update_kia_promotion_parse_result"
@@ -25775,7 +25777,7 @@
         "finalize": "",
         "libs": [],
         "x": 875,
-        "y": 5761,
+        "y": 6381,
         "wires": []
     },
     {
@@ -25792,7 +25794,7 @@
         "finalize": "",
         "libs": [],
         "x": 575,
-        "y": 5821,
+        "y": 6441,
         "wires": []
     },
     {
@@ -25809,7 +25811,7 @@
         "finalize": "",
         "libs": [],
         "x": 885,
-        "y": 5701,
+        "y": 6321,
         "wires": [
             [
                 "daily_update_kia_promotion_result_test_out"
@@ -25827,7 +25829,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1185,
-        "y": 5701,
+        "y": 6321,
         "wires": []
     },
     {
@@ -25856,7 +25858,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 290,
-        "y": 5911,
+        "y": 6531,
         "wires": [
             [
                 "daily_update_kia_promotion_test_result_out"
@@ -25874,7 +25876,7 @@
             "daily_update_kia_promotion_test_result_in"
         ],
         "x": 580,
-        "y": 5911,
+        "y": 6531,
         "wires": []
     },
     {
@@ -25887,7 +25889,7 @@
             "daily_update_kia_promotion_test_result_out"
         ],
         "x": 685,
-        "y": 5911,
+        "y": 6531,
         "wires": [
             [
                 "daily_update_kia_promotion_parse_result"
@@ -26694,7 +26696,7 @@
                 "daily_update_containers_result_test_out"
             ],
             [
-                "daily_update_dependency_chain_out"
+                "daily_update_codex_cli_request_out"
             ]
         ]
     },
@@ -26738,7 +26740,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 282,
-        "y": 1941,
+        "y": 2561,
         "wires": [
             [
                 "daily_update_core_test_request_out"
@@ -26756,7 +26758,7 @@
             "daily_update_core_test_request_in"
         ],
         "x": 557,
-        "y": 1941,
+        "y": 2561,
         "wires": []
     },
     {
@@ -26785,7 +26787,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 292,
-        "y": 2001,
+        "y": 2621,
         "wires": [
             [
                 "daily_update_core_test_result_out"
@@ -26803,7 +26805,7 @@
             "daily_update_core_test_result_in"
         ],
         "x": 607,
-        "y": 2001,
+        "y": 2621,
         "wires": []
     },
     {
@@ -26832,7 +26834,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 302,
-        "y": 2061,
+        "y": 2681,
         "wires": [
             [
                 "daily_update_containers_test_request_out"
@@ -26850,7 +26852,7 @@
             "daily_update_containers_test_request_in"
         ],
         "x": 617,
-        "y": 2061,
+        "y": 2681,
         "wires": []
     },
     {
@@ -26879,7 +26881,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 312,
-        "y": 2121,
+        "y": 2741,
         "wires": [
             [
                 "daily_update_containers_test_result_out"
@@ -26897,7 +26899,7 @@
             "daily_update_containers_test_result_in"
         ],
         "x": 647,
-        "y": 2121,
+        "y": 2741,
         "wires": []
     },
     {
@@ -26908,7 +26910,7 @@
         "name": "PARÂMETROS: scan 30 min; Alexa/Kia auto=true só na janela 03:00; firmware auto=false; candidato 40 min",
         "info": "A varredura periódica apenas detecta. A agenda diária das 03:00 ou o botão de produção concedem autorização efêmera. Alexa Media e Kia passam por auditoria, staging, backup, rollback e validação antes da instalação; demais HACS versionados continuam audit_only, Core usa stable e firmware físico permanece manual.",
         "x": 848,
-        "y": 2301,
+        "y": 2921,
         "wires": []
     },
     {
@@ -26937,7 +26939,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 268,
-        "y": 2401,
+        "y": 3021,
         "wires": [
             [
                 "daily_update_inventory_parameters"
@@ -26965,7 +26967,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 238,
-        "y": 2461,
+        "y": 3081,
         "wires": [
             [
                 "daily_update_inventory_parameters"
@@ -27003,7 +27005,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 258,
-        "y": 2641,
+        "y": 3261,
         "wires": [
             [
                 "daily_update_inventory_parameters"
@@ -27031,7 +27033,7 @@
         "to": "",
         "reg": false,
         "x": 548,
-        "y": 2461,
+        "y": 3081,
         "wires": [
             [
                 "daily_update_inventory_validate_policy"
@@ -27052,7 +27054,7 @@
         "finalize": "",
         "libs": [],
         "x": 848,
-        "y": 2461,
+        "y": 3081,
         "wires": [
             [
                 "daily_update_inventory_route_source",
@@ -27080,7 +27082,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1128,
-        "y": 2461,
+        "y": 3081,
         "wires": [
             [
                 "daily_update_inventory_test_snapshot_out"
@@ -27114,7 +27116,7 @@
             }
         ],
         "x": 1424,
-        "y": 2440,
+        "y": 3060,
         "wires": [
             [
                 "daily_update_inventory_real_snapshot_out"
@@ -27132,7 +27134,7 @@
             "daily_update_inventory_snapshot_in"
         ],
         "x": 1309,
-        "y": 2380,
+        "y": 3000,
         "wires": []
     },
     {
@@ -27146,7 +27148,7 @@
             "daily_update_inventory_snapshot_in"
         ],
         "x": 1604,
-        "y": 2440,
+        "y": 3060,
         "wires": []
     },
     {
@@ -27160,7 +27162,7 @@
             "daily_update_inventory_real_snapshot_out"
         ],
         "x": 133,
-        "y": 2821,
+        "y": 3441,
         "wires": [
             [
                 "daily_update_inventory_normalize"
@@ -27181,7 +27183,7 @@
         "finalize": "",
         "libs": [],
         "x": 458,
-        "y": 2821,
+        "y": 3441,
         "wires": [
             [
                 "daily_update_inventory_state"
@@ -27218,7 +27220,7 @@
         "repair": false,
         "outputs": 3,
         "x": 768,
-        "y": 2781,
+        "y": 3401,
         "wires": [
             [
                 "daily_update_inventory_classify"
@@ -27278,7 +27280,7 @@
         "repair": false,
         "outputs": 6,
         "x": 1234,
-        "y": 2780,
+        "y": 3400,
         "wires": [
             [
                 "daily_update_inventory_kia_out"
@@ -27314,7 +27316,7 @@
         "finalize": "",
         "libs": [],
         "x": 498,
-        "y": 2901,
+        "y": 3521,
         "wires": [
             [
                 "daily_update_inventory_summary_test_out"
@@ -27335,7 +27337,7 @@
         "finalize": "",
         "libs": [],
         "x": 1154,
-        "y": 2860,
+        "y": 3480,
         "wires": [
             [
                 "daily_update_inventory_nonpending_test_out"
@@ -27356,7 +27358,7 @@
         "finalize": "",
         "libs": [],
         "x": 1078,
-        "y": 2961,
+        "y": 3581,
         "wires": [
             [
                 "daily_update_inventory_nonpending_test_out"
@@ -27374,7 +27376,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 648,
-        "y": 2941,
+        "y": 3561,
         "wires": []
     },
     {
@@ -27388,7 +27390,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1378,
-        "y": 2911,
+        "y": 3531,
         "wires": []
     },
     {
@@ -27402,7 +27404,7 @@
             "daily_update_kia_schedule"
         ],
         "x": 1558,
-        "y": 2681,
+        "y": 3301,
         "wires": []
     },
     {
@@ -27416,7 +27418,7 @@
             "daily_update_firmware_in"
         ],
         "x": 1558,
-        "y": 2731,
+        "y": 3351,
         "wires": []
     },
     {
@@ -27430,7 +27432,7 @@
             "daily_update_core_pending_in"
         ],
         "x": 1558,
-        "y": 2781,
+        "y": 3401,
         "wires": []
     },
     {
@@ -27444,7 +27446,7 @@
             "daily_update_hacs_in"
         ],
         "x": 1558,
-        "y": 2881,
+        "y": 3501,
         "wires": []
     },
     {
@@ -27458,7 +27460,7 @@
             "daily_update_unknown_in"
         ],
         "x": 1558,
-        "y": 2931,
+        "y": 3551,
         "wires": []
     },
     {
@@ -27471,7 +27473,7 @@
             "daily_update_inventory_hacs_out"
         ],
         "x": 123,
-        "y": 3151,
+        "y": 3771,
         "wires": [
             [
                 "daily_update_hacs_state"
@@ -27505,7 +27507,7 @@
         "repair": false,
         "outputs": 3,
         "x": 368,
-        "y": 3151,
+        "y": 3771,
         "wires": [
             [
                 "daily_update_hacs_test_gate"
@@ -27538,7 +27540,7 @@
         "repair": false,
         "outputs": 2,
         "x": 648,
-        "y": 3111,
+        "y": 3731,
         "wires": [
             [
                 "daily_update_hacs_test_out"
@@ -27562,7 +27564,7 @@
         "property": "payload.signature",
         "topi": "topic",
         "x": 918,
-        "y": 3131,
+        "y": 3751,
         "wires": [
             [
                 "daily_update_hacs_pending"
@@ -27583,7 +27585,7 @@
         "finalize": "",
         "libs": [],
         "x": 1264,
-        "y": 3120,
+        "y": 3740,
         "wires": []
     },
     {
@@ -27600,7 +27602,7 @@
         "finalize": "",
         "libs": [],
         "x": 774,
-        "y": 3180,
+        "y": 3800,
         "wires": []
     },
     {
@@ -27617,7 +27619,7 @@
         "finalize": "",
         "libs": [],
         "x": 518,
-        "y": 3331,
+        "y": 3951,
         "wires": []
     },
     {
@@ -27631,7 +27633,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 863,
-        "y": 3091,
+        "y": 3711,
         "wires": []
     },
     {
@@ -27644,7 +27646,7 @@
             "daily_update_inventory_unknown_out"
         ],
         "x": 1529,
-        "y": 3140,
+        "y": 3760,
         "wires": [
             [
                 "daily_update_unknown_test_gate"
@@ -27671,7 +27673,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1764,
-        "y": 3140,
+        "y": 3760,
         "wires": [
             [
                 "daily_update_unknown_test_out"
@@ -27695,7 +27697,7 @@
         "property": "payload.signature",
         "topi": "topic",
         "x": 1794,
-        "y": 3200,
+        "y": 3820,
         "wires": [
             [
                 "daily_update_unknown_pending"
@@ -27716,7 +27718,7 @@
         "finalize": "",
         "libs": [],
         "x": 1934,
-        "y": 3280,
+        "y": 3900,
         "wires": []
     },
     {
@@ -27730,7 +27732,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 2014,
-        "y": 3100,
+        "y": 3720,
         "wires": []
     },
     {
@@ -27741,7 +27743,7 @@
         "name": "Firmware pode interromper Zigbee/Z-Wave; padrão auto=false. Botão consome candidato visto há no máximo 40 min",
         "info": "O inventário gerencia e deduplica firmware, mas não confunde equipamento físico com update de software. Para habilitar automação, edite o parâmetro visual; o gate final continua separando produção e TESTE.",
         "x": 848,
-        "y": 4021,
+        "y": 4641,
         "wires": []
     },
     {
@@ -27754,7 +27756,7 @@
             "daily_update_inventory_firmware_out"
         ],
         "x": 133,
-        "y": 4141,
+        "y": 4761,
         "wires": [
             [
                 "daily_update_firmware_state"
@@ -27788,7 +27790,7 @@
         "repair": false,
         "outputs": 3,
         "x": 368,
-        "y": 4141,
+        "y": 4761,
         "wires": [
             [
                 "daily_update_firmware_auto"
@@ -27821,7 +27823,7 @@
         "repair": false,
         "outputs": 2,
         "x": 698,
-        "y": 4101,
+        "y": 4721,
         "wires": [
             [
                 "daily_update_firmware_auto_effect_out"
@@ -27851,7 +27853,7 @@
         "repair": false,
         "outputs": 2,
         "x": 988,
-        "y": 4141,
+        "y": 4761,
         "wires": [
             [
                 "daily_update_firmware_queue_test_out"
@@ -27875,7 +27877,7 @@
         "finalize": "",
         "libs": [],
         "x": 1258,
-        "y": 4141,
+        "y": 4761,
         "wires": [
             [
                 "daily_update_firmware_pending_rbe"
@@ -27896,7 +27898,7 @@
         "property": "payload.signature",
         "topi": "topic",
         "x": 1538,
-        "y": 4141,
+        "y": 4761,
         "wires": [
             [
                 "daily_update_firmware_pending"
@@ -27917,7 +27919,7 @@
         "finalize": "",
         "libs": [],
         "x": 1838,
-        "y": 4141,
+        "y": 4761,
         "wires": []
     },
     {
@@ -27934,7 +27936,7 @@
         "finalize": "",
         "libs": [],
         "x": 698,
-        "y": 4221,
+        "y": 4841,
         "wires": []
     },
     {
@@ -27951,7 +27953,7 @@
         "finalize": "",
         "libs": [],
         "x": 668,
-        "y": 4281,
+        "y": 4901,
         "wires": []
     },
     {
@@ -27975,7 +27977,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 288,
-        "y": 4381,
+        "y": 5001,
         "wires": [
             [
                 "daily_update_firmware_take_candidate"
@@ -27996,7 +27998,7 @@
         "finalize": "",
         "libs": [],
         "x": 624,
-        "y": 4380,
+        "y": 5000,
         "wires": [
             [
                 "daily_update_firmware_fresh"
@@ -28023,7 +28025,7 @@
         "repair": false,
         "outputs": 2,
         "x": 934,
-        "y": 4380,
+        "y": 5000,
         "wires": [
             [
                 "daily_update_firmware_manual_effect_out"
@@ -28059,7 +28061,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 308,
-        "y": 4441,
+        "y": 5061,
         "wires": [
             [
                 "daily_update_firmware_test_effect_out"
@@ -28077,7 +28079,7 @@
             "daily_update_firmware_effect_in"
         ],
         "x": 948,
-        "y": 4081,
+        "y": 4701,
         "wires": []
     },
     {
@@ -28091,7 +28093,7 @@
             "daily_update_firmware_effect_in"
         ],
         "x": 1118,
-        "y": 4361,
+        "y": 4981,
         "wires": []
     },
     {
@@ -28105,7 +28107,7 @@
             "daily_update_firmware_effect_in"
         ],
         "x": 568,
-        "y": 4441,
+        "y": 5061,
         "wires": []
     },
     {
@@ -28120,7 +28122,7 @@
             "daily_update_firmware_test_effect_out"
         ],
         "x": 1143,
-        "y": 4321,
+        "y": 4941,
         "wires": [
             [
                 "daily_update_firmware_final_test_gate"
@@ -28138,7 +28140,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1139,
-        "y": 4100,
+        "y": 4720,
         "wires": []
     },
     {
@@ -28161,7 +28163,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1338,
-        "y": 4321,
+        "y": 4941,
         "wires": [
             [
                 "daily_update_firmware_test_out"
@@ -28196,7 +28198,7 @@
         "domain": "update",
         "service": "install",
         "x": 1528,
-        "y": 4381,
+        "y": 5001,
         "wires": [
             [
                 "daily_update_firmware_installed"
@@ -28217,7 +28219,7 @@
         "finalize": "",
         "libs": [],
         "x": 1508,
-        "y": 4441,
+        "y": 5061,
         "wires": []
     },
     {
@@ -28234,7 +28236,7 @@
         "finalize": "",
         "libs": [],
         "x": 918,
-        "y": 4461,
+        "y": 5081,
         "wires": []
     },
     {
@@ -28248,7 +28250,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1558,
-        "y": 4301,
+        "y": 4921,
         "wires": []
     },
     {
@@ -28268,7 +28270,7 @@
         "repair": false,
         "outputs": 1,
         "x": 1098,
-        "y": 2521,
+        "y": 3141,
         "wires": [
             [
                 "daily_update_inventory_schedule_delay_value"
@@ -28296,7 +28298,7 @@
         "to": "",
         "reg": false,
         "x": 1368,
-        "y": 2521,
+        "y": 3141,
         "wires": [
             [
                 "daily_update_inventory_schedule_delay"
@@ -28322,7 +28324,7 @@
         "allowrate": false,
         "outputs": 1,
         "x": 1478,
-        "y": 2581,
+        "y": 3201,
         "wires": [
             [
                 "daily_update_inventory_schedule_loop_out"
@@ -28340,7 +28342,7 @@
             "daily_update_inventory_schedule_loop_in"
         ],
         "x": 1648,
-        "y": 2581,
+        "y": 3201,
         "wires": []
     },
     {
@@ -28353,7 +28355,7 @@
             "daily_update_inventory_schedule_loop_out"
         ],
         "x": 133,
-        "y": 2581,
+        "y": 3201,
         "wires": [
             [
                 "daily_update_inventory_parameters"
@@ -28364,14 +28366,14 @@
         "id": "daily_update_dependency_chain_out",
         "type": "link out",
         "z": "daily_host_updates_tab",
-        "g": "daily_update_containers_group",
-        "name": "Containers concluídos → dependências",
+        "g": "daily_update_codex_cli_group",
+        "name": "Codex CLI concluído → dependências",
         "mode": "link",
         "links": [
             "daily_update_dependency_chain_in"
         ],
-        "x": 1274,
-        "y": 1460,
+        "x": 1280,
+        "y": 2020,
         "wires": []
     },
     {
@@ -28382,7 +28384,7 @@
         "name": "POLÍTICA: override exato + correção disponível + mesma major + qualquer severidade → aplicar",
         "info": "O npm audit é apenas o produtor. Switches visuais autorizam somente overrides exatos com correção disponível. O worker mantém a mesma major, atualiza lock, revalida audit e flows, instala no runtime e reinicia somente o Node-RED com rollback. Sucesso solicita o backup Git canônico.",
         "x": 1000,
-        "y": 6123,
+        "y": 6743,
         "wires": []
     },
     {
@@ -28395,7 +28397,7 @@
             "daily_update_dependency_chain_out"
         ],
         "x": 115,
-        "y": 6203,
+        "y": 6823,
         "wires": [
             [
                 "daily_update_dependency_policy"
@@ -28421,7 +28423,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 254,
-        "y": 6137,
+        "y": 6757,
         "wires": [
             [
                 "daily_update_dependency_policy"
@@ -28438,7 +28440,7 @@
             "daily_update_dependency_test_source_out"
         ],
         "x": 115,
-        "y": 6323,
+        "y": 6943,
         "wires": [
             [
                 "daily_update_dependency_policy"
@@ -28466,7 +28468,7 @@
         "to": "",
         "reg": false,
         "x": 530,
-        "y": 6233,
+        "y": 6853,
         "wires": [
             [
                 "daily_update_dependency_source"
@@ -28493,7 +28495,7 @@
         "repair": false,
         "outputs": 2,
         "x": 810,
-        "y": 6233,
+        "y": 6853,
         "wires": [
             [
                 "daily_update_dependency_normalize"
@@ -28517,7 +28519,7 @@
         "oldrc": false,
         "name": "Produzir npm audit sanitizado",
         "x": 1090,
-        "y": 6223,
+        "y": 6843,
         "wires": [
             [
                 "daily_update_dependency_normalize"
@@ -28544,7 +28546,7 @@
         "finalize": "",
         "libs": [],
         "x": 1380,
-        "y": 6133,
+        "y": 6753,
         "wires": []
     },
     {
@@ -28561,7 +28563,7 @@
         "finalize": "",
         "libs": [],
         "x": 1380,
-        "y": 6243,
+        "y": 6863,
         "wires": []
     },
     {
@@ -28578,7 +28580,7 @@
         "finalize": "",
         "libs": [],
         "x": 1280,
-        "y": 6323,
+        "y": 6943,
         "wires": [
             [
                 "daily_update_dependency_candidate_out"
@@ -28602,7 +28604,7 @@
         "finalize": "",
         "libs": [],
         "x": 1754,
-        "y": 6250,
+        "y": 6870,
         "wires": [
             [
                 "daily_update_dependency_summary_test_out"
@@ -28629,7 +28631,7 @@
         "repair": false,
         "outputs": 2,
         "x": 250,
-        "y": 6423,
+        "y": 7043,
         "wires": [
             [
                 "daily_update_dependency_surface_gate"
@@ -28661,7 +28663,7 @@
         "repair": false,
         "outputs": 2,
         "x": 510,
-        "y": 6423,
+        "y": 7043,
         "wires": [
             [
                 "daily_update_dependency_severity_gate"
@@ -28694,7 +28696,7 @@
         "repair": false,
         "outputs": 2,
         "x": 790,
-        "y": 6423,
+        "y": 7043,
         "wires": [
             [
                 "daily_update_dependency_auto_gate"
@@ -28724,7 +28726,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1070,
-        "y": 6423,
+        "y": 7043,
         "wires": [
             [
                 "daily_update_dependency_dedupe"
@@ -28748,7 +28750,7 @@
         "property": "payload.signature",
         "topi": "topic",
         "x": 1320,
-        "y": 6423,
+        "y": 7043,
         "wires": [
             [
                 "daily_update_dependency_prepare"
@@ -28769,7 +28771,7 @@
         "finalize": "",
         "libs": [],
         "x": 1540,
-        "y": 6423,
+        "y": 7043,
         "wires": [
             [
                 "daily_update_dependency_final_gate"
@@ -28796,7 +28798,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1800,
-        "y": 6423,
+        "y": 7043,
         "wires": [
             [
                 "daily_update_dependency_test_out"
@@ -28817,7 +28819,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 2085,
-        "y": 6383,
+        "y": 7003,
         "wires": []
     },
     {
@@ -28834,7 +28836,7 @@
         "oldrc": false,
         "name": "Solicitar atualização ao host",
         "x": 2070,
-        "y": 6463,
+        "y": 7083,
         "wires": [
             [
                 "daily_update_dependency_request_ack"
@@ -28861,7 +28863,7 @@
         "finalize": "",
         "libs": [],
         "x": 2390,
-        "y": 6423,
+        "y": 7043,
         "wires": []
     },
     {
@@ -28878,7 +28880,7 @@
         "finalize": "",
         "libs": [],
         "x": 2390,
-        "y": 6483,
+        "y": 7103,
         "wires": []
     },
     {
@@ -28895,7 +28897,7 @@
         "finalize": "",
         "libs": [],
         "x": 2390,
-        "y": 6543,
+        "y": 7163,
         "wires": []
     },
     {
@@ -28912,7 +28914,7 @@
         "finalize": "",
         "libs": [],
         "x": 1110,
-        "y": 6543,
+        "y": 7163,
         "wires": [
             [
                 "daily_update_dependency_blocked_test_out"
@@ -28930,7 +28932,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1325,
-        "y": 6503,
+        "y": 7123,
         "wires": []
     },
     {
@@ -28952,7 +28954,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 240,
-        "y": 6623,
+        "y": 7243,
         "wires": [
             [
                 "daily_update_dependency_read_result"
@@ -28978,7 +28980,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 250,
-        "y": 6683,
+        "y": 7303,
         "wires": [
             [
                 "daily_update_dependency_read_result"
@@ -28999,7 +29001,7 @@
         "oldrc": false,
         "name": "Ler resultado npm seguro",
         "x": 540,
-        "y": 6653,
+        "y": 7273,
         "wires": [
             [
                 "daily_update_dependency_parse_result"
@@ -29026,7 +29028,7 @@
         "finalize": "",
         "libs": [],
         "x": 780,
-        "y": 6733,
+        "y": 7353,
         "wires": []
     },
     {
@@ -29043,7 +29045,7 @@
         "finalize": "",
         "libs": [],
         "x": 774,
-        "y": 6777,
+        "y": 7397,
         "wires": []
     },
     {
@@ -29056,7 +29058,7 @@
             "daily_update_dependency_test_result_out"
         ],
         "x": 850,
-        "y": 6573,
+        "y": 7193,
         "wires": [
             [
                 "daily_update_dependency_parse_result"
@@ -29077,7 +29079,7 @@
         "finalize": "",
         "libs": [],
         "x": 1030,
-        "y": 6653,
+        "y": 7273,
         "wires": [
             [
                 "daily_update_dependency_result_test_out"
@@ -29101,7 +29103,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1290,
-        "y": 6613,
+        "y": 7233,
         "wires": []
     },
     {
@@ -29123,7 +29125,7 @@
         "allowrate": false,
         "outputs": 1,
         "x": 1350,
-        "y": 6703,
+        "y": 7323,
         "wires": [
             [
                 "daily_update_dependency_retry_out"
@@ -29141,7 +29143,7 @@
             "git_backup_request_in"
         ],
         "x": 1450,
-        "y": 6613,
+        "y": 7233,
         "wires": []
     },
     {
@@ -29152,7 +29154,7 @@
         "name": "TESTE: 1) reset 2) elegível ou transitive bloqueado 3) resultado; confira o terminal dry-run",
         "info": "Os candidatos sintéticos atravessam normalização, política, dedupe e gate final. Nenhum npm install, restart ou push é executado.",
         "x": 670,
-        "y": 6923,
+        "y": 7543,
         "wires": []
     },
     {
@@ -29176,7 +29178,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 220,
-        "y": 7003,
+        "y": 7623,
         "wires": [
             [
                 "daily_update_dependency_test_reset_out"
@@ -29209,7 +29211,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 230,
-        "y": 7063,
+        "y": 7683,
         "wires": [
             [
                 "daily_update_dependency_test_source_out"
@@ -29242,7 +29244,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 240,
-        "y": 7123,
+        "y": 7743,
         "wires": [
             [
                 "daily_update_dependency_test_source_out"
@@ -29260,7 +29262,7 @@
             "daily_update_dependency_test_source_in"
         ],
         "x": 540,
-        "y": 7093,
+        "y": 7713,
         "wires": []
     },
     {
@@ -29289,7 +29291,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 850,
-        "y": 7063,
+        "y": 7683,
         "wires": [
             [
                 "daily_update_dependency_test_result_out"
@@ -29307,7 +29309,7 @@
             "daily_update_dependency_test_result_in"
         ],
         "x": 1150,
-        "y": 7063,
+        "y": 7683,
         "wires": []
     },
     {
@@ -29321,7 +29323,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1854,
-        "y": 6330,
+        "y": 6950,
         "wires": []
     },
     {
@@ -29335,7 +29337,7 @@
             "daily_update_dependency_candidate_in"
         ],
         "x": 1540,
-        "y": 6323,
+        "y": 6943,
         "wires": []
     },
     {
@@ -29348,7 +29350,7 @@
             "daily_update_dependency_candidate_out"
         ],
         "x": 115,
-        "y": 6423,
+        "y": 7043,
         "wires": [
             [
                 "daily_update_dependency_fix_gate"
@@ -29366,7 +29368,7 @@
             "daily_update_dependency_blocked_in"
         ],
         "x": 420,
-        "y": 6483,
+        "y": 7103,
         "wires": []
     },
     {
@@ -29380,7 +29382,7 @@
             "daily_update_dependency_blocked_in"
         ],
         "x": 690,
-        "y": 6483,
+        "y": 7103,
         "wires": []
     },
     {
@@ -29394,7 +29396,7 @@
             "daily_update_dependency_blocked_in"
         ],
         "x": 960,
-        "y": 6483,
+        "y": 7103,
         "wires": []
     },
     {
@@ -29408,7 +29410,7 @@
             "daily_update_dependency_blocked_in"
         ],
         "x": 1220,
-        "y": 6483,
+        "y": 7103,
         "wires": []
     },
     {
@@ -29424,7 +29426,7 @@
             "daily_update_dependency_blocked_from_auto"
         ],
         "x": 880,
-        "y": 6543,
+        "y": 7163,
         "wires": [
             [
                 "daily_update_dependency_blocked"
@@ -29442,7 +29444,7 @@
             "daily_update_dependency_retry_in"
         ],
         "x": 1560,
-        "y": 6703,
+        "y": 7323,
         "wires": []
     },
     {
@@ -29455,7 +29457,7 @@
             "daily_update_dependency_retry_out"
         ],
         "x": 335,
-        "y": 6773,
+        "y": 7393,
         "wires": [
             [
                 "daily_update_dependency_read_result"
@@ -29472,7 +29474,7 @@
             "daily_update_dependency_test_reset_out"
         ],
         "x": 1160,
-        "y": 6363,
+        "y": 6983,
         "wires": [
             [
                 "daily_update_dependency_dedupe"
@@ -29490,7 +29492,7 @@
             "daily_update_dependency_test_reset_in"
         ],
         "x": 490,
-        "y": 7003,
+        "y": 7623,
         "wires": []
     },
     {
@@ -29519,7 +29521,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 274,
-        "y": 2500,
+        "y": 3120,
         "wires": [
             [
                 "daily_update_inventory_parameters"
@@ -29552,7 +29554,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 354,
-        "y": 2560,
+        "y": 3180,
         "wires": [
             [
                 "daily_update_inventory_parameters"
@@ -29570,7 +29572,7 @@
             "daily_update_alexa_media_in"
         ],
         "x": 1558,
-        "y": 2831,
+        "y": 3451,
         "wires": []
     },
     {
@@ -29581,7 +29583,7 @@
         "name": "Só instala na janela autorizada: resolve tag/commit, preserva licença e delta, valida staging e runtime",
         "info": "A varredura comum apenas registra a pendência. Às 03:00 ou pelo botão PRODUÇÃO, o host compara a base oficial byte a byte, aceita somente deltas allowlisted, cria backup, instala a versão exata via HACS, reaplica o staging e confirma registros, Recorder e entidades. Qualquer falha restaura a versão anterior.",
         "x": 990,
-        "y": 3437,
+        "y": 4057,
         "wires": []
     },
     {
@@ -29594,7 +29596,7 @@
             "daily_update_inventory_alexa_out"
         ],
         "x": 275,
-        "y": 3537,
+        "y": 4157,
         "wires": [
             [
                 "daily_update_alexa_media_authorized"
@@ -29621,7 +29623,7 @@
         "repair": false,
         "outputs": 2,
         "x": 540,
-        "y": 3537,
+        "y": 4157,
         "wires": [
             [
                 "daily_update_alexa_media_policy"
@@ -29651,7 +29653,7 @@
         "repair": false,
         "outputs": 2,
         "x": 840,
-        "y": 3497,
+        "y": 4117,
         "wires": [
             [
                 "daily_update_alexa_media_prepare"
@@ -29675,7 +29677,7 @@
         "property": "payload.signature",
         "topi": "topic",
         "x": 870,
-        "y": 3577,
+        "y": 4197,
         "wires": [
             [
                 "daily_update_alexa_media_pending"
@@ -29696,7 +29698,7 @@
         "finalize": "",
         "libs": [],
         "x": 1120,
-        "y": 3577,
+        "y": 4197,
         "wires": []
     },
     {
@@ -29713,7 +29715,7 @@
         "finalize": "",
         "libs": [],
         "x": 1110,
-        "y": 3497,
+        "y": 4117,
         "wires": [
             [
                 "daily_update_alexa_media_final_gate"
@@ -29740,7 +29742,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1380,
-        "y": 3497,
+        "y": 4117,
         "wires": [
             [
                 "daily_update_alexa_media_test_out"
@@ -29761,7 +29763,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1700,
-        "y": 3457,
+        "y": 4077,
         "wires": []
     },
     {
@@ -29778,7 +29780,7 @@
         "oldrc": false,
         "name": "Solicitar atualização auditada ao host",
         "x": 1640,
-        "y": 3537,
+        "y": 4157,
         "wires": [
             [
                 "daily_update_alexa_media_request_ack"
@@ -29805,7 +29807,7 @@
         "finalize": "",
         "libs": [],
         "x": 1660,
-        "y": 3597,
+        "y": 4217,
         "wires": []
     },
     {
@@ -29822,7 +29824,7 @@
         "finalize": "",
         "libs": [],
         "x": 1930,
-        "y": 3637,
+        "y": 4257,
         "wires": []
     },
     {
@@ -29839,7 +29841,7 @@
         "finalize": "",
         "libs": [],
         "x": 1660,
-        "y": 3657,
+        "y": 4277,
         "wires": []
     },
     {
@@ -29861,7 +29863,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 390,
-        "y": 3737,
+        "y": 4357,
         "wires": [
             [
                 "daily_update_alexa_media_read_result"
@@ -29887,7 +29889,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 410,
-        "y": 3797,
+        "y": 4417,
         "wires": [
             [
                 "daily_update_alexa_media_read_result"
@@ -29908,7 +29910,7 @@
         "oldrc": false,
         "name": "Ler resultado Alexa seguro",
         "x": 700,
-        "y": 3767,
+        "y": 4387,
         "wires": [
             [
                 "daily_update_alexa_media_parse_result"
@@ -29935,7 +29937,7 @@
         "finalize": "",
         "libs": [],
         "x": 980,
-        "y": 3717,
+        "y": 4337,
         "wires": []
     },
     {
@@ -29952,7 +29954,7 @@
         "finalize": "",
         "libs": [],
         "x": 980,
-        "y": 3837,
+        "y": 4457,
         "wires": []
     },
     {
@@ -29969,7 +29971,7 @@
         "finalize": "",
         "libs": [],
         "x": 1020,
-        "y": 3767,
+        "y": 4387,
         "wires": [
             [
                 "daily_update_alexa_media_result_dry_out"
@@ -30005,7 +30007,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 1260,
-        "y": 3877,
+        "y": 4497,
         "wires": [
             [
                 "daily_update_alexa_media_result_test_out"
@@ -30023,7 +30025,7 @@
             "daily_update_alexa_media_result_test_in"
         ],
         "x": 1540,
-        "y": 3877,
+        "y": 4497,
         "wires": []
     },
     {
@@ -30036,7 +30038,7 @@
             "daily_update_alexa_media_result_test_out"
         ],
         "x": 765,
-        "y": 3877,
+        "y": 4497,
         "wires": [
             [
                 "daily_update_alexa_media_parse_result"
@@ -30054,7 +30056,7 @@
             "daily_update_dry_run_in"
         ],
         "x": 1300,
-        "y": 3727,
+        "y": 4347,
         "wires": []
     },
     {
@@ -30068,7 +30070,7 @@
             "git_backup_request_in"
         ],
         "x": 1320,
-        "y": 3807,
+        "y": 4427,
         "wires": []
     },
     {
@@ -30091,7 +30093,7 @@
         "repair": false,
         "outputs": 2,
         "x": 384,
-        "y": 4680,
+        "y": 5300,
         "wires": [
             [
                 "daily_update_kia_auto_policy"
@@ -30121,7 +30123,7 @@
         "repair": false,
         "outputs": 2,
         "x": 664,
-        "y": 4640,
+        "y": 5260,
         "wires": [
             [
                 "daily_update_kia_mode_install"
@@ -30152,7 +30154,7 @@
         "to": "",
         "reg": false,
         "x": 664,
-        "y": 4720,
+        "y": 5340,
         "wires": [
             [
                 "daily_update_kia_prepare"
@@ -30180,7 +30182,7 @@
         "to": "",
         "reg": false,
         "x": 904,
-        "y": 4640,
+        "y": 5260,
         "wires": [
             [
                 "daily_update_kia_prepare"
@@ -30198,7 +30200,7 @@
             "daily_update_kia_test_request_route_in"
         ],
         "x": 514,
-        "y": 4800,
+        "y": 5420,
         "wires": []
     },
     {
@@ -30211,12 +30213,512 @@
             "daily_update_kia_test_request_route_out"
         ],
         "x": 854,
-        "y": 4780,
+        "y": 5400,
         "wires": [
             [
                 "daily_update_kia_prepare"
             ]
         ]
+    },
+    {
+        "id": "daily_update_codex_cli_request_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_containers_group",
+        "name": "Containers concluídos → Codex CLI",
+        "mode": "link",
+        "links": [
+            "daily_update_codex_cli_request_in"
+        ],
+        "x": 1260,
+        "y": 1460,
+        "wires": []
+    },
+    {
+        "id": "daily_update_codex_cli_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "5. SUBFLUXO Codex CLI: versão oficial exata, validação e rollback",
+        "style": {
+            "label": true,
+            "color": "#5f78a8"
+        },
+        "nodes": [
+            "daily_update_codex_cli_architecture",
+            "daily_update_codex_cli_request_in",
+            "daily_update_codex_cli_manual",
+            "daily_update_codex_cli_test_request",
+            "daily_update_codex_cli_prepare",
+            "daily_update_codex_cli_route_test",
+            "daily_update_codex_cli_request_test_out",
+            "daily_update_codex_cli_request_host",
+            "daily_update_codex_cli_request_ack",
+            "daily_update_codex_cli_request_error",
+            "daily_update_codex_cli_request_complete",
+            "daily_update_codex_cli_result_startup",
+            "daily_update_codex_cli_result_poll",
+            "daily_update_codex_cli_read_result",
+            "daily_update_codex_cli_read_error",
+            "daily_update_codex_cli_read_complete",
+            "daily_update_codex_cli_test_success",
+            "daily_update_codex_cli_test_failure",
+            "daily_update_codex_cli_parse_result",
+            "daily_update_codex_cli_result_test_out",
+            "daily_update_dependency_chain_out"
+        ],
+        "x": 64,
+        "y": 1539,
+        "w": 1402,
+        "h": 602
+    },
+    {
+        "id": "daily_update_codex_cli_architecture",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "POLÍTICA: consultar @openai/codex, instalar versão exata, verificar binário e reverter se falhar",
+        "info": "A ponte do host resolve a versão publicada no registro npm, aceita somente semver válido e instala no prefixo pessoal .local. Se a verificação do binário falhar, tenta restaurar a versão anterior. O Node-RED recebe somente lifecycle sanitizado.",
+        "x": 740,
+        "y": 1580,
+        "wires": []
+    },
+    {
+        "id": "daily_update_codex_cli_request_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Receber sucesso dos containers",
+        "links": [
+            "daily_update_codex_cli_request_out"
+        ],
+        "x": 105,
+        "y": 1660,
+        "wires": [
+            [
+                "daily_update_codex_cli_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_manual",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Atualizar Codex CLI agora",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"stage\":\"manual\"}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 230,
+        "y": 1720,
+        "wires": [
+            [
+                "daily_update_codex_cli_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_test_request",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "TESTE 5A: solicitar atualização",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"stage\":\"containers\",\"status\":\"success\",\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 1780,
+        "wires": [
+            [
+                "daily_update_codex_cli_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_prepare",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Preparar etapa Codex CLI",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nmsg._daily_update_test = TEST_MODE;\nmsg.payload = {\n    version: 1,\n    event: \"host_update_stage_requested\",\n    stage: \"codex-cli\",\n    source: TEST_MODE ? \"manual_test\" : (msg.payload?.stage ?? \"previous_stage\"),\n    test_mode: TEST_MODE,\n    requested_at: new Date().toISOString()\n};\nnode.status({ fill: TEST_MODE ? \"blue\" : \"green\", shape: \"dot\", text: TEST_MODE ? \"TESTE preparado\" : \"codex-cli solicitado\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 1720,
+        "wires": [
+            [
+                "daily_update_codex_cli_route_test"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_route_test",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Codex CLI: produção ou TESTE?",
+        "property": "_daily_update_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 770,
+        "y": 1720,
+        "wires": [
+            [
+                "daily_update_codex_cli_request_test_out"
+            ],
+            [
+                "daily_update_codex_cli_request_host"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_request_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Codex CLI TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1060,
+        "y": 1660,
+        "wires": []
+    },
+    {
+        "id": "daily_update_codex_cli_request_host",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "command": "/opt/request-host-update-stage.sh codex-cli",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "30",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar atualização Codex CLI",
+        "x": 1050,
+        "y": 1760,
+        "wires": [
+            [
+                "daily_update_codex_cli_request_ack"
+            ],
+            [
+                "daily_update_codex_cli_request_error"
+            ],
+            [
+                "daily_update_codex_cli_request_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_request_ack",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Registrar solicitação Codex CLI",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];\nif (!status) {\n    node.error(\"daily_update_request_unrecognized\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\n    return null;\n}\nnode.status({ fill: status === \"accepted\" ? \"green\" : \"yellow\", shape: \"dot\", text: status === \"accepted\" ? \"solicitação aceita\" : \"solicitação coalescida\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1310,
+        "y": 1680,
+        "wires": []
+    },
+    {
+        "id": "daily_update_codex_cli_request_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Falha segura da ponte Codex CLI",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail, msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1320,
+        "y": 1740,
+        "wires": []
+    },
+    {
+        "id": "daily_update_codex_cli_request_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Código da ponte Codex CLI",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1310,
+        "y": 1800,
+        "wires": []
+    },
+    {
+        "id": "daily_update_codex_cli_result_startup",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Codex CLI: ler ao subir",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "40",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 1900,
+        "wires": [
+            [
+                "daily_update_codex_cli_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_result_poll",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Codex CLI: resultado a cada 1 min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 1960,
+        "wires": [
+            [
+                "daily_update_codex_cli_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_read_result",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "command": "/opt/read-host-update-stage-result.sh codex-cli",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Ler resultado Codex CLI",
+        "x": 540,
+        "y": 1930,
+        "wires": [
+            [
+                "daily_update_codex_cli_parse_result"
+            ],
+            [
+                "daily_update_codex_cli_read_error"
+            ],
+            [
+                "daily_update_codex_cli_read_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_read_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Falha ao ler Codex CLI",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail, msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 1870,
+        "wires": []
+    },
+    {
+        "id": "daily_update_codex_cli_read_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Código da leitura Codex CLI",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 2100,
+        "wires": []
+    },
+    {
+        "id": "daily_update_codex_cli_test_success",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "TESTE 5B: atualização concluída",
+        "props": [
+            {
+                "p": "payload",
+                "v": "host-update stage=codex-cli status=success request_id=test-codex-cli stage_exit=0",
+                "vt": "str"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 670,
+        "y": 2020,
+        "wires": [
+            [
+                "daily_update_codex_cli_parse_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_test_failure",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "TESTE 5C: validação falhou",
+        "props": [
+            {
+                "p": "payload",
+                "v": "host-update stage=codex-cli status=failed request_id=test-codex-cli-failed stage_exit=70 failure_stage=verify",
+                "vt": "str"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 660,
+        "y": 2080,
+        "wires": [
+            [
+                "daily_update_codex_cli_parse_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_parse_result",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Normalizar resultado Codex CLI",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nif (!status || stage !== \"codex-cli\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=codex-cli\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_codex-cli_last_result_v1__test\" : \"host_update_codex-cli_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"Codex CLI concluído\" : status\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=codex-cli request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 960,
+        "y": 1990,
+        "wires": [
+            [
+                "daily_update_codex_cli_result_test_out"
+            ],
+            [
+                "daily_update_dependency_chain_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_codex_cli_result_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_codex_cli_group",
+        "name": "Resultado Codex CLI TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1280,
+        "y": 1960,
+        "wires": []
     },
     {
         "id": "global_observer_coverage__daily_host_updates_tab__catch",

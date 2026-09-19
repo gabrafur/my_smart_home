@@ -233,12 +233,21 @@ scripts/install-git-backup-nodered-bridge.sh
 ```
 
 The `atualizacoes_diarias` tab receives the successful daily backup and runs
-three independent serialized subflows: `DietPi`, `Home Assistant Core`, and
-`other containers`. The first uses the root-owned helper for apt and DietPi.
+four independent serialized host subflows: `DietPi`, `Home Assistant Core`,
+`other containers`, and `Codex CLI`. The first uses the root-owned helper for
+apt and DietPi.
 The second resolves only the stable Home Assistant image and recreates only
 `homeassistant` when its digest changes. The third reconciles Portainer, MQTT,
 Matter, AppDaemon, Node-RED, and Zigbee2MQTT, then runs safe storage maintenance.
 It never reboots automatically.
+
+The Codex CLI stage runs after the containers and before the repository npm
+dependencies. Its host bridge resolves the published `@openai/codex` version,
+accepts only a valid semver, installs that exact version into the personal
+`.local` prefix, and verifies the resulting binary. If verification fails, it
+attempts to restore the previous version. The `test_mode` path traverses the
+same preparation, routing, and parser but reaches dry-run before any registry
+lookup or package installation.
 
 The same tab visually inventories every Home Assistant `update.*` entity on
 startup and every 30 minutes by default. These scans are detection-only. A
@@ -269,8 +278,8 @@ tests follow the same gates and end in dry-run before the effect boundary.
 
 The hidden `docker-auto-update.mjs ha-updates` mode was retired. The bridge
 installer removes legacy direct schedules and keeps only one-minute coalescing
-workers for DietPi, Core, other containers, Alexa, Bluelink analysis, and
-promotion.
+workers for DietPi, Core, other containers, Codex CLI, Alexa, Bluelink analysis,
+and promotion.
 Node-RED tracks the Codex candidate and the safe promotion separately:
 `candidate ready` never means completed; only `completed` confirms both the
 Home Assistant runtime and `main`. The host exposes only this sanitized

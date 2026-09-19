@@ -234,14 +234,23 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
-A aba `atualizacoes_diarias` recebe o sucesso do backup diário e executa três
-subfluxos serializados e independentes: `DietPi`, `Home Assistant Core` e
-`demais containers`. O primeiro usa o helper root-owned para `apt-get update`,
+A aba `atualizacoes_diarias` recebe o sucesso do backup diário e executa quatro
+subfluxos de host serializados e independentes: `DietPi`, `Home Assistant Core`,
+`demais containers` e `Codex CLI`. O primeiro usa o helper root-owned para
+`apt-get update`,
 `apt-get --with-new-pkgs upgrade` e `/boot/dietpi/dietpi-update 1`. O segundo
 resolve somente `ghcr.io/home-assistant/home-assistant:stable` e recria apenas
 o serviço `homeassistant` quando o digest muda. O terceiro reconcilia Portainer,
 MQTT, Matter, AppDaemon, Node-RED e Zigbee2MQTT e conclui com a manutenção segura
 de storage. Não há reboot automático.
+
+A etapa do Codex CLI roda depois dos containers e antes das dependências npm do
+repositório. A ponte do host consulta a versão publicada de `@openai/codex`,
+aceita somente uma versão semver válida, instala a versão exata no prefixo
+pessoal `.local` e confirma a versão do binário. Se a confirmação falhar, tenta
+restaurar a versão anterior. O caminho `test_mode` atravessa preparação,
+roteamento e parser, mas termina no dry-run antes de consultar ou instalar o
+pacote.
 
 No mesmo tab, um inventário visual consulta todas as entidades `update.*` do
 Home Assistant ao subir e, por padrão, a cada 30 minutos. Essas consultas são
@@ -273,7 +282,7 @@ teste sintético atravessa os mesmos gates e termina em dry-run antes do efeito.
 O modo legado `docker-auto-update.mjs ha-updates` foi aposentado porque escondia
 classificação e instalação fora do canvas. O instalador remove os antigos crons
 diretos e mantém somente workers coalescentes de um minuto para DietPi, Core,
-demais containers, Alexa, análise Bluelink e promoção segura.
+demais containers, Codex CLI, Alexa, análise Bluelink e promoção segura.
 O Node-RED acompanha separadamente a candidata do Codex e a promoção segura:
 `candidata pronta` nunca significa concluída; somente `completed` confirma que
 o runtime do Home Assistant e a `main` foram validados. O host publica para o

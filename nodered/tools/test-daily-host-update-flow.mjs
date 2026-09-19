@@ -88,6 +88,8 @@ const serializedProduction = JSON.stringify([
   node("daily_update_core_read_result"),
   node("daily_update_containers_request_host"),
   node("daily_update_containers_read_result"),
+  node("daily_update_codex_cli_request_host"),
+  node("daily_update_codex_cli_read_result"),
   node("daily_update_alexa_media_request"),
   node("daily_update_alexa_media_read_result"),
 ]);
@@ -99,8 +101,19 @@ assert.equal(node("daily_update_core_request_host").command, "/opt/request-host-
 assert.equal(node("daily_update_core_read_result").command, "/opt/read-host-update-stage-result.sh home-assistant-core");
 assert.equal(node("daily_update_containers_request_host").command, "/opt/request-host-update-stage.sh containers");
 assert.equal(node("daily_update_containers_read_result").command, "/opt/read-host-update-stage-result.sh containers");
+assert.equal(node("daily_update_codex_cli_request_host").command, "/opt/request-host-update-stage.sh codex-cli");
+assert.equal(node("daily_update_codex_cli_read_result").command, "/opt/read-host-update-stage-result.sh codex-cli");
+assert.deepEqual(node("daily_update_codex_cli_route_test").wires, [
+  ["daily_update_codex_cli_request_test_out"],
+  ["daily_update_codex_cli_request_host"],
+]);
 assert.deepEqual(node("daily_update_containers_parse_result").wires, [
   ["daily_update_containers_result_test_out"],
+  ["daily_update_codex_cli_request_out"],
+]);
+assert.deepEqual(node("daily_update_codex_cli_request_out").links, ["daily_update_codex_cli_request_in"]);
+assert.deepEqual(node("daily_update_codex_cli_parse_result").wires, [
+  ["daily_update_codex_cli_result_test_out"],
   ["daily_update_dependency_chain_out"],
 ]);
 assert.deepEqual(node("daily_update_dependency_chain_out").links, ["daily_update_dependency_chain_in"]);
@@ -144,6 +157,7 @@ assert.match(node("daily_update_dry_run_terminal").func, /simulated: true/);
 assert.match(node("daily_update_dry_run_terminal").func, /dispatched: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /apt_commands_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /docker_update_sent: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /codex_cli_update_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /repository_dependency_update_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /npm_install_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /home_assistant_core_update_sent: false/);
@@ -233,6 +247,22 @@ const coreSuccess = parseCore(
   flow,
 );
 assert.equal(coreSuccess[1].payload.stage, "home-assistant-core");
+const parseCodexCli = new Function("msg", "node", "flow", node("daily_update_codex_cli_parse_result").func);
+const codexCliTestFailure = parseCodexCli(
+  { _daily_update_test: true, payload: "host-update stage=codex-cli status=failed request_id=test-codex stage_exit=70 failure_stage=verify" },
+  runtimeNode,
+  flow,
+);
+assert.equal(codexCliTestFailure[0].payload.status, "failed");
+assert.equal(codexCliTestFailure[0].payload.failure_stage, "verify");
+assert.equal(codexCliTestFailure[1], null);
+const codexCliSuccess = parseCodexCli(
+  { payload: "host-update stage=codex-cli status=success request_id=codex-success stage_exit=0" },
+  runtimeNode,
+  flow,
+);
+assert.equal(codexCliSuccess[0], null);
+assert.equal(codexCliSuccess[1].payload.stage, "codex-cli");
 
 assert.equal(node("daily_update_inventory_read_ha").type, "ha-api");
 assert.equal(node("daily_update_inventory_read_ha").data, '{"type":"get_states"}');

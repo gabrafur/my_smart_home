@@ -4,6 +4,7 @@ set -eu
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 node_bin="${DAILY_UPDATE_NODE_BIN:-/usr/bin/node}"
 docker_update_script="${DOCKER_UPDATE_SCRIPT:-$script_dir/docker-auto-update.mjs}"
+codex_cli_update_script="${CODEX_CLI_UPDATE_SCRIPT:-$script_dir/update-codex-cli.sh}"
 sudo_bin="${DAILY_UPDATE_SUDO_BIN:-/usr/bin/sudo}"
 dietpi_helper="${DIETPI_UPDATE_HELPER:-/usr/local/sbin/smart-home-dietpi-daily-upgrade}"
 dietpi_status_file="${DIETPI_UPDATE_STATUS_FILE:-/run/smart-home-dietpi-daily-upgrade.result}"
@@ -14,12 +15,12 @@ stage="all"
 for argument in "$@"; do
   case "$argument" in
     --dry-run) dry_run=true ;;
-    dietpi|home-assistant-core|containers)
+    dietpi|home-assistant-core|containers|codex-cli)
       [ "$stage" = "all" ] || { echo "Only one update stage may be selected" >&2; exit 64; }
       stage=$argument
       ;;
     all) ;;
-    *) echo "Usage: $0 [dietpi|home-assistant-core|containers|all] [--dry-run]" >&2; exit 64 ;;
+    *) echo "Usage: $0 [dietpi|home-assistant-core|containers|codex-cli|all] [--dry-run]" >&2; exit 64 ;;
   esac
 done
 
@@ -85,8 +86,30 @@ if [ "$stage" = "home-assistant-core" ] || [ "$stage" = "containers" ]; then
   exit "$image_status"
 fi
 
+if [ "$stage" = "codex-cli" ]; then
+  if [ "$dry_run" = true ]; then
+    write_detail "stage=codex-cli stage_exit=0 action=dry-run mode=dry-run"
+    echo "dry-run: $codex_cli_update_script"
+    exit 0
+  fi
+
+  [ -x "$codex_cli_update_script" ] || {
+    write_detail "stage=codex-cli stage_exit=66 action=unavailable mode=production"
+    echo "Codex CLI update script is unavailable: $codex_cli_update_script" >&2
+    exit 66
+  }
+  echo "daily-host-update stage=codex-cli started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  set +e
+  codex_cli_detail=$($codex_cli_update_script)
+  codex_cli_status=$?
+  set -e
+  codex_cli_detail=$(printf '%s\n' "$codex_cli_detail" | sed -n '1p' | tr -cd 'A-Za-z0-9_.:=@ -')
+  write_detail "stage=codex-cli stage_exit=$codex_cli_status $codex_cli_detail mode=production"
+  exit "$codex_cli_status"
+fi
+
 # Compatibility entrypoint for operators and rollback: preserve the former
-# combined behavior while Node-RED uses the three explicit stage entrypoints.
+# combined behavior while Node-RED uses the four explicit stage entrypoints.
 if [ "$dry_run" = true ]; then
   run_dietpi
   run_images daily

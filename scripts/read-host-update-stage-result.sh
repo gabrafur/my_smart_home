@@ -3,8 +3,8 @@ set -eu
 
 stage="${1:-}"
 case "$stage" in
-  dietpi|home-assistant-core|containers) ;;
-  *) echo "Usage: $0 dietpi|home-assistant-core|containers" >&2; exit 64 ;;
+  dietpi|home-assistant-core|containers|codex-cli) ;;
+  *) echo "Usage: $0 dietpi|home-assistant-core|containers|codex-cli" >&2; exit 64 ;;
 esac
 
 trigger_dir="${DAILY_UPDATE_TRIGGER_DIR:-/run/daily-update-trigger}"

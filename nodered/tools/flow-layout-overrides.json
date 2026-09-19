@@ -5986,39 +5986,39 @@
         },
         "daily_update_test_group": {
           "x": 116,
-          "y": 1580
+          "y": 2200
         },
         "daily_update_inventory_group": {
           "x": 82,
-          "y": 2260
+          "y": 2880
         },
         "daily_update_hacs_group": {
           "x": 82,
-          "y": 3050
+          "y": 3670
         },
         "daily_update_unknown_group": {
           "x": 1488,
-          "y": 3059
+          "y": 3679
         },
         "daily_update_firmware_group": {
           "x": 82,
-          "y": 3980
+          "y": 4600
         },
         "daily_update_kia_group": {
           "x": 82,
-          "y": 4560
+          "y": 5180
         },
         "daily_update_kia_codex_group": {
           "x": 104,
-          "y": 5180
+          "y": 5800
         },
         "daily_update_repository_dependency_group": {
           "x": 74,
-          "y": 6082
+          "y": 6702
         },
         "daily_update_repository_dependency_test_group": {
           "x": 64,
-          "y": 6882
+          "y": 7502
         },
         "global_observer_coverage__daily_host_updates_tab__group": {
           "x": 1363,
@@ -6026,105 +6026,109 @@
         },
         "daily_update_alexa_media_group": {
           "x": 234,
-          "y": 3396
+          "y": 4016
+        },
+        "daily_update_codex_cli_group": {
+          "x": 64,
+          "y": 1539
         }
       },
       "node_positions": {
         "daily_update_inventory_apply_manual": {
           "x": 354,
-          "y": 2560
+          "y": 3180
         },
         "daily_update_inventory_alexa_out": {
           "x": 1558,
-          "y": 2831
+          "y": 3451
         },
         "daily_update_inventory_hacs_out": {
           "x": 1558,
-          "y": 2881
+          "y": 3501
         },
         "daily_update_inventory_unknown_out": {
           "x": 1558,
-          "y": 2931
+          "y": 3551
         },
         "daily_update_kia_mode_audit": {
           "x": 664,
-          "y": 4720
+          "y": 5340
         },
         "daily_update_kia_prepare": {
           "x": 1094,
-          "y": 4680
+          "y": 5300
         },
         "daily_update_kia_route_test": {
           "x": 1334,
-          "y": 4680
+          "y": 5300
         },
         "daily_update_kia_test_out": {
           "x": 1544,
-          "y": 4640
+          "y": 5260
         },
         "daily_update_kia_request_host": {
           "x": 1594,
-          "y": 4720
+          "y": 5340
         },
         "daily_update_kia_request_ack": {
           "x": 1894,
-          "y": 4640
+          "y": 5260
         },
         "daily_update_kia_request_error": {
           "x": 1894,
-          "y": 4720
+          "y": 5340
         },
         "daily_update_kia_request_complete": {
           "x": 1894,
-          "y": 4800
+          "y": 5420
         },
         "daily_update_dependency_summary_test_out": {
           "x": 1854,
-          "y": 6330
+          "y": 6950
         },
         "daily_update_kia_promotion_read_complete": {
           "x": 575,
-          "y": 5821
+          "y": 6441
         },
         "daily_update_inventory_record": {
           "x": 498,
-          "y": 2901
+          "y": 3521
         },
         "daily_update_inventory_summary_test_out": {
           "x": 648,
-          "y": 2941
+          "y": 3561
         },
         "daily_update_hacs_current": {
           "x": 518,
-          "y": 3331
+          "y": 3951
         },
         "daily_update_unknown_test_gate": {
           "x": 1764,
-          "y": 3140
+          "y": 3760
         },
         "daily_update_unknown_rbe": {
           "x": 1794,
-          "y": 3200
+          "y": 3820
         },
         "daily_update_firmware_invalid": {
           "x": 918,
-          "y": 4461
+          "y": 5081
         },
         "daily_update_firmware_install": {
           "x": 1528,
-          "y": 4381
+          "y": 5001
         },
         "daily_update_firmware_installed": {
           "x": 1508,
-          "y": 4441
+          "y": 5061
         },
         "daily_update_inventory_schedule_delay": {
           "x": 1478,
-          "y": 2581
+          "y": 3201
         },
         "daily_update_inventory_schedule_loop_out": {
           "x": 1648,
-          "y": 2581
+          "y": 3201
         }
       },
       "nodes": {
@@ -6142,19 +6146,19 @@
         },
         "daily_update_test_group": {
           "x": 116,
-          "y": 1580,
+          "y": 2200,
           "w": 1132,
           "h": 582
         },
         "daily_update_kia_group": {
           "x": 82,
-          "y": 4560,
+          "y": 5180,
           "w": 1958,
           "h": 552
         },
         "daily_update_kia_codex_group": {
           "x": 104,
-          "y": 5180,
+          "y": 5800,
           "w": 1122,
           "h": 772
         },
@@ -6172,25 +6176,25 @@
         },
         "daily_update_inventory_group": {
           "x": 82,
-          "y": 2260,
+          "y": 2880,
           "w": 1607,
           "h": 742
         },
         "daily_update_hacs_group": {
           "x": 82,
-          "y": 3050,
+          "y": 3670,
           "w": 1358,
           "h": 322
         },
         "daily_update_unknown_group": {
           "x": 1488,
-          "y": 3059,
+          "y": 3679,
           "w": 632,
           "h": 262
         },
         "daily_update_firmware_group": {
           "x": 82,
-          "y": 3980,
+          "y": 4600,
           "w": 1932,
           "h": 522
         },
@@ -6274,231 +6278,231 @@
         },
         "daily_update_test_instructions": {
           "x": 732,
-          "y": 1621
+          "y": 2241
         },
         "daily_update_test_reset": {
           "x": 262,
-          "y": 1701
+          "y": 2321
         },
         "daily_update_test_reset_state": {
           "x": 532,
-          "y": 1701
+          "y": 2321
         },
         "daily_update_test_request": {
           "x": 292,
-          "y": 1761
+          "y": 2381
         },
         "daily_update_test_failure": {
           "x": 272,
-          "y": 1821
+          "y": 2441
         },
         "daily_update_test_unavailable": {
           "x": 292,
-          "y": 1881
+          "y": 2501
         },
         "daily_update_test_request_out": {
           "x": 577,
-          "y": 1761
+          "y": 2381
         },
         "daily_update_test_result_out": {
           "x": 577,
-          "y": 1851
+          "y": 2471
         },
         "daily_update_dry_run_in": {
           "x": 787,
-          "y": 1791
+          "y": 2411
         },
         "daily_update_dry_run_terminal": {
           "x": 1102,
-          "y": 1791
+          "y": 2411
         },
         "daily_update_kia_architecture": {
           "x": 708,
-          "y": 4601
+          "y": 5221
         },
         "daily_update_kia_schedule": {
           "x": 123,
-          "y": 4681
+          "y": 5301
         },
         "daily_update_kia_test_request": {
           "x": 258,
-          "y": 4861
+          "y": 5481
         },
         "daily_update_kia_prepare": {
           "x": 1094,
-          "y": 4680
+          "y": 5300
         },
         "daily_update_kia_route_test": {
           "x": 1334,
-          "y": 4680
+          "y": 5300
         },
         "daily_update_kia_request_host": {
           "x": 1594,
-          "y": 4720
+          "y": 5340
         },
         "daily_update_kia_request_ack": {
           "x": 1894,
-          "y": 4640
+          "y": 5260
         },
         "daily_update_kia_request_error": {
           "x": 1894,
-          "y": 4720
+          "y": 5340
         },
         "daily_update_kia_request_complete": {
           "x": 1894,
-          "y": 4800
+          "y": 5420
         },
         "daily_update_kia_test_out": {
           "x": 1544,
-          "y": 4640
+          "y": 5260
         },
         "daily_update_kia_result_startup": {
           "x": 238,
-          "y": 4901
+          "y": 5521
         },
         "daily_update_kia_result_poll": {
           "x": 238,
-          "y": 4961
+          "y": 5581
         },
         "daily_update_kia_read_result": {
           "x": 518,
-          "y": 4931
+          "y": 5551
         },
         "daily_update_kia_read_error": {
           "x": 848,
-          "y": 4981
+          "y": 5601
         },
         "daily_update_kia_read_complete": {
           "x": 838,
-          "y": 5041
+          "y": 5661
         },
         "daily_update_kia_parse_result": {
           "x": 868,
-          "y": 4921
+          "y": 5541
         },
         "daily_update_kia_result_test_out": {
           "x": 1133,
-          "y": 4931
+          "y": 5551
         },
         "daily_update_kia_codex_request_out": {
           "x": 1163,
-          "y": 4991
+          "y": 5611
         },
         "daily_update_kia_test_result": {
           "x": 258,
-          "y": 5071
+          "y": 5691
         },
         "daily_update_kia_test_result_out": {
           "x": 543,
-          "y": 5071
+          "y": 5691
         },
         "daily_update_kia_test_result_in": {
           "x": 633,
-          "y": 4861
+          "y": 5481
         },
         "daily_update_kia_codex_architecture": {
           "x": 735,
-          "y": 5221
+          "y": 5841
         },
         "daily_update_kia_codex_request_in": {
           "x": 220,
-          "y": 5321
+          "y": 5941
         },
         "daily_update_kia_codex_request": {
           "x": 575,
-          "y": 5321
+          "y": 5941
         },
         "daily_update_kia_codex_ack": {
           "x": 915,
-          "y": 5281
+          "y": 5901
         },
         "daily_update_kia_codex_error": {
           "x": 925,
-          "y": 5341
+          "y": 5961
         },
         "daily_update_kia_codex_complete": {
           "x": 915,
-          "y": 5401
+          "y": 6021
         },
         "daily_update_kia_codex_result_startup": {
           "x": 280,
-          "y": 5461
+          "y": 6081
         },
         "daily_update_kia_codex_result_poll": {
           "x": 295,
-          "y": 5521
+          "y": 6141
         },
         "daily_update_kia_codex_read_result": {
           "x": 575,
-          "y": 5491
+          "y": 6111
         },
         "daily_update_kia_codex_read_error": {
           "x": 875,
-          "y": 5551
+          "y": 6171
         },
         "daily_update_kia_codex_read_complete": {
           "x": 875,
-          "y": 5611
+          "y": 6231
         },
         "daily_update_kia_codex_parse_result": {
           "x": 885,
-          "y": 5491
+          "y": 6111
         },
         "daily_update_kia_codex_result_test_out": {
           "x": 1180,
-          "y": 5491
+          "y": 6111
         },
         "daily_update_kia_codex_test_result": {
           "x": 295,
-          "y": 5571
+          "y": 6191
         },
         "daily_update_kia_codex_test_result_out": {
           "x": 575,
-          "y": 5571
+          "y": 6191
         },
         "daily_update_kia_codex_test_result_in": {
           "x": 685,
-          "y": 5571
+          "y": 6191
         },
         "daily_update_kia_promotion_result_startup": {
           "x": 290,
-          "y": 5671
+          "y": 6291
         },
         "daily_update_kia_promotion_result_poll": {
           "x": 280,
-          "y": 5731
+          "y": 6351
         },
         "daily_update_kia_promotion_read_result": {
           "x": 575,
-          "y": 5701
+          "y": 6321
         },
         "daily_update_kia_promotion_read_error": {
           "x": 875,
-          "y": 5761
+          "y": 6381
         },
         "daily_update_kia_promotion_read_complete": {
           "x": 575,
-          "y": 5821
+          "y": 6441
         },
         "daily_update_kia_promotion_parse_result": {
           "x": 885,
-          "y": 5701
+          "y": 6321
         },
         "daily_update_kia_promotion_result_test_out": {
           "x": 1185,
-          "y": 5701
+          "y": 6321
         },
         "daily_update_kia_promotion_test_result": {
           "x": 290,
-          "y": 5911
+          "y": 6531
         },
         "daily_update_kia_promotion_test_result_out": {
           "x": 580,
-          "y": 5911
+          "y": 6531
         },
         "daily_update_kia_promotion_test_result_in": {
           "x": 685,
-          "y": 5911
+          "y": 6531
         },
         "daily_update_core_request_out": {
           "x": 1119,
@@ -6670,315 +6674,315 @@
         },
         "daily_update_core_test_request": {
           "x": 282,
-          "y": 1941
+          "y": 2561
         },
         "daily_update_core_test_request_out": {
           "x": 557,
-          "y": 1941
+          "y": 2561
         },
         "daily_update_core_test_result": {
           "x": 292,
-          "y": 2001
+          "y": 2621
         },
         "daily_update_core_test_result_out": {
           "x": 607,
-          "y": 2001
+          "y": 2621
         },
         "daily_update_containers_test_request": {
           "x": 302,
-          "y": 2061
+          "y": 2681
         },
         "daily_update_containers_test_request_out": {
           "x": 617,
-          "y": 2061
+          "y": 2681
         },
         "daily_update_containers_test_result": {
           "x": 312,
-          "y": 2121
+          "y": 2741
         },
         "daily_update_containers_test_result_out": {
           "x": 647,
-          "y": 2121
+          "y": 2741
         },
         "daily_update_inventory_architecture": {
           "x": 848,
-          "y": 2301
+          "y": 2921
         },
         "daily_update_inventory_schedule": {
           "x": 268,
-          "y": 2401
+          "y": 3021
         },
         "daily_update_inventory_manual": {
           "x": 238,
-          "y": 2461
+          "y": 3081
         },
         "daily_update_inventory_test": {
           "x": 258,
-          "y": 2641
+          "y": 3261
         },
         "daily_update_inventory_parameters": {
           "x": 548,
-          "y": 2461
+          "y": 3081
         },
         "daily_update_inventory_validate_policy": {
           "x": 848,
-          "y": 2461
+          "y": 3081
         },
         "daily_update_inventory_route_source": {
           "x": 1128,
-          "y": 2461
+          "y": 3081
         },
         "daily_update_inventory_read_ha": {
           "x": 1424,
-          "y": 2440
+          "y": 3060
         },
         "daily_update_inventory_test_snapshot_out": {
           "x": 1309,
-          "y": 2380
+          "y": 3000
         },
         "daily_update_inventory_real_snapshot_out": {
           "x": 1604,
-          "y": 2440
+          "y": 3060
         },
         "daily_update_inventory_snapshot_in": {
           "x": 133,
-          "y": 2821
+          "y": 3441
         },
         "daily_update_inventory_normalize": {
           "x": 458,
-          "y": 2821
+          "y": 3441
         },
         "daily_update_inventory_state": {
           "x": 768,
-          "y": 2781
+          "y": 3401
         },
         "daily_update_inventory_classify": {
           "x": 1234,
-          "y": 2780
+          "y": 3400
         },
         "daily_update_inventory_record": {
           "x": 498,
-          "y": 2901
+          "y": 3521
         },
         "daily_update_inventory_unavailable": {
           "x": 1154,
-          "y": 2860
+          "y": 3480
         },
         "daily_update_inventory_current": {
           "x": 1078,
-          "y": 2961
+          "y": 3581
         },
         "daily_update_inventory_nonpending_test_out": {
           "x": 1378,
-          "y": 2911
+          "y": 3531
         },
         "daily_update_inventory_summary_test_out": {
           "x": 648,
-          "y": 2941
+          "y": 3561
         },
         "daily_update_inventory_kia_out": {
           "x": 1558,
-          "y": 2681
+          "y": 3301
         },
         "daily_update_inventory_firmware_out": {
           "x": 1558,
-          "y": 2731
+          "y": 3351
         },
         "daily_update_inventory_core_out": {
           "x": 1558,
-          "y": 2781
+          "y": 3401
         },
         "daily_update_inventory_hacs_out": {
           "x": 1558,
-          "y": 2881
+          "y": 3501
         },
         "daily_update_inventory_unknown_out": {
           "x": 1558,
-          "y": 2931
+          "y": 3551
         },
         "daily_update_hacs_in": {
           "x": 123,
-          "y": 3151
+          "y": 3771
         },
         "daily_update_hacs_state": {
           "x": 368,
-          "y": 3151
+          "y": 3771
         },
         "daily_update_hacs_test_gate": {
           "x": 648,
-          "y": 3111
+          "y": 3731
         },
         "daily_update_hacs_rbe": {
           "x": 918,
-          "y": 3131
+          "y": 3751
         },
         "daily_update_hacs_pending": {
           "x": 1264,
-          "y": 3120
+          "y": 3740
         },
         "daily_update_hacs_unavailable": {
           "x": 774,
-          "y": 3180
+          "y": 3800
         },
         "daily_update_hacs_current": {
           "x": 518,
-          "y": 3331
+          "y": 3951
         },
         "daily_update_hacs_test_out": {
           "x": 863,
-          "y": 3091
+          "y": 3711
         },
         "daily_update_unknown_in": {
           "x": 1529,
-          "y": 3140
+          "y": 3760
         },
         "daily_update_unknown_test_gate": {
           "x": 1764,
-          "y": 3140
+          "y": 3760
         },
         "daily_update_unknown_rbe": {
           "x": 1794,
-          "y": 3200
+          "y": 3820
         },
         "daily_update_unknown_pending": {
           "x": 1934,
-          "y": 3280
+          "y": 3900
         },
         "daily_update_unknown_test_out": {
           "x": 2014,
-          "y": 3100
+          "y": 3720
         },
         "daily_update_firmware_architecture": {
           "x": 848,
-          "y": 4021
+          "y": 4641
         },
         "daily_update_firmware_in": {
           "x": 133,
-          "y": 4141
+          "y": 4761
         },
         "daily_update_firmware_state": {
           "x": 368,
-          "y": 4141
+          "y": 4761
         },
         "daily_update_firmware_auto": {
           "x": 698,
-          "y": 4101
+          "y": 4721
         },
         "daily_update_firmware_manual_test_gate": {
           "x": 988,
-          "y": 4141
+          "y": 4761
         },
         "daily_update_firmware_store": {
           "x": 1258,
-          "y": 4141
+          "y": 4761
         },
         "daily_update_firmware_pending_rbe": {
           "x": 1538,
-          "y": 4141
+          "y": 4761
         },
         "daily_update_firmware_pending": {
           "x": 1838,
-          "y": 4141
+          "y": 4761
         },
         "daily_update_firmware_unavailable": {
           "x": 698,
-          "y": 4221
+          "y": 4841
         },
         "daily_update_firmware_current": {
           "x": 668,
-          "y": 4281
+          "y": 4901
         },
         "daily_update_firmware_manual": {
           "x": 288,
-          "y": 4381
+          "y": 5001
         },
         "daily_update_firmware_take_candidate": {
           "x": 624,
-          "y": 4380
+          "y": 5000
         },
         "daily_update_firmware_fresh": {
           "x": 934,
-          "y": 4380
+          "y": 5000
         },
         "daily_update_firmware_test_auto": {
           "x": 308,
-          "y": 4441
+          "y": 5061
         },
         "daily_update_firmware_auto_effect_out": {
           "x": 948,
-          "y": 4081
+          "y": 4701
         },
         "daily_update_firmware_manual_effect_out": {
           "x": 1118,
-          "y": 4361
+          "y": 4981
         },
         "daily_update_firmware_test_effect_out": {
           "x": 568,
-          "y": 4441
+          "y": 5061
         },
         "daily_update_firmware_effect_in": {
           "x": 1143,
-          "y": 4321
+          "y": 4941
         },
         "daily_update_firmware_queue_test_out": {
           "x": 1139,
-          "y": 4100
+          "y": 4720
         },
         "daily_update_firmware_final_test_gate": {
           "x": 1338,
-          "y": 4321
+          "y": 4941
         },
         "daily_update_firmware_install": {
           "x": 1528,
-          "y": 4381
+          "y": 5001
         },
         "daily_update_firmware_installed": {
           "x": 1508,
-          "y": 4441
+          "y": 5061
         },
         "daily_update_firmware_invalid": {
           "x": 918,
-          "y": 4461
+          "y": 5081
         },
         "daily_update_firmware_test_out": {
           "x": 1558,
-          "y": 4301
+          "y": 4921
         },
         "daily_update_inventory_schedule_gate": {
           "x": 1098,
-          "y": 2521
+          "y": 3141
         },
         "daily_update_inventory_schedule_delay_value": {
           "x": 1368,
-          "y": 2521
+          "y": 3141
         },
         "daily_update_inventory_schedule_delay": {
           "x": 1478,
-          "y": 2581
+          "y": 3201
         },
         "daily_update_inventory_schedule_loop_out": {
           "x": 1648,
-          "y": 2581
+          "y": 3201
         },
         "daily_update_inventory_schedule_loop_in": {
           "x": 133,
-          "y": 2581
+          "y": 3201
         },
         "daily_update_dependency_manual": {
           "x": 254,
-          "y": 6137
+          "y": 6757
         },
         "daily_update_dependency_summary": {
           "x": 1754,
-          "y": 6250
+          "y": 6870
         },
         "daily_update_dependency_summary_test_out": {
           "x": 1854,
-          "y": 6330
+          "y": 6950
         },
         "daily_update_dependency_read_complete": {
           "x": 774,
-          "y": 6777
+          "y": 7397
         },
         "global_observer_coverage__daily_host_updates_tab__catch": {
           "x": 1519,
@@ -6998,357 +7002,447 @@
         },
         "daily_update_alexa_media_group": {
           "x": 234,
-          "y": 3396,
+          "y": 4016,
           "w": 1842,
           "h": 522
         },
         "daily_update_repository_dependency_group": {
           "x": 74,
-          "y": 6082,
+          "y": 6702,
           "w": 2462,
           "h": 736
         },
         "daily_update_repository_dependency_test_group": {
           "x": 64,
-          "y": 6882,
+          "y": 7502,
           "w": 1127,
           "h": 282
         },
         "daily_update_dependency_chain_out": {
-          "x": 1274,
-          "y": 1460
+          "x": 1280,
+          "y": 2020
         },
         "daily_update_dependency_architecture": {
           "x": 1000,
-          "y": 6123
+          "y": 6743
         },
         "daily_update_dependency_chain_in": {
           "x": 115,
-          "y": 6203
+          "y": 6823
         },
         "daily_update_dependency_test_source_in": {
           "x": 115,
-          "y": 6323
+          "y": 6943
         },
         "daily_update_dependency_policy": {
           "x": 530,
-          "y": 6233
+          "y": 6853
         },
         "daily_update_dependency_source": {
           "x": 810,
-          "y": 6233
+          "y": 6853
         },
         "daily_update_dependency_scan": {
           "x": 1090,
-          "y": 6223
+          "y": 6843
         },
         "daily_update_dependency_scan_error": {
           "x": 1380,
-          "y": 6133
+          "y": 6753
         },
         "daily_update_dependency_scan_complete": {
           "x": 1380,
-          "y": 6243
+          "y": 6863
         },
         "daily_update_dependency_normalize": {
           "x": 1280,
-          "y": 6323
+          "y": 6943
         },
         "daily_update_dependency_fix_gate": {
           "x": 250,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_surface_gate": {
           "x": 510,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_severity_gate": {
           "x": 790,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_auto_gate": {
           "x": 1070,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_dedupe": {
           "x": 1320,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_prepare": {
           "x": 1540,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_final_gate": {
           "x": 1800,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_test_out": {
           "x": 2085,
-          "y": 6383
+          "y": 7003
         },
         "daily_update_dependency_request": {
           "x": 2070,
-          "y": 6463
+          "y": 7083
         },
         "daily_update_dependency_request_ack": {
           "x": 2390,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_request_error": {
           "x": 2390,
-          "y": 6483
+          "y": 7103
         },
         "daily_update_dependency_request_complete": {
           "x": 2390,
-          "y": 6543
+          "y": 7163
         },
         "daily_update_dependency_blocked": {
           "x": 1110,
-          "y": 6543
+          "y": 7163
         },
         "daily_update_dependency_blocked_test_out": {
           "x": 1325,
-          "y": 6503
+          "y": 7123
         },
         "daily_update_dependency_result_startup": {
           "x": 240,
-          "y": 6623
+          "y": 7243
         },
         "daily_update_dependency_result_poll": {
           "x": 250,
-          "y": 6683
+          "y": 7303
         },
         "daily_update_dependency_read_result": {
           "x": 540,
-          "y": 6653
+          "y": 7273
         },
         "daily_update_dependency_read_error": {
           "x": 780,
-          "y": 6733
+          "y": 7353
         },
         "daily_update_dependency_test_result_in": {
           "x": 850,
-          "y": 6573
+          "y": 7193
         },
         "daily_update_dependency_parse_result": {
           "x": 1030,
-          "y": 6653
+          "y": 7273
         },
         "daily_update_dependency_result_test_out": {
           "x": 1290,
-          "y": 6613
+          "y": 7233
         },
         "daily_update_dependency_retry": {
           "x": 1350,
-          "y": 6703
+          "y": 7323
         },
         "daily_update_dependency_backup_out": {
           "x": 1450,
-          "y": 6613
+          "y": 7233
         },
         "daily_update_dependency_test_instructions": {
           "x": 670,
-          "y": 6923
+          "y": 7543
         },
         "daily_update_dependency_test_reset": {
           "x": 220,
-          "y": 7003
+          "y": 7623
         },
         "daily_update_dependency_test_safe": {
           "x": 230,
-          "y": 7063
+          "y": 7683
         },
         "daily_update_dependency_test_blocked": {
           "x": 240,
-          "y": 7123
+          "y": 7743
         },
         "daily_update_dependency_test_source_out": {
           "x": 540,
-          "y": 7093
+          "y": 7713
         },
         "daily_update_dependency_test_result": {
           "x": 850,
-          "y": 7063
+          "y": 7683
         },
         "daily_update_dependency_test_result_out": {
           "x": 1150,
-          "y": 7063
+          "y": 7683
         },
         "daily_update_dependency_candidate_out": {
           "x": 1540,
-          "y": 6323
+          "y": 6943
         },
         "daily_update_dependency_candidate_in": {
           "x": 115,
-          "y": 6423
+          "y": 7043
         },
         "daily_update_dependency_blocked_from_fix": {
           "x": 420,
-          "y": 6483
+          "y": 7103
         },
         "daily_update_dependency_blocked_from_surface": {
           "x": 690,
-          "y": 6483
+          "y": 7103
         },
         "daily_update_dependency_blocked_from_severity": {
           "x": 960,
-          "y": 6483
+          "y": 7103
         },
         "daily_update_dependency_blocked_from_auto": {
           "x": 1220,
-          "y": 6483
+          "y": 7103
         },
         "daily_update_dependency_blocked_in": {
           "x": 880,
-          "y": 6543
+          "y": 7163
         },
         "daily_update_dependency_retry_out": {
           "x": 1560,
-          "y": 6703
+          "y": 7323
         },
         "daily_update_dependency_retry_in": {
           "x": 335,
-          "y": 6773
+          "y": 7393
         },
         "daily_update_dependency_test_reset_in": {
           "x": 1160,
-          "y": 6363
+          "y": 6983
         },
         "daily_update_dependency_test_reset_out": {
           "x": 490,
-          "y": 7003
+          "y": 7623
         },
         "daily_update_inventory_apply_schedule": {
           "x": 274,
-          "y": 2500
+          "y": 3120
         },
         "daily_update_inventory_apply_manual": {
           "x": 354,
-          "y": 2560
+          "y": 3180
         },
         "daily_update_inventory_alexa_out": {
           "x": 1558,
-          "y": 2831
+          "y": 3451
         },
         "daily_update_alexa_media_architecture": {
           "x": 990,
-          "y": 3437
+          "y": 4057
         },
         "daily_update_alexa_media_in": {
           "x": 275,
-          "y": 3537
+          "y": 4157
         },
         "daily_update_alexa_media_authorized": {
           "x": 540,
-          "y": 3537
+          "y": 4157
         },
         "daily_update_alexa_media_policy": {
           "x": 840,
-          "y": 3497
+          "y": 4117
         },
         "daily_update_alexa_media_pending_rbe": {
           "x": 870,
-          "y": 3577
+          "y": 4197
         },
         "daily_update_alexa_media_pending": {
           "x": 1120,
-          "y": 3577
+          "y": 4197
         },
         "daily_update_alexa_media_prepare": {
           "x": 1110,
-          "y": 3497
+          "y": 4117
         },
         "daily_update_alexa_media_final_gate": {
           "x": 1380,
-          "y": 3497
+          "y": 4117
         },
         "daily_update_alexa_media_test_out": {
           "x": 1700,
-          "y": 3457
+          "y": 4077
         },
         "daily_update_alexa_media_request": {
           "x": 1640,
-          "y": 3537
+          "y": 4157
         },
         "daily_update_alexa_media_request_ack": {
           "x": 1660,
-          "y": 3597
+          "y": 4217
         },
         "daily_update_alexa_media_request_error": {
           "x": 1930,
-          "y": 3637
+          "y": 4257
         },
         "daily_update_alexa_media_request_complete": {
           "x": 1660,
-          "y": 3657
+          "y": 4277
         },
         "daily_update_alexa_media_result_startup": {
           "x": 390,
-          "y": 3737
+          "y": 4357
         },
         "daily_update_alexa_media_result_poll": {
           "x": 410,
-          "y": 3797
+          "y": 4417
         },
         "daily_update_alexa_media_read_result": {
           "x": 700,
-          "y": 3767
+          "y": 4387
         },
         "daily_update_alexa_media_read_error": {
           "x": 980,
-          "y": 3717
+          "y": 4337
         },
         "daily_update_alexa_media_read_complete": {
           "x": 980,
-          "y": 3837
+          "y": 4457
         },
         "daily_update_alexa_media_parse_result": {
           "x": 1020,
-          "y": 3767
+          "y": 4387
         },
         "daily_update_alexa_media_result_test": {
           "x": 1260,
-          "y": 3877
+          "y": 4497
         },
         "daily_update_alexa_media_result_test_out": {
           "x": 1540,
-          "y": 3877
+          "y": 4497
         },
         "daily_update_alexa_media_result_test_in": {
           "x": 765,
-          "y": 3877
+          "y": 4497
         },
         "daily_update_alexa_media_result_dry_out": {
           "x": 1300,
-          "y": 3727
+          "y": 4347
         },
         "daily_update_alexa_media_backup_out": {
           "x": 1320,
-          "y": 3807
+          "y": 4427
         },
         "daily_update_kia_authorized": {
           "x": 384,
-          "y": 4680
+          "y": 5300
         },
         "daily_update_kia_auto_policy": {
           "x": 664,
-          "y": 4640
+          "y": 5260
         },
         "daily_update_kia_mode_audit": {
           "x": 664,
-          "y": 4720
+          "y": 5340
         },
         "daily_update_kia_mode_install": {
           "x": 904,
-          "y": 4640
+          "y": 5260
         },
         "daily_update_kia_test_request_route_out": {
           "x": 514,
-          "y": 4800
+          "y": 5420
         },
         "daily_update_kia_test_request_route_in": {
           "x": 854,
-          "y": 4780
+          "y": 5400
+        },
+        "daily_update_codex_cli_request_out": {
+          "x": 1260,
+          "y": 1460
+        },
+        "daily_update_codex_cli_group": {
+          "x": 64,
+          "y": 1539,
+          "w": 1402,
+          "h": 602
+        },
+        "daily_update_codex_cli_architecture": {
+          "x": 740,
+          "y": 1580
+        },
+        "daily_update_codex_cli_request_in": {
+          "x": 105,
+          "y": 1660
+        },
+        "daily_update_codex_cli_manual": {
+          "x": 230,
+          "y": 1720
+        },
+        "daily_update_codex_cli_test_request": {
+          "x": 240,
+          "y": 1780
+        },
+        "daily_update_codex_cli_prepare": {
+          "x": 500,
+          "y": 1720
+        },
+        "daily_update_codex_cli_route_test": {
+          "x": 770,
+          "y": 1720
+        },
+        "daily_update_codex_cli_request_test_out": {
+          "x": 1060,
+          "y": 1660
+        },
+        "daily_update_codex_cli_request_host": {
+          "x": 1050,
+          "y": 1760
+        },
+        "daily_update_codex_cli_request_ack": {
+          "x": 1310,
+          "y": 1680
+        },
+        "daily_update_codex_cli_request_error": {
+          "x": 1320,
+          "y": 1740
+        },
+        "daily_update_codex_cli_request_complete": {
+          "x": 1310,
+          "y": 1800
+        },
+        "daily_update_codex_cli_result_startup": {
+          "x": 220,
+          "y": 1900
+        },
+        "daily_update_codex_cli_result_poll": {
+          "x": 240,
+          "y": 1960
+        },
+        "daily_update_codex_cli_read_result": {
+          "x": 540,
+          "y": 1930
+        },
+        "daily_update_codex_cli_read_error": {
+          "x": 820,
+          "y": 1870
+        },
+        "daily_update_codex_cli_read_complete": {
+          "x": 920,
+          "y": 2100
+        },
+        "daily_update_codex_cli_test_success": {
+          "x": 670,
+          "y": 2020
+        },
+        "daily_update_codex_cli_test_failure": {
+          "x": 660,
+          "y": 2080
+        },
+        "daily_update_codex_cli_parse_result": {
+          "x": 960,
+          "y": 1990
+        },
+        "daily_update_codex_cli_result_test_out": {
+          "x": 1280,
+          "y": 1960
         }
       },
       "geometry_final": true

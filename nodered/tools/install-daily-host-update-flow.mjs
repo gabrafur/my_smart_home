@@ -431,6 +431,7 @@ const resetTest = `flow.set("daily_update_last_result_v1__test", undefined);
 flow.set("host_update_dietpi_last_result_v1__test", undefined);
 flow.set("host_update_home-assistant-core_last_result_v1__test", undefined);
 flow.set("host_update_containers_last_result_v1__test", undefined);
+flow.set("host_update_codex-cli_last_result_v1__test", undefined);
 flow.set("repository_dependency_last_result_v1__test", undefined);
 flow.set("daily_update_inventory_last_v1__test", undefined);
 flow.set("kia_uvo_update_last_result_v1__test", undefined);
@@ -452,6 +453,7 @@ const dryRunTerminal = `const result = {
     apt_commands_sent: false,
     home_assistant_core_update_sent: false,
     docker_update_sent: false,
+    codex_cli_update_sent: false,
     repository_dependency_update_sent: false,
     npm_install_sent: false,
     hacs_update_install_sent: false,
@@ -576,6 +578,7 @@ const productionGroup = "daily_update_production_group";
 const resultGroup = "daily_update_result_group";
 const coreGroup = "daily_update_core_group";
 const containersGroup = "daily_update_containers_group";
+const codexCliGroup = "daily_update_codex_cli_group";
 const dependencyGroup = "daily_update_repository_dependency_group";
 const dependencyTestGroup = "daily_update_repository_dependency_test_group";
 const testGroup = "daily_update_test_group";
@@ -589,7 +592,7 @@ const kiaCodexGroup = "daily_update_kia_codex_group";
 const nodes = [
   {
     id: TAB, type: "tab", label: "atualizacoes_diarias", disabled: false,
-    info: "Orquestrador canônico de updates. Depois do backup Git, executa serialmente DietPi, Home Assistant Core e demais containers. Também inventaria toda entidade update.*; às 03:00, uma autorização efêmera permite atualizar Alexa Media e Kia UVO somente após auditoria de upstream, staging, backup, rollback e validação. Demais HACS versionados, firmware físico e fontes desconhecidas mantêm políticas visuais próprias. O Node-RED não recebe sudo, checkout, credenciais nem socket Docker.",
+    info: "Orquestrador canônico de updates. Depois do backup Git, executa serialmente DietPi, Home Assistant Core, demais containers e Codex CLI antes das dependências do repositório. Também inventaria toda entidade update.*; às 03:00, uma autorização efêmera permite atualizar Alexa Media e Kia UVO somente após auditoria de upstream, staging, backup, rollback e validação. Demais HACS versionados, firmware físico e fontes desconhecidas mantêm políticas visuais próprias. O Node-RED não recebe sudo, npm, checkout, credenciais nem socket Docker.",
     env: [],
   },
   {
@@ -809,7 +812,7 @@ const nodes = [
       "daily_update_containers_request_test_out", "daily_update_containers_result_startup", "daily_update_containers_result_poll",
       "daily_update_containers_read_result", "daily_update_containers_read_error", "daily_update_containers_read_complete",
       "daily_update_containers_test_result_in", "daily_update_containers_parse_result", "daily_update_containers_result_test_out",
-      "daily_update_dependency_chain_out",
+      "daily_update_codex_cli_request_out",
     ],
     x: 44, y: 1099, w: 1402, h: 402,
   },
@@ -877,20 +880,134 @@ const nodes = [
     name: "Receber resultado containers TESTE", links: ["daily_update_containers_test_result_out"],
     x: 645, y: 1340, wires: [["daily_update_containers_parse_result"]],
   },
-  functionNode("daily_update_containers_parse_result", containersGroup, "Normalizar resultado containers", parseHostStageResult("containers", "Containers", true), 2, 900, 1400, [["daily_update_containers_result_test_out"], ["daily_update_dependency_chain_out"]]),
+  functionNode("daily_update_containers_parse_result", containersGroup, "Normalizar resultado containers", parseHostStageResult("containers", "Containers", true), 2, 900, 1400, [["daily_update_containers_result_test_out"], ["daily_update_codex_cli_request_out"]]),
   {
     id: "daily_update_containers_result_test_out", type: "link out", z: TAB, g: containersGroup,
     name: "Resultado containers TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
     x: 1235, y: 1400, wires: [],
   },
   {
-    id: "daily_update_dependency_chain_out", type: "link out", z: TAB, g: containersGroup,
-    name: "Containers concluídos → dependências", mode: "link", links: ["daily_update_dependency_chain_in"],
+    id: "daily_update_codex_cli_request_out", type: "link out", z: TAB, g: containersGroup,
+    name: "Containers concluídos → Codex CLI", mode: "link", links: ["daily_update_codex_cli_request_in"],
     x: 1240, y: 1460, wires: [],
   },
   {
+    id: codexCliGroup, type: "group", z: TAB,
+    name: "5. SUBFLUXO Codex CLI: versão oficial exata, validação e rollback",
+    style: { label: true, color: "#5f78a8" },
+    nodes: [
+      "daily_update_codex_cli_architecture", "daily_update_codex_cli_request_in",
+      "daily_update_codex_cli_manual", "daily_update_codex_cli_test_request",
+      "daily_update_codex_cli_prepare", "daily_update_codex_cli_route_test",
+      "daily_update_codex_cli_request_test_out", "daily_update_codex_cli_request_host",
+      "daily_update_codex_cli_request_ack", "daily_update_codex_cli_request_error",
+      "daily_update_codex_cli_request_complete", "daily_update_codex_cli_result_startup",
+      "daily_update_codex_cli_result_poll", "daily_update_codex_cli_read_result",
+      "daily_update_codex_cli_read_error", "daily_update_codex_cli_read_complete",
+      "daily_update_codex_cli_test_success", "daily_update_codex_cli_test_failure",
+      "daily_update_codex_cli_parse_result", "daily_update_codex_cli_result_test_out",
+      "daily_update_dependency_chain_out",
+    ],
+    x: 44, y: 1539, w: 1402, h: 602,
+  },
+  {
+    id: "daily_update_codex_cli_architecture", type: "comment", z: TAB, g: codexCliGroup,
+    name: "POLÍTICA: consultar @openai/codex, instalar versão exata, verificar binário e reverter se falhar",
+    info: "A ponte do host resolve a versão publicada no registro npm, aceita somente semver válido e instala no prefixo pessoal .local. Se a verificação do binário falhar, tenta restaurar a versão anterior. O Node-RED recebe somente lifecycle sanitizado.",
+    x: 720, y: 1580, wires: [],
+  },
+  {
+    id: "daily_update_codex_cli_request_in", type: "link in", z: TAB, g: codexCliGroup,
+    name: "Receber sucesso dos containers", links: ["daily_update_codex_cli_request_out"],
+    x: 85, y: 1660, wires: [["daily_update_codex_cli_prepare"]],
+  },
+  {
+    id: "daily_update_codex_cli_manual", type: "inject", z: TAB, g: codexCliGroup,
+    name: "Atualizar Codex CLI agora", props: [{ p: "payload", v: '{"stage":"manual"}', vt: "json" }],
+    repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 210, y: 1720, wires: [["daily_update_codex_cli_prepare"]],
+  },
+  {
+    id: "daily_update_codex_cli_test_request", type: "inject", z: TAB, g: codexCliGroup,
+    name: "TESTE 5A: solicitar atualização", props: [
+      { p: "payload", v: '{"stage":"containers","status":"success","test_mode":true}', vt: "json" },
+      { p: "_daily_update_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 220, y: 1780, wires: [["daily_update_codex_cli_prepare"]],
+  },
+  functionNode("daily_update_codex_cli_prepare", codexCliGroup, "Preparar etapa Codex CLI", prepareHostStage("codex-cli"), 1, 480, 1720, [["daily_update_codex_cli_route_test"]]),
+  {
+    id: "daily_update_codex_cli_route_test", type: "switch", z: TAB, g: codexCliGroup,
+    name: "Codex CLI: produção ou TESTE?", property: "_daily_update_test", propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
+    x: 750, y: 1720, wires: [["daily_update_codex_cli_request_test_out"], ["daily_update_codex_cli_request_host"]],
+  },
+  {
+    id: "daily_update_codex_cli_request_test_out", type: "link out", z: TAB, g: codexCliGroup,
+    name: "Codex CLI TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
+    x: 1040, y: 1660, wires: [],
+  },
+  {
+    id: "daily_update_codex_cli_request_host", type: "exec", z: TAB, g: codexCliGroup,
+    command: "/opt/request-host-update-stage.sh codex-cli", addpay: "", append: "", useSpawn: "false",
+    timer: "30", winHide: false, oldrc: false, name: "Solicitar atualização Codex CLI",
+    x: 1030, y: 1760,
+    wires: [["daily_update_codex_cli_request_ack"], ["daily_update_codex_cli_request_error"], ["daily_update_codex_cli_request_complete"]],
+  },
+  functionNode("daily_update_codex_cli_request_ack", codexCliGroup, "Registrar solicitação Codex CLI", recordRequest, 0, 1290, 1680, []),
+  functionNode("daily_update_codex_cli_request_error", codexCliGroup, "Falha segura da ponte Codex CLI", recordExecError, 0, 1300, 1740, []),
+  functionNode("daily_update_codex_cli_request_complete", codexCliGroup, "Código da ponte Codex CLI", recordCompletion, 0, 1290, 1800, []),
+  {
+    id: "daily_update_codex_cli_result_startup", type: "inject", z: TAB, g: codexCliGroup,
+    name: "Codex CLI: ler ao subir", props: [{ p: "payload" }], repeat: "", crontab: "",
+    once: true, onceDelay: "40", topic: "", payload: "", payloadType: "date",
+    x: 200, y: 1900, wires: [["daily_update_codex_cli_read_result"]],
+  },
+  {
+    id: "daily_update_codex_cli_result_poll", type: "inject", z: TAB, g: codexCliGroup,
+    name: "Codex CLI: resultado a cada 1 min", props: [{ p: "payload" }], repeat: "60", crontab: "",
+    once: false, onceDelay: "0.1", topic: "", payload: "", payloadType: "date",
+    x: 220, y: 1960, wires: [["daily_update_codex_cli_read_result"]],
+  },
+  {
+    id: "daily_update_codex_cli_read_result", type: "exec", z: TAB, g: codexCliGroup,
+    command: "/opt/read-host-update-stage-result.sh codex-cli", addpay: "", append: "", useSpawn: "false",
+    timer: "15", winHide: false, oldrc: false, name: "Ler resultado Codex CLI",
+    x: 520, y: 1930,
+    wires: [["daily_update_codex_cli_parse_result"], ["daily_update_codex_cli_read_error"], ["daily_update_codex_cli_read_complete"]],
+  },
+  functionNode("daily_update_codex_cli_read_error", codexCliGroup, "Falha ao ler Codex CLI", recordExecError, 0, 800, 1870, []),
+  functionNode("daily_update_codex_cli_read_complete", codexCliGroup, "Código da leitura Codex CLI", recordCompletion, 0, 900, 2100, []),
+  {
+    id: "daily_update_codex_cli_test_success", type: "inject", z: TAB, g: codexCliGroup,
+    name: "TESTE 5B: atualização concluída", props: [
+      { p: "payload", v: "host-update stage=codex-cli status=success request_id=test-codex-cli stage_exit=0", vt: "str" },
+      { p: "_daily_update_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 650, y: 2020, wires: [["daily_update_codex_cli_parse_result"]],
+  },
+  {
+    id: "daily_update_codex_cli_test_failure", type: "inject", z: TAB, g: codexCliGroup,
+    name: "TESTE 5C: validação falhou", props: [
+      { p: "payload", v: "host-update stage=codex-cli status=failed request_id=test-codex-cli-failed stage_exit=70 failure_stage=verify", vt: "str" },
+      { p: "_daily_update_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 640, y: 2080, wires: [["daily_update_codex_cli_parse_result"]],
+  },
+  functionNode("daily_update_codex_cli_parse_result", codexCliGroup, "Normalizar resultado Codex CLI", parseHostStageResult("codex-cli", "Codex CLI", true), 2, 940, 1990, [["daily_update_codex_cli_result_test_out"], ["daily_update_dependency_chain_out"]]),
+  {
+    id: "daily_update_codex_cli_result_test_out", type: "link out", z: TAB, g: codexCliGroup,
+    name: "Resultado Codex CLI TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
+    x: 1260, y: 1960, wires: [],
+  },
+  {
+    id: "daily_update_dependency_chain_out", type: "link out", z: TAB, g: codexCliGroup,
+    name: "Codex CLI concluído → dependências", mode: "link", links: ["daily_update_dependency_chain_in"],
+    x: 1260, y: 2020, wires: [],
+  },
+  {
     id: testGroup, type: "group", z: TAB,
-    name: "5. TESTES manuais completos sem sudo, apt, Docker, firmware ou reboot",
+    name: "6. TESTES manuais completos sem sudo, apt, Docker, npm, firmware ou reboot",
     style: { label: true, color: "#7d6ba8" },
     nodes: [
       "daily_update_test_instructions", "daily_update_test_reset", "daily_update_test_reset_state",
@@ -1009,6 +1126,7 @@ const nodes = [
       "daily_update_request_test_out", "daily_update_result_test_out",
       "daily_update_core_request_test_out", "daily_update_core_result_test_out",
       "daily_update_containers_request_test_out", "daily_update_containers_result_test_out",
+      "daily_update_codex_cli_request_test_out", "daily_update_codex_cli_result_test_out",
       "daily_update_inventory_summary_test_out", "daily_update_inventory_nonpending_test_out", "daily_update_core_pending_test_out",
       "daily_update_hacs_test_out", "daily_update_unknown_test_out", "daily_update_firmware_test_out", "daily_update_firmware_queue_test_out",
       "daily_update_alexa_media_test_out", "daily_update_alexa_media_result_dry_out",
@@ -1022,7 +1140,7 @@ const nodes = [
   functionNode("daily_update_dry_run_terminal", testGroup, "TESTE FINAL: host simulado", dryRunTerminal, 0, 1030, 870, []),
   {
     id: inventoryGroup, type: "group", z: TAB,
-    name: "6. ORQUESTRADOR update.*: parâmetros, inventário e roteamento canônico",
+    name: "7. ORQUESTRADOR update.*: parâmetros, inventário e roteamento canônico",
     style: { label: true, color: "#2f78a8" },
     nodes: [
       "daily_update_inventory_architecture", "daily_update_inventory_schedule", "daily_update_inventory_manual",
@@ -1193,7 +1311,7 @@ const nodes = [
   ].map(([id, name, target, x, y]) => ({ id, type: "link out", z: TAB, g: inventoryGroup, name, mode: "link", links: [target], x, y, wires: [] })),
   {
     id: hacsGroup, type: "group", z: TAB,
-    name: "7. SUBFLUXO HACS versionado: detectar e exigir auditoria upstream",
+    name: "8. SUBFLUXO HACS versionado: detectar e exigir auditoria upstream",
     style: { label: true, color: "#b68c3a" },
     nodes: ["daily_update_hacs_in", "daily_update_hacs_state", "daily_update_hacs_test_gate", "daily_update_hacs_rbe", "daily_update_hacs_pending", "daily_update_hacs_current", "daily_update_hacs_unavailable", "daily_update_hacs_test_out"],
     x: 44, y: 2820, w: 882, h: 302,
@@ -1230,7 +1348,7 @@ const nodes = [
   },
   {
     id: unknownGroup, type: "group", z: TAB,
-    name: "8. SUBFLUXO desconhecido: fail closed sem update.install",
+    name: "9. SUBFLUXO desconhecido: fail closed sem update.install",
     style: { label: true, color: "#8a8a8a" },
     nodes: ["daily_update_unknown_in", "daily_update_unknown_test_gate", "daily_update_unknown_rbe", "daily_update_unknown_pending", "daily_update_unknown_test_out"],
     x: 984, y: 2820, w: 642, h: 302,
@@ -1258,7 +1376,7 @@ const nodes = [
   },
   {
     id: alexaGroup, type: "group", z: TAB,
-    name: "9. SUBFLUXO Alexa Media: tag exata, auditoria, overlay, rollback e validação",
+    name: "10. SUBFLUXO Alexa Media: tag exata, auditoria, overlay, rollback e validação",
     style: { label: true, color: "#6e78b8" },
     nodes: [
       "daily_update_alexa_media_architecture", "daily_update_alexa_media_in",
@@ -1373,7 +1491,7 @@ const nodes = [
   },
   {
     id: firmwareGroup, type: "group", z: TAB,
-    name: "10. SUBFLUXO firmware físico: automático desligado; aplicação manual explícita",
+    name: "11. SUBFLUXO firmware físico: automático desligado; aplicação manual explícita",
     style: { label: true, color: "#c45a50" },
     nodes: [
       "daily_update_firmware_architecture", "daily_update_firmware_in", "daily_update_firmware_state",
@@ -1490,7 +1608,7 @@ const nodes = [
   },
   {
     id: kiaUpdateGroup, type: "group", z: TAB,
-    name: "11. SUBFLUXO HACS Bluelink: alvo exato e promoção segura autorizada",
+    name: "12. SUBFLUXO HACS Bluelink: alvo exato e promoção segura autorizada",
     style: { label: true, color: "#b58b3f" },
     nodes: [
       "daily_update_kia_architecture", "daily_update_kia_schedule", "daily_update_kia_authorized",
@@ -1632,7 +1750,7 @@ const nodes = [
   },
   {
     id: kiaCodexGroup, type: "group", z: TAB,
-    name: "12. Candidato autorizado: Codex prepara; host aplica, valida e promove",
+    name: "13. Candidato autorizado: Codex prepara; host aplica, valida e promove",
     style: { label: true, color: "#8f6bb3" },
     nodes: [
       "daily_update_kia_codex_architecture", "daily_update_kia_codex_request_in",
@@ -1764,7 +1882,7 @@ const nodes = [
   },
   {
     id: dependencyGroup, type: "group", z: TAB,
-    name: "13. SUBFLUXO dependências do repositório: audit, política e atualização segura",
+    name: "14. SUBFLUXO dependências do repositório: audit, política e atualização segura",
     style: { label: true, color: "#6d8f3f" },
     nodes: [
       "daily_update_dependency_architecture", "daily_update_dependency_chain_in",
@@ -1983,7 +2101,7 @@ const nodes = [
   },
   {
     id: dependencyTestGroup, type: "group", z: TAB,
-    name: "13. TESTES da atualização de dependências: caminho completo sem npm, restart ou push",
+    name: "15. TESTES da atualização de dependências: caminho completo sem npm, restart ou push",
     style: { label: true, color: "#7d6ba8" },
     nodes: [
       "daily_update_dependency_test_instructions", "daily_update_dependency_test_reset",
@@ -2044,17 +2162,19 @@ const nodes = [
   },
 ];
 
-// Keep the original approved groups intact while opening space for the three
+// Keep the original approved groups intact while opening space for the four
 // host stages and for the centralized update.* inventory.
 const verticalShifts = new Map([
-  [testGroup, 900],
-  [hacsGroup, 200],
-  [unknownGroup, 200],
-  [firmwareGroup, 820],
-  [kiaUpdateGroup, 3500],
-  [kiaCodexGroup, 3500],
-  [dependencyGroup, 600],
-  [dependencyTestGroup, 600],
+  [testGroup, 1520],
+  [inventoryGroup, 620],
+  [hacsGroup, 820],
+  [unknownGroup, 820],
+  [alexaGroup, 620],
+  [firmwareGroup, 1440],
+  [kiaUpdateGroup, 4120],
+  [kiaCodexGroup, 4120],
+  [dependencyGroup, 1220],
+  [dependencyTestGroup, 1220],
 ]);
 const inventoryDecisionIds = new Set([
   "daily_update_inventory_test_snapshot_out", "daily_update_inventory_snapshot_in",
