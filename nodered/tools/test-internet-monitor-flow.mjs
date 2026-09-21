@@ -8,6 +8,19 @@ const flows = JSON.parse(fs.readFileSync(flowSource, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 const TAB = "monitoramento_internet_tab";
 
+function logicalWireTargets(id, output = 0) {
+  return byId.get(id).wires[output].flatMap((targetId) => {
+    const target = byId.get(targetId);
+    assert.ok(target, `nó ausente: ${targetId}`);
+    if (target.type !== "link out" || !/^notification_hub_wire_out_/.test(target.id)) return [targetId];
+    assert.equal(target.links.length, 1);
+    const input = byId.get(target.links[0]);
+    assert.equal(input.type, "link in");
+    return input.wires[0];
+  });
+}
+
+
 function getFunction(id) {
   const flowNode = byId.get(id);
   assert.equal(flowNode?.type, "function", `function ausente: ${id}`);
@@ -211,8 +224,8 @@ assert.equal(result._internet_test, true);
 assert.equal(flow.get("internet_monitor_state_v1__test"), undefined, "teste não contamina produção");
 dry(result, testFlow, nodeMock, globalMock);
 assert.equal(testFlow.get("internet_monitor_last_dry_run_v1__test").dispatched, false);
-assert.deepEqual(byId.get("internet_notification_test_gate").wires[0], ["internet_dry_out"]);
-assert.deepEqual(byId.get("internet_publication_test_gate").wires[0], ["internet_publication_dry_out"]);
+assert.deepEqual(logicalWireTargets("internet_notification_test_gate"), ["internet_dry_out"]);
+assert.deepEqual(logicalWireTargets("internet_publication_test_gate"), ["internet_publication_dry_out"]);
 
 const remoteFlow = context({ persistent: {
   internet_monitor_policy_v1: flow.get("internet_monitor_policy_v1", "persistent"),
@@ -271,9 +284,9 @@ remoteTest = remoteMutate(remoteTest, remoteTestFlow, nodeMock, globalMock);
 remoteDry(remoteTest, remoteTestFlow, nodeMock, globalMock);
 assert.equal(remoteTestFlow.get("internet_remote_access_last_dry_run_v1__test").dispatched, false);
 assert.equal(remoteTestFlow.get("internet_remote_access_state_v1", "persistent"), undefined, "TESTE não contamina recovery real");
-assert.deepEqual(byId.get("internet_remote_request_gate").wires[0], ["internet_remote_dry_out"]);
-assert.deepEqual(byId.get("internet_remote_alert_test_gate").wires[0], ["internet_remote_dry_out"]);
-assert.deepEqual(byId.get("internet_remote_dismiss_test_gate").wires[0], ["internet_remote_dry_out"]);
+assert.deepEqual(logicalWireTargets("internet_remote_request_gate"), ["internet_remote_dry_out"]);
+assert.deepEqual(logicalWireTargets("internet_remote_alert_test_gate"), ["internet_remote_dry_out"]);
+assert.deepEqual(logicalWireTargets("internet_remote_dismiss_test_gate"), ["internet_remote_dry_out"]);
 assert.equal(byId.get("internet_remote_alert_dismiss").type, "change", "dismiss deve usar o hub persistente");
 assert.equal(byId.get("internet_remote_alert_dismiss__hub_call").type, "link call", "chamada do hub persistente ausente");
 assert.equal(byId.get("internet_remote_request_worker").command, "/opt/request-host-codex-remote-recovery.sh");

@@ -3,7 +3,7 @@
 const notification = msg.notification ?? {};
 const channel = msg._notification_hub_channel;
 if (!["mobile", "alexa", "persistent"].includes(channel)) {
-    node.error("NOTIFICATION_HISTORY_INVALID_CHANNEL");
+    node.error("NOTIFICATION_HISTORY_INVALID_CHANNEL", { _msgid: msg._msgid });
     return null;
 }
 const simulated = notification.test_mode === true && notification.delivery_under_test !== true;

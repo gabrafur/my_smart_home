@@ -8,8 +8,9 @@ import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const source = await fs.readFile(new URL("functions/notification-hub-history-record.js", import.meta.url), "utf8");
 const errors = [];
+const errorContexts = [];
 const serialize = (msg) => vm.runInNewContext(`(function () { ${source}\n })()`, {
-  msg: structuredClone(msg), node: { error: (error) => errors.push(error) },
+  msg: structuredClone(msg), node: { error: (error, context) => { errors.push(error); errorContexts.push(structuredClone(context)); } },
 });
 const request = {
   _msgid: "test-correlation", _notification_hub_channel: "mobile",
@@ -45,6 +46,18 @@ const alexaOverride = serialize({ ...request, _notification_hub_channel: "alexa"
 assert.equal(JSON.parse(alexaOverride[0].payload).message, "effective announce text");
 assert.equal(serialize({ ...request, _notification_hub_channel: "../invalid" }), null);
 assert.deepEqual(errors, ["NOTIFICATION_HISTORY_INVALID_CHANNEL"]);
+assert.deepEqual(errorContexts, [{ _msgid: request._msgid }], "catch receives a sanitized correlation context");
+const purgeSource = await fs.readFile(new URL("functions/notification-hub-history-purge-result.js", import.meta.url), "utf8");
+const purgeErrors = [];
+const purgeResult = (code) => vm.runInNewContext(`(function () { ${purgeSource}\n })()`, {
+  msg: { _msgid: "purge-test", payload: { code }, stderr: "private fixture" },
+  node: { status() {}, error: (message, context) => purgeErrors.push({ message, context: structuredClone(context) }) },
+});
+assert.equal(purgeResult(1), null);
+assert.deepEqual(purgeErrors, [{ message: "NOTIFICATION_HISTORY_PURGE_FAILED", context: { _msgid: "purge-test" } }]);
+assert.equal(purgeResult(0), null);
+assert.equal(purgeErrors.length, 1);
+
 
 // Topology: journal every successful service leg before aggregate completion.
 const flows = JSON.parse(await fs.readFile(new URL("../flows.json", import.meta.url), "utf8"));
@@ -61,6 +74,7 @@ for (const channel of ["mobile", "alexa", "persistent"]) {
     assert.ok(service.wires[0].some((id) => !id.endsWith("_history_out")), "logging must not block caller acknowledgement");
   }
   assert.equal(byId.get(`${prefix}_record`).func, source.trimEnd());
+  assert.equal(byId.get(`${prefix}_purge_result`).func, purgeSource.trimEnd());
   assert.deepEqual(byId.get(`${prefix}_record`).wires, [[`${prefix}_file`], [`${prefix}_dry`]]);
   assert.equal(byId.get(`${prefix}_schedule`).repeat, "300");
   assert.equal(byId.get(`${prefix}_schedule`).once, true);
