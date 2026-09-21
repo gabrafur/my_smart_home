@@ -182,11 +182,11 @@ identifica a chamada ao hub.
 | `iluminacao_externa` | `9d81b75a18d482f1` | Alexa no target atual | adaptador → hub Alexa `voice_assistant_primary`; `notify_text` igual |
 | `iluminacao_externa` | `ext_send_recovery_mobile` | somente móvel primário, actionable | adaptador → hub móvel somente `resident_primary`; tag e actions `confirm_action`/`cancel_action` iguais |
 | `alarme_casa` | `alarm_notify_alexa` | Alexa no target atual | adaptador → hub Alexa; `notify_text` igual |
-| `resfriamento_raspberry_pi` | início: `349bc...`, `rpi_emergency_cooling_push_primary`, `rpi_emergency_cooling_alexa_primary` | HA persistente immediate + somente móvel primário + Alexa | três chamadas independentes aos três hubs; texto, título, temperatura, origem e ID iguais |
+| `resfriamento_raspberry_pi` | início: `349bc...`, `rpi_emergency_cooling_push_primary`, `rpi_emergency_cooling_alexa_primary` | HA persistente immediate + somente móvel primário + Alexa | celular primário + hub HA; anúncio Alexa desativado na configuração atual |
 | `resfriamento_raspberry_pi` | normalização `a240a...` | HA persistente immediate | hub HA `create/immediate`; snapshot/fallback e ID iguais |
 | `resfriamento_raspberry_pi` | falha `ab4f...` | HA persistente immediate | hub HA `create/immediate`; tentativas, razão, temperatura e ID iguais |
 | `resfriamento_raspberry_pi` | `5dd0...`, `36968...`, `4b48...` | três dismiss immediate | hub HA `dismiss/immediate`; os três IDs permanecem iguais |
-| `storage_health` | `storage_notify`, `storage_notify_secondary`, `storage_notify_persistent` | ambos os celulares + HA persistente queued | chamadas explícitas para primário, secundário e hub HA; título/mensagem e ID iguais |
+| `storage_health` | `storage_notify`, `storage_notify_secondary`, `storage_notify_persistent` | ambos os celulares + HA persistente queued | celular primário + hub HA; celular secundário desativado na configuração atual |
 | `localizacao_pessoas` | `564fd...` | comando `request_location_update` somente ao primário, queue first | hub móvel `background_command`, somente `resident_primary`, queue first |
 | `localizacao_pessoas` | `e0b7...` | comando `request_location_update` somente ao secundário, queue first | hub móvel `background_command`, somente `resident_secondary`, queue first |
 | `contexto_vehicle_primary` | refresh manual bloqueado | HA persistente immediate | hub HA `create/immediate`; objeto `notification` e ID iguais |
@@ -202,11 +202,11 @@ identifica a chamada ao hub.
 | `notificacoes_chegadas_residentes` | `resident_secondary` se aproxima | somente móvel primário, actionable e time-sensitive | hub móvel somente `resident_primary`; tag, som, interruption level, dedupe e mensagem iguais |
 | `notificacoes_chegadas_residentes` | `resident_primary` se aproxima | somente móvel secundário, actionable e time-sensitive | hub móvel somente `resident_secondary`; tag, som, interruption level, dedupe e mensagem iguais |
 | `notificacoes_chegadas_residentes` | smoke test solicitado | somente móvel secundário | hub móvel somente `resident_secondary`, com `delivery_under_test` e conteúdo `TESTE`; nunca inclui o primário |
-| `monitoramento_vpn` | queda/retorno confirmados | ambos + Alexa + HA persistente; dismiss na recuperação | quatro entregas independentes e um dismiss opcional; gate comum, IDs, dedupe e lifecycle iguais |
-| `monitoramento_internet` | queda confirmada | ambos + Alexa + HA persistente | quatro entregas independentes após o mesmo gate completo; conteúdo e ID iguais |
-| `monitoramento_internet` | recuperação confirmada | ambos + Alexa + HA persistente + dismiss anterior | quatro entregas independentes e um dismiss opcional; conteúdo e IDs iguais |
-| `monitoramento_zigbee` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | quatro entregas independentes e um dismiss opcional; quorum, dedupe e lifecycle iguais |
-| `monitoramento_tuya` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | quatro entregas independentes e um dismiss opcional; estado por dispositivo e IDs iguais |
+| `monitoramento_vpn` | queda/retorno confirmados | ambos + Alexa + HA persistente; dismiss na recuperação | celular primário + HA persistente e dismiss opcional; secundário e Alexa desativados |
+| `monitoramento_internet` | queda confirmada | ambos + Alexa + HA persistente | ambos os celulares + HA persistente; Alexa desativada |
+| `monitoramento_internet` | recuperação confirmada | ambos + Alexa + HA persistente + dismiss anterior | ambos os celulares + HA persistente e dismiss opcional; Alexa desativada |
+| `monitoramento_zigbee` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | celular primário + HA persistente e dismiss opcional; secundário e Alexa desativados |
+| `monitoramento_tuya` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | celular primário + HA persistente e dismiss opcional; secundário e Alexa desativados |
 | `observabilidade_global` | incidente confirmado | somente móvel primário + HA persistente queued | hubs móvel/HA; smoke test, ack, fila e supressão de recursão preservados |
 
 ## Histórico privado de notificações — 7 dias
@@ -254,6 +254,16 @@ node nodered/tools/test-notification-history.mjs
 Para consultar localmente, use um leitor JSONL nos arquivos do canal desejado e
 filtre por `source`, `correlation_id` ou `accepted_at`. O histórico não é publicado
 em endpoint HTTP nem no Registro de atividades do Home Assistant.
+
+## Reconciliação das escolhas de entrega
+
+A coluna final da matriz acima representa a configuração atual; a coluna de
+origem preserva a comparação histórica da migração. O gerador mantém
+explicitamente os canais desativados e os testes rejeitam sua reintrodução.
+O pedido de confirmação de recovery da iluminação externa termina no celular,
+sem anúncio Alexa adicional; o cancelamento pendente continua chegando ao
+trigger por ligação direta. Ajustes feitos no editor devem ser refletidos na
+fonte geradora e nos contratos antes da próxima regeneração.
 
 ## Testes e manutenção
 

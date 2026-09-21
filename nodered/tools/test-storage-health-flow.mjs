@@ -179,12 +179,14 @@ assert.equal(byId.get("storage_daily_maintenance")?.crontab, "23 */6 * * *");
 assert.equal(byId.get("storage_exec_maintenance")?.command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(byId.get("storage_request_host_maintenance")?.command, "/opt/request-host-storage-maintenance.sh");
 assert.equal(byId.get("storage_exec_inspection")?.command, "/opt/storage-health-maintenance.sh --dry-run --deep");
-for (const [id, recipient] of [["storage_notify", "resident_primary"], ["storage_notify_secondary", "resident_secondary"]]) {
+for (const [id, recipient] of [["storage_notify", "resident_primary"]]) {
   assert.equal(byId.get(id)?.type, "change");
   assert.match(byId.get(id).rules.map((rule) => String(rule.to ?? "")).join("\n"), new RegExp(`"recipients":\\["${recipient}"\\]`));
   assert.deepEqual(byId.get(`${id}__hub_call`)?.links, ["notification_hub_mobile_in"]);
 }
 assert.equal(byId.has("storage_evaluate"), false);
+assert.equal(byId.has("storage_notify_secondary"), false);
+assert.equal(byId.has("storage_notify_secondary__hub_call"), false);
 for (const node of tabNodes.filter((entry) => entry.type === "function" && !["storage_discovery", "storage_visual_history_analyze"].includes(entry.id))) {
   assert.ok(node.func.length < 2000, `JavaScript residual grande: ${node.id}`);
 }

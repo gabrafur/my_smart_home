@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { NOTIFICATION_HUBS, installNotificationHubs, refreshNotificationWireRoutes } from "./install-notification-hubs.mjs";
+import { NOTIFICATION_HUBS, installNotificationHubs, refreshNotificationWireRoutes, routeCanvasWires } from "./install-notification-hubs.mjs";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -1372,6 +1372,9 @@ for (const [suffix, position] of [
       node.id === `global_observer_coverage__resident_notifications_tab${suffix}`),
     position,
   );
+}
+if (process.env.NODE_RED_NOTIFICATION_ROUTE_WIRES !== "0") {
+  routeCanvasWires(finalized, finalized.filter((node) => node.type === "tab").map((node) => node.id));
 }
 fs.writeFileSync(outputPath, `${JSON.stringify(finalized, null, 4)}\n`);
 console.log(

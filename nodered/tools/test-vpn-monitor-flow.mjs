@@ -123,10 +123,10 @@ assert.match(result.notification.notification.message, /deixou de atualizar/);
 
 assert.equal(byId.get("vpn_monitor_notify_dispatch")?.type, "change");
 assert.match(byId.get("vpn_monitor_notify_dispatch__mobile_prepare")?.rules?.find((rule) => rule.p === "notification")?.to ?? "", /"recipients":\["resident_primary"\]/);
-assert.match(byId.get("vpn_monitor_notify_dispatch__mobile_secondary_prepare")?.rules?.find((rule) => rule.p === "notification")?.to ?? "", /"recipients":\["resident_secondary"\]/);
+assert.equal(byId.has("vpn_monitor_notify_dispatch__mobile_secondary_prepare"), false);
 assert.deepEqual(byId.get("vpn_monitor_notify_dispatch__mobile_call")?.links, ["notification_hub_mobile_in"]);
-assert.deepEqual(byId.get("vpn_monitor_notify_dispatch__mobile_secondary_call")?.links, ["notification_hub_mobile_in"]);
-assert.deepEqual(byId.get("vpn_monitor_notify_dispatch__alexa_call")?.links, ["notification_hub_alexa_in"]);
+assert.equal(byId.has("vpn_monitor_notify_dispatch__mobile_secondary_call"), false);
+assert.equal(byId.has("vpn_monitor_notify_dispatch__alexa_call"), false);
 assert.deepEqual(byId.get("vpn_monitor_notify_dispatch__persistent_call")?.links, ["notification_hub_persistent_in"]);
 assert.equal(byId.get("vpn_monitor_state_out")?.retain, "true");
 assert.equal(byId.get("vpn_monitor_health_in")?.topic, "nodered/infrastructure/vpn/host-health");

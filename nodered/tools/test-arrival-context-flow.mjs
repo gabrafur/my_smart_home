@@ -192,6 +192,11 @@ processed = processSnapshot(pairFlow, { monitor_now: now + 1, payload: { kind: "
 assert.equal(processed.paired.payload.contexts_ready, true);
 assert.equal(processed.paired.payload.recovery_needed, false);
 assert.equal(processed.paired.payload.anyone_away, true);
+assert.equal(processed.paired.payload.resident_primary_updated_at,
+  peopleContext.resident_primary.updated_at);
+assert.equal(processed.paired.payload.resident_secondary_updated_at,
+  peopleContext.resident_secondary.updated_at,
+  "cadência de retorno pendente deve receber a idade real da posição");
 assert.deepEqual(processed.paired.payload.people_arrival_armed,
   peopleContext.arrival_armed,
   "contrato entre tabs deve transportar a chegada armada");

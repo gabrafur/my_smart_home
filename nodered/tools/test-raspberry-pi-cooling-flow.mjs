@@ -17,6 +17,15 @@ function get(id, type) {
   return value;
 }
 
+function logicalTargets(id, seen = new Set()) {
+  assert.ok(!seen.has(id), `ciclo de links: ${id}`);
+  const item = get(id);
+  if (!["link in", "link out"].includes(item.type)) return [id];
+  const next = new Set([...seen, id]);
+  return (item.type === "link out" ? item.links : item.wires.flat())
+    .flatMap((target) => logicalTargets(target, next));
+}
+
 function memoryFlow(initial = {}) {
   const values = new Map(Object.entries(initial));
   return {
@@ -87,7 +96,7 @@ for (const item of flows.filter(
 }
 
 assert.equal(get("456b32bd5d59b0d6", "tab").label, "resfriamento_raspberry_pi");
-assert.deepEqual(get("482e20c891bc1dd8").wires[0], ["54b8e92dac5342a4"]);
+assert.deepEqual(get("482e20c891bc1dd8").wires[0].flatMap((id) => logicalTargets(id)), ["54b8e92dac5342a4"]);
 assert.deepEqual(get("0547960da622f030").wires[0], ["3fbbfda5d4519a8a"]);
 
 // Os thresholds e duracoes originais permanecem intactos.
@@ -555,14 +564,11 @@ assert.match(notificationRules(startMobileNotification.id), /"recipients":\["res
 assert.match(notificationRules(startMobileNotification.id), /"profile":"simple"/);
 assert.match(notificationRules(startMobileNotification.id), /Raspberry Pi - resfriamento de emergencia/);
 assert.deepEqual(get("rpi_emergency_cooling_push_primary__hub_call", "link call").links, ["notification_hub_mobile_in"]);
-const startAlexaNotification = get("rpi_emergency_cooling_alexa_primary", "change");
-assert.match(notificationRules(startAlexaNotification.id), /"targets":\["voice_assistant_primary"\]/);
-assert.match(notificationRules(startAlexaNotification.id), /Raspberry Pi - resfriamento de emergencia/);
-assert.deepEqual(get("rpi_emergency_cooling_alexa_primary__hub_call", "link call").links, ["notification_hub_alexa_in"]);
+assert.equal(byId.has("rpi_emergency_cooling_alexa_primary"), false);
+assert.equal(byId.has("rpi_emergency_cooling_alexa_primary__hub_call"), false);
 assert.deepEqual(get("adb240fe59ad2ae7", "link in").wires[0], [
   "349bc099633fee5d",
   "rpi_emergency_cooling_push_primary",
-  "rpi_emergency_cooling_alexa_primary",
 ]);
 assert.match(notificationRules("ab4f85af1ed94f86"), /raspberry_pi_emergency_cooling_failure/);
 assert.match(notificationRules("a240a1bb42481943"), /raspberry_pi_emergency_cooling_recovered/);

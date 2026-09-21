@@ -33,8 +33,12 @@ for (const [id, hubInput] of [
 ]) {
   assert.equal(byId.get(id)?.type, "change", `fanout visual ausente: ${id}`);
   assert.deepEqual(byId.get(`${id}__mobile_call`)?.links, [hubInput]);
-  assert.deepEqual(byId.get(`${id}__mobile_secondary_call`)?.links, [hubInput]);
-  assert.deepEqual(byId.get(`${id}__alexa_call`)?.links, ["notification_hub_alexa_in"]);
+  if (id.startsWith("internet_")) {
+    assert.deepEqual(byId.get(`${id}__mobile_secondary_call`)?.links, [hubInput]);
+  } else {
+    assert.equal(byId.has(`${id}__mobile_secondary_call`), false);
+  }
+  assert.equal(byId.has(`${id}__alexa_call`), false);
   assert.deepEqual(byId.get(`${id}__persistent_call`)?.links, ["notification_hub_persistent_in"]);
 }
 

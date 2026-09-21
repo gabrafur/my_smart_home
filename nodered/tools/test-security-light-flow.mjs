@@ -12,7 +12,7 @@ import {
   runVehicleVisual,
 } from "./visual-flow-test-harness.mjs";
 
-const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
+const flows = JSON.parse(fs.readFileSync(process.argv[2] ?? new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 const aliasesByName = {
   people_refresh_decide: "Atualizar iPhones agora?",

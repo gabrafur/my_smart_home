@@ -57,6 +57,26 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
   estado visível; somente o `input_button` manual entra no coordenador. Isso
   evita que um alvo interno pareça uma segunda rotina de atualização.
 
+## Histórico de notificações
+
+- Os três hubs `hub_notificacoes_moveis`, `hub_notificacoes_alexa` e
+  `hub_notificacoes_persistentes_ha` registram cada chamada aceita em JSONL
+  privado, em `nodered/notification-history/<canal>/<AAAA-MM-DDTHH>.jsonl`,
+  usando UTC. Registram origem lógica, canal, destinatário/target, título,
+  conteúdo, operação, perfil e correlação para backtests e incidentes.
+- O histórico fica fora do Git e do Recorder. A retenção é de **7 × 24 horas**;
+  o próprio canvas dispara purge no startup e a cada 5 minutos, filtrando o
+  arquivo da hora de fronteira pelo timestamp. Após parada, retoma no startup.
+- `accepted` comprova somente retorno bem-sucedido do serviço; não comprova
+  entrega, fala ou leitura. Cada celular tem registro individual, mesmo em
+  falha parcial. Background commands e `dismiss` têm operação/perfil próprios.
+- Dry-run não grava dados de produção. A escrita não bloqueia o aceite ao
+  chamador: falhas seguem o observador e há uma pequena janela de perda em
+  encerramento abrupto. Não há reconstrução retroativa de envios antigos.
+- Fonte atual: `docs/NODERED_NOTIFICATION_HUBS.md`; retenção e serialização
+  verificadas por `nodered/tools/test-notification-history.mjs`. Nunca copie
+  conteúdo residencial dos registros para memória pública ou commits.
+
 ## Portão da garagem
 
 O relé Zigbee TS0001 deve receber pulso em software (`ON` seguido de `OFF`).
@@ -85,8 +105,9 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
   O Home Assistant observa o tópico MQTT “nodered/status” diretamente para
   detectar a queda do próprio runtime após 90 segundos; esse watchdog permanece
   nativo porque não pode depender do componente que monitora.
-- Mudanças Node-RED exigem cobertura pelo gerador/validador global, replay
-  dry-run e um único smoke test real marcado `TESTE` no canal central. O aceite
+- Mudanças Node-RED exigem cobertura pelo gerador/validador global e replay
+  dry-run. O smoke test real marcado `TESTE` no canal central é usado somente
+  quando solicitado ou quando a própria rota de entrega é alterada. O aceite
   do HA aparece como `NODERED_GLOBAL_NOTIFICATION_ACCEPTED`; apresentação no
   celular continua sendo uma confirmação manual de última milha.
 - O tab `monitoramento_vpn` recebe do host somente o estado sanitizado de

@@ -70,7 +70,7 @@ const bothResidentsHome =
     residentPrimaryState === "home" &&
     residentSecondaryState === "home" &&
     !anyResidentAway;
-const anyoneApproaching =
+const residentApproaching =
     (residentPrimaryReady && residentPrimaryState === "near_home") ||
     (residentSecondaryReady && residentSecondaryState === "near_home");
 /* O comando chega de outro tab, portanto o contexto local deste canvas não é
@@ -99,7 +99,33 @@ const armedResidentApproaching =
         localExcursionActive("resident_primary")) ||
     (residentSecondaryReady && residentSecondaryState === "near_home" &&
         localExcursionActive("resident_secondary"));
-const arrivalRestartPending = armedResidentApproaching && vehicleContext.engine_on !== true;
+// A stale phone must not erase an already confirmed return while polling is
+// waiting for the engine to restart. This is refresh intent, never permission
+// to notify, unlock or illuminate using a stale location.
+const locationPolicy = global.get("location_policy_v1", PERSISTENT) ?? {};
+const pendingWindowMs = Number(locationPolicy.local_excursion_minutes) * 60000;
+const futureMs = Number(locationPolicy.future_tolerance_seconds) * 1000;
+const now = Date.now();
+const pendingResidentApproach = [
+    ["resident_primary", residentPrimaryState],
+    ["resident_secondary", residentSecondaryState]
+].some(([role, state]) => {
+    const observedAt = Number(msg.payload?.[role + "_updated_at"] ??
+        peopleContext[role]?.updated_at);
+    return state === "near_home" && arrivalArmed[role] === true &&
+        Number.isFinite(observedAt) && observedAt > 0 &&
+        observedAt <= now + futureMs && now - observedAt <= pendingWindowMs;
+});
+// Canonical vehicle proximity may accelerate polling only. It is not an
+// arrival event and cannot authorize the security light.
+const vehicleApproaching = vehicleContext.near_home === true &&
+    vehicleContext.location?.ready === true;
+const anyoneApproaching = !bothResidentsHome &&
+    (residentApproaching || pendingResidentApproach || vehicleApproaching);
+const knownEngineOff = vehicleContext.engine_state_valid === true &&
+    vehicleContext.engine_on === false;
+const arrivalRestartPending = anyoneApproaching && (knownEngineOff ||
+    ((armedResidentApproaching || pendingResidentApproach) && vehicleContext.engine_on !== true));
 const anyoneAway =
     anyResidentAway ||
     msg.payload?.anyone_away === true ||
@@ -130,6 +156,9 @@ msg.payload.refresh_resident_secondary_ready = residentSecondaryReady;
 msg.payload.refresh_any_resident_away = anyResidentAway;
 msg.payload.refresh_both_residents_home = bothResidentsHome;
 msg.payload.refresh_anyone_approaching = anyoneApproaching;
+msg.payload.refresh_proximity_source = residentApproaching ? "resident_current"
+    : pendingResidentApproach ? "resident_return_pending"
+    : vehicleApproaching ? "vehicle_current" : null;
 msg.payload.refresh_arrival_restart_pending = arrivalRestartPending;
 msg.payload.refresh_anyone_away = anyoneAway;
 

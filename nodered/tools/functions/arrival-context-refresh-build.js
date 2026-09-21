@@ -6,10 +6,6 @@ msg.payload = {
     contract: "security.refresh-command.v1", kind: "refresh_command",
     refresh_cycle_id: pending.cycle,
     anyone_away: people.anyone_away === true || vehicle.away === true,
-    resident_primary_state: people.resident_primary?.state ?? null,
-    resident_secondary_state: people.resident_secondary?.state ?? null,
-    resident_primary_ready: people.resident_primary?.ready === true,
-    resident_secondary_ready: people.resident_secondary?.ready === true,
     any_resident_away: people.anyone_away === true,
     people_arrival_armed: { ...(people.arrival_armed ?? {}) },
     people_local_excursions: { ...(people.local_excursions ?? {}) },
@@ -33,4 +29,10 @@ msg.payload = {
     rejected_snapshot_reason: msg.context_rejected_reason || null,
     ...(testMode ? { test_mode: true, test_case: msg._location_test_case } : {})
 };
+for (const role of ["resident_primary", "resident_secondary"]) {
+    const resident = people[role] ?? {};
+    msg.payload[role + "_state"] = resident.state ?? null;
+    msg.payload[role + "_ready"] = resident.ready === true;
+    msg.payload[role + "_updated_at"] = resident.updated_at ?? null;
+}
 return msg;

@@ -69,6 +69,7 @@ const LOCATION_POLICY = {
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
+  local_excursion_minutes: 90,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
@@ -795,6 +796,47 @@ scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
   assert(expiredSelected[1]);
   assert.equal(expiredSelected[1].payload.refresh_arrival_restart_pending, false,
     "parada curta expirada não pode manter a cadência acelerada");
+});
+
+scenario("28b1 aproximação mantém 1 min OFF e 5 min ON se o telefone vence", () => {
+  const config = { version: 1, complete: true, arrival_armed_interval_minutes: 1,
+    approaching_interval_minutes: 5, away_interval_minutes: 15, home_interval_minutes: 30,
+    quiet_start_hour: 0, quiet_end_hour: 6, in_flight_lease_seconds: 120,
+    cache_probe_settle_seconds: 15, provider_backoff_max_hours: 6,
+    semantic_evidence_window_minutes: 20, unknown_location_start_hour: 7,
+    unknown_location_end_hour: 22 };
+  const cases = [
+    { name: "retorno armado, telefone vencido, OFF", output: 0 },
+    { name: "retorno armado, telefone vencido, ON", on: true, output: 1 },
+    { name: "intenção expirada", age: 91, output: 2 },
+    { name: "timestamp futuro", age: -2, output: 2 },
+    { name: "sem ciclo externo", armed: false, output: 2 },
+    { name: "carro near_home atual, OFF", armed: false, vehicleNear: true, output: 0 },
+    { name: "carro near_home atual, ON", armed: false, vehicleNear: true, on: true, output: 1 },
+    { name: "carro stale não prova proximidade", armed: false, vehicleNear: true, vehicleReady: false, output: 2 },
+    { name: "ambos home encerra aproximação", vehicleNear: true, home: true, output: 3 },
+    { name: "morador near_home atual, OFF", ready: true, armed: false, output: 0 },
+    { name: "morador near_home atual, ON", ready: true, armed: false, on: true, output: 1 },
+  ];
+  for (const item of cases) {
+    const store = memory({ [POLICY_KEY]: config,
+      vehicle_primary_context_v1: { engine_state_valid: true, engine_on: item.on === true,
+        near_home: item.vehicleNear === true, location: { ready: item.vehicleReady !== false } } });
+    const result = execute(code.policy, { now: DAY, store, msg: { payload: {
+      kind: "refresh_command", resident_primary_state: "home", resident_primary_ready: true,
+      resident_secondary_state: item.home ? "home" : "near_home",
+      resident_secondary_ready: item.home || item.ready === true,
+      resident_secondary_updated_at: DAY - (item.age ?? 18) * 60000,
+      people_arrival_armed: { resident_secondary: item.armed !== false },
+      anyone_away: !item.home,
+    } } });
+    assert(result[item.output], item.name);
+    assert.equal(result.filter(Boolean).length, 1, item.name);
+    assert.equal(result[item.output].payload.refresh_arrival_restart_pending,
+      item.output === 0, item.name);
+    assert.equal(result[item.output].payload.refresh_anyone_approaching,
+      item.output < 2, item.name);
+  }
 });
 
 scenario("28c parada curta reduz cooldown de 5 para 1 minuto", () => {

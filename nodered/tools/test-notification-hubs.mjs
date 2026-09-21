@@ -6,6 +6,8 @@ import jsonata from "jsonata";
 import {
   NOTIFICATION_HUBS,
   NOTIFICATION_MIGRATIONS,
+  RETIRED_NOTIFICATION_IDS,
+  INFRASTRUCTURE_SECONDARY_CALLERS,
   installNotificationHubs,
   restoreGeneratedWireRoutes,
 } from "./install-notification-hubs.mjs";
@@ -115,8 +117,14 @@ assert.deepEqual(
   "o painel deve atravessar a entrada canônica do hub Alexa",
 );
 
-assert.equal(NOTIFICATION_MIGRATIONS.length, 40, "a matriz explícita deve cobrir os 40 efeitos fora do subflow legado");
-assert.equal(new Set(NOTIFICATION_MIGRATIONS.map(({ id }) => id)).size, 40);
+assert.equal(NOTIFICATION_MIGRATIONS.length, 38, "a matriz explícita deve cobrir os 38 efeitos ativos fora do subflow legado");
+assert.equal(new Set(NOTIFICATION_MIGRATIONS.map(({ id }) => id)).size, 38);
+for (const id of RETIRED_NOTIFICATION_IDS) {
+  for (const suffix of ["", "__hub_call", "__hub_result"]) {
+    assert.equal(byId.has(id + suffix), false, `não reativar canal removido: ${id + suffix}`);
+    assert.equal(sourceById.has(id + suffix), false);
+  }
+}
 for (const migration of NOTIFICATION_MIGRATIONS) {
   const adapter = node(migration.id);
   const call = node(`${migration.id}__hub_call`);
@@ -154,13 +162,19 @@ for (const callerId of [
     `${callerId}: contrato incompleto precisa bloquear todos os canais`);
   assert.deepEqual(contractGate.wires[1], [`${callerId}__contract_reject`]);
   const mobileContract = node(`${callerId}__mobile_prepare`).rules.find((rule) => rule.p === "notification").to;
-  const mobileSecondaryContract = node(`${callerId}__mobile_secondary_prepare`).rules.find((rule) => rule.p === "notification").to;
   assert.match(mobileContract, /"recipients":\["resident_primary"\]/);
-  assert.match(mobileSecondaryContract, /"recipients":\["resident_secondary"\]/);
-  assert.doesNotMatch(`${mobileContract}${mobileSecondaryContract}`, /broadcast|"all"|"both"/i);
+  if (INFRASTRUCTURE_SECONDARY_CALLERS.includes(callerId)) {
+    const mobileSecondaryContract = node(`${callerId}__mobile_secondary_prepare`).rules.find((rule) => rule.p === "notification").to;
+    assert.match(mobileSecondaryContract, /"recipients":\["resident_secondary"\]/);
+    assert.doesNotMatch(mobileSecondaryContract, /broadcast|"all"|"both"/i);
+    assert.deepEqual(node(`${callerId}__mobile_secondary_call`).links, [NOTIFICATION_HUBS.mobile.input]);
+  } else {
+    assert.equal(byId.has(`${callerId}__mobile_secondary_prepare`), false);
+    assert.equal(byId.has(`${callerId}__mobile_secondary_call`), false);
+  }
+  assert.doesNotMatch(mobileContract, /broadcast|"all"|"both"/i);
   assert.deepEqual(node(`${callerId}__mobile_call`).links, [NOTIFICATION_HUBS.mobile.input]);
-  assert.deepEqual(node(`${callerId}__mobile_secondary_call`).links, [NOTIFICATION_HUBS.mobile.input]);
-  assert.deepEqual(node(`${callerId}__alexa_call`).links, [NOTIFICATION_HUBS.alexa.input]);
+  assert.equal(byId.has(`${callerId}__alexa_call`), false);
   assert.deepEqual(node(`${callerId}__persistent_call`).links, [NOTIFICATION_HUBS.persistent.input]);
   assert.deepEqual(node(`${callerId}__dismiss_call`).links, [NOTIFICATION_HUBS.persistent.input]);
 }
@@ -356,9 +370,8 @@ const persistentDismiss = executeFunction("notification-hub-persistent-validate.
 });
 assert.ok(persistentDismiss.result[0]);
 
-// Casos compostos D/E: os três efeitos do início do resfriamento permanecem independentes.
+// O resfriamento conserva apenas o celular principal e o alerta persistente.
 assert.match(contractText("rpi_emergency_cooling_push_primary"), /"recipients":\["resident_primary"\]/);
-assert.deepEqual(node("rpi_emergency_cooling_alexa_primary__hub_call").links, [NOTIFICATION_HUBS.alexa.input]);
 assert.deepEqual(node("349bc099633fee5d__hub_call").links, [NOTIFICATION_HUBS.persistent.input]);
 
 console.log(`Notification hubs: ${NOTIFICATION_MIGRATIONS.length} efeitos migrados, ${notificationEffects.length} saídas canônicas, fail-closed validado`);

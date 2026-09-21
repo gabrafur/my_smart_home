@@ -487,8 +487,13 @@ exclusivamente de um `delay` residente em memória.
   A única exceção é a vigília de uma chegada já comprovada: aos 10 minutos em
   `near_home`, ou quando motor/bypass se tornam válidos com posição vencida,
   ela pede atualização ao telefone correspondente, com dedupe próprio. A
-  tentativa preventiva não se repete; a segunda fica reservada à autorização
-  posterior por motor/bypass. O refletor continua bloqueado até chegar GPS atual.
+  segunda tentativa ocorre após 1 minuto sem posição nova, inclusive com motor
+  desligado. Cada observação realmente nova reinicia essa vigília, permitindo
+  acompanhar uma parada longa perto de casa. Sem resposta, são no máximo duas
+  sondas por observação; ao vencer o frescor, a decisão canônica registra
+  `location_refresh_failed` uma vez. Um aceite do serviço ou o mesmo GPS ainda
+  dentro dos 15 minutos não conta como callback novo. O refletor continua
+  bloqueado com localização vencida.
 - `request_location_update` é best-effort: `public_bindings` agenda a
   notificação móvel sem aguardar a conclusão do serviço remoto. O aceite do
   Home Assistant não comprova uma posição nova; o ciclo seguinte reavalia os
@@ -505,17 +510,21 @@ exclusivamente de um `delay` residente em memória.
 - vehicle_primary: a política fica visível no tab `contexto_vehicle_primary`,
   nos grupos `3. Configuração dos intervalos do veículo` e `4. Política
   visual`. Os seis injects numéricos são a única configuração: 1 min quando
-  uma chegada externa ou um ciclo local continua armado em `near_home` e o motor ainda não
-  está `on`, 5 min no `near_home` comum, 15 min quando está `not_home`, 30 min
+  há aproximação em `near_home` e o motor está `off`, 5 min com motor `on`,
+  15 min quando está `not_home`, 30 min
   no ciclo saudável quando ambos estão `home`, início 0h e fim 6h para a pausa
   noturna nessa última condição.
   Para mudar um valor, abra o inject correspondente, altere o número e faça
   Deploy. Essa presença usa a mesma fonte de melhor localização mostrada no
   mapa; divergência de uma fonte não selecionada fica apenas no diagnóstico.
-  A idade dessa localização pode solicitar atualização dos telefones, mas não
-  reduz sozinha o ciclo do veículo. Durante uma chegada externa ou local armada em `near_home`,
-  motor `off` ou ainda desconhecido reduz temporariamente o ciclo para 1 min;
-  depois de `on`, ou sem esse armamento, o intervalo volta a 5 min. Fora desse estado, a recuperação do
+  Uma chegada externa armada em `near_home` não perde a frequência rápida só
+  porque o telefone venceu: sua última posição continua sendo intenção de
+  refresh, limitada pela janela canônica de 90 min e sem autorizar efeitos.
+  O contrato entre abas transporta o horário real de cada morador. A proximidade
+  atual do veículo também pode acelerar somente o polling; sua posição não
+  autoriza o refletor. Ambos os moradores atuais em `home` encerram essa faixa.
+  Motor desconhecido mantém 1 min apenas quando há chegada externa/local armada;
+  sem essa confirmação continua com 5 min. Fora desse estado, a recuperação do
   próprio veículo usa o intervalo configurado para fora, inclusive em casa,
   fora dessa pausa noturna; um bloqueio explícito do provedor ainda pode impor
   backoff maior. O coordenador, o aceite/erro da API e o dashboard não

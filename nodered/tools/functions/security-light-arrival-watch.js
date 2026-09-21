@@ -31,6 +31,15 @@ for (const source of ["resident_primary", "resident_secondary"]) {
 
     const nearHome = resident?.state === "near_home" && resident?.current_home !== true;
     const ageMs = Number.isFinite(observedAt) ? data.now - observedAt : Infinity;
+    const previousObservation = Number(watch.position_observed_at ?? watch.event_at ?? 0);
+    const newObservation = current && Number.isFinite(previousObservation) &&
+        observedAt > previousObservation;
+    if (newObservation) {
+        watch.position_observed_at = observedAt;
+        watch.attempts = 0;
+        watch.last_refresh_at = null;
+        watch.failure_reported = false;
+    }
     const attempts = Number(watch.attempts ?? 0);
     const lastRefreshAt = Number(watch.last_refresh_at ?? 0);
     const retryReady = !Number.isFinite(lastRefreshAt) || lastRefreshAt <= 0 ||
@@ -39,7 +48,7 @@ for (const source of ["resident_primary", "resident_secondary"]) {
     /* A callback do iPhone pode manter o mesmo estado near_home. O ciclo
      * originalmente validado continua sendo a prova de direção, mas somente
      * uma posição novamente atual pode autorizar o replay. */
-    if (current && nearHome && watch.waiting_for_callback === true &&
+    if (newObservation && nearHome && watch.waiting_for_callback === true &&
         (data.engine_allowed || data.bypass_allowed) && data.sun_ready && data.dark) {
         data.engine_on_arrival = {
             payload: {
@@ -67,11 +76,25 @@ for (const source of ["resident_primary", "resident_secondary"]) {
         continue;
     }
 
+    if (newObservation) watch.waiting_for_callback = false;
     const proactiveDue = nearHome && ageMs >= refreshMs && attempts === 0;
+    const retryDue = nearHome && watch.waiting_for_callback === true &&
+        ageMs >= refreshMs && attempts > 0;
     const authorizationNeedsCurrent = data.location_authorization_just_became_valid === true &&
         nearHome && !current && attempts < 2;
+    if (nearHome && !current && attempts >= 2 && watch.failure_reported !== true) {
+        watch.failure_reported = true;
+        node.warn("iluminacao_seguranca: localização de chegada sem evidência nova após duas sondas");
+        requests.push({
+            payload: { kind: "arrival_location_refresh_failed", source,
+                reason: "location_refresh_without_new_evidence", attempt: attempts,
+                observed_at: observedAt, requested_at: watch.last_refresh_at },
+            _location_test: data.test_mode,
+            _security_light_decision_state: "location_refresh_failed"
+        });
+    }
     if (attempts >= 2 || !retryReady ||
-        (!proactiveDue && !authorizationNeedsCurrent)) continue;
+        (!proactiveDue && !retryDue && !authorizationNeedsCurrent)) continue;
 
     watch.attempts = attempts + 1;
     watch.last_refresh_at = data.now;

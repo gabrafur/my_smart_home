@@ -169,9 +169,8 @@ linkIn("storage_visual_mqtt_in", effects.id, "Receber publicações canônicas",
 Object.assign(required("storage_mqtt_state"), { x: 9910, y: 140 });
 Object.assign(required("storage_manual_status_mqtt"), { x: 9910, y: 220 });
 grouped(effects.id, { id: "storage_visual_notify_in", type: "link in", z: TAB, g: effects.id, name: "Receber alerta decidido",
-  links: ["storage_visual_notify_out", "storage_visual_invalid_notify_out", "storage_visual_maintenance_notify_out"], x: 9630, y: 380, wires: [["storage_notify", "storage_notify_secondary", "storage_notify_persistent"]] });
+  links: ["storage_visual_notify_out", "storage_visual_invalid_notify_out", "storage_visual_maintenance_notify_out"], x: 9630, y: 380, wires: [["storage_notify", "storage_notify_persistent"]] });
 Object.assign(required("storage_notify"), { x: 9980, y: 320 });
-Object.assign(required("storage_notify_secondary"), { x: 9980, y: 380 });
 Object.assign(required("storage_notify_persistent"), { x: 9980, y: 440 });
 Object.assign(required("storage_notification_ack"), { x: 10400, y: 380 });
 Object.assign(required("storage_notification_catch"), { x: 9800, y: 560 });

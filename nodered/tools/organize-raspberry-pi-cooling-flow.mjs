@@ -10,7 +10,6 @@ const tabId = "456b32bd5d59b0d6";
 const startNotificationInputId = "adb240fe59ad2ae7";
 const startPersistentNotificationId = "349bc099633fee5d";
 const startMobileNotificationId = "rpi_emergency_cooling_push_primary";
-const startAlexaNotificationId = "rpi_emergency_cooling_alexa_primary";
 
 const hotTrigger = byId.get("9b0dbe523189f263");
 const hotRetryCheck = byId.get("426ce86b78602275");
@@ -114,7 +113,6 @@ const positions = {
   adb240fe59ad2ae7: [525, 1440],
   "349bc099633fee5d": [680, 1400],
   rpi_emergency_cooling_push_primary: [680, 1440],
-  rpi_emergency_cooling_alexa_primary: [680, 1480],
   fb7ee906fa3b1033: [945, 1440],
   a240a1bb42481943: [1100, 1440],
   "12141375e10fc751": [1365, 1440],
@@ -177,29 +175,13 @@ else {
   byId.set(startMobileNotificationId, startMobileNotification);
 }
 
-const startAlexaNotification = {
-  ...startMobileNotification,
-  id: startAlexaNotificationId,
-  name: "Avisar Alexa",
-  data: '{"role":"mobile_primary","action":"notify","data":{"message":"Raspberry Pi - resfriamento de emergencia. A CPU chegou a " & $string(trigger_temperature) & " °C. O ar-condicionado do escritorio foi controlado em 16 °C, modo frio e ventilacao maxima. Origem: " & start_source & ". Ele sera restaurado depois que a CPU permanecer abaixo de 70 °C por 10 minutos."}}',
-  x: positions[startAlexaNotificationId][0],
-  y: positions[startAlexaNotificationId][1],
-};
-const existingAlexaNotification = byId.get(startAlexaNotificationId);
-if (existingAlexaNotification) Object.assign(existingAlexaNotification, startAlexaNotification);
-else {
-  flows.push(startAlexaNotification);
-  byId.set(startAlexaNotificationId, startAlexaNotification);
-}
 startNotificationGroup.nodes = [...new Set([
   ...startNotificationGroup.nodes,
   startMobileNotificationId,
-  startAlexaNotificationId,
 ])];
 startNotificationInput.wires = [[
   startPersistentNotificationId,
   startMobileNotificationId,
-  startAlexaNotificationId,
 ]];
 
 const virtualRoutes = [

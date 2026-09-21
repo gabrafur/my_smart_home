@@ -27,6 +27,14 @@ const INFRASTRUCTURE_CALLERS = Object.freeze([
   "tuya_notify_effect",
 ]);
 
+// Current delivery choices made in the editor must survive regeneration.
+export const RETIRED_NOTIFICATION_IDS = Object.freeze([
+  "rpi_emergency_cooling_alexa_primary", "storage_notify_secondary",
+]);
+export const INFRASTRUCTURE_SECONDARY_CALLERS = Object.freeze([
+  "internet_notify_down", "internet_notify_recovery",
+]);
+
 const rpiStartMessage = '"A CPU chegou a " & $string(trigger_temperature) & " °C. O ar-condicionado do escritorio foi controlado em 16 °C, modo frio e ventilacao maxima. Origem: " & start_source & ". Ele sera restaurado depois que a CPU permanecer abaixo de 70 °C por 10 minutos."';
 const mobile = (id, source, recipient, profile, title, message, data, extra = {}) => ({
   id, channel: "mobile", source, recipient, profile, title, message, data, ...extra,
@@ -50,9 +58,7 @@ export const NOTIFICATION_MIGRATIONS = Object.freeze([
   persistent("36968b4881eab9d3", "resfriamento_raspberry_pi", "dismiss", "immediate", '"raspberry_pi_emergency_cooling_failure"'),
   persistent("4b48bc3c0c58d87c", "resfriamento_raspberry_pi", "dismiss", "immediate", '"raspberry_pi_emergency_cooling_recovered"'),
   mobile("rpi_emergency_cooling_push_primary", "resfriamento_raspberry_pi", "resident_primary", "simple", '"Raspberry Pi - resfriamento de emergencia"', rpiStartMessage),
-  alexa("rpi_emergency_cooling_alexa_primary", "resfriamento_raspberry_pi", '"Raspberry Pi - resfriamento de emergencia. A CPU chegou a " & $string(trigger_temperature) & " °C. O ar-condicionado do escritorio foi controlado em 16 °C, modo frio e ventilacao maxima. Origem: " & start_source & ". Ele sera restaurado depois que a CPU permanecer abaixo de 70 °C por 10 minutos."'),
   mobile("storage_notify", "storage_health", "resident_primary", "simple", "_notification_hub_context.payload.title", "_notification_hub_context.payload.message"),
-  mobile("storage_notify_secondary", "storage_health", "resident_secondary", "simple", "_notification_hub_context.payload.title", "_notification_hub_context.payload.message"),
   persistent("storage_notify_persistent", "storage_health", "create", "queued", '"raspberry_storage_health"', "_notification_hub_context.payload.title", "_notification_hub_context.payload.message"),
   mobile("564fdc36031eaef8", "localizacao_pessoas", "resident_primary", "background_command", null, '"request_location_update"', null, { testMode: "_location_test = true" }),
   mobile("e0b7c0ecf1d8ee28", "localizacao_pessoas", "resident_secondary", "background_command", null, '"request_location_update"', null, { testMode: "_location_test = true" }),
@@ -518,7 +524,9 @@ function migrateInfrastructureCaller(flows, id) {
   const persistentNodes = channelAdapter("persistent_prepare", "Preparar alerta persistente", "_notification_hub_shared.message", `{"source":"${sourceName}","operation":"create","delivery":"queued","notification_id":_notification_hub_shared.id,"title":_notification_hub_shared.title}`, 600, 30, "persistent_call", NOTIFICATION_HUBS.persistent.input, "Hub HA → criar/atualizar");
   const dismissGate = sw(`${id}__dismiss_gate`, z, g, "Há alerta anterior para remover?", "_notification_hub_shared.dismiss_id", "msg", [{ t: "nnull" }, { t: "else" }], x + 600, y + 100, [[`${id}__dismiss_prepare`], []]);
   const dismissNodes = channelAdapter("dismiss_prepare", "Preparar remoção persistente", '""', `{"source":"${sourceName}","operation":"dismiss","delivery":"queued","notification_id":_notification_hub_shared.dismiss_id}`, 900, 100, "dismiss_call", NOTIFICATION_HUBS.persistent.input, "Hub HA → remover anterior");
-  const replacements = [shared, contractGate, contractReject, ...mobileNodes, ...mobileSecondaryNodes, ...alexaNodes, ...persistentNodes, dismissGate, ...dismissNodes];
+  const includeSecondary = INFRASTRUCTURE_SECONDARY_CALLERS.includes(id);
+  const replacements = [shared, contractGate, contractReject, ...mobileNodes, ...(includeSecondary ? mobileSecondaryNodes : []), ...persistentNodes, dismissGate, ...dismissNodes];
+  contractGate.wires[0] = [`${id}__mobile_prepare`, ...(includeSecondary ? [`${id}__mobile_secondary_prepare`] : []), `${id}__persistent_prepare`, `${id}__dismiss_gate`];
   const output = [];
   for (const node of flows) {
     if (node.id !== id) output.push(node);
@@ -592,9 +600,9 @@ export function restoreGeneratedWireRoutes(inputFlows) {
   return inputFlows.filter((node) => !removed.has(node.id));
 }
 
-function routeLongNotificationTabWires(flows) {
+function routeLongNotificationTabWires(flows, options = {}) {
   const byId = new Map(flows.map((node) => [node.id, node]));
-  const affectedTabs = new Set([
+  const affectedTabs = new Set(options.tabs ?? [
     ...NOTIFICATION_MIGRATIONS.map(({ id }) => byId.get(id)?.z),
     ...INFRASTRUCTURE_CALLERS.map((id) => byId.get(id)?.z),
   ].filter(Boolean));
@@ -636,7 +644,7 @@ function routeLongNotificationTabWires(flows) {
         if (!target || target.z !== source.z || !Number.isFinite(source.x) || !Number.isFinite(target.x)) continue;
         // A ligação para um link out já encerra a trilha visual local. Ela não
         // deve ganhar outro par de links, mesmo quando o grupo for reposicionado.
-        if (source.type === "link in" || target.type === "link out") continue;
+        if (source.type === "link in" || (target.type === "link out" && !options.includeLinkTargets)) continue;
         const distance = Math.hypot(target.x - source.x, target.y - source.y);
         if (distance <= 500 && target.x >= source.x - 30) continue;
         routes.push({ source, target, output, index });
@@ -648,6 +656,22 @@ function routeLongNotificationTabWires(flows) {
     const outId = `notification_hub_wire_out_${key}`;
     const inId = `notification_hub_wire_in_${key}`;
     const route = { source: source.id, target: target.id, output };
+    // A scoped generator can rebuild the source wire while keeping its approved
+    // bridge. Reuse that pair instead of creating a second node with the same ID.
+    if (byId.has(outId) && byId.has(inId)) {
+      const existingOut = byId.get(outId);
+      const existingIn = byId.get(inId);
+      if (existingOut.type !== "link out" || existingIn.type !== "link in" ||
+          (existingOut.links?.length && existingOut.links[0] !== inId) ||
+          (existingIn.wires?.[0]?.length && existingIn.wires[0][0] !== target.id)) {
+        throw new Error(`Rota visual incompatível: ${outId}`);
+      }
+      existingOut.links = [inId];
+      existingIn.links = [outId];
+      existingIn.wires = [[target.id]];
+      source.wires[output][index] = outId;
+      continue;
+    }
     const outName = `Encurtar: ${source.name ?? source.type}`;
     const inName = `Continuar: ${target.name ?? target.type}`;
     let outPoint;
@@ -679,6 +703,12 @@ function routeLongNotificationTabWires(flows) {
 
 export function refreshNotificationWireRoutes(inputFlows) {
   return routeLongNotificationTabWires(restoreGeneratedWireRoutes(inputFlows));
+}
+
+// Add named visual bridges without moving the approved nodes or changing the
+// eventual destination. Existing user links remain in place, including fanout.
+export function routeCanvasWires(flows, tabs) {
+  return routeLongNotificationTabWires(flows, { tabs, includeLinkTargets: true });
 }
 
 function applyBusinessCallerLayout(flows) {
@@ -783,6 +813,14 @@ function applyInfrastructureCallerLayout(flows) {
 }
 
 export function installNotificationHubs(inputFlows, options = {}) {
+  const retired = new Set(RETIRED_NOTIFICATION_IDS.flatMap((id) => [id, `${id}__hub_call`, `${id}__hub_result`]));
+  inputFlows = inputFlows.filter((node) => !retired.has(node.id));
+  for (const node of inputFlows) {
+    for (const field of ["nodes", "scope", "links"]) {
+      if (Array.isArray(node[field])) node[field] = node[field].filter((id) => !retired.has(id));
+    }
+    if (Array.isArray(node.wires)) node.wires = node.wires.map((wire) => wire.filter((id) => !retired.has(id)));
+  }
   const routeWires = options.routeWires ?? process.env.NODE_RED_NOTIFICATION_ROUTE_WIRES !== "0";
   inputFlows = restoreGeneratedWireRoutes(inputFlows);
   const hubTabs = new Set(Object.values(NOTIFICATION_HUBS).map(({ tab }) => tab));
