@@ -114,9 +114,11 @@ const recordCompletionOk = `node.status({ fill: "green", shape: "dot", text: "po
 return null;`;
 
 const recordCompletionFailed = `node.status({ fill: "red", shape: "ring", text: "ponte código " + String(msg.payload?.code ?? msg.payload ?? -1) });
+if (msg._weekly_docs_test !== true) node.error("weekly_docs_review_bridge_exit_failed", { _msgid: msg._msgid });
 return null;`;
 
-const trackStatus = `const state = String(msg.payload ?? "indisponível");
+const trackStatus = `const rawState = String(msg.payload ?? "unknown");
+const state = rawState === "unavailable" ? "indisponível" : rawState;
 const testMode = msg._weekly_docs_test === true;
 const store = testMode ? undefined : "persistent";
 const colors = { aguardando: "green", executando: "blue", sucesso: "green", falha: "red", ignorado: "yellow", parado: "grey", indisponível: "red" };
@@ -131,7 +133,7 @@ const envelope = (payload, title, message) => ({
     payload: { test_mode: testMode, incident_key: incidentKey, ...payload },
     alert: { title, message }
 });
-if (["falha", "indisponível"].includes(state)) {
+if (["falha", "indisponível", "parado"].includes(state)) {
     if (previous?.active !== true) {
         flow.set(key, { version: 2, active: true, state, observed_at: Date.now() }, store);
         output.push(envelope(
@@ -145,7 +147,7 @@ if (["falha", "indisponível"].includes(state)) {
             "O worker da revisão documental semanal está " + state + ". O alerta será removido automaticamente quando o serviço voltar."
         ));
     }
-} else {
+} else if (["aguardando", "executando", "sucesso", "ignorado"].includes(state)) {
     if (previous?.active === true) {
         output.push(envelope(
             {

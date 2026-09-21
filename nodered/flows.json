@@ -1378,7 +1378,8 @@
             "daily_update_inventory_hacs_out",
             "daily_update_inventory_unknown_out",
             "notification_hub_wire_out_b95a0f6a8881",
-            "notification_hub_wire_in_b95a0f6a8881"
+            "notification_hub_wire_in_b95a0f6a8881",
+            "notification_hub_wire_out_b1b5fd6c16a7"
         ],
         "x": 102,
         "y": 2880,
@@ -1402,7 +1403,8 @@
             "daily_update_hacs_pending",
             "daily_update_hacs_current",
             "daily_update_hacs_unavailable",
-            "daily_update_hacs_test_out"
+            "daily_update_hacs_test_out",
+            "notification_hub_wire_out_f4bcb9b7815b"
         ],
         "x": 102,
         "y": 3670,
@@ -1463,7 +1465,8 @@
             "daily_update_firmware_manual_effect_out",
             "daily_update_firmware_test_effect_out",
             "daily_update_firmware_effect_in",
-            "daily_update_firmware_queue_test_out"
+            "daily_update_firmware_queue_test_out",
+            "notification_hub_wire_out_a44665fb1d48"
         ],
         "x": 102,
         "y": 4600,
@@ -2622,7 +2625,8 @@
             "daily_update_dependency_test_reset_in",
             "daily_update_dependency_backup_out",
             "notification_hub_wire_out_26bdfbc023ad",
-            "notification_hub_wire_in_26bdfbc023ad"
+            "notification_hub_wire_in_26bdfbc023ad",
+            "notification_hub_wire_out_34e7741686b0"
         ],
         "x": 124,
         "y": 6599,
@@ -5391,7 +5395,12 @@
             "host_memory_guardian_mark_pressure",
             "host_memory_guardian_effect_mode",
             "host_memory_guardian_effect_out",
-            "host_memory_guardian_dry_out"
+            "host_memory_guardian_dry_out",
+            "notification_hub_wire_out_65e435986a90",
+            "notification_hub_wire_out_830a5a946fb8",
+            "notification_hub_wire_out_21045116aeb6",
+            "notification_hub_wire_out_cc5eb6049a47",
+            "notification_hub_wire_in_f80d2f3e5783"
         ],
         "x": 69,
         "y": 1389,
@@ -8027,7 +8036,7 @@
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_production_group",
         "name": "Exibir lifecycle do worker",
-        "func": "const state = String(msg.payload ?? \"indisponível\");\nconst testMode = msg._weekly_docs_test === true;\nconst store = testMode ? undefined : \"persistent\";\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nconst key = testMode ? \"weekly_docs_review_worker_incident_v2__test\" : \"weekly_docs_review_worker_incident_v2\";\nconst legacyMigrationKey = \"weekly_docs_review_notification_migration_v2\";\nconst incidentKey = \"weekly_docs_review_worker\";\nconst previous = flow.get(key, store);\nconst output = [];\nconst envelope = (payload, title, message) => ({\n    _global_observer_test: testMode,\n    payload: { test_mode: testMode, incident_key: incidentKey, ...payload },\n    alert: { title, message }\n});\nif ([\"falha\", \"indisponível\"].includes(state)) {\n    if (previous?.active !== true) {\n        flow.set(key, { version: 2, active: true, state, observed_at: Date.now() }, store);\n        output.push(envelope(\n            {\n                observer_kind: \"weekly_docs_worker_unavailable\",\n                persistent_notification_operation: \"create\",\n                mobile_notification: true,\n                worker_state: state\n            },\n            testMode ? \"TESTE — Revisão documental indisponível\" : \"Revisão documental indisponível\",\n            \"O worker da revisão documental semanal está \" + state + \". O alerta será removido automaticamente quando o serviço voltar.\"\n        ));\n    }\n} else {\n    if (previous?.active === true) {\n        output.push(envelope(\n            {\n                observer_kind: \"weekly_docs_worker_recovery\",\n                persistent_incident_kind: \"weekly_docs_worker_unavailable\",\n                persistent_notification_operation: \"dismiss\",\n                mobile_notification: false,\n                resolution: \"recovered\",\n                worker_state: state\n            },\n            testMode ? \"TESTE — Revisão documental recuperada\" : \"Revisão documental recuperada\",\n            \"O worker da revisão documental semanal voltou ao estado \" + state + \".\"\n        ));\n    }\n    flow.set(key, undefined, store);\n\n    if (!testMode && flow.get(legacyMigrationKey, \"persistent\") !== true) {\n        flow.set(legacyMigrationKey, true, \"persistent\");\n        output.push({\n            payload: {\n                test_mode: false,\n                observer_kind: \"weekly_docs_worker_recovery\",\n                persistent_incident_kind: \"node_error\",\n                persistent_notification_operation: \"dismiss\",\n                mobile_notification: false,\n                incident_key: \"weekly_docs_review_tab_weekly_docs_review_track_status\",\n                resolution: \"legacy_notification_migrated\"\n            },\n            alert: {\n                title: \"Revisão documental recuperada\",\n                message: \"O alerta legado do worker foi encerrado.\"\n            }\n        });\n    }\n}\nreturn output.length ? [output] : null;",
+        "func": "const rawState = String(msg.payload ?? \"unknown\");\nconst state = rawState === \"unavailable\" ? \"indisponível\" : rawState;\nconst testMode = msg._weekly_docs_test === true;\nconst store = testMode ? undefined : \"persistent\";\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nconst key = testMode ? \"weekly_docs_review_worker_incident_v2__test\" : \"weekly_docs_review_worker_incident_v2\";\nconst legacyMigrationKey = \"weekly_docs_review_notification_migration_v2\";\nconst incidentKey = \"weekly_docs_review_worker\";\nconst previous = flow.get(key, store);\nconst output = [];\nconst envelope = (payload, title, message) => ({\n    _global_observer_test: testMode,\n    payload: { test_mode: testMode, incident_key: incidentKey, ...payload },\n    alert: { title, message }\n});\nif ([\"falha\", \"indisponível\", \"parado\"].includes(state)) {\n    if (previous?.active !== true) {\n        flow.set(key, { version: 2, active: true, state, observed_at: Date.now() }, store);\n        output.push(envelope(\n            {\n                observer_kind: \"weekly_docs_worker_unavailable\",\n                persistent_notification_operation: \"create\",\n                mobile_notification: true,\n                worker_state: state\n            },\n            testMode ? \"TESTE — Revisão documental indisponível\" : \"Revisão documental indisponível\",\n            \"O worker da revisão documental semanal está \" + state + \". O alerta será removido automaticamente quando o serviço voltar.\"\n        ));\n    }\n} else if ([\"aguardando\", \"executando\", \"sucesso\", \"ignorado\"].includes(state)) {\n    if (previous?.active === true) {\n        output.push(envelope(\n            {\n                observer_kind: \"weekly_docs_worker_recovery\",\n                persistent_incident_kind: \"weekly_docs_worker_unavailable\",\n                persistent_notification_operation: \"dismiss\",\n                mobile_notification: false,\n                resolution: \"recovered\",\n                worker_state: state\n            },\n            testMode ? \"TESTE — Revisão documental recuperada\" : \"Revisão documental recuperada\",\n            \"O worker da revisão documental semanal voltou ao estado \" + state + \".\"\n        ));\n    }\n    flow.set(key, undefined, store);\n\n    if (!testMode && flow.get(legacyMigrationKey, \"persistent\") !== true) {\n        flow.set(legacyMigrationKey, true, \"persistent\");\n        output.push({\n            payload: {\n                test_mode: false,\n                observer_kind: \"weekly_docs_worker_recovery\",\n                persistent_incident_kind: \"node_error\",\n                persistent_notification_operation: \"dismiss\",\n                mobile_notification: false,\n                incident_key: \"weekly_docs_review_tab_weekly_docs_review_track_status\",\n                resolution: \"legacy_notification_migrated\"\n            },\n            alert: {\n                title: \"Revisão documental recuperada\",\n                message: \"O alerta legado do worker foi encerrado.\"\n            }\n        });\n    }\n}\nreturn output.length ? [output] : null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -8820,7 +8829,7 @@
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_production_group",
         "name": "Ponte terminou com falha",
-        "func": "node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(msg.payload?.code ?? msg.payload ?? -1) });\nreturn null;",
+        "func": "node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(msg.payload?.code ?? msg.payload ?? -1) });\nif (msg._weekly_docs_test !== true) node.error(\"weekly_docs_review_bridge_exit_failed\", { _msgid: msg._msgid });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -25808,7 +25817,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_production_group",
         "name": "Registrar código da ponte",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -25935,7 +25944,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_result_group",
         "name": "Código da leitura",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -26424,7 +26433,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_group",
         "name": "Código da ponte Kia",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -26551,7 +26560,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_group",
         "name": "Código da leitura Kia",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -26773,7 +26782,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_codex_group",
         "name": "Código da ponte Codex",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -26886,7 +26895,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_codex_group",
         "name": "Código da leitura Codex",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -27098,7 +27107,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_codex_group",
         "name": "Código da promoção segura",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -27463,7 +27472,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_core_group",
         "name": "Código da ponte Core",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -27590,7 +27599,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_core_group",
         "name": "Código da leitura Core",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -27833,7 +27842,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_containers_group",
         "name": "Código da ponte containers",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -27960,7 +27969,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_containers_group",
         "name": "Código da leitura containers",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -28541,7 +28550,8 @@
                 "daily_update_inventory_unavailable"
             ],
             [
-                "daily_update_inventory_current"
+                "daily_update_inventory_current",
+                "notification_hub_wire_out_b1b5fd6c16a7"
             ]
         ]
     },
@@ -28769,7 +28779,8 @@
         "name": "Desconhecido → bloqueio",
         "mode": "link",
         "links": [
-            "daily_update_unknown_in"
+            "daily_update_unknown_in",
+            "operations_daily_input_operations_daily_unknown"
         ],
         "x": 1655,
         "y": 3490,
@@ -28822,7 +28833,8 @@
         "y": 3771,
         "wires": [
             [
-                "daily_update_hacs_test_gate"
+                "daily_update_hacs_test_gate",
+                "notification_hub_wire_out_f4bcb9b7815b"
             ],
             [
                 "daily_update_hacs_unavailable"
@@ -29141,7 +29153,8 @@
                 "daily_update_firmware_auto_effect_out"
             ],
             [
-                "daily_update_firmware_manual_test_gate"
+                "daily_update_firmware_manual_test_gate",
+                "notification_hub_wire_out_a44665fb1d48"
             ]
         ]
     },
@@ -30201,7 +30214,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_repository_dependency_group",
         "name": "Código da ponte npm",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -30349,7 +30362,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_repository_dependency_group",
         "name": "Código da leitura npm",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -30397,7 +30410,8 @@
                 "daily_update_dependency_result_test_out"
             ],
             [
-                "daily_update_dependency_backup_out"
+                "daily_update_dependency_backup_out",
+                "notification_hub_wire_out_34e7741686b0"
             ],
             [
                 "daily_update_dependency_retry"
@@ -30677,7 +30691,8 @@
         "name": "Sem correção → bloqueio",
         "mode": "link",
         "links": [
-            "daily_update_dependency_blocked_in"
+            "daily_update_dependency_blocked_in",
+            "operations_daily_input_operations_daily_dependency"
         ],
         "x": 470,
         "y": 7000,
@@ -30691,7 +30706,8 @@
         "name": "Fora do override → bloqueio",
         "mode": "link",
         "links": [
-            "daily_update_dependency_blocked_in"
+            "daily_update_dependency_blocked_in",
+            "operations_daily_input_operations_daily_dependency"
         ],
         "x": 740,
         "y": 7000,
@@ -30705,7 +30721,8 @@
         "name": "Severidade inválida → bloqueio",
         "mode": "link",
         "links": [
-            "daily_update_dependency_blocked_in"
+            "daily_update_dependency_blocked_in",
+            "operations_daily_input_operations_daily_dependency"
         ],
         "x": 1010,
         "y": 7000,
@@ -30719,7 +30736,8 @@
         "name": "Auto desligado → bloqueio",
         "mode": "link",
         "links": [
-            "daily_update_dependency_blocked_in"
+            "daily_update_dependency_blocked_in",
+            "operations_daily_input_operations_daily_dependency"
         ],
         "x": 1270,
         "y": 7000,
@@ -31145,7 +31163,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_alexa_media_group",
         "name": "Código da ponte Alexa",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -31258,7 +31276,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_alexa_media_group",
         "name": "Código da leitura Alexa",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -31767,7 +31785,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_codex_cli_group",
         "name": "Código da ponte Codex CLI",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -31880,7 +31898,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_codex_cli_group",
         "name": "Código da leitura Codex CLI",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\n    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error(\"daily_update_bridge_exit_failed code=\" + code, { _msgid: msg._msgid });\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -44587,6 +44605,8 @@
             "local_ai_rtx_alert_out",
             "internet_remote_access_alert_out",
             "weekly_docs_review_alert_out",
+            "operations_daily_alert_out",
+            "operations_memory_alert_out",
             "notification_hub_mobile_observer_out",
             "notification_hub_alexa_observer_out",
             "notification_hub_persistent_observer_out"
@@ -57162,7 +57182,7 @@
         "type": "link out",
         "z": "62bb822e033d1623",
         "g": "arrival_context_departure_group",
-        "name": "Origem pending → junção",
+        "name": "Origem pending → jun����ão",
         "mode": "link",
         "links": [
             "arrival_context_pending_in"
@@ -61344,19 +61364,23 @@
                 "host_memory_guardian_mark_error"
             ],
             [
-                "host_memory_guardian_mark_audit"
+                "host_memory_guardian_mark_audit",
+                "notification_hub_wire_out_65e435986a90"
             ],
             [
-                "host_memory_guardian_mark_audit"
+                "host_memory_guardian_mark_audit",
+                "notification_hub_wire_out_830a5a946fb8"
+            ],
+            [
+                "host_memory_guardian_mark_healthy",
+                "notification_hub_wire_out_21045116aeb6"
             ],
             [
                 "host_memory_guardian_mark_healthy"
             ],
             [
-                "host_memory_guardian_mark_healthy"
-            ],
-            [
-                "host_memory_guardian_mark_pressure"
+                "host_memory_guardian_mark_pressure",
+                "notification_hub_wire_out_cc5eb6049a47"
             ]
         ]
     },
@@ -75435,6 +75459,910 @@
         "wires": [
             [
                 "zigbee_route_state_mutate"
+            ]
+        ]
+    },
+    {
+        "id": "operations_daily_hacs",
+        "type": "change",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Decisão recebida: auditoria HACS necessária",
+        "x": 364,
+        "y": 7831,
+        "wires": [
+            [
+                "operations_daily_adapt"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "operational_alert",
+                "pt": "msg",
+                "to": "{\"source\":\"atualizacoes_diarias\",\"active\":true,\"reason\":\"hacs_audit_required\",\"title\":\"Atualização exige ação\",\"message\":\"Uma integração aguarda auditoria antes da atualização.\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "operations_daily_unknown",
+        "type": "change",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Decisão recebida: fonte não classificada",
+        "x": 364,
+        "y": 7901,
+        "wires": [
+            [
+                "operations_daily_adapt"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "operational_alert",
+                "pt": "msg",
+                "to": "{\"source\":\"atualizacoes_diarias\",\"active\":true,\"reason\":\"update_classification_required\",\"title\":\"Atualização exige ação\",\"message\":\"Uma atualização foi bloqueada e precisa ser classificada.\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "operations_daily_firmware",
+        "type": "change",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Decisão recebida: firmware manual pendente",
+        "x": 364,
+        "y": 7971,
+        "wires": [
+            [
+                "operations_daily_adapt"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "operational_alert",
+                "pt": "msg",
+                "to": "{\"source\":\"atualizacoes_diarias\",\"active\":true,\"reason\":\"firmware_approval_required\",\"title\":\"Atualização exige ação\",\"message\":\"Um firmware aguarda sua decisão de instalação.\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "operations_daily_dependency",
+        "type": "change",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Decisão recebida: dependência bloqueada",
+        "x": 364,
+        "y": 8041,
+        "wires": [
+            [
+                "operations_daily_adapt"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "operational_alert",
+                "pt": "msg",
+                "to": "{\"source\":\"atualizacoes_diarias\",\"active\":true,\"reason\":\"dependency_policy_blocked\",\"title\":\"Atualização exige ação\",\"message\":\"Uma dependência vulnerável não pôde ser atualizada automaticamente. Revise o candidato e a política.\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "operations_daily_resolved",
+        "type": "change",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Estado canônico atual: encerrar aviso",
+        "x": 364,
+        "y": 8111,
+        "wires": [
+            [
+                "operations_daily_adapt"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "operational_alert",
+                "pt": "msg",
+                "to": "{\"source\":\"atualizacoes_diarias\",\"active\":false,\"reason\":\"update_current\",\"title\":\"Atualização exige ação\",\"message\":\"A pendência de atualização foi resolvida.\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "operations_daily_adapt",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Normalizar decisão e isolar TESTE",
+        "x": 754,
+        "y": 7901,
+        "wires": [
+            [
+                "operations_daily_lifecycle"
+            ]
+        ],
+        "func": "// Normalize already-classified decisions; never authorize a host/device effect.\nconst item = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst policy = msg.operational_alert;\nconst testMode = msg._ha_updates_test === true || msg._repository_dependency_test === true ||\n    msg._host_memory_guardian_test === true || item.test_mode === true;\nconst subject = policy.source === \"guardiao_memoria_host\" ? \"memory_pressure\" : String(item.entity_id ?? item.package ?? \"\");\nif (!subject) return null;\nmsg.operational_alert = {\n    ...policy, subject, test_mode: testMode,\n    version: String(item.latest_version ?? item.to ?? item.version ?? \"unknown\"),\n    message: policy.message + (policy.source === \"atualizacoes_diarias\" ? \" Item: \" + subject + \".\" : \"\")\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "operations_daily_lifecycle",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Deduplicar incidente; persistir produção",
+        "x": 1144,
+        "y": 7901,
+        "wires": [
+            [
+                "operations_daily_alert_out"
+            ]
+        ],
+        "func": "// One persistent incident per canonical subject. Test state never touches production.\nconst event = msg.operational_alert;\nif (!event || typeof event.active !== \"boolean\" || !event.subject) return null;\nconst testMode = event.test_mode === true;\nconst key = \"operational_action_alerts_v1\" + (testMode ? \"__test\" : \"\");\nconst store = testMode ? undefined : \"persistent\";\nconst state = flow.get(key, store) ?? {};\nconst identity = event.source + \":\" + event.subject;\nconst previous = state[identity];\nconst signature = event.reason + \":\" + event.version;\nif (event.active && previous?.signature === signature) return null;\nif (!event.active && !previous) return null;\nif (event.active) state[identity] = { signature };\nelse delete state[identity];\nflow.set(key, state, store);\nreturn {\n    _global_observer_test: testMode,\n    payload: {\n        test_mode: testMode, observer_kind: \"action_required\",\n        incident_key: identity, source: event.source,\n        persistent_notification_operation: event.active ? \"create\" : \"dismiss\",\n        mobile_notification: event.active,\n        reason: event.reason, severity: \"warning\"\n    },\n    alert: {\n        title: (testMode ? \"TESTE — \" : \"\") + event.title,\n        message: (testMode ? \"TESTE — \" : \"\") + event.message\n    }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "operations_daily_alert_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Ação necessária → HA + celular principal",
+        "x": 1494,
+        "y": 7901,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ]
+    },
+    {
+        "id": "operations_daily_reset",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "TESTE: limpar somente incidentes sintéticos",
+        "x": 1144,
+        "y": 8101,
+        "wires": [],
+        "func": "flow.set(\"operational_action_alerts_v1__test\", undefined); return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "operations_daily_test_reset",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "TESTE 0: reset dos avisos",
+        "x": 754,
+        "y": 8101,
+        "wires": [
+            [
+                "operations_daily_reset"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": ""
+    },
+    {
+        "id": "operations_daily_instructions",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "TESTE: reset → cenário manual do canvas → repetir → recuperação; conferir dry-run global",
+        "x": 824,
+        "y": 8201,
+        "wires": [],
+        "info": "Somente falhas e ações necessárias. Produção: HA persistente + resident_primary. Repetição e restart não reenviam o mesmo incidente; recuperação apenas remove o aviso. Testes usam memória separada e o terminal global simulated:true/dispatched:false."
+    },
+    {
+        "id": "operations_daily_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "NOTIFICAÇÕES: ações necessárias, dedupe e recuperação",
+        "style": {
+            "label": true,
+            "color": "#d97706"
+        },
+        "nodes": [
+            "operations_daily_hacs",
+            "operations_daily_unknown",
+            "operations_daily_firmware",
+            "operations_daily_dependency",
+            "operations_daily_resolved",
+            "operations_daily_adapt",
+            "operations_daily_lifecycle",
+            "operations_daily_alert_out",
+            "operations_daily_reset",
+            "operations_daily_test_reset",
+            "operations_daily_instructions",
+            "notification_hub_wire_in_b1b5fd6c16a7",
+            "notification_hub_wire_in_f4bcb9b7815b",
+            "notification_hub_wire_in_a44665fb1d48",
+            "operations_daily_input_operations_daily_unknown",
+            "operations_daily_input_operations_daily_dependency",
+            "notification_hub_wire_in_34e7741686b0"
+        ],
+        "x": 64,
+        "y": 7741,
+        "w": 1580,
+        "h": 520
+    },
+    {
+        "id": "operations_memory_pressure",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Pressão sem ação segura: pedir intervenção",
+        "x": 364,
+        "y": 2026,
+        "wires": [
+            [
+                "operations_memory_adapt"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "operational_alert",
+                "pt": "msg",
+                "to": "{\"source\":\"guardiao_memoria_host\",\"active\":true,\"reason\":\"memory_pressure\",\"title\":\"Memória do servidor exige atenção\",\"message\":\"A memória está sob pressão e o guardião não encontrou uma ação segura. Revise as sessões e processos em uso.\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "operations_memory_resolved",
+        "type": "change",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Saudável ou recuperado: encerrar aviso",
+        "x": 364,
+        "y": 2166,
+        "wires": [
+            [
+                "operations_memory_adapt"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "operational_alert",
+                "pt": "msg",
+                "to": "{\"source\":\"guardiao_memoria_host\",\"active\":false,\"reason\":\"memory_recovered\",\"title\":\"Memória do servidor exige atenção\",\"message\":\"A pressão de memória foi resolvida.\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "operations_memory_pressure_gate",
+        "type": "switch",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Pressão exige intervenção humana?",
+        "x": 364,
+        "y": 2236,
+        "wires": [
+            [
+                "operations_memory_pressure_accepted_out"
+            ],
+            [
+                "operations_memory_pressure_accepted_out"
+            ],
+            [
+                "operations_memory_pressure_accepted_out"
+            ]
+        ],
+        "property": "payload.status",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "pressure_no_safe_duplicate",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "pressure_no_safe_candidate",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "candidate_active",
+                "vt": "str"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 3
+    },
+    {
+        "id": "operations_memory_adapt",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Normalizar decisão e isolar TESTE",
+        "x": 754,
+        "y": 2096,
+        "wires": [
+            [
+                "operations_memory_lifecycle"
+            ]
+        ],
+        "func": "// Normalize already-classified decisions; never authorize a host/device effect.\nconst item = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst policy = msg.operational_alert;\nconst testMode = msg._ha_updates_test === true || msg._repository_dependency_test === true ||\n    msg._host_memory_guardian_test === true || item.test_mode === true;\nconst subject = policy.source === \"guardiao_memoria_host\" ? \"memory_pressure\" : String(item.entity_id ?? item.package ?? \"\");\nif (!subject) return null;\nmsg.operational_alert = {\n    ...policy, subject, test_mode: testMode,\n    version: String(item.latest_version ?? item.to ?? item.version ?? \"unknown\"),\n    message: policy.message + (policy.source === \"atualizacoes_diarias\" ? \" Item: \" + subject + \".\" : \"\")\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "operations_memory_lifecycle",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Deduplicar incidente; persistir produção",
+        "x": 1144,
+        "y": 2096,
+        "wires": [
+            [
+                "operations_memory_alert_out"
+            ]
+        ],
+        "func": "// One persistent incident per canonical subject. Test state never touches production.\nconst event = msg.operational_alert;\nif (!event || typeof event.active !== \"boolean\" || !event.subject) return null;\nconst testMode = event.test_mode === true;\nconst key = \"operational_action_alerts_v1\" + (testMode ? \"__test\" : \"\");\nconst store = testMode ? undefined : \"persistent\";\nconst state = flow.get(key, store) ?? {};\nconst identity = event.source + \":\" + event.subject;\nconst previous = state[identity];\nconst signature = event.reason + \":\" + event.version;\nif (event.active && previous?.signature === signature) return null;\nif (!event.active && !previous) return null;\nif (event.active) state[identity] = { signature };\nelse delete state[identity];\nflow.set(key, state, store);\nreturn {\n    _global_observer_test: testMode,\n    payload: {\n        test_mode: testMode, observer_kind: \"action_required\",\n        incident_key: identity, source: event.source,\n        persistent_notification_operation: event.active ? \"create\" : \"dismiss\",\n        mobile_notification: event.active,\n        reason: event.reason, severity: \"warning\"\n    },\n    alert: {\n        title: (testMode ? \"TESTE — \" : \"\") + event.title,\n        message: (testMode ? \"TESTE — \" : \"\") + event.message\n    }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "operations_memory_alert_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Ação necessária → HA + celular principal",
+        "x": 1494,
+        "y": 2096,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ]
+    },
+    {
+        "id": "operations_memory_reset",
+        "type": "function",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "TESTE: limpar somente incidentes sintéticos",
+        "x": 1144,
+        "y": 2296,
+        "wires": [],
+        "func": "flow.set(\"operational_action_alerts_v1__test\", undefined); return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "operations_memory_test_reset",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "TESTE 0: reset dos avisos",
+        "x": 754,
+        "y": 2296,
+        "wires": [
+            [
+                "operations_memory_reset"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": ""
+    },
+    {
+        "id": "operations_memory_test_pressure",
+        "type": "inject",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "TESTE: pressão sem ação segura",
+        "x": 364,
+        "y": 2366,
+        "wires": [
+            [
+                "notification_hub_wire_out_f80d2f3e5783"
+            ]
+        ],
+        "props": [
+            {
+                "p": "_host_memory_guardian_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "payload",
+                "v": "{\"status\":\"pressure_no_safe_candidate\",\"request_id\":\"synthetic-pressure\",\"checked_at\":\"2026-01-01T00:00:00Z\",\"test_mode\":true}",
+                "vt": "json"
+            }
+        ],
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": ""
+    },
+    {
+        "id": "operations_memory_instructions",
+        "type": "comment",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "TESTE: reset → cenário manual do canvas → repetir → recuperação; conferir dry-run global",
+        "x": 824,
+        "y": 2396,
+        "wires": [],
+        "info": "Somente falhas e ações necessárias. Produção: HA persistente + resident_primary. Repetição e restart não reenviam o mesmo incidente; recuperação apenas remove o aviso. Testes usam memória separada e o terminal global simulated:true/dispatched:false."
+    },
+    {
+        "id": "operations_memory_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "NOTIFICAÇÕES: ações necessárias, dedupe e recuperação",
+        "style": {
+            "label": true,
+            "color": "#d97706"
+        },
+        "nodes": [
+            "operations_memory_pressure",
+            "operations_memory_resolved",
+            "operations_memory_pressure_gate",
+            "operations_memory_adapt",
+            "operations_memory_lifecycle",
+            "operations_memory_alert_out",
+            "operations_memory_reset",
+            "operations_memory_test_reset",
+            "operations_memory_test_pressure",
+            "operations_memory_instructions",
+            "notification_hub_wire_in_65e435986a90",
+            "notification_hub_wire_in_830a5a946fb8",
+            "notification_hub_wire_in_21045116aeb6",
+            "notification_hub_wire_in_cc5eb6049a47",
+            "notification_hub_wire_out_f80d2f3e5783",
+            "operations_memory_pressure_accepted_in",
+            "operations_memory_pressure_accepted_out"
+        ],
+        "x": 64,
+        "y": 1936,
+        "w": 1580,
+        "h": 520
+    },
+    {
+        "id": "notification_hub_wire_out_b1b5fd6c16a7",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_inventory_group",
+        "name": "Encurtar: ESTADO: pendente / indisponível / atual",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_b1b5fd6c16a7"
+        ],
+        "x": 968,
+        "y": 3501,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_b1b5fd6c16a7",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Continuar: Estado canônico atual: encerrar aviso",
+        "links": [
+            "notification_hub_wire_out_b1b5fd6c16a7"
+        ],
+        "x": 184,
+        "y": 8111,
+        "wires": [
+            [
+                "operations_daily_resolved"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_f4bcb9b7815b",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_hacs_group",
+        "name": "Encurtar: Estado HACS pendente / indisponível / atual",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_f4bcb9b7815b"
+        ],
+        "x": 568,
+        "y": 3821,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_f4bcb9b7815b",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Continuar: Decisão recebida: auditoria HACS necessária",
+        "links": [
+            "notification_hub_wire_out_f4bcb9b7815b"
+        ],
+        "x": 184,
+        "y": 7831,
+        "wires": [
+            [
+                "operations_daily_hacs"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_a44665fb1d48",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_firmware_group",
+        "name": "Encurtar: PARÂMETRO firmware automático?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_a44665fb1d48"
+        ],
+        "x": 898,
+        "y": 4821,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_a44665fb1d48",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Continuar: Decisão recebida: firmware manual pendente",
+        "links": [
+            "notification_hub_wire_out_a44665fb1d48"
+        ],
+        "x": 184,
+        "y": 7971,
+        "wires": [
+            [
+                "operations_daily_firmware"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_65e435986a90",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Encurtar: Status: falha, recuperação, saudável ou pressão?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_65e435986a90"
+        ],
+        "x": 3070,
+        "y": 1720,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_65e435986a90",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Continuar: Saudável ou recuperado: encerrar aviso",
+        "links": [
+            "notification_hub_wire_out_65e435986a90"
+        ],
+        "x": 184,
+        "y": 2166,
+        "wires": [
+            [
+                "operations_memory_resolved"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_830a5a946fb8",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Encurtar: Status: falha, recuperação, saudável ou pressão?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_830a5a946fb8"
+        ],
+        "x": 3070,
+        "y": 1520,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_830a5a946fb8",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Continuar: Saudável ou recuperado: encerrar aviso",
+        "links": [
+            "notification_hub_wire_out_830a5a946fb8"
+        ],
+        "x": 184,
+        "y": 2266,
+        "wires": [
+            [
+                "operations_memory_resolved"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_21045116aeb6",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Encurtar: Status: falha, recuperação, saudável ou pressão?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_21045116aeb6"
+        ],
+        "x": 3030,
+        "y": 1620,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_21045116aeb6",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Continuar: Saudável ou recuperado: encerrar aviso",
+        "links": [
+            "notification_hub_wire_out_21045116aeb6"
+        ],
+        "x": 184,
+        "y": 2066,
+        "wires": [
+            [
+                "operations_memory_resolved"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_cc5eb6049a47",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Encurtar: Status: falha, recuperação, saudável ou pressão?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_cc5eb6049a47"
+        ],
+        "x": 3150,
+        "y": 1770,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_cc5eb6049a47",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Continuar: Pressão exige intervenção humana?",
+        "links": [
+            "notification_hub_wire_out_cc5eb6049a47"
+        ],
+        "x": 184,
+        "y": 2336,
+        "wires": [
+            [
+                "operations_memory_pressure_gate"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_f80d2f3e5783",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Encurtar: TESTE: pressão sem ação segura",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_f80d2f3e5783"
+        ],
+        "x": 544,
+        "y": 2366,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_f80d2f3e5783",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "host_memory_guardian_decision_group",
+        "name": "Continuar: Receber resultado real ou sintético",
+        "links": [
+            "notification_hub_wire_out_f80d2f3e5783"
+        ],
+        "x": 110,
+        "y": 1755,
+        "wires": [
+            [
+                "host_memory_guardian_result_in"
+            ]
+        ]
+    },
+    {
+        "id": "operations_daily_input_operations_daily_unknown",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Receber Decisão recebida: fonte não classificada",
+        "x": 144,
+        "y": 7901,
+        "wires": [
+            [
+                "operations_daily_unknown"
+            ]
+        ],
+        "links": [
+            "daily_update_inventory_unknown_out"
+        ]
+    },
+    {
+        "id": "operations_daily_input_operations_daily_dependency",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Receber Decisão recebida: dependência bloqueada",
+        "x": 144,
+        "y": 8041,
+        "wires": [
+            [
+                "operations_daily_dependency"
+            ]
+        ],
+        "links": [
+            "daily_update_dependency_blocked_from_fix",
+            "daily_update_dependency_blocked_from_surface",
+            "daily_update_dependency_blocked_from_severity",
+            "daily_update_dependency_blocked_from_auto"
+        ]
+    },
+    {
+        "id": "operations_memory_pressure_accepted_in",
+        "type": "link in",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Receber pressão que exige ação",
+        "x": 144,
+        "y": 2026,
+        "wires": [
+            [
+                "operations_memory_pressure"
+            ]
+        ],
+        "links": [
+            "operations_memory_pressure_accepted_out"
+        ]
+    },
+    {
+        "id": "operations_memory_pressure_accepted_out",
+        "type": "link out",
+        "z": "host_memory_guardian_tab",
+        "g": "operations_memory_group",
+        "name": "Pressão confirmada → aviso",
+        "x": 584,
+        "y": 2236,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "operations_memory_pressure_accepted_in"
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_34e7741686b0",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Encurtar: Normalizar resultado npm",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_34e7741686b0"
+        ],
+        "x": 1260,
+        "y": 7070,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_34e7741686b0",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Continuar: Estado canônico atual: encerrar aviso",
+        "links": [
+            "notification_hub_wire_out_34e7741686b0"
+        ],
+        "x": 184,
+        "y": 8211,
+        "wires": [
+            [
+                "operations_daily_resolved"
             ]
         ]
     }

@@ -50,7 +50,10 @@ node.error("daily_update_bridge_unavailable detail=" + detail, msg);
 return null;`;
 
 const recordCompletion = `const code = Number(msg.payload?.code ?? msg.payload ?? -1);
-if (code !== 0) node.status({ fill: "red", shape: "ring", text: "ponte código " + String(code) });
+if (code !== 0) {
+    node.status({ fill: "red", shape: "ring", text: "ponte código " + String(code) });
+    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error("daily_update_bridge_exit_failed code=" + code, { _msgid: msg._msgid });
+}
 return null;`;
 
 const normalizeRepositoryDependencyAudit = `const TEST_MODE = msg._repository_dependency_test === true;

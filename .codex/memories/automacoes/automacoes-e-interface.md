@@ -77,6 +77,18 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
   verificadas por `nodered/tools/test-notification-history.mjs`. Nunca copie
   conteúdo residencial dos registros para memória pública ou commits.
 
+## Alertas dos fluxos operacionais
+
+- Atualizações diárias, revisão documental semanal e guardião de memória
+  notificam no HA persistente e em `resident_primary` somente falhas e ações
+  necessárias. Conclusões e intervenções normais permanecem silenciosas.
+- Avisos de pendência manual e pressão sem ação segura têm dedupe persistente;
+  recuperação remove o aviso no HA sem novo push. `unknown` não encerra um
+  incidente confirmado do worker semanal. Testes usam contexto separado e o
+  terminal dry-run global.
+- Contrato e cenários: `docs/NODERED_NOTIFICATION_HUBS.md` e
+  `nodered/tools/test-operational-alerts.mjs`.
+
 ## Portão da garagem
 
 O relé Zigbee TS0001 deve receber pulso em software (`ON` seguido de `OFF`).

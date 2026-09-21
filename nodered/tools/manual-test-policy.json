@@ -103,11 +103,14 @@
                 "daily_update_dependency_test_reset",
                 "daily_update_dependency_test_safe",
                 "daily_update_dependency_test_blocked",
-                "daily_update_dependency_test_result"
+                "daily_update_dependency_test_result",
+                "operations_daily_group",
+                "operations_daily_test_reset"
             ],
             "automated_test": "test-daily-host-update-flow.mjs",
             "dry_run_terminal_ids": [
-                "daily_update_dry_run_terminal"
+                "daily_update_dry_run_terminal",
+                "global_observer_dry_run_terminal"
             ],
             "reason": "DietPi, Core, containers, Codex CLI e dependências do repositório percorrem pontes serializadas próprias; os inventários sintéticos cobrem Bluelink, Alexa Media auditada, demais HACS, firmware, Core, classes desconhecidas, override elegível e dependência transitiva bloqueada. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, npm install, restart, Codex, commit, push, update.install e reboot permanecem bloqueados."
         },
@@ -495,10 +498,14 @@
                 "host_memory_guardian_test_terminated",
                 "host_memory_guardian_test_duplicate",
                 "host_memory_guardian_test_failed",
-                "host_memory_guardian_test_stale"
+                "host_memory_guardian_test_stale",
+                "operations_memory_group",
+                "operations_memory_test_reset",
+                "operations_memory_test_pressure"
             ],
             "dry_run_terminal_ids": [
-                "host_memory_guardian_dry_run_terminal"
+                "host_memory_guardian_dry_run_terminal",
+                "global_observer_dry_run_terminal"
             ],
             "automated_test": "test-host-memory-guardian-flow.mjs",
             "reason": "Pedido, memória saudável, recuperação temporária, pressão, candidato ocioso, encerramento, duplicidade, falha e resultado vencido atravessam adaptação, vigência, estado, decisões visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."

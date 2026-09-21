@@ -265,6 +265,42 @@ sem anúncio Alexa adicional; o cancelamento pendente continua chegando ao
 trigger por ligação direta. Ajustes feitos no editor devem ser refletidos na
 fonte geradora e nos contratos antes da próxima regeneração.
 
+## Falhas e ações necessárias nos fluxos operacionais
+
+`atualizacoes_diarias`, `revisao_documental_semanal` e
+`guardiao_memoria_host` usam o observador central, que encaminha alertas ao
+hub persistente do Home Assistant e exclusivamente a `resident_primary` pelo
+hub móvel. Conclusões bem-sucedidas e intervenções normais não geram avisos.
+
+- **Atualizações:** falhas de execução, inclusive saída não zero das pontes,
+  seguem o observador de erros. Decisões canônicas de auditoria HACS,
+  classificação de fonte desconhecida, firmware manual e dependência bloqueada
+  geram um aviso por item/versão. A observação de um item já atualizado remove
+  seu aviso persistente, sem push de recuperação. A confirmação de atualização
+  de uma dependência também encerra sua pendência.
+- **Revisão semanal:** `falha`, `indisponível`, o estado nativo `unavailable` e
+  worker `parado` abrem um incidente. `unknown` não confirma recuperação.
+  Estados conhecidos de funcionamento encerram o incidente sem push.
+- **Memória:** falhas e limpeza parcial continuam no observador de erros.
+  `pressure_no_safe_duplicate`, `pressure_no_safe_candidate` e
+  `candidate_active` exigem intervenção e abrem um único incidente persistente.
+  Espera por observação ou cooldown permanece silenciosa. Estado saudável ou
+  recuperação encerra o aviso sem push.
+
+As decisões continuam nos canvases de origem. O grupo **NOTIFICAÇÕES** adapta
+essas decisões e mantém o lifecycle em contexto persistente; polling e restart
+não reenviam o mesmo incidente. Testes usam contexto separado. As novas saídas
+convergem em `global_observer_alert_to_dispatch_in`, passam pelo gate final e
+terminam em `global_observer_dry_run_terminal` quando `test_mode` estiver ativo.
+
+Para testar, use **TESTE 0: reset dos avisos**, execute o inventário sintético
+ou **TESTE: pressão sem ação segura**, repita o cenário e depois execute a
+recuperação/estado saudável. Confira `simulated: true` e `dispatched: false` no
+terminal global. Não há execução de updates, comandos de host ou envio real
+nesses testes. `test-operational-alerts.mjs` cobre as duas rotas de entrega,
+repetição, restart, recuperação e silêncio; a regeneração aditiva fica em
+`install-operational-alerts.mjs`, chamada pelo gerador do observador global.
+
 ## Testes e manutenção
 
 Os três tabs têm controles manuais `test_mode` que atravessam o mesmo
