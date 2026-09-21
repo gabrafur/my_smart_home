@@ -53,7 +53,7 @@ function execute(body, msg, flow) {
 assert.equal(node("git_backup_tab").label, "backup_git");
 assert.equal(node("git_backup_schedule").crontab, "30 00 * * *");
 assert.equal(node("git_backup_request_gate").type, "switch");
-assert.deepEqual(node("git_backup_request_gate").wires, [
+assert.deepEqual(node("git_backup_request_gate").wires.map((_, output) => logicalWireTargets("git_backup_request_gate", output)), [
   ["git_backup_request_dry_out"],
   ["git_backup_worker_out"],
 ]);
@@ -71,15 +71,15 @@ assert.equal(node("git_backup_success_gate").type, "switch");
 assert.equal(node("git_backup_failure_gate").type, "switch");
 assert.equal(node("git_backup_deferred_gate").type, "switch");
 assert.equal(node("git_backup_invalid_gate").type, "switch");
-assert.deepEqual(node("git_backup_success_gate").wires, [
+assert.deepEqual(node("git_backup_success_gate").wires.map((_, output) => logicalWireTargets("git_backup_success_gate", output)), [
   ["git_backup_dry_out"],
   ["git_backup_mark_daily_success"],
 ]);
-assert.deepEqual(node("git_backup_failure_gate").wires, [
+assert.deepEqual(node("git_backup_failure_gate").wires.map((_, output) => logicalWireTargets("git_backup_failure_gate", output)), [
   ["git_backup_dry_out"],
   ["git_backup_notification_out"],
 ]);
-assert.deepEqual(node("git_backup_deferred_gate").wires, [
+assert.deepEqual(node("git_backup_deferred_gate").wires.map((_, output) => logicalWireTargets("git_backup_deferred_gate", output)), [
   ["git_backup_dry_out"],
   ["git_backup_retry_effect_out"],
 ]);

@@ -1376,7 +1376,12 @@ for (const [suffix, position] of [
 if (process.env.NODE_RED_NOTIFICATION_ROUTE_WIRES !== "0") {
   routeCanvasWires(finalized, finalized.filter((node) => node.type === "tab").map((node) => node.id));
 }
-fs.writeFileSync(outputPath, `${JSON.stringify(finalized, null, 4)}\n`);
+// Routing can recreate pairs after the first reconciliation. Keep their
+// existing array slots and approved geometry as well as their final topology.
+const stableFinalized = reconcileGeneratedFlows(parsedFlows, finalized, {
+  isOwned: () => true,
+});
+fs.writeFileSync(outputPath, `${JSON.stringify(stableFinalized, null, 4)}\n`);
 console.log(
   `Global flow observer installed for ${tabs.length} tabs in ${outputPath}`,
 );

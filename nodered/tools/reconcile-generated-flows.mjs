@@ -22,7 +22,7 @@ function stableMembership(current = [], desired = [], isOwnedId = () => true) {
 function mergeNode(current, desired, { preserveLayout, isOwnedId }) {
   const merged = structuredClone(current);
   for (const [property, value] of Object.entries(desired)) {
-    if (preserveLayout && LAYOUT_FIELDS.has(property) && Object.hasOwn(current, property)) {
+    if (preserveLayout && LAYOUT_FIELDS.has(property)) {
       continue;
     }
     if (property === "nodes" && Array.isArray(current.nodes) && Array.isArray(value)) {

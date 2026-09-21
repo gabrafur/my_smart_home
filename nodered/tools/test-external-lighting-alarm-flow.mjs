@@ -12,6 +12,15 @@ function getNode(id) {
   return node;
 }
 
+function logicalTargets(id, seen = new Set()) {
+  assert.ok(!seen.has(id), `ciclo de links: ${id}`);
+  const item = getNode(id);
+  if (!["link in", "link out"].includes(item.type)) return [id];
+  const next = new Set([...seen, id]);
+  return (item.type === "link out" ? item.links : item.wires.flat())
+    .flatMap((target) => logicalTargets(target, next));
+}
+
 function resolveSingleWireTarget(source, output = 0) {
   const [targetId] = source.wires?.[output] ?? [];
   const target = getNode(targetId);
@@ -333,13 +342,12 @@ assert.equal(confirmation.units, "s");
 assert.equal(confirmation.extend, true);
 assert.equal(confirmation.overrideDelay, true);
 assert.deepEqual(confirmation.wires, [["external_visual_confirmation_mode"]]);
-assert.ok(getNode("external_visual_command_blocked").wires[0].includes("ext_wait_confirm"));
+assert.deepEqual(
+  getNode("external_visual_command_blocked").wires[0].flatMap((id) => logicalTargets(id)),
+  ["external_visual_notification_mode", "ext_wait_confirm"],
+);
 assert.deepEqual(getNode("ext_commit_recovery_confirmation").wires, [[]]);
 assert.deepEqual(getNode("external_visual_alexa_in").links, ["external_visual_alexa_out"]);
-assert.equal(
-  getNode("external_visual_command_blocked").wires[0].includes("ext_wait_confirm"),
-  true,
-);
 
 const buildMessage = compileFunction(getNode("ext_build_alexa_message"));
 const success = buildMessage(

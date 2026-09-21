@@ -299,7 +299,7 @@ for (const [linkNode, target] of [
   linkNode.links ??= [];
   if (!linkNode.links.includes(target)) linkNode.links.push(target);
 }
-const desired = installNotificationHubs(next);
+const desired = installNotificationHubs(next, { routeWires: false });
 const linkedInputs = new Set([peopleOut.id, peopleTestOut.id, "global_observer_events_in"]);
 const originalById = new Map(originalFlows.map((node) => [node.id, node]));
 const desiredById = new Map(desired.map((node) => [node.id, node]));
@@ -309,24 +309,24 @@ for (const routeOut of originalFlows.filter((node) =>
     /^notification_hub_wire_out_[a-f0-9]{12}$/.test(node.id)
   )
 )) {
-  if (routeOut.z === TAB) continue;
-  if (desiredById.has(routeOut.id)) continue;
   const routeIn = (routeOut.links ?? []).map((id) => originalById.get(id))
     .find((node) => node?.type === "link in");
-  const inferredSource = originalFlows.find((candidate) =>
-    (candidate.wires ?? []).some((wire) => wire.includes(routeOut.id))
-  );
-  const inferredOutput = inferredSource?.wires?.findIndex((wire) => wire.includes(routeOut.id));
-  const route = routeOut.notification_hub_wire_route ?? (
-    inferredSource && inferredOutput >= 0 && routeIn?.wires?.[0]?.length === 1
-      ? { source: inferredSource.id, target: routeIn.wires[0][0], output: inferredOutput }
-      : null
-  );
-  if (!route) continue;
-  const sourceNode = desiredById.get(route.source);
-  const targetIndex = sourceNode?.wires?.[route.output]?.indexOf(route.target) ?? -1;
-  if (targetIndex < 0 || !routeIn) continue;
-  sourceNode.wires[route.output][targetIndex] = routeOut.id;
+  if (routeIn?.wires?.[0]?.length !== 1) continue;
+  const target = routeIn.wires[0][0];
+  let restoredSource = false;
+  // A manually named route may be shared by several sources. Restore every
+  // still-equivalent edge, not just the first source found for the pair.
+  for (const original of originalFlows) {
+    for (const [output, wire] of (original.wires ?? []).entries()) {
+      if (!wire.includes(routeOut.id)) continue;
+      const sourceNode = desiredById.get(original.id);
+      const targetIndex = sourceNode?.wires?.[output]?.indexOf(target) ?? -1;
+      if (targetIndex < 0) continue;
+      sourceNode.wires[output][targetIndex] = routeOut.id;
+      restoredSource = true;
+    }
+  }
+  if (!restoredSource) continue;
   for (const routeNode of [routeOut, routeIn]) {
     const restored = structuredClone(routeNode);
     desired.push(restored);
@@ -338,7 +338,6 @@ for (const routeOut of originalFlows.filter((node) =>
 const reconciled = reconcileGeneratedFlows(originalFlows, desired, {
   isOwned: owned,
   shouldUpdate: (current) => owned(current) || linkedInputs.has(current.id),
-  preserveLayout: false,
 });
 fs.writeFileSync(outputPath, `${JSON.stringify(reconciled, null, 4)}\n`);
 console.log(`Resident notification visual flow installed in ${outputPath}`);

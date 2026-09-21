@@ -607,26 +607,5 @@ required(VEHICLE_TAB).info = "Localização, evidência de uso, direção, armam
 flows = reconcileGeneratedFlows(originalFlows, flows, {
   isOwned: (node) => generated.has(node.id),
 });
-const requiredAfterReconcile = (id) => {
-  const node = flows.find((candidate) => candidate.id === id);
-  if (!node) throw new Error(`Nó reconciliado obrigatório ausente: ${id}`);
-  return node;
-};
-Object.assign(requiredAfterReconcile("people_location_lifecycle_config_group_v2"), {
-  w: 1190,
-  h: 312,
-});
-Object.assign(requiredAfterReconcile("8e1c3a19399ad44d"), {
-  w: 4720,
-  h: 302,
-});
-Object.assign(requiredAfterReconcile("people_visual_secondary_icloud_out"), {
-  x: 700,
-  y: 1030,
-});
-Object.assign(requiredAfterReconcile("people_visual_blocked_gate"), {
-  x: 3780,
-  y: 640,
-});
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Location lifecycle visual flow installed in ${outputPath}`);
