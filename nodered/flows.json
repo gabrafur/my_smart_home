@@ -1291,7 +1291,7 @@
         ],
         "x": 82,
         "y": 660,
-        "w": 1332,
+        "w": 1364,
         "h": 422
     },
     {
@@ -3042,8 +3042,8 @@
             "tuya_phase_online",
             "tuya_summary_out"
         ],
-        "x": 4,
-        "y": 2099,
+        "x": 54,
+        "y": 2179,
         "w": 4602,
         "h": 652
     },
@@ -3820,7 +3820,7 @@
         ],
         "x": 78,
         "y": 1719,
-        "w": 5919,
+        "w": 5998,
         "h": 512
     },
     {
@@ -3947,10 +3947,10 @@
             "notification_hub_wire_out_e476d2bc04b8",
             "notification_hub_wire_in_e476d2bc04b8"
         ],
-        "x": 74,
-        "y": 2279,
-        "w": 2832,
-        "h": 262
+        "x": 54,
+        "y": 2359,
+        "w": 2852,
+        "h": 182
     },
     {
         "id": "security_light_engine_bypass_group_v1",
@@ -3987,9 +3987,9 @@
             "security_visual_bypass_output"
         ],
         "x": 64,
-        "y": 1059,
-        "w": 2542,
-        "h": 612
+        "y": 1109,
+        "w": 2762,
+        "h": 562
     },
     {
         "id": "light_location_policy_group_v1",
@@ -4107,9 +4107,9 @@
             "people_visual_wake_ring_first_out",
             "people_visual_wake_ring_second_out"
         ],
-        "x": 2084,
-        "y": 439,
-        "w": 4720,
+        "x": 54,
+        "y": 2019,
+        "w": 4697,
         "h": 302
     },
     {
@@ -4158,10 +4158,10 @@
             "notification_hub_wire_out_ea83b8ce73cb",
             "notification_hub_wire_in_ea83b8ce73cb"
         ],
-        "x": 64,
+        "x": 59,
         "y": 759,
-        "w": 3514,
-        "h": 313
+        "w": 3027,
+        "h": 312
     },
     {
         "id": "6e71dbc937fe5669",
@@ -4235,7 +4235,7 @@
         ],
         "x": 109,
         "y": 59,
-        "w": 1467,
+        "w": 1567,
         "h": 342
     },
     {
@@ -4285,8 +4285,8 @@
             "global_observer_coverage__ea0a6aa0d24ff863__annotate",
             "global_observer_coverage__ea0a6aa0d24ff863__out"
         ],
-        "x": 2389,
-        "y": 1092,
+        "x": 2104,
+        "y": 419,
         "w": 722,
         "h": 142
     },
@@ -4318,19 +4318,13 @@
             "resident_notifications_policy_home_stable",
             "resident_notifications_policy_home_window",
             "resident_notifications_policy_home_recheck",
-            "notification_hub_wire_out_55f2da08c526",
-            "notification_hub_wire_in_55f2da08c526",
-            "notification_hub_wire_out_123f371264b3",
-            "notification_hub_wire_in_123f371264b3",
-            "notification_hub_wire_out_2e942a9dd0b3",
-            "notification_hub_wire_in_2e942a9dd0b3",
             "notification_hub_wire_out_52a178a632e3",
             "notification_hub_wire_in_52a178a632e3"
         ],
-        "x": 64,
-        "y": 40,
-        "w": 1300,
-        "h": 450
+        "x": 114,
+        "y": 39,
+        "w": 1472,
+        "h": 482
     },
     {
         "id": "resident_notifications_input_group",
@@ -4355,10 +4349,10 @@
             "resident_notifications_kind_invalid",
             "resident_notifications_canonical_out"
         ],
-        "x": 1370,
-        "y": 40,
-        "w": 1360,
-        "h": 450
+        "x": 1644,
+        "y": 179,
+        "w": 1282,
+        "h": 242
     },
     {
         "id": "resident_notifications_decision_group",
@@ -4388,10 +4382,10 @@
             "resident_notifications_confirmation_bypass_out",
             "resident_notifications_home_candidate_out"
         ],
-        "x": 2780,
-        "y": 40,
-        "w": 1550,
-        "h": 450
+        "x": 64,
+        "y": 1859,
+        "w": 1872,
+        "h": 282
     },
     {
         "id": "resident_notifications_state_group",
@@ -4423,10 +4417,10 @@
             "resident_notifications_state_write",
             "resident_notifications_delivery_out"
         ],
-        "x": 7430,
-        "y": 40,
-        "w": 1700,
-        "h": 450
+        "x": 74,
+        "y": 1219,
+        "w": 2467,
+        "h": 272
     },
     {
         "id": "resident_notifications_output_group",
@@ -4476,10 +4470,10 @@
             "notification_hub_wire_out_5ad6d4860f8a",
             "notification_hub_wire_in_5ad6d4860f8a"
         ],
-        "x": 9180,
-        "y": 40,
-        "w": 2480,
-        "h": 450
+        "x": 9209,
+        "y": 39,
+        "w": 2357,
+        "h": 452
     },
     {
         "id": "resident_notifications_test_group",
@@ -4518,10 +4512,10 @@
             "resident_notifications_test_notify_secondary__hub_result",
             "resident_notifications_test_delivery_accepted"
         ],
-        "x": 64,
-        "y": 560,
-        "w": 3466,
-        "h": 680
+        "x": 74,
+        "y": 579,
+        "w": 2052,
+        "h": 602
     },
     {
         "id": "arrival_context_input_group",
@@ -4598,9 +4592,9 @@
             "3514854bb1279cbb"
         ],
         "x": 1278,
-        "y": 139,
-        "w": 2427,
-        "h": 312
+        "y": 59,
+        "w": 2608,
+        "h": 362
     },
     {
         "id": "arrival_context_snapshot_group",
@@ -4645,8 +4639,8 @@
             "arrival_context_cache_mutate",
             "arrival_context_departure_out"
         ],
-        "x": 74,
-        "y": 1376,
+        "x": 84,
+        "y": 1256,
         "w": 3222,
         "h": 465
     },
@@ -4736,9 +4730,9 @@
             "1ba5ecf650ac79b8"
         ],
         "x": 84,
-        "y": 929,
-        "w": 4212,
-        "h": 412
+        "y": 939,
+        "w": 4142,
+        "h": 282
     },
     {
         "id": "arrival_context_home_refresh_group",
@@ -4869,10 +4863,10 @@
             "people_visual_wake_ring_delay",
             "people_visual_wake_ring_repeat"
         ],
-        "x": 2189,
-        "y": 59,
-        "w": 1190,
-        "h": 312
+        "x": 1734,
+        "y": 79,
+        "w": 1382,
+        "h": 282
     },
     {
         "id": "vehicle_visual_refresh_safety_config_group_v2",
@@ -5000,8 +4994,8 @@
             "security_visual_policy_store",
             "security_visual_policy_reject"
         ],
-        "x": 2695,
-        "y": 1075,
+        "x": 3109,
+        "y": 2319,
         "w": 1242,
         "h": 482
     },
@@ -5045,10 +5039,10 @@
             "global_observer_coverage__resident_notifications_tab__annotate",
             "global_observer_coverage__resident_notifications_tab__out"
         ],
-        "x": 11720,
-        "y": 40,
-        "w": 720,
-        "h": 162
+        "x": 11704,
+        "y": 59,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "global_observer_coverage__62bb822e033d1623__group",
@@ -5288,10 +5282,10 @@
             "notification_hub_wire_out_cbcd8c2a1171",
             "notification_hub_wire_in_cbcd8c2a1171"
         ],
-        "x": 4380,
-        "y": 40,
-        "w": 3000,
-        "h": 450
+        "x": 74,
+        "y": 1539,
+        "w": 3312,
+        "h": 302
     },
     {
         "id": "host_memory_guardian_input_group",
@@ -27362,8 +27356,8 @@
         "winHide": false,
         "oldrc": false,
         "name": "Solicitar Core ao host",
-        "x": 948,
-        "y": 811,
+        "x": 980,
+        "y": 840,
         "wires": [
             [
                 "daily_update_core_request_ack"
@@ -27389,8 +27383,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1258,
-        "y": 741,
+        "x": 1290,
+        "y": 770,
         "wires": []
     },
     {
@@ -27406,8 +27400,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1268,
-        "y": 801,
+        "x": 1300,
+        "y": 830,
         "wires": []
     },
     {
@@ -27423,8 +27417,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1258,
-        "y": 861,
+        "x": 1290,
+        "y": 890,
         "wires": []
     },
     {
@@ -27437,8 +27431,8 @@
         "links": [
             "daily_update_dry_run_in"
         ],
-        "x": 913,
-        "y": 871,
+        "x": 875,
+        "y": 760,
         "wires": []
     },
     {
@@ -28544,8 +28538,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 6,
-        "x": 1234,
-        "y": 3400,
+        "x": 1280,
+        "y": 3320,
         "wires": [
             [
                 "daily_update_inventory_kia_out"
@@ -28668,8 +28662,8 @@
         "links": [
             "daily_update_kia_schedule"
         ],
-        "x": 1558,
-        "y": 3301,
+        "x": 1635,
+        "y": 3240,
         "wires": []
     },
     {
@@ -28682,8 +28676,8 @@
         "links": [
             "daily_update_firmware_in"
         ],
-        "x": 1558,
-        "y": 3351,
+        "x": 1635,
+        "y": 3290,
         "wires": []
     },
     {
@@ -28696,8 +28690,8 @@
         "links": [
             "daily_update_core_pending_in"
         ],
-        "x": 1558,
-        "y": 3401,
+        "x": 1635,
+        "y": 3340,
         "wires": []
     },
     {
@@ -28710,8 +28704,8 @@
         "links": [
             "daily_update_hacs_in"
         ],
-        "x": 1558,
-        "y": 3501,
+        "x": 1635,
+        "y": 3440,
         "wires": []
     },
     {
@@ -28724,8 +28718,8 @@
         "links": [
             "daily_update_unknown_in"
         ],
-        "x": 1558,
-        "y": 3551,
+        "x": 1635,
+        "y": 3490,
         "wires": []
     },
     {
@@ -30836,8 +30830,8 @@
         "links": [
             "daily_update_alexa_media_in"
         ],
-        "x": 1558,
-        "y": 3451,
+        "x": 1635,
+        "y": 3390,
         "wires": []
     },
     {
@@ -31869,7 +31863,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 670,
+        "x": 450,
         "y": 2020,
         "wires": [
             [
@@ -31902,7 +31896,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 660,
+        "x": 440,
         "y": 2080,
         "wires": [
             [
@@ -41236,8 +41230,8 @@
             "tuya_snapshot_out",
             "tuya_test_snapshot_out"
         ],
-        "x": 45,
-        "y": 2320,
+        "x": 95,
+        "y": 2400,
         "wires": [
             [
                 "tuya_policy_load"
@@ -41257,8 +41251,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 235,
-        "y": 2320,
+        "x": 285,
+        "y": 2400,
         "wires": [
             [
                 "tuya_policy_available"
@@ -41284,8 +41278,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 485,
-        "y": 2320,
+        "x": 535,
+        "y": 2400,
         "wires": [
             [
                 "tuya_snapshot_validate"
@@ -41308,8 +41302,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 705,
-        "y": 2260,
+        "x": 755,
+        "y": 2340,
         "wires": []
     },
     {
@@ -41325,8 +41319,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 725,
-        "y": 2320,
+        "x": 775,
+        "y": 2400,
         "wires": [
             [
                 "tuya_snapshot_valid"
@@ -41352,8 +41346,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1045,
-        "y": 2320,
+        "x": 1095,
+        "y": 2400,
         "wires": [
             [
                 "tuya_devices_normalize"
@@ -41373,8 +41367,8 @@
         "links": [
             "tuya_query_failure_in"
         ],
-        "x": 1250,
-        "y": 2360,
+        "x": 1300,
+        "y": 2440,
         "wires": []
     },
     {
@@ -41390,8 +41384,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1385,
-        "y": 2320,
+        "x": 1435,
+        "y": 2400,
         "wires": [
             [
                 "tuya_devices_present"
@@ -41419,8 +41413,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1715,
-        "y": 2320,
+        "x": 1765,
+        "y": 2400,
         "wires": [
             [
                 "tuya_devices_split"
@@ -41440,8 +41434,8 @@
         "links": [
             "tuya_summary_route_in"
         ],
-        "x": 2105,
-        "y": 2380,
+        "x": 2155,
+        "y": 2460,
         "wires": []
     },
     {
@@ -41457,8 +41451,8 @@
         "stream": false,
         "addname": "",
         "property": "payload",
-        "x": 2035,
-        "y": 2320,
+        "x": 2085,
+        "y": 2400,
         "wires": [
             [
                 "tuya_device_state_read"
@@ -41478,8 +41472,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2325,
-        "y": 2320,
+        "x": 2375,
+        "y": 2400,
         "wires": [
             [
                 "tuya_device_raw_switch"
@@ -41509,8 +41503,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2625,
-        "y": 2320,
+        "x": 2675,
+        "y": 2400,
         "wires": [
             [
                 "tuya_device_online_incident"
@@ -41539,8 +41533,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2895,
-        "y": 2210,
+        "x": 2945,
+        "y": 2290,
         "wires": [
             [
                 "tuya_device_recovery_stable"
@@ -41569,8 +41563,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3175,
-        "y": 2160,
+        "x": 3225,
+        "y": 2240,
         "wires": [
             [
                 "tuya_device_recover"
@@ -41607,8 +41601,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3485,
-        "y": 2140,
+        "x": 3535,
+        "y": 2220,
         "wires": [
             [
                 "tuya_device_mutate_out"
@@ -41642,8 +41636,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3465,
-        "y": 2195,
+        "x": 3515,
+        "y": 2275,
         "wires": [
             [
                 "tuya_device_mutate_out"
@@ -41677,8 +41671,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3175,
-        "y": 2265,
+        "x": 3225,
+        "y": 2345,
         "wires": [
             [
                 "tuya_device_baseline_out"
@@ -41695,8 +41689,8 @@
         "links": [
             "tuya_device_mutate_in"
         ],
-        "x": 3410,
-        "y": 2260,
+        "x": 3460,
+        "y": 2340,
         "wires": []
     },
     {
@@ -41718,8 +41712,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2895,
-        "y": 2450,
+        "x": 2945,
+        "y": 2530,
         "wires": [
             [
                 "tuya_device_reminder_due"
@@ -41748,8 +41742,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3175,
-        "y": 2400,
+        "x": 3225,
+        "y": 2480,
         "wires": [
             [
                 "tuya_device_reminder"
@@ -41786,8 +41780,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3465,
-        "y": 2375,
+        "x": 3515,
+        "y": 2455,
         "wires": [
             [
                 "tuya_device_mutate_out"
@@ -41821,8 +41815,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3465,
-        "y": 2435,
+        "x": 3515,
+        "y": 2515,
         "wires": [
             [
                 "tuya_device_mutate_out"
@@ -41848,8 +41842,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3175,
-        "y": 2520,
+        "x": 3225,
+        "y": 2600,
         "wires": [
             [
                 "tuya_device_open"
@@ -41886,8 +41880,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3465,
-        "y": 2505,
+        "x": 3515,
+        "y": 2585,
         "wires": [
             [
                 "tuya_device_mutate_out"
@@ -41921,8 +41915,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3465,
-        "y": 2565,
+        "x": 3515,
+        "y": 2645,
         "wires": [
             [
                 "tuya_device_mutate_out"
@@ -41939,8 +41933,8 @@
         "links": [
             "tuya_device_mutate_in"
         ],
-        "x": 3735,
-        "y": 2340,
+        "x": 3785,
+        "y": 2420,
         "wires": []
     },
     {
@@ -41953,8 +41947,8 @@
             "tuya_device_mutate_out",
             "tuya_device_baseline_out"
         ],
-        "x": 3835,
-        "y": 2340,
+        "x": 3885,
+        "y": 2420,
         "wires": [
             [
                 "tuya_device_state_mutate"
@@ -41974,8 +41968,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4015,
-        "y": 2340,
+        "x": 4065,
+        "y": 2420,
         "wires": [
             [
                 "tuya_device_result",
@@ -41993,8 +41987,8 @@
         "links": [
             "tuya_device_event_in"
         ],
-        "x": 4205,
-        "y": 2280,
+        "x": 4255,
+        "y": 2360,
         "wires": []
     },
     {
@@ -42010,8 +42004,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4315,
-        "y": 2400,
+        "x": 4365,
+        "y": 2480,
         "wires": [
             [
                 "tuya_result_join_out"
@@ -42028,8 +42022,8 @@
         "links": [
             "tuya_result_join_in"
         ],
-        "x": 4565,
-        "y": 2400,
+        "x": 4615,
+        "y": 2480,
         "wires": []
     },
     {
@@ -42041,8 +42035,8 @@
         "links": [
             "tuya_result_join_out"
         ],
-        "x": 3485,
-        "y": 2710,
+        "x": 3535,
+        "y": 2790,
         "wires": [
             [
                 "tuya_devices_join"
@@ -42070,8 +42064,8 @@
         "reduceInit": "",
         "reduceInitType": "",
         "reduceFixup": "",
-        "x": 3725,
-        "y": 2710,
+        "x": 3775,
+        "y": 2790,
         "wires": [
             [
                 "tuya_join_summary_out"
@@ -42088,8 +42082,8 @@
         "links": [
             "tuya_summary_route_in"
         ],
-        "x": 3965,
-        "y": 2710,
+        "x": 4015,
+        "y": 2790,
         "wires": []
     },
     {
@@ -42102,8 +42096,8 @@
             "tuya_empty_summary_out",
             "tuya_join_summary_out"
         ],
-        "x": 75,
-        "y": 2480,
+        "x": 125,
+        "y": 2560,
         "wires": [
             [
                 "tuya_summary_facts"
@@ -42123,8 +42117,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 305,
-        "y": 2480,
+        "x": 355,
+        "y": 2560,
         "wires": [
             [
                 "tuya_summary_empty"
@@ -42152,8 +42146,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 595,
-        "y": 2480,
+        "x": 645,
+        "y": 2560,
         "wires": [
             [
                 "tuya_empty_phase_out"
@@ -42173,8 +42167,8 @@
         "links": [
             "tuya_empty_phase_in"
         ],
-        "x": 810,
-        "y": 2440,
+        "x": 860,
+        "y": 2520,
         "wires": []
     },
     {
@@ -42186,8 +42180,8 @@
         "links": [
             "tuya_empty_phase_out"
         ],
-        "x": 1550,
-        "y": 2440,
+        "x": 1600,
+        "y": 2520,
         "wires": [
             [
                 "tuya_phase_checking"
@@ -42215,8 +42209,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 945,
-        "y": 2480,
+        "x": 995,
+        "y": 2560,
         "wires": [
             [
                 "tuya_offline_phase_out"
@@ -42236,8 +42230,8 @@
         "links": [
             "tuya_offline_phase_in"
         ],
-        "x": 1240,
-        "y": 2440,
+        "x": 1290,
+        "y": 2520,
         "wires": []
     },
     {
@@ -42249,8 +42243,8 @@
         "links": [
             "tuya_offline_phase_out"
         ],
-        "x": 1590,
-        "y": 2500,
+        "x": 1640,
+        "y": 2580,
         "wires": [
             [
                 "tuya_phase_offline"
@@ -42278,8 +42272,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1310,
-        "y": 2520,
+        "x": 1360,
+        "y": 2600,
         "wires": [
             [
                 "tuya_phase_checking"
@@ -42310,8 +42304,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1600,
-        "y": 2560,
+        "x": 1650,
+        "y": 2640,
         "wires": [
             [
                 "tuya_phase_recovering"
@@ -42341,8 +42335,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1720,
-        "y": 2440,
+        "x": 1770,
+        "y": 2520,
         "wires": [
             [
                 "tuya_summary_out"
@@ -42369,8 +42363,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1810,
-        "y": 2500,
+        "x": 1860,
+        "y": 2580,
         "wires": [
             [
                 "tuya_summary_out"
@@ -42397,8 +42391,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1910,
-        "y": 2550,
+        "x": 1960,
+        "y": 2630,
         "wires": [
             [
                 "tuya_summary_out"
@@ -42425,8 +42419,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1910,
-        "y": 2620,
+        "x": 1960,
+        "y": 2700,
         "wires": [
             [
                 "tuya_summary_out"
@@ -42443,8 +42437,8 @@
         "links": [
             "tuya_summary_in"
         ],
-        "x": 2160,
-        "y": 2520,
+        "x": 2210,
+        "y": 2600,
         "wires": []
     },
     {
@@ -47147,8 +47141,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 2430,
-        "y": 1310,
+        "x": 2650,
+        "y": 1320,
         "wires": []
     },
     {
@@ -47161,8 +47155,8 @@
         "links": [
             "security_light_engine_bypass_reevaluate_in_v1"
         ],
-        "x": 2430,
-        "y": 1390,
+        "x": 2530,
+        "y": 1400,
         "wires": []
     },
     {
@@ -47512,8 +47506,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1730,
-        "y": 1100,
+        "x": 2010,
+        "y": 1250,
         "wires": [
             [
                 "security_visual_bypass_result_out"
@@ -47533,8 +47527,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1730,
-        "y": 1600,
+        "x": 1970,
+        "y": 1510,
         "wires": []
     },
     {
@@ -47606,8 +47600,8 @@
         "links": [
             "security_visual_bypass_result_in"
         ],
-        "x": 1880,
-        "y": 1350,
+        "x": 1980,
+        "y": 1360,
         "wires": []
     },
     {
@@ -47619,8 +47613,8 @@
         "links": [
             "security_visual_bypass_result_out"
         ],
-        "x": 1980,
-        "y": 1350,
+        "x": 2080,
+        "y": 1360,
         "wires": [
             [
                 "security_visual_bypass_output"
@@ -47640,8 +47634,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2180,
-        "y": 1350,
+        "x": 2280,
+        "y": 1360,
         "wires": [
             [
                 "security_light_engine_bypass_mqtt_out_v1"
@@ -47658,8 +47652,8 @@
         "g": "security_visual_policy_group_v1",
         "name": "Inválidos são rejeitados sem substituir a última política completa.",
         "info": "Frescor 30–600 s; recovery 5–300 s; carência 10–300 s; backstop 2–60 min; cooldown 1–30 min; retenção 1–168 h.",
-        "x": 3396,
-        "y": 1116,
+        "x": 3810,
+        "y": 2360,
         "wires": []
     },
     {
@@ -47684,8 +47678,8 @@
         "topic": "physical_fresh_seconds",
         "payload": "120",
         "payloadType": "num",
-        "x": 2896,
-        "y": 1186,
+        "x": 3310,
+        "y": 2430,
         "wires": [
             [
                 "security_visual_policy_out_0"
@@ -47714,8 +47708,8 @@
         "topic": "recovery_request_throttle_seconds",
         "payload": "30",
         "payloadType": "num",
-        "x": 3316,
-        "y": 1186,
+        "x": 3730,
+        "y": 2430,
         "wires": [
             [
                 "security_visual_policy_out_1"
@@ -47744,8 +47738,8 @@
         "topic": "off_grace_seconds",
         "payload": "90",
         "payloadType": "num",
-        "x": 3736,
-        "y": 1186,
+        "x": 4150,
+        "y": 2430,
         "wires": [
             [
                 "security_visual_policy_out_2"
@@ -47774,8 +47768,8 @@
         "topic": "backstop_minutes",
         "payload": "15",
         "payloadType": "num",
-        "x": 2896,
-        "y": 1246,
+        "x": 3310,
+        "y": 2490,
         "wires": [
             [
                 "security_visual_policy_out_0"
@@ -47804,8 +47798,8 @@
         "topic": "post_off_cooldown_minutes",
         "payload": "5",
         "payloadType": "num",
-        "x": 3316,
-        "y": 1246,
+        "x": 3730,
+        "y": 2490,
         "wires": [
             [
                 "security_visual_policy_out_1"
@@ -47834,8 +47828,8 @@
         "topic": "lifecycle_retention_hours",
         "payload": "24",
         "payloadType": "num",
-        "x": 3736,
-        "y": 1246,
+        "x": 4150,
+        "y": 2490,
         "wires": [
             [
                 "security_visual_policy_out_2"
@@ -47864,8 +47858,8 @@
         "topic": "deadline_slack_minutes",
         "payload": "1",
         "payloadType": "num",
-        "x": 2896,
-        "y": 1306,
+        "x": 3310,
+        "y": 2550,
         "wires": [
             [
                 "security_visual_policy_out_0"
@@ -47894,8 +47888,8 @@
         "topic": "unavailable_dedupe_seconds",
         "payload": "10",
         "payloadType": "num",
-        "x": 3316,
-        "y": 1306,
+        "x": 3730,
+        "y": 2550,
         "wires": [
             [
                 "security_visual_policy_out_1"
@@ -47924,8 +47918,8 @@
         "topic": "cooldown_max_minutes",
         "payload": "30",
         "payloadType": "num",
-        "x": 3736,
-        "y": 1306,
+        "x": 4150,
+        "y": 2550,
         "wires": [
             [
                 "security_visual_policy_out_2"
@@ -47942,8 +47936,8 @@
         "links": [
             "security_visual_policy_in"
         ],
-        "x": 3056,
-        "y": 1396,
+        "x": 3470,
+        "y": 2640,
         "wires": []
     },
     {
@@ -47956,8 +47950,8 @@
         "links": [
             "security_visual_policy_in"
         ],
-        "x": 3476,
-        "y": 1396,
+        "x": 3890,
+        "y": 2640,
         "wires": []
     },
     {
@@ -47970,8 +47964,8 @@
         "links": [
             "security_visual_policy_in"
         ],
-        "x": 3896,
-        "y": 1396,
+        "x": 4310,
+        "y": 2640,
         "wires": []
     },
     {
@@ -47985,8 +47979,8 @@
             "security_visual_policy_out_1",
             "security_visual_policy_out_2"
         ],
-        "x": 2736,
-        "y": 1476,
+        "x": 3150,
+        "y": 2720,
         "wires": [
             [
                 "security_visual_policy_validate"
@@ -48006,8 +48000,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2976,
-        "y": 1476,
+        "x": 3390,
+        "y": 2720,
         "wires": [
             [
                 "security_visual_policy_store"
@@ -48030,8 +48024,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3296,
-        "y": 1446,
+        "x": 3710,
+        "y": 2690,
         "wires": [
             []
         ]
@@ -48049,8 +48043,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3296,
-        "y": 1516,
+        "x": 3710,
+        "y": 2760,
         "wires": []
     },
     {
@@ -48795,8 +48789,8 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 5121,
-        "y": 1910,
+        "x": 5180,
+        "y": 1920,
         "wires": [
             [
                 "security_visual_availability_ready_build"
@@ -48819,8 +48813,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 5401,
-        "y": 1810,
+        "x": 5480,
+        "y": 1820,
         "wires": [
             [
                 "security_visual_availability_ready_out"
@@ -48846,8 +48840,8 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 5401,
-        "y": 2010,
+        "x": 5480,
+        "y": 2020,
         "wires": [
             [],
             [
@@ -48868,8 +48862,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 5741,
-        "y": 2010,
+        "x": 5820,
+        "y": 2020,
         "wires": [
             [
                 "security_visual_availability_unavailable_out"
@@ -48886,8 +48880,8 @@
         "links": [
             "security_visual_availability_result_in"
         ],
-        "x": 5651,
-        "y": 1810,
+        "x": 5730,
+        "y": 1820,
         "wires": []
     },
     {
@@ -48900,8 +48894,8 @@
         "links": [
             "security_visual_availability_result_in"
         ],
-        "x": 5956,
-        "y": 2010,
+        "x": 6035,
+        "y": 2020,
         "wires": []
     },
     {
@@ -49497,8 +49491,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4915,
-        "y": 590,
+        "x": 2885,
+        "y": 2170,
         "wires": [
             [
                 "487984b3aaa29663"
@@ -49526,8 +49520,8 @@
             "45cb8ce559f5a522",
             "519b09225c268695"
         ],
-        "x": 5235,
-        "y": 480,
+        "x": 3205,
+        "y": 2060,
         "wires": []
     },
     {
@@ -49541,8 +49535,8 @@
             "cf9bc321e0ec89f9",
             "6481cb991b3732f5"
         ],
-        "x": 5235,
-        "y": 520,
+        "x": 3205,
+        "y": 2100,
         "wires": []
     },
     {
@@ -49622,8 +49616,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 582,
-        "y": 891,
+        "x": 720,
+        "y": 880,
         "wires": [
             [
                 "564fdc36031eaef8__hub_call"
@@ -49641,8 +49635,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 862,
-        "y": 891,
+        "x": 1000,
+        "y": 880,
         "wires": [
             [
                 "564fdc36031eaef8__hub_result"
@@ -49670,8 +49664,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1132,
-        "y": 891,
+        "x": 1270,
+        "y": 880,
         "wires": [
             [],
             [
@@ -49713,8 +49707,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 582,
-        "y": 951,
+        "x": 720,
+        "y": 940,
         "wires": [
             [
                 "e0b7c0ecf1d8ee28__hub_call"
@@ -49732,8 +49726,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 862,
-        "y": 951,
+        "x": 1000,
+        "y": 940,
         "wires": [
             [
                 "e0b7c0ecf1d8ee28__hub_result"
@@ -49761,8 +49755,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1132,
-        "y": 951,
+        "x": 1270,
+        "y": 940,
         "wires": [
             [],
             [
@@ -49783,8 +49777,8 @@
             "people_visual_secondary_icloud_update"
         ],
         "uncaught": false,
-        "x": 3052,
-        "y": 1031,
+        "x": 2490,
+        "y": 900,
         "wires": [
             [
                 "people_refresh_connection_handler"
@@ -49804,8 +49798,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3402,
-        "y": 1031,
+        "x": 2910,
+        "y": 920,
         "wires": []
     },
     {
@@ -50184,8 +50178,8 @@
         "links": [
             "cf9bc321e0ec89f9"
         ],
-        "x": 5235,
-        "y": 610,
+        "x": 3205,
+        "y": 2190,
         "wires": []
     },
     {
@@ -50615,7 +50609,7 @@
         "links": [
             "people_location_values_route_in_v1"
         ],
-        "x": 1140,
+        "x": 1135,
         "y": 200,
         "wires": []
     },
@@ -50634,7 +50628,7 @@
             "people_visual_lifecycle_config_right_out"
         ],
         "x": 905,
-        "y": 300,
+        "y": 340,
         "wires": [
             [
                 "people_visual_policy_validate"
@@ -50654,8 +50648,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1305,
-        "y": 180,
+        "x": 1440,
+        "y": 300,
         "wires": [
             [
                 "people_location_policy_out_v1"
@@ -50674,8 +50668,8 @@
             "vehicle_location_policy_in_v1",
             "light_location_policy_in_v1"
         ],
-        "x": 1535,
-        "y": 180,
+        "x": 1635,
+        "y": 300,
         "wires": []
     },
     {
@@ -50776,8 +50770,8 @@
         "links": [
             "resident_notifications_canonical_in_v1"
         ],
-        "x": 5235,
-        "y": 560,
+        "x": 3205,
+        "y": 2140,
         "wires": []
     },
     {
@@ -50912,8 +50906,8 @@
         "links": [
             "people_location_to_normalizer_out_v1"
         ],
-        "x": 2125,
-        "y": 560,
+        "x": 95,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_test_adapter"
@@ -50927,8 +50921,8 @@
         "g": "8e1c3a19399ad44d",
         "name": "RETORNO: away→near_home; salto away→home recuperado; SAÍDA bloqueada",
         "info": "O raio near_home configurado decide a chegada somente depois de um ciclo externo confirmado. Um rebote near_home→home durante a saída termina no bloco BLOQUEADO e nunca alcança iluminação, alarme ou notificações.",
-        "x": 2705,
-        "y": 700,
+        "x": 675,
+        "y": 2280,
         "wires": []
     },
     {
@@ -50944,8 +50938,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 5235,
-        "y": 670,
+        "x": 3205,
+        "y": 2250,
         "wires": []
     },
     {
@@ -51008,8 +51002,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 2545,
-        "y": 1133,
+        "x": 2260,
+        "y": 460,
         "wires": [
             [
                 "global_observer_coverage__ea0a6aa0d24ff863__annotate"
@@ -51023,8 +51017,8 @@
         "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 2555,
-        "y": 1193,
+        "x": 2270,
+        "y": 520,
         "wires": [
             [
                 "global_observer_coverage__ea0a6aa0d24ff863__annotate"
@@ -51044,8 +51038,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2825,
-        "y": 1163,
+        "x": 2540,
+        "y": 490,
         "wires": [
             [
                 "global_observer_coverage__ea0a6aa0d24ff863__out"
@@ -51062,8 +51056,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 3070,
-        "y": 1163,
+        "x": 2785,
+        "y": 490,
         "wires": []
     },
     {
@@ -51118,8 +51112,8 @@
         "g": "people_location_lifecycle_config_group_v2",
         "name": "Valores inválidos são rejeitados; a última política válida permanece ativa para todos os consumidores.",
         "info": "Dedupe: 1–60 min; graça: 1–60 min; retorno local: 15–180 min; ciclo externo: 15–600 s; sondas do anel: 15–180 s e 30–180 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
-        "x": 2745,
-        "y": 100,
+        "x": 2290,
+        "y": 120,
         "wires": []
     },
     {
@@ -51144,8 +51138,8 @@
         "topic": "arrival_dedupe_minutes",
         "payload": "10",
         "payloadType": "num",
-        "x": 2375,
-        "y": 160,
+        "x": 1920,
+        "y": 180,
         "wires": [
             [
                 "people_visual_lifecycle_config_left_out"
@@ -51174,8 +51168,8 @@
         "topic": "primary_home_grace_minutes",
         "payload": "10",
         "payloadType": "num",
-        "x": 2375,
-        "y": 210,
+        "x": 1920,
+        "y": 230,
         "wires": [
             [
                 "people_visual_lifecycle_config_left_out"
@@ -51204,8 +51198,8 @@
         "topic": "local_excursion_minutes",
         "payload": "90",
         "payloadType": "num",
-        "x": 2375,
-        "y": 260,
+        "x": 1920,
+        "y": 280,
         "wires": [
             [
                 "people_visual_lifecycle_config_left_out"
@@ -51234,8 +51228,8 @@
         "topic": "future_tolerance_seconds",
         "payload": "60",
         "payloadType": "num",
-        "x": 2745,
-        "y": 160,
+        "x": 2350,
+        "y": 190,
         "wires": [
             [
                 "people_visual_lifecycle_config_middle_out"
@@ -51264,8 +51258,8 @@
         "topic": "vehicle_signal_fresh_minutes",
         "payload": "5",
         "payloadType": "num",
-        "x": 2745,
-        "y": 210,
+        "x": 2350,
+        "y": 240,
         "wires": [
             [
                 "people_visual_lifecycle_config_middle_out"
@@ -51294,8 +51288,8 @@
         "topic": "near_home_refresh_minutes",
         "payload": "10",
         "payloadType": "num",
-        "x": 2745,
-        "y": 260,
+        "x": 2350,
+        "y": 290,
         "wires": [
             [
                 "people_visual_lifecycle_config_middle_out"
@@ -51324,8 +51318,8 @@
         "topic": "vehicle_recovery_hours",
         "payload": "24",
         "payloadType": "num",
-        "x": 3115,
-        "y": 160,
+        "x": 2820,
+        "y": 170,
         "wires": [
             [
                 "people_visual_lifecycle_config_right_out"
@@ -51354,8 +51348,8 @@
         "topic": "external_cycle_confirm_seconds",
         "payload": "60",
         "payloadType": "num",
-        "x": 3115,
-        "y": 210,
+        "x": 2820,
+        "y": 220,
         "wires": [
             [
                 "people_visual_lifecycle_config_right_out"
@@ -51372,8 +51366,8 @@
         "links": [
             "people_location_values_route_in_v1"
         ],
-        "x": 2555,
-        "y": 330,
+        "x": 2135,
+        "y": 220,
         "wires": []
     },
     {
@@ -51386,8 +51380,8 @@
         "links": [
             "people_location_values_route_in_v1"
         ],
-        "x": 2925,
-        "y": 330,
+        "x": 2595,
+        "y": 240,
         "wires": []
     },
     {
@@ -51400,8 +51394,8 @@
         "links": [
             "people_location_values_route_in_v1"
         ],
-        "x": 3295,
-        "y": 330,
+        "x": 3075,
+        "y": 240,
         "wires": []
     },
     {
@@ -51458,8 +51452,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2365,
-        "y": 560,
+        "x": 335,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_normalize"
@@ -51479,8 +51473,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2675,
-        "y": 560,
+        "x": 645,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_state_load"
@@ -51500,8 +51494,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3005,
-        "y": 560,
+        "x": 975,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_facts"
@@ -51521,8 +51515,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3335,
-        "y": 560,
+        "x": 1305,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_decision",
@@ -51549,8 +51543,8 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 3695,
-        "y": 480,
+        "x": 1665,
+        "y": 2060,
         "wires": [
             [
                 "people_visual_arrival_gate"
@@ -51579,8 +51573,8 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 3750,
-        "y": 560,
+        "x": 1720,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_recovery_build"
@@ -51609,8 +51603,8 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 3780,
-        "y": 640,
+        "x": 1750,
+        "y": 2220,
         "wires": [
             [
                 "people_visual_blocked_build"
@@ -51633,8 +51627,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4075,
-        "y": 480,
+        "x": 2045,
+        "y": 2060,
         "wires": [
             [
                 "people_visual_arrival_dedupe"
@@ -51654,8 +51648,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4075,
-        "y": 560,
+        "x": 2045,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_recovery_dedupe"
@@ -51675,8 +51669,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4075,
-        "y": 640,
+        "x": 2045,
+        "y": 2220,
         "wires": [
             [
                 "people_visual_blocked_out"
@@ -51696,8 +51690,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4405,
-        "y": 480,
+        "x": 2375,
+        "y": 2060,
         "wires": [
             [
                 "people_visual_arrival_out"
@@ -51717,8 +51711,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4405,
-        "y": 560,
+        "x": 2375,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_recovery_out"
@@ -51735,8 +51729,8 @@
         "links": [
             "people_visual_finalize_in"
         ],
-        "x": 4625,
-        "y": 480,
+        "x": 2595,
+        "y": 2060,
         "wires": []
     },
     {
@@ -51749,8 +51743,8 @@
         "links": [
             "people_visual_finalize_in"
         ],
-        "x": 4625,
-        "y": 540,
+        "x": 2595,
+        "y": 2120,
         "wires": []
     },
     {
@@ -51763,8 +51757,8 @@
         "links": [
             "people_visual_finalize_in"
         ],
-        "x": 4405,
-        "y": 640,
+        "x": 2375,
+        "y": 2220,
         "wires": []
     },
     {
@@ -51777,8 +51771,8 @@
         "links": [
             "people_visual_finalize_in"
         ],
-        "x": 4075,
-        "y": 700,
+        "x": 2045,
+        "y": 2280,
         "wires": []
     },
     {
@@ -51793,8 +51787,8 @@
             "people_visual_blocked_out",
             "people_visual_unchanged_out"
         ],
-        "x": 4685,
-        "y": 590,
+        "x": 2655,
+        "y": 2170,
         "wires": [
             [
                 "554cb653b2fa4504"
@@ -51987,7 +51981,7 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1900,
+        "x": 1970,
         "y": 820,
         "wires": [
             [
@@ -52019,7 +52013,7 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1900,
+        "x": 1980,
         "y": 1000,
         "wires": [
             [
@@ -52040,7 +52034,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2200,
+        "x": 2370,
         "y": 820,
         "wires": []
     },
@@ -52057,7 +52051,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2200,
+        "x": 2420,
         "y": 1000,
         "wires": []
     },
@@ -52074,7 +52068,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1900,
+        "x": 1950,
         "y": 920,
         "wires": []
     },
@@ -52100,8 +52094,8 @@
         "topic": "wake_ring_refresh_delay_seconds",
         "payload": "45",
         "payloadType": "num",
-        "x": 3110,
-        "y": 260,
+        "x": 2815,
+        "y": 270,
         "wires": [
             [
                 "people_visual_lifecycle_config_right_out"
@@ -52130,8 +52124,8 @@
         "topic": "wake_ring_refresh_repeat_seconds",
         "payload": "60",
         "payloadType": "num",
-        "x": 3110,
-        "y": 310,
+        "x": 2815,
+        "y": 320,
         "wires": [
             [
                 "people_visual_lifecycle_config_right_out"
@@ -52148,8 +52142,8 @@
         "links": [
             "people_visual_wake_ring_candidate_in"
         ],
-        "x": 3540,
-        "y": 700,
+        "x": 1510,
+        "y": 2280,
         "wires": []
     },
     {
@@ -52161,8 +52155,8 @@
         "links": [
             "people_visual_wake_ring_candidate_out"
         ],
-        "x": 5480,
-        "y": 560,
+        "x": 3450,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_wake_ring_gate"
@@ -52188,8 +52182,8 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 5700,
-        "y": 560,
+        "x": 3670,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_wake_ring_refresh_build"
@@ -52210,8 +52204,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 5980,
-        "y": 560,
+        "x": 4070,
+        "y": 2140,
         "wires": [
             [
                 "people_visual_wake_ring_first_delay"
@@ -52239,8 +52233,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 6260,
-        "y": 510,
+        "x": 4400,
+        "y": 2100,
         "wires": [
             [
                 "people_visual_wake_ring_first_out"
@@ -52265,8 +52259,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 6260,
-        "y": 630,
+        "x": 4400,
+        "y": 2160,
         "wires": [
             [
                 "people_visual_wake_ring_second_out"
@@ -52283,8 +52277,8 @@
         "links": [
             "people_visual_arrival_refresh_in"
         ],
-        "x": 6570,
-        "y": 510,
+        "x": 4710,
+        "y": 2100,
         "wires": []
     },
     {
@@ -52297,8 +52291,8 @@
         "links": [
             "people_visual_arrival_refresh_in"
         ],
-        "x": 6570,
-        "y": 630,
+        "x": 4710,
+        "y": 2160,
         "wires": []
     },
     {
@@ -52311,8 +52305,8 @@
         "links": [
             "notification_hub_wire_in_6a14668fd8dd"
         ],
-        "x": 1312,
-        "y": 891,
+        "x": 1450,
+        "y": 880,
         "wires": []
     },
     {
@@ -52324,8 +52318,8 @@
         "links": [
             "notification_hub_wire_out_6a14668fd8dd"
         ],
-        "x": 3222,
-        "y": 931,
+        "x": 2662,
+        "y": 951,
         "wires": [
             [
                 "people_refresh_connection_handler"
@@ -52342,8 +52336,8 @@
         "links": [
             "notification_hub_wire_in_ea83b8ce73cb"
         ],
-        "x": 1392,
-        "y": 951,
+        "x": 1445,
+        "y": 940,
         "wires": []
     },
     {
@@ -52355,8 +52349,8 @@
         "links": [
             "notification_hub_wire_out_ea83b8ce73cb"
         ],
-        "x": 3222,
-        "y": 831,
+        "x": 2662,
+        "y": 851,
         "wires": [
             [
                 "people_refresh_connection_handler"
@@ -52370,7 +52364,7 @@
         "g": "resident_notifications_config_group",
         "name": "Duplo clique para editar; defaults e limites estão em cada bloco",
         "info": "Os sete valores formam uma única política. Após o deploy, o join acumula os valores e alterações individuais também recompõem a política. Inválidos não substituem a última versão válida.",
-        "x": 650,
+        "x": 770,
         "y": 80,
         "wires": []
     },
@@ -52399,11 +52393,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 200,
-        "y": 150,
+        "x": 330,
+        "y": 140,
         "wires": [
             [
-                "notification_hub_wire_out_55f2da08c526"
+                "notification_hub_wire_out_52a178a632e3"
             ]
         ]
     },
@@ -52432,11 +52426,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 200,
-        "y": 210,
+        "x": 320,
+        "y": 190,
         "wires": [
             [
-                "notification_hub_wire_out_123f371264b3"
+                "notification_hub_wire_out_52a178a632e3"
             ]
         ]
     },
@@ -52465,11 +52459,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 200,
-        "y": 270,
+        "x": 320,
+        "y": 240,
         "wires": [
             [
-                "notification_hub_wire_out_2e942a9dd0b3"
+                "notification_hub_wire_out_52a178a632e3"
             ]
         ]
     },
@@ -52498,8 +52492,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 200,
-        "y": 330,
+        "x": 320,
+        "y": 300,
         "wires": [
             [
                 "notification_hub_wire_out_52a178a632e3"
@@ -52527,8 +52521,8 @@
         "reduceInit": "",
         "reduceInitType": "",
         "reduceFixup": "",
-        "x": 750,
-        "y": 240,
+        "x": 880,
+        "y": 220,
         "wires": [
             [
                 "resident_notifications_policy_validate"
@@ -52548,8 +52542,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 970,
-        "y": 160,
+        "x": 1000,
+        "y": 280,
         "wires": [
             [
                 "resident_notifications_policy_switch"
@@ -52575,8 +52569,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 970,
-        "y": 320,
+        "x": 1120,
+        "y": 340,
         "wires": [
             [
                 "resident_notifications_policy_store"
@@ -52599,8 +52593,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1230,
-        "y": 160,
+        "x": 1440,
+        "y": 320,
         "wires": []
     },
     {
@@ -52616,8 +52610,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1230,
-        "y": 320,
+        "x": 1420,
+        "y": 400,
         "wires": []
     },
     {
@@ -52631,8 +52625,8 @@
             "resident_notifications_test_event_out",
             "light_arrival_replay_route_out_v1"
         ],
-        "x": 1420,
-        "y": 240,
+        "x": 1685,
+        "y": 320,
         "wires": [
             [
                 "resident_notifications_prepare"
@@ -52652,8 +52646,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1640,
-        "y": 240,
+        "x": 1905,
+        "y": 320,
         "wires": [
             [
                 "resident_notifications_contract_switch"
@@ -52679,8 +52673,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1880,
-        "y": 200,
+        "x": 2190,
+        "y": 320,
         "wires": [
             [
                 "resident_notifications_kind_switch"
@@ -52703,8 +52697,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2140,
-        "y": 130,
+        "x": 2530,
+        "y": 380,
         "wires": []
     },
     {
@@ -52726,7 +52720,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2140,
+        "x": 2520,
         "y": 240,
         "wires": [
             [
@@ -52750,8 +52744,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2400,
-        "y": 330,
+        "x": 2780,
+        "y": 280,
         "wires": []
     },
     {
@@ -52764,8 +52758,8 @@
         "links": [
             "resident_notifications_event_in"
         ],
-        "x": 2610,
-        "y": 240,
+        "x": 2675,
+        "y": 220,
         "wires": []
     },
     {
@@ -52777,8 +52771,8 @@
         "links": [
             "resident_notifications_canonical_out"
         ],
-        "x": 2830,
-        "y": 240,
+        "x": 105,
+        "y": 2020,
         "wires": [
             [
                 "resident_notifications_policy_load"
@@ -52798,8 +52792,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3030,
-        "y": 240,
+        "x": 305,
+        "y": 2020,
         "wires": [
             [
                 "resident_notifications_policy_available"
@@ -52825,8 +52819,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3250,
-        "y": 200,
+        "x": 525,
+        "y": 1980,
         "wires": [
             [
                 "resident_notifications_direction_switch"
@@ -52849,8 +52843,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3490,
-        "y": 120,
+        "x": 765,
+        "y": 1900,
         "wires": []
     },
     {
@@ -52872,8 +52866,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3500,
-        "y": 240,
+        "x": 775,
+        "y": 2020,
         "wires": [
             [
                 "resident_notifications_cycle_switch"
@@ -52896,8 +52890,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3810,
-        "y": 120,
+        "x": 1085,
+        "y": 1900,
         "wires": []
     },
     {
@@ -52919,8 +52913,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3750,
-        "y": 240,
+        "x": 1025,
+        "y": 2020,
         "wires": [
             [
                 "resident_notifications_stage_switch"
@@ -52943,8 +52937,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4090,
-        "y": 120,
+        "x": 1390,
+        "y": 2100,
         "wires": []
     },
     {
@@ -52978,8 +52972,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 4,
-        "x": 4050,
-        "y": 250,
+        "x": 1410,
+        "y": 2030,
         "wires": [
             [
                 "resident_notifications_confirmation_bypass_out"
@@ -53008,8 +53002,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4210,
-        "y": 400,
+        "x": 1780,
+        "y": 2040,
         "wires": []
     },
     {
@@ -53038,8 +53032,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 6920,
-        "y": 240,
+        "x": 2815,
+        "y": 1640,
         "wires": [
             [
                 "resident_notifications_recipient_secondary"
@@ -53072,8 +53066,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 7180,
-        "y": 180,
+        "x": 3120,
+        "y": 1580,
         "wires": [
             [
                 "resident_notifications_decision_out"
@@ -53100,8 +53094,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 7180,
-        "y": 310,
+        "x": 3120,
+        "y": 1640,
         "wires": [
             [
                 "resident_notifications_decision_out"
@@ -53121,8 +53115,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 7170,
-        "y": 410,
+        "x": 3090,
+        "y": 1700,
         "wires": []
     },
     {
@@ -53135,8 +53129,8 @@
         "links": [
             "resident_notifications_state_in"
         ],
-        "x": 7340,
-        "y": 240,
+        "x": 3345,
+        "y": 1600,
         "wires": []
     },
     {
@@ -53148,8 +53142,8 @@
         "links": [
             "resident_notifications_decision_out"
         ],
-        "x": 7500,
-        "y": 240,
+        "x": 115,
+        "y": 1380,
         "wires": [
             [
                 "resident_notifications_event_time_switch"
@@ -53165,8 +53159,8 @@
         "links": [
             "resident_notifications_retry_out"
         ],
-        "x": 8250,
-        "y": 410,
+        "x": 1345,
+        "y": 1450,
         "wires": [
             [
                 "resident_notifications_state_read"
@@ -53192,8 +53186,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 7660,
-        "y": 200,
+        "x": 275,
+        "y": 1340,
         "wires": [
             [
                 "resident_notifications_future_switch"
@@ -53216,8 +53210,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 7900,
-        "y": 110,
+        "x": 560,
+        "y": 1360,
         "wires": []
     },
     {
@@ -53239,8 +53233,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 7910,
-        "y": 220,
+        "x": 610,
+        "y": 1280,
         "wires": [
             [
                 "resident_notifications_future_terminal"
@@ -53263,8 +53257,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8180,
-        "y": 110,
+        "x": 910,
+        "y": 1260,
         "wires": []
     },
     {
@@ -53286,8 +53280,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 8170,
-        "y": 240,
+        "x": 930,
+        "y": 1320,
         "wires": [
             [
                 "resident_notifications_stale_terminal"
@@ -53310,8 +53304,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8440,
-        "y": 110,
+        "x": 1210,
+        "y": 1300,
         "wires": []
     },
     {
@@ -53327,8 +53321,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8210,
-        "y": 330,
+        "x": 1270,
+        "y": 1360,
         "wires": [
             [
                 "resident_notifications_state_read"
@@ -53348,8 +53342,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8470,
-        "y": 330,
+        "x": 1620,
+        "y": 1360,
         "wires": [
             [
                 "resident_notifications_duplicate_switch"
@@ -53375,8 +53369,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 8730,
-        "y": 330,
+        "x": 1930,
+        "y": 1360,
         "wires": [
             [
                 "resident_notifications_duplicate_terminal"
@@ -53399,8 +53393,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8740,
-        "y": 150,
+        "x": 2245,
+        "y": 1350,
         "wires": []
     },
     {
@@ -53416,8 +53410,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 8990,
-        "y": 410,
+        "x": 2285,
+        "y": 1410,
         "wires": [
             [
                 "resident_notifications_delivery_out"
@@ -53434,8 +53428,8 @@
         "links": [
             "resident_notifications_delivery_in"
         ],
-        "x": 9100,
-        "y": 470,
+        "x": 2500,
+        "y": 1410,
         "wires": []
     },
     {
@@ -53987,8 +53981,8 @@
         "g": "resident_notifications_test_group",
         "name": "TESTES 1–9: dry-run. TESTE 10: único push real, marcado TESTE, para mobile_secondary.",
         "info": "Os casos 1–9 usam security.arrival.v1 e percorrem contrato, direção, ciclo externo, etapa, frescor, reserva, dedupe, destinatário e gate final sem efeitos. O caso 10 existe somente para conferir a entrega ponta a ponta no celular secundário.",
-        "x": 1450,
-        "y": 610,
+        "x": 940,
+        "y": 620,
         "wires": []
     },
     {
@@ -54011,8 +54005,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 190,
-        "y": 680,
+        "x": 240,
+        "y": 690,
         "wires": [
             [
                 "resident_notifications_reset_test"
@@ -54032,8 +54026,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 450,
-        "y": 680,
+        "x": 500,
+        "y": 690,
         "wires": []
     },
     {
@@ -54056,8 +54050,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 250,
-        "y": 750,
+        "x": 300,
+        "y": 760,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54084,8 +54078,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 250,
-        "y": 805,
+        "x": 300,
+        "y": 815,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54112,8 +54106,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 250,
-        "y": 860,
+        "x": 300,
+        "y": 870,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54140,8 +54134,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 230,
-        "y": 915,
+        "x": 280,
+        "y": 925,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54168,8 +54162,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 240,
-        "y": 970,
+        "x": 290,
+        "y": 980,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54196,8 +54190,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 200,
-        "y": 1025,
+        "x": 250,
+        "y": 1035,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54224,8 +54218,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 200,
-        "y": 1080,
+        "x": 250,
+        "y": 1090,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54252,8 +54246,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 220,
-        "y": 1130,
+        "x": 270,
+        "y": 1140,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54269,8 +54263,8 @@
         "links": [
             "bc2afbce89f5a9d5"
         ],
-        "x": 620,
-        "y": 750,
+        "x": 670,
+        "y": 760,
         "wires": [
             [
                 "resident_notifications_test_adapter"
@@ -54290,8 +54284,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 670,
-        "y": 920,
+        "x": 720,
+        "y": 930,
         "wires": [
             [
                 "resident_notifications_test_event_out"
@@ -54308,8 +54302,8 @@
         "links": [
             "resident_notifications_canonical_in_v1"
         ],
-        "x": 1040,
-        "y": 920,
+        "x": 1090,
+        "y": 930,
         "wires": []
     },
     {
@@ -54321,8 +54315,8 @@
         "links": [
             "resident_notifications_dry_run_out"
         ],
-        "x": 1430,
-        "y": 780,
+        "x": 780,
+        "y": 690,
         "wires": [
             [
                 "resident_notifications_dry_run_terminal"
@@ -54342,8 +54336,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1730,
-        "y": 780,
+        "x": 1080,
+        "y": 690,
         "wires": []
     },
     {
@@ -54364,8 +54358,8 @@
         "topic": "",
         "payload": "TESTE — confirmação do push de chegada para o celular.",
         "payloadType": "str",
-        "x": 2110,
-        "y": 1080,
+        "x": 1180,
+        "y": 790,
         "wires": [
             [
                 "resident_notifications_test_notify_secondary"
@@ -54406,8 +54400,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 2450,
-        "y": 1080,
+        "x": 1240,
+        "y": 860,
         "wires": [
             [
                 "resident_notifications_test_notify_secondary__hub_call"
@@ -54425,8 +54419,8 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 2730,
-        "y": 1080,
+        "x": 1380,
+        "y": 920,
         "wires": [
             [
                 "resident_notifications_test_notify_secondary__hub_result"
@@ -54454,8 +54448,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3000,
-        "y": 1080,
+        "x": 1570,
+        "y": 980,
         "wires": [
             [
                 "resident_notifications_test_delivery_accepted"
@@ -54477,8 +54471,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 3370,
-        "y": 1080,
+        "x": 1890,
+        "y": 1040,
         "wires": []
     },
     {
@@ -54572,11 +54566,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 500,
-        "y": 160,
+        "x": 320,
+        "y": 480,
         "wires": [
             [
-                "resident_notifications_policy_join"
+                "notification_hub_wire_out_52a178a632e3"
             ]
         ]
     },
@@ -54605,11 +54599,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 500,
-        "y": 240,
+        "x": 350,
+        "y": 360,
         "wires": [
             [
-                "resident_notifications_policy_join"
+                "notification_hub_wire_out_52a178a632e3"
             ]
         ]
     },
@@ -54638,11 +54632,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 500,
-        "y": 320,
+        "x": 330,
+        "y": 420,
         "wires": [
             [
-                "resident_notifications_policy_join"
+                "notification_hub_wire_out_52a178a632e3"
             ]
         ]
     },
@@ -54656,8 +54650,8 @@
         "links": [
             "resident_notifications_confirmation_routing_in"
         ],
-        "x": 4240,
-        "y": 190,
+        "x": 1665,
+        "y": 1960,
         "wires": []
     },
     {
@@ -54670,8 +54664,8 @@
         "links": [
             "resident_notifications_home_candidate_in"
         ],
-        "x": 4240,
-        "y": 300,
+        "x": 1665,
+        "y": 2000,
         "wires": []
     },
     {
@@ -54683,8 +54677,8 @@
         "links": [
             "resident_notifications_home_candidate_out"
         ],
-        "x": 4450,
-        "y": 220,
+        "x": 115,
+        "y": 1660,
         "wires": [
             [
                 "resident_notifications_home_confirmation_prepare"
@@ -54700,8 +54694,8 @@
         "links": [
             "resident_notifications_home_confirmation_retry_out"
         ],
-        "x": 4470,
-        "y": 360,
+        "x": 455,
+        "y": 1740,
         "wires": [
             [
                 "resident_notifications_home_confirmation_delay"
@@ -54721,8 +54715,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4680,
-        "y": 220,
+        "x": 345,
+        "y": 1660,
         "wires": [
             [
                 "resident_notifications_home_confirmation_delay"
@@ -54747,8 +54741,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 4940,
-        "y": 250,
+        "x": 680,
+        "y": 1660,
         "wires": [
             [
                 "resident_notifications_home_confirmation_test_switch"
@@ -54774,8 +54768,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 5200,
-        "y": 250,
+        "x": 1000,
+        "y": 1660,
         "wires": [
             [
                 "notification_hub_wire_out_cbcd8c2a1171"
@@ -54811,8 +54805,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 5480,
-        "y": 250,
+        "x": 1375,
+        "y": 1650,
         "wires": [
             [
                 "resident_notifications_home_confirmation_primary"
@@ -54862,8 +54856,8 @@
         "override_payload": "none",
         "entity_location": "home_confirmation_entity",
         "override_data": "none",
-        "x": 5750,
-        "y": 200,
+        "x": 1700,
+        "y": 1600,
         "wires": [
             [
                 "resident_notifications_home_confirmation_evaluate"
@@ -54907,8 +54901,8 @@
         "override_payload": "none",
         "entity_location": "home_confirmation_entity",
         "override_data": "none",
-        "x": 5750,
-        "y": 280,
+        "x": 1710,
+        "y": 1660,
         "wires": [
             [
                 "resident_notifications_home_confirmation_evaluate"
@@ -54928,8 +54922,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 5750,
-        "y": 370,
+        "x": 1720,
+        "y": 1720,
         "wires": []
     },
     {
@@ -54945,8 +54939,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 5750,
-        "y": 450,
+        "x": 1810,
+        "y": 1800,
         "wires": [
             [
                 "resident_notifications_home_confirmation_evaluate"
@@ -54966,8 +54960,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 6040,
-        "y": 250,
+        "x": 2070,
+        "y": 1640,
         "wires": [
             [
                 "resident_notifications_home_confirmation_result"
@@ -55000,8 +54994,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 6320,
-        "y": 250,
+        "x": 2310,
+        "y": 1640,
         "wires": [
             [
                 "resident_notifications_home_confirmation_confirmed_out"
@@ -55024,8 +55018,8 @@
         "links": [
             "resident_notifications_home_confirmation_retry_in"
         ],
-        "x": 6550,
-        "y": 350,
+        "x": 2485,
+        "y": 1640,
         "wires": []
     },
     {
@@ -55041,8 +55035,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 6550,
-        "y": 430,
+        "x": 2620,
+        "y": 1720,
         "wires": []
     },
     {
@@ -55055,8 +55049,8 @@
         "links": [
             "resident_notifications_confirmation_routing_in"
         ],
-        "x": 6550,
-        "y": 250,
+        "x": 2485,
+        "y": 1600,
         "wires": []
     },
     {
@@ -55069,104 +55063,11 @@
             "resident_notifications_confirmation_bypass_out",
             "resident_notifications_home_confirmation_confirmed_out"
         ],
-        "x": 6710,
-        "y": 120,
+        "x": 2645,
+        "y": 1640,
         "wires": [
             [
                 "resident_notifications_source_switch"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_55f2da08c526",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_config_group",
-        "name": "Encurtar: Dedupe da entrega — padrão 10 min [1..60]",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_55f2da08c526"
-        ],
-        "x": 380,
-        "y": 100,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_55f2da08c526",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_config_group",
-        "name": "Continuar: Reunir política única",
-        "links": [
-            "notification_hub_wire_out_55f2da08c526"
-        ],
-        "x": 570,
-        "y": 390,
-        "wires": [
-            [
-                "resident_notifications_policy_join"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_123f371264b3",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_config_group",
-        "name": "Encurtar: Idade máxima — padrão 15 min [1..60]",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_123f371264b3"
-        ],
-        "x": 380,
-        "y": 410,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_123f371264b3",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_config_group",
-        "name": "Continuar: Reunir política única",
-        "links": [
-            "notification_hub_wire_out_123f371264b3"
-        ],
-        "x": 490,
-        "y": 390,
-        "wires": [
-            [
-                "resident_notifications_policy_join"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_2e942a9dd0b3",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_config_group",
-        "name": "Encurtar: Tolerância futura — padrão 60 s [0..300]",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_2e942a9dd0b3"
-        ],
-        "x": 300,
-        "y": 420,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_2e942a9dd0b3",
-        "type": "link in",
-        "z": "resident_notifications_tab",
-        "g": "resident_notifications_config_group",
-        "name": "Continuar: Reunir política única",
-        "links": [
-            "notification_hub_wire_out_2e942a9dd0b3"
-        ],
-        "x": 650,
-        "y": 390,
-        "wires": [
-            [
-                "resident_notifications_policy_join"
             ]
         ]
     },
@@ -55175,13 +55076,13 @@
         "type": "link out",
         "z": "resident_notifications_tab",
         "g": "resident_notifications_config_group",
-        "name": "Encurtar: Retry do serviço — padrão 60 s [10..600]",
+        "name": "Politica",
         "mode": "link",
         "links": [
             "notification_hub_wire_in_52a178a632e3"
         ],
-        "x": 200,
-        "y": 430,
+        "x": 635,
+        "y": 360,
         "wires": []
     },
     {
@@ -55189,12 +55090,12 @@
         "type": "link in",
         "z": "resident_notifications_tab",
         "g": "resident_notifications_config_group",
-        "name": "Continuar: Reunir política única",
+        "name": "Politica",
         "links": [
             "notification_hub_wire_out_52a178a632e3"
         ],
-        "x": 450,
-        "y": 90,
+        "x": 705,
+        "y": 220,
         "wires": [
             [
                 "resident_notifications_policy_join"
@@ -55335,8 +55236,8 @@
         "links": [
             "notification_hub_wire_in_cbcd8c2a1171"
         ],
-        "x": 5380,
-        "y": 350,
+        "x": 1250,
+        "y": 1590,
         "wires": []
     },
     {
@@ -55348,8 +55249,8 @@
         "links": [
             "notification_hub_wire_out_cbcd8c2a1171"
         ],
-        "x": 5570,
-        "y": 450,
+        "x": 1595,
+        "y": 1800,
         "wires": [
             [
                 "resident_notifications_home_confirmation_test_state"
@@ -55911,8 +55812,8 @@
         "links": [
             "arrival_context_refresh_request_out"
         ],
-        "x": 2475,
-        "y": 320,
+        "x": 2735,
+        "y": 300,
         "wires": [
             [
                 "arrival_context_cycle_read"
@@ -56017,8 +55918,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2719,
-        "y": 330,
+        "x": 2900,
+        "y": 220,
         "wires": [
             [
                 "arrival_context_inflight_switch"
@@ -56044,8 +55945,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3019,
-        "y": 330,
+        "x": 3200,
+        "y": 220,
         "wires": [
             [
                 "arrival_context_inflight_force"
@@ -56074,8 +55975,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3299,
-        "y": 240,
+        "x": 3480,
+        "y": 130,
         "wires": [
             [
                 "arrival_context_cycle_promote"
@@ -56098,8 +55999,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3569,
-        "y": 210,
+        "x": 3750,
+        "y": 100,
         "wires": []
     },
     {
@@ -56115,8 +56016,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3569,
-        "y": 270,
+        "x": 3750,
+        "y": 160,
         "wires": []
     },
     {
@@ -56132,8 +56033,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3329,
-        "y": 410,
+        "x": 3510,
+        "y": 300,
         "wires": [
             [
                 "3514854bb1279cbb"
@@ -56151,8 +56052,8 @@
             "203ccb69e0a6d24b",
             "26d6516f49329f7b"
         ],
-        "x": 3619,
-        "y": 410,
+        "x": 3800,
+        "y": 300,
         "wires": []
     },
     {
@@ -56165,8 +56066,8 @@
             "arrival_context_snapshot_out",
             "arrival_context_home_test_snapshot_out"
         ],
-        "x": 115,
-        "y": 1520,
+        "x": 125,
+        "y": 1400,
         "wires": [
             [
                 "arrival_context_snapshot_policy_load"
@@ -56186,8 +56087,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 315,
-        "y": 1520,
+        "x": 325,
+        "y": 1400,
         "wires": [
             [
                 "arrival_context_snapshot_policy_available"
@@ -56213,8 +56114,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 558,
-        "y": 1517,
+        "x": 568,
+        "y": 1397,
         "wires": [
             [
                 "arrival_context_snapshot_read"
@@ -56237,8 +56138,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 838,
-        "y": 1577,
+        "x": 848,
+        "y": 1457,
         "wires": []
     },
     {
@@ -56254,8 +56155,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 828,
-        "y": 1517,
+        "x": 838,
+        "y": 1397,
         "wires": [
             [
                 "arrival_context_snapshot_valid"
@@ -56281,8 +56182,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1128,
-        "y": 1517,
+        "x": 1138,
+        "y": 1397,
         "wires": [
             [
                 "arrival_context_snapshot_future"
@@ -56305,8 +56206,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1448,
-        "y": 1597,
+        "x": 1458,
+        "y": 1477,
         "wires": []
     },
     {
@@ -56328,8 +56229,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1438,
-        "y": 1517,
+        "x": 1448,
+        "y": 1397,
         "wires": [
             [
                 "arrival_context_reject_future"
@@ -56366,8 +56267,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1578,
-        "y": 1437,
+        "x": 1588,
+        "y": 1317,
         "wires": [
             [
                 "arrival_context_future_decision_out"
@@ -56384,8 +56285,8 @@
         "links": [
             "arrival_context_snapshot_decision_in"
         ],
-        "x": 1788,
-        "y": 1437,
+        "x": 1798,
+        "y": 1317,
         "wires": []
     },
     {
@@ -56407,8 +56308,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1778,
-        "y": 1517,
+        "x": 1788,
+        "y": 1397,
         "wires": [
             [
                 "arrival_context_reject_order"
@@ -56445,8 +56346,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 2018,
-        "y": 1417,
+        "x": 2028,
+        "y": 1297,
         "wires": [
             [
                 "arrival_context_order_decision_out"
@@ -56463,8 +56364,8 @@
         "links": [
             "arrival_context_snapshot_decision_in"
         ],
-        "x": 2228,
-        "y": 1417,
+        "x": 2238,
+        "y": 1297,
         "wires": []
     },
     {
@@ -56486,8 +56387,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2198,
-        "y": 1657,
+        "x": 2208,
+        "y": 1537,
         "wires": [
             [
                 "arrival_context_reject_missing"
@@ -56524,8 +56425,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 2548,
-        "y": 1557,
+        "x": 2558,
+        "y": 1437,
         "wires": [
             [
                 "arrival_context_missing_decision_out"
@@ -56542,8 +56443,8 @@
         "links": [
             "arrival_context_snapshot_decision_in"
         ],
-        "x": 2713,
-        "y": 1557,
+        "x": 2723,
+        "y": 1437,
         "wires": []
     },
     {
@@ -56565,8 +56466,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2118,
-        "y": 1537,
+        "x": 2128,
+        "y": 1417,
         "wires": [
             [
                 "arrival_context_accept_newer"
@@ -56603,8 +56504,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 2418,
-        "y": 1497,
+        "x": 2428,
+        "y": 1377,
         "wires": [
             [
                 "arrival_context_newer_decision_out"
@@ -56621,8 +56522,8 @@
         "links": [
             "arrival_context_snapshot_decision_in"
         ],
-        "x": 2688,
-        "y": 1497,
+        "x": 2698,
+        "y": 1377,
         "wires": []
     },
     {
@@ -56644,8 +56545,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 2638,
-        "y": 1617,
+        "x": 2648,
+        "y": 1497,
         "wires": [
             [
                 "arrival_context_accept_same"
@@ -56682,8 +56583,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3008,
-        "y": 1577,
+        "x": 3018,
+        "y": 1457,
         "wires": [
             [
                 "arrival_context_same_decision_out"
@@ -56700,8 +56601,8 @@
         "links": [
             "arrival_context_snapshot_decision_in"
         ],
-        "x": 3228,
-        "y": 1577,
+        "x": 3238,
+        "y": 1457,
         "wires": []
     },
     {
@@ -56731,8 +56632,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3008,
-        "y": 1657,
+        "x": 3018,
+        "y": 1537,
         "wires": [
             [
                 "arrival_context_duplicate_decision_out"
@@ -56749,8 +56650,8 @@
         "links": [
             "arrival_context_snapshot_decision_in"
         ],
-        "x": 3228,
-        "y": 1657,
+        "x": 3238,
+        "y": 1537,
         "wires": []
     },
     {
@@ -56767,8 +56668,8 @@
             "arrival_context_same_decision_out",
             "arrival_context_duplicate_decision_out"
         ],
-        "x": 2745,
-        "y": 1800,
+        "x": 2755,
+        "y": 1680,
         "wires": [
             [
                 "arrival_context_cache_mutate"
@@ -56788,8 +56689,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2995,
-        "y": 1800,
+        "x": 3005,
+        "y": 1680,
         "wires": [
             [
                 "arrival_context_departure_out"
@@ -56807,8 +56708,8 @@
             "arrival_context_departure_in",
             "arrival_context_home_refresh_in"
         ],
-        "x": 3255,
-        "y": 1770,
+        "x": 3265,
+        "y": 1650,
         "wires": []
     },
     {
@@ -57275,7 +57176,7 @@
             "arrival_context_departure_selected_out"
         ],
         "x": 125,
-        "y": 1140,
+        "y": 1060,
         "wires": [
             [
                 "arrival_context_pending_read"
@@ -57296,7 +57197,7 @@
         "finalize": "",
         "libs": [],
         "x": 365,
-        "y": 1140,
+        "y": 1060,
         "wires": [
             [
                 "arrival_context_cycle_match"
@@ -57323,7 +57224,7 @@
         "repair": false,
         "outputs": 2,
         "x": 675,
-        "y": 1140,
+        "y": 1060,
         "wires": [
             [
                 "arrival_context_pending_update"
@@ -57346,8 +57247,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 975,
-        "y": 1030,
+        "x": 1020,
+        "y": 1120,
         "wires": []
     },
     {
@@ -57364,7 +57265,7 @@
         "finalize": "",
         "libs": [],
         "x": 985,
-        "y": 1140,
+        "y": 1060,
         "wires": [
             [
                 "arrival_context_both_received"
@@ -57391,7 +57292,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1275,
-        "y": 1140,
+        "y": 1060,
         "wires": [
             [
                 "arrival_context_pending_emitted"
@@ -57414,8 +57315,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1575,
-        "y": 1030,
+        "x": 1570,
+        "y": 1120,
         "wires": []
     },
     {
@@ -57438,7 +57339,7 @@
         "repair": false,
         "outputs": 2,
         "x": 1585,
-        "y": 1140,
+        "y": 1060,
         "wires": [
             [
                 "arrival_context_already_done"
@@ -57461,8 +57362,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1885,
-        "y": 1030,
+        "x": 1910,
+        "y": 1020,
         "wires": []
     },
     {
@@ -57479,7 +57380,7 @@
         "finalize": "",
         "libs": [],
         "x": 1895,
-        "y": 1140,
+        "y": 1060,
         "wires": [
             [
                 "arrival_context_departure_precedence"
@@ -57506,7 +57407,7 @@
         "repair": false,
         "outputs": 2,
         "x": 2246,
-        "y": 1130,
+        "y": 1050,
         "wires": [
             [
                 "arrival_context_departure_precedence_terminal"
@@ -57529,8 +57430,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2505,
-        "y": 1030,
+        "x": 2590,
+        "y": 1000,
         "wires": []
     },
     {
@@ -57568,7 +57469,7 @@
         "to": "",
         "reg": false,
         "x": 2586,
-        "y": 1130,
+        "y": 1050,
         "wires": [
             [
                 "arrival_context_requested_reason"
@@ -57595,7 +57496,7 @@
         "repair": false,
         "outputs": 2,
         "x": 2876,
-        "y": 1130,
+        "y": 1050,
         "wires": [
             [
                 "arrival_context_use_requested_reason"
@@ -57625,8 +57526,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3095,
-        "y": 1060,
+        "x": 3170,
+        "y": 980,
         "wires": [
             [
                 "arrival_context_requested_path_out"
@@ -57643,8 +57544,8 @@
         "links": [
             "arrival_context_refresh_build_in"
         ],
-        "x": 3375,
-        "y": 1060,
+        "x": 3450,
+        "y": 980,
         "wires": []
     },
     {
@@ -57666,8 +57567,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3095,
-        "y": 1200,
+        "x": 3150,
+        "y": 1080,
         "wires": [
             [
                 "arrival_context_reason_vehicle"
@@ -57697,8 +57598,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3385,
-        "y": 1160,
+        "x": 3440,
+        "y": 1040,
         "wires": [
             [
                 "arrival_context_vehicle_path_out"
@@ -57715,8 +57616,8 @@
         "links": [
             "arrival_context_refresh_build_in"
         ],
-        "x": 3665,
-        "y": 1160,
+        "x": 3720,
+        "y": 1040,
         "wires": []
     },
     {
@@ -57738,8 +57639,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 3385,
-        "y": 1260,
+        "x": 3440,
+        "y": 1140,
         "wires": [
             [
                 "arrival_context_reason_people"
@@ -57769,8 +57670,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3675,
-        "y": 1230,
+        "x": 3730,
+        "y": 1110,
         "wires": [
             [
                 "arrival_context_refresh_build"
@@ -57797,8 +57698,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 3675,
-        "y": 1300,
+        "x": 3730,
+        "y": 1180,
         "wires": [
             [
                 "arrival_context_refresh_build"
@@ -57815,8 +57716,8 @@
             "arrival_context_requested_path_out",
             "arrival_context_vehicle_path_out"
         ],
-        "x": 3785,
-        "y": 1100,
+        "x": 3855,
+        "y": 1060,
         "wires": [
             [
                 "arrival_context_refresh_build"
@@ -57836,8 +57737,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3975,
-        "y": 1130,
+        "x": 4010,
+        "y": 1100,
         "wires": [
             [
                 "arrival_context_paired_command_out"
@@ -57854,8 +57755,8 @@
         "links": [
             "arrival_context_refresh_merge_in"
         ],
-        "x": 4255,
-        "y": 1130,
+        "x": 4185,
+        "y": 1100,
         "wires": []
     },
     {
@@ -57868,8 +57769,8 @@
             "arrival_context_departure_command_out",
             "arrival_context_paired_command_out"
         ],
-        "x": 3975,
-        "y": 970,
+        "x": 3805,
+        "y": 980,
         "wires": [
             [
                 "1ba5ecf650ac79b8"
@@ -57887,8 +57788,8 @@
             "7ab9921c55cb6acd",
             "25ca02f8c1de32d0"
         ],
-        "x": 4255,
-        "y": 970,
+        "x": 4085,
+        "y": 980,
         "wires": []
     },
     {
