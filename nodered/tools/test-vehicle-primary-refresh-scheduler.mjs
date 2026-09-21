@@ -1890,6 +1890,83 @@ scenario("37a deadline do provedor bloqueia chamadas automáticas após restart"
   assert.equal(recoveredCommand, null);
 });
 
+scenario("37a1 aproximação não encurta o bloqueio imposto pelo provedor", () => {
+  for (const restartPending of [true, false]) {
+    const retryAt = DAY + 2 * 60 * 60_000;
+    const store = memory({
+      vehicle_primary_context_v1: readyContext(DAY),
+      [KEY]: { interval_ms: 15 * 60_000, last_request_at: DAY - 20 * 60_000 },
+    });
+    execute(code.providerBackoffSync, {
+      now: DAY, store,
+      msg: { payload: { state: new Date(retryAt).toISOString(),
+        attributes: { status: "rate_limited" } } },
+    });
+    const result = coordinator(store, DAY + 1_000, {
+      resident_primary_state: "near_home",
+      resident_secondary_state: "home",
+      refresh_arrival_restart_pending: restartPending,
+    });
+    assert.equal(result, null, "não deve consultar o provedor durante seu bloqueio");
+    assert.equal(store.get(KEY).interval_ms, (restartPending ? 1 : 5) * 60_000);
+    assert.equal(store.get(KEY).next_allowed_at, retryAt);
+    assert.equal(store.get(KEY).provider_retry_at, retryAt);
+    for (const forced of [
+      { reason: "manual_force" },
+      { reason: "resident_departure", resident_departure_force: true },
+      { reason: "resident_arrival_confirmation", resident_arrival_force: true },
+    ]) {
+      const blocked = coordinator(store, DAY + 2_000, {
+        resident_primary_state: "near_home", ...forced,
+      });
+      assert.equal(blocked?.[0] ?? null, null, "sem wake durante rate limit externo");
+      assert.equal(blocked?.[4] ?? null, null, "sem releitura durante rate limit externo");
+      assert.equal(store.get(KEY).next_allowed_at, retryAt);
+    }
+    assert.notEqual(coordinator(store, retryAt + 1, {
+      resident_primary_state: "near_home", reason: "manual_force",
+    }), null, "o bloqueio termina quando o prazo do provedor vence");
+  }
+});
+
+scenario("37a2 liberação antecipada do provedor retoma a cadência local", () => {
+  const retryAt = DAY + 2 * 60 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY),
+    [KEY]: { interval_ms: 15 * 60_000, last_request_at: DAY - 20 * 60_000 },
+  });
+  execute(code.providerBackoffSync, {
+    now: DAY, store,
+    msg: { payload: { state: new Date(retryAt).toISOString(),
+      attributes: { status: "rate_limited" } } },
+  });
+  coordinator(store, DAY + 1_000, { resident_primary_state: "near_home" });
+  execute(code.providerBackoffSync, {
+    now: DAY + 60_000, store,
+    msg: { payload: { state: new Date(retryAt).toISOString(),
+      attributes: { status: "available" } } },
+  });
+  assert.equal(store.get(KEY).provider_retry_at, null);
+  assert.equal(store.get(KEY).next_allowed_at, DAY + 60_000);
+  assert.equal(store.get(KEY).engine_communication_failed, true,
+    "liberação não substitui a confirmação por telemetria nova");
+  assert.notEqual(coordinator(store, DAY + 60_001, {
+    resident_primary_state: "near_home",
+  }), null);
+  const laterDeadline = retryAt + 60_000;
+  const otherProtection = memory({ [KEY]: {
+    provider_retry_at: retryAt, next_allowed_at: laterDeadline,
+    reason: "in_flight", awaiting_evidence: true,
+  } });
+  execute(code.providerBackoffSync, {
+    now: DAY + 60_000, store: otherProtection,
+    msg: { payload: { state: new Date(retryAt).toISOString(),
+      attributes: { status: "available" } } },
+  });
+  assert.equal(otherProtection.get(KEY).next_allowed_at, laterDeadline,
+    "liberação não remove prazo posterior de outra proteção");
+});
+
 scenario("37b backoff esperado não reabre falha global do canvas", () => {
   const store = memory({ [KEY]: { interval_ms: 15 * 60_000 } });
   const warnings = [];

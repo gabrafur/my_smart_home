@@ -719,7 +719,7 @@ for (const [name, ageMs, elapsed] of [
     byId.get("people_visual_vehicle_refresh_recheck_in").wires,
     [["402fd0cc609443b7"]],
   );
-  assert.equal(byId.get("402fd0cc609443b7").outputs, 2);
+  assert.equal(byId.get("402fd0cc609443b7").outputs, 3);
   assert.match(
     byId.get("people_visual_primary_icloud_update").data,
     /"role":"resident_primary","action":"refresh_location"/,

@@ -54,7 +54,6 @@ if (
     state.provider_retry_at = null;
     state.awaiting_evidence = true;
     if (
-        state.reason === "provider_backoff" &&
         Number(state.next_allowed_at ?? 0) <= previousProviderRetryAt
     ) {
         state.next_allowed_at = now;

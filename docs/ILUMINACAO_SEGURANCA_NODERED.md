@@ -149,8 +149,9 @@ o painel não repete esses cálculos.
 - `lock.vehicle_primary_door_lock`
 - `button.vehicle_primary_force_refresh`
 - `button.garagem_vehicle_primary_refresh_trip_info`
-- `input_button.vehicle_primary_force_refresh_now` (solicitacao manual pelo mesmo
-  coordenador; ignora cooldown/backoff, mas nao uma chamada em andamento)
+- `input_button.vehicle_primary_force_refresh_now` (solicitação manual pelo mesmo
+  coordenador; ignora o intervalo local, mas não uma chamada em andamento nem
+  o prazo explícito de bloqueio informado pelo provedor)
 - `sensor.vehicle_primary_refresh_coordinator` (espelho MQTT do estado/deadlines reais)
 - `sensor.vehicle_primary_location_since_nodered` (instante canônico da posição atual)
 - entidades do dispositivo atualizadas pelo serviço `homeassistant.update_entity`
@@ -474,19 +475,23 @@ exclusivamente de um `delay` residente em memória.
 
 - Tick base: 30 s, com snapshot de pessoas e vehicle_primary.
 - iPhones: geofences e mudanças significativas do iOS produzem os eventos
-  responsivos. O veículo fora, sozinho, não solicita localização dos telefones.
-  Se o contexto precisar de recuperação, o pedido explícito tem cooldown de
-  30 min, limitado a duas vezes por hora. Uma posição vencida inicia recovery
-  mesmo quando a última observação indicava `home`: um heartbeat recente sem
-  avanço de `location_observed_at` não prova uma posição atual e não bloqueia
-  o pedido seletivo ao telefone correspondente. O cooldown impede que o tick
-  de 30 s transforme essa recuperação em polling contínuo. As duas primeiras
-  tentativas podem ocorrer com 30 min de intervalo; sem evidência nova, o
-  backoff cresce para 1 h, 2 h e no máximo 4 h. Uma observação realmente nova
-  zera o backoff.
-  A única exceção é a vigília de uma chegada já comprovada: aos 10 minutos em
+  responsivos. O mesmo coordenador por morador renova preventivamente a posição
+  aos 5 min em `near_home` e aos 10 min nas demais situações, inclusive `home`.
+  Esses prazos são idades da observação, não timers reiniciados por republicação.
+  O veículo fora, sozinho, não solicita localização dos telefones. Os controles
+  ficam no grupo `0c. Renovação GPS` e o prazo de aproximação no grupo `0b` de
+  `localizacao_pessoas`; a validade continua em 15 min.
+  Sem posição nova, são até três pedidos com espaçamento mínimo de 60 s.
+  Após a terceira tentativa sem resposta, um aviso de domínio por morador segue
+  ao observador central. O incidente persiste através de restart e não repete o
+  aviso; uma posição realmente nova e atual encerra o incidente e zera tentativas.
+  Aceite do serviço, heartbeat ou posição mais nova porém vencida não são sucesso.
+  Depois da rajada, os intervalos crescem de 30 min para 1 h, 2 h e no máximo 4 h,
+  evitando sobrecarregar os serviços externos. Nenhuma cadência garante resposta
+  do iOS/iCloud; os limites de bateria e entrega continuam existindo.
+  A vigília de uma chegada já comprovada também pede renovação: aos 5 minutos em
   `near_home`, ou quando motor/bypass se tornam válidos com posição vencida,
-  ela pede atualização ao telefone correspondente, com dedupe próprio. A
+  ela pede atualização ao telefone correspondente. A
   segunda tentativa ocorre após 1 minuto sem posição nova, inclusive com motor
   desligado. Cada observação realmente nova reinicia essa vigília, permitindo
   acompanhar uma parada longa perto de casa. Sem resposta, são no máximo duas
@@ -494,6 +499,13 @@ exclusivamente de um `delay` residente em memória.
   `location_refresh_failed` uma vez. Um aceite do serviço ou o mesmo GPS ainda
   dentro dos 15 minutos não conta como callback novo. O refletor continua
   bloqueado com localização vencida.
+  Sondas do anel, vigília e tick periódico compartilham o mesmo dedupe e backoff
+  antes dos serviços Companion/iCloud; não somam chamadas concorrentes. Testes
+  usam memória separada e o aviso termina no dry-run do observador central.
+  Para verificar manualmente, use os estados sintéticos e o reset do tab de
+  pessoas; para avançar o relógio sem esperar nem alterar produção, execute
+  `node nodered/tools/test-people-proactive-refresh.mjs`. O replay cobre as bordas
+  de 5/10 min, tentativas, alerta, recuperação, restart lógico e isolamento.
 - `request_location_update` é best-effort: `public_bindings` agenda a
   notificação móvel sem aguardar a conclusão do serviço remoto. O aceite do
   Home Assistant não comprova uma posição nova; o ciclo seguinte reavalia os
@@ -527,7 +539,9 @@ exclusivamente de um `delay` residente em memória.
   sem essa confirmação continua com 5 min. Fora desse estado, a recuperação do
   próprio veículo usa o intervalo configurado para fora, inclusive em casa,
   fora dessa pausa noturna; um bloqueio explícito do provedor ainda pode impor
-  backoff maior. O coordenador, o aceite/erro da API e o dashboard não
+  backoff maior. A troca de cadência nunca encurta esse prazo: inclusive comandos
+  extraordinários e manuais aguardam a liberação do provedor. O coordenador,
+  o aceite/erro da API e o dashboard não
   recalculam esses números; consomem o resultado e a telemetria desses blocos.
 - A transição confirmada de qualquer residente de `home` para `near_home` ou
   `not_home` dispara imediatamente um `force_refresh` do vehicle_primary,
@@ -547,6 +561,9 @@ exclusivamente de um `delay` residente em memória.
   esse polling não acorda o carro nem chama o agendador nativo de force
   refresh. Respostas de rate limit ativam backoff progressivo de 15 min a 6 h
   e bloqueiam wakes e releituras adicionais até o prazo vencer.
+  Se o provedor informar liberação antecipada, o prazo que ele impôs é retirado;
+  a cadência local é reavaliada e a falha de comunicação só é encerrada com
+  telemetria nova. Um prazo posterior de outra proteção não é removido.
 - Entrada no anel/chegada: a solicitação volta por um par `link out`/`link in`
   ao mesmo coordenador persistente, em vez de chamar o binding diretamente.
 - Mudança de zona ou deslocamento GPS significativo: solicita avaliação

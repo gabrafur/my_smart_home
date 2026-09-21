@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const toolsDir = path.dirname(fileURLToPath(import.meta.url));
 const functionDir = path.join(toolsDir, "functions");
 const flows = JSON.parse(
-  fs.readFileSync(path.resolve(toolsDir, "../flows.json"), "utf8"),
+  fs.readFileSync(path.resolve(process.argv[2] ?? path.resolve(toolsDir, "../flows.json")), "utf8"),
 );
 const byId = new Map(flows.map((node) => [node.id, node]));
 const logicalWireTargets = (id, output) => (byId.get(id)?.wires?.[output] ?? []).flatMap((targetId) => {

@@ -298,6 +298,7 @@
                 "people_arrival_departure_blocked_v1"
             ],
             "dry_run_terminal_ids": [
+                "global_observer_dry_run_terminal",
                 "people_arrival_departure_blocked_v1",
                 "people_visual_icloud_dry_run_terminal",
                 "resident_notifications_dry_run_terminal",

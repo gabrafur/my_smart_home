@@ -46,6 +46,9 @@ const anchor = Math.max(state.last_request_at, state.service_accepted_at, state.
 const floor = anchor > 0 ? anchor + selectedInterval : 0;
 state.next_allowed_at = previousInterval !== selectedInterval
     ? floor : Math.max(state.next_allowed_at, floor);
+const providerRetryAt = Number(state.provider_retry_at ?? 0);
+const providerBlocked = Number.isFinite(providerRetryAt) && providerRetryAt > now;
+if (providerBlocked) state.next_allowed_at = Math.max(state.next_allowed_at, providerRetryAt);
 state.interval_ms = selectedInterval;
 state.interval_policy = arrivalRestartPending ? "arrival_armed_engine_pending"
     : approaching ? "approaching"
@@ -94,7 +97,7 @@ data.flags = {
     departure_covered: departureBypass && Number(msg.payload?.departure_event_at ?? 0) > 0 &&
         state.last_request_at >= Number(msg.payload.departure_event_at),
     enabled,
-    deadline_blocked: !deadlineBypass && now < state.next_allowed_at,
+    deadline_blocked: providerBlocked || (!deadlineBypass && now < state.next_allowed_at),
     waiting_evidence: state.awaiting_evidence === true,
     cache_probe_needed: !deadlineBypass && state.awaiting_evidence === true &&
         pendingRequestAt > 0 && !cacheCompleted

@@ -62,6 +62,9 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 15, local_excursion_minutes: 90,
   near_home_refresh_minutes: 10,
+  people_refresh_minutes: 10, people_refresh_retry_seconds: 60,
+  people_refresh_attempts: 3, people_refresh_backoff_minutes: 30,
+  people_refresh_backoff_max_minutes: 240,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
@@ -893,7 +896,7 @@ scenario("30a posição vencida em casa solicita GPS sem criar polling contínuo
   );
 });
 
-scenario("30b recovery de localizacao respeita cooldown de 30 minutos", () => {
+scenario("30b recovery de localização respeita retry de um minuto", () => {
   const oldLocation = Date.now() - 60 * 60_000;
   const flow = memoryFlow({
     people_context_v1: {
@@ -904,7 +907,7 @@ scenario("30b recovery de localizacao respeita cooldown de 30 minutos", () => {
     security_people_location_refresh_v2: {
       version: 2,
       residents: {
-        resident_primary: { last_request_at: Date.now() - 60_000 },
+        resident_primary: { last_request_at: Date.now() - 30_000 },
       },
     },
   });
@@ -913,7 +916,7 @@ scenario("30b recovery de localizacao respeita cooldown de 30 minutos", () => {
   };
   assert.equal(run("people_refresh_decide", structuredClone(command), flow, geoEnv), null);
   flow.get("security_people_location_refresh_v2").residents.resident_primary.last_request_at =
-    Date.now() - 31 * 60_000;
+    Date.now() - 61_000;
   const requested = run("people_refresh_decide", structuredClone(command), flow, geoEnv);
   assert(requested[0]);
   assert.equal(requested[0].payload.refresh_source, "resident_primary");
@@ -931,7 +934,7 @@ scenario("30b1 jitter do tick nao adia recovery por mais 30 segundos", () => {
       resident_secondary: { ready: true, stale: false, updated_at: Date.now() },
     },
     security_people_location_refresh_v2: { version: 2, residents: {
-      resident_primary: { last_request_at: Date.now() - (30 * 60_000 - 750) },
+      resident_primary: { last_request_at: Date.now() - (60_000 - 750) },
     } },
   });
   assert.equal(
@@ -946,7 +949,7 @@ scenario("30b1 jitter do tick nao adia recovery por mais 30 segundos", () => {
       resident_secondary: { ready: true, stale: false, updated_at: Date.now() },
     },
     security_people_location_refresh_v2: { version: 2, residents: {
-      resident_primary: { last_request_at: Date.now() - (30 * 60_000 - 250) },
+      resident_primary: { last_request_at: Date.now() - (60_000 - 250) },
     } },
   });
   const requested = run(
@@ -994,7 +997,7 @@ scenario("30b3 observação posterior confirma semanticamente o refresh", () => 
     people_context_v1: {
       ready: true,
       resident_primary: { ready: true, stale: false, updated_at: Date.now() },
-      resident_secondary: { ready: true, stale: false, updated_at: before + 5 * 60_000 },
+      resident_secondary: { ready: true, stale: false, updated_at: Date.now() },
     },
     security_people_location_refresh_v2: state,
   });
@@ -1004,7 +1007,7 @@ scenario("30b3 observação posterior confirma semanticamente o refresh", () => 
   const confirmed = flow.get("security_people_location_refresh_v2").residents.resident_secondary;
   assert.equal(confirmed.awaiting_evidence, false);
   assert.equal(confirmed.attempts, 0);
-  assert.equal(confirmed.last_success_at, before + 5 * 60_000);
+  assert(confirmed.last_success_at >= before + 59 * 60_000);
 });
 
 scenario("30b3a falhas sem posição nova ampliam o backoff até quatro horas", () => {
@@ -1025,7 +1028,7 @@ scenario("30b3a falhas sem posição nova ampliam o backoff até quatro horas", 
           last_request_at: Date.now() - 31 * 60_000,
           observed_at_before_request: oldLocation,
           awaiting_evidence: true,
-          attempts: 2,
+          attempts: 4, failure_notified: true,
         },
       },
     },
@@ -1033,17 +1036,17 @@ scenario("30b3a falhas sem posição nova ampliam o backoff até quatro horas", 
   assert.equal(
     run("people_refresh_decide", structuredClone(command), flow, geoEnv),
     null,
-    "duas falhas devem elevar o cooldown para uma hora",
+    "após três tentativas rápidas e uma espaçada, aguardar uma hora",
   );
   flow.get("security_people_location_refresh_v2").residents.resident_secondary.last_request_at =
     Date.now() - 61 * 60_000;
   const third = run("people_refresh_decide", structuredClone(command), flow, geoEnv);
   assert(third[1]);
-  assert.equal(third[1].payload.refresh_attempt, 3);
+  assert.equal(third[1].payload.refresh_attempt, 5);
   assert.equal(third[1].payload.refresh_cooldown_minutes, 60);
 
   const state = flow.get("security_people_location_refresh_v2");
-  state.residents.resident_secondary.attempts = 5;
+  state.residents.resident_secondary.attempts = 6;
   state.residents.resident_secondary.last_request_at = Date.now() - 239 * 60_000;
   assert.equal(
     run("people_refresh_decide", structuredClone(command), flow, geoEnv),
@@ -2366,19 +2369,24 @@ scenario("44 flags antigas não burlam o timestamp real da localização", () =>
   assert.equal(result, null);
 });
 
-scenario("45 refresh extraordinário é por morador e ignora cooldown genérico", () => {
+scenario("45 refresh extraordinário é por morador e compartilha dedupe", () => {
+  const flow = memoryFlow({ people_context_v1: {
+    resident_primary: { state: "near_home", ready: true, updated_at: Date.now() },
+    resident_secondary: { state: "near_home", ready: true, updated_at: Date.now() },
+  } });
   const primary = runDirect("people_visual_arrival_refresh_dispatch", {
     payload: { kind: "arrival_location_refresh", source: "resident_primary" },
-  });
+  }, flow);
   assert(primary[0]); assert.equal(primary[1], null);
   const secondary = runDirect("people_visual_arrival_refresh_dispatch", {
     payload: { kind: "arrival_location_refresh", source: "resident_secondary" },
-  });
+  }, flow);
   assert.equal(secondary[0], null); assert(secondary[1]);
   assert.deepEqual(byId.get("people_visual_arrival_refresh_dispatch").wires,
     [
       ["564fdc36031eaef8", "people_visual_primary_icloud_out"],
       ["e0b7c0ecf1d8ee28", "people_visual_secondary_icloud_out"],
+      ["people_visual_refresh_alert_out"],
     ]);
   assert.equal(byId.get("people_visual_primary_icloud_update").action,
     "public_bindings.call");

@@ -4140,7 +4140,7 @@
         "id": "b35563e0f73e5b64",
         "type": "group",
         "z": "ea0a6aa0d24ff863",
-        "name": "3. Refresh seletivo: Companion + iCloud (máx. 2/h por morador)",
+        "name": "3. GPS preventivo: 5/10 min, retry limitado e aviso de falha",
         "style": {
             "label": true,
             "label-position": "nw",
@@ -4180,7 +4180,8 @@
             "notification_hub_wire_out_6a14668fd8dd",
             "notification_hub_wire_in_6a14668fd8dd",
             "notification_hub_wire_out_ea83b8ce73cb",
-            "notification_hub_wire_in_ea83b8ce73cb"
+            "notification_hub_wire_in_ea83b8ce73cb",
+            "people_visual_refresh_alert_out"
         ],
         "x": 69,
         "y": 759,
@@ -22036,7 +22037,7 @@
         "z": "c22d8b12055e87f7",
         "g": "43a2bc9c218353ae",
         "name": "Sincronizar backoff do provedor",
-        "func": "const key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst entity = msg.payload ?? {};\nconst status = String(entity.attributes?.status ?? \"unknown\");\nconst retryAt = Date.parse(String(entity.state ?? \"\"));\nconst now = Date.now();\nconst active =\n    status === \"rate_limited\" &&\n    Number.isFinite(retryAt) &&\n    retryAt > now;\n\nif (active) {\n    state.provider_retry_at = retryAt;\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        retryAt\n    );\n    state.next_retry_at = state.next_allowed_at;\n    state.awaiting_evidence = true;\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.cache_probe_settle_until = null;\n    state.state = \"backoff\";\n    state.reason = \"provider_backoff\";\n    state.last_failure_class = \"provider_backoff\";\n    state.engine_communication_failed = true;\n    state.engine_bypass_recovery_pending = false;\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `provedor em backoff até ${new Date(retryAt).toISOString()}`\n    });\n    return {\n        topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        qos: 1,\n        retain: false,\n        payload: JSON.stringify({\n            requested_state: \"ON\",\n            source: \"provider_backoff\"\n        })\n    };\n}\n\nconst previousProviderRetryAt = Number(state.provider_retry_at ?? 0);\nif (\n    previousProviderRetryAt > 0 &&\n    status === \"available\"\n) {\n    state.provider_retry_at = null;\n    state.awaiting_evidence = true;\n    if (\n        state.reason === \"provider_backoff\" &&\n        Number(state.next_allowed_at ?? 0) <= previousProviderRetryAt\n    ) {\n        state.next_allowed_at = now;\n        state.next_retry_at = now;\n    }\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: \"provedor liberado; aguardando telemetria nova\"\n    });\n    return null;\n}\n\nreturn null;",
+        "func": "const key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst entity = msg.payload ?? {};\nconst status = String(entity.attributes?.status ?? \"unknown\");\nconst retryAt = Date.parse(String(entity.state ?? \"\"));\nconst now = Date.now();\nconst active =\n    status === \"rate_limited\" &&\n    Number.isFinite(retryAt) &&\n    retryAt > now;\n\nif (active) {\n    state.provider_retry_at = retryAt;\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        retryAt\n    );\n    state.next_retry_at = state.next_allowed_at;\n    state.awaiting_evidence = true;\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.cache_probe_settle_until = null;\n    state.state = \"backoff\";\n    state.reason = \"provider_backoff\";\n    state.last_failure_class = \"provider_backoff\";\n    state.engine_communication_failed = true;\n    state.engine_bypass_recovery_pending = false;\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `provedor em backoff até ${new Date(retryAt).toISOString()}`\n    });\n    return {\n        topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        qos: 1,\n        retain: false,\n        payload: JSON.stringify({\n            requested_state: \"ON\",\n            source: \"provider_backoff\"\n        })\n    };\n}\n\nconst previousProviderRetryAt = Number(state.provider_retry_at ?? 0);\nif (\n    previousProviderRetryAt > 0 &&\n    status === \"available\"\n) {\n    state.provider_retry_at = null;\n    state.awaiting_evidence = true;\n    if (\n        Number(state.next_allowed_at ?? 0) <= previousProviderRetryAt\n    ) {\n        state.next_allowed_at = now;\n        state.next_retry_at = now;\n    }\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: \"provedor liberado; aguardando telemetria nova\"\n    });\n    return null;\n}\n\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -24795,7 +24796,7 @@
         "z": "c22d8b12055e87f7",
         "g": "vehicle_visual_refresh_decision_group_v2",
         "name": "Derivar recovery, intervalo e gates",
-        "func": "const data = msg._refresh;\nif (!data) return null;\nconst state = data.state;\nconst now = data.now;\nconst config = data.config;\nconst contextReady = msg.payload?.vehicle_primary_ready === true ||\n    data.vehicle_context.ready === true;\nconst derivedRecovery = msg.payload?.recovery_needed === true ||\n    msg.payload?.vehicle_primary_ready === false || contextReady !== true;\nconst lastSuccessAt = Number(state.last_success_at ?? 0);\nconst semanticHealthy = state.awaiting_evidence !== true &&\n    state.last_failure_class == null && Array.isArray(state.last_evidence_domains) &&\n    state.last_evidence_domains.includes(\"telemetry\") && lastSuccessAt > 0 &&\n    lastSuccessAt <= now + data.future_tolerance_ms &&\n    now - lastSuccessAt <= Number(config.home_interval_ms) + data.future_tolerance_ms;\nconst recoveryNeeded = msg.payload?.force_recovery === true ||\n    msg.payload?.require_lighting_ready === true || state.awaiting_evidence === true ||\n    (derivedRecovery && !semanticHealthy);\nconst requireLighting = msg.payload?.require_lighting_ready === true ||\n    (state.awaiting_evidence === true && state.require_lighting_ready === true);\nconst requestedReason = msg.payload?.reason ?? msg.payload?.recovery_reason ??\n    (recoveryNeeded ? \"readiness_recovery_needed\" : \"scheduled_refresh\");\nconst manualBypass = requestedReason === \"manual_force\";\nconst departureBypass = requestedReason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true;\nconst arrivalBypass = requestedReason === \"resident_arrival_confirmation\" &&\n    msg.payload?.resident_arrival_force === true;\nconst deadlineBypass = manualBypass || departureBypass || arrivalBypass;\nconst approaching = msg.payload?.refresh_anyone_approaching === true;\nconst arrivalRestartPending = msg.payload?.refresh_arrival_restart_pending === true;\nconst selectedInterval = arrivalRestartPending\n    ? Number(config.arrival_armed_interval_ms)\n    : approaching ? Number(config.approaching_interval_ms)\n    : recoveryNeeded && !deadlineBypass ? Number(config.away_interval_ms)\n    : Number(msg.payload?.refresh_interval_ms);\nif (!Number.isFinite(selectedInterval) || selectedInterval <= 0) {\n    node.error(\"Intervalo visual de refresh inválido\", msg);\n    return null;\n}\nconst allowedIntervals = [Number(config.away_interval_ms),\n    Number(config.arrival_armed_interval_ms),\n    Number(config.approaching_interval_ms), Number(config.home_interval_ms)];\nconst previousInterval = allowedIntervals.includes(Number(state.interval_ms))\n    ? Number(state.interval_ms) : Number(config.away_interval_ms);\nconst anchor = Math.max(state.last_request_at, state.service_accepted_at, state.last_success_at);\nconst floor = anchor > 0 ? anchor + selectedInterval : 0;\nstate.next_allowed_at = previousInterval !== selectedInterval\n    ? floor : Math.max(state.next_allowed_at, floor);\nstate.interval_ms = selectedInterval;\nstate.interval_policy = arrivalRestartPending ? \"arrival_armed_engine_pending\"\n    : approaching ? \"approaching\"\n    : recoveryNeeded && !deadlineBypass ? \"recovery\" : msg.payload.refresh_interval_policy;\nconst cacheActive = state.cache_probe_in_flight === true &&\n    now < state.cache_probe_in_flight_until;\nif (state.cache_probe_in_flight === true && !cacheActive) {\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.last_failure_class = \"cache_probe_lease_expired\";\n    state.next_allowed_at = Math.max(state.next_allowed_at, now + selectedInterval);\n}\nconst requestActive = state.request_in_flight === true && now < state.in_flight_until;\nif (state.request_in_flight === true && !requestActive) {\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.last_failure_class = \"in_flight_lease_expired\";\n}\nconst start = Number(config.unknown_location_start_hour);\nconst end = Number(config.unknown_location_end_hour);\nconst hour = new Date(now).getHours();\nconst unknownWindow = start < end ? hour >= start && hour < end\n    : hour >= start || hour < end;\nconst statesKnown = msg.payload?.refresh_resident_states_known === true;\nconst bothHome = msg.payload?.refresh_both_residents_home === true;\nconst awayOrApproaching = msg.payload?.refresh_anyone_away === true || approaching;\nconst enabled = recoveryNeeded || awayOrApproaching || bothHome ||\n    (!statesKnown && unknownWindow);\nconst pendingRequestAt = Number(state.last_request_at ?? 0);\nconst cacheCompleted = pendingRequestAt > 0 &&\n    state.cache_probe_completed_for_request_at === pendingRequestAt;\ndata.recovery_needed = recoveryNeeded;\ndata.require_lighting_ready = requireLighting;\ndata.requested_reason = requestedReason;\ndata.manual_bypass = manualBypass;\ndata.departure_bypass = departureBypass;\ndata.arrival_bypass = arrivalBypass;\ndata.deadline_bypass = deadlineBypass;\ndata.selected_interval_ms = selectedInterval;\ndata.semantic_healthy = semanticHealthy;\ndata.flags = {\n    cache_active: cacheActive,\n    cache_settling: now < state.cache_probe_settle_until,\n    request_active: requestActive,\n    departure_covered: departureBypass && Number(msg.payload?.departure_event_at ?? 0) > 0 &&\n        state.last_request_at >= Number(msg.payload.departure_event_at),\n    enabled,\n    deadline_blocked: !deadlineBypass && now < state.next_allowed_at,\n    waiting_evidence: state.awaiting_evidence === true,\n    cache_probe_needed: !deadlineBypass && state.awaiting_evidence === true &&\n        pendingRequestAt > 0 && !cacheCompleted\n};\nreturn msg;",
+        "func": "const data = msg._refresh;\nif (!data) return null;\nconst state = data.state;\nconst now = data.now;\nconst config = data.config;\nconst contextReady = msg.payload?.vehicle_primary_ready === true ||\n    data.vehicle_context.ready === true;\nconst derivedRecovery = msg.payload?.recovery_needed === true ||\n    msg.payload?.vehicle_primary_ready === false || contextReady !== true;\nconst lastSuccessAt = Number(state.last_success_at ?? 0);\nconst semanticHealthy = state.awaiting_evidence !== true &&\n    state.last_failure_class == null && Array.isArray(state.last_evidence_domains) &&\n    state.last_evidence_domains.includes(\"telemetry\") && lastSuccessAt > 0 &&\n    lastSuccessAt <= now + data.future_tolerance_ms &&\n    now - lastSuccessAt <= Number(config.home_interval_ms) + data.future_tolerance_ms;\nconst recoveryNeeded = msg.payload?.force_recovery === true ||\n    msg.payload?.require_lighting_ready === true || state.awaiting_evidence === true ||\n    (derivedRecovery && !semanticHealthy);\nconst requireLighting = msg.payload?.require_lighting_ready === true ||\n    (state.awaiting_evidence === true && state.require_lighting_ready === true);\nconst requestedReason = msg.payload?.reason ?? msg.payload?.recovery_reason ??\n    (recoveryNeeded ? \"readiness_recovery_needed\" : \"scheduled_refresh\");\nconst manualBypass = requestedReason === \"manual_force\";\nconst departureBypass = requestedReason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true;\nconst arrivalBypass = requestedReason === \"resident_arrival_confirmation\" &&\n    msg.payload?.resident_arrival_force === true;\nconst deadlineBypass = manualBypass || departureBypass || arrivalBypass;\nconst approaching = msg.payload?.refresh_anyone_approaching === true;\nconst arrivalRestartPending = msg.payload?.refresh_arrival_restart_pending === true;\nconst selectedInterval = arrivalRestartPending\n    ? Number(config.arrival_armed_interval_ms)\n    : approaching ? Number(config.approaching_interval_ms)\n    : recoveryNeeded && !deadlineBypass ? Number(config.away_interval_ms)\n    : Number(msg.payload?.refresh_interval_ms);\nif (!Number.isFinite(selectedInterval) || selectedInterval <= 0) {\n    node.error(\"Intervalo visual de refresh inválido\", msg);\n    return null;\n}\nconst allowedIntervals = [Number(config.away_interval_ms),\n    Number(config.arrival_armed_interval_ms),\n    Number(config.approaching_interval_ms), Number(config.home_interval_ms)];\nconst previousInterval = allowedIntervals.includes(Number(state.interval_ms))\n    ? Number(state.interval_ms) : Number(config.away_interval_ms);\nconst anchor = Math.max(state.last_request_at, state.service_accepted_at, state.last_success_at);\nconst floor = anchor > 0 ? anchor + selectedInterval : 0;\nstate.next_allowed_at = previousInterval !== selectedInterval\n    ? floor : Math.max(state.next_allowed_at, floor);\nconst providerRetryAt = Number(state.provider_retry_at ?? 0);\nconst providerBlocked = Number.isFinite(providerRetryAt) && providerRetryAt > now;\nif (providerBlocked) state.next_allowed_at = Math.max(state.next_allowed_at, providerRetryAt);\nstate.interval_ms = selectedInterval;\nstate.interval_policy = arrivalRestartPending ? \"arrival_armed_engine_pending\"\n    : approaching ? \"approaching\"\n    : recoveryNeeded && !deadlineBypass ? \"recovery\" : msg.payload.refresh_interval_policy;\nconst cacheActive = state.cache_probe_in_flight === true &&\n    now < state.cache_probe_in_flight_until;\nif (state.cache_probe_in_flight === true && !cacheActive) {\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.last_failure_class = \"cache_probe_lease_expired\";\n    state.next_allowed_at = Math.max(state.next_allowed_at, now + selectedInterval);\n}\nconst requestActive = state.request_in_flight === true && now < state.in_flight_until;\nif (state.request_in_flight === true && !requestActive) {\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.last_failure_class = \"in_flight_lease_expired\";\n}\nconst start = Number(config.unknown_location_start_hour);\nconst end = Number(config.unknown_location_end_hour);\nconst hour = new Date(now).getHours();\nconst unknownWindow = start < end ? hour >= start && hour < end\n    : hour >= start || hour < end;\nconst statesKnown = msg.payload?.refresh_resident_states_known === true;\nconst bothHome = msg.payload?.refresh_both_residents_home === true;\nconst awayOrApproaching = msg.payload?.refresh_anyone_away === true || approaching;\nconst enabled = recoveryNeeded || awayOrApproaching || bothHome ||\n    (!statesKnown && unknownWindow);\nconst pendingRequestAt = Number(state.last_request_at ?? 0);\nconst cacheCompleted = pendingRequestAt > 0 &&\n    state.cache_probe_completed_for_request_at === pendingRequestAt;\ndata.recovery_needed = recoveryNeeded;\ndata.require_lighting_ready = requireLighting;\ndata.requested_reason = requestedReason;\ndata.manual_bypass = manualBypass;\ndata.departure_bypass = departureBypass;\ndata.arrival_bypass = arrivalBypass;\ndata.deadline_bypass = deadlineBypass;\ndata.selected_interval_ms = selectedInterval;\ndata.semantic_healthy = semanticHealthy;\ndata.flags = {\n    cache_active: cacheActive,\n    cache_settling: now < state.cache_probe_settle_until,\n    request_active: requestActive,\n    departure_covered: departureBypass && Number(msg.payload?.departure_event_at ?? 0) > 0 &&\n        state.last_request_at >= Number(msg.payload.departure_event_at),\n    enabled,\n    deadline_blocked: providerBlocked || (!deadlineBypass && now < state.next_allowed_at),\n    waiting_evidence: state.awaiting_evidence === true,\n    cache_probe_needed: !deadlineBypass && state.awaiting_evidence === true &&\n        pendingRequestAt > 0 && !cacheCompleted\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -44603,6 +44604,7 @@
             "global_observer_transient_recovery_out",
             "global_observer_integration_alert_out",
             "local_ai_rtx_alert_out",
+            "people_visual_refresh_alert_out",
             "internet_remote_access_alert_out",
             "weekly_docs_review_alert_out",
             "operations_daily_alert_out",
@@ -49637,8 +49639,8 @@
         "z": "ea0a6aa0d24ff863",
         "g": "b35563e0f73e5b64",
         "name": "Atualizar iPhones agora?",
-        "func": "if (msg.payload?.kind !== \"refresh_command\") return null;\n\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\n/* A saída confirmada de um morador é um gatilho exclusivo do veículo.\n * O próprio evento acabou de trazer a posição do telefone; não duplique\n * essa atualização nas fontes de localização. */\nif (\n    msg.payload?.reason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true\n) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"saída recebida; wake reservado ao vehicle_primary\"\n    });\n    return null;\n}\n\nconst peopleContext = flow.get(\n    TEST_MODE ? \"people_context_v1__test\" : \"people_context_v1\"\n) ?? {};\nconst roles = [\"resident_primary\", \"resident_secondary\"];\nconst now = Date.now();\nconst baseInterval = 30 * 60 * 1000;\nconst futureTolerance = 60 * 1000;\nconst jitterTolerance = 500;\nconst stateKey = TEST_MODE\n    ? \"security_people_location_refresh_v2__test\"\n    : \"security_people_location_refresh_v2\";\nconst store = TEST_MODE ? undefined : \"persistent\";\nconst rawState = store ? flow.get(stateKey, store) : flow.get(stateKey);\nconst state = rawState?.version === 2 && rawState.residents &&\n    typeof rawState.residents === \"object\"\n    ? rawState\n    : { version: 2, residents: {} };\nconst legacyLast = TEST_MODE\n    ? 0\n    : Number(flow.get(\"security_people_last_refresh_at\", \"persistent\") ?? 0);\n\nfunction validPast(value) {\n    return Number.isFinite(value) && value >= 0 && value <= now + futureTolerance;\n}\n\nconst outputs = [null, null];\nconst requested = [];\nlet stateChanged = rawState !== state;\n\nfor (const [index, role] of roles.entries()) {\n    const resident = peopleContext[role] ?? {};\n    const observedAt = Number(resident.updated_at);\n    const previous = state.residents[role] &&\n        typeof state.residents[role] === \"object\"\n        ? state.residents[role]\n        : {};\n    const entry = { ...previous };\n    const previousAttempts = Math.min(\n        10,\n        Math.max(0, Number(entry.attempts ?? 0))\n    );\n    const backoffStep = Math.min(3, Math.max(0, previousAttempts - 1));\n    const interval = baseInterval * (2 ** backoffStep);\n    let lastRequestAt = Number(entry.last_request_at);\n    if (!validPast(lastRequestAt)) {\n        lastRequestAt = validPast(legacyLast) ? legacyLast : 0;\n        if (entry.last_request_at !== lastRequestAt) stateChanged = true;\n        entry.last_request_at = lastRequestAt;\n    }\n\n    const requestedObservedAt = Number(entry.observed_at_before_request);\n    if (\n        entry.awaiting_evidence === true &&\n        validPast(observedAt) &&\n        (!validPast(requestedObservedAt) || observedAt > requestedObservedAt)\n    ) {\n        entry.awaiting_evidence = false;\n        entry.last_success_at = observedAt;\n        entry.attempts = 0;\n        stateChanged = true;\n    }\n\n    const stale = resident.ready !== true || resident.stale === true;\n    const recoveryNeeded =\n        stale &&\n        (msg.payload?.people_ready === false || peopleContext.ready !== true);\n    const cooldownActive = now - lastRequestAt < interval - jitterTolerance;\n\n    if (recoveryNeeded && !cooldownActive) {\n        const attempt = Math.min(10, Number(entry.attempts ?? 0) + 1);\n        entry.last_request_at = now;\n        entry.observed_at_before_request = validPast(observedAt)\n            ? observedAt\n            : null;\n        entry.awaiting_evidence = true;\n        entry.attempts = attempt;\n        stateChanged = true;\n\n        const request = {\n            ...msg,\n            payload: {\n                ...msg.payload,\n                origin: msg.payload.origin ?? \"contexto_chegadas\",\n                people_refresh_recovery: true,\n                refresh_source: role,\n                refresh_attempt: attempt,\n                refresh_requested_at: now,\n                refresh_cooldown_minutes: interval / 60000,\n                refresh_routes: [\"companion\", \"icloud\"]\n            }\n        };\n        outputs[index] = request;\n        requested.push(role);\n    }\n\n    state.residents[role] = entry;\n}\n\nif (stateChanged) {\n    state.updated_at = now;\n    if (store) flow.set(stateKey, state, store);\n    else flow.set(stateKey, state);\n}\n\nif (requested.length > 0) {\n    node.status({\n        fill: TEST_MODE ? \"blue\" : \"green\",\n        shape: \"dot\",\n        text: (TEST_MODE ? \"TESTE: \" : \"\") +\n            \"refresh seletivo \" + requested.join(\" + \") + \" (máx. 2/h cada)\"\n    });\n    return outputs;\n}\n\nconst allCurrentAtHome = roles.every(\n    (role) => peopleContext[role]?.stationary_home === true &&\n        peopleContext[role]?.ready === true &&\n        peopleContext[role]?.stale !== true\n);\nnode.status({\n    fill: \"grey\",\n    shape: \"ring\",\n    text: allCurrentAtHome\n        ? \"fontes atuais e paradas em casa\"\n        : \"sem localização vencida fora do cooldown\"\n});\nreturn null;",
-        "outputs": 2,
+        "func": "const input = msg.payload ?? {};\nconst explicit = input.kind === \"arrival_location_refresh\";\nif (!explicit && input.kind !== \"refresh_command\") return null;\nif (input.reason === \"resident_departure\" && input.resident_departure_force === true) return null;\nconst test = msg._location_test === true || input.test_mode === true;\nconst policy = global.get(\"location_policy_v1\", \"persistent\") ?? {};\nconst required = [\"near_home_refresh_minutes\", \"people_refresh_minutes\", \"people_refresh_retry_seconds\",\n    \"people_refresh_attempts\", \"people_refresh_backoff_minutes\", \"people_refresh_backoff_max_minutes\",\n    \"location_fresh_minutes\", \"future_tolerance_seconds\"];\nif (required.some(k => !Number.isFinite(Number(policy[k])))) return null;\nconst people = flow.get(test ? \"people_context_v1__test\" : \"people_context_v1\") ?? {};\nconst key = \"security_people_location_refresh_v2\" + (test ? \"__test\" : \"\");\nconst get = () => test ? flow.get(key) : flow.get(key, \"persistent\");\nconst set = value => test ? flow.set(key, value) : flow.set(key, value, \"persistent\");\nconst raw = get();\nconst state = raw?.version === 2 && raw.residents ? raw : { version: 2, residents: {} };\nconst now = Date.now(), retryMs = Number(policy.people_refresh_retry_seconds) * 1000;\nconst limit = Number(policy.people_refresh_attempts);\nconst validPast = value => Number.isFinite(value) && value > 0 &&\n    value <= now + Number(policy.future_tolerance_seconds) * 1000;\nconst output = [null, null, null], alerts = [];\nfor (const [index, role] of [\"resident_primary\", \"resident_secondary\"].entries()) {\n    if (explicit && input.source !== role) continue;\n    const resident = people[role];\n    if (!resident) continue; // Missing startup snapshot is not proof of a failed phone.\n    const observed = Number(resident.updated_at);\n    const current = resident.ready === true && resident.stale !== true && validPast(observed) &&\n        now - observed <= Number(policy.location_fresh_minutes) * 60000;\n    const entry = state.residents[role] ?? {};\n    const priorObservation = Number(entry.observed_at_before_request ?? entry.last_success_at ?? 0);\n    if (current && observed > priorObservation) {\n        if (entry.failure_notified === true) alerts.push({ _location_test: test,\n            payload: { test_mode: test, observer_kind: \"node_recovery\",\n                persistent_incident_kind: \"domain_alert\", persistent_notification_operation: \"dismiss\",\n                mobile_notification: false, incident_key: \"people_location_refresh_\" + role,\n                resolution: \"fresh_location_received\" },\n            alert: { title: \"Localização recuperada\", message: role + \": posição nova confirmada.\" } });\n        entry.awaiting_evidence = false;\n        entry.attempts = 0;\n        entry.failure_notified = false;\n        entry.last_success_at = observed;\n        entry.observed_at_before_request = observed;\n    }\n    const attempts = Math.max(0, Math.min(20, Number(entry.attempts) || 0));\n    const lastRequest = validPast(Number(entry.last_request_at)) ? Number(entry.last_request_at) : 0;\n    const pending = entry.awaiting_evidence === true;\n    const failed = pending && attempts >= limit && now - lastRequest >= retryMs;\n    if (failed && entry.failure_notified !== true) {\n        entry.failure_notified = true;\n        alerts.push({ _location_test: test, payload: { test_mode: test,\n            observer_kind: \"domain_alert\", incident_key: \"people_location_refresh_\" + role,\n            reason: \"location_refresh_without_new_evidence\", severity: \"warning\", source: role,\n            attempts, location_observed_at: validPast(observed) ? observed : null },\n            alert: { title: \"Localização sem atualização\",\n                message: role + \": os pedidos ao aplicativo e ao iCloud não trouxeram uma posição nova. \" +\n                    \"Verifique a conexão e as permissões de localização do celular. Dados vencidos não autorizam a chegada.\" } });\n    }\n    const interval = attempts >= limit\n        ? Math.min(Number(policy.people_refresh_backoff_max_minutes),\n            Number(policy.people_refresh_backoff_minutes) * 2 ** Math.min(10, attempts - limit)) * 60000\n        : retryMs;\n    const ageLimit = Number(resident.state === \"near_home\"\n        ? policy.near_home_refresh_minutes : policy.people_refresh_minutes) * 60000;\n    const due = explicit || !current || now - observed >= ageLimit;\n    entry.next_allowed_at = lastRequest ? lastRequest + interval : now;\n    if (due && now >= entry.next_allowed_at - 500) {\n        entry.attempts = attempts + 1;\n        entry.awaiting_evidence = true;\n        entry.last_request_at = now;\n        entry.observed_at_before_request = validPast(observed) ? observed : null;\n        output[index] = { ...msg, _location_test: test, payload: { ...input,\n            test_mode: test, origin: input.origin ?? \"localizacao_pessoas\",\n            people_refresh_recovery: !current, refresh_source: role,\n            refresh_attempt: entry.attempts, refresh_requested_at: now,\n            refresh_cooldown_minutes: interval / 60000, refresh_routes: [\"companion\", \"icloud\"] } };\n    }\n    state.residents[role] = entry;\n}\nstate.updated_at = now;\nset(state);\noutput[2] = alerts.length ? alerts : null;\nnode.status({ fill: alerts.length ? \"yellow\" : \"grey\", shape: \"ring\",\n    text: alerts.length ? \"sem evidência nova; aviso e backoff\" : \"GPS preventivo 5/10 min; retry limitado\" });\nreturn output.some(Boolean) ? output : null;",
+        "outputs": 3,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -49654,6 +49656,9 @@
             [
                 "e0b7c0ecf1d8ee28",
                 "people_visual_secondary_icloud_out"
+            ],
+            [
+                "people_visual_refresh_alert_out"
             ]
         ]
     },
@@ -50700,7 +50705,9 @@
             "people_location_values_route_right_out_v1",
             "people_visual_lifecycle_config_left_out",
             "people_visual_lifecycle_config_middle_out",
-            "people_visual_lifecycle_config_right_out"
+            "people_visual_lifecycle_config_right_out",
+            "people_visual_refresh_config_left_out",
+            "people_visual_refresh_config_right_out"
         ],
         "x": 915,
         "y": 340,
@@ -51160,8 +51167,8 @@
         "z": "ea0a6aa0d24ff863",
         "g": "b35563e0f73e5b64",
         "name": "Direcionar somente ao iPhone da chegada",
-        "func": "if (msg.payload?.kind !== \"arrival_location_refresh\") return [null, null];\nconst source = msg.payload?.source;\nif (source === \"resident_primary\") return [msg, null];\nif (source === \"resident_secondary\") return [null, msg];\nnode.warn(\"localizacao_pessoas: refresh de chegada sem fonte válida\");\nreturn [null, null];",
-        "outputs": 2,
+        "func": "const input = msg.payload ?? {};\nconst explicit = input.kind === \"arrival_location_refresh\";\nif (!explicit && input.kind !== \"refresh_command\") return null;\nif (input.reason === \"resident_departure\" && input.resident_departure_force === true) return null;\nconst test = msg._location_test === true || input.test_mode === true;\nconst policy = global.get(\"location_policy_v1\", \"persistent\") ?? {};\nconst required = [\"near_home_refresh_minutes\", \"people_refresh_minutes\", \"people_refresh_retry_seconds\",\n    \"people_refresh_attempts\", \"people_refresh_backoff_minutes\", \"people_refresh_backoff_max_minutes\",\n    \"location_fresh_minutes\", \"future_tolerance_seconds\"];\nif (required.some(k => !Number.isFinite(Number(policy[k])))) return null;\nconst people = flow.get(test ? \"people_context_v1__test\" : \"people_context_v1\") ?? {};\nconst key = \"security_people_location_refresh_v2\" + (test ? \"__test\" : \"\");\nconst get = () => test ? flow.get(key) : flow.get(key, \"persistent\");\nconst set = value => test ? flow.set(key, value) : flow.set(key, value, \"persistent\");\nconst raw = get();\nconst state = raw?.version === 2 && raw.residents ? raw : { version: 2, residents: {} };\nconst now = Date.now(), retryMs = Number(policy.people_refresh_retry_seconds) * 1000;\nconst limit = Number(policy.people_refresh_attempts);\nconst validPast = value => Number.isFinite(value) && value > 0 &&\n    value <= now + Number(policy.future_tolerance_seconds) * 1000;\nconst output = [null, null, null], alerts = [];\nfor (const [index, role] of [\"resident_primary\", \"resident_secondary\"].entries()) {\n    if (explicit && input.source !== role) continue;\n    const resident = people[role];\n    if (!resident) continue; // Missing startup snapshot is not proof of a failed phone.\n    const observed = Number(resident.updated_at);\n    const current = resident.ready === true && resident.stale !== true && validPast(observed) &&\n        now - observed <= Number(policy.location_fresh_minutes) * 60000;\n    const entry = state.residents[role] ?? {};\n    const priorObservation = Number(entry.observed_at_before_request ?? entry.last_success_at ?? 0);\n    if (current && observed > priorObservation) {\n        if (entry.failure_notified === true) alerts.push({ _location_test: test,\n            payload: { test_mode: test, observer_kind: \"node_recovery\",\n                persistent_incident_kind: \"domain_alert\", persistent_notification_operation: \"dismiss\",\n                mobile_notification: false, incident_key: \"people_location_refresh_\" + role,\n                resolution: \"fresh_location_received\" },\n            alert: { title: \"Localização recuperada\", message: role + \": posição nova confirmada.\" } });\n        entry.awaiting_evidence = false;\n        entry.attempts = 0;\n        entry.failure_notified = false;\n        entry.last_success_at = observed;\n        entry.observed_at_before_request = observed;\n    }\n    const attempts = Math.max(0, Math.min(20, Number(entry.attempts) || 0));\n    const lastRequest = validPast(Number(entry.last_request_at)) ? Number(entry.last_request_at) : 0;\n    const pending = entry.awaiting_evidence === true;\n    const failed = pending && attempts >= limit && now - lastRequest >= retryMs;\n    if (failed && entry.failure_notified !== true) {\n        entry.failure_notified = true;\n        alerts.push({ _location_test: test, payload: { test_mode: test,\n            observer_kind: \"domain_alert\", incident_key: \"people_location_refresh_\" + role,\n            reason: \"location_refresh_without_new_evidence\", severity: \"warning\", source: role,\n            attempts, location_observed_at: validPast(observed) ? observed : null },\n            alert: { title: \"Localização sem atualização\",\n                message: role + \": os pedidos ao aplicativo e ao iCloud não trouxeram uma posição nova. \" +\n                    \"Verifique a conexão e as permissões de localização do celular. Dados vencidos não autorizam a chegada.\" } });\n    }\n    const interval = attempts >= limit\n        ? Math.min(Number(policy.people_refresh_backoff_max_minutes),\n            Number(policy.people_refresh_backoff_minutes) * 2 ** Math.min(10, attempts - limit)) * 60000\n        : retryMs;\n    const ageLimit = Number(resident.state === \"near_home\"\n        ? policy.near_home_refresh_minutes : policy.people_refresh_minutes) * 60000;\n    const due = explicit || !current || now - observed >= ageLimit;\n    entry.next_allowed_at = lastRequest ? lastRequest + interval : now;\n    if (due && now >= entry.next_allowed_at - 500) {\n        entry.attempts = attempts + 1;\n        entry.awaiting_evidence = true;\n        entry.last_request_at = now;\n        entry.observed_at_before_request = validPast(observed) ? observed : null;\n        output[index] = { ...msg, _location_test: test, payload: { ...input,\n            test_mode: test, origin: input.origin ?? \"localizacao_pessoas\",\n            people_refresh_recovery: !current, refresh_source: role,\n            refresh_attempt: entry.attempts, refresh_requested_at: now,\n            refresh_cooldown_minutes: interval / 60000, refresh_routes: [\"companion\", \"icloud\"] } };\n    }\n    state.residents[role] = entry;\n}\nstate.updated_at = now;\nset(state);\noutput[2] = alerts.length ? alerts : null;\nnode.status({ fill: alerts.length ? \"yellow\" : \"grey\", shape: \"ring\",\n    text: alerts.length ? \"sem evidência nova; aviso e backoff\" : \"GPS preventivo 5/10 min; retry limitado\" });\nreturn output.some(Boolean) ? output : null;",
+        "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -51177,6 +51184,9 @@
             [
                 "e0b7c0ecf1d8ee28",
                 "people_visual_secondary_icloud_out"
+            ],
+            [
+                "people_visual_refresh_alert_out"
             ]
         ]
     },
@@ -51346,7 +51356,7 @@
         "type": "inject",
         "z": "ea0a6aa0d24ff863",
         "g": "people_location_lifecycle_config_group_v2",
-        "name": "Refresh near_home — 10 min [3..14]",
+        "name": "Refresh near_home — 5 min [3..14]",
         "props": [
             {
                 "p": "payload"
@@ -51361,7 +51371,7 @@
         "once": true,
         "onceDelay": "1.6",
         "topic": "near_home_refresh_minutes",
-        "payload": "10",
+        "payload": "5",
         "payloadType": "num",
         "x": 2360,
         "y": 290,
@@ -51479,7 +51489,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "people_location_policy_group_v1",
         "name": "Validar valor, unidade e limites",
-        "func": "const DEFAULTS = {\n    near_home_radius_m: 700,\n    home_radius_m: 100,\n    location_fresh_minutes: 15,\n    source_report_fresh_minutes: 75,\n    recency_tie_seconds: 60,\n    max_gps_accuracy_m: 100,\n    vehicle_location_fresh_minutes: 30,\n    movement_threshold_m: 250,\n    arrival_recovery_minutes: 15,\n    local_excursion_minutes: 90,\n    near_home_refresh_minutes: 10,\n    arrival_dedupe_minutes: 10,\n    primary_home_grace_minutes: 10,\n    external_cycle_confirm_seconds: 60,\n    wake_ring_refresh_delay_seconds: 45,\n    wake_ring_refresh_repeat_seconds: 60,\n    future_tolerance_seconds: 60,\n    vehicle_signal_fresh_minutes: 5,\n    vehicle_recovery_hours: 24\n};\nconst LIMITS = {\n    near_home_radius_m: [50, 1500],\n    home_radius_m: [20, 500],\n    location_fresh_minutes: [1, 120],\n    source_report_fresh_minutes: [5, 1440],\n    recency_tie_seconds: [0, 300],\n    max_gps_accuracy_m: [5, 1000],\n    vehicle_location_fresh_minutes: [5, 180],\n    movement_threshold_m: [10, 2000],\n    arrival_recovery_minutes: [3, 30],\n    local_excursion_minutes: [15, 180],\n    near_home_refresh_minutes: [3, 14],\n    arrival_dedupe_minutes: [1, 60],\n    primary_home_grace_minutes: [1, 60],\n    external_cycle_confirm_seconds: [15, 600],\n    wake_ring_refresh_delay_seconds: [15, 180],\n    wake_ring_refresh_repeat_seconds: [30, 180],\n    future_tolerance_seconds: [0, 300],\n    vehicle_signal_fresh_minutes: [1, 30],\n    vehicle_recovery_hours: [1, 168]\n};\nconst topic = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[topic];\nif (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {\n    msg.location_policy_rejection = {\n        parameter: topic || null,\n        rejected_value: msg.payload,\n        limits: bounds ?? null,\n        preserved: true\n    };\n    return [null, msg];\n}\nconst previous = global.get(\"location_policy_v1\", \"persistent\");\nconst base = previous?.version === 1 && previous?.complete === true\n    ? previous\n    : DEFAULTS;\nmsg.location_policy_candidate = {\n    ...DEFAULTS,\n    ...base,\n    [topic]: value,\n    version: 1,\n    owner: \"node_red\",\n    complete: true,\n    updated_at: Date.now()\n};\nif (msg.location_policy_candidate.near_home_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes) {\n    msg.location_policy_rejection = {\n        parameter: topic,\n        rejected_value: msg.payload,\n        reason: \"near_home_refresh_must_precede_location_stale\",\n        preserved: true\n    };\n    return [null, msg];\n}\ndelete msg.location_policy_candidate.people_fast_refresh_radius_m;\nreturn [msg, null];",
+        "func": "const DEFAULTS = {\n    near_home_radius_m: 700,\n    home_radius_m: 100,\n    location_fresh_minutes: 15,\n    source_report_fresh_minutes: 75,\n    recency_tie_seconds: 60,\n    max_gps_accuracy_m: 100,\n    vehicle_location_fresh_minutes: 30,\n    movement_threshold_m: 250,\n    arrival_recovery_minutes: 15,\n    local_excursion_minutes: 90,\n    near_home_refresh_minutes: 5,\n    people_refresh_minutes: 10,\n    people_refresh_retry_seconds: 60,\n    people_refresh_attempts: 3,\n    people_refresh_backoff_minutes: 30,\n    people_refresh_backoff_max_minutes: 240,\n    arrival_dedupe_minutes: 10,\n    primary_home_grace_minutes: 10,\n    external_cycle_confirm_seconds: 60,\n    wake_ring_refresh_delay_seconds: 45,\n    wake_ring_refresh_repeat_seconds: 60,\n    future_tolerance_seconds: 60,\n    vehicle_signal_fresh_minutes: 5,\n    vehicle_recovery_hours: 24\n};\nconst LIMITS = {\n    near_home_radius_m: [50, 1500],\n    home_radius_m: [20, 500],\n    location_fresh_minutes: [1, 120],\n    source_report_fresh_minutes: [5, 1440],\n    recency_tie_seconds: [0, 300],\n    max_gps_accuracy_m: [5, 1000],\n    vehicle_location_fresh_minutes: [5, 180],\n    movement_threshold_m: [10, 2000],\n    arrival_recovery_minutes: [3, 30],\n    local_excursion_minutes: [15, 180],\n    near_home_refresh_minutes: [3, 14],\n    people_refresh_minutes: [3, 14],\n    people_refresh_retry_seconds: [60, 300],\n    people_refresh_attempts: [1, 5],\n    people_refresh_backoff_minutes: [15, 60],\n    people_refresh_backoff_max_minutes: [60, 240],\n    arrival_dedupe_minutes: [1, 60],\n    primary_home_grace_minutes: [1, 60],\n    external_cycle_confirm_seconds: [15, 600],\n    wake_ring_refresh_delay_seconds: [15, 180],\n    wake_ring_refresh_repeat_seconds: [30, 180],\n    future_tolerance_seconds: [0, 300],\n    vehicle_signal_fresh_minutes: [1, 30],\n    vehicle_recovery_hours: [1, 168]\n};\nconst topic = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[topic];\nif (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {\n    msg.location_policy_rejection = {\n        parameter: topic || null,\n        rejected_value: msg.payload,\n        limits: bounds ?? null,\n        preserved: true\n    };\n    return [null, msg];\n}\nconst previous = global.get(\"location_policy_v1\", \"persistent\");\nconst base = previous?.version === 1 && previous?.complete === true\n    ? previous\n    : DEFAULTS;\nmsg.location_policy_candidate = {\n    ...DEFAULTS,\n    ...base,\n    [topic]: value,\n    version: 1,\n    owner: \"node_red\",\n    complete: true,\n    updated_at: Date.now()\n};\nif (msg.location_policy_candidate.near_home_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes ||\n    msg.location_policy_candidate.people_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes ||\n    !Number.isInteger(msg.location_policy_candidate.people_refresh_attempts) ||\n    msg.location_policy_candidate.people_refresh_backoff_minutes >\n    msg.location_policy_candidate.people_refresh_backoff_max_minutes) {\n    msg.location_policy_rejection = {\n        parameter: topic,\n        rejected_value: msg.payload,\n        reason: \"near_home_refresh_must_precede_location_stale\",\n        preserved: true\n    };\n    return [null, msg];\n}\ndelete msg.location_policy_candidate.people_fast_refresh_radius_m;\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -76365,5 +76375,225 @@
                 "operations_daily_resolved"
             ]
         ]
+    },
+    {
+        "id": "people_visual_refresh_alert_out",
+        "type": "link out",
+        "name": "GPS sem resposta → aviso central",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 550,
+        "y": 980,
+        "wires": [],
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64"
+    },
+    {
+        "id": "people_visual_refresh_config_group",
+        "type": "group",
+        "z": "ea0a6aa0d24ff863",
+        "name": "0c. Renovação GPS — idade, retry e limites por morador",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#7c3aed",
+            "stroke-opacity": "1",
+            "fill": "#ede9fe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "people_visual_config_people_refresh_minutes",
+            "people_visual_config_people_refresh_retry_seconds",
+            "people_visual_config_people_refresh_attempts",
+            "people_visual_config_people_refresh_backoff_minutes",
+            "people_visual_config_people_refresh_backoff_max_minutes",
+            "people_visual_refresh_config_left_out",
+            "people_visual_refresh_config_right_out"
+        ],
+        "x": 3200,
+        "y": 79,
+        "w": 1120,
+        "h": 282
+    },
+    {
+        "id": "people_visual_config_people_refresh_minutes",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_refresh_config_group",
+        "name": "Idade geral — 10 min [3..14]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "people_refresh_minutes",
+        "payload": "10",
+        "payloadType": "num",
+        "x": 3450,
+        "y": 140,
+        "wires": [
+            [
+                "people_visual_refresh_config_left_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_config_people_refresh_retry_seconds",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_refresh_config_group",
+        "name": "Retry — 60 s [60..300]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "people_refresh_retry_seconds",
+        "payload": "60",
+        "payloadType": "num",
+        "x": 3450,
+        "y": 200,
+        "wires": [
+            [
+                "people_visual_refresh_config_left_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_config_people_refresh_attempts",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_refresh_config_group",
+        "name": "Tentativas rápidas — 3 [1..5]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "people_refresh_attempts",
+        "payload": "3",
+        "payloadType": "num",
+        "x": 3450,
+        "y": 260,
+        "wires": [
+            [
+                "people_visual_refresh_config_left_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_config_people_refresh_backoff_minutes",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_refresh_config_group",
+        "name": "Após falha — 30 min [15..60]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "people_refresh_backoff_minutes",
+        "payload": "30",
+        "payloadType": "num",
+        "x": 4000,
+        "y": 140,
+        "wires": [
+            [
+                "people_visual_refresh_config_right_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_config_people_refresh_backoff_max_minutes",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_refresh_config_group",
+        "name": "Espera máxima — 240 min [60..240]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "people_refresh_backoff_max_minutes",
+        "payload": "240",
+        "payloadType": "num",
+        "x": 4000,
+        "y": 200,
+        "wires": [
+            [
+                "people_visual_refresh_config_right_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_refresh_config_left_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_refresh_config_group",
+        "name": "Renovação GPS left → política",
+        "mode": "link",
+        "links": [
+            "people_location_values_route_in_v1"
+        ],
+        "x": 3680,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "people_visual_refresh_config_right_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_refresh_config_group",
+        "name": "Renovação GPS right → política",
+        "mode": "link",
+        "links": [
+            "people_location_values_route_in_v1"
+        ],
+        "x": 4230,
+        "y": 320,
+        "wires": []
     }
 ]

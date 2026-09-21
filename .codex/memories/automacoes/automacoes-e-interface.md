@@ -9,11 +9,13 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
 
 - Saúde da fonte e frescor da posição são sinais diferentes. O binding propaga
   `source_reported_at` através dos aliases e mantém `location_observed_at`
-  exclusivo para mudança de estado/coordenadas/precisão; startup não pode
-  fabricar heartbeat novo do Mobile App.
-- O refresh dos telefones distingue recovery seletivo por morador de sondas
-  ligadas à saída/retorno. Não restaure polling geral de 30/60 segundos com
-  base em memória antiga. As fontes atuais são
+  ligado à evidência de localização, incluindo o timestamp autêntico do iCloud;
+  republicação e startup não podem fabricar observação GPS nem heartbeat novo
+  do Mobile App. Consulte `public_bindings/location.py` para a validação.
+- O refresh dos telefones distingue renovação preventiva por morador de sondas
+  ligadas à saída/retorno, mas compartilha dedupe e limites entre os gatilhos.
+  Não restaure polling geral ilimitado de 30/60 segundos com base em memória
+  antiga. As fontes atuais são
   `nodered/tools/functions/people-refresh-decide.js` e
   `nodered/tools/functions/people-wake-ring-refresh-build.js`.
 - Um push aceito não comprova atualização. Se o Mobile App não responder mas o
@@ -189,3 +191,10 @@ Snapshots coordenados e eventos de chegada podem chegar em ordens diferentes.
 Uma atualização parcial de residente não pode descartar o evento de outro;
 confirme o contrato em `nodered/tools/test-arrival-context-flow.mjs` e
 `docs/ILUMINACAO_SEGURANCA_NODERED.md` antes de alterar o merge.
+
+<!-- memory-record {"id":"renovacao-gps-e-cadencia-do-veiculo","category":"LONG_LIVED_DECISION","kind":"PROJECT_DECISION","last_verified":"2026-09-21","evidence":[{"file":"nodered/tools/functions/people-refresh-decide.js","sha256":"e69095a7aea063e2d8eef50dbae936f27c66e31ec7a84cfda3e5d3893465c1b5"},{"file":"nodered/tools/functions/location-policy-validate.js","sha256":"6d77dfa2d14d78deafa124d1e78ecb6bc51d20fe71fed8269fdd6f2e8bbc5d73"},{"file":"nodered/tools/functions/vehicle-primary-refresh-policy.js","sha256":"3be1a5f6ced31f7f9706b78e643c87fe4aed5c1d021b40c696e04bf5919cda76"},{"file":"nodered/tools/functions/vehicle-refresh-facts.js","sha256":"f62a4df41741d431b4a8b4c81c37526240d0203412d9527389350ff696c6be36"},{"file":"nodered/tools/functions/vehicle-primary-provider-backoff-sync.js","sha256":"1893c67c2cd2e84366bae5f4189a85ec5ad6d76bb10b77008668259a064b9cdb"},{"file":"docs/ILUMINACAO_SEGURANCA_NODERED.md","sha256":"a70838aa9b7874b83d155ae95bc51660a605f8e0b69ffcfaefe2003fef59cef9"}]} -->
+## Renovação preventiva e limites externos
+
+A localização de cada morador solicita renovação aos 5 min em near_home e aos 10 min nas demais situações; a validade permanece em 15 min. Tick, sondas do anel e vigília de chegada compartilham o coordenador, com até três tentativas a 60 s, aviso de domínio deduplicado e persistente, e depois backoff de 30/60/120/240 min. Apenas posição realmente nova e atual confirma sucesso e encerra o incidente; aceite de serviço e republicação não bastam. O iOS/iCloud não garante resposta, portanto não mascarar dados vencidos. Parâmetros visíveis ficam em localizacao_pessoas, grupos 0b/0c. Para o veículo, proximidade atual ou retorno armado limitado pela janela canônica mantém 1 min com motor OFF e 5 min com motor ON; ambos os moradores atuais em home encerram essa faixa. A posição do veículo pode acelerar polling, nunca autorizar o refletor. O prazo explícito do provedor prevalece inclusive sobre comandos extraordinários/manuais e mudanças de cadência; liberação antecipada remove somente esse prazo, sem declarar a telemetria recuperada. A leitura extraordinária 90 s após home continua independente do lifecycle do refletor. Antes de afirmar que uma correção está ativa, comparar a definição em memória pela API do Node-RED e observar um ciclo nativo: arquivo ou commit não comprova deploy.
+
+<!-- /memory-record -->

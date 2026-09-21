@@ -22,6 +22,7 @@ const IDS = [
   "people_visual_primary_icloud_accepted",
   "people_visual_secondary_icloud_accepted",
   "people_visual_icloud_dry_run_terminal",
+  "people_visual_refresh_alert_out",
 ];
 
 const source = (name) =>
@@ -112,22 +113,26 @@ export function installPeopleLocationRefresh(flows) {
   });
 
   const group = required(GROUP);
-  group.name = "3. Refresh seletivo: Companion + iCloud (máx. 2/h por morador)";
+  group.name = "3. GPS preventivo: 5/10 min, retry limitado e aviso de falha";
   group.h = Math.max(Number(group.h) || 0, 313);
 
   const decider = required("402fd0cc609443b7");
   decider.func = source("people-refresh-decide.js");
-  decider.outputs = 2;
+  decider.outputs = 3;
   decider.wires = [
     ["564fdc36031eaef8", "people_visual_primary_icloud_out"],
     ["e0b7c0ecf1d8ee28", "people_visual_secondary_icloud_out"],
+    ["people_visual_refresh_alert_out"],
   ];
 
   const arrival = required("people_visual_arrival_refresh_dispatch");
-  arrival.wires = [
-    ["564fdc36031eaef8", "people_visual_primary_icloud_out"],
-    ["e0b7c0ecf1d8ee28", "people_visual_secondary_icloud_out"],
-  ];
+  arrival.func = decider.func;
+  arrival.outputs = 3;
+  arrival.wires = structuredClone(decider.wires);
+  linkOut("people_visual_refresh_alert_out", "GPS sem resposta → aviso central",
+    "global_observer_alert_to_dispatch_in", 550, 980);
+  const observer = required("global_observer_alert_to_dispatch_in");
+  observer.links = [...new Set([...(observer.links ?? []), "people_visual_refresh_alert_out"])];
 
   const vehicleSync = required("555422f47d3a742b");
   vehicleSync.name = "Reavaliar trackers após refresh do vehicle_primary";

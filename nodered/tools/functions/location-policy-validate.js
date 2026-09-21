@@ -9,7 +9,12 @@ const DEFAULTS = {
     movement_threshold_m: 250,
     arrival_recovery_minutes: 15,
     local_excursion_minutes: 90,
-    near_home_refresh_minutes: 10,
+    near_home_refresh_minutes: 5,
+    people_refresh_minutes: 10,
+    people_refresh_retry_seconds: 60,
+    people_refresh_attempts: 3,
+    people_refresh_backoff_minutes: 30,
+    people_refresh_backoff_max_minutes: 240,
     arrival_dedupe_minutes: 10,
     primary_home_grace_minutes: 10,
     external_cycle_confirm_seconds: 60,
@@ -31,6 +36,11 @@ const LIMITS = {
     arrival_recovery_minutes: [3, 30],
     local_excursion_minutes: [15, 180],
     near_home_refresh_minutes: [3, 14],
+    people_refresh_minutes: [3, 14],
+    people_refresh_retry_seconds: [60, 300],
+    people_refresh_attempts: [1, 5],
+    people_refresh_backoff_minutes: [15, 60],
+    people_refresh_backoff_max_minutes: [60, 240],
     arrival_dedupe_minutes: [1, 60],
     primary_home_grace_minutes: [1, 60],
     external_cycle_confirm_seconds: [15, 600],
@@ -66,7 +76,12 @@ msg.location_policy_candidate = {
     updated_at: Date.now()
 };
 if (msg.location_policy_candidate.near_home_refresh_minutes >=
-    msg.location_policy_candidate.location_fresh_minutes) {
+    msg.location_policy_candidate.location_fresh_minutes ||
+    msg.location_policy_candidate.people_refresh_minutes >=
+    msg.location_policy_candidate.location_fresh_minutes ||
+    !Number.isInteger(msg.location_policy_candidate.people_refresh_attempts) ||
+    msg.location_policy_candidate.people_refresh_backoff_minutes >
+    msg.location_policy_candidate.people_refresh_backoff_max_minutes) {
     msg.location_policy_rejection = {
         parameter: topic,
         rejected_value: msg.payload,
