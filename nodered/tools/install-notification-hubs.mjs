@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { nodeDimensions } from "./flow-layout-validator.mjs";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const functionsDir = path.join(here, "functions");
@@ -355,6 +356,37 @@ function persistentHubNodes() {
   add(fn("notification_hub_persistent_dry_run_assert", z, test.id, "TESTE FINAL: nenhum alerta criado/removido", "notification-hub-dry-run-terminal.js", 0, 1250, 750, []));
   add(linkOut("notification_hub_persistent_return_dry", z, test.id, "Retornar dry-run ao chamador", [], 1290, 790, "return"));
   return nodes;
+}
+
+function addNotificationHistory(flows) {
+  for (const [channel, { tab: z }] of Object.entries(NOTIFICATION_HUBS)) {
+    const prefix = `notification_hub_${channel}_history`;
+    const g = group(`${prefix}_group`, z, "Histórico privado — JSONL | retenção: 7 dias | purge: a cada 5 min", 64, 1000, 1480, 360, "#475569", "#f1f5f9");
+    const groups = new Map([[g.id, g], ...flows.filter((n) => n.z === z && n.type === "group").map((n) => [n.id, n])]);
+    flows.push(g);
+    const add = (n) => addGrouped(flows, groups, n);
+    const services = flows.filter((n) => n.z === z && n.type === "api-call-service");
+    const outputs = [];
+    for (const serviceNode of services) {
+      const id = `${serviceNode.id}_history_out`;
+      outputs.push(id);
+      add(linkOut(id, z, serviceNode.g, "Aceite → histórico", [`${prefix}_in`], serviceNode.x + 190, serviceNode.y));
+      // Branch before the acknowledgement restores/deletes the original contract.
+      serviceNode.wires[0].push(id);
+    }
+    add(comment(`${prefix}_note`, z, g.id, "Um registro por aceite; não comprova entrega/leitura", "Origem, conteúdo, canal, destinatário, correlação e operação. Inclui background commands e dismiss. Retenção fixa de 7 dias; purge no startup e a cada 300 s. Arquivos privados, fora do Git. TESTE usa o mesmo serializador sem gravar nem purgar produção.", 680, 1050));
+    add(linkIn(`${prefix}_in`, z, g.id, "Aceites individuais do serviço", outputs, 140, 1130, [[`${prefix}_record`]]));
+    add(fn(`${prefix}_record`, z, g.id, "Serializar aceite e conteúdo", "notification-hub-history-record.js", 2, 430, 1130, [[`${prefix}_file`], [`${prefix}_dry`]]));
+    add({ id: `${prefix}_file`, type: "file", z, g: g.id, name: "Anexar ao JSONL privado", filename: "filename", filenameType: "msg", appendNewline: true, createDir: true, overwriteFile: "false", encoding: "utf8", x: 780, y: 1110, wires: [[]] });
+    add(fn(`${prefix}_dry`, z, g.id, "TESTE FINAL: nenhum arquivo gravado", "notification-hub-dry-run-terminal.js", 0, 820, 1180, []));
+    const fixture = inject(`${prefix}_test`, z, g.id, "TESTE: registro sem escrita", "TESTE — conteúdo com acentuação", { source: "notification_history_manual_test", title: "TESTE", test_mode: true }, 240, 1190, [[`${prefix}_record`]]);
+    fixture.props.push({ p: "_notification_hub_channel", v: channel, vt: "str" });
+    add(fixture);
+    add({ id: `${prefix}_schedule`, type: "inject", z, g: g.id, name: "Purge: início + cada 5 min", props: [], repeat: "300", crontab: "", once: true, onceDelay: 10, x: 260, y: 1280, wires: [[`${prefix}_purge`]] });
+    add({ id: `${prefix}_purge`, type: "exec", z, g: g.id, name: "Remover registros > 7 dias", command: `node /data/tools/purge-notification-history.mjs ${channel}`, addpay: false, append: "", useSpawn: "false", timer: "30", winHide: false, oldrc: false, x: 620, y: 1280, wires: [[], [], [`${prefix}_purge_result`]] });
+    add(fn(`${prefix}_purge_result`, z, g.id, "Verificar limpeza ou sinalizar erro", "notification-hub-history-purge-result.js", 0, 1040, 1280, []));
+  }
+  return flows;
 }
 
 function migrateDirectCall(flows, migration) {
@@ -772,6 +804,7 @@ export function installNotificationHubs(inputFlows, options = {}) {
   flows = applyInfrastructureCallerLayout(flows);
   if (routeWires) flows = routeLongNotificationTabWires(flows);
   flows.push(...mobileHubNodes(), ...alexaHubNodes(), ...persistentHubNodes());
+  addNotificationHistory(flows);
 
   const observerInput = flows.find((node) => node.id === OBSERVER_INPUT);
   const observerOutputs = [
@@ -797,7 +830,28 @@ if (invokedPath === fileURLToPath(import.meta.url)) {
   const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
   const outputPath = path.resolve(process.argv[3] ?? sourcePath);
   const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
-  const migrated = installNotificationHubs(flows);
-  fs.writeFileSync(outputPath, `${JSON.stringify(migrated, null, 4)}\n`);
+  const migrated = installNotificationHubs(structuredClone(flows));
+  const hubTabs = new Set(Object.values(NOTIFICATION_HUBS).map(({ tab }) => tab));
+  const historyNode = (node) => hubTabs.has(node.z) && /_history(?:_|$)/.test(node.id);
+  // Existing canvases may contain approved editor routes. Only reconcile this
+  // additive journal; installing hubs from scratch still uses the full generator.
+  const reconciled = reconcileGeneratedFlows(flows, migrated, { isOwned: historyNode, shouldUpdate: historyNode, preserveLayout: false });
+  const byId = new Map(reconciled.map((node) => [node.id, node]));
+  // The current approved mobile route is a few pixels beyond the 500 px gate.
+  // Keep its direction and lane while bringing the terminal next to its source.
+  const profile = byId.get("notification_hub_mobile_profile");
+  const rejectRoute = byId.get("notification_hub_mobile_reject_late_out");
+  if (profile && rejectRoute && Math.hypot(rejectRoute.x - profile.x, rejectRoute.y - profile.y) > 500) {
+    rejectRoute.x = profile.x + 475;
+  }
+  for (const node of reconciled.filter((n) => n.id.endsWith("_history_out"))) {
+    const serviceNode = byId.get(node.id.replace(/_history_out$/, ""));
+    if (!serviceNode.wires[0].includes(node.id)) serviceNode.wires[0].push(node.id);
+    const owner = byId.get(node.g);
+    if (!owner.nodes.includes(node.id)) owner.nodes.push(node.id);
+    node.x = serviceNode.x + 210;
+    node.y = serviceNode.y + (serviceNode.z === NOTIFICATION_HUBS.alexa.tab ? 50 : 0);
+  }
+  fs.writeFileSync(outputPath, `${JSON.stringify(reconciled, null, 4)}\n`);
   console.log(`Notification hubs installed in ${outputPath}`);
 }

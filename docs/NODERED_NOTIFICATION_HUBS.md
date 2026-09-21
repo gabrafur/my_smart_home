@@ -209,6 +209,52 @@ identifica a chamada ao hub.
 | `monitoramento_tuya` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | quatro entregas independentes e um dismiss opcional; estado por dispositivo e IDs iguais |
 | `observabilidade_global` | incidente confirmado | somente móvel primário + HA persistente queued | hubs móvel/HA; smoke test, ack, fila e supressão de recursão preservados |
 
+## Histórico privado de notificações — 7 dias
+
+Cada saída bem-sucedida de serviço nos três hubs também grava uma linha JSONL
+em `nodered/notification-history/<canal>/<AAAA-MM-DDTHH>.jsonl` (hora UTC).
+O diretório é privado, persistente no volume `/data` e ignorado pelo Git.
+Não depende do Recorder nem altera a retenção do Home Assistant.
+
+Cada registro contém `accepted_at`, `source` (fluxo de origem), `channel`,
+destinatário/target lógico, operação, perfil, título, mensagem, `data`,
+`notification_id`, correlação `_msgid` e indicação de teste real de entrega.
+Esse formato permite filtrar e reproduzir incidentes sem recuperar o contexto
+inteiro da automação. O conteúdo pode conter dados residenciais: exportações
+devem permanecer privadas e ser sanitizadas antes de compartilhar.
+
+`status: accepted` significa que a chamada retornou sem erro, não que o celular
+exibiu a mensagem, a Alexa falou ou alguém leu. Em um par de celulares há uma
+linha por aceite individual, inclusive se a outra chamada falhar. Rejeições,
+erros e chamadas ainda na fila não viram envios aceitos. Comandos de background
+e remoções de notificações persistentes são registrados com seu perfil/operação;
+podem ser excluídos na análise. Não existe reconstrução retroativa de envios.
+
+O grupo de histórico em cada hub dispara a limpeza no início do fluxo e a cada
+5 minutos. A retenção é **7 × 24 horas**: buckets antigos são removidos e o
+bucket de fronteira é filtrado pelo timestamp de cada linha, preservando o
+instante exato do corte. Um registro vencido pode permanecer até o próximo ciclo
+(até 5 minutos enquanto o Node-RED está funcionando); após parada, a limpeza
+retoma no startup. O purge não toca o arquivo da hora atual. JSON inválido no
+bucket de fronteira preserva o arquivo e sinaliza falha ao observador global.
+Falhas de escrita também seguem o catch global do tab, com deduplicação existente.
+O aceite ao chamador não aguarda o arquivo, evitando reenviar uma notificação
+já aceita por causa de falha de armazenamento. Há uma pequena janela de perda
+entre o aceite externo e a escrita local em caso de encerramento abrupto.
+
+Teste manual: em cada hub, acione `TESTE: registro sem escrita`. Ele passa pelo
+mesmo serializador e termina em `simulated: true`, `dispatched: false`, sem
+escrever no histórico, enviar notificações ou limpar dados reais. Os testes
+automatizados de retenção usam exclusivamente diretórios temporários sintéticos:
+
+```bash
+node nodered/tools/test-notification-history.mjs
+```
+
+Para consultar localmente, use um leitor JSONL nos arquivos do canal desejado e
+filtre por `source`, `correlation_id` ou `accepted_at`. O histórico não é publicado
+em endpoint HTTP nem no Registro de atividades do Home Assistant.
+
 ## Testes e manutenção
 
 Os três tabs têm controles manuais `test_mode` que atravessam o mesmo

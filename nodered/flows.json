@@ -5039,10 +5039,10 @@
             "global_observer_coverage__resident_notifications_tab__annotate",
             "global_observer_coverage__resident_notifications_tab__out"
         ],
-        "x": 11704,
-        "y": 59,
-        "w": 722,
-        "h": 142
+        "x": 11720,
+        "y": 40,
+        "w": 720,
+        "h": 162
     },
     {
         "id": "global_observer_coverage__62bb822e033d1623__group",
@@ -6079,7 +6079,13 @@
             "notification_hub_mobile_reject",
             "notification_hub_mobile_return_reject",
             "15279e089609c2f8",
-            "cfbffeac3f6728b4"
+            "cfbffeac3f6728b4",
+            "notification_hub_mobile_primary_simple_history_out",
+            "notification_hub_mobile_secondary_simple_history_out",
+            "notification_hub_mobile_primary_actionable_history_out",
+            "notification_hub_mobile_secondary_actionable_history_out",
+            "notification_hub_mobile_primary_background_history_out",
+            "notification_hub_mobile_secondary_background_history_out"
         ],
         "x": 79,
         "y": -11,
@@ -6146,9 +6152,10 @@
             "notification_hub_alexa_dashboard_event",
             "notification_hub_alexa_dashboard_test_in",
             "notification_hub_alexa_dashboard_request",
-            "notification_hub_alexa_dashboard_call"
+            "notification_hub_alexa_dashboard_call",
+            "notification_hub_alexa_service_history_out"
         ],
-        "x": 54,
+        "x": 64,
         "y": 39,
         "w": 2152,
         "h": 422
@@ -6176,7 +6183,7 @@
             "notification_hub_alexa_dashboard_test_empty",
             "notification_hub_alexa_dashboard_test_out"
         ],
-        "x": 64,
+        "x": 74,
         "y": 549,
         "w": 1312,
         "h": 342
@@ -6216,11 +6223,15 @@
             "notification_hub_persistent_reject_in",
             "notification_hub_persistent_reject",
             "notification_hub_persistent_return_reject",
-            "notification_hub_persistent_dry_out"
+            "notification_hub_persistent_dry_out",
+            "notification_hub_persistent_create_queued_history_out",
+            "notification_hub_persistent_create_immediate_history_out",
+            "notification_hub_persistent_dismiss_queued_history_out",
+            "notification_hub_persistent_dismiss_immediate_history_out"
         ],
         "x": 89,
         "y": 39,
-        "w": 2247,
+        "w": 2162,
         "h": 452
     },
     {
@@ -6246,7 +6257,7 @@
         ],
         "x": 64,
         "y": 609,
-        "w": 1522,
+        "w": 1402,
         "h": 282
     },
     {
@@ -6284,8 +6295,8 @@
             "global_observer_coverage__notification_hub_mobile_tab__annotate",
             "global_observer_coverage__notification_hub_mobile_tab__out"
         ],
-        "x": 1504,
-        "y": 579,
+        "x": 1528,
+        "y": 731,
         "w": 722,
         "h": 142
     },
@@ -6304,8 +6315,8 @@
             "global_observer_coverage__notification_hub_alexa_tab__annotate",
             "global_observer_coverage__notification_hub_alexa_tab__out"
         ],
-        "x": 1424,
-        "y": 559,
+        "x": 2228,
+        "y": 71,
         "w": 722,
         "h": 142
     },
@@ -6324,8 +6335,8 @@
             "global_observer_coverage__notification_hub_persistent_tab__annotate",
             "global_observer_coverage__notification_hub_persistent_tab__out"
         ],
-        "x": 1624,
-        "y": 619,
+        "x": 2374,
+        "y": 59,
         "w": 722,
         "h": 142
     },
@@ -71485,7 +71496,8 @@
         "y": 40,
         "wires": [
             [
-                "notification_hub_mobile_after_service"
+                "notification_hub_mobile_after_service",
+                "notification_hub_mobile_primary_simple_history_out"
             ]
         ]
     },
@@ -71517,7 +71529,8 @@
         "y": 90,
         "wires": [
             [
-                "notification_hub_mobile_after_service"
+                "notification_hub_mobile_after_service",
+                "notification_hub_mobile_secondary_simple_history_out"
             ]
         ]
     },
@@ -71549,7 +71562,8 @@
         "y": 160,
         "wires": [
             [
-                "notification_hub_mobile_after_service"
+                "notification_hub_mobile_after_service",
+                "notification_hub_mobile_primary_actionable_history_out"
             ]
         ]
     },
@@ -71581,7 +71595,8 @@
         "y": 210,
         "wires": [
             [
-                "notification_hub_mobile_after_service"
+                "notification_hub_mobile_after_service",
+                "notification_hub_mobile_secondary_actionable_history_out"
             ]
         ]
     },
@@ -71613,7 +71628,8 @@
         "y": 280,
         "wires": [
             [
-                "notification_hub_mobile_after_service"
+                "notification_hub_mobile_after_service",
+                "notification_hub_mobile_primary_background_history_out"
             ]
         ]
     },
@@ -71645,7 +71661,8 @@
         "y": 330,
         "wires": [
             [
-                "notification_hub_mobile_after_service"
+                "notification_hub_mobile_after_service",
+                "notification_hub_mobile_secondary_background_history_out"
             ]
         ]
     },
@@ -71885,7 +71902,7 @@
         "links": [
             "notification_hub_mobile_reject_in"
         ],
-        "x": 2425,
+        "x": 2395,
         "y": 120,
         "wires": []
     },
@@ -72168,8 +72185,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1660,
-        "y": 620,
+        "x": 1684,
+        "y": 772,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_mobile_tab__annotate"
@@ -72183,8 +72200,8 @@
         "g": "global_observer_coverage__notification_hub_mobile_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1670,
-        "y": 680,
+        "x": 1694,
+        "y": 832,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_mobile_tab__annotate"
@@ -72204,8 +72221,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1940,
-        "y": 650,
+        "x": 1964,
+        "y": 802,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_mobile_tab__out"
@@ -72222,8 +72239,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2185,
-        "y": 650,
+        "x": 2209,
+        "y": 802,
         "wires": []
     },
     {
@@ -72264,7 +72281,7 @@
         "g": "notification_hub_alexa_main_group",
         "name": "payload=mensagem | target obrigatório | nunca todas as Alexas",
         "info": "O target voice_assistant_primary mantém exatamente public_bindings mobile_primary/notify. Dados adicionais são repassados sem escolher outro dispositivo.",
-        "x": 690,
+        "x": 700,
         "y": 80,
         "wires": []
     },
@@ -72275,7 +72292,7 @@
         "g": "notification_hub_alexa_main_group",
         "name": "Entrada canônica Alexa",
         "links": [],
-        "x": 120,
+        "x": 130,
         "y": 150,
         "wires": [
             [
@@ -72292,7 +72309,7 @@
         "links": [
             "notification_hub_alexa_test_out"
         ],
-        "x": 120,
+        "x": 130,
         "y": 210,
         "wires": [
             [
@@ -72320,7 +72337,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 340,
+        "x": 350,
         "y": 180,
         "wires": [
             [
@@ -72341,7 +72358,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
+        "x": 600,
         "y": 180,
         "wires": [
             [
@@ -72371,7 +72388,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 850,
+        "x": 860,
         "y": 300,
         "wires": [
             [
@@ -72401,7 +72418,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 850,
+        "x": 860,
         "y": 160,
         "wires": [
             [
@@ -72433,7 +72450,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 1110,
+        "x": 1120,
         "y": 150,
         "wires": [
             [
@@ -72464,7 +72481,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1360,
+        "x": 1370,
         "y": 130,
         "wires": [
             [
@@ -72496,11 +72513,12 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1650,
+        "x": 1660,
         "y": 130,
         "wires": [
             [
-                "notification_hub_alexa_success"
+                "notification_hub_alexa_success",
+                "notification_hub_alexa_service_history_out"
             ]
         ]
     },
@@ -72517,7 +72535,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1970,
+        "x": 1980,
         "y": 120,
         "wires": [
             [
@@ -72533,7 +72551,7 @@
         "name": "Retornar aceite ao chamador",
         "mode": "return",
         "links": [],
-        "x": 2165,
+        "x": 2175,
         "y": 120,
         "wires": []
     },
@@ -72547,7 +72565,7 @@
             "notification_hub_alexa_service"
         ],
         "uncaught": false,
-        "x": 1120,
+        "x": 1130,
         "y": 360,
         "wires": [
             [
@@ -72568,7 +72586,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1390,
+        "x": 1400,
         "y": 360,
         "wires": [
             [
@@ -72587,7 +72605,7 @@
         "name": "Retornar falha ao chamador",
         "mode": "return",
         "links": [],
-        "x": 1660,
+        "x": 1670,
         "y": 330,
         "wires": []
     },
@@ -72601,7 +72619,7 @@
         "links": [
             "global_observer_alert_to_dispatch_in"
         ],
-        "x": 1660,
+        "x": 1670,
         "y": 390,
         "wires": []
     },
@@ -72618,7 +72636,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1120,
+        "x": 1130,
         "y": 270,
         "wires": [
             [
@@ -72634,7 +72652,7 @@
         "name": "Retornar rejeição ao chamador",
         "mode": "return",
         "links": [],
-        "x": 1380,
+        "x": 1390,
         "y": 270,
         "wires": []
     },
@@ -72648,7 +72666,7 @@
         "links": [
             "notification_hub_alexa_dry_in"
         ],
-        "x": 1090,
+        "x": 1100,
         "y": 230,
         "wires": []
     },
@@ -72672,7 +72690,7 @@
                 "valueType": "eventData"
             }
         ],
-        "x": 220,
+        "x": 230,
         "y": 360,
         "wires": [
             [
@@ -72689,7 +72707,7 @@
         "links": [
             "notification_hub_alexa_dashboard_test_out"
         ],
-        "x": 180,
+        "x": 190,
         "y": 420,
         "wires": [
             [
@@ -72710,7 +72728,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 540,
+        "x": 550,
         "y": 400,
         "wires": [
             [
@@ -72729,7 +72747,7 @@
         ],
         "linkType": "static",
         "timeout": "30",
-        "x": 820,
+        "x": 830,
         "y": 400,
         "wires": [
             []
@@ -72742,7 +72760,7 @@
         "g": "notification_hub_alexa_test_group",
         "name": "Teste válido e target inválido",
         "info": "Ambos atravessam o validador real com test_mode. Nenhuma Alexa é acionada.",
-        "x": 430,
+        "x": 440,
         "y": 590,
         "wires": []
     },
@@ -72769,7 +72787,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 220,
+        "x": 230,
         "y": 660,
         "wires": [
             [
@@ -72800,7 +72818,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 220,
+        "x": 230,
         "y": 720,
         "wires": [
             [
@@ -72818,7 +72836,7 @@
         "links": [
             "notification_hub_alexa_test_in"
         ],
-        "x": 450,
+        "x": 460,
         "y": 690,
         "wires": []
     },
@@ -72831,7 +72849,7 @@
         "links": [
             "notification_hub_alexa_dry_out"
         ],
-        "x": 690,
+        "x": 700,
         "y": 690,
         "wires": [
             [
@@ -72852,7 +72870,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 940,
+        "x": 950,
         "y": 690,
         "wires": [
             [
@@ -72876,7 +72894,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1190,
+        "x": 1200,
         "y": 650,
         "wires": []
     },
@@ -72888,7 +72906,7 @@
         "name": "Retornar dry-run ao chamador",
         "mode": "return",
         "links": [],
-        "x": 1200,
+        "x": 1210,
         "y": 690,
         "wires": []
     },
@@ -72915,7 +72933,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 230,
+        "x": 240,
         "y": 790,
         "wires": [
             [
@@ -72946,7 +72964,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 230,
+        "x": 240,
         "y": 850,
         "wires": [
             [
@@ -72964,7 +72982,7 @@
         "links": [
             "notification_hub_alexa_dashboard_test_in"
         ],
-        "x": 520,
+        "x": 530,
         "y": 820,
         "wires": []
     },
@@ -72976,8 +72994,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1580,
-        "y": 600,
+        "x": 2384,
+        "y": 112,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_alexa_tab__annotate"
@@ -72991,8 +73009,8 @@
         "g": "global_observer_coverage__notification_hub_alexa_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1590,
-        "y": 660,
+        "x": 2394,
+        "y": 172,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_alexa_tab__annotate"
@@ -73012,8 +73030,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1860,
-        "y": 630,
+        "x": 2664,
+        "y": 142,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_alexa_tab__out"
@@ -73030,8 +73048,8 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2105,
-        "y": 630,
+        "x": 2909,
+        "y": 142,
         "wires": []
     },
     {
@@ -73337,7 +73355,8 @@
         "y": 90,
         "wires": [
             [
-                "notification_hub_persistent_success"
+                "notification_hub_persistent_success",
+                "notification_hub_persistent_create_queued_history_out"
             ]
         ]
     },
@@ -73369,7 +73388,8 @@
         "y": 140,
         "wires": [
             [
-                "notification_hub_persistent_success"
+                "notification_hub_persistent_success",
+                "notification_hub_persistent_create_immediate_history_out"
             ]
         ]
     },
@@ -73401,7 +73421,8 @@
         "y": 230,
         "wires": [
             [
-                "notification_hub_persistent_success"
+                "notification_hub_persistent_success",
+                "notification_hub_persistent_dismiss_queued_history_out"
             ]
         ]
     },
@@ -73433,7 +73454,8 @@
         "y": 280,
         "wires": [
             [
-                "notification_hub_persistent_success"
+                "notification_hub_persistent_success",
+                "notification_hub_persistent_dismiss_immediate_history_out"
             ]
         ]
     },
@@ -73450,8 +73472,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2070,
-        "y": 160,
+        "x": 2000,
+        "y": 180,
         "wires": [
             [
                 "notification_hub_persistent_return_success"
@@ -73466,8 +73488,8 @@
         "name": "Retornar aceite ao chamador",
         "mode": "return",
         "links": [],
-        "x": 2295,
-        "y": 160,
+        "x": 2210,
+        "y": 180,
         "wires": []
     },
     {
@@ -73791,8 +73813,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1380,
-        "y": 740,
+        "x": 1260,
+        "y": 750,
         "wires": []
     },
     {
@@ -73815,8 +73837,8 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1780,
-        "y": 660,
+        "x": 2530,
+        "y": 100,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_persistent_tab__annotate"
@@ -73830,8 +73852,8 @@
         "g": "global_observer_coverage__notification_hub_persistent_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1790,
-        "y": 720,
+        "x": 2540,
+        "y": 160,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_persistent_tab__annotate"
@@ -73851,8 +73873,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2060,
-        "y": 690,
+        "x": 2810,
+        "y": 130,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_persistent_tab__out"
@@ -73869,8 +73891,794 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2305,
-        "y": 690,
+        "x": 3055,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_history_group",
+        "type": "group",
+        "z": "notification_hub_mobile_tab",
+        "name": "Histórico privado — JSONL | retenção: 7 dias | purge: a cada 5 min",
+        "style": {
+            "label": true,
+            "color": "#475569",
+            "fill": "#f1f5f9"
+        },
+        "nodes": [
+            "notification_hub_mobile_history_note",
+            "notification_hub_mobile_history_in",
+            "notification_hub_mobile_history_record",
+            "notification_hub_mobile_history_file",
+            "notification_hub_mobile_history_dry",
+            "notification_hub_mobile_history_test",
+            "notification_hub_mobile_history_schedule",
+            "notification_hub_mobile_history_purge",
+            "notification_hub_mobile_history_purge_result"
+        ],
+        "x": 64,
+        "y": 1000,
+        "w": 1480,
+        "h": 360
+    },
+    {
+        "id": "notification_hub_mobile_primary_simple_history_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_history_in"
+        ],
+        "x": 2880,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_secondary_simple_history_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_history_in"
+        ],
+        "x": 2880,
+        "y": 90,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_primary_actionable_history_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_history_in"
+        ],
+        "x": 2880,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_secondary_actionable_history_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_history_in"
+        ],
+        "x": 2880,
+        "y": 210,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_primary_background_history_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_history_in"
+        ],
+        "x": 2880,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_secondary_background_history_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_history_in"
+        ],
+        "x": 2880,
+        "y": 330,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_history_note",
+        "type": "comment",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "Um registro por aceite; não comprova entrega/leitura",
+        "info": "Origem, conteúdo, canal, destinatário, correlação e operação. Inclui background commands e dismiss. Retenção fixa de 7 dias; purge no startup e a cada 300 s. Arquivos privados, fora do Git. TESTE usa o mesmo serializador sem gravar nem purgar produção.",
+        "x": 680,
+        "y": 1050,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_history_in",
+        "type": "link in",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "Aceites individuais do serviço",
+        "links": [
+            "notification_hub_mobile_primary_simple_history_out",
+            "notification_hub_mobile_secondary_simple_history_out",
+            "notification_hub_mobile_primary_actionable_history_out",
+            "notification_hub_mobile_secondary_actionable_history_out",
+            "notification_hub_mobile_primary_background_history_out",
+            "notification_hub_mobile_secondary_background_history_out"
+        ],
+        "x": 140,
+        "y": 1130,
+        "wires": [
+            [
+                "notification_hub_mobile_history_record"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_history_record",
+        "type": "function",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "Serializar aceite e conteúdo",
+        "func": "// Protocol adapter: called only on the successful output of each service call.\n// A mobile pair produces one record per accepted leg, even on partial failure.\nconst notification = msg.notification ?? {};\nconst channel = msg._notification_hub_channel;\nif (![\"mobile\", \"alexa\", \"persistent\"].includes(channel)) {\n    node.error(\"NOTIFICATION_HISTORY_INVALID_CHANNEL\");\n    return null;\n}\nconst simulated = notification.test_mode === true && notification.delivery_under_test !== true;\nconst acceptedAt = new Date().toISOString();\nconst record = {\n    version: 1,\n    accepted_at: acceptedAt,\n    status: simulated ? \"simulated\" : \"accepted\",\n    channel,\n    source: notification.source,\n    recipient: msg._notification_hub_recipient ?? null,\n    target: msg._notification_hub_target ?? null,\n    operation: notification.operation ?? \"notify\",\n    profile: notification.profile ?? null,\n    notification_id: notification.notification_id ?? null,\n    title: notification.title ?? null,\n    message: channel === \"alexa\" && Object.hasOwn(notification.data ?? {}, \"message\")\n        ? notification.data.message : msg.payload,\n    data: notification.data ?? null,\n    correlation_id: msg._msgid ?? null,\n    delivery_under_test: notification.delivery_under_test === true\n};\n// Do not carry the caller context, credentials or unrelated residential state.\nconst entry = { payload: JSON.stringify(record) };\nif (simulated) {\n    entry.notification_delivery = { simulated: true, dispatched: false, channel };\n    return [null, entry];\n}\nentry.filename = `/data/notification-history/${channel}/${acceptedAt.slice(0, 13)}.jsonl`;\nreturn [entry, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 1130,
+        "wires": [
+            [
+                "notification_hub_mobile_history_file"
+            ],
+            [
+                "notification_hub_mobile_history_dry"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_history_file",
+        "type": "file",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "Anexar ao JSONL privado",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "utf8",
+        "x": 780,
+        "y": 1110,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_history_dry",
+        "type": "function",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "TESTE FINAL: nenhum arquivo gravado",
+        "func": "const DRY_RUN_CONTRACT = { simulated: true, dispatched: false };\nconst result = msg.notification_delivery ?? {};\nif (result.simulated !== DRY_RUN_CONTRACT.simulated || result.dispatched !== DRY_RUN_CONTRACT.dispatched) {\n    node.error(\"notification_hub: terminal recebeu efeito não simulado\", msg);\n    return null;\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: `dry-run ${String(result.channel ?? \"unknown\")}` });\nnode.log(`NOTIFICATION_HUB_DRY_RUN channel=${String(result.channel ?? \"unknown\")} status=${String(result.status ?? \"unknown\")}`);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 1180,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_history_test",
+        "type": "inject",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "TESTE: registro sem escrita",
+        "props": [
+            {
+                "p": "payload",
+                "v": "TESTE — conteúdo com acentuação",
+                "vt": "str"
+            },
+            {
+                "p": "notification",
+                "v": "{\"source\":\"notification_history_manual_test\",\"title\":\"TESTE\",\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_notification_hub_channel",
+                "v": "mobile",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 240,
+        "y": 1190,
+        "wires": [
+            [
+                "notification_hub_mobile_history_record"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_history_schedule",
+        "type": "inject",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "Purge: início + cada 5 min",
+        "props": [],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 10,
+        "x": 260,
+        "y": 1280,
+        "wires": [
+            [
+                "notification_hub_mobile_history_purge"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_history_purge",
+        "type": "exec",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "Remover registros > 7 dias",
+        "command": "node /data/tools/purge-notification-history.mjs mobile",
+        "addpay": false,
+        "append": "",
+        "useSpawn": "false",
+        "timer": "30",
+        "winHide": false,
+        "oldrc": false,
+        "x": 620,
+        "y": 1280,
+        "wires": [
+            [],
+            [],
+            [
+                "notification_hub_mobile_history_purge_result"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_history_purge_result",
+        "type": "function",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_history_group",
+        "name": "Verificar limpeza ou sinalizar erro",
+        "func": "if (msg.payload?.code !== 0) {\n    // Never include stderr, filenames or notification contents in the observer.\n    node.error(\"NOTIFICATION_HISTORY_PURGE_FAILED\");\n    return null;\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"Retenção de 7 dias aplicada\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 1280,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_alexa_history_group",
+        "type": "group",
+        "z": "notification_hub_alexa_tab",
+        "name": "Histórico privado — JSONL | retenção: 7 dias | purge: a cada 5 min",
+        "style": {
+            "label": true,
+            "color": "#475569",
+            "fill": "#f1f5f9"
+        },
+        "nodes": [
+            "notification_hub_alexa_history_note",
+            "notification_hub_alexa_history_in",
+            "notification_hub_alexa_history_record",
+            "notification_hub_alexa_history_file",
+            "notification_hub_alexa_history_dry",
+            "notification_hub_alexa_history_test",
+            "notification_hub_alexa_history_schedule",
+            "notification_hub_alexa_history_purge",
+            "notification_hub_alexa_history_purge_result"
+        ],
+        "x": 64,
+        "y": 1000,
+        "w": 1480,
+        "h": 360
+    },
+    {
+        "id": "notification_hub_alexa_service_history_out",
+        "type": "link out",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_alexa_history_in"
+        ],
+        "x": 1870,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_alexa_history_note",
+        "type": "comment",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "Um registro por aceite; não comprova entrega/leitura",
+        "info": "Origem, conteúdo, canal, destinatário, correlação e operação. Inclui background commands e dismiss. Retenção fixa de 7 dias; purge no startup e a cada 300 s. Arquivos privados, fora do Git. TESTE usa o mesmo serializador sem gravar nem purgar produção.",
+        "x": 680,
+        "y": 1050,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_alexa_history_in",
+        "type": "link in",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "Aceites individuais do serviço",
+        "links": [
+            "notification_hub_alexa_service_history_out"
+        ],
+        "x": 140,
+        "y": 1130,
+        "wires": [
+            [
+                "notification_hub_alexa_history_record"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_history_record",
+        "type": "function",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "Serializar aceite e conteúdo",
+        "func": "// Protocol adapter: called only on the successful output of each service call.\n// A mobile pair produces one record per accepted leg, even on partial failure.\nconst notification = msg.notification ?? {};\nconst channel = msg._notification_hub_channel;\nif (![\"mobile\", \"alexa\", \"persistent\"].includes(channel)) {\n    node.error(\"NOTIFICATION_HISTORY_INVALID_CHANNEL\");\n    return null;\n}\nconst simulated = notification.test_mode === true && notification.delivery_under_test !== true;\nconst acceptedAt = new Date().toISOString();\nconst record = {\n    version: 1,\n    accepted_at: acceptedAt,\n    status: simulated ? \"simulated\" : \"accepted\",\n    channel,\n    source: notification.source,\n    recipient: msg._notification_hub_recipient ?? null,\n    target: msg._notification_hub_target ?? null,\n    operation: notification.operation ?? \"notify\",\n    profile: notification.profile ?? null,\n    notification_id: notification.notification_id ?? null,\n    title: notification.title ?? null,\n    message: channel === \"alexa\" && Object.hasOwn(notification.data ?? {}, \"message\")\n        ? notification.data.message : msg.payload,\n    data: notification.data ?? null,\n    correlation_id: msg._msgid ?? null,\n    delivery_under_test: notification.delivery_under_test === true\n};\n// Do not carry the caller context, credentials or unrelated residential state.\nconst entry = { payload: JSON.stringify(record) };\nif (simulated) {\n    entry.notification_delivery = { simulated: true, dispatched: false, channel };\n    return [null, entry];\n}\nentry.filename = `/data/notification-history/${channel}/${acceptedAt.slice(0, 13)}.jsonl`;\nreturn [entry, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 1130,
+        "wires": [
+            [
+                "notification_hub_alexa_history_file"
+            ],
+            [
+                "notification_hub_alexa_history_dry"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_history_file",
+        "type": "file",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "Anexar ao JSONL privado",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "utf8",
+        "x": 780,
+        "y": 1110,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_history_dry",
+        "type": "function",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "TESTE FINAL: nenhum arquivo gravado",
+        "func": "const DRY_RUN_CONTRACT = { simulated: true, dispatched: false };\nconst result = msg.notification_delivery ?? {};\nif (result.simulated !== DRY_RUN_CONTRACT.simulated || result.dispatched !== DRY_RUN_CONTRACT.dispatched) {\n    node.error(\"notification_hub: terminal recebeu efeito não simulado\", msg);\n    return null;\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: `dry-run ${String(result.channel ?? \"unknown\")}` });\nnode.log(`NOTIFICATION_HUB_DRY_RUN channel=${String(result.channel ?? \"unknown\")} status=${String(result.status ?? \"unknown\")}`);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 1180,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_alexa_history_test",
+        "type": "inject",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "TESTE: registro sem escrita",
+        "props": [
+            {
+                "p": "payload",
+                "v": "TESTE — conteúdo com acentuação",
+                "vt": "str"
+            },
+            {
+                "p": "notification",
+                "v": "{\"source\":\"notification_history_manual_test\",\"title\":\"TESTE\",\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_notification_hub_channel",
+                "v": "alexa",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 240,
+        "y": 1190,
+        "wires": [
+            [
+                "notification_hub_alexa_history_record"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_history_schedule",
+        "type": "inject",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "Purge: início + cada 5 min",
+        "props": [],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 10,
+        "x": 260,
+        "y": 1280,
+        "wires": [
+            [
+                "notification_hub_alexa_history_purge"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_history_purge",
+        "type": "exec",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "Remover registros > 7 dias",
+        "command": "node /data/tools/purge-notification-history.mjs alexa",
+        "addpay": false,
+        "append": "",
+        "useSpawn": "false",
+        "timer": "30",
+        "winHide": false,
+        "oldrc": false,
+        "x": 620,
+        "y": 1280,
+        "wires": [
+            [],
+            [],
+            [
+                "notification_hub_alexa_history_purge_result"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_history_purge_result",
+        "type": "function",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_history_group",
+        "name": "Verificar limpeza ou sinalizar erro",
+        "func": "if (msg.payload?.code !== 0) {\n    // Never include stderr, filenames or notification contents in the observer.\n    node.error(\"NOTIFICATION_HISTORY_PURGE_FAILED\");\n    return null;\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"Retenção de 7 dias aplicada\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 1280,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_persistent_history_group",
+        "type": "group",
+        "z": "notification_hub_persistent_tab",
+        "name": "Histórico privado — JSONL | retenção: 7 dias | purge: a cada 5 min",
+        "style": {
+            "label": true,
+            "color": "#475569",
+            "fill": "#f1f5f9"
+        },
+        "nodes": [
+            "notification_hub_persistent_history_note",
+            "notification_hub_persistent_history_in",
+            "notification_hub_persistent_history_record",
+            "notification_hub_persistent_history_file",
+            "notification_hub_persistent_history_dry",
+            "notification_hub_persistent_history_test",
+            "notification_hub_persistent_history_schedule",
+            "notification_hub_persistent_history_purge",
+            "notification_hub_persistent_history_purge_result"
+        ],
+        "x": 64,
+        "y": 1000,
+        "w": 1480,
+        "h": 360
+    },
+    {
+        "id": "notification_hub_persistent_create_queued_history_out",
+        "type": "link out",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_persistent_history_in"
+        ],
+        "x": 1930,
+        "y": 90,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_persistent_create_immediate_history_out",
+        "type": "link out",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_persistent_history_in"
+        ],
+        "x": 1930,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_persistent_dismiss_queued_history_out",
+        "type": "link out",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_persistent_history_in"
+        ],
+        "x": 1930,
+        "y": 230,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_persistent_dismiss_immediate_history_out",
+        "type": "link out",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_main_group",
+        "name": "Aceite → histórico",
+        "mode": "link",
+        "links": [
+            "notification_hub_persistent_history_in"
+        ],
+        "x": 1930,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_persistent_history_note",
+        "type": "comment",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "Um registro por aceite; não comprova entrega/leitura",
+        "info": "Origem, conteúdo, canal, destinatário, correlação e operação. Inclui background commands e dismiss. Retenção fixa de 7 dias; purge no startup e a cada 300 s. Arquivos privados, fora do Git. TESTE usa o mesmo serializador sem gravar nem purgar produção.",
+        "x": 680,
+        "y": 1050,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_persistent_history_in",
+        "type": "link in",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "Aceites individuais do serviço",
+        "links": [
+            "notification_hub_persistent_create_queued_history_out",
+            "notification_hub_persistent_create_immediate_history_out",
+            "notification_hub_persistent_dismiss_queued_history_out",
+            "notification_hub_persistent_dismiss_immediate_history_out"
+        ],
+        "x": 140,
+        "y": 1130,
+        "wires": [
+            [
+                "notification_hub_persistent_history_record"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_persistent_history_record",
+        "type": "function",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "Serializar aceite e conteúdo",
+        "func": "// Protocol adapter: called only on the successful output of each service call.\n// A mobile pair produces one record per accepted leg, even on partial failure.\nconst notification = msg.notification ?? {};\nconst channel = msg._notification_hub_channel;\nif (![\"mobile\", \"alexa\", \"persistent\"].includes(channel)) {\n    node.error(\"NOTIFICATION_HISTORY_INVALID_CHANNEL\");\n    return null;\n}\nconst simulated = notification.test_mode === true && notification.delivery_under_test !== true;\nconst acceptedAt = new Date().toISOString();\nconst record = {\n    version: 1,\n    accepted_at: acceptedAt,\n    status: simulated ? \"simulated\" : \"accepted\",\n    channel,\n    source: notification.source,\n    recipient: msg._notification_hub_recipient ?? null,\n    target: msg._notification_hub_target ?? null,\n    operation: notification.operation ?? \"notify\",\n    profile: notification.profile ?? null,\n    notification_id: notification.notification_id ?? null,\n    title: notification.title ?? null,\n    message: channel === \"alexa\" && Object.hasOwn(notification.data ?? {}, \"message\")\n        ? notification.data.message : msg.payload,\n    data: notification.data ?? null,\n    correlation_id: msg._msgid ?? null,\n    delivery_under_test: notification.delivery_under_test === true\n};\n// Do not carry the caller context, credentials or unrelated residential state.\nconst entry = { payload: JSON.stringify(record) };\nif (simulated) {\n    entry.notification_delivery = { simulated: true, dispatched: false, channel };\n    return [null, entry];\n}\nentry.filename = `/data/notification-history/${channel}/${acceptedAt.slice(0, 13)}.jsonl`;\nreturn [entry, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 1130,
+        "wires": [
+            [
+                "notification_hub_persistent_history_file"
+            ],
+            [
+                "notification_hub_persistent_history_dry"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_persistent_history_file",
+        "type": "file",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "Anexar ao JSONL privado",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "utf8",
+        "x": 780,
+        "y": 1110,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "notification_hub_persistent_history_dry",
+        "type": "function",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "TESTE FINAL: nenhum arquivo gravado",
+        "func": "const DRY_RUN_CONTRACT = { simulated: true, dispatched: false };\nconst result = msg.notification_delivery ?? {};\nif (result.simulated !== DRY_RUN_CONTRACT.simulated || result.dispatched !== DRY_RUN_CONTRACT.dispatched) {\n    node.error(\"notification_hub: terminal recebeu efeito não simulado\", msg);\n    return null;\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: `dry-run ${String(result.channel ?? \"unknown\")}` });\nnode.log(`NOTIFICATION_HUB_DRY_RUN channel=${String(result.channel ?? \"unknown\")} status=${String(result.status ?? \"unknown\")}`);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 1180,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_persistent_history_test",
+        "type": "inject",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "TESTE: registro sem escrita",
+        "props": [
+            {
+                "p": "payload",
+                "v": "TESTE — conteúdo com acentuação",
+                "vt": "str"
+            },
+            {
+                "p": "notification",
+                "v": "{\"source\":\"notification_history_manual_test\",\"title\":\"TESTE\",\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_notification_hub_channel",
+                "v": "persistent",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 240,
+        "y": 1190,
+        "wires": [
+            [
+                "notification_hub_persistent_history_record"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_persistent_history_schedule",
+        "type": "inject",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "Purge: início + cada 5 min",
+        "props": [],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 10,
+        "x": 260,
+        "y": 1280,
+        "wires": [
+            [
+                "notification_hub_persistent_history_purge"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_persistent_history_purge",
+        "type": "exec",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "Remover registros > 7 dias",
+        "command": "node /data/tools/purge-notification-history.mjs persistent",
+        "addpay": false,
+        "append": "",
+        "useSpawn": "false",
+        "timer": "30",
+        "winHide": false,
+        "oldrc": false,
+        "x": 620,
+        "y": 1280,
+        "wires": [
+            [],
+            [],
+            [
+                "notification_hub_persistent_history_purge_result"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_persistent_history_purge_result",
+        "type": "function",
+        "z": "notification_hub_persistent_tab",
+        "g": "notification_hub_persistent_history_group",
+        "name": "Verificar limpeza ou sinalizar erro",
+        "func": "if (msg.payload?.code !== 0) {\n    // Never include stderr, filenames or notification contents in the observer.\n    node.error(\"NOTIFICATION_HISTORY_PURGE_FAILED\");\n    return null;\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"Retenção de 7 dias aplicada\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 1280,
         "wires": []
     }
 ]

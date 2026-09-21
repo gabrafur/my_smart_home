@@ -23,7 +23,7 @@
         "flows:update-vehicle-primary-manual-engine-tests": "node tools/update-vehicle-primary-manual-engine-tests.mjs && node tools/install-location-lifecycle-flow.mjs && node tools/install-security-light-visual-policy.mjs && node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
         "flows:update-vehicle-primary-refresh": "node tools/install-vehicle-primary-dashboard-controls.mjs && node tools/install-global-flow-observer.mjs && node tools/install-location-lifecycle-flow.mjs && node tools/install-security-light-visual-policy.mjs && node tools/apply-left-margin.mjs",
         "flows:update-global-observer": "node tools/install-global-flow-observer.mjs",
-        "flows:update-notification-hubs": "node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
+        "flows:update-notification-hubs": "node tools/install-notification-hubs.mjs && node tools/install-global-flow-observer.mjs && FLOW_LAYOUT_CANVASES=notification_hub_mobile_tab,notification_hub_alexa_tab,notification_hub_persistent_tab node tools/apply-left-margin.mjs",
         "flows:update-host-memory-guardian": "node tools/install-host-memory-guardian-flow.mjs && node tools/install-global-flow-observer.mjs",
         "flows:update-local-ai-rtx-recovery": "node tools/install-local-ai-rtx-recovery-flow.mjs && node tools/install-global-flow-observer.mjs",
         "flows:update-vpn-monitor": "node tools/install-vpn-monitor-flow.mjs && node tools/install-global-flow-observer.mjs",
