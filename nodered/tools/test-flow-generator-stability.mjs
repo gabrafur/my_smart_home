@@ -14,6 +14,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const flowsPath = path.resolve(here, "..", "flows.json");
 const baselineText = fs.readFileSync(flowsPath, "utf8");
 const baseline = JSON.parse(baselineText);
+for (const node of baseline) {
+  for (const field of ["name", "label"]) {
+    assert.doesNotMatch(String(node[field] ?? ""), /\uFFFD/, `${node.id}.${field}: texto corrompido na transferência UTF-8`);
+  }
+}
 const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "nodered-generator-stability-"));
 const hash = (text) => crypto.createHash("sha256").update(text).digest("hex");
 const byId = (flows) => new Map(flows.map((node) => [node.id, node]));

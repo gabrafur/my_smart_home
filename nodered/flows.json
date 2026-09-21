@@ -57182,7 +57182,7 @@
         "type": "link out",
         "z": "62bb822e033d1623",
         "g": "arrival_context_departure_group",
-        "name": "Origem pending → jun����ão",
+        "name": "Origem pending → junção",
         "mode": "link",
         "links": [
             "arrival_context_pending_in"
