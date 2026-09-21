@@ -39,6 +39,11 @@ test("context recovery verifies the complete public chain at a commit", (t) => {
   const { root, commitFiles } = fixture(t);
   const result = verifyAgentContext(root, { mode: "commit", commit: "synthetic", commitFiles });
   assert.equal(result.agent_context_ready, true);
+  assert.equal(result.evidence_scope, "public-files-only");
+  assert.equal(result.automatic_capture_verified, false);
+  assert.equal(result.semantic_consistency_verified, false);
+  assert.equal(result.independent_codex_retrieval_verified, false);
+  assert.equal(result.independent_codex_use_verified, false);
   assert.equal(result.private_runtime_read, false);
   assert.equal(result.thematic_memories, 1);
   assert.equal(result.instruction_files, instructionFiles.length);

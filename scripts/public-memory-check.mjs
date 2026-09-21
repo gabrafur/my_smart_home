@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { checkEvidence } from "./memory-evidence.mjs";
 
 const defaultRepoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const instructionRoot = ".codex/instructions";
@@ -49,6 +50,7 @@ const requiredFiles = [
 ];
 const privateRuntimePrefixes = [
   ".agent-history/",
+  ".local-state/",
   ".agents/",
   ".claude/",
   ".local-secrets/",
@@ -208,7 +210,7 @@ function gitFiles(repoRoot, args) {
   return result.stdout.split("\0").filter(Boolean).map(normalizePath);
 }
 
-export function checkPublicMemory({ repoRoot = defaultRepoRoot, trackedFiles } = {}) {
+export function checkPublicMemory({ repoRoot = defaultRepoRoot, trackedFiles, contentsOverrides = new Map() } = {}) {
   const tracked = new Set((trackedFiles ?? gitFiles(repoRoot, ["--cached"])).map(normalizePath));
   const errors = [];
 
@@ -224,6 +226,7 @@ export function checkPublicMemory({ repoRoot = defaultRepoRoot, trackedFiles } =
   const readable = new Map();
   const readTracked = (file) => {
     if (!tracked.has(file)) return "";
+    if (contentsOverrides.has(file)) return contentsOverrides.get(file);
     if (!readable.has(file)) readable.set(file, fs.readFileSync(path.join(repoRoot, file), "utf8"));
     return readable.get(file);
   };
@@ -246,6 +249,18 @@ export function checkPublicMemory({ repoRoot = defaultRepoRoot, trackedFiles } =
 
   for (const source of publicMarkdownSources) {
     const content = readTracked(source);
+    if (isPublicMemoryFile(source)) {
+      const evidenceErrors = checkEvidence(content, (file) => {
+        if (!tracked.has(file) || isPrivateRuntimeFile(file) || /^\.env(?:\.|$)/.test(file) ||
+            /^(?:nodered\/(?:context|notification-history)\/|homeassistant\/\.storage\/)/.test(file) ||
+            (file.startsWith(".codex/") && file !== ".codex/hooks.json" && !isPublicInstructionFile(file)) ||
+            /(^|\/)\.\.?($|\/)/.test(file) || path.isAbsolute(file)) throw new Error("evidence must reference tracked public source");
+        const target = path.join(repoRoot, file);
+        if (fs.realpathSync(target) !== path.resolve(target)) throw new Error("evidence symlink rejected");
+        return readTracked(file);
+      });
+      errors.push(...evidenceErrors.map((error) => `${source}: ${error}`));
+    }
     for (const { raw, offset } of markdownLinks(content)) {
       const resolved = resolveTrackedReference(repoRoot, source, raw);
       if (!resolved) continue;

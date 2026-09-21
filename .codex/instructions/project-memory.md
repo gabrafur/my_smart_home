@@ -48,41 +48,29 @@ Para cada tarefa, antes de carregar documentação ou memória de projeto:
    headings, `find` e metadados para localizar somente o tema necessário;
 4. leia apenas os arquivos/seções necessários, preferindo a documentação
    canônica atual a notas duplicadas ou históricas;
-5. para recuperação grande, não coloque o corpo bruto no contexto principal:
-   use a RTX com `summarize-memory` e passe adiante apenas o JSON estruturado;
+5. para recuperação grande, aplique a skill `rtx-context-optimizer`: nenhum
+   perfil generativo está promovido; reduza deterministicamente e use o modelo
+   principal, sem chamar `summarize-memory` operacionalmente;
 6. não carregue RCAs, arquitetura, histórico ou memória de outros subsistemas
    em tarefas simples e não leia `.agent-history/`, `.claude/`, conteúdo de
    runtime não público de `.codex/` ou `.local-secrets/` como fonte automática.
 
-O fluxo determinístico é:
+O fluxo vigente é tarefa -> índice/busca -> evidência temática mínima -> modelo
+principal. `local-ai memory-audit` mede contexto observável, não uso efetivo pelo
+Codex. `memory_context.py retrieve` seleciona arquivos sem inferência. A skill
+canônica define caminhos, limites e fallback. Não crie cache ou outra cópia de
+memória; telemetria registra somente metadados.
 
-```text
-tarefa -> índice/rg -> memória temática mínima -> Local AI se grande -> JSON estruturado -> modelo principal
-```
-
-Para medir o estado observável, use
-`~/.local/share/local-ai-rtx/current/local-ai memory-audit`.
-Para localizar um tema sem inferência, use
-`~/.local/share/local-ai-rtx/current/memory_context.py retrieve '<tema>' --query '<termos>'`.
-Para uma recuperação ampla e não sensível, materialize apenas os arquivos
-encontrados e faça a primeira passagem local:
-
-```bash
-~/.local/share/local-ai-rtx/current/memory_context.py materialize '<tema>' --query '<termos>' \
-  | ~/.local/share/local-ai-rtx/current/local-ai summarize-memory --memory-topic '<tema>' --context-tokens 8192
-```
-
-`summarize-memory` deve preservar estado atual, decisões, restrições, bugs,
-causas-raiz, valores de configuração, pendências, avisos e referências de
-origem. Seu resultado é evidência não autoritativa; decisões de arquitetura,
-segurança, produção e revisão final continuam no modelo principal. Não crie
-cache ou uma segunda cópia resumida da memória. A telemetria registra apenas
-contagens e decisões, nunca conteúdo, caminhos de fonte, prompts ou saídas.
-
-O limite direto de recuperação segue o perfil já validado de `summarize-memory`
-(1.200 tokens estimados e 700 de economia prevista). Uma sobrecarga de memória
-é um sinal de candidato grande enviado diretamente ao modelo principal; não é
-uma alegação de relevância semântica não mensurada.
+Ao concluir trabalho com descoberta durável, avalie se a memória temática ficou
+obsoleta ou incompleta. Confirme a decisão em fontes públicas atuais e atualize
+somente o necessário. Para notas com evidência verificável, use o reconciliador
+`scripts/memory-candidate.mjs`, conforme `docs/MEMORIA_VERSIONADA_AGENTES.md`.
+Não promova pedido, hipótese ou transcrição a fato. Ausência de mudança também
+é resultado válido. O hook `Stop` em `scripts/memory-review.mjs`, quando aprovado e ativo no
+cliente, exige checkpoint de revisão antes de encerrar. Registre `updated`,
+`already_current` ou `no_durable_discovery`; `unverified` é pendência explícita.
+Nunca invente uma nota para passar no gate nem declare o hook ativo só porque
+seu arquivo existe. Consulte o contrato para ativação e limites.
 
 ## Manutenção de memória e privacidade
 

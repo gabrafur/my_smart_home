@@ -11,10 +11,11 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
   `source_reported_at` através dos aliases e mantém `location_observed_at`
   exclusivo para mudança de estado/coordenadas/precisão; startup não pode
   fabricar heartbeat novo do Mobile App.
-- Os pedidos `request_location_update` preservam 30 s durante aproximação e
-  60 s com residente fora, pois alimentam o refletor e os avisos de chegada.
-  Ambos em casa com fontes ativas não geram pedidos; veículo fora sozinho
-  também não. Recovery real usa cooldown de 15 min.
+- O refresh dos telefones distingue recovery seletivo por morador de sondas
+  ligadas à saída/retorno. Não restaure polling geral de 30/60 segundos com
+  base em memória antiga. As fontes atuais são
+  `nodered/tools/functions/people-refresh-decide.js` e
+  `nodered/tools/functions/people-wake-ring-refresh-build.js`.
 - Um push aceito não comprova atualização. Se o Mobile App não responder mas o
   iCloud continuar reportando, o painel deve mostrar separadamente a fonte sem
   heartbeat e a posição apenas inalterada; automações de chegada continuam
@@ -23,8 +24,8 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
   `localizacao_pessoas`: `home` 100 m e `near_home` 700 m. A zona HA
   `location_update_ring` (1.500 m) é apenas um geofence de transporte do iOS e
   não é consumida por painéis ou automações. O antigo controle inativo de
-  refresh rápido em 2.000 m foi removido; pedidos explícitos de localização dos
-  iPhones existem apenas para recovery, com limite de duas vezes por hora.
+  refresh rápido em 2.000 m foi removido. Consulte os caminhos canônicos de
+  recovery e sondas antes de mudar a frequência dos pedidos explícitos.
 - Quando nenhuma fonte tem posição observada nos últimos 15 min, o tracker
   canônico publica `unavailable` e mantém o último estado bruto apenas como
   diagnóstico, sem republicar coordenadas vencidas como localização atual.
@@ -169,3 +170,22 @@ pois uma quebra vazia encerra a tabela e transforma as linhas seguintes em
 texto. Em colunas estreitas, combine campos relacionados na mesma célula com
 `<br>` antes de adicionar rolagem horizontal. Valide o template renderizado com
 dados sintéticos no ambiente do Home Assistant, além de testar o YAML fonte.
+
+## Preservação dos canvases e regeneração
+
+Canvases podem conter edição manual aprovada. Geradores devem reconciliar os
+nós existentes e preservar sua geometria e os pares nomeados já aprovados;
+reorganização puramente visual nunca altera IDs, wires nem comportamento.
+Routing explícito por links é uma mudança de grafo distinta e exige regressão
+de equivalência, incluindo destinos compartilhados. Consulte
+`nodered/tools/test-canvas-wire-routing.mjs` e
+`nodered/tools/test-flow-generator-stability.mjs`.
+
+O motor ELK existe, mas aceita somente propostas com melhoria mensurável e sem
+regressão; caso contrário preserva o baseline. Não aplique seu resultado bruto
+sobre canvases manuais. Contrato: `docs/node-red/ELK_LAYOUT_ENGINE.md`.
+
+Snapshots coordenados e eventos de chegada podem chegar em ordens diferentes.
+Uma atualização parcial de residente não pode descartar o evento de outro;
+confirme o contrato em `nodered/tools/test-arrival-context-flow.mjs` e
+`docs/ILUMINACAO_SEGURANCA_NODERED.md` antes de alterar o merge.

@@ -23,3 +23,10 @@ existir nele, reporte `knowledge_not_versioned` sem ler ou copiar o conteúdo.
 Consulte [o contrato operacional](../../../docs/MEMORIA_VERSIONADA_AGENTES.md)
 e rode `make validate-public` depois de qualquer mudança na memória ou nas
 instruções dos agentes.
+
+<!-- memory-record {"id":"captura-e-revisao-publica","category":"ARCHITECTURE","kind":"VERIFIED_FACT","last_verified":"2026-09-21","evidence":[{"file":"ia-bridge/history.js","sha256":"d47565b6015beea1453baad79f8e04fea4626498c4f8fdc99a74cade2f436d02"},{"file":"scripts/ai-context-recovery.mjs","sha256":"91eb0f7a235aed323043160db5ac172841389a35cb46b435151c230a25249e21"},{"file":"scripts/memory-review.mjs","sha256":"39cddcc8f9e0cfc4091f73b28864377d6c88e3c7a2307211b10e53c5fbd531f6"}]} -->
+## Captura e revisão entre tarefas
+
+O histórico do bridge é privado e não alimenta a memória temática por si. O checker de restore comprova disponibilidade de arquivos, não uso por outra sessão. O hook Stop de revisão exige checkpoint por tarefa quando aprovado e ativo no cliente; não lê transcripts. O agente seleciona fatos públicos verificados e o reconciliador atualiza notas por ID com evidência. Sem ativação comprovada, não alegue captura automática. A revisão semanal depende de execução bem-sucedida e não garante atualização após cada conversa. Consulte `docs/MEMORIA_VERSIONADA_AGENTES.md` e `docs/CODEX_PROJECT_MEMORY_AUDIT.md`.
+
+<!-- /memory-record -->

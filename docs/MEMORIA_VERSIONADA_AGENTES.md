@@ -60,32 +60,23 @@ usa primeiro busca determinística (`rg`, índice, nomes, headings e metadados),
 recupera apenas os arquivos ou seções relevantes e prefere a documentação
 operacional atual a uma anotação histórica duplicada.
 
-Quando a recuperação relevante excede o orçamento direto já validado para
-memória (1.200 tokens estimados com economia prevista de 700), a primeira
-passagem é `summarize-memory` no Local AI. A saída estruturada deve preservar:
-estado atual, decisões, restrições, bugs conhecidos, causas-raiz, valores de
-configuração, pendências, avisos e referência à fonte. Não crie um cache ou
-resumo persistente separado sem hash, referência de origem e detecção de
-staleness; a implementação atual não cria esse cache.
+Recuperações grandes seguem `.agents/skills/rtx-context-optimizer/SKILL.md`.
+Nenhum perfil generativo de compressão está promovido: selecione e reduza
+fontes deterministicamente e siga no modelo principal. A orientação antiga de
+executar `summarize-memory` operacionalmente foi substituída pelo pivot
+restrito, documentado em `docs/LOCAL_AI_RTX_4070.md`.
 
-`$HOME/.local/share/local-ai-rtx/current/local-ai memory-audit` mede somente o startup observável:
-arquivos `AGENTS.md` realmente incluídos, limite configurado, memória pública
-do repositório e configuração de memória local. Tokens de instruções internas,
-envelope da plataforma e conteúdo de memória privada não são expostos pelo
-Codex e ficam como `null`, nunca como zero. O método de contagem acompanha cada
-resultado; sem `tiktoken`, os valores são marcados como estimativa. No
-inventário, o índice canônico é classificado como `ROUTING_ONLY`: ele orienta a
-recuperação quando o histórico é necessário, mas não é payload automático de
-startup.
+`local-ai memory-audit` mede somente o contexto observável. O índice é
+`ROUTING_ONLY`; sua presença não prova leitura do conteúdo temático.
+`memory_context.py retrieve` seleciona arquivos públicos pelo índice, sem
+inferência. Nenhum desses comandos extrai novas descobertas dos chats.
 
-Use `$HOME/.local/share/local-ai-rtx/current/memory_context.py retrieve '<tema>' --query '<termos>'`
-para selecionar arquivos pelo índice sem inferência. `materialize` só deve ser
-usado em pipe para `summarize-memory`, nunca para despejar memória bruta no
-contexto principal. Temas e consultas ignoram diferenças entre maiúsculas,
-minúsculas e acentos; `all`, `project`, `projeto`, `repository` e `repositório`
-selecionam o corpus público indexado antes do filtro de consulta. As decisões e
-métricas resultantes contêm apenas contagens e tópicos; não guardam conteúdo,
-caminhos de fonte, prompts ou resultados.
+`scripts/ai-context-recovery.mjs` verifica disponibilidade e estrutura dos
+arquivos selecionados, em worktree ou commit. `agent_context_ready` é mantido
+por compatibilidade e significa arquivos disponíveis. O resultado declara
+`evidence_scope: public-files-only`, e os campos de captura automática,
+consistência semântica e recuperação/uso por Codex independente são `false`.
+Uma leitura pelo checker não é uma execução do Codex e não prova aprendizado.
 
 ## O que registrar
 
@@ -173,3 +164,114 @@ rotina semanal e `scripts/security-scan.sh`.
 Detecção automática não prova ausência de toda informação pessoal em linguagem
 natural. Por isso a revisão humana e o uso obrigatório de papéis lógicos
 continuam fazendo parte do contrato.
+
+## Candidatos incrementais com evidência
+
+O agente da tarefa continua responsável por selecionar e verificar decisões.
+Não há extrator autônomo de transcripts. O hook de encerramento descrito abaixo
+exige revisão pelo próprio agente quando estiver aprovado e ativo no cliente.
+A revisão semanal é outro agente, acionado pelo Node-RED, limitado a
+fontes públicas e dependente de disponibilidade/cota. Nenhum fluxo transforma
+histórico privado em memória pública automaticamente.
+
+`scripts/memory-candidate.mjs` recebe um candidato JSON sanitizado pelo stdin.
+Sem `--apply`, valida e informa se haveria mudança; com `--apply`, atualiza
+somente uma memória temática existente e indexada. Não cria índice, base paralela,
+commit, push, notificação nem agenda. Exemplo de chamada:
+
+```bash
+node scripts/memory-candidate.mjs < /tmp/public-memory-candidate.json
+node scripts/memory-candidate.mjs --apply < /tmp/public-memory-candidate.json
+```
+
+O candidato contém `file`, `expected_memory_sha256` do Markdown atual, `id`
+estável em kebab-case, `title`, `body`, `category`, `kind`, `last_verified`
+(AAAA-MM-DD) e `evidence` com objetos `{file, sha256}`. Hashes SHA-256 são dos
+bytes atuais das fontes públicas versionadas. Categorias aceitas:
+`LONG_LIVED_DECISION`, `ARCHITECTURE`, `CONSTRAINT`, `IMPORTANT_DISCOVERY`,
+`OPERATING_PROCEDURE`, `KNOWN_FAILURE_MODE`, `PROJECT_CONVENTION`. Somente
+`VERIFIED_FACT` e `PROJECT_DECISION` podem ser promovidos; pedidos, observações
+não confirmadas e hipóteses precisam primeiro de avaliação pelo agente.
+
+A nota é persistida no próprio Markdown entre marcadores `memory-record`, com
+metadados de proveniência e data. O mesmo `id` atualiza a nota; conteúdo/evidência
+iguais não geram escrita nem renovação artificial da data. A atualização
+preserva o restante do arquivo. Hash do alvo, lock exclusivo e comparação antes
+da troca detectam alterações concorrentes observadas. Editores que não usam o
+lock ainda exigem coordenação; o sistema de arquivos não oferece CAS geral.
+
+O checker público valida a proposta antes da gravação. Rejeita fontes privadas,
+simbólicas ou não versionadas, IDs duplicados, evidência divergente e padrões
+conhecidos de segredo. A gravação usa arquivo temporário e troca por rename.
+O processo não copia conteúdo de evidências para a nota nem lê conversas.
+
+Alteração de fonte produz `evidence_changed` no gate obrigatório. Isso significa
+**revalidar**, não que a memória necessariamente esteja falsa. O hash detecta
+mudança de bytes, não contradição semântica: o agente deve comparar a afirmação
+com código/testes antes de atualizar hash/data. A idade sozinha não invalida uma
+decisão. Notas legadas sem marcador continuam com os checks estruturais; não
+alegue cobertura semântica de todo o corpus. Os scanners também não detectam
+todos os segredos ou dados pessoais possíveis em linguagem natural.
+
+A sequência comprovável é descoberta pública -> seleção pelo agente -> candidato
+verificado -> validação -> Markdown canônico -> índice/busca em nova sessão ->
+uso com citação. Os testes em `scripts/memory-candidate.test.mjs` cobrem escrita,
+deduplicação, atualização, drift, recuperação em novo processo, privacidade,
+idempotência e concorrência. Processo Node.js não equivale a sessão Codex;
+a auditoria em `docs/CODEX_PROJECT_MEMORY_AUDIT.md` registra separadamente o
+teste de sessões independentes e a falha da captura automática.
+
+## Revisão obrigatória ao encerrar novas tarefas
+
+O hook `Stop` em `.codex/hooks.json` chama `scripts/memory-review.mjs hook`.
+Ao encerrar uma tarefa sem checkpoint, ele retorna `decision: block`: o cliente
+continua a tarefa com uma solicitação para avaliar descobertas no contexto já
+presente, comparar fontes públicas e persistir notas úteis. O hook não lê
+`prompt`, `last_assistant_message` nem `transcript_path`; não chama outro modelo,
+rede, dispositivos ou revisão semanal. A seleção semântica pertence ao agente.
+
+A continuação traz um token técnico efêmero e a chamada de conclusão:
+
+```text
+node scripts/memory-review.mjs complete <token> <outcome>
+```
+
+Resultados possíveis:
+
+- `updated`: exige mudança persistida na memória desde o checkpoint.
+- `already_current`: a decisão útil já está representada; não duplique.
+- `no_durable_discovery`: conversa sem conhecimento novo durável; não force nota.
+- `unverified`: não foi possível confirmar; o encerramento sinaliza pendência.
+
+Todos os resultados passam pelo checker público. O recibo fica somente em
+`.local-state/memory-review/`, fora do Git, com hashes de sessão/turno/corpus,
+resultado e contador de tentativas. Não contém identificação bruta, prompts,
+respostas, caminhos de transcript, fatos residenciais ou conteúdo da memória.
+Cada sessão tem somente seu checkpoint mais recente. Um turno novo precisa
+revisar novamente; uma continuação marcada pode concluir o checkpoint pendente.
+Alteração de memória após a revisão exige nova confirmação. Dois retornos sem
+revisão concluída encerram com `MEMORY_REVIEW_FAILED`, em vez de loop infinito
+ou sucesso silencioso. Interrupção explícita do usuário não é impedida.
+
+O gate garante a exigência de um resultado de revisão no cliente onde roda;
+não prova por código que toda seleção semântica é perfeita ou que `already_current`
+foi avaliado corretamente. Não garante uma nota nova em cada conversa, nem deve.
+O objetivo é guardar conhecimento útil confirmado e evitar lixo ou poisoning.
+
+### Ativação por cliente
+
+A instalação tem uma etapa interativa obrigatória: abra `/hooks`, revise a
+nova definição e confirme `Stop` com `Installed = 1` e `Active = 1`. Preserve
+`PostToolUse` também aprovado. Não automatize nem altere os registros de confiança.
+O CLI do bridge, CLI do host, extensão e aplicativo podem ter estados diferentes;
+revisão no cliente errado não ativa o cliente que recebe as conversas.
+Recarregue o cliente/App Server por seu procedimento de interface e abra uma
+nova tarefa se ele ainda mantiver a definição anterior. Não reinicie serviços
+residenciais para isso. Consulte `docs/LOCAL_AI_RTX_4070.md` para a revisão por
+cliente e a [documentação oficial dos hooks](https://learn.chatgpt.com/docs/hooks).
+
+Sem evidência dessa ativação, o estado é `IMPLEMENTED_NOT_ACTIVATED`, nunca
+captura automática comprovada. `scripts/memory-review.test.mjs` valida o contrato
+com eventos sintéticos; o teste de aceitação no cliente deve observar a
+continuação, a nota útil persistida e recuperação em outra sessão. A mera
+execução manual do script não comprova entrega do evento `Stop` pelo cliente.

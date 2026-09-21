@@ -88,12 +88,11 @@ export function verifyAgentContext(root = repoRoot, { commit = null, mode = "wor
       { step: "infrastructure_restored", status: "operator-prerequisite" },
       { step: "configuration_validated", status: "operator-prerequisite" },
       { step: "repository_commit_identified", status: "verified" },
-      { step: "agents_loaded", status: "verified" },
-      { step: "modular_instructions_loaded", status: "verified" },
-      { step: "memory_index_loaded", status: "verified" },
-      { step: "relevant_thematic_memory_loaded", status: "verified" },
-      { step: "memory_verified_against_commit", status: "verified" },
-      { step: "agent_context_ready", status: "verified" }
+      { step: "agents_read_by_checker", status: "verified" },
+      { step: "modular_instructions_read_by_checker", status: "verified" },
+      { step: "memory_index_read_by_checker", status: "verified" },
+      { step: "relevant_thematic_memory_read_by_checker", status: "verified" },
+      { step: "public_files_available", status: "verified" }
     ],
     repository_commit: resolvedCommit,
     instruction_files: indexedInstructions.length,
@@ -102,6 +101,11 @@ export function verifyAgentContext(root = repoRoot, { commit = null, mode = "wor
     private_runtime_read: false,
     knowledge_not_versioned: "report when required knowledge exists only in private runtime; do not copy it",
     agent_context_ready: true,
+    evidence_scope: "public-files-only",
+    automatic_capture_verified: false,
+    semantic_consistency_verified: false,
+    independent_codex_retrieval_verified: false,
+    independent_codex_use_verified: false,
   };
 }
 

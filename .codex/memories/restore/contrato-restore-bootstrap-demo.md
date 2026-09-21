@@ -19,7 +19,9 @@ estão em `docs/RESTORE_CONTRACT.md`.
   de contexto após restart. A saída publicada é verificada pelos testes.
 - `scripts/ai-context-recovery.mjs` verifica AGENTS, índices e memórias contra o
   commit sem consultar runtime privado. Conhecimento existente apenas nesse
-  runtime é `knowledge_not_versioned`.
+  runtime é `knowledge_not_versioned`. O resultado prova disponibilidade de
+  arquivos, não leitura ou uso por outra sessão Codex; `agent_context_ready`
+  permanece somente como campo de compatibilidade.
 
 Para instalação, módulos e demo, consulte também
 `docs/INSTALACAO_RESTAURACAO_SMART_HOME.md` e `docs/BOOTSTRAP_DEMO.md`.

@@ -287,6 +287,12 @@ Event          Installed   Active
 PostToolUse    1           1
 ```
 
+O projeto também possui um hook `Stop` para revisão de memória pública.
+Depois de revisar essa definição, confirme `Stop` com `Installed = 1` e
+`Active = 1`; ele é independente da redução de saídas do `PostToolUse`.
+Seu contrato, limites e teste de aceitação ficam em
+`docs/MEMORIA_VERSIONADA_AGENTES.md`.
+
 `PreToolUse = 0` é esperado porque este projeto não usa preflight de prompt. A
 mera presença de `.codex/hooks.json` não comprova que o hook está ativo. Não use
 opções de bypass de trust; se a tabela não mostrar `PostToolUse` como instalado

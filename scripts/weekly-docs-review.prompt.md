@@ -539,6 +539,14 @@ Não registre na memória:
 
 Se a memória estiver correta, não altere apenas para gerar atividade.
 
+Notas com `memory-record` têm fontes e hashes validados por
+`scripts/public-memory-check.mjs`. Se houver `evidence_changed`, compare a
+afirmação com as fontes atuais antes de atualizar a nota e sua proveniência.
+Não renove hashes ou `last_verified` apenas para passar no gate. Use
+`scripts/memory-candidate.mjs` conforme `docs/MEMORIA_VERSIONADA_AGENTES.md`
+para reconciliar candidatos sanitizados. Memórias legadas sem evidência
+estruturada exigem a mesma revisão semântica, sem alegar cobertura automática.
+
 No relatório semanal, registre:
 
 ```text

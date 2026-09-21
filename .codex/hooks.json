@@ -1,6 +1,18 @@
 {
-  "description": "Automatically route eligible large tool output through the private Local AI MCP runtime.",
+  "description": "Route eligible tool output and require a public memory review before finishing a task.",
   "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/memory-review.mjs\" hook",
+            "timeout": 15,
+            "statusMessage": "Checking project memory review"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash",

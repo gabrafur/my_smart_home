@@ -35,6 +35,7 @@ placeholders.
 | [Integração da release Local AI RTX](../local-ai-integration/README.md) | Lock, checksum, instalação imutável e rollback | resumo em inglês |
 | [Pesquisa Local AI da implantação](../local-ai-research/README.md) | Datasets, harnesses e limites dos benchmarks históricos | resumo em inglês |
 | [Memória versionada dos agentes](MEMORIA_VERSIONADA_AGENTES.md) | Autoridade, privacidade, manutenção e validação da memória de IA | guia detalhado em português |
+| [Auditoria da memória do Codex](CODEX_PROJECT_MEMORY_AUDIT.md) | Captura, recuperação, evidências e revisão obrigatória por tarefa | Resumo no índice em inglês |
 | [Modelo de privacidade](PRIVACY_MODEL.md) | Papéis públicos, sanitização, scanner e memória pública | [English](PRIVACY_MODEL.en.md) |
 | [Fronteira pública e privada](PUBLIC_PRIVATE_BOUNDARY.md) | Bindings, bootstrap, degradação segura e compatibilidade | [English](PUBLIC_PRIVATE_BOUNDARY.en.md) |
 | [Estratégia de testes](ESTRATEGIA_DE_TESTES.md) | Níveis, descoberta, CI e limites sem residência real | [English](TESTING_STRATEGY.en.md) |

@@ -34,6 +34,7 @@ physical identifiers must appear only as placeholders.
 | [Local AI RTX release integration](../local-ai-integration/README.md) | Lock, checksum, immutable install, and rollback | English summary |
 | [Deployment-specific Local AI research](../local-ai-research/README.md) | Datasets, harnesses, and historical benchmark limits | English summary |
 | [Versioned agent memory](MEMORIA_VERSIONADA_AGENTES.md) | Authority, privacy, maintenance, and validation of AI memory | detailed Portuguese guide |
+| [Codex project memory audit](CODEX_PROJECT_MEMORY_AUDIT.md) | Baseline capture gap, isolated cross-session retrieval, source-validated notes, and a Stop review checkpoint requiring client activation | Detailed Portuguese audit |
 | [Privacy model](PRIVACY_MODEL.en.md) | Public roles, sanitization, scanning, and public memory | [Português](PRIVACY_MODEL.md) |
 | [Public/private boundary](PUBLIC_PRIVATE_BOUNDARY.en.md) | Bindings, bootstrap, safe degradation, and compatibility | [Português](PUBLIC_PRIVATE_BOUNDARY.md) |
 | [Testing strategy](TESTING_STRATEGY.en.md) | Levels, discovery, CI, and no-household boundaries | [Português](ESTRATEGIA_DE_TESTES.md) |

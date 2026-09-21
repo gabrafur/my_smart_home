@@ -137,9 +137,9 @@ O prompt coordenador é `prompts/restore-smart-home.prompt.md`. A sequência é:
 infraestrutura restaurada
 → configuração validada
 → commit identificado
-→ AGENTS.md e MEMORY.md carregados
-→ memórias relevantes verificadas contra o commit
-→ agente apto a operar
+→ arquivos de instruções e índices lidos pelo checker
+→ arquivos de memória selecionados disponíveis no commit
+→ recuperação e uso pelo agente ainda dependem da nova sessão
 ```
 
 ## CLI de agente

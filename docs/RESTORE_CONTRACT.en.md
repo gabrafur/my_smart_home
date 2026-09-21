@@ -133,9 +133,9 @@ The coordinating prompt is `prompts/restore-smart-home.prompt.md`:
 infrastructure restored
 → configuration validated
 → commit identified
-→ AGENTS.md and MEMORY.md loaded
-→ relevant memory verified against the commit
-→ agent ready to operate
+→ instruction and index files read by the checker
+→ selected memory files available at the commit
+→ retrieval and use still depend on the new agent session
 ```
 
 ## Agent CLI
