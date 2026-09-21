@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 import { stopReview, completeReview } from "./memory-review.mjs";
 import { applyCandidate } from "./memory-candidate.mjs";
@@ -8,6 +9,20 @@ import { fixture, target, source } from "./test-support/memory-fixture.mjs";
 
 const event = { hook_event_name: "Stop", session_id: "synthetic-session", turn_id: "synthetic-turn", stop_hook_active: false };
 const tokenOf = (result) => result.reason.match(/[a-f0-9]{64}:[a-f0-9]{64}/)[0];
+
+test("review and candidate discover tracked files through Git without an injected manifest", (t) => {
+  const f = fixture(t);
+  const git = (args, input) => execFileSync("git", args, {
+    cwd: f.root, encoding: "utf8", input, stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+  });
+  git(["init", "--quiet"]);
+  const emptyBlob = git(["hash-object", "-w", "--stdin"], "").trim();
+  git(["update-index", "--index-info"], f.trackedFiles.map((file) => `100644 ${emptyBlob}\t${file}\n`).join(""));
+  const result = stopReview(f.root, event);
+  applyCandidate(f.root, f.candidate(), { apply: true });
+  assert.equal(completeReview(f.root, tokenOf(result), "updated").status, "reviewed");
+  assert.deepEqual(stopReview(f.root, event), {});
+});
 
 test("missing checkpoint continues task; persisted useful memory permits completion", (t) => {
   const f = fixture(t);

@@ -7,7 +7,9 @@ import { checkPublicMemory } from "./public-memory-check.mjs";
 import { digest, reconcileRecord } from "./memory-evidence.mjs";
 
 export function applyCandidate(root, candidate, { apply = false, trackedFiles } = {}) {
-  const tracked = trackedFiles ?? execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
+  const tracked = trackedFiles ?? execFileSync("git", ["ls-files", "-z"], {
+    cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  }).split("\0").filter(Boolean);
   const file = candidate.file;
   if (typeof file !== "string" || !/^\.codex\/memories\/[a-z0-9-]+\/[a-z0-9-]+\.md$/.test(file) ||
       file.endsWith("/indice.md") || !tracked.includes(file)) throw new Error("target must be existing indexed public memory");

@@ -39,7 +39,11 @@ function writeState(root, sessionKey, state) {
 }
 
 function publicSnapshot(root, trackedFiles) {
-  const files = trackedFiles ?? execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
+  // Git never consumes stdin here. An unnecessary stdin pipe can be denied
+  // by the client's sandbox even when read-only Git commands are permitted.
+  const files = trackedFiles ?? execFileSync("git", ["ls-files", "-z"], {
+    cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  }).split("\0").filter(Boolean);
   const memories = files.filter((f) => /^\.codex\/memories\/.+\.md$/.test(f)).sort();
   if (!memories.length) throw new Error("public memory unavailable");
   const fingerprint = digest(memories.map((f) => {
@@ -122,10 +126,18 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       result = stopReview(root, payload);
     } else throw new Error("usage: memory-review.mjs hook | complete <token> <outcome>");
     console.log(JSON.stringify(result));
-  } catch {
+  } catch (error) {
     // A failing hook must surface the gap without leaking input or retrying
     // indefinitely on the residential host.
-    console.log(JSON.stringify({ continue: false, stopReason: message, systemMessage: message }));
+    const reasonCode = /^[A-Z][A-Z_0-9]{1,60}$/.test(error?.code ?? "")
+      ? error.code
+      : /public memory validation failed/.test(error?.message ?? "")
+        ? "PUBLIC_MEMORY_INVALID"
+        : /checkpoint is missing, stale or already closed/.test(error?.message ?? "")
+          ? "CHECKPOINT_STALE"
+          : "CHECKPOINT_ERROR";
+    const diagnostic = `${message} Código: ${reasonCode}.`;
+    console.log(JSON.stringify({ continue: false, stopReason: diagnostic, systemMessage: diagnostic }));
     if (process.argv[2] !== "hook") process.exitCode = 1;
   }
 }

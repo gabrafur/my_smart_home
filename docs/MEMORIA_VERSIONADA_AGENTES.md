@@ -247,6 +247,9 @@ Todos os resultados passam pelo checker público. O recibo fica somente em
 `.local-state/memory-review/`, fora do Git, com hashes de sessão/turno/corpus,
 resultado e contador de tentativas. Não contém identificação bruta, prompts,
 respostas, caminhos de transcript, fatos residenciais ou conteúdo da memória.
+O diretório deve existir com modo `0700` e pertencer ao usuário que executa o
+cliente. Se `.local-state/` for administrado por outro usuário, provisione
+somente esse subdiretório; não altere permissões do restante do runtime.
 Cada sessão tem somente seu checkpoint mais recente. Um turno novo precisa
 revisar novamente; uma continuação marcada pode concluir o checkpoint pendente.
 Alteração de memória após a revisão exige nova confirmação. Dois retornos sem
@@ -275,3 +278,11 @@ captura automática comprovada. `scripts/memory-review.test.mjs` valida o contra
 com eventos sintéticos; o teste de aceitação no cliente deve observar a
 continuação, a nota útil persistida e recuperação em outra sessão. A mera
 execução manual do script não comprova entrega do evento `Stop` pelo cliente.
+
+Na aceitação de 2026-09-21, o CLI do host foi aprovado pelo usuário correto:
+ambos os hooks retornaram `enabled: true` e `trust: trusted`. Uma execução nova
+em `workspace-write` acionou `Stop`, continuou automaticamente e registrou
+`reviewed / no_durable_discovery`, encerrando sem inventar uma nota. A consulta
+interna ao Git usa stdin ignorado: criar um pipe de entrada desnecessário
+produzia `EPERM` nesse sandbox. Essa comprovação é específica do cliente
+testado e não substitui a aprovação na extensão ou no bridge.

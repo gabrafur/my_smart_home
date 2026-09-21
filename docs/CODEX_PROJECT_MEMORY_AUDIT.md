@@ -17,7 +17,8 @@ não inventário de runtime para preload. O contrato vigente é
 | Cross-validation | PARTIAL | Checker estrutural + hashes de fontes nas novas notas; drift detectável, mas consistência semântica depende de revisão |
 | Privacy protection | PARTIAL | Fontes públicas, denylist, scanner e testes negativos; padrões conhecidos não provam ausência de todo dado pessoal em prosa |
 
-Não há evidência de um ciclo automático completo por interação. A leitura de
+No baseline, não havia evidência de um ciclo automático completo por interação.
+A aceitação posterior do hook de revisão está registrada na seção H. A leitura de
 arquivos pelo checker anteriormente apresentada como contexto pronto não era
 prova de recuperação/uso pelo Codex. O resultado agora explicita esse limite.
 
@@ -172,7 +173,7 @@ node scripts/ai-context-recovery.mjs --worktree --topics projeto,automacoes,code
 make validate-public
 ```
 
-Os 30 testes direcionados passaram, assim como o checker público e a
+Os 31 testes direcionados passaram, assim como o checker público e a
 verificação dos quatro temas selecionados. A execução de `make validate-public` passou por documentação, segurança,
 privacidade e memória, e parou no gate de estabilidade do gerador Node-RED:
 `vehicle_visual_refresh_facts.func` diferia do flow gerado durante uma edição
@@ -231,10 +232,30 @@ persistida, conversa sem descoberta, novo turno, recibo vencido, alteração
 concorrente, privacidade, falha de evidência, pendência e limite de tentativas.
 O hook não confunde aprovação do candidato com publicação no Git.
 
-A ativação no cliente é uma fronteira adicional: a definição modificada exige
-revisão interativa em `/hooks`. Até comprovar `Stop Installed = 1 / Active = 1`
-no cliente usado nas novas conversas, o status é `IMPLEMENTED_NOT_ACTIVATED`.
-Não foi falsificada nem automatizada confiança de hooks. Depois de ativo, a
-exigência de revisão é automática; qualidade semântica continua sendo
-responsabilidade do agente e das evidências. Conversas sem conhecimento novo
-não devem criar notas artificiais.
+A ativação foi realizada interativamente pelo usuário em `/hooks`, no CLI do
+host e na conta que executa novas sessões. Consulta posterior ao App Server
+confirmou `enabled: true` e `trust: trusted` para `Stop` e `PostToolUse`.
+Não foi falsificada nem automatizada confiança de hooks.
+
+O teste real revelou duas condições que os eventos sintéticos não cobriam:
+o diretório privado precisava pertencer ao usuário do cliente, e o sandbox
+retornava `EPERM` ao criar stdin em pipe para o subprocesso Git. Foi provisionado
+somente `.local-state/memory-review/`, com modo `0700`; writer e checkpoint
+passaram a ignorar stdin na consulta ao Git, como já fazia o checker público.
+Os erros do checkpoint agora expõem somente um código diagnóstico, sem entrada
+ou conteúdo privado. Uma regressão adicional percorre writer e checkpoint com
+índice Git real, sem manifesto de arquivos injetado.
+
+Após a correção, uma execução independente, efêmera e em `workspace-write`
+recebeu apenas uma solicitação sem descoberta durável. O próprio evento `Stop`
+continuou a sessão, o agente consultou o contrato e executou a conclusão;
+o recibo ficou `reviewed / no_durable_discovery` e o processo encerrou com
+código zero. Nenhuma nota artificial foi criada, nenhum arquivo versionado
+foi alterado pelo teste e não houve efeito residencial.
+
+Estado final dessa aceitação: `ACTIVE_REVIEW_VERIFIED` no CLI do host. A prova
+positiva de persistência e recuperação de uma nota em outra sessão continua
+sendo o experimento isolado da seção E; o smoke test de `Stop` comprova a
+exigência automática da revisão, não a perfeição da seleção semântica.
+Extensão e bridge exigem sua própria aprovação/verificação. Conversas sem
+conhecimento novo não devem criar notas artificiais.
