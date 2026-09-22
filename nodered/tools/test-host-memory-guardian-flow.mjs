@@ -174,6 +174,29 @@ for (const id of [
   "host_memory_guardian_test_stale",
 ]) assert.ok(byId.has(id), `evidência manual ausente: ${id}`);
 
+// The error must retain its diagnosis through the actual central alert formatter.
+const effectError = getFunction("host_memory_guardian_effect_error");
+const formatAlert = getFunction("global_observer_error_alert");
+for (const [status, reason, event, description] of [
+  ["failed", "memory-guardian_status=failed_reason=temporary_process_scan_unavailable", "host_memory_guardian_failed", /listar os processos do host/],
+  ["failed", "worker_unavailable", "host_memory_guardian_failed", /worker de memória falhou/],
+  ["failed", "stale_result", "host_memory_guardian_result_stale", /resultado do worker venceu/],
+  ["cleanup_partial", "none", "host_memory_guardian_cleanup_partial", /limpeza de temporários/],
+  ["invalid", "none", "host_memory_guardian_result_unrecognized", /fora do contrato/],
+]) {
+  let caught;
+  const errorNode = { status() {}, error(error, msg) { caught = structuredClone(msg); caught.error = { message: error }; } };
+  effectError({ payload: { status, reason, request_id: "synthetic" } }, context(), errorNode, {});
+  assert.match(caught.error.message, new RegExp(event));
+  caught._observer_event = { test_mode: true, flow_id: TAB, source_id: "host_memory_guardian_effect_error", policy: { reminder_hours: 6 } };
+  const notification = formatAlert(caught, context(), nodeMock(), {});
+  assert.match(notification.alert.title, /^TESTE/);
+  assert.match(notification.alert.message, description);
+  assert.ok(notification.alert.message.includes(reason));
+  assert.ok(notification.alert.message.includes(event));
+  assert.equal(notification.payload.test_mode, true);
+}
+
 const maxFunctionLength = Math.max(...tabNodes.filter((node) => node.type === "function").map((node) => node.func.length));
 assert.ok(maxFunctionLength < 2000, `JavaScript residual deve ser pequeno; maior função: ${maxFunctionLength}`);
 

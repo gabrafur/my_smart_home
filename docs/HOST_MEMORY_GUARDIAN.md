@@ -32,6 +32,11 @@ Cada ciclo remove no máximo 1.000 diretórios e 768 MiB; a limpeza é acionada
 quando a memória disponível cai abaixo de 60% ou quando os candidatos somam ao
 menos 256 MiB. O diretório é renomeado atomicamente antes da remoção.
 
+A enumeração de `/proc` lê somente nomes, sem solicitar metadados de entradas
+que podem desaparecer durante a leitura. O snapshot e a proteção de temporários
+usam o mesmo leitor limitado; falhas preservam o código do sistema operacional
+no motivo sanitizado, sem divulgar caminhos ou argumentos.
+
 A enumeração inicial de `/proc`, usada para impedir a remoção de temporários
 ativos, aceita no máximo três tentativas com espera curta e limitada. Isso
 absorve falhas transitórias do kernel sem ampliar o escopo da limpeza; se as
@@ -109,6 +114,10 @@ enviam `SIGTERM` ou `SIGKILL`. A regressão do canvas fica em
 `nodered/tools/test-host-memory-guardian-flow.mjs`; o algoritmo e a ponte têm
 fixtures em `scripts/host-memory-guardian.test.mjs` e
 `scripts/host-memory-guardian-request.test.mjs`.
+
+O alerta de falha canônica informa o tipo de falha e o motivo sanitizado do
+worker, distinguindo resultado vencido, limpeza parcial e contrato inválido.
+O diagnóstico permanece no caminho central de deduplicação e entrega.
 
 O tab participa do observador global. Falha do worker, limpeza parcial, ponte
 indisponível ou resultado vencido produz erro centralizado. A recuperação de

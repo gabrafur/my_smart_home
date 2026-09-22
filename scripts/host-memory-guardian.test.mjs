@@ -98,13 +98,13 @@ test("SSH activity is proven by the exact four-tuple", () => {
 test("temporary process scan retries transient failures and still fails closed", () => {
   let calls = 0;
   const waits = [];
-  const expected = [{ name: "123", isDirectory: () => true }];
+  const expected = ["123", "self", "meminfo"];
   const recovered = readProcessEntries("/proc", {
     retryDelayMs: 10,
     readDirectory(root, options) {
       calls += 1;
       assert.equal(root, "/proc");
-      assert.deepEqual(options, { withFileTypes: true });
+      assert.equal(options, undefined, "enumeration must not stat entries that can disappear");
       if (calls < 3) {
         const error = new Error("temporarily unavailable");
         error.code = "EAGAIN";
@@ -128,7 +128,7 @@ test("temporary process scan retries transient failures and still fails closed",
       throw error;
     },
     wait() {},
-  }), /temporary_process_scan_unavailable/);
+  }), /temporary_process_scan_unavailable_ENOENT/);
   assert.equal(permanentCalls, 1);
 });
 

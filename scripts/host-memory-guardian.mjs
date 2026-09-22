@@ -65,10 +65,10 @@ export function readProcessEntries(
   const boundedAttempts = Math.max(1, Math.min(3, Number(attempts) || 1));
   for (let attempt = 1; attempt <= boundedAttempts; attempt += 1) {
     try {
-      return readDirectory(procRoot, { withFileTypes: true });
+      return readDirectory(procRoot);
     } catch (error) {
       if (attempt === boundedAttempts || !retryableCodes.has(error?.code)) {
-        throw new Error("temporary_process_scan_unavailable", { cause: error });
+        throw new Error("temporary_process_scan_unavailable_" + String(error?.code ?? "unknown").replace(/[^A-Za-z0-9_]/g, "_"), { cause: error });
       }
       wait(Math.max(0, Number(retryDelayMs) || 0) * attempt);
     }
@@ -86,8 +86,8 @@ function activeTemporaryRoots({ procRoot, temporaryRoot, ownerUid }) {
   };
   const processes = readProcessEntries(procRoot);
   for (const processEntry of processes) {
-    if (!processEntry.isDirectory() || !/^\d+$/.test(processEntry.name)) continue;
-    const processRoot = path.join(procRoot, processEntry.name);
+    if (!/^\d+$/.test(processEntry)) continue;
+    const processRoot = path.join(procRoot, processEntry);
     const processUid = Number(readText(path.join(processRoot, "status"))?.match(/^Uid:\s+(\d+)/m)?.[1]);
     if (!Number.isFinite(processUid) || processUid !== ownerUid) continue;
     for (const linkName of ["cwd", "root"]) {
@@ -337,9 +337,9 @@ export function collectSnapshot({ procRoot = "/proc", nowMs = Date.now() } = {})
   const clockTicks = getClockTicks();
   const ssOutput = getEstablishedConnections();
   const processes = [];
-  for (const entry of fs.readdirSync(procRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || !/^\d+$/.test(entry.name)) continue;
-    const record = readProcess(procRoot, Number(entry.name), uptimeSeconds, clockTicks, ssOutput);
+  for (const entry of readProcessEntries(procRoot)) {
+    if (!/^\d+$/.test(entry)) continue;
+    const record = readProcess(procRoot, Number(entry), uptimeSeconds, clockTicks, ssOutput);
     if (record) processes.push(record);
   }
   return {
