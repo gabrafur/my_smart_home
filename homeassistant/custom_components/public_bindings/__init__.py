@@ -34,6 +34,7 @@ from .location import (
     update_location_observation,
 )
 from .service_policy import is_best_effort_notification
+from .icloud import refresh_devices
 
 DOMAIN = "public_bindings"
 DEFAULT_PATH = "/run/private-bindings/private-bindings.json"
@@ -222,12 +223,9 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             if getattr(account, "username", None) != account_identifier:
                 continue
             api = getattr(account, "api", None)
-            manager = getattr(api, "devices", None)
-            refresh = getattr(manager, "refresh", None)
-            if not callable(refresh):
-                break
-            await hass.async_add_executor_job(refresh, True)
-            return
+            if await hass.async_add_executor_job(refresh_devices, api):
+                return
+            break
         raise HomeAssistantError("iCloud location refresh provider is unavailable")
 
     location_observations: LocationObservations = {}

@@ -364,7 +364,7 @@ class PublicLocationObservationTest(unittest.TestCase):
     def test_icloud_refresh_forces_find_my_and_uses_provider_timestamp(self):
         component = COMPONENT_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("await hass.async_add_executor_job(refresh, True)", component)
+        self.assertIn("await hass.async_add_executor_job(refresh_devices, api)", component)
         self.assertIn("provider_location_observed_at", component)
         self.assertIn("authoritative_observed_at", component)
 

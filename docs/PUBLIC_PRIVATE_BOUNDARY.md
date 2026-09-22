@@ -118,6 +118,12 @@ decidir freshness e precedência entre as fontes. O heartbeat é usado
 separadamente para reconhecer fontes ativas e estacionárias, sem liberar
 automação de chegada com localização antiga.
 
+O refresh iCloud executa tanto o acesso à propriedade lazy `api.devices` quanto
+`refresh(True)` no executor do Home Assistant. A própria obtenção do gerenciador
+pode iniciar HTTP; mover apenas `refresh` deixa I/O bloqueante no event loop.
+Esse adaptador não decide frequência, fonte ou autorização: essas políticas
+continuam no Node-RED. Falha ou ausência do provedor não é tratada como sucesso.
+
 Entidades `person.*` não são materializadas no card do Mapa: a posição de cada
 morador é representada somente pelo tracker canônico do Node-RED. Zonas e os
 trackers que alimentam essas pessoas também permanecem excluídos.

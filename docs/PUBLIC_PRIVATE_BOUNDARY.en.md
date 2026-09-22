@@ -106,6 +106,12 @@ freshness and precedence between sources. Source heartbeat is evaluated
 separately to recognize an active stationary source without authorizing an
 arrival from old coordinates.
 
+iCloud refresh runs both access to the lazy `api.devices` property and
+`refresh(True)` in the Home Assistant executor. Resolving the manager can itself
+start HTTP; moving only `refresh` leaves blocking I/O on the event loop. This
+adapter does not decide frequency, source selection or authorization; those
+policies remain in Node-RED. Provider failure or absence is not treated as success.
+
 `person.*` entities are not materialized in the Map card: each resident's
 position is represented only by the canonical Node-RED tracker. Zones and the
 trackers feeding those person entities remain excluded as well.

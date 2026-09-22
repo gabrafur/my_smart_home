@@ -205,3 +205,10 @@ A localização de cada morador solicita renovação aos 5 min em near_home e ao
 O tab retomada_servicos consome as classificações canônicas de internet e VPN e libera tarefas externas após 180 s de startup e 120 s contínuos com ambas online. Usa uptime monotônico, rejeita retained como prova, coalesce intenções por chamador e revalida decisões depois da liberação. Monitores de conexão e proteções locais iniciam independentemente. No monitoramento_zigbee, configure ok apenas inicia verificação: recuperação exige dados novos após 300 s sem falha; erros tardios e duplicatas preservam o incidente e o limite de três tentativas. Consulte docs/NODERED_STARTUP_RECOVERY.md para escopo, limites e testes.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"icloud-lazy-manager-no-executor","category":"ARCHITECTURE","kind":"VERIFIED_FACT","last_verified":"2026-09-22","evidence":[{"file":"homeassistant/custom_components/public_bindings/icloud.py","sha256":"a86c4b0c48f7004fdd802695475e687eb05ac754d0747e4e8308b90ef4bc6cca"},{"file":"homeassistant/custom_components/public_bindings/__init__.py","sha256":"c3dba93496ea5902064c77c5db38fc0672db8c6d1f6ba78cba390a107d84f632"},{"file":"homeassistant/tests/test_public_bindings_icloud.py","sha256":"8ff9ecdfb3e42397ea82b3dd12d4ee1e0eb7c5cc38383129943fd6fe3b84dbbe"}]} -->
+## Refresh iCloud fora do event loop
+
+O acesso à propriedade api.devices pode executar HTTP antes de retornar o gerenciador. O public_bindings deve resolver essa propriedade e executar refresh(True) juntos no executor do Home Assistant; mover somente o método refresh não elimina o bloqueio. O adaptador mantém falhas explícitas e não altera as políticas de seleção ou frequência do Node-RED. A regressão executa o adaptador real com uma propriedade lazy que rejeita acesso no event loop.
+
+<!-- /memory-record -->
