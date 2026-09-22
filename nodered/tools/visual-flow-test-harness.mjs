@@ -25,7 +25,9 @@ export function runPeopleLifecycleVisual(call, msg) {
     !facts.departure && !facts.stale_catchup && facts.external_cycle_confirmed &&
     (facts.approach_entry || facts.near_home);
   const recovery = data.is_location_event && facts.source_ready && facts.trigger_prev_unavailable &&
-    data.trigger_state === "near_home" && data.people[data.source]?.current_home !== true &&
+    !facts.stale_catchup &&
+    ((data.trigger_state === "near_home" && data.people[data.source]?.current_home !== true) ||
+      (data.trigger_state === "home" && data.people[data.source]?.current_home === true)) &&
     facts.external_cycle_confirmed;
   if (arrival) {
     msg = call("people_visual_arrival_gate", msg);

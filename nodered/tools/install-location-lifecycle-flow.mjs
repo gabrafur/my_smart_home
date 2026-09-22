@@ -222,7 +222,7 @@ fn("people_visual_normalize", lifecycle.id, "Normalizar decisão canônica em fa
 fn("people_visual_state_load", lifecycle.id, "Recuperar armamento e dedupe", "people-lifecycle-state-load.js", 1, 3000, 560, [["people_visual_facts"]]);
 fn("people_visual_facts", lifecycle.id, "Derivar direção, proximidade e validade", "people-lifecycle-facts.js", 1, 3330, 560, [["people_visual_decision", "people_visual_wake_ring_candidate_out"]]);
 const arrivalRule = '_people.is_location_event = true and _people.facts.source_ready = true and _people.facts.trigger_prev_valid = true and _people.facts.departure != true and _people.facts.stale_catchup != true and _people.facts.external_cycle_confirmed = true and (_people.facts.approach_entry = true or _people.facts.near_home = true)';
-const recoveryRule = '_people.is_location_event = true and _people.facts.source_ready = true and _people.facts.trigger_prev_unavailable = true and _people.trigger_state = "near_home" and _people.people[_people.source].current_home != true and _people.facts.external_cycle_confirmed = true';
+const recoveryRule = '_people.is_location_event = true and _people.facts.source_ready = true and _people.facts.trigger_prev_unavailable = true and _people.facts.stale_catchup != true and ((_people.trigger_state = "near_home" and $lookup(_people.people, _people.source).current_home != true) or (_people.trigger_state = "home" and $lookup(_people.people, _people.source).current_home = true)) and _people.facts.external_cycle_confirmed = true';
 const blockedRule = '_people.is_location_event = true and _people.facts.directional_candidate = true';
 sw("people_visual_decision", lifecycle.id, "Qual caminho de chegada é válido?", arrivalRule, "jsonata", [
   { t: "true" }, { t: "else" }

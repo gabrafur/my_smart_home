@@ -76,7 +76,8 @@ const residentArrivalValid =
 const bypassEnabled = get("security_light_engine_bypass_enabled", "persistent") === true;
 const bypassAutomatic = get("security_light_engine_bypass_automatic", "persistent") === true;
 const engineKnown = vehicle.engine_state_valid === true;
-const communicationFailed = vehicle.engine_communication_failed === true || bypassAutomatic;
+const communicationFailed = vehicle.engine_communication_failed === true ||
+    get("security_light_engine_communication_failed", "persistent") === true || bypassAutomatic;
 const staleEngineOff = engineKnown && vehicle.engine_on === false &&
     vehicle.engine_stale === true;
 /* Um ciclo externo confirmado pode terminar diretamente em home depois de uma

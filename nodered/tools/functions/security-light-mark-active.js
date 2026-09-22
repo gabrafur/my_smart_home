@@ -52,7 +52,16 @@ const arrivalSource = String(msg.payload?.source ?? "");
 const residentArrival = ["resident_primary", "resident_secondary"].includes(
     arrivalSource
 );
-const sourcePeopleContext = people[arrivalSource];
+// Evento e contexto usam links independentes. Revalide a observação canônica
+// do evento também nesta fronteira, sem substituir um cache mais recente.
+const cachedResident = people[arrivalSource];
+const eventResident = msg.payload?.arrival_resident_snapshot;
+const eventObservedAt = Number(eventResident?.updated_at ?? 0);
+const sourcePeopleContext = eventResident?.ready === true && eventResident?.stale !== true &&
+    Number.isFinite(eventObservedAt) && eventObservedAt > 0 &&
+    eventObservedAt <= now + FUTURE_TOLERANCE_MS &&
+    eventObservedAt >= Number(cachedResident?.updated_at ?? 0)
+    ? eventResident : cachedResident;
 const sourceObservedAt = Number(sourcePeopleContext?.updated_at);
 const sourceCurrent = sourcePeopleContext?.ready === true &&
     sourcePeopleContext?.stale !== true && Number.isFinite(sourceObservedAt) &&

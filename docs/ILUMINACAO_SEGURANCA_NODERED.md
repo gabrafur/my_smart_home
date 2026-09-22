@@ -224,8 +224,11 @@ incoerente sem substituir a última política válida.
 - Um tracker primário que já está em casa há mais de 10 min bloqueia o catch-up
   tardio do tracker secundário. Sem `last_changed`, o comportamento permanece
   fail-open para não perder uma chegada real.
-- Recovery `unknown`/`unavailable -> near_home` só alcança a iluminação quando
-  recupera um ciclo externo que já estava armado antes da indisponibilidade.
+- Recovery `unknown`/`unavailable -> near_home` ou `-> home` só alcança a
+  iluminação quando recupera um ciclo externo já armado antes da
+  indisponibilidade. O retorno direto para `home` exige posição atual e não
+  aceita catch-up de uma fonte que já estava em casa além da carência. O
+  produtor emite estágio `home`, carrega o snapshot canônico e consome o armado.
 - Uma saída curta `home -> near_home` abre um ciclo local por até 90 min, sem
   ser tratada como chegada e sem acender o refletor. O fluxo primeiro confirma
   o `on` da saída; somente um `off` posterior e outro `on`, com a localização
@@ -379,12 +382,17 @@ verdadeiras:
 2. a origem é `resident_primary` ou `resident_secondary`, o estágio é
    `approach`, a transição vem de `not_home` ou outra zona externa para
    `near_home` (ou recupera um ciclo externo já armado), e a localização atual
-   da mesma pessoa permanece `ready`, não stale e em `near_home`; evento do carro,
-   estágio `home`, saída, rebote ou evento malformado termina em `BLOQUEADO`;
+   da mesma pessoa permanece `ready`, não stale e em `near_home`. Também aceita
+   o salto direto de zona externa ou indisponibilidade para `home`, com ciclo
+   externo confirmado e posição atual em casa. Evento do carro, saída, rebote
+   `near_home -> home` ou evento malformado termina em `BLOQUEADO`;
 3. `sun.sun` está `below_horizon`;
 4. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`, **ou** o
    bypass manual ou automático está ligado e a telemetria do motor está comprovadamente não
-   confiável;
+   confiável. O salto direto confirmado para `home` também preserva a
+   contingência existente para motor `off` vencido, sem falha de comunicação.
+   Um `off` confiável continua bloqueando; falha de comunicação exige bypass
+   ligado;
 5. pessoas, sol e estado físico do refletor estão ready/reconciliados; o
    readiness do motor é obrigatório no caminho normal e dispensado apenas pelo
    bypass restrito descrito acima;
@@ -416,6 +424,13 @@ O evento de chegada leva também um snapshot mínimo da localização canônica 
 o produziu. Se o evento e o contexto percorrerem links diferentes, essa
 evidência monotônica impede que o gate ainda leia por alguns milissegundos a
 posição anterior e bloqueie uma entrada válida em `near_home`.
+
+O recovery também leva esse snapshot, inclusive ao saltar diretamente para
+`home`. A fronteira final de acionamento revalida a mesma evidência; corrigir
+apenas o primeiro gate deixava a chegada sujeita à corrida com o cache antigo.
+Um cache mais recente prevalece e GPS vencido continua bloqueado. O estado
+persistido de falha de comunicação do motor é consultado tanto na reavaliação
+quanto no gate de chegada, mesmo quando o bypass já tinha posse manual.
 
 Se o motor muda para `on` depois que o morador já entrou em `near_home`, o evento
 confirmado de motor reavalia imediatamente a chegada enquanto o ciclo externo
@@ -752,6 +767,17 @@ para a esquerda nas quatro abas.
 
 ## Validação
 
+Para reproduzir manualmente o recovery direto sem dispositivos, use o reset
+dos testes e mantenha motor sintético `OFF`. Execute `not_home`, aguarde a
+confirmação externa de 60 s e execute `near_home`. Em seguida use o controle
+`resident_primary_invalid_home` (`unknown -> home`) e selecione motor
+sintético `ON`: com o ciclo previamente armado e o sol abaixo do horizonte,
+o recovery pendente deve terminar em `TESTE FINAL`, com refletor simulado e
+`dispatched=false`. Repita após reset, sem armar o ciclo: deve permanecer
+bloqueado. Os replays
+automatizados cobrem os dois moradores, `unknown` e `unavailable`, consumo do
+armado, ordem evento/contexto e a expressão JSONata publicada no canvas.
+
 ```bash
 cd nodered
 npm run flows:validate
@@ -759,7 +785,7 @@ npm run flows:test-security
 npm run flows:test-alarm-arrival
 ```
 
-`flows:test-security` executa 63 cenários de regressão, incluindo
+`flows:test-security` executa 80 cenários de regressão, incluindo
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
 de refresh, inclusive movimento dentro da mesma zona, simetria de motor
 `on`/`off`, replay real de chegada após atraso `off -> on` e preservação de

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import jsonata from "jsonata";
 import {
   ensureArrivalContextPolicy,
   runArrivalContextVisual,
@@ -1631,6 +1632,100 @@ scenario("34c falha de comunicação invalida OFF antigo e libera fallback", () 
   );
 });
 
+scenario("34b GPS recuperado diretamente em home chega ao dry-run do refletor", () => {
+  for (const source of ["resident_primary", "resident_secondary"]) {
+    for (const previous of ["unknown", "unavailable"]) {
+      for (const armed of [false, true]) {
+        const peopleFlow = memoryFlow({ people_arrival_armed__test: { [source]: armed } });
+        const input = peopleInput({ source, previous, current: "home",
+          resident_primary: entity("home", 20), resident_primaryIcloud: entity("home", 20),
+          resident_secondary: entity("home", 20), resident_secondaryIcloud: entity("home", 20) });
+        input._location_test = true;
+        const produced = run("people_normalize", input, peopleFlow, geoEnv);
+        assert.equal(produced[1], null, "recovery não pode gerar chegada geral/desarme");
+        if (!armed) {
+          assert.equal(produced[2], null, "home sem ciclo externo não autoriza luz");
+          continue;
+        }
+        assert(produced[2], `${source}: ${previous} → home deve emitir recovery de iluminação`);
+        assert.equal(produced[2].payload.arrival_stage, "home");
+        assert.equal(produced[2].payload.illumination_only, true);
+        assert.equal(peopleFlow.get("people_arrival_armed__test")[source], false);
+        const lightFlow = readyLightFlow();
+        const productionLifecycle = structuredClone(lightFlow.get("security_light_lifecycle_v1"));
+        lightFlow.set("people_context_v1__test", {
+          [source]: { ready: false, stale: true, state: "unavailable", updated_at: Date.now() - 60_000 }
+        });
+        lightFlow.set("vehicle_primary_context_v1__test", lightFlow.get("vehicle_primary_context_v1"));
+        const prepared = run("light_prepare_arrival", produced[2], lightFlow, geoEnv)[0];
+        assert(prepared, "snapshot no evento deve vencer o cache anterior");
+        const gated = run("light_check_vehicle_primary_in_use", prepared, lightFlow, geoEnv);
+        assert(gated);
+        const available = run("light_check_inactive", gated, lightFlow, geoEnv)[0];
+        assert(available);
+        const outputs = run("light_mark_active", available, lightFlow, geoEnv);
+        assert.equal(outputs[0], null, "nenhum efeito real durante o teste");
+        assert(outputs[1], "recovery deve alcançar a fronteira dry-run");
+        const terminal = runDirect("light_full_dry_run_terminal_v1", outputs[1], lightFlow, geoEnv);
+        assert.equal(terminal, null);
+        const dryRun = lightFlow.get("security_light_last_dry_run_v1__test");
+        assert.equal(dryRun.simulated, true);
+        assert.equal(dryRun.dispatched, false);
+        assert(dryRun.actions.includes("switch.turn_on:refletor"));
+        assert.deepEqual(lightFlow.get("security_light_lifecycle_v1"), productionLifecycle);
+        const replay = run("people_normalize", input, peopleFlow, geoEnv);
+        assert.equal(replay[2], null, "repetição não pode rearmar a chegada");
+      }
+    }
+  }
+});
+
+scenario("34c falha persistida do motor vale também no gate final de chegada", () => {
+  for (const testMode of [false, true]) {
+    const suffix = testMode ? "__test" : "";
+    const flow = readyLightFlow();
+    flow.set("people_context_v1" + suffix, flow.get("people_context_v1"));
+    flow.set("vehicle_primary_context_v1" + suffix, {
+      engine_state_valid: true, engine_on: false, in_use: false,
+      engine_stale: false, engine_communication_failed: false, updated_at: Date.now()
+    });
+    flow.set("security_light_engine_bypass_enabled" + suffix, true);
+    // Bypass já era manual: a falha não transfere sua posse para automático.
+    flow.set("security_light_engine_bypass_automatic" + suffix, false);
+    run("light_merge_context", { _location_test: testMode, payload: {
+      kind: "engine_bypass_context", enabled: true, communication_failed: true
+    } }, flow, geoEnv);
+    const event = arrival("resident_secondary");
+    event._location_test = testMode;
+    const prepared = run("light_prepare_arrival", event, flow, geoEnv)[0];
+    assert(prepared);
+    assert.equal(prepared.payload.engine_communication_failed, true);
+    assert(run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv));
+    run("light_merge_context", { _location_test: testMode, payload: {
+      kind: "engine_bypass_context", enabled: true, communication_failed: false
+    } }, flow, geoEnv);
+    const recovered = run("light_prepare_arrival", event, flow, geoEnv)[0];
+    assert.equal(recovered.payload.engine_communication_failed, false);
+    assert.equal(run("light_check_vehicle_primary_in_use", recovered, flow, geoEnv), null,
+      "OFF confiável deve voltar a bloquear após recuperação");
+  }
+});
+
+scenario("34d fronteira final não aceita snapshot antigo sobre cache mais recente", () => {
+  const now = Date.now();
+  for (const age of [0, 20 * 60_000]) {
+    const flow = readyLightFlow({ people_context_v1: {
+      resident_primary: { ready: false, stale: true, state: "unavailable", updated_at: now + 1 }
+    } });
+    const event = arrival("resident_primary");
+    event.payload.vehicle_primary_gate = "known_engine_on";
+    event.payload.arrival_resident_snapshot = {
+      ready: true, stale: false, state: "near_home", updated_at: now - age
+    };
+    assert.equal(run("light_mark_active", event, flow, geoEnv), null);
+  }
+});
+
 scenario("35 near_home exige ciclo externo e recovery fica só na iluminação", () => {
   assert.deepEqual(
     byId.get("people_lighting_tracker_recovery_arrival_out").links,
@@ -2418,6 +2513,21 @@ scenario("47 decisão canônica publica estado e atributos para o Recorder", () 
     "waiting_location_refresh");
 });
 
-assert.equal(passed.length, 77);
+// Avalia a expressão efetivamente publicada, além do replay do harness.
+const recoveryGate = jsonata(byId.get("people_visual_recovery_gate").property);
+for (const state of ["home", "near_home", "not_home"]) {
+  for (const confirmed of [false, true]) {
+    for (const staleCatchup of [false, true]) {
+      const accepted = await recoveryGate.evaluate({ _people: {
+        is_location_event: true, source: "resident_secondary", trigger_state: state,
+        people: { resident_secondary: { current_home: state === "home" } },
+        facts: { source_ready: true, trigger_prev_unavailable: true,
+          stale_catchup: staleCatchup, external_cycle_confirmed: confirmed }
+      } });
+      assert.equal(accepted, confirmed && !staleCatchup && state !== "not_home");
+    }
+  }
+}
+assert.equal(passed.length, 80);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);
