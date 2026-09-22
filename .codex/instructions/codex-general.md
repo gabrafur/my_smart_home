@@ -67,6 +67,12 @@ ordinary model routing.
 
 Do not impose an initial confirmation gate. Treat `continue` as ordinary user input unless confirmation is independently needed for a risky action.
 
+## Branch de trabalho
+
+Em tarefas interativas, trabalhe e publique sempre na branch `main`. Não crie
+branches de tarefa; preserve alterações concorrentes e use checkout destacado
+quando precisar de uma árvore limpa para validação.
+
 ## Commit message policy
 
 Use Conventional Commits in English for every commit created by Codex, following
