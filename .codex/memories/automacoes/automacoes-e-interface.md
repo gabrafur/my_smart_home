@@ -226,3 +226,10 @@ O observador global grava diagnóstico privado por ocorrência antes dos gates d
 A integração Home Assistant emite as chaves não traduzidas home-assistant.status.connected e home-assistant.status.running. O observador deve reconhecê-las como recuperação explícita e encerrar todas as fontes da conexão compartilhada; ignorá-las mantém incidentes vencidos e lembretes mesmo com a conexão restabelecida. Valores de entidade, sucesso de serviço e connecting não comprovam recuperação. O replay cobre desconexão curta, recuperação e ausência de lembrete após seis horas.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"diagnostico-do-guardiao-de-memoria","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-09-22","evidence":[{"file":"docs/HOST_MEMORY_GUARDIAN.md","sha256":"aacee2549c2aae5710ff4ea61602a1c238aec02dc6bac3e777e6ccc6a6bcc22e"},{"file":"docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md","sha256":"35d48cb8c9972842c2bb1b30a67371475725e4071ae23eee1e00449b0b17352a"}]} -->
+## Diagnóstico do guardião de memória
+
+Alertas antigos genéricos não identificam sozinhos a causa do guardião. O alerta canônico atual preserva o motivo sanitizado; a enumeração de processos usa somente nomes e mantém o código de erro do sistema. Investigue o histórico filtrado pelo nó e os campos status/reason; não deduza falta de RAM apenas do título de indisponibilidade. Falha de leitura deve bloquear a limpeza de temporários. Nunca copie registros operacionais para a memória pública.
+
+<!-- /memory-record -->
