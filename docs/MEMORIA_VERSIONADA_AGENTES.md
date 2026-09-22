@@ -223,14 +223,30 @@ teste de sessões independentes e a falha da captura automática.
 
 ## Revisão obrigatória ao encerrar novas tarefas
 
-O hook `Stop` em `.codex/hooks.json` chama `scripts/memory-review.mjs hook`.
-Ao encerrar uma tarefa sem checkpoint, ele retorna `decision: block`: o cliente
-continua a tarefa com uma solicitação para avaliar descobertas no contexto já
-presente, comparar fontes públicas e persistir notas úteis. O hook não lê
-`prompt`, `last_assistant_message` nem `transcript_path`; não chama outro modelo,
-rede, dispositivos ou revisão semanal. A seleção semântica pertence ao agente.
+Os hooks `UserPromptSubmit` e `Stop` em `.codex/hooks.json` chamam
+`scripts/memory-review.mjs hook`. `UserPromptSubmit` prepara um checkpoint por
+turno e entrega a orientação e o token em `hookSpecificOutput.additionalContext`,
+como contexto interno para o agente. A tarefa começa normalmente, sem confirmação
+inicial. Antes de responder ao usuário, o agente avalia as descobertas, persiste
+somente fatos públicos verificados e conclui o checkpoint. `Stop` apenas verifica
+o recibo do mesmo turno e o fingerprint atual; sucesso retorna `{}`.
 
-A continuação traz um token técnico efêmero e a chamada de conclusão:
+Nenhum desses hooks retorna `decision: block` ou `reason`: no evento `Stop`,
+esses campos criam um novo prompt visível no chat. Pedir silêncio dentro desse
+prompt não o oculta. Não use `suppressOutput`, ainda sem implementação segundo a
+[documentação oficial](https://learn.chatgpt.com/docs/hooks). A interface pode
+continuar mostrando indicadores de execução próprios do cliente.
+
+A revisão não anuncia início, progresso ou sucesso, nem publica token ou resultado
+técnico. Uma pendência real (`unverified`, recibo ausente/obsoleto ou falha de
+validação) retorna `continue: false`, `stopReason` e `systemMessage`; não inicia
+uma continuação automática nem declara sucesso silenciosamente. O agente deve
+concluir a revisão antes da resposta final: o aviso no `Stop` não desfaz uma
+resposta já enviada. Os hooks não leem `prompt`, `last_assistant_message` nem
+`transcript_path`, não chamam outro modelo, rede, dispositivos ou revisão semanal.
+A seleção semântica continua pertencendo ao agente.
+
+O contexto interno fornece a chamada de conclusão:
 
 ```text
 node scripts/memory-review.mjs complete <token> <outcome>
@@ -245,16 +261,16 @@ Resultados possíveis:
 
 Todos os resultados passam pelo checker público. O recibo fica somente em
 `.local-state/memory-review/`, fora do Git, com hashes de sessão/turno/corpus,
-resultado e contador de tentativas. Não contém identificação bruta, prompts,
+resultado e status da revisão. Não contém identificação bruta, prompts,
 respostas, caminhos de transcript, fatos residenciais ou conteúdo da memória.
 O diretório deve existir com modo `0700` e pertencer ao usuário que executa o
 cliente. Se `.local-state/` for administrado por outro usuário, provisione
 somente esse subdiretório; não altere permissões do restante do runtime.
 Cada sessão tem somente seu checkpoint mais recente. Um turno novo precisa
-revisar novamente; uma continuação marcada pode concluir o checkpoint pendente.
-Alteração de memória após a revisão exige nova confirmação. Dois retornos sem
-revisão concluída encerram com `MEMORY_REVIEW_FAILED`, em vez de loop infinito
-ou sucesso silencioso. Interrupção explícita do usuário não é impedida.
+revisar novamente. Reentrega do mesmo evento preserva o checkpoint, e recibos
+de outros turnos não autorizam o encerramento. Alteração de memória após a revisão
+exige nova conclusão do checkpoint. Revisão ausente ou inválida sinaliza
+`MEMORY_REVIEW_FAILED`, sem loop de continuação ou sucesso silencioso. Interrupção explícita do usuário não é impedida.
 
 O gate garante a exigência de um resultado de revisão no cliente onde roda;
 não prova por código que toda seleção semântica é perfeita ou que `already_current`
@@ -264,7 +280,8 @@ O objetivo é guardar conhecimento útil confirmado e evitar lixo ou poisoning.
 ### Ativação por cliente
 
 A instalação tem uma etapa interativa obrigatória: abra `/hooks`, revise a
-nova definição e confirme `Stop` com `Installed = 1` e `Active = 1`. Preserve
+nova definição e confirme `UserPromptSubmit` e `Stop` com `Installed = 1` e
+`Active = 1`. Preserve
 `PostToolUse` também aprovado. Não automatize nem altere os registros de confiança.
 O CLI do bridge, CLI do host, extensão e aplicativo podem ter estados diferentes;
 revisão no cliente errado não ativa o cliente que recebe as conversas.
@@ -275,14 +292,18 @@ cliente e a [documentação oficial dos hooks](https://learn.chatgpt.com/docs/ho
 
 Sem evidência dessa ativação, o estado é `IMPLEMENTED_NOT_ACTIVATED`, nunca
 captura automática comprovada. `scripts/memory-review.test.mjs` valida o contrato
-com eventos sintéticos; o teste de aceitação no cliente deve observar a
-continuação, a nota útil persistida e recuperação em outra sessão. A mera
+com eventos sintéticos; o teste de aceitação no cliente deve observar o contexto
+interno, a conclusão antes da resposta final, ausência de prompt de continuação
+no chat, nota útil persistida quando cabível e recuperação em outra sessão. A mera
 execução manual do script não comprova entrega do evento `Stop` pelo cliente.
 
-Na aceitação de 2026-09-21, o CLI do host foi aprovado pelo usuário correto:
+Historicamente, na aceitação de 2026-09-21 do fluxo antigo com continuação, o CLI do host foi aprovado pelo usuário correto:
 ambos os hooks retornaram `enabled: true` e `trust: trusted`. Uma execução nova
 em `workspace-write` acionou `Stop`, continuou automaticamente e registrou
 `reviewed / no_durable_discovery`, encerrando sem inventar uma nota. A consulta
 interna ao Git usa stdin ignorado: criar um pipe de entrada desnecessário
 produzia `EPERM` nesse sandbox. Essa comprovação é específica do cliente
 testado e não substitui a aprovação na extensão ou no bridge.
+
+Essa aceitação histórica não comprova ativação do fluxo atual com
+`UserPromptSubmit`; a nova definição precisa de revisão no cliente utilizado.

@@ -3,12 +3,31 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import test from "node:test";
-import { stopReview, completeReview } from "./memory-review.mjs";
+import { startReview, stopReview, completeReview } from "./memory-review.mjs";
 import { applyCandidate } from "./memory-candidate.mjs";
 import { fixture, target, source } from "./test-support/memory-fixture.mjs";
 
 const event = { hook_event_name: "Stop", session_id: "synthetic-session", turn_id: "synthetic-turn", stop_hook_active: false };
-const tokenOf = (result) => result.reason.match(/[a-f0-9]{64}:[a-f0-9]{64}/)[0];
+const start = (root, payload = event, options) => startReview(root, { ...payload, hook_event_name: "UserPromptSubmit" }, options);
+const tokenOf = (result) => result.hookSpecificOutput.additionalContext.match(/[a-f0-9]{64}:[a-f0-9]{64}/)[0];
+
+test("successful review requests silent completion while preserving the checkpoint", (t) => {
+  for (const outcome of ["updated", "already_current", "no_durable_discovery"]) {
+    const f = fixture(t);
+    const result = start(f.root, event, f);
+    assert.equal(result.decision, undefined);
+    assert.equal(result.reason, undefined);
+    assert.equal(result.hookSpecificOutput.hookEventName, "UserPromptSubmit");
+    assert.equal(result.systemMessage, undefined);
+    assert.equal(result.suppressOutput, undefined);
+    assert.match(result.hookSpecificOutput.additionalContext, /Não envie mensagens de início, progresso ou confirmação da revisão no chat/);
+    assert.match(result.hookSpecificOutput.additionalContext, /Antes da resposta final/);
+    assert.match(result.hookSpecificOutput.additionalContext, /Informe apenas uma pendência real/);
+    if (outcome === "updated") applyCandidate(f.root, f.candidate(), { ...f, apply: true });
+    assert.deepEqual(completeReview(f.root, tokenOf(result), outcome, f), { status: "reviewed", outcome });
+    assert.deepEqual(stopReview(f.root, event, f), {});
+  }
+});
 
 test("review and candidate discover tracked files through Git without an injected manifest", (t) => {
   const f = fixture(t);
@@ -18,65 +37,85 @@ test("review and candidate discover tracked files through Git without an injecte
   git(["init", "--quiet"]);
   const emptyBlob = git(["hash-object", "-w", "--stdin"], "").trim();
   git(["update-index", "--index-info"], f.trackedFiles.map((file) => `100644 ${emptyBlob}\t${file}\n`).join(""));
-  const result = stopReview(f.root, event);
+  const result = start(f.root, event);
   applyCandidate(f.root, f.candidate(), { apply: true });
   assert.equal(completeReview(f.root, tokenOf(result), "updated").status, "reviewed");
   assert.deepEqual(stopReview(f.root, event), {});
 });
 
-test("missing checkpoint continues task; persisted useful memory permits completion", (t) => {
+test("review starts before completion; persisted useful memory permits completion", (t) => {
   const f = fixture(t);
-  const result = stopReview(f.root, event, f);
-  assert.equal(result.decision, "block");
+  const result = start(f.root, event, f);
+  assert.equal(result.decision, undefined);
+  assert.equal(result.reason, undefined);
+  assert.equal(result.hookSpecificOutput.hookEventName, "UserPromptSubmit");
   assert.throws(() => completeReview(f.root, tokenOf(result), "updated", f), /persisted memory change/);
   applyCandidate(f.root, f.candidate(), { ...f, apply: true });
   assert.equal(completeReview(f.root, tokenOf(result), "updated", f).status, "reviewed");
-  assert.deepEqual(stopReview(f.root, { ...event, turn_id: "continuation", stop_hook_active: true }, f), {});
+  assert.deepEqual(stopReview(f.root, event, f), {});
+  assert.equal(stopReview(f.root, { ...event, turn_id: "continuation", stop_hook_active: true }, f).continue, false);
 });
 
 test("ordinary conversations can record no durable discovery without creating a note", (t) => {
   const f = fixture(t);
   const before = f.read();
-  const result = stopReview(f.root, event, f);
+  const result = start(f.root, event, f);
   completeReview(f.root, tokenOf(result), "no_durable_discovery", f);
   assert.equal(f.read(), before);
   assert.deepEqual(stopReview(f.root, event, f), {});
-  assert.equal(stopReview(f.root, { ...event, turn_id: "new-user-turn" }, f).decision, "block");
+  assert.equal(stopReview(f.root, { ...event, turn_id: "new-user-turn" }, f).continue, false);
 });
 
 test("checkpoint does not ingest prompts, assistant messages, transcripts or identities", (t) => {
   const f = fixture(t);
-  stopReview(f.root, { ...event, prompt: "PRIVATE_PROMPT", last_assistant_message: "PRIVATE_ANSWER", transcript_path: "/not-readable/private-log", extra: "PRIVATE_EXTRA" }, f);
+  start(f.root, { ...event, prompt: "PRIVATE_PROMPT", last_assistant_message: "PRIVATE_ANSWER", transcript_path: "/not-readable/private-log", extra: "PRIVATE_EXTRA" }, f);
   const directory = path.join(f.root, ".local-state/memory-review");
   const content = fs.readdirSync(directory).map((file) => fs.readFileSync(path.join(directory, file), "utf8")).join("");
   assert.doesNotMatch(content, /PRIVATE_|synthetic-session|synthetic-turn|transcript|prompt|private-log/);
   assert.equal(fs.statSync(directory).mode & 0o777, 0o700);
 });
 
-test("two failed continuations produce explicit failure instead of an infinite loop", (t) => {
+test("missing or pending review fails without creating a visible continuation", (t) => {
   const f = fixture(t);
-  assert.equal(stopReview(f.root, event, f).decision, "block");
-  const next = { ...event, stop_hook_active: true, turn_id: "continuation" };
-  assert.equal(stopReview(f.root, next, f).decision, "block");
-  const failed = stopReview(f.root, next, f);
-  assert.equal(failed.continue, false);
-  assert.match(failed.systemMessage, /MEMORY_REVIEW_FAILED/);
+  for (const prepared of [false, true]) {
+    if (prepared) start(f.root, event, f);
+    for (let i = 0; i < 3; i++) {
+      const result = stopReview(f.root, event, f);
+      assert.equal(result.continue, false);
+      assert.match(result.systemMessage, /MEMORY_REVIEW_FAILED/);
+      assert.equal(result.decision, undefined);
+      assert.equal(result.reason, undefined);
+      assert.equal(result.hookSpecificOutput, undefined);
+    }
+  }
+});
+
+test("repeated prompt delivery preserves the checkpoint and does not erase a completed review", (t) => {
+  const f = fixture(t);
+  const result = start(f.root, event, f);
+  assert.deepEqual(start(f.root, event, f), result);
+  completeReview(f.root, tokenOf(result), "no_durable_discovery", f);
+  assert.deepEqual(start(f.root, event, f), result);
+  assert.deepEqual(stopReview(f.root, event, f), {});
+  assert.throws(() => completeReview(f.root, tokenOf(result), "no_durable_discovery", f), /already closed/);
 });
 
 test("stale receipt and changes after review cannot authorize completion", (t) => {
   const f = fixture(t);
-  const result = stopReview(f.root, event, f);
+  const result = start(f.root, event, f);
   completeReview(f.root, tokenOf(result), "already_current", f);
   fs.appendFileSync(path.join(f.root, target), "\nConcurrent public note.\n");
-  assert.equal(stopReview(f.root, event, f).decision, "block");
-  stopReview(f.root, { ...event, turn_id: "new-user-turn" }, f);
+  assert.equal(stopReview(f.root, event, f).continue, false);
+  completeReview(f.root, tokenOf(result), "updated", f);
+  assert.deepEqual(stopReview(f.root, event, f), {});
+  start(f.root, { ...event, turn_id: "new-user-turn" }, f);
   assert.throws(() => completeReview(f.root, tokenOf(result), "already_current", f), /stale/);
 });
 
 test("evidence drift and unverified outcome never report a clean review", (t) => {
   const f = fixture(t);
   applyCandidate(f.root, f.candidate(), { ...f, apply: true });
-  const result = stopReview(f.root, event, f);
+  const result = start(f.root, event, f);
   fs.appendFileSync(path.join(f.root, source), "// changed\n");
   assert.throws(() => completeReview(f.root, tokenOf(result), "already_current", f), /validation failed/);
   fs.writeFileSync(path.join(f.root, source), 'export const adapter = "blue";\n');
@@ -87,11 +126,20 @@ test("evidence drift and unverified outcome never report a clean review", (t) =>
 test("missing hook identity fails explicitly and unrelated events do nothing", (t) => {
   const f = fixture(t);
   assert.equal(stopReview(f.root, { hook_event_name: "Stop" }, f).continue, false);
+  assert.equal(startReview(f.root, { hook_event_name: "UserPromptSubmit" }, f).continue, false);
+  assert.deepEqual(startReview(f.root, event, f), {});
   assert.deepEqual(stopReview(f.root, { hook_event_name: "PostToolUse" }, f), {});
 });
 
-test("versioned Stop hook uses canonical checkpoint with bounded timeout", () => {
+test("versioned hooks prepare internal context and verify at Stop with bounded timeouts", () => {
   const hooks = JSON.parse(fs.readFileSync(new URL("../.codex/hooks.json", import.meta.url)));
+  assert.equal(hooks.hooks.UserPromptSubmit.length, 1);
+  const prepare = hooks.hooks.UserPromptSubmit[0].hooks[0];
+  assert.match(prepare.command, /scripts\/memory-review\.mjs.*hook/);
+  assert.ok(prepare.timeout <= 15);
+  assert.ok(prepare.additionalContextLimit >= 1000);
+  assert.equal(prepare.statusMessage, undefined);
+  assert.equal(hooks.hooks.Stop[0].hooks[0].statusMessage, undefined);
   assert.equal(hooks.hooks.Stop.length, 1);
   assert.match(hooks.hooks.Stop[0].hooks[0].command, /scripts\/memory-review\.mjs.*hook/);
   assert.ok(hooks.hooks.Stop[0].hooks[0].timeout <= 15);

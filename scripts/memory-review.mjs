@@ -65,8 +65,9 @@ export function completeReview(root, token, outcome, { trackedFiles } = {}) {
   if (!/^[a-f0-9]{64}:[a-f0-9]{64}$/.test(token) || !outcomes.has(outcome)) throw new Error("invalid checkpoint token/outcome");
   const [sessionKey, reviewId] = token.split(":");
   const state = readState(root, sessionKey);
-  if (!state || state.review_id !== reviewId || state.status !== "pending") throw new Error("checkpoint is missing, stale or already closed");
+  if (!state || state.review_id !== reviewId || !["pending", "reviewed"].includes(state.status)) throw new Error("checkpoint is missing, stale or already closed");
   const snapshot = checkedSnapshot(root, trackedFiles);
+  if (state.status === "reviewed" && snapshot.fingerprint === state.memory_sha256) throw new Error("checkpoint is missing, stale or already closed");
   if (outcome === "updated" && snapshot.fingerprint === state.initial_memory_sha256) throw new Error("updated requires a persisted memory change");
   writeState(root, sessionKey, {
     ...state, status: "reviewed", outcome, memory_sha256: snapshot.fingerprint,
@@ -76,41 +77,49 @@ export function completeReview(root, token, outcome, { trackedFiles } = {}) {
 
 // Only identifiers are consumed. Prompt, transcript_path and assistant text
 // are deliberately ignored and never stored, parsed for facts or sent out.
-export function stopReview(root, payload, { trackedFiles } = {}) {
-  if (payload.hook_event_name !== "Stop") return {};
-  if (typeof payload.session_id !== "string" || !payload.session_id || typeof payload.turn_id !== "string" || !payload.turn_id) {
-    return { continue: false, stopReason: message, systemMessage: message };
-  }
+function validIdentity(payload) {
+  return typeof payload.session_id === "string" && payload.session_id.length > 0
+    && typeof payload.turn_id === "string" && payload.turn_id.length > 0;
+}
+
+function failedReview() {
+  return { continue: false, stopReason: message, systemMessage: message };
+}
+
+export function startReview(root, payload, { trackedFiles } = {}) {
+  if (payload.hook_event_name !== "UserPromptSubmit") return {};
+  if (!validIdentity(payload)) return failedReview();
   const sessionKey = digest(payload.session_id);
   const turnKey = digest(payload.turn_id);
   let state = readState(root, sessionKey);
-  // Stop continuations may receive a new turn id. Only an explicitly marked
-  // continuation can reuse the pending checkpoint from the same session.
-  if (!state || (state.turn_sha256 !== turnKey && payload.stop_hook_active !== true)) {
+  if (!state || state.turn_sha256 !== turnKey) {
     state = {
-      schema: 1, review_id: digest(`${sessionKey}:${turnKey}`), turn_sha256: turnKey,
-      status: "pending", attempts: 0, initial_memory_sha256: publicSnapshot(root, trackedFiles).fingerprint,
+      schema: 2, review_id: digest(`${sessionKey}:${turnKey}`), turn_sha256: turnKey,
+      status: "pending", initial_memory_sha256: publicSnapshot(root, trackedFiles).fingerprint,
     };
+    writeState(root, sessionKey, state);
   }
-  if (state.status === "reviewed") {
-    const snapshot = checkedSnapshot(root, trackedFiles);
-    if (state.memory_sha256 === snapshot.fingerprint) {
-      if (state.outcome === "unverified") return { continue: false, stopReason: message, systemMessage: message };
-      return {};
-    }
-    state = { ...state, status: "pending", outcome: undefined, memory_sha256: undefined };
-  }
-  if (state.attempts >= 2) {
-    writeState(root, sessionKey, { ...state, status: "failed" });
-    return { continue: false, stopReason: message, systemMessage: message };
-  }
-  state = { ...state, attempts: state.attempts + 1 };
-  writeState(root, sessionKey, state);
   const token = `${sessionKey}:${state.review_id}`;
   return {
-    decision: "block",
-    reason: `Antes de encerrar, revise as descobertas desta tarefa para a memória pública. Use apenas o contexto já disponível e fontes públicas atuais; não leia transcripts, não acione dispositivos e não importe dados privados. Consulte o índice e docs/MEMORIA_VERSIONADA_AGENTES.md. Persista decisões úteis verificadas no tema existente, preferindo scripts/memory-candidate.mjs. Não invente uma memória para satisfazer este gate. Se já registrada, use already_current; sem descoberta durável, no_durable_discovery; se não puder verificar, unverified e informe a pendência. Depois execute: node scripts/memory-review.mjs complete ${token} <updated|already_current|no_durable_discovery|unverified>. Este checkpoint valida a memória, não requer commit/push ou validação ampla adicional. Preserve o trabalho concorrente.`,
+    hookSpecificOutput: {
+      hookEventName: "UserPromptSubmit",
+      additionalContext: `Execute a tarefa normalmente, sem confirmação inicial. Antes da resposta final, revise silenciosamente as descobertas para a memória pública e conclua o checkpoint desta tarefa. Não envie mensagens de início, progresso ou confirmação da revisão no chat, nem publique o token ou o resultado técnico. Use apenas o contexto disponível e fontes públicas atuais; não leia transcripts, não acione dispositivos e não importe dados privados. Consulte o índice e docs/MEMORIA_VERSIONADA_AGENTES.md. Persista somente decisões úteis verificadas no tema existente, preferindo scripts/memory-candidate.mjs; não invente uma memória para satisfazer o gate. Depois execute: node scripts/memory-review.mjs complete ${token} <updated|already_current|no_durable_discovery|unverified>. Use updated se alterou a memória desde o início; already_current se já registrada; no_durable_discovery se não há descoberta durável; unverified se não puder verificar. Não repita um checkpoint já concluído neste turno, salvo se a memória mudar depois dele. Informe apenas uma pendência real que impeça a conclusão. A revisão não requer commit/push ou validação ampla adicional. Preserve o trabalho concorrente.`,
+    },
   };
+}
+
+export function stopReview(root, payload, { trackedFiles } = {}) {
+  if (payload.hook_event_name !== "Stop") return {};
+  if (!validIdentity(payload)) return failedReview();
+  const sessionKey = digest(payload.session_id);
+  const state = readState(root, sessionKey);
+  // Never request a Stop continuation: Codex renders its reason as a chat prompt.
+  // A receipt from another turn (including a legacy continuation) cannot pass.
+  if (!state || state.turn_sha256 !== digest(payload.turn_id)
+      || state.status !== "reviewed" || state.outcome === "unverified") return failedReview();
+  const snapshot = checkedSnapshot(root, trackedFiles);
+  if (state.memory_sha256 !== snapshot.fingerprint) return failedReview();
+  return {};
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -123,7 +132,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       let payload;
       try { payload = JSON.parse(fs.readFileSync(0, "utf8")); }
       catch { throw new Error("invalid hook input"); }
-      result = stopReview(root, payload);
+      result = payload.hook_event_name === "UserPromptSubmit"
+        ? startReview(root, payload) : stopReview(root, payload);
     } else throw new Error("usage: memory-review.mjs hook | complete <token> <outcome>");
     console.log(JSON.stringify(result));
   } catch (error) {

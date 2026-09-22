@@ -154,8 +154,9 @@ instalador aponta para a release ativa. Assim, caminhos legados como
 `codex-local-ai/current` ou caminhos de checkout não mantêm o health check
 dependente de fallback.
 
-Não há hook global nem preflight no envio do prompt. O Codex começa a trabalhar
-imediatamente. Quando o pré-processamento determinístico encontra pela primeira
+Não há hook global nem preflight de Local AI no envio do prompt. O hook de
+memória `UserPromptSubmit` apenas prepara um checkpoint e contexto interno, sem
+inferência ou confirmação inicial. O Codex começa a trabalhar imediatamente. Quando o pré-processamento determinístico encontra pela primeira
 vez na conversa material elegível de cerca de 1.200 tokens ou mais, a política
 consulta `local_ai_status` de forma preguiçosa e usa o MCP global
 `local-ai-rtx`: primeiro `local_ai_route` e, somente para uma rota elegível e
@@ -186,7 +187,7 @@ isolar um corpo não sensível, aplicar ferramentas determinísticas e chamar
 | --- | --- | --- |
 | Saída grande de `Bash` direto | Automática pelo `PostToolUse` | Determinística somente após `/hooks` mostrar `Installed = 1` e `Active = 1` |
 | `exec_command` aninhado no Code Mode | Explícita dentro da mesma orquestração | Recibo `code-mode-orchestrator-v1`; o resultado bruto não pode ser emitido |
-| Texto ou anexo do prompt | Explícita pelo agente conforme `AGENTS.md` | Política; não há interceptor `UserPromptSubmit` |
+| Texto ou anexo do prompt | Explícita pelo agente conforme `AGENTS.md` | Política; `UserPromptSubmit` só prepara a revisão de memória |
 | Resultado de outro tool ou MCP | Explícita sobre o menor trecho não sensível | O hook de `Bash` não intercepta esse caminho |
 | Conteúdo pequeno, estruturado, secreto ou privado | Não aplicar RTX | Fallback determinístico/modelo principal |
 
@@ -287,9 +288,11 @@ Event          Installed   Active
 PostToolUse    1           1
 ```
 
-O projeto também possui um hook `Stop` para revisão de memória pública.
-Depois de revisar essa definição, confirme `Stop` com `Installed = 1` e
-`Active = 1`; ele é independente da redução de saídas do `PostToolUse`.
+O projeto também possui hooks `UserPromptSubmit` e `Stop` para revisão de
+memória pública: o primeiro entrega contexto interno e o segundo verifica o
+checkpoint sem gerar prompt de continuação no chat. Depois de revisar a definição,
+confirme ambos com `Installed = 1` e `Active = 1`; eles são independentes da
+redução de saídas do `PostToolUse`.
 Seu contrato, limites e teste de aceitação ficam em
 `docs/MEMORIA_VERSIONADA_AGENTES.md`.
 
@@ -413,8 +416,8 @@ controlada e sem chamada de rede:
 $HOME/.local/share/local-ai-rtx/current/local-ai route analyze-tests --input-chars 32000 --availability unavailable
 ```
 
-Não existe `UserPromptSubmit`: o envio do prompt não bloqueia, não chama a RTX e
-não exige a palavra `feito`. O hook de projeto `PostToolUse` trata somente
+O `UserPromptSubmit` de memória não chama a RTX nem exige confirmação inicial
+ou a palavra `feito`; ele apenas prepara o checkpoint e o contexto interno. O hook de projeto `PostToolUse` trata somente
 saídas grandes de `Bash`: detecta padrões de credenciais em memória, consulta o MCP
 na primeira candidata elegível da conversa e substitui o corpo pelo JSON
 limitado somente quando a rota e a compressão têm sucesso. Saídas pequenas,

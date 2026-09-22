@@ -66,8 +66,12 @@ obsoleta ou incompleta. Confirme a decisão em fontes públicas atuais e atualiz
 somente o necessário. Para notas com evidência verificável, use o reconciliador
 `scripts/memory-candidate.mjs`, conforme `docs/MEMORIA_VERSIONADA_AGENTES.md`.
 Não promova pedido, hipótese ou transcrição a fato. Ausência de mudança também
-é resultado válido. O hook `Stop` em `scripts/memory-review.mjs`, quando aprovado e ativo no
-cliente, exige checkpoint de revisão antes de encerrar. Registre `updated`,
+é resultado válido. O hook `UserPromptSubmit` em `scripts/memory-review.mjs`,
+quando aprovado e ativo no cliente, fornece o checkpoint em contexto interno.
+Conclua a revisão silenciosamente antes da resposta final; não anuncie a revisão
+nem publique token, progresso ou confirmação no chat. O hook `Stop` verifica o
+recibo sem criar prompt de continuação; falhas reais permanecem explícitas.
+Registre `updated`,
 `already_current` ou `no_durable_discovery`; `unverified` é pendência explícita.
 Nunca invente uma nota para passar no gate nem declare o hook ativo só porque
 seu arquivo existe. Consulte o contrato para ativação e limites.
