@@ -91,7 +91,14 @@ const staleEngineHomeFallback =
         "confirmed_home_arrival_with_stale_engine_fallback" &&
     msg.payload?.stale_engine_home_fallback === true &&
     msg.payload?.engine_data_unreliable === true;
+const localCycle = ctxGet("security_light_local_excursion_v1", PERSISTENT)?.residents?.[arrivalSource];
+const localCurrent = msg.payload?.local_excursion_return !== true || (
+    localCycle?.started_at === msg.payload.local_excursion_started_at &&
+    people.local_excursions?.[arrivalSource]?.started_at === localCycle?.started_at &&
+    Number.isFinite(localCycle?.expires_at) && now <= localCycle.expires_at &&
+    localCycle.consumed_at == null);
 const ready =
+    localCurrent &&
     peopleReadyForArrival &&
     flow.get("sun_ready") === true &&
     flow.get("sun_below_horizon") === true &&
@@ -130,6 +137,15 @@ lifecycle.last_arrival_key = arrivalKey ?? null;
 lifecycle.last_arrival_at = now;
 lifecycle.updated_at = now;
 
+// Consume only after all final gates authorize the lifecycle, never at preparation.
+if (msg.payload?.local_excursion_return === true) {
+    const local = ctxGet("security_light_local_excursion_v1", PERSISTENT);
+    const cycle = local?.residents?.[arrivalSource];
+    if (cycle && cycle.started_at === msg.payload.local_excursion_started_at) {
+        cycle.consumed_at = now;
+        ctxSet("security_light_local_excursion_v1", local, PERSISTENT);
+    }
+}
 ctxSet("security_light_lifecycle_v1", lifecycle, PERSISTENT);
 ctxSet("security_light_pending_arrival_v1", null, PERSISTENT);
 const arrivalWatches = ctxGet("security_light_arrival_watch_v1", PERSISTENT);

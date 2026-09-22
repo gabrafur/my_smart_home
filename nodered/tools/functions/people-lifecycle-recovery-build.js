@@ -27,4 +27,5 @@ data.lighting_only = {
 };
 // Home encerra o ciclo; uma repetição do callback não cria outra chegada.
 if (data.trigger_state === "home") data.armed[data.source] = false;
+if (data.trigger_state === "home") delete data.home_arrival_candidates[data.source];
 return msg;

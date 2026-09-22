@@ -49,8 +49,8 @@ if (pending) {
 data.pending = pending;
 if (data.pending_replay_allowed === undefined) data.pending_replay_allowed = Boolean(pending);
 data.replay_ready = Boolean(((pending && data.pending_replay_allowed) || data.engine_on_arrival) &&
-    data.sun_ready && data.dark &&
-    (data.engine_allowed || data.bypass_allowed));
+    data.sun_ready && data.dark);
+// Replay reuses the arrival and engine gates, including their HOME fallback.
 data.reconcile = data.test_mode ? null : { payload: { kind: "reconcile_signal", reason: "context_update" } };
 if (["people_context", "vehicle_primary_context"].includes(data.kind) && !data.accepted) {
     data.lifecycle_message = null;

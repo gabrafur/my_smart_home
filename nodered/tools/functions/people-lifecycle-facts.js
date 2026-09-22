@@ -30,6 +30,11 @@ for (const [role, item] of Object.entries(data.people)) {
 
 const source = data.people[data.source];
 const sourceObservedAt = Number(source?.updated_at);
+const homeCandidate = data.home_arrival_candidates[data.source];
+if (data.is_location_event && data.trigger_state === "home" &&
+    (external(data.trigger_prev_state) || ["unknown", "unavailable"].includes(data.trigger_prev_state)) &&
+    source?.ready === true && source?.current_home === true &&
+    homeCandidate?.observed_at === sourceObservedAt) data.armed[data.source] = true;
 const sourceExternalSince = Number(data.external_since[data.source]);
 if (data.is_location_event && source?.ready === true &&
     external(data.trigger_prev_state) && !external(data.trigger_state) &&
@@ -58,6 +63,15 @@ if (source?.ready === true && external(source.state)) {
     delete data.local_excursions[data.source];
 }
 const graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;
+for (const [role, item] of Object.entries(data.people)) {
+    if (item?.ready !== true) continue;
+    if (external(item.state) || (item.current_home === true &&
+        typeof item.primary_home_for_ms === "number" && item.primary_home_for_ms > graceMs)) {
+        delete data.local_excursions[role];
+        delete data.home_arrival_candidates[role];
+    }
+}
+if (departure) delete data.home_arrival_candidates[data.source];
 data.facts = {
     source_ready: source?.ready === true,
     trigger_prev_valid: validZone(data.trigger_prev_state),
@@ -83,6 +97,14 @@ if (!data.is_location_event) {
         if (item?.ready === true && (item.distance_m !== null
             ? item.distance_m <= Number(data.policy.home_radius_m)
             : item.state === "home")) {
+            const observedAt = Number(item.updated_at);
+            if (data.armed[role] === true && item.current_home === true &&
+                validObservedAt(observedAt) && !(item.primary_home_for_ms > graceMs)) {
+                data.home_arrival_candidates[role] = {
+                    observed_at: observedAt,
+                    expires_at: observedAt + Number(data.policy.arrival_recovery_minutes) * 60000
+                };
+            }
             data.armed[role] = false;
             data.external_since[role] = null;
         }

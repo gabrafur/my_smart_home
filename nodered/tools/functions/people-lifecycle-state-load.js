@@ -57,11 +57,23 @@ for (const role of ["resident_primary", "resident_secondary"]) {
         data.local_excursions[role] = { started_at: startedAt, expires_at: expiresAt };
     }
 }
+data.home_arrival_candidates = {};
+const recoveryMs = Number(data.policy.arrival_recovery_minutes) * 60000;
+for (const role of ["resident_primary", "resident_secondary"]) {
+    const item = recovery.home_arrival_candidates?.[role];
+    if (Number.isFinite(item?.observed_at) && item.observed_at > 0 &&
+        item.observed_at <= now + futureMs && Number.isFinite(item.expires_at) &&
+        now <= item.expires_at && item.expires_at > item.observed_at &&
+        item.expires_at - item.observed_at <= recoveryMs + 1000) {
+        data.home_arrival_candidates[role] = { ...item };
+    }
+}
 // Preserve the read version: sibling events can reach this node before either
 // has committed its lifecycle at the finalizer.
 data.state_baseline = JSON.parse(JSON.stringify({
     arrival_armed: data.armed,
     external_since: data.external_since,
+    home_arrival_candidates: data.home_arrival_candidates,
     local_excursions: data.local_excursions
 }));
 return msg;

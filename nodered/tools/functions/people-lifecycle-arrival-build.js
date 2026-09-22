@@ -26,4 +26,5 @@ data.arrival = {
     }
 };
 if (!facts.approach_entry && facts.near_home) data.armed[data.source] = false;
+if (data.trigger_state === "home") delete data.home_arrival_candidates[data.source];
 return msg;

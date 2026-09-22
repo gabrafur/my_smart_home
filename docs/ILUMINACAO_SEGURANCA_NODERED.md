@@ -233,6 +233,26 @@ incoerente sem substituir a última política válida.
   ser tratada como chegada e sem acender o refletor. O fluxo primeiro confirma
   o `on` da saída; somente um `off` posterior e outro `on`, com a localização
   atual do morador ainda em `near_home` ou já em `home`, autorizam a iluminação.
+- O estado persistente do passeio local sobrevive ao startup parcial: a ausência
+  inicial do contexto de pessoas não encerra o ciclo. A evidência é limitada pela
+  validade configurada e precisa reencontrar o mesmo ciclo canônico e posição
+  atual antes de autorizar a luz. Um `off` recebido durante falha de comunicação
+  não comprova uma parada. Preparar o retorno não o consome: isso ocorre apenas
+  na fronteira final que cria o lifecycle de acendimento.
+- O produtor encerra o passeio local ao confirmar zona externa ou permanência em
+  `home` além da carência `primary_home_grace_minutes` (10 min por padrão).
+  Isso preserva a tolerância à telemetria atrasada sem reutilizar a saída antiga
+  quando outro morador ligar o veículo. Replays não sobrevivem ao encerramento,
+  substituição ou vencimento do ciclo.
+- Se um snapshot `home` chegar antes do evento da mesma observação, guarda-se uma
+  candidata limitada por `arrival_recovery_minutes` (15 min), somente quando
+  havia saída externa comprovada. O snapshot continua sem emitir chegada e limpa
+  o armado. Após restart, apenas a transição direcional para `home` com o mesmo
+  timestamp pode recuperar essa candidata; o evento a consome. Uma ausência longa
+  não exige passeio local nem sequência recente de motor para comprovar a saída.
+- Chegadas pendentes voltam aos gates canônicos de motor, inclusive a contingência
+  de `home` com `off` vencido. Uma pendência com localização indisponível de outro
+  morador não impede avaliar um retorno local atual.
 - A chegada do vehicle_primary atualiza o histórico de viagens do dia; no estágio
   `approach`, também tenta um wake pontual do veículo.
 - Atualizações de atributos do tracker também são observadas sem exigir troca
@@ -796,3 +816,12 @@ de direção.
 controlado para reconciliação e deadlines. São replays offline dos
 `function nodes` e uma validação estrutural;
 não substitui um teste de campo com os iPhones, o veículo e a API Bluelink.
+
+O replay `node nodered/tools/test-security-light-return-recovery.mjs` cobre 48
+cenários sintéticos: seis ordens de startup para ambos os moradores, evidência
+inválida, claridade, consumo final, encerramento de ciclo, pendências concorrentes
+e retornos após três horas com reinício e motor atual, vencido ou indisponível.
+Os casos autorizados atravessam o terminal final com `simulated: true` e
+`dispatched: false`; nenhum dispositivo ou notificação é acionado. Use esse replay
+para testar reinícios e ordenação sem reiniciar o Node-RED residencial. Os controles
+manuais existentes continuam usando reset e contexto sintético separado.

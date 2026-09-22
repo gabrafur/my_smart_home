@@ -1,6 +1,6 @@
 const data = msg._light_context;
 const pending = data.pending;
-if (!pending && data.engine_on_arrival) {
+if ((!pending || !data.pending_replay_allowed) && data.engine_on_arrival) {
     data.replay = data.engine_on_arrival;
     return msg;
 }

@@ -5,13 +5,15 @@ const set = (name, value, store) => data.test_mode || !store
     ? flow.set(key(name), value) : flow.set(key(name), value, store);
 const latest = flow.get(key("security_people_recovery_v1"), data.test_mode ? undefined : "persistent");
 // Preserve sibling deltas committed after this message loaded its state.
-for (const field of ["arrival_armed", "external_since", "local_excursions"]) {
+for (const field of ["arrival_armed", "external_since", "local_excursions", "home_arrival_candidates"]) {
     const target = field === "arrival_armed" ? "armed" : field;
-    if (!data.state_baseline || latest?.version !== 1 || !latest[field]) continue;
-    for (const role of Object.keys(data.people)) {
-        if (JSON.stringify(data[target][role]) === JSON.stringify(data.state_baseline[field][role]))
-            data[target][role] = latest[field]?.[role];
+    if (data.state_baseline && latest?.version === 1 && latest[field]) {
+        for (const role of Object.keys(data.people)) {
+            if (JSON.stringify(data[target][role]) === JSON.stringify(data.state_baseline[field][role]))
+                data[target][role] = latest[field]?.[role];
+        }
     }
+    data.recovery[field] = { ...data[target] };
 }
 data.recovery.recent_arrivals = {
     ...(latest?.recent_arrivals ?? {}), ...data.recovery.recent_arrivals
@@ -21,9 +23,6 @@ for (const [event, at] of Object.entries(data.recovery.recent_arrivals)) {
         Date.now() - at > data.policy.arrival_dedupe_minutes * 60000)
         delete data.recovery.recent_arrivals[event];
 }
-data.recovery.arrival_armed = { ...data.armed };
-data.recovery.external_since = { ...data.external_since };
-data.recovery.local_excursions = { ...data.local_excursions };
 data.recovery.updated_at = Date.now();
 set("people_arrival_armed", data.armed);
 set("security_people_recovery_v1", data.recovery, "persistent");

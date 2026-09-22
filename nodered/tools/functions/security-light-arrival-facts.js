@@ -49,8 +49,14 @@ const previousUnavailable = ["unknown", "unavailable"].includes(previousState);
 const recoveredAway = msg.payload?.illumination_only === true &&
     previousUnavailable &&
     msg.payload?.external_cycle_confirmed === true;
+const localCycle = get("security_light_local_excursion_v1", "persistent")?.residents?.[source];
+const canonicalCycle = people.local_excursions?.[source];
 const localExcursionReturn = msg.payload?.local_excursion_return === true &&
-    msg.payload?.arrival_direction === "returning_local_excursion";
+    msg.payload?.arrival_direction === "returning_local_excursion" &&
+    localCycle?.started_at === msg.payload.local_excursion_started_at &&
+    canonicalCycle?.started_at === msg.payload.local_excursion_started_at &&
+    Number.isFinite(localCycle?.expires_at) && now <= localCycle.expires_at &&
+    localCycle.consumed_at == null;
 /* O iPhone pode atualizar em not_home fora de 700 m e somente voltar a
  * publicar depois de já cruzar os 100 m. O produtor canônico confirma esse
  * ciclo externo e carrega um snapshot atual no próprio evento. Aceitar esse

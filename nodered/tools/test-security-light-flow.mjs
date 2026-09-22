@@ -1218,7 +1218,9 @@ scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () 
       context: { ...vehicleOff, updated_at: stillOffAt },
     },
   }, flow, geoEnv);
-  assert.equal(stillOff[2], null);
+  const replayOff = run("light_prepare_arrival", stillOff[2], flow, geoEnv)[0];
+  assert(replayOff, "replay deve reutilizar o gate canônico do motor");
+  assert.equal(run("light_check_vehicle_primary_in_use", replayOff, flow, geoEnv), null);
   assert(flow.get(pendingKey), "contexto ainda OFF não pode consumir a chegada");
 
   const engineOnAt = now + 2;
@@ -1438,7 +1440,7 @@ scenario("33f OFF antes do primeiro ON não transforma saída em retorno", () =>
     ready: true,
     updated_at: now,
     local_excursions: {
-      resident_primary: { started_at: startedAt, expires_at: now + 90 * 60_000 },
+      resident_primary: { started_at: startedAt, expires_at: startedAt + 90 * 60_000 },
     },
     resident_primary: {
       ready: true, stale: false, state: "near_home", current_home: false,

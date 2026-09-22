@@ -274,7 +274,9 @@ const sunset = mergeLight({
     updated_at: Date.now(),
   },
 }, gateFlow, shared);
-assert.equal(sunset[2], null, "bypass desligado ainda deve aguardar motor confiável");
+assert(sunset[2], "anoitecer deve reavaliar a chegada pelo gate canônico");
+assert.equal(prepareLight(sunset[2], gateFlow, shared)[0], null,
+  "falha de comunicação sem bypass ainda deve aguardar motor confiável");
 assert(gateFlow.get(pendingKey), "chegada com mais de 2 min deve permanecer em near_home");
 
 const bypassOn = runBypass({
