@@ -5,12 +5,12 @@ if (typeof payload === "string") {
 const message = String(payload?.message || "");
 const level = String(payload?.level || "").toLowerCase();
 msg.zigbee_route_valid = false;
-if (!message.includes("NWK_NO_ROUTE") || !["warning", "error"].includes(level)) return msg;
+if (msg.retain === true || !message.includes("NWK_NO_ROUTE") || !["warning", "error"].includes(level)) return msg;
 const quoted = message.match(/(?:to|ping|of|configure)\s+'([^']+)'/i);
 const ieeeMatch = message.match(/0x[0-9a-f]{16}/i);
 const ieee = ieeeMatch ? ieeeMatch[0].toLowerCase() : null;
 const names = flow.get("zigbee_device_name_by_ieee_v1") || {};
-const device = quoted?.[1] || names[ieee] || ieee;
+const device = names[String(quoted?.[1] || "").toLowerCase()] || quoted?.[1] || names[ieee] || ieee;
 if (!device) return msg;
 let hash = 0x811c9dc5;
 for (const byte of Buffer.from(device, "utf8")) { hash ^= byte; hash = Math.imul(hash, 0x01000193) >>> 0; }

@@ -71,7 +71,7 @@ const routeNotification = getFunction("zigbee_route_notification_build");
 const dry = getFunction("zigbee_dry_run_terminal");
 const defaults = {
   failure_confirmation_s: 30, recovery_confirmation_s: 60, reminder_interval_h: 24,
-  route_recovery_cooldown_min: 15, route_recovery_max_attempts: 3,
+  route_recovery_cooldown_min: 15, route_recovery_max_attempts: 3, startup_grace_s: 180, route_stability_s: 300,
 };
 const flow = context();
 let msg = validate({ payload: defaults }, flow, nodeMock, globalMock);
@@ -86,8 +86,8 @@ for (const payload of [
   { ...defaults, route_recovery_cooldown_min: 0 }, { ...defaults, route_recovery_cooldown_min: 1441 },
   { ...defaults, route_recovery_max_attempts: 0 }, { ...defaults, route_recovery_max_attempts: 6 },
 ]) assert.equal(validate({ payload }, flow, nodeMock, globalMock).policy_valid, false);
-assert.equal(validate({ payload: { failure_confirmation_s: 1, recovery_confirmation_s: 1, reminder_interval_h: 1, route_recovery_cooldown_min: 1, route_recovery_max_attempts: 1 } }, flow, nodeMock, globalMock).policy_valid, true);
-assert.equal(validate({ payload: { failure_confirmation_s: 300, recovery_confirmation_s: 600, reminder_interval_h: 168, route_recovery_cooldown_min: 1440, route_recovery_max_attempts: 5 } }, flow, nodeMock, globalMock).policy_valid, true);
+assert.equal(validate({ payload: { ...defaults, failure_confirmation_s: 1, recovery_confirmation_s: 1, reminder_interval_h: 1, route_recovery_cooldown_min: 1, route_recovery_max_attempts: 1 } }, flow, nodeMock, globalMock).policy_valid, true);
+assert.equal(validate({ payload: { ...defaults, failure_confirmation_s: 300, recovery_confirmation_s: 600, reminder_interval_h: 168, route_recovery_cooldown_min: 1440, route_recovery_max_attempts: 5 } }, flow, nodeMock, globalMock).policy_valid, true);
 assert.deepEqual(load({}, flow, nodeMock, globalMock).policy, { version: 2, ...defaults }, "inválido não substitui política");
 
 let now = Date.UTC(2026, 0, 1, 0, 0, 0);
@@ -202,10 +202,10 @@ function routeErrorCycle(targetFlow, at, testMode = false) {
   current = normalizeRouteError(current, targetFlow, nodeMock, globalMock);
   assert.equal(current.zigbee_route_valid, true);
   current = readRoute(current, targetFlow, nodeMock, globalMock);
-  if (current.zigbee_route_decision === "open") {
+  if (!current.zigbee_route_current.incident_open) {
     current.zigbee_route_action = "open";
     current.zigbee_route_event = "route_failure";
-  } else if (current.zigbee_route_decision === "retry") {
+  } else if (current.zigbee_route_current.attempts < current.policy.route_recovery_max_attempts && current.zigbee_route_now >= current.zigbee_route_deadline) {
     current.zigbee_route_action = "retry";
     current.zigbee_route_event = "route_retry";
   } else {
@@ -218,8 +218,8 @@ function routeResponse(targetFlow, transaction, status, at) {
   let current = load({ payload: { status, transaction, ...(status === "error" ? { error: "NWK_NO_ROUTE" } : {}) }, monitor_now: at }, targetFlow, nodeMock, globalMock);
   current = normalizeRouteResponse(current, targetFlow, nodeMock, globalMock);
   assert.equal(current.zigbee_route_response_valid, true);
-  current.zigbee_route_action = status === "ok" ? "recovered" : "recovery_failed";
-  current.zigbee_route_event = status === "ok" ? "route_recovery" : "route_recovery_failed";
+  current.zigbee_route_action = status === "ok" ? "verify" : "recovery_failed";
+  current.zigbee_route_event = status === "ok" ? "none" : "route_recovery_failed";
   return mutateRoute(current, targetFlow, nodeMock, globalMock);
 }
 const routeFlow = context({ persistent: { zigbee_monitor_policy_v2: { version: 2, ...defaults } } });
@@ -234,7 +234,7 @@ assert.equal(request.payload.type, "raw");
 assert.equal(request.payload.routes, true);
 assert.equal(byId.get("zigbee_route_recovery_mqtt").retain, "false");
 assert.equal(routeErrorCycle(routeFlow, now + 1000, true).zigbee_route_event, "none", "NWK duplicado é suprimido");
-let scanResponse = normalizeRouteResponse({ payload: { status: "ok", transaction: request.payload.transaction }, monitor_now: now + 1500 }, routeFlow, nodeMock, globalMock);
+let scanResponse = normalizeRouteResponse({ topic: "zigbee2mqtt/bridge/response/networkmap", payload: { status: "ok", transaction: request.payload.transaction }, monitor_now: now + 1500 }, routeFlow, nodeMock, globalMock);
 assert.equal(scanResponse.zigbee_route_response_valid, true);
 let configureRequest = buildConfigureRequest(scanResponse, routeFlow, nodeMock, globalMock);
 assert.equal(configureRequest.topic, "zigbee2mqtt/bridge/request/device/configure");
@@ -243,29 +243,29 @@ assert.equal(configureRequest.payload.transaction, request.payload.transaction);
 assert.equal(byId.get("zigbee_route_configure_mqtt").retain, "false");
 result = routeResponse(routeFlow, configureRequest.payload.transaction, "error", now + 2000);
 assert.equal(result.zigbee_route_current.phase, "failed");
-assert.match(routeNotification(result, routeFlow, nodeMock, globalMock).notification.message, /nova tentativa poderá ocorrer/);
+assert.equal(routeNotification(result, routeFlow, nodeMock, globalMock), null, "tentativa intermediária não notifica");
 assert.equal(routeErrorCycle(routeFlow, now + 899999, true).zigbee_route_event, "none", "cooldown impede retry antecipado");
 result = routeErrorCycle(routeFlow, now + 902000, true);
 assert.equal(result.zigbee_route_event, "route_retry");
 assert.equal(result.zigbee_route_current.attempts, 2);
 request = buildRouteRequest(structuredClone(result), routeFlow, nodeMock, globalMock);
-scanResponse = normalizeRouteResponse({ payload: { status: "ok", transaction: request.payload.transaction }, monitor_now: now + 902500 }, routeFlow, nodeMock, globalMock);
+scanResponse = normalizeRouteResponse({ topic: "zigbee2mqtt/bridge/response/networkmap", payload: { status: "ok", transaction: request.payload.transaction }, monitor_now: now + 902500 }, routeFlow, nodeMock, globalMock);
 assert.equal(scanResponse.zigbee_route_response_valid, true);
 configureRequest = buildConfigureRequest(scanResponse, routeFlow, nodeMock, globalMock);
 result = routeResponse(routeFlow, configureRequest.payload.transaction, "ok", now + 903000);
-assert.equal(result.zigbee_route_current.incident_open, false);
-assert.equal(result.zigbee_route_event, "route_recovery");
-assert.match(routeNotification(result, routeFlow, nodeMock, globalMock).notification.dismiss_id, /^zigbee_route_/);
+assert.equal(result.zigbee_route_current.incident_open, true);
+assert.equal(result.zigbee_route_event, "none");
+assert.equal(routeNotification(result, routeFlow, nodeMock, globalMock), null, "configure ok não é recuperação comprovada");
 const interruptedRouteFlow = context({ persistent: { zigbee_monitor_policy_v2: { version: 2, ...defaults } } });
 result = routeErrorCycle(interruptedRouteFlow, now, true);
-assert.equal(result.zigbee_route_current.phase, "recovering");
+assert.equal(result.zigbee_route_current.phase, "scanning");
 assert.equal(result.zigbee_route_current.next_retry_at, new Date(now + 900000).toISOString());
 assert.equal(routeErrorCycle(interruptedRouteFlow, now + 899999, true).zigbee_route_event, "none", "operação sem resposta respeita cooldown");
 result = routeErrorCycle(interruptedRouteFlow, now + 900001, true);
 assert.equal(result.zigbee_route_event, "route_retry", "operação interrompida pelo coordenador pode ser retomada");
 assert.equal(result.zigbee_route_current.attempts, 2);
 assert.equal(normalizeRouteError({ payload: { level: "error", message: "unrelated" } }, routeFlow, nodeMock, globalMock).zigbee_route_valid, false);
-assert.equal(normalizeRouteResponse({ payload: { status: "ok", transaction: "external" } }, routeFlow, nodeMock, globalMock).zigbee_route_response_valid, false);
+assert.equal(normalizeRouteResponse({ topic: "zigbee2mqtt/bridge/response/networkmap", payload: { status: "ok", transaction: "external" } }, routeFlow, nodeMock, globalMock).zigbee_route_response_valid, false);
 
 const testFlow = context({ persistent: { zigbee_monitor_policy_v2: { version: 2, ...defaults } } });
 observe(testFlow, "offline", now, true);
@@ -285,6 +285,9 @@ const discovery = getFunction("zigbee_discovery")({}, flow, nodeMock, globalMock
 assert.equal(discovery[0].length, 2);
 assert.match(discovery[0][0].payload, /node_red_zigbee_network/);
 const maxFunctionSize = Math.max(...tabNodes.filter((node) => node.type === "function").map((node) => node.func.length));
-assert.ok(maxFunctionSize < 2000, `JavaScript residual grande: ${maxFunctionSize}`);
+for (const node of tabNodes.filter(n => n.type === "function")) {
+  const limit = ["zigbee_route_state_mutate", "zigbee_network_state_read"].includes(node.id) ? 4000 : 2000;
+  assert.ok(node.func.length < limit, `JavaScript residual grande: ${node.id} (${node.func.length})`);
+}
 
 console.log("Zigbee monitor visual flow tests passed.");

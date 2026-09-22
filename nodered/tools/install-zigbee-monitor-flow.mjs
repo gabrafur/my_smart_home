@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -12,6 +13,7 @@ const functionsDir = path.join(here, "functions");
 const TAB = "monitoramento_zigbee_tab";
 const MQTT = "721c47f31046b8bc";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+const originalFlows = structuredClone(flows);
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const owned = (node) => node.id === TAB || node.z === TAB || node.id.startsWith("zigbee_") || node.id.startsWith("grp_zigbee_");
 const removed = new Set(flows.filter(owned).map((node) => node.id));
@@ -72,6 +74,8 @@ const policy = {
   reminder_interval_h: 24,
   route_recovery_cooldown_min: 15,
   route_recovery_max_attempts: 3,
+  startup_grace_s: 180,
+  route_stability_s: 300,
 };
 const setAction = (action, event) => [
   { t: "set", p: "zigbee_state_action", pt: "msg", to: action, tot: "str" },
@@ -83,10 +87,10 @@ const setComponentAction = (action, event) => [
 ];
 
 add({ id: TAB, type: "tab", label: "monitoramento_zigbee", disabled: false,
-  info: "Política visual confirma queda e retorno da rede, deduplica componentes e trata NWK_NO_ROUTE com alerta, reconstrução de rotas e reconfiguração limitada. Produção publica MQTT/notifica; todo replay termina no dry-run compartilhado.", env: [] });
+  info: "Política visual confirma queda e retorno da rede, deduplica componentes e trata NWK_NO_ROUTE com alerta, consulta de rotas e reconfiguração limitada. Produção publica MQTT/notifica; todo replay termina no dry-run compartilhado.", env: [] });
 grouped(groups.input, { id: "zigbee_policy_note", type: "comment", z: TAB, g: groups.input,
-  name: "Padrões: queda 30 s; retorno 60 s; lembrete 24 h; rota: 3 tentativas com cooldown 15 min.",
-  info: "Limites: queda 1–300 s, retorno 1–600 s, lembrete 1–168 h, cooldown 1–1.440 min e 1–5 tentativas. Valor inválido não substitui a última política válida.", x: 540, y: 60, wires: [] });
+  name: "Padrões: startup 180 s; queda 30 s; retorno 60 s; rota estável 300 s; 3 tentativas / 15 min.",
+  info: "Limites: startup 30–900 s; estabilidade de rota 60–3.600 s; queda 1–300 s, retorno 1–600 s, lembrete 1–168 h, cooldown 1–1.440 min e 1–5 tentativas. Valor inválido não substitui a última política válida.", x: 540, y: 60, wires: [] });
 inject("zigbee_policy_default", groups.input, "CONFIG: aplicar política visual", [{ p: "payload", v: JSON.stringify(policy), vt: "json" }], 190, 120, [["zigbee_policy_validate"]], { once: true, onceDelay: "1" });
 fn("zigbee_policy_validate", groups.input, "Validar unidades e limites", "zigbee-policy-validate.js", 1, 470, 120, [["zigbee_policy_switch"]]);
 sw("zigbee_policy_switch", groups.input, "Configuração é válida?", "policy_valid", "msg", [{ t: "true" }, { t: "else" }], 760, 120, [["zigbee_policy_store"], ["zigbee_policy_reject"]]);
@@ -132,7 +136,7 @@ linkOut("zigbee_route_response_out", groups.input, "Configure → lifecycle da r
 grouped(groups.input, { id: "zigbee_route_scan_response_source", type: "mqtt in", z: TAB, g: groups.input,
   name: "FONTE: resposta networkmap", topic: "zigbee2mqtt/bridge/response/networkmap", qos: "1", datatype: "auto-detect",
   broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 240, y: 790, wires: [["zigbee_route_scan_response_out"]] });
-linkOut("zigbee_route_scan_response_out", groups.input, "Mapa → reconstrução da rota", "zigbee_route_scan_response_in", 530, 790);
+linkOut("zigbee_route_scan_response_out", groups.input, "Mapa → reconfiguração limitada", "zigbee_route_scan_response_in", 530, 790);
 inject("zigbee_discovery_tick", groups.input, "Publicar discovery no startup", [{ p: "payload" }], 240, 930, [["zigbee_discovery"]], { once: true, onceDelay: "2" });
 fn("zigbee_discovery", groups.input, "Adaptar discovery HA", "zigbee-discovery.js", 1, 500, 930, [["zigbee_discovery_out"]]);
 linkOut("zigbee_discovery_out", groups.input, "Discovery → MQTT retained", "zigbee_discovery_in", 750, 930);
@@ -197,7 +201,7 @@ fn("zigbee_route_policy_load", groups.component, "Carregar política de recupera
 sw("zigbee_route_policy_available", groups.component, "Política de recuperação existe?", "policy_available", "msg", [{ t: "true" }, { t: "else" }], 1740, 1430, [["zigbee_route_state_read"], ["zigbee_route_policy_missing"]]);
 terminal("zigbee_route_policy_missing", groups.component, "Falha fechada sem política", { fill: "red", shape: "ring", text: "política indisponível" }, 2010, 1370);
 fn("zigbee_route_state_read", groups.component, "Ler lifecycle da rota", "zigbee-route-state-read.js", 1, 2010, 1490, [["zigbee_route_decision"]]);
-sw("zigbee_route_decision", groups.component, "Abrir, repetir após cooldown ou deduplicar?", "zigbee_route_decision", "msg", [{ t: "eq", v: "open", vt: "str" }, { t: "eq", v: "retry", vt: "str" }, { t: "else" }], 2290, 1430, [["zigbee_route_open"], ["zigbee_route_retry"], ["zigbee_route_touch"]]);
+sw("zigbee_route_decision", groups.component, "Abrir, repetir, esgotar ou deduplicar?", 'zigbee_route_current.incident_open != true ? "open" : (zigbee_route_deadline != null and zigbee_route_now >= zigbee_route_deadline ? (zigbee_route_current.attempts < policy.route_recovery_max_attempts ? "retry" : (zigbee_route_current.exhaustion_notified != true ? "exhausted" : "duplicate")) : "duplicate")', "jsonata", [{ t: "eq", v: "open", vt: "str" }, { t: "eq", v: "retry", vt: "str" }, { t: "eq", v: "exhausted", vt: "str" }, { t: "else" }], 2290, 1430, [["zigbee_route_open"], ["zigbee_route_retry"], ["zigbee_route_exhausted_out"], ["zigbee_route_touch"]]);
 change("zigbee_route_open", groups.component, "Abrir incidente e tentativa 1", [
   { t: "set", p: "zigbee_route_action", pt: "msg", to: "open", tot: "str" },
   { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_failure", tot: "str" },
@@ -217,7 +221,7 @@ sw("zigbee_route_event_switch", groups.component, "Alertar, recuperar ou encerra
 ], 3220, 1430, [["zigbee_route_notification_build", "zigbee_route_recovery_request_build"], ["zigbee_route_recovery_request_build"], ["zigbee_route_notification_build"], ["zigbee_route_notification_build"], ["zigbee_route_no_event"]]);
 fn("zigbee_route_notification_build", groups.component, "Montar alerta da rota", "zigbee-route-notification-build.js", 1, 3510, 1370, [["zigbee_route_notification_out"]]);
 linkOut("zigbee_route_notification_out", groups.component, "Alerta de rota → gate único", "zigbee_component_notification_route_in", 3780, 1370);
-fn("zigbee_route_recovery_request_build", groups.component, "Montar varredura oficial de rotas", "zigbee-route-recovery-request-build.js", 1, 3520, 1490, [["zigbee_route_recovery_test_gate"]]);
+fn("zigbee_route_recovery_request_build", groups.component, "Montar consulta oficial de rotas", "zigbee-route-recovery-request-build.js", 1, 3520, 1490, [["zigbee_route_recovery_test_gate"]]);
 sw("zigbee_route_recovery_test_gate", groups.component, "Varredura pertence a TESTE?", "_zigbee_test", "msg", [{ t: "true" }, { t: "else" }], 3820, 1490, [["zigbee_route_recovery_dry_out"], ["zigbee_route_recovery_mqtt"]]);
 linkOut("zigbee_route_recovery_dry_out", groups.component, "Networkmap TESTE → dry-run", "zigbee_dry_in", 4100, 1450);
 grouped(groups.component, { id: "zigbee_route_recovery_mqtt", type: "mqtt out", z: TAB, g: groups.component,
@@ -225,7 +229,7 @@ grouped(groups.component, { id: "zigbee_route_recovery_mqtt", type: "mqtt out", 
   userProps: "", correl: "", expiry: "", broker: MQTT, x: 4110, y: 1530, wires: [] });
 terminal("zigbee_route_no_event", groups.component, "Sem novo efeito de rota", { fill: "grey", shape: "ring", text: "dedupe/cooldown" }, 4450, 1600);
 
-linkIn("zigbee_route_scan_response_in", groups.component, "Receber mapa reconstruído", ["zigbee_route_scan_response_out", "zigbee_test_route_scan_response_out"], "zigbee_route_scan_policy_load", 1250, 1650);
+linkIn("zigbee_route_scan_response_in", groups.component, "Receber mapa consultado", ["zigbee_route_scan_response_out", "zigbee_test_route_scan_response_out"], "zigbee_route_scan_policy_load", 1250, 1650);
 fn("zigbee_route_scan_policy_load", groups.component, "Carregar política da varredura", "zigbee-policy-load.js", 1, 1510, 1650, [["zigbee_route_scan_policy_available"]]);
 sw("zigbee_route_scan_policy_available", groups.component, "Política existe para correlacionar mapa?", "policy_available", "msg", [{ t: "true" }, { t: "else" }], 1780, 1650, [["zigbee_route_scan_response_normalize"], ["zigbee_route_scan_response_invalid"]]);
 fn("zigbee_route_scan_response_normalize", groups.component, "Correlacionar mapa de rotas", "zigbee-route-response-normalize.js", 1, 2050, 1650, [["zigbee_route_scan_response_valid"]]);
@@ -249,9 +253,9 @@ sw("zigbee_route_response_policy_available", groups.component, "Política existe
 fn("zigbee_route_response_normalize", groups.component, "Correlacionar resposta", "zigbee-route-response-normalize.js", 1, 2040, 1780, [["zigbee_route_response_valid"]]);
 sw("zigbee_route_response_valid", groups.component, "Resposta pertence ao processo?", "zigbee_route_response_valid", "msg", [{ t: "true" }, { t: "else" }], 2300, 1780, [["zigbee_route_response_status"], ["zigbee_route_response_invalid"]]);
 sw("zigbee_route_response_status", groups.component, "Reconfiguração concluiu?", "zigbee_route_response_status", "msg", [{ t: "eq", v: "ok", vt: "str" }, { t: "else" }], 2560, 1740, [["zigbee_route_recovered"], ["zigbee_route_recovery_failed"]]);
-change("zigbee_route_recovered", groups.component, "Confirmar recuperação", [
-  { t: "set", p: "zigbee_route_action", pt: "msg", to: "recovered", tot: "str" },
-  { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_recovery", tot: "str" },
+change("zigbee_route_recovered", groups.component, "Configure aceito: aguardar evidência", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "verify", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "none", tot: "str" },
 ], 2840, 1710, [["zigbee_route_state_mutate"]]);
 change("zigbee_route_recovery_failed", groups.component, "Registrar falha e cooldown", [
   { t: "set", p: "zigbee_route_action", pt: "msg", to: "recovery_failed", tot: "str" },
@@ -312,27 +316,97 @@ for (const [id, name, payload, at, y] of [
 linkOut("zigbee_test_component_out", groups.test, "Componente TESTE → mesma fonte", "zigbee_component_input_in", 2220, 2220);
 inject("zigbee_test_component_reminder", groups.test, "TESTE 11: lembrete após 24 h", [{ p: "monitor_now", v: String(t0 + 86400000), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 1930, 2370, [["zigbee_test_component_reminder_out"]]);
 linkOut("zigbee_test_component_reminder_out", groups.test, "Tick TESTE → lembretes", "zigbee_component_reminder_in", 2240, 2370);
+const routeT0 = t0 + 200000;
 const routeTestMessage = "Publish 'set' 'state' to 'teste_rota' failed: Data request failed with error: 'NWK_NO_ROUTE' (0xcd)";
 for (const [id, name, at, y] of [
-  ["zigbee_test_route_failure", "TESTE 13: NWK_NO_ROUTE", t0, 2150],
-  ["zigbee_test_route_duplicate", "TESTE 14: erro duplicado", t0 + 1000, 2210],
-  ["zigbee_test_route_retry", "TESTE 17: retry após cooldown", t0 + 902000, 2370],
+  ["zigbee_test_route_failure", "TESTE 13: NWK_NO_ROUTE", routeT0, 2150],
+  ["zigbee_test_route_duplicate", "TESTE 14: erro duplicado", routeT0 + 1000, 2210],
+  ["zigbee_test_route_retry", "TESTE 17: retry após cooldown", routeT0 + 902000, 2370],
 ]) inject(id, groups.test, name, [{ p: "payload", v: JSON.stringify({ level: "error", message: routeTestMessage }), vt: "json" }, { p: "monitor_now", v: String(at), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 2630, y, [["zigbee_test_route_error_out"]]);
 linkOut("zigbee_test_route_error_out", groups.test, "Erro TESTE → mesma recuperação", "zigbee_route_error_in", 2920, 2220);
 const routeTestKey = "teste_rota_59894ed5";
 for (const [id, name, transaction, at, y] of [
-  ["zigbee_test_route_scan_response", "TESTE 15: mapa reconstruído", `nodered-zigbee-route-test-${routeTestKey}-${t0}`, t0 + 1500, 2260],
-  ["zigbee_test_route_scan_retry_response", "TESTE 18: novo mapa reconstruído", `nodered-zigbee-route-test-${routeTestKey}-${t0 + 902000}`, t0 + 902500, 2410],
+  ["zigbee_test_route_scan_response", "TESTE 15: mapa consultado", `nodered-zigbee-route-test-${routeTestKey}-${routeT0}`, routeT0 + 1500, 2260],
+  ["zigbee_test_route_scan_retry_response", "TESTE 18: novo mapa consultado", `nodered-zigbee-route-test-${routeTestKey}-${routeT0 + 902000}`, routeT0 + 902500, 2410],
 ]) inject(id, groups.test, name, [{ p: "payload", v: JSON.stringify({ status: "ok", transaction }), vt: "json" }, { p: "monitor_now", v: String(at), vt: "num" }], 3270, y, [["zigbee_test_route_scan_response_out"]]);
 linkOut("zigbee_test_route_scan_response_out", groups.test, "Mapa TESTE → mesma recuperação", "zigbee_route_scan_response_in", 3570, 2320);
 for (const [id, name, status, transaction, at, y] of [
-  ["zigbee_test_route_failed_response", "TESTE 16: configure falhou", "error", `nodered-zigbee-route-test-${routeTestKey}-${t0}`, t0 + 2000, 2320],
-  ["zigbee_test_route_success_response", "TESTE 19: configure concluiu", "ok", `nodered-zigbee-route-test-${routeTestKey}-${t0 + 902000}`, t0 + 903000, 2470],
+  ["zigbee_test_route_failed_response", "TESTE 16: configure falhou", "error", `nodered-zigbee-route-test-${routeTestKey}-${routeT0}`, routeT0 + 2000, 2320],
+  ["zigbee_test_route_success_response", "TESTE 19: configure concluiu", "ok", `nodered-zigbee-route-test-${routeTestKey}-${routeT0 + 902000}`, routeT0 + 903000, 2470],
 ]) inject(id, groups.test, name, [{ p: "payload", v: JSON.stringify({ status, transaction, ...(status === "error" ? { error: "NWK_NO_ROUTE" } : {}) }), vt: "json" }, { p: "monitor_now", v: String(at), vt: "num" }], 3270, y, [["zigbee_test_route_response_out"]]);
 linkOut("zigbee_test_route_response_out", groups.test, "Resposta TESTE → mesmo lifecycle", "zigbee_route_response_in", 3560, 2370);
 linkIn("zigbee_dry_in", groups.test, "Receber qualquer efeito TESTE", ["zigbee_notification_dry_out", "zigbee_publication_dry_out", "zigbee_route_recovery_dry_out", "zigbee_route_configure_dry_out"], "zigbee_dry_run_terminal", 4000, 2220);
 fn("zigbee_dry_run_terminal", groups.test, "TESTE FINAL: efeito bloqueado", "zigbee-dry-run.js", 0, 4270, 2220, []);
 
+// Startup and recovery decisions stay visible and reuse the original final gates.
+const settle = group("grp_zigbee_stabilization", "5. Retomada: ponte estável, confirmação e evidência real", 64, 3300, 4600, 780, "#0f766e", "#ccfbf1");
+const get = id => nodes.find(n => n.id === id);
+linkOut("zigbee_route_exhausted_out", groups.component, "Limite atingido → alerta final", "zigbee_route_exhausted_in", 2490, 1540);
+linkIn("zigbee_route_exhausted_in", settle, "Tentativas esgotadas sem resposta", "zigbee_route_exhausted_out", "zigbee_route_exhausted", 1600, 3820);
+change("zigbee_route_exhausted", settle, "Registrar esgotamento uma única vez", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "recovery_failed", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_recovery_failed", tot: "str" }
+], 1900, 3820, [["zigbee_route_exhausted_return"]]);
+linkOut("zigbee_route_exhausted_return", settle, "Esgotamento → persistência", "zigbee_route_confirm_in", 2190, 3820);
+const ready = "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_bridge_online and zigbee_bridge_stable_ms >= policy.recovery_confirmation_s * 1000";
+get("zigbee_network_state_read").initialize = 'flow.set("zigbee_boot_at", Date.now(), "memoryOnly"); flow.set("zigbee_route_live", {}, "memoryOnly");';
+// Preserve the 10 s cadence and evaluate buffered observations without new MQTT messages.
+get("zigbee_tick").wires[0].push("zigbee_settle_tick_out");
+linkOut("zigbee_settle_tick_out", groups.input, "Agenda → retomada", "zigbee_settle_tick_in", 750, 940);
+linkIn("zigbee_settle_tick_in", settle, "Agenda e TESTE de retomada", ["zigbee_settle_tick_out", "zigbee_settle_test_tick_out"], "zigbee_route_cycle_expand", 110, 3380);
+fn("zigbee_route_cycle_expand", settle, "Enumerar rotas e erros pendentes", "zigbee-route-cycle-expand.js", 1, 330, 3380, [["zigbee_settle_route_out"]]);
+linkOut("zigbee_settle_route_out", settle, "Rotas → política existente", "zigbee_route_error_in", 570, 3380);
+get("zigbee_route_error_in").links.push("zigbee_settle_route_out");
+get("zigbee_settle_tick_in").wires[0].push("zigbee_component_cycle_expand");
+fn("zigbee_component_cycle_expand", settle, "Reavaliar disponibilidade observada", "zigbee-component-cycle-expand.js", 1, 340, 3450, [["zigbee_settle_component_out"]]);
+linkOut("zigbee_settle_component_out", settle, "Componentes → normalização", "zigbee_component_input_in", 580, 3450);
+get("zigbee_component_input_in").links.push("zigbee_settle_component_out");
+get("zigbee_route_policy_available").wires[0] = ["zigbee_route_ready_out"];
+linkOut("zigbee_route_ready_out", groups.component, "Rota → estabilidade da ponte", "zigbee_route_ready_in", 1940, 1470);
+linkIn("zigbee_route_ready_in", settle, "Erros e ciclos de rota", "zigbee_route_ready_out", "zigbee_route_observation", 110, 3540);
+fn("zigbee_route_observation", settle, "Guardar erro até a ponte estabilizar", "zigbee-route-observation.js", 1, 340, 3540, [["zigbee_route_startup_facts"]]);
+fn("zigbee_route_startup_facts", settle, "Ler idade do runtime e da ponte", "zigbee-startup-facts.js", 1, 640, 3540, [["zigbee_route_ready"]]);
+sw("zigbee_route_ready", settle, "Startup 180 s e ponte online 60 s?", ready, "jsonata", [{ t: "true" }], 950, 3540, [["zigbee_route_read_out"]]);
+linkOut("zigbee_route_read_out", settle, "Ponte pronta → lifecycle da rota", "zigbee_route_read_in", 1200, 3540);
+linkIn("zigbee_route_read_in", groups.component, "Rota pronta", "zigbee_route_read_out", "zigbee_route_state_read", 1810, 1490);
+get("zigbee_route_state_read").wires = [["zigbee_route_verify_out"]];
+linkOut("zigbee_route_verify_out", groups.component, "Lifecycle → prova de recuperação", "zigbee_route_verify_in", 2190, 1520);
+linkIn("zigbee_route_verify_in", settle, "Lifecycle atual", "zigbee_route_verify_out", "zigbee_route_verification_facts", 110, 3630);
+fn("zigbee_route_verification_facts", settle, "Ler comunicação após janela estável", "zigbee-route-verification-facts.js", 1, 370, 3630, [["zigbee_route_verified"]]);
+sw("zigbee_route_verified", settle, "Verificando + 300 s + dados novos?", 'zigbee_route_tick = true and zigbee_route_current.incident_open = true and zigbee_route_verification_started and zigbee_route_verification_age_ms >= policy.route_stability_s * 1000 and zigbee_route_live_after_window', "jsonata", [{ t: "true" }, { t: "else" }], 700, 3630, [["zigbee_route_confirm"], ["zigbee_route_decide_out"]]);
+change("zigbee_route_confirm", settle, "Confirmar recuperação comprovada", [
+  { t: "set", p: "zigbee_route_action", pt: "msg", to: "recovered", tot: "str" },
+  { t: "set", p: "zigbee_route_event", pt: "msg", to: "route_recovery", tot: "str" }
+], 1040, 3600, [["zigbee_route_confirm_out"]]);
+linkOut("zigbee_route_confirm_out", settle, "Recuperação → persistência", "zigbee_route_confirm_in", 1290, 3600);
+linkIn("zigbee_route_confirm_in", groups.component, "Recuperação comprovada", ["zigbee_route_confirm_out", "zigbee_route_exhausted_return"], "zigbee_route_state_mutate", 2770, 1400);
+linkOut("zigbee_route_decide_out", settle, "Ainda aberto → decisão limitada", "zigbee_route_decide_in", 990, 3680);
+linkIn("zigbee_route_decide_in", groups.component, "Rota ainda aberta", "zigbee_route_decide_out", "zigbee_route_decision", 2110, 1430);
+get("zigbee_component_availability").wires[0].push("zigbee_live_out");
+linkOut("zigbee_live_out", groups.input, "Dados MQTT → evidência de rota", "zigbee_live_in", 750, 1020);
+linkIn("zigbee_live_in", settle, "Publicações e TESTE sem retained", ["zigbee_live_out", "zigbee_settle_test_live_out"], "zigbee_route_telemetry", 110, 3760);
+fn("zigbee_route_telemetry", settle, "Guardar somente dados novos do dispositivo", "zigbee-route-telemetry.js", 0, 400, 3760, []);
+// Components now require continuous availability; saved incidents alone cannot recover.
+get("zigbee_component_valid").wires[0] = ["zigbee_component_settle_out"];
+linkOut("zigbee_component_settle_out", groups.component, "Disponibilidade → confirmação", "zigbee_component_settle_in", 2340, 940);
+linkIn("zigbee_component_settle_in", settle, "Disponibilidade normalizada", "zigbee_component_settle_out", "zigbee_component_observation", 1600, 3380);
+fn("zigbee_component_observation", settle, "Guardar estado e início da estabilidade", "zigbee-component-observation.js", 1, 1890, 3380, [["zigbee_component_startup_facts"]]);
+fn("zigbee_component_startup_facts", settle, "Ler retomada do runtime e da ponte", "zigbee-startup-facts.js", 1, 2240, 3380, [["zigbee_component_ready"]]);
+sw("zigbee_component_ready", settle, "Ponte pronta e componente estável?", ready + ' and zigbee_component_stable_ms >= (zigbee_component_availability = "offline" ? policy.failure_confirmation_s : policy.recovery_confirmation_s) * 1000', "jsonata", [{ t: "true" }], 2600, 3380, [["zigbee_component_read_out"]]);
+linkOut("zigbee_component_read_out", settle, "Componente confirmado → lifecycle", "zigbee_component_read_in", 2890, 3380);
+linkIn("zigbee_component_read_in", groups.component, "Disponibilidade confirmada", "zigbee_component_read_out", "zigbee_component_state_read", 2270, 1000);
+// Network startup grace is explicit in its existing temporal gates.
+get("zigbee_network_failure_stable").property = "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_stable_for_ms >= policy.failure_confirmation_s * 1000";
+get("zigbee_network_failure_stable").name = "Startup concluído e queda confirmada?";
+get("zigbee_network_recovery_stable").property = "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_stable_for_ms >= policy.recovery_confirmation_s * 1000";
+get("zigbee_network_reminder_due").property = "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_now >= zigbee_next_reminder_ms";
+get("zigbee_component_reminder_due").property = "zigbee_component_observed_offline and zigbee_now >= zigbee_component_next_reminder_ms";
+inject("zigbee_settle_test_tick", settle, "TESTE 20: avaliar estabilidade", [{ p: "monitor_now", v: String(routeT0 + 1204000), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 1870, 3500, [["zigbee_settle_test_tick_out"]]);
+linkOut("zigbee_settle_test_tick_out", settle, "Tick TESTE → mesma retomada", "zigbee_settle_tick_in", 2160, 3500);
+inject("zigbee_settle_test_live", settle, "TESTE 21: dados novos após janela", [{ p: "topic", v: "zigbee2mqtt/teste_rota", vt: "str" }, { p: "payload", v: '{"state":"ON"}', vt: "json" }, { p: "monitor_now", v: String(routeT0 + 1204000), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 1880, 3570, [["zigbee_settle_test_live_out"]]);
+linkOut("zigbee_settle_test_live_out", settle, "Dados TESTE → mesma evidência", "zigbee_live_in", 2170, 3570);
+grouped(settle, { id: "zigbee_settle_note", type: "comment", z: TAB, g: settle, name: "TESTE: reset → ponte online → erro → mapa → configure → 20 (silêncio) → 21 → 20 (recuperação).", info: "Retained não confirma rota. Repita NWK_NO_ROUTE durante a janela: o incidente e limite de tentativas devem continuar. Nenhum teste chama MQTT ou notificação real.", x: 2320, y: 3660, wires: [] });
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
+const desired = installNotificationHubs(next);
+fs.writeFileSync(outputPath, `${JSON.stringify(reconcileGeneratedFlows(originalFlows, desired, { isOwned: owned, shouldUpdate: node => owned(node) }), null, 4)}\n`);
 console.log(`Zigbee monitor visual flow installed in ${outputPath}`);

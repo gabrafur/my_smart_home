@@ -1,5 +1,12 @@
 const data = msg._observer_event;
 if (data.shared_incident_key) {
+    // A value/status update is not proof that the shared connection recovered.
+    const text = String(msg.status?.text || "").toLowerCase();
+    if (!/^(?:connected|online|conectado)(?:$|\s+to\b)/.test(text)) {
+        if (data.store) flow.set(data.state_key, data.state, data.store);
+        else flow.set(data.state_key, data.state);
+        return null;
+    }
     const sharedRecovered = Object.values(data.state.status_sources)
         .some((entry) => entry.incident_key === data.incident_key);
     if (sharedRecovered) {

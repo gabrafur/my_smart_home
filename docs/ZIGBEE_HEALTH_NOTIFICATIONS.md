@@ -150,10 +150,10 @@ O flow usa diretamente `zigbee2mqtt/bridge/state` e o status da conexão MQTT.
 Isso elimina a dependência operacional da antiga entidade intermediária
 `binary_sensor.zigbee2mqtt_bridge_connection_state`.
 
-Os critérios anteriores foram preservados:
+Os critérios são complementados pela [política de retomada](NODERED_STARTUP_RECOVERY.md):
 
-- `offline`, broker desconectado ou estado ainda desconhecido por 30 segundos
-  confirma a queda;
+- depois da carência inicial de 180 s, `offline`, broker desconectado ou
+  estado ainda desconhecido por 30 segundos confirma a queda;
 - `online` contínuo por 60 segundos confirma a recuperação;
 - `online` retained no startup estabelece apenas o estado inicial e não gera
   falsa recuperação;
@@ -180,9 +180,9 @@ Mensagens retained em `zigbee2mqtt/.../availability` continuam cobrindo
 automaticamente dispositivos novos e friendly names com `/`. Para cada
 componente, o Node-RED persiste se há incidente aberto:
 
-- primeiro `offline`: uma notificação;
+- `offline` confirmado por 30 s, com ponte estável: uma notificação;
 - `offline` repetido: ignorado;
-- primeiro `online` após o incidente: uma recuperação;
+- `online` contínuo por 60 s após o incidente: uma recuperação;
 - `online` no startup sem incidente: ignorado.
 
 Enquanto o componente permanecer offline, o tick periódico da aba repete o
@@ -194,8 +194,8 @@ subflow compartilhado.
 
 O JavaScript remanescente nesta aba só adapta MQTT, gera uma chave estável a
 partir do tópico, lê/aplica a mutação já escolhida, enumera o mapa de
-componentes e monta MQTT/discovery/notificação. Cada função tem menos de 2.000
-caracteres e não contém thresholds nem roteamento de efeito. O lembrete não
+componentes e monta MQTT/discovery/notificação. Exceto os dois adaptadores atômicos documentados na política de retomada, as
+funções têm menos de 2.000 caracteres e não contém thresholds nem roteamento de efeito. O lembrete não
 depende de nova mensagem MQTT; a recuperação encerra o agendamento.
 
 O identificador da notificação combina um slug legível com um hash estável do
@@ -203,13 +203,12 @@ friendly name completo. Assim, caminhos como `andar1/cozinha/sensor` são
 preservados na mensagem e não colidem com nomes diferentes que gerariam o mesmo
 slug, como `andar1-cozinha/sensor`.
 
-O comportamento legado notificava componente imediatamente após o `offline` do
-próprio Zigbee2MQTT. Ele foi preservado para não mudar o critério funcional. A
-fragilidade conhecida é não haver uma segunda carência além dos timeouts de
-availability do Zigbee2MQTT (normalmente 10 minutos para ativos e 25 horas para
-passivos). Uma melhoria futura possível é adicionar uma confirmação curta por
-componente, mas deve ser avaliada separadamente porque aumenta o tempo de
-alerta.
+A carência inicial é de 180 s e a ponte deve estar online por 60 s antes de
+avaliar componentes. O tick reavalia os estados observados; uma oscilação reinicia
+a confirmação sem encerrar o incidente. A recuperação de `NWK_NO_ROUTE` exige
+comunicação nova após 300 s de estabilidade; o aceite isolado de configure não
+é suficiente. Veja o
+[contrato de retomada e recuperação de rotas](NODERED_STARTUP_RECOVERY.md).
 
 Requer no arquivo privado do Zigbee2MQTT:
 

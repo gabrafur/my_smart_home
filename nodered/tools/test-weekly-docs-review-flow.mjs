@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { restoreGeneratedWireRoutes } from "./install-notification-hubs.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -9,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
-const flows = JSON.parse(fs.readFileSync(path.join(repoRoot, "nodered", "flows.json"), "utf8"));
+const flows = restoreGeneratedWireRoutes(JSON.parse(fs.readFileSync(path.join(repoRoot, "nodered", "flows.json"), "utf8")));
 const byId = new Map(flows.map((item) => [item.id, item]));
 const node = (id) => {
   const found = byId.get(id);
@@ -19,7 +20,7 @@ const node = (id) => {
 
 assert.equal(node("weekly_docs_review_tab").label, "revisao_documental_semanal");
 assert.equal(node("weekly_docs_review_schedule").crontab, "00 03 * * 1");
-assert.deepEqual(node("weekly_docs_review_schedule").wires, [["weekly_docs_review_schedule_out"]]);
+assert.deepEqual(node("weekly_docs_review_schedule").wires, [["startup_caller_weekly_docs_review_schedule"]]);
 assert.deepEqual(node("weekly_docs_review_schedule_out").links, ["weekly_docs_review_schedule_in"]);
 assert.deepEqual(node("weekly_docs_review_schedule_in").links, ["weekly_docs_review_schedule_out"]);
 assert.deepEqual(node("weekly_docs_review_manual").entities.entity, ["input_button.weekly_documentation_review_run"]);
@@ -43,7 +44,7 @@ assert.deepEqual(node("weekly_docs_review_test_worker_unavailable").wires, [["we
 assert.deepEqual(node("weekly_docs_review_test_worker_recovered").wires, [["weekly_docs_review_test_worker_status_out"]]);
 assert.deepEqual(node("weekly_docs_review_test_worker_status_out").links, ["weekly_docs_review_test_worker_status_in"]);
 assert.deepEqual(node("weekly_docs_review_test_worker_status_in").links, ["weekly_docs_review_test_worker_status_out"]);
-assert.deepEqual(node("weekly_docs_review_test_worker_status_in").wires, [["weekly_docs_review_track_status"]]);
+assert.deepEqual(node("weekly_docs_review_test_worker_status_in").wires, [["startup_worker_test_out"]]);
 assert.deepEqual(node("weekly_docs_review_dry_run_out").links, ["weekly_docs_review_dry_run_in"]);
 assert.deepEqual(node("weekly_docs_review_dry_run_in").links, ["weekly_docs_review_dry_run_out", "weekly_docs_review_error_dry_run_out"]);
 assert.equal(node("weekly_docs_review_mark_manual").type, "change");

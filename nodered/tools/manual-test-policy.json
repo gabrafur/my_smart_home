@@ -510,6 +510,22 @@
             ],
             "automated_test": "test-host-memory-guardian-flow.mjs",
             "reason": "Pedido, memória saudável, recuperação temporária, pressão, candidato ocioso, encerramento, duplicidade, falha e resultado vencido atravessam adaptação, vigência, estado, decisões visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."
+        },
+        "startup_readiness_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "startup_test_group",
+                "startup_test_reset",
+                "startup_test_internet",
+                "startup_test_vpn",
+                "startup_test_offline",
+                "startup_test_unknown"
+            ],
+            "automated_test": "test-startup-readiness.mjs",
+            "dry_run_terminal_ids": [
+                "startup_dry"
+            ],
+            "reason": "Reset, internet sem VPN, ambas online, oscilação e unknown atravessam a mesma confirmação canônica; dry-run não altera prontidão de produção nem executa tarefas."
         }
     }
 }

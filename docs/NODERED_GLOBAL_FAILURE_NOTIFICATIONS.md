@@ -20,7 +20,10 @@ Erros emitidos com `node.error` alertam imediatamente. A mesma assinatura é
 silenciada por seis horas para evitar tempestade. Para nós do Home Assistant e
 MQTT, erros individuais também são suprimidos enquanto a conexão compartilhada
 está indisponível e por 90 segundos depois da reconexão. Assim, as leituras de
-startup de várias abas não produzem uma rajada para o mesmo restart; erros de
+startup de várias abas não produzem uma rajada para o mesmo restart. A
+[retomada compartilhada](NODERED_STARTUP_RECOVERY.md) também mantém esses erros
+transitórios suprimidos enquanto internet/VPN ainda não estabilizaram; erros de
+autenticação continuam imediatos; erros de
 funções não relacionados continuam alertando imediatamente. Somente textos
 explícitos de conexão perdida, indisponibilidade ou reconexão pendente podem
 abrir um incidente compartilhado; cor vermelha, condição de domínio e erro de

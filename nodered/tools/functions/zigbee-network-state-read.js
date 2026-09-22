@@ -14,6 +14,13 @@ state.last_outage_at ??= history.last_outage_at ?? null;
 state.last_recovery_at ??= history.last_recovery_at ?? null;
 state.last_outage_duration_s ??= history.last_outage_duration_s ?? null;
 const now = Number(msg.monitor_now ?? msg.zigbee_now ?? Date.now());
+const bootKey = "zigbee_boot_at" + (testMode ? "__test" : "");
+let boot = get(bootKey, "memoryOnly");
+if (!Number.isFinite(boot)) {
+    boot = now;
+    if (testMode) flow.set(bootKey, boot); else flow.set(bootKey, boot, "memoryOnly");
+}
+msg.zigbee_boot_age_ms = Math.max(0, now - boot);
 let observation = get(observationKey, "memoryOnly");
 if (!observation) {
     observation = { state: "unknown", changed_at: now };

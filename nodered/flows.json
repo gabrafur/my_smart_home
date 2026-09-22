@@ -185,7 +185,7 @@
         "type": "tab",
         "label": "monitoramento_zigbee",
         "disabled": false,
-        "info": "Política visual confirma queda e retorno da rede, deduplica componentes e trata NWK_NO_ROUTE com alerta, reconstrução de rotas e reconfiguração limitada. Produção publica MQTT/notifica; todo replay termina no dry-run compartilhado.",
+        "info": "Política visual confirma queda e retorno da rede, deduplica componentes e trata NWK_NO_ROUTE com alerta, consulta de rotas e reconfiguração limitada. Produção publica MQTT/notifica; todo replay termina no dry-run compartilhado.",
         "env": []
     },
     {
@@ -367,7 +367,12 @@
             "weekly_docs_review_complete_failed",
             "weekly_docs_review_dry_run_out",
             "weekly_docs_review_error_dry_run_out",
-            "weekly_docs_review_test_failure_in"
+            "weekly_docs_review_test_failure_in",
+            "startup_worker_return_in",
+            "notification_hub_wire_out_45608f6df4c2",
+            "notification_hub_wire_out_708418f17a7d",
+            "notification_hub_wire_in_a97d75a70b33",
+            "startup_worker_test_out"
         ],
         "x": 64,
         "y": 19,
@@ -1379,7 +1384,11 @@
             "daily_update_inventory_unknown_out",
             "notification_hub_wire_out_b95a0f6a8881",
             "notification_hub_wire_in_b95a0f6a8881",
-            "notification_hub_wire_out_b1b5fd6c16a7"
+            "notification_hub_wire_out_b1b5fd6c16a7",
+            "notification_hub_wire_out_8304841bf33a",
+            "notification_hub_wire_out_894ca3cdbfda",
+            "notification_hub_wire_in_c43c40fbee8f",
+            "notification_hub_wire_in_4fa7c5408756"
         ],
         "x": 102,
         "y": 2880,
@@ -2393,7 +2402,9 @@
             "local_ai_rtx_health_tick_out",
             "local_ai_rtx_policy_cooldown",
             "local_ai_rtx_policy_confirmation",
-            "local_ai_rtx_policy_validate"
+            "local_ai_rtx_policy_validate",
+            "notification_hub_wire_out_c48f2b4356ed",
+            "notification_hub_wire_in_c2a9b8b76be3"
         ],
         "x": 124,
         "y": 79,
@@ -2708,7 +2719,9 @@
             "codex_alert_logic",
             "codex_sources_ready",
             "codex_snapshot_level_out",
-            "codex_snapshot_alert_out"
+            "codex_snapshot_alert_out",
+            "notification_hub_wire_out_d610ce915b11",
+            "notification_hub_wire_in_85fd3a777a29"
         ],
         "x": 935,
         "y": 99,
@@ -2983,7 +2996,9 @@
             "tuya_discovery_tick",
             "tuya_discovery",
             "tuya_discovery_out",
-            "tuya_source_note"
+            "tuya_source_note",
+            "notification_hub_wire_out_9ba48daa35b0",
+            "notification_hub_wire_in_52c38c981fa9"
         ],
         "x": 74,
         "y": 19,
@@ -4979,7 +4994,9 @@
             "vehicle_primary_manual_blocked_route_out_v1",
             "vehicle_primary_refresh_notification_requested_out_v1",
             "vehicle_visual_refresh_dispatch_out",
-            "vehicle_visual_refresh_cache_out"
+            "vehicle_visual_refresh_cache_out",
+            "notification_hub_wire_in_60b370e6ed3a",
+            "startup_source_vehicle_visual_refresh_command_in"
         ],
         "x": 69,
         "y": 2550,
@@ -5108,7 +5125,9 @@
             "git_backup_schedule",
             "git_backup_manual",
             "git_backup_retry_in",
-            "git_backup_request_out"
+            "git_backup_request_out",
+            "notification_hub_wire_out_14efb6fdc717",
+            "notification_hub_wire_in_7bea3bdee049"
         ],
         "x": 64,
         "y": 52,
@@ -5826,7 +5845,9 @@
             "zigbee_route_scan_response_out",
             "zigbee_discovery_tick",
             "zigbee_discovery",
-            "zigbee_discovery_out"
+            "zigbee_discovery_out",
+            "zigbee_settle_tick_out",
+            "zigbee_live_out"
         ],
         "x": 64,
         "y": 499,
@@ -5967,6 +5988,14 @@
             "notification_hub_wire_in_314cc1223eae",
             "notification_hub_wire_out_1a76a5d8d87c",
             "notification_hub_wire_in_1a76a5d8d87c",
+            "zigbee_route_ready_out",
+            "zigbee_route_read_in",
+            "zigbee_route_verify_out",
+            "zigbee_route_confirm_in",
+            "zigbee_route_decide_in",
+            "zigbee_component_settle_out",
+            "zigbee_component_read_in",
+            "zigbee_route_exhausted_out",
             "notification_hub_wire_out_e701eb22e5a2",
             "notification_hub_wire_in_e701eb22e5a2",
             "notification_hub_wire_out_0bb8d336406e",
@@ -6315,26 +6344,6 @@
         "y": 609,
         "w": 1402,
         "h": 282
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "type": "group",
-        "z": "monitoramento_zigbee_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__monitoramento_zigbee_tab__catch",
-            "global_observer_coverage__monitoramento_zigbee_tab__status",
-            "global_observer_coverage__monitoramento_zigbee_tab__annotate",
-            "global_observer_coverage__monitoramento_zigbee_tab__out"
-        ],
-        "x": 7960,
-        "y": 59,
-        "w": 722,
-        "h": 142
     },
     {
         "id": "global_observer_coverage__notification_hub_mobile_tab__group",
@@ -7881,7 +7890,7 @@
         "y": 160,
         "wires": [
             [
-                "weekly_docs_review_schedule_out"
+                "notification_hub_wire_out_45608f6df4c2"
             ]
         ]
     },
@@ -8027,7 +8036,7 @@
         "y": 320,
         "wires": [
             [
-                "weekly_docs_review_track_status"
+                "notification_hub_wire_out_708418f17a7d"
             ]
         ]
     },
@@ -8079,7 +8088,7 @@
         "y": 360,
         "wires": [
             [
-                "weekly_docs_review_track_status"
+                "startup_worker_test_out"
             ]
         ]
     },
@@ -24765,7 +24774,7 @@
         "y": 2841,
         "wires": [
             [
-                "vehicle_visual_refresh_load"
+                "startup_source_vehicle_visual_refresh_command_in"
             ]
         ]
     },
@@ -28264,7 +28273,7 @@
         "y": 3021,
         "wires": [
             [
-                "daily_update_inventory_parameters"
+                "notification_hub_wire_out_8304841bf33a"
             ]
         ]
     },
@@ -30855,7 +30864,7 @@
         "y": 3120,
         "wires": [
             [
-                "daily_update_inventory_parameters"
+                "notification_hub_wire_out_894ca3cdbfda"
             ]
         ]
     },
@@ -36450,7 +36459,7 @@
         "y": 190,
         "wires": [
             [
-                "local_ai_rtx_health_tick_out"
+                "notification_hub_wire_out_c48f2b4356ed"
             ]
         ]
     },
@@ -39026,7 +39035,7 @@
         "y": 230,
         "wires": [
             [
-                "codex_alert_logic"
+                "notification_hub_wire_out_d610ce915b11"
             ]
         ]
     },
@@ -40846,8 +40855,8 @@
         "links": [
             "notification_hub_wire_in_d391b65dd501"
         ],
-        "x": 3125,
-        "y": 1300,
+        "x": 3090,
+        "y": 1350,
         "wires": []
     },
     {
@@ -40877,8 +40886,8 @@
         "links": [
             "notification_hub_wire_in_f84122f74ad3"
         ],
-        "x": 3125,
-        "y": 1360,
+        "x": 3090,
+        "y": 1100,
         "wires": []
     },
     {
@@ -41075,7 +41084,7 @@
         "y": 260,
         "wires": [
             [
-                "tuya_entity_registry"
+                "notification_hub_wire_out_9ba48daa35b0"
             ]
         ]
     },
@@ -43977,6 +43986,7 @@
             "global_observer_coverage__recorder_retention_tab__out",
             "global_observer_coverage__resident_notifications_tab__out",
             "global_observer_coverage__shared_integrations_tab__out",
+            "global_observer_coverage__startup_readiness_tab__out",
             "global_observer_coverage__storage_health_tab__out",
             "global_observer_coverage__weekly_docs_review_tab__out",
             "global_observer_test_event_out"
@@ -43995,7 +44005,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Classificar erro ou status",
-        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && (sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    const connectionFailure = /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect)/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\",\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
+        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    const connectionFailure = /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect)/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\",\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -44314,7 +44324,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Registrar recuperação da fonte",
-        "func": "const data = msg._observer_event;\nif (data.shared_incident_key) {\n    const sharedRecovered = Object.values(data.state.status_sources)\n        .some((entry) => entry.incident_key === data.incident_key);\n    if (sharedRecovered) {\n        const event = data.state.connection_events[data.incident_key] ?? {};\n        data.state.connection_events[data.incident_key] = {\n            ...event,\n            last_recovered_at: data.now\n        };\n    }\n    for (const [key, entry] of Object.entries(data.state.status_sources)) {\n        if (entry.incident_key === data.incident_key) {\n            delete data.state.status_sources[key];\n        }\n    }\n} else {\n    delete data.state.status_sources[data.key];\n}\nif (data.store) flow.set(data.state_key, data.state, data.store);\nelse flow.set(data.state_key, data.state);\nreturn null;",
+        "func": "const data = msg._observer_event;\nif (data.shared_incident_key) {\n    // A value/status update is not proof that the shared connection recovered.\n    const text = String(msg.status?.text || \"\").toLowerCase();\n    if (!/^(?:connected|online|conectado)(?:$|\\s+to\\b)/.test(text)) {\n        if (data.store) flow.set(data.state_key, data.state, data.store);\n        else flow.set(data.state_key, data.state);\n        return null;\n    }\n    const sharedRecovered = Object.values(data.state.status_sources)\n        .some((entry) => entry.incident_key === data.incident_key);\n    if (sharedRecovered) {\n        const event = data.state.connection_events[data.incident_key] ?? {};\n        data.state.connection_events[data.incident_key] = {\n            ...event,\n            last_recovered_at: data.now\n        };\n    }\n    for (const [key, entry] of Object.entries(data.state.status_sources)) {\n        if (entry.incident_key === data.incident_key) {\n            delete data.state.status_sources[key];\n        }\n    }\n} else {\n    delete data.state.status_sources[data.key];\n}\nif (data.store) flow.set(data.state_key, data.state, data.store);\nelse flow.set(data.state_key, data.state);\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -59267,7 +59277,7 @@
         "y": 170,
         "wires": [
             [
-                "git_backup_request_out"
+                "notification_hub_wire_out_14efb6fdc717"
             ]
         ]
     },
@@ -64629,7 +64639,7 @@
         "z": "monitoramento_internet_tab",
         "g": "grp_internet_publish",
         "name": "Expandir 3 publicações MQTT",
-        "func": "return (msg.internet_publications ?? []).map((publication) => ({\n    ...msg,\n    topic: publication.topic,\n    payload: publication.payload\n}));",
+        "func": "return [(msg.internet_publications ?? []).map((publication) => ({\n    ...msg,\n    topic: publication.topic,\n    payload: publication.payload\n}))];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -66210,8 +66220,8 @@
         "type": "comment",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_triggers",
-        "name": "Padrões: queda 30 s; retorno 60 s; lembrete 24 h; rota: 3 tentativas com cooldown 15 min.",
-        "info": "Limites: queda 1–300 s, retorno 1–600 s, lembrete 1–168 h, cooldown 1–1.440 min e 1–5 tentativas. Valor inválido não substitui a última política válida.",
+        "name": "Padrões: startup 180 s; queda 30 s; retorno 60 s; rota estável 300 s; 3 tentativas / 15 min.",
+        "info": "Limites: startup 30–900 s; estabilidade de rota 60–3.600 s; queda 1–300 s, retorno 1–600 s, lembrete 1–168 h, cooldown 1–1.440 min e 1–5 tentativas. Valor inválido não substitui a última política válida.",
         "x": 590,
         "y": 540,
         "wires": []
@@ -66225,7 +66235,7 @@
         "props": [
             {
                 "p": "payload",
-                "v": "{\"failure_confirmation_s\":30,\"recovery_confirmation_s\":60,\"reminder_interval_h\":24,\"route_recovery_cooldown_min\":15,\"route_recovery_max_attempts\":3}",
+                "v": "{\"failure_confirmation_s\":30,\"recovery_confirmation_s\":60,\"reminder_interval_h\":24,\"route_recovery_cooldown_min\":15,\"route_recovery_max_attempts\":3,\"startup_grace_s\":180,\"route_stability_s\":300}",
                 "vt": "json"
             }
         ],
@@ -66250,7 +66260,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_triggers",
         "name": "Validar unidades e limites",
-        "func": "const candidate = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst failure = Number(candidate.failure_confirmation_s);\nconst recovery = Number(candidate.recovery_confirmation_s);\nconst reminder = Number(candidate.reminder_interval_h);\nconst routeCooldown = Number(candidate.route_recovery_cooldown_min);\nconst routeAttempts = Number(candidate.route_recovery_max_attempts);\nconst errors = [];\nif (!Number.isInteger(failure) || failure < 1 || failure > 300) errors.push(\"failure_confirmation_s\");\nif (!Number.isInteger(recovery) || recovery < 1 || recovery > 600) errors.push(\"recovery_confirmation_s\");\nif (!Number.isInteger(reminder) || reminder < 1 || reminder > 168) errors.push(\"reminder_interval_h\");\nif (!Number.isInteger(routeCooldown) || routeCooldown < 1 || routeCooldown > 1440) errors.push(\"route_recovery_cooldown_min\");\nif (!Number.isInteger(routeAttempts) || routeAttempts < 1 || routeAttempts > 5) errors.push(\"route_recovery_max_attempts\");\nmsg.policy_valid = errors.length === 0;\nmsg.policy_error = errors.join(\",\");\nmsg.policy_candidate = msg.policy_valid ? {\n    version: 2,\n    failure_confirmation_s: failure,\n    recovery_confirmation_s: recovery,\n    reminder_interval_h: reminder,\n    route_recovery_cooldown_min: routeCooldown,\n    route_recovery_max_attempts: routeAttempts\n} : null;\nreturn msg;",
+        "func": "const candidate = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst failure = Number(candidate.failure_confirmation_s);\nconst recovery = Number(candidate.recovery_confirmation_s);\nconst reminder = Number(candidate.reminder_interval_h);\nconst routeCooldown = Number(candidate.route_recovery_cooldown_min);\nconst routeAttempts = Number(candidate.route_recovery_max_attempts);\nconst startup = Number(candidate.startup_grace_s);\nconst stability = Number(candidate.route_stability_s);\nconst errors = [];\nif (!Number.isInteger(failure) || failure < 1 || failure > 300) errors.push(\"failure_confirmation_s\");\nif (!Number.isInteger(recovery) || recovery < 1 || recovery > 600) errors.push(\"recovery_confirmation_s\");\nif (!Number.isInteger(reminder) || reminder < 1 || reminder > 168) errors.push(\"reminder_interval_h\");\nif (!Number.isInteger(routeCooldown) || routeCooldown < 1 || routeCooldown > 1440) errors.push(\"route_recovery_cooldown_min\");\nif (!Number.isInteger(routeAttempts) || routeAttempts < 1 || routeAttempts > 5) errors.push(\"route_recovery_max_attempts\");\nif (!Number.isInteger(startup) || startup < 30 || startup > 900) errors.push(\"startup_grace_s\");\nif (!Number.isInteger(stability) || stability < 60 || stability > 3600) errors.push(\"route_stability_s\");\nmsg.policy_valid = errors.length === 0;\nmsg.policy_error = errors.join(\",\");\nmsg.policy_candidate = msg.policy_valid ? {\n    version: 2,\n    failure_confirmation_s: failure,\n    recovery_confirmation_s: recovery,\n    reminder_interval_h: reminder,\n    route_recovery_cooldown_min: routeCooldown,\n    route_recovery_max_attempts: routeAttempts,\n    startup_grace_s: startup, route_stability_s: stability\n} : null;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -66511,7 +66521,8 @@
         "wires": [
             [
                 "zigbee_tick_network_out",
-                "zigbee_tick_components_out"
+                "zigbee_tick_components_out",
+                "zigbee_settle_tick_out"
             ]
         ]
     },
@@ -66561,7 +66572,8 @@
         "y": 1000,
         "wires": [
             [
-                "zigbee_component_input_out"
+                "zigbee_component_input_out",
+                "zigbee_live_out"
             ]
         ]
     },
@@ -66685,7 +66697,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_triggers",
         "name": "Reconhecer NWK_NO_ROUTE",
-        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = { message: payload }; }\n}\nconst message = String(payload?.message || \"\");\nconst level = String(payload?.level || \"\").toLowerCase();\nmsg.zigbee_route_valid = false;\nif (!message.includes(\"NWK_NO_ROUTE\") || ![\"warning\", \"error\"].includes(level)) return msg;\nconst quoted = message.match(/(?:to|ping|of|configure)\\s+'([^']+)'/i);\nconst ieeeMatch = message.match(/0x[0-9a-f]{16}/i);\nconst ieee = ieeeMatch ? ieeeMatch[0].toLowerCase() : null;\nconst names = flow.get(\"zigbee_device_name_by_ieee_v1\") || {};\nconst device = quoted?.[1] || names[ieee] || ieee;\nif (!device) return msg;\nlet hash = 0x811c9dc5;\nfor (const byte of Buffer.from(device, \"utf8\")) { hash ^= byte; hash = Math.imul(hash, 0x01000193) >>> 0; }\nconst slug = device.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase()\n    .replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\nmsg.zigbee_route_valid = true;\nmsg.zigbee_route_device = device;\nmsg.zigbee_route_ieee = ieee;\nmsg.zigbee_route_key = `${slug || \"device\"}_${hash.toString(16).padStart(8, \"0\")}`;\nmsg.zigbee_route_error = \"NWK_NO_ROUTE\";\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
+        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = { message: payload }; }\n}\nconst message = String(payload?.message || \"\");\nconst level = String(payload?.level || \"\").toLowerCase();\nmsg.zigbee_route_valid = false;\nif (msg.retain === true || !message.includes(\"NWK_NO_ROUTE\") || ![\"warning\", \"error\"].includes(level)) return msg;\nconst quoted = message.match(/(?:to|ping|of|configure)\\s+'([^']+)'/i);\nconst ieeeMatch = message.match(/0x[0-9a-f]{16}/i);\nconst ieee = ieeeMatch ? ieeeMatch[0].toLowerCase() : null;\nconst names = flow.get(\"zigbee_device_name_by_ieee_v1\") || {};\nconst device = names[String(quoted?.[1] || \"\").toLowerCase()] || quoted?.[1] || names[ieee] || ieee;\nif (!device) return msg;\nlet hash = 0x811c9dc5;\nfor (const byte of Buffer.from(device, \"utf8\")) { hash ^= byte; hash = Math.imul(hash, 0x01000193) >>> 0; }\nconst slug = device.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase()\n    .replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\nmsg.zigbee_route_valid = true;\nmsg.zigbee_route_device = device;\nmsg.zigbee_route_ieee = ieee;\nmsg.zigbee_route_key = `${slug || \"device\"}_${hash.toString(16).padStart(8, \"0\")}`;\nmsg.zigbee_route_error = \"NWK_NO_ROUTE\";\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -66824,7 +66836,7 @@
         "type": "link out",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_triggers",
-        "name": "Mapa → reconstrução da rota",
+        "name": "Mapa → reconfiguração limitada",
         "mode": "link",
         "links": [
             "zigbee_route_scan_response_in"
@@ -66987,11 +66999,11 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_state",
         "name": "Ler observação e estado persistente",
-        "func": "const testMode = msg._zigbee_test === true;\nconst stateKey = testMode ? \"zigbee_network_monitor_state_v1__test\" : \"zigbee_network_monitor_state_v1\";\nconst historyKey = testMode ? \"zigbee_network_monitor_history_v1__test\" : \"zigbee_network_monitor_history_v1\";\nconst observationKey = testMode ? \"zigbee_bridge_observation__test\" : \"zigbee_bridge_observation\";\nconst get = (key, store) => testMode ? flow.get(key) : flow.get(key, store);\nlet state = get(stateKey, \"persistent\");\nif (!state || typeof state !== \"object\") state = {\n    version: 1, phase: \"checking\", incident_open: false,\n    outage_started_at: null, last_outage_at: null, last_recovery_at: null,\n    last_outage_duration_s: null, last_notification_at: null, next_reminder_at: null\n};\nconst history = get(historyKey, \"persistent\") || {};\nstate.last_outage_at ??= history.last_outage_at ?? null;\nstate.last_recovery_at ??= history.last_recovery_at ?? null;\nstate.last_outage_duration_s ??= history.last_outage_duration_s ?? null;\nconst now = Number(msg.monitor_now ?? msg.zigbee_now ?? Date.now());\nlet observation = get(observationKey, \"memoryOnly\");\nif (!observation) {\n    observation = { state: \"unknown\", changed_at: now };\n    if (testMode) flow.set(observationKey, observation);\n    else flow.set(observationKey, observation, \"memoryOnly\");\n}\nconst changedAt = Number(observation.changed_at ?? now);\nmsg.zigbee_state_key = stateKey;\nmsg.zigbee_history_key = historyKey;\nmsg.zigbee_state = state;\nmsg.zigbee_raw_state = observation.state;\nmsg.zigbee_now = now;\nmsg.zigbee_now_iso = new Date(now).toISOString();\nmsg.zigbee_stable_for_ms = Math.max(0, now - changedAt);\nconst lastNotice = Date.parse(state.last_notification_at || state.outage_started_at || \"\");\nconst next = Date.parse(state.next_reminder_at || \"\");\nmsg.zigbee_next_reminder_ms = Number.isFinite(next) ? next :\n    (Number.isFinite(lastNotice) ? lastNotice + msg.policy.reminder_interval_h * 3600000 : now + msg.policy.reminder_interval_h * 3600000);\nreturn msg;",
+        "func": "const testMode = msg._zigbee_test === true;\nconst stateKey = testMode ? \"zigbee_network_monitor_state_v1__test\" : \"zigbee_network_monitor_state_v1\";\nconst historyKey = testMode ? \"zigbee_network_monitor_history_v1__test\" : \"zigbee_network_monitor_history_v1\";\nconst observationKey = testMode ? \"zigbee_bridge_observation__test\" : \"zigbee_bridge_observation\";\nconst get = (key, store) => testMode ? flow.get(key) : flow.get(key, store);\nlet state = get(stateKey, \"persistent\");\nif (!state || typeof state !== \"object\") state = {\n    version: 1, phase: \"checking\", incident_open: false,\n    outage_started_at: null, last_outage_at: null, last_recovery_at: null,\n    last_outage_duration_s: null, last_notification_at: null, next_reminder_at: null\n};\nconst history = get(historyKey, \"persistent\") || {};\nstate.last_outage_at ??= history.last_outage_at ?? null;\nstate.last_recovery_at ??= history.last_recovery_at ?? null;\nstate.last_outage_duration_s ??= history.last_outage_duration_s ?? null;\nconst now = Number(msg.monitor_now ?? msg.zigbee_now ?? Date.now());\nconst bootKey = \"zigbee_boot_at\" + (testMode ? \"__test\" : \"\");\nlet boot = get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(boot)) {\n    boot = now;\n    if (testMode) flow.set(bootKey, boot); else flow.set(bootKey, boot, \"memoryOnly\");\n}\nmsg.zigbee_boot_age_ms = Math.max(0, now - boot);\nlet observation = get(observationKey, \"memoryOnly\");\nif (!observation) {\n    observation = { state: \"unknown\", changed_at: now };\n    if (testMode) flow.set(observationKey, observation);\n    else flow.set(observationKey, observation, \"memoryOnly\");\n}\nconst changedAt = Number(observation.changed_at ?? now);\nmsg.zigbee_state_key = stateKey;\nmsg.zigbee_history_key = historyKey;\nmsg.zigbee_state = state;\nmsg.zigbee_raw_state = observation.state;\nmsg.zigbee_now = now;\nmsg.zigbee_now_iso = new Date(now).toISOString();\nmsg.zigbee_stable_for_ms = Math.max(0, now - changedAt);\nconst lastNotice = Date.parse(state.last_notification_at || state.outage_started_at || \"\");\nconst next = Date.parse(state.next_reminder_at || \"\");\nmsg.zigbee_next_reminder_ms = Number.isFinite(next) ? next :\n    (Number.isFinite(lastNotice) ? lastNotice + msg.policy.reminder_interval_h * 3600000 : now + msg.policy.reminder_interval_h * 3600000);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
-        "initialize": "",
+        "initialize": "flow.set(\"zigbee_boot_at\", Date.now(), \"memoryOnly\"); flow.set(\"zigbee_route_live\", {}, \"memoryOnly\");",
         "finalize": "",
         "libs": [],
         "x": 1940,
@@ -67078,7 +67090,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_state",
         "name": "Online estável atingiu 60 s?",
-        "property": "zigbee_stable_for_ms >= policy.recovery_confirmation_s * 1000",
+        "property": "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_stable_for_ms >= policy.recovery_confirmation_s * 1000",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -67257,7 +67269,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_state",
         "name": "Lembrete de 24 h está vencido?",
-        "property": "zigbee_now >= zigbee_next_reminder_ms",
+        "property": "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_now >= zigbee_next_reminder_ms",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -67356,8 +67368,8 @@
         "type": "switch",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_state",
-        "name": "Offline estável atingiu 30 s?",
-        "property": "zigbee_stable_for_ms >= policy.failure_confirmation_s * 1000",
+        "name": "Startup concluído e queda confirmada?",
+        "property": "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_stable_for_ms >= policy.failure_confirmation_s * 1000",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -67562,7 +67574,8 @@
         "name": "Receber disponibilidade ou TESTE",
         "links": [
             "zigbee_component_input_out",
-            "zigbee_test_component_out"
+            "zigbee_test_component_out",
+            "zigbee_settle_component_out"
         ],
         "x": 1310,
         "y": 910,
@@ -67684,7 +67697,7 @@
         "y": 860,
         "wires": [
             [
-                "zigbee_component_state_read"
+                "zigbee_component_settle_out"
             ],
             [
                 "zigbee_component_invalid"
@@ -68038,7 +68051,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Enumerar incidentes persistidos",
-        "func": "const testMode = msg._zigbee_test === true;\nconst key = testMode ? \"zigbee_component_incidents_v1__test\" : \"zigbee_component_incidents_v1\";\nconst incidents = testMode ? (flow.get(key) || {}) : (flow.get(key, \"persistent\") || {});\nconst now = Number(msg.monitor_now ?? Date.now());\nconst outputs = [];\nfor (const [component, current] of Object.entries(incidents)) {\n    const copy = { ...msg, zigbee_component: component, zigbee_component_current: current,\n        zigbee_component_incidents: incidents, zigbee_component_state_key: key,\n        zigbee_now: now, zigbee_now_iso: new Date(now).toISOString() };\n    const last = Date.parse(current.last_notification_at || current.outage_started_at || \"\");\n    const next = Date.parse(current.next_reminder_at || \"\");\n    copy.zigbee_component_next_reminder_ms = Number.isFinite(next) ? next :\n        (Number.isFinite(last) ? last + msg.policy.reminder_interval_h * 3600000 : now + msg.policy.reminder_interval_h * 3600000);\n    outputs.push(copy);\n}\nreturn outputs.length ? [outputs] : null;",
+        "func": "const testMode = msg._zigbee_test === true;\nconst key = testMode ? \"zigbee_component_incidents_v1__test\" : \"zigbee_component_incidents_v1\";\nconst incidents = testMode ? (flow.get(key) || {}) : (flow.get(key, \"persistent\") || {});\nconst now = Number(msg.monitor_now ?? Date.now());\nconst suffix = testMode ? \"__test\" : \"\";\nconst store = testMode ? undefined : \"memoryOnly\";\nconst observations = flow.get(\"zigbee_component_observations\" + suffix, store) || {};\nconst bridge = flow.get(\"zigbee_bridge_observation\" + suffix, store);\nconst boot = flow.get(\"zigbee_boot_at\" + suffix, store);\nconst outputs = [];\nfor (const [component, current] of Object.entries(incidents)) {\n    const copy = { ...msg, zigbee_component: component, zigbee_component_current: current,\n        zigbee_component_incidents: incidents, zigbee_component_state_key: key,\n        zigbee_now: now, zigbee_now_iso: new Date(now).toISOString() };\n    copy.zigbee_component_observed_offline = observations[component]?.state === \"offline\" &&\n        bridge?.state === \"online\" && now - bridge.changed_at >= msg.policy.recovery_confirmation_s * 1000 &&\n        Number.isFinite(boot) && now - boot >= msg.policy.startup_grace_s * 1000;\n    const last = Date.parse(current.last_notification_at || current.outage_started_at || \"\");\n    const next = Date.parse(current.next_reminder_at || \"\");\n    copy.zigbee_component_next_reminder_ms = Number.isFinite(next) ? next :\n        (Number.isFinite(last) ? last + msg.policy.reminder_interval_h * 3600000 : now + msg.policy.reminder_interval_h * 3600000);\n    outputs.push(copy);\n}\nreturn outputs.length ? [outputs] : null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -68089,7 +68102,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Lembrete de 24 h está vencido?",
-        "property": "zigbee_now >= zigbee_component_next_reminder_ms",
+        "property": "zigbee_component_observed_offline and zigbee_now >= zigbee_component_next_reminder_ms",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -68254,7 +68267,8 @@
         "name": "Receber NWK_NO_ROUTE",
         "links": [
             "zigbee_route_error_out",
-            "zigbee_test_route_error_out"
+            "zigbee_test_route_error_out",
+            "zigbee_settle_route_out"
         ],
         "x": 1310,
         "y": 1430,
@@ -68308,7 +68322,7 @@
         "y": 1430,
         "wires": [
             [
-                "zigbee_route_state_read"
+                "zigbee_route_ready_out"
             ],
             [
                 "zigbee_route_policy_missing"
@@ -68338,7 +68352,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Ler lifecycle da rota",
-        "func": "const testMode = msg._zigbee_test === true;\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst current = incidents[msg.zigbee_route_key] || {\n    incident_open: false, phase: \"idle\", attempts: 0, next_retry_at: null\n};\nconst nextRetry = Date.parse(current.next_retry_at || \"\") || Number.POSITIVE_INFINITY;\nconst canRetry = current.incident_open && [\"failed\", \"recovering\"].includes(current.phase) &&\n    current.attempts < msg.policy.route_recovery_max_attempts && msg.zigbee_route_now >= nextRetry;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_current = current;\nmsg.zigbee_route_decision = !current.incident_open ? \"open\" : canRetry ? \"retry\" : \"duplicate\";\nreturn msg;",
+        "func": "const testMode = msg._zigbee_test === true;\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst current = structuredClone(incidents[msg.zigbee_route_key] || {\n    incident_open: false, phase: \"idle\", attempts: 0, next_retry_at: null\n});\nconst nextRetry = Date.parse(current.next_retry_at || \"\") || Number.POSITIVE_INFINITY;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_current = current;\nmsg.zigbee_route_revision = Number(current.revision || 0);\nmsg.zigbee_route_deadline = Number.isFinite(nextRetry) ? nextRetry : null;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -68349,7 +68363,7 @@
         "y": 1490,
         "wires": [
             [
-                "zigbee_route_decision"
+                "zigbee_route_verify_out"
             ]
         ]
     },
@@ -68358,9 +68372,9 @@
         "type": "switch",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
-        "name": "Abrir, repetir após cooldown ou deduplicar?",
-        "property": "zigbee_route_decision",
-        "propertyType": "msg",
+        "name": "Abrir, repetir, esgotar ou deduplicar?",
+        "property": "zigbee_route_current.incident_open != true ? \"open\" : (zigbee_route_deadline != null and zigbee_route_now >= zigbee_route_deadline ? (zigbee_route_current.attempts < policy.route_recovery_max_attempts ? \"retry\" : (zigbee_route_current.exhaustion_notified != true ? \"exhausted\" : \"duplicate\")) : \"duplicate\")",
+        "propertyType": "jsonata",
         "rules": [
             {
                 "t": "eq",
@@ -68373,12 +68387,17 @@
                 "vt": "str"
             },
             {
+                "t": "eq",
+                "v": "exhausted",
+                "vt": "str"
+            },
+            {
                 "t": "else"
             }
         ],
         "checkall": "true",
         "repair": false,
-        "outputs": 3,
+        "outputs": 4,
         "x": 2350,
         "y": 1430,
         "wires": [
@@ -68387,6 +68406,9 @@
             ],
             [
                 "zigbee_route_retry"
+            ],
+            [
+                "zigbee_route_exhausted_out"
             ],
             [
                 "zigbee_route_touch"
@@ -68504,7 +68526,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Persistir lifecycle da rota",
-        "func": "const current = msg.zigbee_route_current || {};\nconst retryAt = new Date(msg.zigbee_route_now + msg.policy.route_recovery_cooldown_min * 60000).toISOString();\nlet updated = current;\nif ([\"open\", \"retry\"].includes(msg.zigbee_route_action)) {\n    const attempts = msg.zigbee_route_action === \"open\" ? 1 : Number(current.attempts || 0) + 1;\n    const testPrefix = msg._zigbee_test === true ? \"test-\" : \"\";\n    const transaction = `nodered-zigbee-route-${testPrefix}${msg.zigbee_route_key}-${msg.zigbee_route_now}`;\n    updated = { ...current, incident_open: true, phase: \"recovering\", attempts,\n        device: msg.zigbee_route_device, ieee: msg.zigbee_route_ieee || current.ieee || null,\n        first_failure_at: current.first_failure_at || msg.zigbee_route_now_iso,\n        last_failure_at: msg.zigbee_route_now_iso, last_error: \"NWK_NO_ROUTE\",\n        pending_transaction: transaction, next_retry_at: retryAt };\n    msg.zigbee_route_transaction = transaction;\n} else if (msg.zigbee_route_action === \"touch\") updated = {\n    ...current, last_failure_at: msg.zigbee_route_now_iso, last_error: \"NWK_NO_ROUTE\"\n};\nelse if (msg.zigbee_route_action === \"recovery_failed\") updated = {\n    ...current, phase: \"failed\", pending_transaction: null,\n    recovery_error: msg.zigbee_route_response_error || \"unknown\",\n    next_retry_at: retryAt\n};\nelse if (msg.zigbee_route_action === \"recovered\") updated = {\n    ...current, incident_open: false, phase: \"recovered\", pending_transaction: null,\n    recovered_at: msg.zigbee_route_now_iso, next_retry_at: null, recovery_error: null\n};\nmsg.zigbee_route_incidents[msg.zigbee_route_key] = updated;\nif (msg._zigbee_test === true) flow.set(msg.zigbee_route_state_key, msg.zigbee_route_incidents);\nelse flow.set(msg.zigbee_route_state_key, msg.zigbee_route_incidents, \"persistent\");\nmsg.zigbee_route_current = updated;\nnode.status({ fill: updated.incident_open ? \"yellow\" : \"green\", shape: \"dot\", text: `${updated.device}: ${updated.phase}` });\nreturn msg;",
+        "func": "const current = msg.zigbee_route_current || {};\n// Compare-and-set: messages can interleave between the visual read and mutation.\nconst store = msg._zigbee_test === true ? undefined : \"persistent\";\nconst incidents = flow.get(msg.zigbee_route_state_key, store) || {};\nif (Number(incidents[msg.zigbee_route_key]?.revision || 0) !== Number(msg.zigbee_route_revision || 0)) return null;\nconst retryAt = new Date(msg.zigbee_route_now + msg.policy.route_recovery_cooldown_min * 60000).toISOString();\nlet updated = current;\nif ([\"open\", \"retry\"].includes(msg.zigbee_route_action)) {\n    const attempts = msg.zigbee_route_action === \"open\" ? 1 : Number(current.attempts || 0) + 1;\n    const testPrefix = msg._zigbee_test === true ? \"test-\" : \"\";\n    const transaction = `nodered-zigbee-route-${testPrefix}${msg.zigbee_route_key}-${msg.zigbee_route_now}`;\n    updated = { ...current, incident_open: true, phase: \"scanning\", attempts,\n        device: msg.zigbee_route_device, ieee: msg.zigbee_route_ieee || current.ieee || null,\n        first_failure_at: msg.zigbee_route_action === \"open\" ? msg.zigbee_route_now_iso : current.first_failure_at,\n        last_failure_at: msg.zigbee_route_now_iso, last_error: \"NWK_NO_ROUTE\",\n        pending_transaction: transaction, next_retry_at: retryAt, verification_started_at: null,\n        exhaustion_notified: false };\n    msg.zigbee_route_transaction = transaction;\n} else if (msg.zigbee_route_action === \"touch\") {\n    if (msg.zigbee_route_tick === true) return null;\n    updated = { ...current, last_failure_at: msg.zigbee_route_now_iso, last_error: \"NWK_NO_ROUTE\",\n        verification_started_at: null, phase: current.phase === \"verifying\" ? \"failed\" : current.phase };\n}\nelse if (msg.zigbee_route_action === \"verify\") updated = {\n    ...current, phase: \"verifying\", verification_started_at: msg.zigbee_route_now_iso\n};\nelse if (msg.zigbee_route_action === \"recovery_failed\") updated = {\n    ...current, phase: \"failed\", pending_transaction: null,\n    recovery_error: msg.zigbee_route_response_error || \"unknown\",\n    next_retry_at: retryAt,\n    exhaustion_notified: current.attempts >= msg.policy.route_recovery_max_attempts\n};\nelse if (msg.zigbee_route_action === \"recovered\") updated = {\n    ...current, incident_open: false, phase: \"recovered\", pending_transaction: null,\n    recovered_at: msg.zigbee_route_now_iso, next_retry_at: null, recovery_error: null\n};\nupdated.revision = Number(current.revision || 0) + 1;\nincidents[msg.zigbee_route_key] = updated;\nflow.set(msg.zigbee_route_state_key, incidents, store);\nconst pendingKey = \"zigbee_route_pending\" + (msg._zigbee_test === true ? \"__test\" : \"\");\nconst pendingStore = msg._zigbee_test === true ? undefined : \"memoryOnly\";\nconst pending = flow.get(pendingKey, pendingStore) || {};\ndelete pending[msg.zigbee_route_key];\nflow.set(pendingKey, pending, pendingStore);\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_current = updated;\nnode.status({ fill: updated.incident_open ? \"yellow\" : \"green\", shape: \"dot\", text: `${updated.device}: ${updated.phase}` });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -68582,7 +68604,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Montar alerta da rota",
-        "func": "const current = msg.zigbee_route_current || {};\nconst device = msg.zigbee_route_device || current.device || \"desconhecido\";\nconst id = `zigbee_route_${msg.zigbee_route_key}`;\nconst when = new Date(msg.zigbee_route_now).toLocaleString(\"pt-BR\");\nif (msg.zigbee_route_event === \"route_failure\") msg.notification = {\n    id, title: \"Falha de rota Zigbee\",\n    message: `O dispositivo Zigbee “${device}” apresentou NWK_NO_ROUTE em ${when}. A recuperação automática foi iniciada (tentativa 1 de ${msg.policy.route_recovery_max_attempts}).`\n};\nelse if (msg.zigbee_route_event === \"route_recovery_failed\") {\n    const exhausted = current.attempts >= msg.policy.route_recovery_max_attempts;\n    msg.notification = { id, title: \"Recuperação Zigbee não concluída\",\n        message: exhausted\n            ? `“${device}” continua sem rota após ${current.attempts} tentativas. O processo automático foi encerrado; verifique a alimentação e a malha Zigbee.`\n            : `A tentativa ${current.attempts} de recuperar “${device}” falhou. Uma nova tentativa poderá ocorrer após ${msg.policy.route_recovery_cooldown_min} minutos se o erro reaparecer.` };\n} else if (msg.zigbee_route_event === \"route_recovery\") msg.notification = {\n    id: `${id}_recovered`, dismiss_id: id, title: \"Rota Zigbee recuperada\",\n    message: `As rotas da malha foram reconstruídas e o dispositivo Zigbee “${device}” foi reconfigurado e voltou a responder em ${when}.`\n};\nelse return null;\nreturn msg;",
+        "func": "const current = msg.zigbee_route_current || {};\nconst device = msg.zigbee_route_device || current.device || \"desconhecido\";\nconst id = `zigbee_route_${msg.zigbee_route_key}`;\nconst when = new Date(msg.zigbee_route_now).toLocaleString(\"pt-BR\");\nif (msg.zigbee_route_event === \"route_failure\") msg.notification = {\n    id, title: \"Falha de rota Zigbee\",\n    message: `O dispositivo Zigbee “${device}” apresentou NWK_NO_ROUTE em ${when}. A recuperação automática foi iniciada (tentativa 1 de ${msg.policy.route_recovery_max_attempts}).`\n};\nelse if (msg.zigbee_route_event === \"route_recovery_failed\") {\n    const exhausted = current.attempts >= msg.policy.route_recovery_max_attempts;\n    if (!exhausted) return null;\n    msg.notification = { id, title: \"Recuperação Zigbee não concluída\",\n        message: exhausted\n            ? `“${device}” continua sem rota após ${current.attempts} tentativas. O processo automático foi encerrado; verifique a alimentação e a malha Zigbee.`\n            : `A tentativa ${current.attempts} de recuperar “${device}” falhou. Uma nova tentativa poderá ocorrer após ${msg.policy.route_recovery_cooldown_min} minutos se o erro reaparecer.` };\n} else if (msg.zigbee_route_event === \"route_recovery\") msg.notification = {\n    id: `${id}_recovered`, dismiss_id: id, title: \"Rota Zigbee recuperada\",\n    message: `O dispositivo Zigbee “${device}” voltou a publicar dados após ${msg.policy.route_stability_s} segundos sem nova falha de rota. Recuperação confirmada em ${when}.`\n};\nelse return null;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -68616,7 +68638,7 @@
         "type": "function",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
-        "name": "Montar varredura oficial de rotas",
+        "name": "Montar consulta oficial de rotas",
         "func": "msg.topic = \"zigbee2mqtt/bridge/request/networkmap\";\nmsg.payload = {\n    type: \"raw\",\n    routes: true,\n    transaction: msg.zigbee_route_transaction\n};\nmsg.retain = false;\nmsg.qos = \"1\";\nmsg.zigbee_route_effect = \"route_scan\";\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
@@ -68717,7 +68739,7 @@
         "type": "link in",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
-        "name": "Receber mapa reconstruído",
+        "name": "Receber mapa consultado",
         "links": [
             "zigbee_route_scan_response_out",
             "zigbee_test_route_scan_response_out"
@@ -68787,7 +68809,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Correlacionar mapa de rotas",
-        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = null; }\n}\nconst transaction = String(payload?.transaction || \"\");\nconst testMode = transaction.startsWith(\"nodered-zigbee-route-test-\");\nconst prefixValid = testMode || transaction.startsWith(\"nodered-zigbee-route-\");\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);\nmsg.zigbee_route_response_valid = Boolean(prefixValid && entry && [\"ok\", \"error\"].includes(payload?.status));\nif (!msg.zigbee_route_response_valid) return msg;\nconst [key, current] = entry;\nmsg._zigbee_test = testMode;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_key = key;\nmsg.zigbee_route_current = current;\nmsg.zigbee_route_device = current.device;\nmsg.zigbee_route_ieee = current.ieee;\nmsg.zigbee_route_response_status = payload.status;\nmsg.zigbee_route_response_error = String(payload.error || \"\");\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
+        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = null; }\n}\nconst transaction = String(payload?.transaction || \"\");\nconst testMode = transaction.startsWith(\"nodered-zigbee-route-test-\");\nconst prefixValid = testMode || transaction.startsWith(\"nodered-zigbee-route-\");\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);\nmsg.zigbee_route_response_valid = Boolean(msg.retain !== true && prefixValid && entry && entry[1].incident_open && [\"ok\", \"error\"].includes(payload?.status));\nif (!msg.zigbee_route_response_valid) return msg;\nconst [key, current] = entry;\nmsg._zigbee_test = testMode;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_key = key;\nmsg.zigbee_route_current = structuredClone(current);\nmsg.zigbee_route_revision = Number(current.revision || 0);\n// Duplicate map responses must not start another configure. Late configure\n// failures remain correlated while a successful response is being verified.\nconst scan = msg.topic === \"zigbee2mqtt/bridge/response/networkmap\";\nif ((scan && current.phase !== \"scanning\") ||\n    (!scan && ![\"configuring\", \"verifying\"].includes(current.phase)) ||\n    (!scan && current.phase === \"verifying\" && payload.status === \"ok\")) {\n    msg.zigbee_route_response_valid = false;\n    return msg;\n}\nmsg.zigbee_route_device = current.device;\nmsg.zigbee_route_ieee = current.ieee;\nmsg.zigbee_route_response_status = payload.status;\nmsg.zigbee_route_response_error = String(payload.error || \"\");\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -68870,7 +68892,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Montar reconfiguração do dispositivo",
-        "func": "msg.topic = \"zigbee2mqtt/bridge/request/device/configure\";\nmsg.payload = {\n    id: msg.zigbee_route_device,\n    transaction: msg.zigbee_route_transaction || msg.payload?.transaction\n};\nmsg.retain = false;\nmsg.qos = \"1\";\nmsg.zigbee_route_effect = \"configure\";\nreturn msg;",
+        "func": "// Atomically claim this stage before the MQTT boundary (including dry-run).\nconst store = msg._zigbee_test === true ? undefined : \"persistent\";\nconst incidents = flow.get(msg.zigbee_route_state_key, store) || {};\nconst current = incidents[msg.zigbee_route_key];\nif (!current || current.phase !== \"scanning\" || current.pending_transaction !== msg.payload?.transaction) return null;\nincidents[msg.zigbee_route_key] = { ...current, phase: \"configuring\", revision: Number(current.revision || 0) + 1 };\nflow.set(msg.zigbee_route_state_key, incidents, store);\nmsg.topic = \"zigbee2mqtt/bridge/request/device/configure\";\nmsg.payload = {\n    id: msg.zigbee_route_device,\n    transaction: msg.zigbee_route_transaction || msg.payload?.transaction\n};\nmsg.retain = false;\nmsg.qos = \"1\";\nmsg.zigbee_route_effect = \"configure\";\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -69075,7 +69097,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Correlacionar resposta",
-        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = null; }\n}\nconst transaction = String(payload?.transaction || \"\");\nconst testMode = transaction.startsWith(\"nodered-zigbee-route-test-\");\nconst prefixValid = testMode || transaction.startsWith(\"nodered-zigbee-route-\");\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);\nmsg.zigbee_route_response_valid = Boolean(prefixValid && entry && [\"ok\", \"error\"].includes(payload?.status));\nif (!msg.zigbee_route_response_valid) return msg;\nconst [key, current] = entry;\nmsg._zigbee_test = testMode;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_key = key;\nmsg.zigbee_route_current = current;\nmsg.zigbee_route_device = current.device;\nmsg.zigbee_route_ieee = current.ieee;\nmsg.zigbee_route_response_status = payload.status;\nmsg.zigbee_route_response_error = String(payload.error || \"\");\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
+        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = null; }\n}\nconst transaction = String(payload?.transaction || \"\");\nconst testMode = transaction.startsWith(\"nodered-zigbee-route-test-\");\nconst prefixValid = testMode || transaction.startsWith(\"nodered-zigbee-route-\");\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);\nmsg.zigbee_route_response_valid = Boolean(msg.retain !== true && prefixValid && entry && entry[1].incident_open && [\"ok\", \"error\"].includes(payload?.status));\nif (!msg.zigbee_route_response_valid) return msg;\nconst [key, current] = entry;\nmsg._zigbee_test = testMode;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_key = key;\nmsg.zigbee_route_current = structuredClone(current);\nmsg.zigbee_route_revision = Number(current.revision || 0);\n// Duplicate map responses must not start another configure. Late configure\n// failures remain correlated while a successful response is being verified.\nconst scan = msg.topic === \"zigbee2mqtt/bridge/response/networkmap\";\nif ((scan && current.phase !== \"scanning\") ||\n    (!scan && ![\"configuring\", \"verifying\"].includes(current.phase)) ||\n    (!scan && current.phase === \"verifying\" && payload.status === \"ok\")) {\n    msg.zigbee_route_response_valid = false;\n    return msg;\n}\nmsg.zigbee_route_device = current.device;\nmsg.zigbee_route_ieee = current.ieee;\nmsg.zigbee_route_response_status = payload.status;\nmsg.zigbee_route_response_error = String(payload.error || \"\");\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -69157,20 +69179,20 @@
         "type": "change",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
-        "name": "Confirmar recuperação",
+        "name": "Configure aceito: aguardar evidência",
         "rules": [
             {
                 "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "to": "recovered",
+                "to": "verify",
                 "tot": "str"
             },
             {
                 "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "to": "route_recovery",
+                "to": "none",
                 "tot": "str"
             }
         ],
@@ -70040,7 +70062,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_tests",
         "name": "Resetar apenas estado sintético",
-        "func": "for (const key of [\n    \"zigbee_bridge_observation__test\",\n    \"zigbee_network_monitor_state_v1__test\",\n    \"zigbee_network_monitor_history_v1__test\",\n    \"zigbee_component_incidents_v1__test\",\n    \"zigbee_route_incidents_v1__test\",\n    \"zigbee_last_dry_run_v1__test\"\n]) flow.set(key, undefined);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"estado TESTE resetado\" });\nreturn null;",
+        "func": "for (const key of [\n    \"zigbee_bridge_observation__test\",\n    \"zigbee_network_monitor_state_v1__test\",\n    \"zigbee_network_monitor_history_v1__test\",\n    \"zigbee_component_incidents_v1__test\",\n    \"zigbee_route_incidents_v1__test\",\n    \"zigbee_route_pending__test\", \"zigbee_route_live__test\", \"zigbee_boot_at__test\",\n    \"zigbee_component_observations__test\",\n    \"zigbee_last_dry_run_v1__test\"\n]) flow.set(key, undefined);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"estado TESTE resetado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -70529,7 +70551,7 @@
             },
             {
                 "p": "monitor_now",
-                "v": "1767225600000",
+                "v": "1767225800000",
                 "vt": "num"
             },
             {
@@ -70567,7 +70589,7 @@
             },
             {
                 "p": "monitor_now",
-                "v": "1767225601000",
+                "v": "1767225801000",
                 "vt": "num"
             },
             {
@@ -70605,7 +70627,7 @@
             },
             {
                 "p": "monitor_now",
-                "v": "1767226502000",
+                "v": "1767226702000",
                 "vt": "num"
             },
             {
@@ -70648,16 +70670,16 @@
         "type": "inject",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_tests",
-        "name": "TESTE 15: mapa reconstruído",
+        "name": "TESTE 15: mapa consultado",
         "props": [
             {
                 "p": "payload",
-                "v": "{\"status\":\"ok\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767225600000\"}",
+                "v": "{\"status\":\"ok\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767225800000\"}",
                 "vt": "json"
             },
             {
                 "p": "monitor_now",
-                "v": "1767225601500",
+                "v": "1767225801500",
                 "vt": "num"
             }
         ],
@@ -70681,16 +70703,16 @@
         "type": "inject",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_tests",
-        "name": "TESTE 18: novo mapa reconstruído",
+        "name": "TESTE 18: novo mapa consultado",
         "props": [
             {
                 "p": "payload",
-                "v": "{\"status\":\"ok\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767226502000\"}",
+                "v": "{\"status\":\"ok\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767226702000\"}",
                 "vt": "json"
             },
             {
                 "p": "monitor_now",
-                "v": "1767226502500",
+                "v": "1767226702500",
                 "vt": "num"
             }
         ],
@@ -70732,12 +70754,12 @@
         "props": [
             {
                 "p": "payload",
-                "v": "{\"status\":\"error\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767225600000\",\"error\":\"NWK_NO_ROUTE\"}",
+                "v": "{\"status\":\"error\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767225800000\",\"error\":\"NWK_NO_ROUTE\"}",
                 "vt": "json"
             },
             {
                 "p": "monitor_now",
-                "v": "1767225602000",
+                "v": "1767225802000",
                 "vt": "num"
             }
         ],
@@ -70765,12 +70787,12 @@
         "props": [
             {
                 "p": "payload",
-                "v": "{\"status\":\"ok\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767226502000\"}",
+                "v": "{\"status\":\"ok\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767226702000\"}",
                 "vt": "json"
             },
             {
                 "p": "monitor_now",
-                "v": "1767226503000",
+                "v": "1767226703000",
                 "vt": "num"
             }
         ],
@@ -70932,72 +70954,6 @@
                 "zigbee_route_response_invalid"
             ]
         ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__catch",
-        "type": "catch",
-        "z": "monitoramento_zigbee_tab",
-        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 8116,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__status",
-        "type": "status",
-        "z": "monitoramento_zigbee_tab",
-        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 8126,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__annotate",
-        "type": "function",
-        "z": "monitoramento_zigbee_tab",
-        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_zigbee_tab\",\"flow_label\":\"monitoramento_zigbee\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 8396,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_zigbee_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__out",
-        "type": "link out",
-        "z": "monitoramento_zigbee_tab",
-        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 8641,
-        "y": 130,
-        "wires": []
     },
     {
         "id": "notification_hub_mobile_contract",
@@ -75380,99 +75336,6 @@
         ]
     },
     {
-        "id": "notification_hub_wire_out_e701eb22e5a2",
-        "type": "link out",
-        "z": "monitoramento_zigbee_tab",
-        "g": "grp_zigbee_detect",
-        "name": "Encurtar: Registrar falha da varredura",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_e701eb22e5a2"
-        ],
-        "x": 3420,
-        "y": 1640,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_e701eb22e5a2",
-        "type": "link in",
-        "z": "monitoramento_zigbee_tab",
-        "g": "grp_zigbee_detect",
-        "name": "Continuar: Persistir lifecycle da rota",
-        "links": [
-            "notification_hub_wire_out_e701eb22e5a2"
-        ],
-        "x": 2800,
-        "y": 1430,
-        "wires": [
-            [
-                "zigbee_route_state_mutate"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_0bb8d336406e",
-        "type": "link out",
-        "z": "monitoramento_zigbee_tab",
-        "g": "grp_zigbee_detect",
-        "name": "Encurtar: Confirmar recuperação",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_0bb8d336406e"
-        ],
-        "x": 3400,
-        "y": 1700,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_0bb8d336406e",
-        "type": "link in",
-        "z": "monitoramento_zigbee_tab",
-        "g": "grp_zigbee_detect",
-        "name": "Continuar: Persistir lifecycle da rota",
-        "links": [
-            "notification_hub_wire_out_0bb8d336406e"
-        ],
-        "x": 2800,
-        "y": 1280,
-        "wires": [
-            [
-                "zigbee_route_state_mutate"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_fa5b9c4a397e",
-        "type": "link out",
-        "z": "monitoramento_zigbee_tab",
-        "g": "grp_zigbee_detect",
-        "name": "Encurtar: Registrar falha e cooldown",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_fa5b9c4a397e"
-        ],
-        "x": 3400,
-        "y": 1800,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_fa5b9c4a397e",
-        "type": "link in",
-        "z": "monitoramento_zigbee_tab",
-        "g": "grp_zigbee_detect",
-        "name": "Continuar: Persistir lifecycle da rota",
-        "links": [
-            "notification_hub_wire_out_fa5b9c4a397e"
-        ],
-        "x": 2760,
-        "y": 1580,
-        "wires": [
-            [
-                "zigbee_route_state_mutate"
-            ]
-        ]
-    },
-    {
         "id": "operations_daily_hacs",
         "type": "change",
         "z": "daily_host_updates_tab",
@@ -76595,5 +76458,3820 @@
         "x": 4230,
         "y": 320,
         "wires": []
+    },
+    {
+        "id": "grp_zigbee_stabilization",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "5. Retomada: ponte estável, confirmação e evidência real",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "zigbee_settle_tick_in",
+            "zigbee_route_cycle_expand",
+            "zigbee_settle_route_out",
+            "zigbee_component_cycle_expand",
+            "zigbee_settle_component_out",
+            "zigbee_route_ready_in",
+            "zigbee_route_observation",
+            "zigbee_route_startup_facts",
+            "zigbee_route_ready",
+            "zigbee_route_read_out",
+            "zigbee_route_verify_in",
+            "zigbee_route_verification_facts",
+            "zigbee_route_verified",
+            "zigbee_route_confirm",
+            "zigbee_route_confirm_out",
+            "zigbee_route_decide_out",
+            "zigbee_live_in",
+            "zigbee_route_telemetry",
+            "zigbee_component_settle_in",
+            "zigbee_component_observation",
+            "zigbee_component_startup_facts",
+            "zigbee_component_ready",
+            "zigbee_component_read_out",
+            "zigbee_settle_test_tick",
+            "zigbee_settle_test_tick_out",
+            "zigbee_settle_test_live",
+            "zigbee_settle_test_live_out",
+            "zigbee_settle_note",
+            "zigbee_route_exhausted_in",
+            "zigbee_route_exhausted",
+            "zigbee_route_exhausted_return"
+        ],
+        "x": 64,
+        "y": 3300,
+        "w": 4600,
+        "h": 780
+    },
+    {
+        "id": "zigbee_settle_tick_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Agenda → retomada",
+        "mode": "link",
+        "links": [
+            "zigbee_settle_tick_in"
+        ],
+        "x": 750,
+        "y": 940,
+        "wires": []
+    },
+    {
+        "id": "zigbee_settle_tick_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Agenda e TESTE de retomada",
+        "links": [
+            "zigbee_settle_tick_out",
+            "zigbee_settle_test_tick_out"
+        ],
+        "x": 110,
+        "y": 3380,
+        "wires": [
+            [
+                "zigbee_route_cycle_expand",
+                "zigbee_component_cycle_expand"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_cycle_expand",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Enumerar rotas e erros pendentes",
+        "func": "const test = msg._zigbee_test === true;\nconst suffix = test ? \"__test\" : \"\";\nconst incidents = flow.get(\"zigbee_route_incidents_v1\" + suffix, test ? undefined : \"persistent\") || {};\nconst pending = flow.get(\"zigbee_route_pending\" + suffix, test ? undefined : \"memoryOnly\") || {};\nconst now = Number(msg.monitor_now ?? Date.now());\nconst entries = new Map(Object.entries(incidents).filter(([, v]) => v.incident_open).map(([key, v]) => [key, {\n    zigbee_route_key: key, zigbee_route_device: v.device, zigbee_route_ieee: v.ieee\n}]));\nfor (const [key, value] of Object.entries(pending)) entries.set(key, value);\nreturn [[...entries.values()].map(value => ({ ...value, _zigbee_test: test,\n    zigbee_route_tick: !Object.hasOwn(pending, value.zigbee_route_key),\n    monitor_now: now, zigbee_route_now: now, zigbee_route_now_iso: new Date(now).toISOString()\n}))];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 3380,
+        "wires": [
+            [
+                "zigbee_settle_route_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_settle_route_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Rotas → política existente",
+        "mode": "link",
+        "links": [
+            "zigbee_route_error_in"
+        ],
+        "x": 570,
+        "y": 3380,
+        "wires": []
+    },
+    {
+        "id": "zigbee_component_cycle_expand",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Reavaliar disponibilidade observada",
+        "func": "const test = msg._zigbee_test === true;\nconst key = \"zigbee_component_observations\" + (test ? \"__test\" : \"\");\nconst observations = flow.get(key, test ? undefined : \"memoryOnly\") || {};\nreturn [Object.entries(observations).map(([device, value]) => ({\n    _zigbee_test: test, monitor_now: Number(msg.monitor_now ?? Date.now()),\n    topic: \"zigbee2mqtt/\" + device + \"/availability\", payload: value.state\n}))];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 3450,
+        "wires": [
+            [
+                "zigbee_settle_component_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_settle_component_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Componentes → normalização",
+        "mode": "link",
+        "links": [
+            "zigbee_component_input_in"
+        ],
+        "x": 580,
+        "y": 3450,
+        "wires": []
+    },
+    {
+        "id": "zigbee_route_ready_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Rota → estabilidade da ponte",
+        "mode": "link",
+        "links": [
+            "zigbee_route_ready_in"
+        ],
+        "x": 1940,
+        "y": 1470,
+        "wires": []
+    },
+    {
+        "id": "zigbee_route_ready_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Erros e ciclos de rota",
+        "links": [
+            "zigbee_route_ready_out"
+        ],
+        "x": 110,
+        "y": 3540,
+        "wires": [
+            [
+                "zigbee_route_observation"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_observation",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Guardar erro até a ponte estabilizar",
+        "func": "// Keep the latest raw error until the bridge is ready; no attempt is lost at startup.\nif (msg.zigbee_route_tick === true) return msg;\nconst test = msg._zigbee_test === true;\nconst key = \"zigbee_route_pending\" + (test ? \"__test\" : \"\");\nconst store = test ? undefined : \"memoryOnly\";\nconst pending = flow.get(key, store) || {};\npending[msg.zigbee_route_key] = {\n    zigbee_route_key: msg.zigbee_route_key, zigbee_route_device: msg.zigbee_route_device,\n    zigbee_route_ieee: msg.zigbee_route_ieee, failure_at: msg.zigbee_route_now\n};\nflow.set(key, pending, store);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 3540,
+        "wires": [
+            [
+                "zigbee_route_startup_facts"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_startup_facts",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Ler idade do runtime e da ponte",
+        "func": "const test = msg._zigbee_test === true;\nconst suffix = test ? \"__test\" : \"\";\nconst store = test ? undefined : \"memoryOnly\";\nconst now = Number(msg.monitor_now ?? Date.now());\nconst bootKey = \"zigbee_boot_at\" + suffix;\nlet boot = flow.get(bootKey, store);\nif (!Number.isFinite(boot)) { boot = now; flow.set(bootKey, boot, store); }\nconst bridge = flow.get(\"zigbee_bridge_observation\" + suffix, store);\nmsg.zigbee_boot_age_ms = Math.max(0, now - boot);\nmsg.zigbee_bridge_online = bridge?.state === \"online\";\nmsg.zigbee_bridge_stable_ms = bridge ? Math.max(0, now - bridge.changed_at) : 0;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 3540,
+        "wires": [
+            [
+                "zigbee_route_ready"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_ready",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Startup 180 s e ponte online 60 s?",
+        "property": "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_bridge_online and zigbee_bridge_stable_ms >= policy.recovery_confirmation_s * 1000",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 950,
+        "y": 3540,
+        "wires": [
+            [
+                "zigbee_route_read_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_read_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Ponte pronta → lifecycle da rota",
+        "mode": "link",
+        "links": [
+            "zigbee_route_read_in"
+        ],
+        "x": 1200,
+        "y": 3540,
+        "wires": []
+    },
+    {
+        "id": "zigbee_route_read_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Rota pronta",
+        "links": [
+            "zigbee_route_read_out"
+        ],
+        "x": 1810,
+        "y": 1490,
+        "wires": [
+            [
+                "zigbee_route_state_read"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_verify_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Lifecycle → prova de recuperação",
+        "mode": "link",
+        "links": [
+            "zigbee_route_verify_in"
+        ],
+        "x": 2190,
+        "y": 1520,
+        "wires": []
+    },
+    {
+        "id": "zigbee_route_verify_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Lifecycle atual",
+        "links": [
+            "zigbee_route_verify_out"
+        ],
+        "x": 110,
+        "y": 3630,
+        "wires": [
+            [
+                "zigbee_route_verification_facts"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_verification_facts",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Ler comunicação após janela estável",
+        "func": "const current = msg.zigbee_route_current;\nconst test = msg._zigbee_test === true;\nconst suffix = test ? \"__test\" : \"\";\nconst store = test ? undefined : \"memoryOnly\";\nconst live = flow.get(\"zigbee_route_live\" + suffix, store) || {};\nconst boot = flow.get(\"zigbee_boot_at\" + suffix, store);\nconst evidence = live[current.device];\nconst configured = Date.parse(current.verification_started_at || \"\");\nconst started = Number.isFinite(configured) ? configured : evidence?.first_seen;\nconst failure = Date.parse(current.last_failure_at || \"\");\nconst bridge = flow.get(\"zigbee_bridge_observation\" + suffix, store);\nconst windowStart = Math.max(started || 0, failure || 0, boot || 0, bridge?.changed_at || 0);\nmsg.zigbee_route_verification_started = Number.isFinite(started);\nmsg.zigbee_route_verification_age_ms = Number.isFinite(started)\n    ? msg.zigbee_route_now - windowStart : -1;\nmsg.zigbee_route_live_after_window = Number.isFinite(started) &&\n    evidence?.failure_at === current.last_failure_at &&\n    Number(evidence?.last_seen || 0) >= windowStart + msg.policy.route_stability_s * 1000;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 3630,
+        "wires": [
+            [
+                "zigbee_route_verified"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_verified",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Verificando + 300 s + dados novos?",
+        "property": "zigbee_route_tick = true and zigbee_route_current.incident_open = true and zigbee_route_verification_started and zigbee_route_verification_age_ms >= policy.route_stability_s * 1000 and zigbee_route_live_after_window",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 700,
+        "y": 3630,
+        "wires": [
+            [
+                "zigbee_route_confirm"
+            ],
+            [
+                "zigbee_route_decide_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_confirm",
+        "type": "change",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Confirmar recuperação comprovada",
+        "rules": [
+            {
+                "t": "set",
+                "p": "zigbee_route_action",
+                "pt": "msg",
+                "to": "recovered",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "zigbee_route_event",
+                "pt": "msg",
+                "to": "route_recovery",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1040,
+        "y": 3600,
+        "wires": [
+            [
+                "zigbee_route_confirm_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_confirm_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Recuperação → persistência",
+        "mode": "link",
+        "links": [
+            "zigbee_route_confirm_in"
+        ],
+        "x": 1290,
+        "y": 3600,
+        "wires": []
+    },
+    {
+        "id": "zigbee_route_confirm_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Recuperação comprovada",
+        "links": [
+            "zigbee_route_confirm_out",
+            "zigbee_route_exhausted_return"
+        ],
+        "x": 2770,
+        "y": 1400,
+        "wires": [
+            [
+                "zigbee_route_state_mutate"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_decide_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Ainda aberto → decisão limitada",
+        "mode": "link",
+        "links": [
+            "zigbee_route_decide_in"
+        ],
+        "x": 990,
+        "y": 3680,
+        "wires": []
+    },
+    {
+        "id": "zigbee_route_decide_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Rota ainda aberta",
+        "links": [
+            "zigbee_route_decide_out"
+        ],
+        "x": 2110,
+        "y": 1430,
+        "wires": [
+            [
+                "zigbee_route_decision"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_live_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Dados MQTT → evidência de rota",
+        "mode": "link",
+        "links": [
+            "zigbee_live_in"
+        ],
+        "x": 750,
+        "y": 1020,
+        "wires": []
+    },
+    {
+        "id": "zigbee_live_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Publicações e TESTE sem retained",
+        "links": [
+            "zigbee_live_out",
+            "zigbee_settle_test_live_out"
+        ],
+        "x": 110,
+        "y": 3760,
+        "wires": [
+            [
+                "zigbee_route_telemetry"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_telemetry",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Guardar somente dados novos do dispositivo",
+        "func": "// Only a fresh device publication is evidence; retained snapshots are never proof.\nconst topic = String(msg.topic || \"\");\nif (msg.retain === true || !topic.startsWith(\"zigbee2mqtt/\")) return null;\nconst device = topic.slice(\"zigbee2mqtt/\".length);\nlet payload = msg.payload;\nif (typeof payload === \"string\") { try { payload = JSON.parse(payload); } catch { return null; } }\nif (!payload || typeof payload !== \"object\" || Array.isArray(payload) || !Object.keys(payload).length) return null;\nconst test = msg._zigbee_test === true;\nconst suffix = test ? \"__test\" : \"\";\nconst incidents = flow.get(\"zigbee_route_incidents_v1\" + suffix, test ? undefined : \"persistent\") || {};\nconst incident = Object.values(incidents).find(v => v.incident_open && v.device === device);\nif (!incident) return null;\nconst key = \"zigbee_route_live\" + suffix;\nconst store = test ? undefined : \"memoryOnly\";\nconst live = flow.get(key, store) || {};\nconst now = Number(msg.monitor_now ?? Date.now());\nconst previous = live[device];\nlive[device] = { last_seen: now, failure_at: incident.last_failure_at,\n    first_seen: previous?.failure_at === incident.last_failure_at ? previous.first_seen : now };\nflow.set(key, live, store);\nreturn msg;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 3760,
+        "wires": []
+    },
+    {
+        "id": "zigbee_component_settle_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Disponibilidade → confirmação",
+        "mode": "link",
+        "links": [
+            "zigbee_component_settle_in"
+        ],
+        "x": 2340,
+        "y": 940,
+        "wires": []
+    },
+    {
+        "id": "zigbee_component_settle_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Disponibilidade normalizada",
+        "links": [
+            "zigbee_component_settle_out"
+        ],
+        "x": 1600,
+        "y": 3380,
+        "wires": [
+            [
+                "zigbee_component_observation"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_component_observation",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Guardar estado e início da estabilidade",
+        "func": "const test = msg._zigbee_test === true;\nconst key = \"zigbee_component_observations\" + (test ? \"__test\" : \"\");\nconst store = test ? undefined : \"memoryOnly\";\nconst observations = flow.get(key, store) || {};\nconst previous = observations[msg.zigbee_component];\nconst observation = { state: msg.zigbee_component_availability,\n    changed_at: previous?.state === msg.zigbee_component_availability ? previous.changed_at : msg.zigbee_now };\nobservations[msg.zigbee_component] = observation;\nflow.set(key, observations, store);\nmsg.zigbee_component_stable_ms = Math.max(0, msg.zigbee_now - observation.changed_at);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1890,
+        "y": 3380,
+        "wires": [
+            [
+                "zigbee_component_startup_facts"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_component_startup_facts",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Ler retomada do runtime e da ponte",
+        "func": "const test = msg._zigbee_test === true;\nconst suffix = test ? \"__test\" : \"\";\nconst store = test ? undefined : \"memoryOnly\";\nconst now = Number(msg.monitor_now ?? Date.now());\nconst bootKey = \"zigbee_boot_at\" + suffix;\nlet boot = flow.get(bootKey, store);\nif (!Number.isFinite(boot)) { boot = now; flow.set(bootKey, boot, store); }\nconst bridge = flow.get(\"zigbee_bridge_observation\" + suffix, store);\nmsg.zigbee_boot_age_ms = Math.max(0, now - boot);\nmsg.zigbee_bridge_online = bridge?.state === \"online\";\nmsg.zigbee_bridge_stable_ms = bridge ? Math.max(0, now - bridge.changed_at) : 0;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2240,
+        "y": 3380,
+        "wires": [
+            [
+                "zigbee_component_ready"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_component_ready",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Ponte pronta e componente estável?",
+        "property": "zigbee_boot_age_ms >= policy.startup_grace_s * 1000 and zigbee_bridge_online and zigbee_bridge_stable_ms >= policy.recovery_confirmation_s * 1000 and zigbee_component_stable_ms >= (zigbee_component_availability = \"offline\" ? policy.failure_confirmation_s : policy.recovery_confirmation_s) * 1000",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 2600,
+        "y": 3380,
+        "wires": [
+            [
+                "zigbee_component_read_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_component_read_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Componente confirmado → lifecycle",
+        "mode": "link",
+        "links": [
+            "zigbee_component_read_in"
+        ],
+        "x": 2890,
+        "y": 3380,
+        "wires": []
+    },
+    {
+        "id": "zigbee_component_read_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Disponibilidade confirmada",
+        "links": [
+            "zigbee_component_read_out"
+        ],
+        "x": 2270,
+        "y": 1000,
+        "wires": [
+            [
+                "zigbee_component_state_read"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_settle_test_tick",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "TESTE 20: avaliar estabilidade",
+        "props": [
+            {
+                "p": "monitor_now",
+                "v": "1767227004000",
+                "vt": "num"
+            },
+            {
+                "p": "_zigbee_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1870,
+        "y": 3500,
+        "wires": [
+            [
+                "zigbee_settle_test_tick_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_settle_test_tick_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Tick TESTE → mesma retomada",
+        "mode": "link",
+        "links": [
+            "zigbee_settle_tick_in"
+        ],
+        "x": 2160,
+        "y": 3500,
+        "wires": []
+    },
+    {
+        "id": "zigbee_settle_test_live",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "TESTE 21: dados novos após janela",
+        "props": [
+            {
+                "p": "topic",
+                "v": "zigbee2mqtt/teste_rota",
+                "vt": "str"
+            },
+            {
+                "p": "payload",
+                "v": "{\"state\":\"ON\"}",
+                "vt": "json"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767227004000",
+                "vt": "num"
+            },
+            {
+                "p": "_zigbee_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1880,
+        "y": 3570,
+        "wires": [
+            [
+                "zigbee_settle_test_live_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_settle_test_live_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Dados TESTE → mesma evidência",
+        "mode": "link",
+        "links": [
+            "zigbee_live_in"
+        ],
+        "x": 2170,
+        "y": 3570,
+        "wires": []
+    },
+    {
+        "id": "zigbee_settle_note",
+        "type": "comment",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "TESTE: reset → ponte online → erro → mapa → configure → 20 (silêncio) → 21 → 20 (recuperação).",
+        "info": "Retained não confirma rota. Repita NWK_NO_ROUTE durante a janela: o incidente e limite de tentativas devem continuar. Nenhum teste chama MQTT ou notificação real.",
+        "x": 2320,
+        "y": 3660,
+        "wires": []
+    },
+    {
+        "id": "startup_readiness_tab",
+        "type": "tab",
+        "label": "retomada_servicos",
+        "disabled": false,
+        "info": "Internet e VPN canônicas, sem retained positivo, antes de liberar tarefas externas. Monitores e proteções locais iniciam independentemente. Testes sempre dry-run.",
+        "env": []
+    },
+    {
+        "id": "startup_control_group",
+        "type": "group",
+        "z": "startup_readiness_tab",
+        "name": "1. Retomada: política, fontes e decisão canônica",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_3232a60788ac",
+            "notification_hub_wire_in_43e92317002f",
+            "notification_hub_wire_in_6be170278694",
+            "notification_hub_wire_in_a3f072f8eb9a",
+            "notification_hub_wire_in_a7c39fbfaa9e",
+            "notification_hub_wire_in_a96355dae3da",
+            "notification_hub_wire_in_bf0ed16987e4",
+            "notification_hub_wire_in_e54dea2c3af0",
+            "notification_hub_wire_out_3232a60788ac",
+            "notification_hub_wire_out_a3f072f8eb9a",
+            "notification_hub_wire_out_c9bcb508359c",
+            "startup_facts",
+            "startup_internet",
+            "startup_internet_online",
+            "startup_internet_tag",
+            "startup_mqtt",
+            "startup_mqtt_status",
+            "startup_mutate",
+            "startup_observe",
+            "startup_policy_default",
+            "startup_policy_store",
+            "startup_policy_valid",
+            "startup_policy_validate",
+            "startup_publish",
+            "startup_ready",
+            "startup_stable",
+            "startup_test_gate",
+            "startup_tick",
+            "startup_vpn",
+            "startup_vpn_online",
+            "startup_vpn_tag",
+            "startup_wait_internet",
+            "startup_wait_stability",
+            "startup_wait_vpn"
+        ],
+        "x": 64,
+        "y": 40,
+        "w": 3000,
+        "h": 680
+    },
+    {
+        "id": "startup_test_group",
+        "type": "group",
+        "z": "startup_readiness_tab",
+        "name": "2. TESTE: reset → internet → VPN → estabilidade → queda",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_c9bcb508359c",
+            "notification_hub_wire_out_43e92317002f",
+            "notification_hub_wire_out_6be170278694",
+            "notification_hub_wire_out_a7c39fbfaa9e",
+            "notification_hub_wire_out_a96355dae3da",
+            "notification_hub_wire_out_bf0ed16987e4",
+            "notification_hub_wire_out_e54dea2c3af0",
+            "startup_dry",
+            "startup_reset",
+            "startup_test_internet",
+            "startup_test_note",
+            "startup_test_offline",
+            "startup_test_refresh_internet",
+            "startup_test_refresh_vpn",
+            "startup_test_reset",
+            "startup_test_unknown",
+            "startup_test_vpn"
+        ],
+        "x": 64,
+        "y": 760,
+        "w": 2500,
+        "h": 360
+    },
+    {
+        "id": "startup_policy_default",
+        "type": "inject",
+        "name": "CONFIG: 180 s boot; 120 s conexões; liberar a cada 10 s",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"boot_grace_s\":180,\"connection_stable_s\":120,\"source_fresh_s\":120,\"release_spacing_s\":10,\"pending_ttl_s\":1800}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 380,
+        "y": 110,
+        "wires": [
+            [
+                "startup_policy_validate"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_policy_validate",
+        "type": "function",
+        "name": "Validar unidades e limites",
+        "func": "const p = msg.payload;\nconst limits = { boot_grace_s: [30, 900], connection_stable_s: [30, 600], source_fresh_s: [60, 600], release_spacing_s: [1, 60], pending_ttl_s: [60, 3600] };\nmsg.policy_valid = !!p && Object.entries(limits).every(([key, [min, max]]) => Number.isInteger(p[key]) && p[key] >= min && p[key] <= max);\nif (msg.policy_valid) msg.policy_candidate = { version: 1, ...Object.fromEntries(Object.keys(limits).map(k => [k, p[k]])) };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 840,
+        "y": 110,
+        "wires": [
+            [
+                "startup_policy_valid"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_policy_valid",
+        "type": "switch",
+        "name": "Política válida?",
+        "property": "policy_valid",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1120,
+        "y": 110,
+        "wires": [
+            [
+                "startup_policy_store"
+            ],
+            []
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_policy_store",
+        "type": "change",
+        "name": "Guardar última política válida",
+        "rules": [
+            {
+                "t": "set",
+                "p": "startup_policy_v1",
+                "pt": "flow",
+                "to": "policy_candidate",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "#:(persistent)::startup_policy_v1",
+                "pt": "flow",
+                "to": "policy_candidate",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "#:(memoryOnly)::startup_policy_v1",
+                "pt": "global",
+                "to": "policy_candidate",
+                "tot": "msg"
+            }
+        ],
+        "x": 1400,
+        "y": 110,
+        "wires": [],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_internet",
+        "type": "mqtt in",
+        "name": "FONTE canônica: internet",
+        "topic": "nodered/infrastructure/internet/state",
+        "qos": "1",
+        "datatype": "utf8",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 270,
+        "y": 230,
+        "wires": [
+            [
+                "startup_internet_tag"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_internet_tag",
+        "type": "change",
+        "name": "Identificar internet",
+        "rules": [
+            {
+                "t": "set",
+                "p": "startup_source",
+                "pt": "msg",
+                "to": "internet",
+                "tot": "str"
+            }
+        ],
+        "x": 580,
+        "y": 230,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_vpn",
+        "type": "mqtt in",
+        "name": "FONTE canônica: vpn",
+        "topic": "nodered/infrastructure/vpn/vpn_primary/state",
+        "qos": "1",
+        "datatype": "utf8",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 270,
+        "y": 300,
+        "wires": [
+            [
+                "startup_vpn_tag"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_vpn_tag",
+        "type": "change",
+        "name": "Identificar vpn",
+        "rules": [
+            {
+                "t": "set",
+                "p": "startup_source",
+                "pt": "msg",
+                "to": "vpn",
+                "tot": "str"
+            }
+        ],
+        "x": 580,
+        "y": 300,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_mqtt_status",
+        "type": "status",
+        "name": "MQTT: invalidar observações ao reconectar",
+        "scope": [
+            "startup_internet",
+            "startup_vpn"
+        ],
+        "x": 330,
+        "y": 370,
+        "wires": [
+            [
+                "notification_hub_wire_out_a3f072f8eb9a"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_observe",
+        "type": "function",
+        "name": "Guardar fatos recebidos neste runtime",
+        "func": "const test = msg._startup_test === true;\nconst key = \"startup_observations_v1\" + (test ? \"__test\" : \"\");\nconst state = flow.get(key, \"memoryOnly\") || {};\nconst now = Number(msg.startup_now ?? os.uptime() * 1000);\nif (msg.status) {\n    // Any broker status transition invalidates previous connection evidence.\n    flow.set(key, {}, \"memoryOnly\");\n} else if (msg.retain !== true && [\"internet\", \"vpn\"].includes(msg.startup_source)) {\n    state[msg.startup_source] = { state: String(msg.payload), received_at: now };\n    flow.set(key, state, \"memoryOnly\");\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "os",
+                "module": "os"
+            }
+        ],
+        "x": 960,
+        "y": 280,
+        "wires": [
+            [
+                "startup_facts"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_tick",
+        "type": "inject",
+        "name": "Reavaliar frescor e estabilidade — 10 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "10",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 350,
+        "y": 440,
+        "wires": [
+            [
+                "notification_hub_wire_out_3232a60788ac"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_facts",
+        "type": "function",
+        "name": "Ler idades e estados canônicos",
+        "func": "const test = msg._startup_test === true;\nconst suffix = test ? \"__test\" : \"\";\nconst now = Number(msg.startup_now ?? os.uptime() * 1000);\nconst policy = flow.get(\"startup_policy_v1\", \"persistent\");\nif (!policy) return null;\nconst observations = flow.get(\"startup_observations_v1\" + suffix, \"memoryOnly\") || {};\nconst previous = flow.get(\"startup_lifecycle_v1\" + suffix, \"memoryOnly\") || { boot_at: now, stable_since: null };\nconst facts = { now, test_mode: test, suffix, policy, previous, boot_age_ms: now - previous.boot_at };\nfor (const source of [\"internet\", \"vpn\"]) {\n    const value = observations[source];\n    facts[source + \"_state\"] = value && now >= value.received_at && now - value.received_at <= policy.source_fresh_s * 1000\n        ? value.state : \"unknown\";\n}\nfacts.stable_age_ms = previous.stable_since === null ? 0 : Math.max(0, now - previous.stable_since);\nmsg.startup = facts;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "flow.set(\"startup_lifecycle_v1\", {boot_at: os.uptime() * 1000, stable_since: null}, \"memoryOnly\"); flow.set(\"startup_observations_v1\", {}, \"memoryOnly\"); global.set(\"startup_readiness_v1\", {ready:false, reason:\"starting\"}, \"memoryOnly\");",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "os",
+                "module": "os"
+            }
+        ],
+        "x": 1260,
+        "y": 280,
+        "wires": [
+            [
+                "startup_internet_online"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_internet_online",
+        "type": "switch",
+        "name": "Internet confirmada online?",
+        "property": "startup.internet_state = \"online\"",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1570,
+        "y": 240,
+        "wires": [
+            [
+                "startup_vpn_online"
+            ],
+            [
+                "startup_wait_internet"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_vpn_online",
+        "type": "switch",
+        "name": "VPN confirmada online?",
+        "property": "startup.vpn_state = \"online\"",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1570,
+        "y": 320,
+        "wires": [
+            [
+                "startup_stable"
+            ],
+            [
+                "startup_wait_vpn"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_stable",
+        "type": "switch",
+        "name": "Boot ≥ 180 s e ambas estáveis ≥ 120 s?",
+        "property": "startup.boot_age_ms >= startup.policy.boot_grace_s * 1000 and startup.stable_age_ms >= startup.policy.connection_stable_s * 1000",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1580,
+        "y": 410,
+        "wires": [
+            [
+                "startup_ready"
+            ],
+            [
+                "startup_wait_stability"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_wait_internet",
+        "type": "change",
+        "name": "waiting_internet",
+        "rules": [
+            {
+                "t": "set",
+                "p": "startup_decision",
+                "pt": "msg",
+                "to": "waiting_internet",
+                "tot": "str"
+            }
+        ],
+        "x": 1960,
+        "y": 220,
+        "wires": [
+            [
+                "startup_mutate"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_wait_vpn",
+        "type": "change",
+        "name": "waiting_vpn",
+        "rules": [
+            {
+                "t": "set",
+                "p": "startup_decision",
+                "pt": "msg",
+                "to": "waiting_vpn",
+                "tot": "str"
+            }
+        ],
+        "x": 1960,
+        "y": 290,
+        "wires": [
+            [
+                "startup_mutate"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_ready",
+        "type": "change",
+        "name": "ready",
+        "rules": [
+            {
+                "t": "set",
+                "p": "startup_decision",
+                "pt": "msg",
+                "to": "ready",
+                "tot": "str"
+            }
+        ],
+        "x": 1960,
+        "y": 360,
+        "wires": [
+            [
+                "startup_mutate"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_wait_stability",
+        "type": "change",
+        "name": "stabilizing",
+        "rules": [
+            {
+                "t": "set",
+                "p": "startup_decision",
+                "pt": "msg",
+                "to": "stabilizing",
+                "tot": "str"
+            }
+        ],
+        "x": 1960,
+        "y": 430,
+        "wires": [
+            [
+                "startup_mutate"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_mutate",
+        "type": "function",
+        "name": "Atualizar lifecycle da retomada",
+        "func": "const f = msg.startup;\nconst previous = f.previous;\nconst state = { ...previous, ready: msg.startup_decision === \"ready\", reason: msg.startup_decision, evaluated_at: f.now };\nif ([\"waiting_internet\", \"waiting_vpn\"].includes(msg.startup_decision)) state.stable_since = null;\nelse state.stable_since ??= f.now;\nstate.ready_since = state.ready ? (previous.ready && previous.ready_since || f.now) : null;\nflow.set(\"startup_lifecycle_v1\" + f.suffix, state, \"memoryOnly\");\nmsg.payload = { version: 1, ...state, internet_state: f.internet_state, vpn_state: f.vpn_state };\nnode.status({fill: state.ready ? \"green\" : \"yellow\", shape: state.ready ? \"dot\" : \"ring\", text: state.reason});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2240,
+        "y": 310,
+        "wires": [
+            [
+                "startup_test_gate"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_test_gate",
+        "type": "switch",
+        "name": "TESTE sem publicação?",
+        "property": "startup.test_mode = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2510,
+        "y": 310,
+        "wires": [
+            [
+                "notification_hub_wire_out_c9bcb508359c"
+            ],
+            [
+                "startup_publish"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_publish",
+        "type": "function",
+        "name": "Publicar contrato global de prontidão",
+        "func": "// The test branch is separated in the canvas before this shared production write.\nglobal.set(\"startup_readiness_v1\", msg.payload, \"memoryOnly\");\nmsg.topic = \"nodered/infrastructure/startup/state\";\nmsg.payload = JSON.stringify(msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2750,
+        "y": 390,
+        "wires": [
+            [
+                "startup_mqtt"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_mqtt",
+        "type": "mqtt out",
+        "name": "Estado canônico da retomada",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "broker": "721c47f31046b8bc",
+        "x": 2780,
+        "y": 480,
+        "wires": [],
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group"
+    },
+    {
+        "id": "startup_dry",
+        "type": "function",
+        "name": "TESTE FINAL: sem efeito",
+        "func": "msg.payload = { simulated: true, dispatched: false, decision: msg.payload ?? msg.startup_decision ?? \"release\" };\nflow.set(\"startup_last_dry_run\", msg.payload, \"memoryOnly\");\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: sem efeito externo\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2170,
+        "y": 840,
+        "wires": [],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_test_reset",
+        "type": "inject",
+        "name": "TESTE 0: reset",
+        "props": [
+            {
+                "p": "_startup_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 270,
+        "y": 830,
+        "wires": [
+            [
+                "startup_reset"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_reset",
+        "type": "function",
+        "name": "Reset somente memória TESTE",
+        "func": "flow.set(\"startup_observations_v1__test\", {}, \"memoryOnly\"); flow.set(\"startup_lifecycle_v1__test\", {boot_at: 1000000, stable_since:null}, \"memoryOnly\"); return null;",
+        "outputs": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 610,
+        "y": 830,
+        "wires": [],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_test_internet",
+        "type": "inject",
+        "name": "TESTE: internet online",
+        "props": [
+            {
+                "p": "_startup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "startup_source",
+                "v": "internet",
+                "vt": "str"
+            },
+            {
+                "p": "payload",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "startup_now",
+                "v": "1060000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 300,
+        "y": 900,
+        "wires": [
+            [
+                "notification_hub_wire_out_43e92317002f"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_test_vpn",
+        "type": "inject",
+        "name": "TESTE: vpn online",
+        "props": [
+            {
+                "p": "_startup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "startup_source",
+                "v": "vpn",
+                "vt": "str"
+            },
+            {
+                "p": "payload",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "startup_now",
+                "v": "1060000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 720,
+        "y": 900,
+        "wires": [
+            [
+                "notification_hub_wire_out_e54dea2c3af0"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_test_refresh_internet",
+        "type": "inject",
+        "name": "TESTE: internet online",
+        "props": [
+            {
+                "p": "_startup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "startup_source",
+                "v": "internet",
+                "vt": "str"
+            },
+            {
+                "p": "payload",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "startup_now",
+                "v": "1180000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 1150,
+        "y": 900,
+        "wires": [
+            [
+                "notification_hub_wire_out_a96355dae3da"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_test_refresh_vpn",
+        "type": "inject",
+        "name": "TESTE: vpn online",
+        "props": [
+            {
+                "p": "_startup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "startup_source",
+                "v": "vpn",
+                "vt": "str"
+            },
+            {
+                "p": "payload",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "startup_now",
+                "v": "1180000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 1570,
+        "y": 900,
+        "wires": [
+            [
+                "notification_hub_wire_out_a7c39fbfaa9e"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_test_offline",
+        "type": "inject",
+        "name": "TESTE: internet offline",
+        "props": [
+            {
+                "p": "_startup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "startup_source",
+                "v": "internet",
+                "vt": "str"
+            },
+            {
+                "p": "payload",
+                "v": "offline",
+                "vt": "str"
+            },
+            {
+                "p": "startup_now",
+                "v": "1190000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 300,
+        "y": 980,
+        "wires": [
+            [
+                "notification_hub_wire_out_bf0ed16987e4"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_test_unknown",
+        "type": "inject",
+        "name": "TESTE: vpn unknown",
+        "props": [
+            {
+                "p": "_startup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "startup_source",
+                "v": "vpn",
+                "vt": "str"
+            },
+            {
+                "p": "payload",
+                "v": "unknown",
+                "vt": "str"
+            },
+            {
+                "p": "startup_now",
+                "v": "1200000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 720,
+        "y": 980,
+        "wires": [
+            [
+                "notification_hub_wire_out_6be170278694"
+            ]
+        ],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_test_note",
+        "type": "comment",
+        "name": "Reset → online internet/VPN → renovar ambas em +120 s → offline/unknown. Repetir não duplica liberação.",
+        "info": "Retained online nunca libera. Testes automatizados cobrem restart, expiração, dedupe e fronteiras sem side effects.",
+        "x": 1220,
+        "y": 1060,
+        "wires": [],
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group"
+    },
+    {
+        "id": "startup_readiness_gate",
+        "type": "subflow",
+        "name": "Aguardar internet e VPN estáveis",
+        "info": "Fila volátil de uma intenção, coalescida. Não usar para comandos de dispositivos ou decisões já autorizadas. Revalida negócio após liberar.",
+        "category": "",
+        "in": [
+            {
+                "x": 30,
+                "y": 100,
+                "wires": [
+                    {
+                        "id": "startup_gate_buffer"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 1740,
+                "y": 160,
+                "wires": [
+                    {
+                        "id": "startup_gate_release",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "type": "num",
+                "value": "0"
+            }
+        ],
+        "color": "#99d6c9"
+    },
+    {
+        "id": "startup_gate_group",
+        "type": "group",
+        "z": "startup_readiness_gate",
+        "name": "Gate de tarefa externa: última intenção, validade e liberação espaçada",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "startup_gate_buffer",
+            "startup_gate_consume",
+            "startup_gate_drop",
+            "startup_gate_dry",
+            "startup_gate_expired",
+            "startup_gate_pending",
+            "startup_gate_ready",
+            "startup_gate_release",
+            "startup_gate_test",
+            "startup_gate_tick"
+        ],
+        "x": 64,
+        "y": 30,
+        "w": 1600,
+        "h": 420
+    },
+    {
+        "id": "startup_gate_buffer",
+        "type": "function",
+        "name": "Coalescer intenção e ler prontidão",
+        "func": "// Latest intent only. Business decisions are made downstream again on release.\nconst test = msg._startup_test === true;\nconst suffix = test ? \"__test\" : \"\";\nconst now = Number(msg.startup_now ?? os.uptime() * 1000);\nif (msg._startup_tick !== true) {\n    const revision = Number(flow.get(\"startup_sequence\" + suffix, \"memoryOnly\") || 0) + 1;\n    flow.set(\"startup_sequence\" + suffix, revision, \"memoryOnly\");\n    flow.set(\"startup_pending\" + suffix, { message: msg, created_at: now, revision }, \"memoryOnly\");\n}\nconst pending = flow.get(\"startup_pending\" + suffix, \"memoryOnly\");\nconst ready = test ? flow.get(\"startup_test_readiness\", \"memoryOnly\") : global.get(\"startup_readiness_v1\", \"memoryOnly\");\nconst policy = global.get(\"startup_policy_v1\", \"memoryOnly\");\nmsg = { _startup_test: test, startup_now: now, pending, readiness: ready, policy,\n    startup_order: Number(env.get(\"STARTUP_ORDER\") || 0) };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "os",
+                "module": "os"
+            }
+        ],
+        "x": 290,
+        "y": 100,
+        "wires": [
+            [
+                "startup_gate_pending"
+            ]
+        ],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "startup_gate_tick",
+        "type": "inject",
+        "name": "Reavaliar pendência — 5 s",
+        "props": [
+            {
+                "p": "_startup_tick",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 290,
+        "y": 190,
+        "wires": [
+            [
+                "startup_gate_buffer"
+            ]
+        ],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "startup_gate_pending",
+        "type": "switch",
+        "name": "Existe intenção e política?",
+        "property": "$exists(pending) and $exists(policy)",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 590,
+        "y": 100,
+        "wires": [
+            [
+                "startup_gate_expired"
+            ],
+            []
+        ],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "startup_gate_expired",
+        "type": "switch",
+        "name": "Intenção venceu 30 min?",
+        "property": "startup_now - pending.created_at >= policy.pending_ttl_s * 1000",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 900,
+        "y": 100,
+        "wires": [
+            [
+                "startup_gate_drop"
+            ],
+            [
+                "startup_gate_ready"
+            ]
+        ],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "startup_gate_drop",
+        "type": "function",
+        "name": "Descartar intenção vencida",
+        "rules": [
+            {
+                "t": "delete",
+                "p": "#:(memoryOnly)::startup_pending",
+                "pt": "flow"
+            }
+        ],
+        "x": 1220,
+        "y": 80,
+        "wires": [],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group",
+        "func": "const key = \"startup_pending\" + (msg._startup_test === true ? \"__test\" : \"\");\nconst current = flow.get(key, \"memoryOnly\");\nif (!current || current.revision !== msg.pending.revision) return null;\nflow.set(key, undefined, \"memoryOnly\");\nreturn msg;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "startup_gate_ready",
+        "type": "switch",
+        "name": "Pronto e chegou a vez desta tarefa?",
+        "property": "readiness.ready = true and startup_now >= readiness.ready_since + startup_order * policy.release_spacing_s * 1000",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 930,
+        "y": 190,
+        "wires": [
+            [
+                "startup_gate_consume"
+            ],
+            []
+        ],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "startup_gate_test",
+        "type": "switch",
+        "name": "TESTE: somente dry-run?",
+        "property": "_startup_test = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1230,
+        "y": 190,
+        "wires": [
+            [
+                "startup_gate_dry"
+            ],
+            [
+                "startup_gate_release"
+            ]
+        ],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "startup_gate_release",
+        "type": "function",
+        "name": "Consumir intenção uma vez",
+        "func": "const output = msg.pending.message;\ndelete output._startup_tick;\nreturn output;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1480,
+        "y": 160,
+        "wires": [
+            []
+        ],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "startup_gate_dry",
+        "type": "function",
+        "name": "TESTE FINAL: tarefa simulada",
+        "func": "msg.payload = { simulated: true, dispatched: false, decision: msg.payload ?? msg.startup_decision ?? \"release\" };\nflow.set(\"startup_last_dry_run\", msg.payload, \"memoryOnly\");\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: sem efeito externo\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1470,
+        "y": 260,
+        "wires": [],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "startup_callers_daily_host_updates_tab",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "Retomada: tarefas externas aguardam internet + VPN",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_8304841bf33a",
+            "notification_hub_wire_in_894ca3cdbfda",
+            "notification_hub_wire_out_4fa7c5408756",
+            "notification_hub_wire_out_c43c40fbee8f",
+            "startup_caller_daily_update_inventory_apply_schedule",
+            "startup_caller_daily_update_inventory_schedule"
+        ],
+        "x": 64,
+        "y": 8341,
+        "w": 1700,
+        "h": 160,
+        "startup_managed": true
+    },
+    {
+        "id": "startup_caller_daily_update_inventory_schedule",
+        "type": "subflow:startup_readiness_gate",
+        "name": "Inventário após retomada",
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "value": "0",
+                "type": "num"
+            }
+        ],
+        "x": 350,
+        "y": 8426,
+        "wires": [
+            [
+                "notification_hub_wire_out_c43c40fbee8f"
+            ]
+        ],
+        "startup_managed": true,
+        "startup_original_wires": [
+            [
+                "notification_hub_wire_out_c43c40fbee8f"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "startup_callers_daily_host_updates_tab"
+    },
+    {
+        "id": "startup_caller_daily_update_inventory_apply_schedule",
+        "type": "subflow:startup_readiness_gate",
+        "name": "Updates após retomada",
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "value": "1",
+                "type": "num"
+            }
+        ],
+        "x": 950,
+        "y": 8426,
+        "wires": [
+            [
+                "notification_hub_wire_out_4fa7c5408756"
+            ]
+        ],
+        "startup_managed": true,
+        "startup_original_wires": [
+            [
+                "notification_hub_wire_out_4fa7c5408756"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "startup_callers_daily_host_updates_tab"
+    },
+    {
+        "id": "startup_callers_weekly_docs_review_tab",
+        "type": "group",
+        "z": "weekly_docs_review_tab",
+        "name": "Retomada: tarefas externas aguardam internet + VPN",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_45608f6df4c2",
+            "notification_hub_wire_out_a97d75a70b33",
+            "startup_caller_weekly_docs_review_schedule"
+        ],
+        "x": 64,
+        "y": 851,
+        "w": 1700,
+        "h": 160,
+        "startup_managed": true
+    },
+    {
+        "id": "startup_caller_weekly_docs_review_schedule",
+        "type": "subflow:startup_readiness_gate",
+        "name": "Revisão após retomada",
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "value": "2",
+                "type": "num"
+            }
+        ],
+        "x": 350,
+        "y": 936,
+        "wires": [
+            [
+                "notification_hub_wire_out_a97d75a70b33"
+            ]
+        ],
+        "startup_managed": true,
+        "startup_original_wires": [
+            [
+                "notification_hub_wire_out_a97d75a70b33"
+            ]
+        ],
+        "z": "weekly_docs_review_tab",
+        "g": "startup_callers_weekly_docs_review_tab"
+    },
+    {
+        "id": "startup_callers_git_backup_tab",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "Retomada: tarefas externas aguardam internet + VPN",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_14efb6fdc717",
+            "notification_hub_wire_out_7bea3bdee049",
+            "startup_caller_git_backup_schedule"
+        ],
+        "x": 64,
+        "y": 1151,
+        "w": 1700,
+        "h": 160,
+        "startup_managed": true
+    },
+    {
+        "id": "startup_caller_git_backup_schedule",
+        "type": "subflow:startup_readiness_gate",
+        "name": "Backup após retomada",
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "value": "3",
+                "type": "num"
+            }
+        ],
+        "x": 350,
+        "y": 1236,
+        "wires": [
+            [
+                "notification_hub_wire_out_7bea3bdee049"
+            ]
+        ],
+        "startup_managed": true,
+        "startup_original_wires": [
+            [
+                "notification_hub_wire_out_7bea3bdee049"
+            ]
+        ],
+        "z": "git_backup_tab",
+        "g": "startup_callers_git_backup_tab"
+    },
+    {
+        "id": "startup_callers_c22d8b12055e87f7",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "Retomada: tarefas externas aguardam internet + VPN",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_out_60b370e6ed3a",
+            "startup_caller_vehicle_visual_refresh_command_in",
+            "startup_destination_vehicle_visual_refresh_command_in"
+        ],
+        "x": 64,
+        "y": 3292,
+        "w": 1700,
+        "h": 160,
+        "startup_managed": true
+    },
+    {
+        "id": "startup_caller_vehicle_visual_refresh_command_in",
+        "type": "subflow:startup_readiness_gate",
+        "name": "Refresh após retomada",
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "value": "4",
+                "type": "num"
+            }
+        ],
+        "x": 350,
+        "y": 3377,
+        "wires": [
+            [
+                "notification_hub_wire_out_60b370e6ed3a"
+            ]
+        ],
+        "startup_managed": true,
+        "startup_original_wires": [
+            [
+                "notification_hub_wire_out_60b370e6ed3a"
+            ]
+        ],
+        "z": "c22d8b12055e87f7",
+        "g": "startup_callers_c22d8b12055e87f7"
+    },
+    {
+        "id": "startup_callers_monitoramento_tuya_tab",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "Retomada: tarefas externas aguardam internet + VPN",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_9ba48daa35b0",
+            "notification_hub_wire_out_52c38c981fa9",
+            "startup_caller_tuya_cycle"
+        ],
+        "x": 64,
+        "y": 2911,
+        "w": 1700,
+        "h": 160,
+        "startup_managed": true
+    },
+    {
+        "id": "startup_caller_tuya_cycle",
+        "type": "subflow:startup_readiness_gate",
+        "name": "Tuya após retomada",
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "value": "5",
+                "type": "num"
+            }
+        ],
+        "x": 350,
+        "y": 2996,
+        "wires": [
+            [
+                "notification_hub_wire_out_52c38c981fa9"
+            ]
+        ],
+        "startup_managed": true,
+        "startup_original_wires": [
+            [
+                "notification_hub_wire_out_52c38c981fa9"
+            ]
+        ],
+        "z": "monitoramento_tuya_tab",
+        "g": "startup_callers_monitoramento_tuya_tab"
+    },
+    {
+        "id": "startup_callers_local_ai_rtx_recovery_tab",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "Retomada: tarefas externas aguardam internet + VPN",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_c48f2b4356ed",
+            "notification_hub_wire_out_c2a9b8b76be3",
+            "startup_caller_local_ai_rtx_tick"
+        ],
+        "x": 64,
+        "y": 1681,
+        "w": 1700,
+        "h": 160,
+        "startup_managed": true
+    },
+    {
+        "id": "startup_caller_local_ai_rtx_tick",
+        "type": "subflow:startup_readiness_gate",
+        "name": "Sonda RTX após retomada",
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "value": "6",
+                "type": "num"
+            }
+        ],
+        "x": 350,
+        "y": 1766,
+        "wires": [
+            [
+                "notification_hub_wire_out_c2a9b8b76be3"
+            ]
+        ],
+        "startup_managed": true,
+        "startup_original_wires": [
+            [
+                "notification_hub_wire_out_c2a9b8b76be3"
+            ]
+        ],
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "startup_callers_local_ai_rtx_recovery_tab"
+    },
+    {
+        "id": "startup_callers_codex_alertas_tab",
+        "type": "group",
+        "z": "codex_alertas_tab",
+        "name": "Retomada: tarefas externas aguardam internet + VPN",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_d610ce915b11",
+            "notification_hub_wire_out_85fd3a777a29",
+            "startup_caller_codex_alert_daily"
+        ],
+        "x": 64,
+        "y": 1494,
+        "w": 1700,
+        "h": 160,
+        "startup_managed": true
+    },
+    {
+        "id": "startup_caller_codex_alert_daily",
+        "type": "subflow:startup_readiness_gate",
+        "name": "Resumo após retomada",
+        "env": [
+            {
+                "name": "STARTUP_ORDER",
+                "value": "7",
+                "type": "num"
+            }
+        ],
+        "x": 350,
+        "y": 1579,
+        "wires": [
+            [
+                "notification_hub_wire_out_85fd3a777a29"
+            ]
+        ],
+        "startup_managed": true,
+        "startup_original_wires": [
+            [
+                "notification_hub_wire_out_85fd3a777a29"
+            ]
+        ],
+        "z": "codex_alertas_tab",
+        "g": "startup_callers_codex_alertas_tab"
+    },
+    {
+        "id": "startup_worker_group",
+        "type": "group",
+        "z": "weekly_docs_review_tab",
+        "name": "Retomada do worker: confirmar indisponibilidade por 60 s",
+        "style": {
+            "label": true,
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35",
+            "stroke": "#0f766e"
+        },
+        "nodes": [
+            "notification_hub_wire_in_708418f17a7d",
+            "notification_hub_wire_in_ec10e7fd535e",
+            "notification_hub_wire_out_ec10e7fd535e",
+            "startup_worker_cancel",
+            "startup_worker_confirm",
+            "startup_worker_identity",
+            "startup_worker_restore",
+            "startup_worker_return_out",
+            "startup_worker_test_in",
+            "startup_worker_unavailable"
+        ],
+        "x": 64,
+        "y": 1200,
+        "w": 2300,
+        "h": 260,
+        "startup_managed": true
+    },
+    {
+        "id": "startup_worker_identity",
+        "type": "function",
+        "name": "Separar produção e TESTE",
+        "func": "msg.topic = msg._weekly_docs_test === true ? \"test\" : \"production\"; return msg;",
+        "outputs": 1,
+        "initialize": "",
+        "finalize": "",
+        "x": 310,
+        "y": 1280,
+        "wires": [
+            [
+                "startup_worker_unavailable"
+            ]
+        ],
+        "startup_managed": true,
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group"
+    },
+    {
+        "id": "startup_worker_unavailable",
+        "type": "switch",
+        "name": "Indisponível ou parado?",
+        "property": "payload in [\"indisponível\", \"unavailable\", \"parado\"]",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 650,
+        "y": 1280,
+        "wires": [
+            [
+                "startup_worker_confirm"
+            ],
+            [
+                "startup_worker_cancel"
+            ]
+        ],
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "startup_managed": true
+    },
+    {
+        "id": "startup_worker_cancel",
+        "type": "change",
+        "name": "Cancelar espera ao mudar estado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "reset",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "x": 1000,
+        "y": 1350,
+        "wires": [
+            [
+                "startup_worker_confirm",
+                "startup_worker_restore"
+            ]
+        ],
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "startup_managed": true
+    },
+    {
+        "id": "startup_worker_restore",
+        "type": "change",
+        "name": "Repassar falha/recuperação atual",
+        "rules": [
+            {
+                "t": "delete",
+                "p": "reset",
+                "pt": "msg"
+            }
+        ],
+        "x": 1370,
+        "y": 1350,
+        "wires": [
+            [
+                "startup_worker_return_out"
+            ]
+        ],
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "startup_managed": true
+    },
+    {
+        "id": "startup_worker_confirm",
+        "type": "trigger",
+        "name": "POLÍTICA: indisponível contínuo 60 s",
+        "op1": "",
+        "op1type": "nul",
+        "op2": "",
+        "op2type": "pay",
+        "duration": "60",
+        "units": "s",
+        "extend": false,
+        "overrideDelay": false,
+        "bytopic": "topic",
+        "topic": "topic",
+        "reset": "",
+        "outputs": 1,
+        "x": 1070,
+        "y": 1250,
+        "wires": [
+            [
+                "notification_hub_wire_out_ec10e7fd535e"
+            ]
+        ],
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "startup_managed": true
+    },
+    {
+        "id": "startup_worker_return_out",
+        "type": "link out",
+        "name": "Estado confirmado → lifecycle",
+        "mode": "link",
+        "links": [
+            "startup_worker_return_in"
+        ],
+        "x": 1680,
+        "y": 1280,
+        "wires": [],
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "startup_managed": true
+    },
+    {
+        "id": "startup_worker_return_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Worker confirmado",
+        "links": [
+            "startup_worker_return_out"
+        ],
+        "x": 480,
+        "y": 290,
+        "wires": [
+            [
+                "weekly_docs_review_track_status"
+            ]
+        ],
+        "startup_managed": true
+    },
+    {
+        "id": "notification_hub_wire_out_45608f6df4c2",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Encurtar: Segunda 03:00 (06:00 UTC)",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_45608f6df4c2"
+        ],
+        "x": 500,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_45608f6df4c2",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "startup_callers_weekly_docs_review_tab",
+        "name": "Continuar: Revisão após retomada",
+        "links": [
+            "notification_hub_wire_out_45608f6df4c2"
+        ],
+        "x": 170,
+        "y": 936,
+        "wires": [
+            [
+                "startup_caller_weekly_docs_review_schedule"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_708418f17a7d",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Encurtar: Acompanhar status do worker",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_708418f17a7d"
+        ],
+        "x": 430,
+        "y": 70,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_708418f17a7d",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "name": "Continuar: Separar produção e TESTE",
+        "links": [
+            "notification_hub_wire_out_708418f17a7d"
+        ],
+        "x": 130,
+        "y": 1280,
+        "wires": [
+            [
+                "startup_worker_identity"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_8304841bf33a",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_inventory_group",
+        "name": "Encurtar: Iniciar inventário periódico ao subir",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_8304841bf33a"
+        ],
+        "x": 468,
+        "y": 3021,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_8304841bf33a",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "startup_callers_daily_host_updates_tab",
+        "name": "Continuar: Inventário após retomada",
+        "links": [
+            "notification_hub_wire_out_8304841bf33a"
+        ],
+        "x": 170,
+        "y": 8426,
+        "wires": [
+            [
+                "startup_caller_daily_update_inventory_schedule"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_894ca3cdbfda",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_inventory_group",
+        "name": "Encurtar: 03:00: auditar e instalar elegíveis",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_894ca3cdbfda"
+        ],
+        "x": 474,
+        "y": 3270,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_894ca3cdbfda",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "startup_callers_daily_host_updates_tab",
+        "name": "Continuar: Updates após retomada",
+        "links": [
+            "notification_hub_wire_out_894ca3cdbfda"
+        ],
+        "x": 770,
+        "y": 8426,
+        "wires": [
+            [
+                "startup_caller_daily_update_inventory_apply_schedule"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_c48f2b4356ed",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_policy_group",
+        "name": "Encurtar: Agenda visível — verificar a cada 60 s",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_c48f2b4356ed"
+        ],
+        "x": 510,
+        "y": 190,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_c48f2b4356ed",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "startup_callers_local_ai_rtx_recovery_tab",
+        "name": "Continuar: Sonda RTX após retomada",
+        "links": [
+            "notification_hub_wire_out_c48f2b4356ed"
+        ],
+        "x": 170,
+        "y": 1766,
+        "wires": [
+            [
+                "startup_caller_local_ai_rtx_tick"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_d610ce915b11",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_inputs",
+        "name": "Encurtar: Resumo diário — 20:00",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_d610ce915b11"
+        ],
+        "x": 1271,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_d610ce915b11",
+        "type": "link in",
+        "z": "codex_alertas_tab",
+        "g": "startup_callers_codex_alertas_tab",
+        "name": "Continuar: Resumo após retomada",
+        "links": [
+            "notification_hub_wire_out_d610ce915b11"
+        ],
+        "x": 170,
+        "y": 1579,
+        "wires": [
+            [
+                "startup_caller_codex_alert_daily"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_9ba48daa35b0",
+        "type": "link out",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_triggers",
+        "name": "Encurtar: POLÍTICA: coletar a cada 30 s",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_9ba48daa35b0"
+        ],
+        "x": 450,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_9ba48daa35b0",
+        "type": "link in",
+        "z": "monitoramento_tuya_tab",
+        "g": "startup_callers_monitoramento_tuya_tab",
+        "name": "Continuar: Tuya após retomada",
+        "links": [
+            "notification_hub_wire_out_9ba48daa35b0"
+        ],
+        "x": 170,
+        "y": 2996,
+        "wires": [
+            [
+                "startup_caller_tuya_cycle"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_14efb6fdc717",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_input_group",
+        "name": "Encurtar: Agenda: diariamente 00:30 (03:30 UTC)",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_14efb6fdc717"
+        ],
+        "x": 490,
+        "y": 170,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_14efb6fdc717",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "startup_callers_git_backup_tab",
+        "name": "Continuar: Backup após retomada",
+        "links": [
+            "notification_hub_wire_out_14efb6fdc717"
+        ],
+        "x": 170,
+        "y": 1236,
+        "wires": [
+            [
+                "startup_caller_git_backup_schedule"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_a3f072f8eb9a",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Encurtar: MQTT: invalidar observações ao reconectar",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_a3f072f8eb9a"
+        ],
+        "x": 510,
+        "y": 370,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_a3f072f8eb9a",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Continuar: Guardar fatos recebidos neste runtime",
+        "links": [
+            "notification_hub_wire_out_a3f072f8eb9a"
+        ],
+        "x": 780,
+        "y": 280,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_3232a60788ac",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Encurtar: Reavaliar frescor e estabilidade — 10 s",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_3232a60788ac"
+        ],
+        "x": 530,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_3232a60788ac",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Continuar: Ler idades e estados canônicos",
+        "links": [
+            "notification_hub_wire_out_3232a60788ac"
+        ],
+        "x": 1080,
+        "y": 380,
+        "wires": [
+            [
+                "startup_facts"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_c9bcb508359c",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Encurtar: TESTE sem publicação?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_c9bcb508359c"
+        ],
+        "x": 2690,
+        "y": 310,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_c9bcb508359c",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group",
+        "name": "Continuar: TESTE FINAL: sem efeito",
+        "links": [
+            "notification_hub_wire_out_c9bcb508359c"
+        ],
+        "x": 1990,
+        "y": 840,
+        "wires": [
+            [
+                "startup_dry"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_43e92317002f",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group",
+        "name": "Encurtar: TESTE: internet online",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_43e92317002f"
+        ],
+        "x": 480,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_43e92317002f",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Continuar: Guardar fatos recebidos neste runtime",
+        "links": [
+            "notification_hub_wire_out_43e92317002f"
+        ],
+        "x": 780,
+        "y": 380,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_e54dea2c3af0",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group",
+        "name": "Encurtar: TESTE: vpn online",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_e54dea2c3af0"
+        ],
+        "x": 900,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_e54dea2c3af0",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Continuar: Guardar fatos recebidos neste runtime",
+        "links": [
+            "notification_hub_wire_out_e54dea2c3af0"
+        ],
+        "x": 780,
+        "y": 180,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_a96355dae3da",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group",
+        "name": "Encurtar: TESTE: internet online",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_a96355dae3da"
+        ],
+        "x": 1330,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_a96355dae3da",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Continuar: Guardar fatos recebidos neste runtime",
+        "links": [
+            "notification_hub_wire_out_a96355dae3da"
+        ],
+        "x": 780,
+        "y": 480,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_a7c39fbfaa9e",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group",
+        "name": "Encurtar: TESTE: vpn online",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_a7c39fbfaa9e"
+        ],
+        "x": 1750,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_a7c39fbfaa9e",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Continuar: Guardar fatos recebidos neste runtime",
+        "links": [
+            "notification_hub_wire_out_a7c39fbfaa9e"
+        ],
+        "x": 780,
+        "y": 580,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_bf0ed16987e4",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group",
+        "name": "Encurtar: TESTE: internet offline",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_bf0ed16987e4"
+        ],
+        "x": 480,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_bf0ed16987e4",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Continuar: Guardar fatos recebidos neste runtime",
+        "links": [
+            "notification_hub_wire_out_bf0ed16987e4"
+        ],
+        "x": 700,
+        "y": 330,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_6be170278694",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "startup_test_group",
+        "name": "Encurtar: TESTE: vpn unknown",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_6be170278694"
+        ],
+        "x": 900,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_6be170278694",
+        "type": "link in",
+        "z": "startup_readiness_tab",
+        "g": "startup_control_group",
+        "name": "Continuar: Guardar fatos recebidos neste runtime",
+        "links": [
+            "notification_hub_wire_out_6be170278694"
+        ],
+        "x": 700,
+        "y": 430,
+        "wires": [
+            [
+                "startup_observe"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_c43c40fbee8f",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "startup_callers_daily_host_updates_tab",
+        "name": "Encurtar: Inventário após retomada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_c43c40fbee8f"
+        ],
+        "x": 530,
+        "y": 8426,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_c43c40fbee8f",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_inventory_group",
+        "name": "Continuar: PARÂMETROS visuais de updates",
+        "links": [
+            "notification_hub_wire_out_c43c40fbee8f"
+        ],
+        "x": 388,
+        "y": 2931,
+        "wires": [
+            [
+                "daily_update_inventory_parameters"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_4fa7c5408756",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "startup_callers_daily_host_updates_tab",
+        "name": "Encurtar: Updates após retomada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_4fa7c5408756"
+        ],
+        "x": 1130,
+        "y": 8426,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_4fa7c5408756",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_inventory_group",
+        "name": "Continuar: PARÂMETROS visuais de updates",
+        "links": [
+            "notification_hub_wire_out_4fa7c5408756"
+        ],
+        "x": 388,
+        "y": 3331,
+        "wires": [
+            [
+                "daily_update_inventory_parameters"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_a97d75a70b33",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "startup_callers_weekly_docs_review_tab",
+        "name": "Encurtar: Revisão após retomada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_a97d75a70b33"
+        ],
+        "x": 530,
+        "y": 936,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_a97d75a70b33",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Continuar: Agendamento → normalização",
+        "links": [
+            "notification_hub_wire_out_a97d75a70b33"
+        ],
+        "x": 255,
+        "y": 90,
+        "wires": [
+            [
+                "weekly_docs_review_schedule_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_7bea3bdee049",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "startup_callers_git_backup_tab",
+        "name": "Encurtar: Backup após retomada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_7bea3bdee049"
+        ],
+        "x": 530,
+        "y": 1236,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_7bea3bdee049",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_input_group",
+        "name": "Continuar: Pedido → gate do worker",
+        "links": [
+            "notification_hub_wire_out_7bea3bdee049"
+        ],
+        "x": 500,
+        "y": 240,
+        "wires": [
+            [
+                "git_backup_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_60b370e6ed3a",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "startup_callers_c22d8b12055e87f7",
+        "name": "Encurtar: Refresh após retomada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_60b370e6ed3a"
+        ],
+        "x": 530,
+        "y": 3377,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_60b370e6ed3a",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Continuar: Validar política e recuperar estado",
+        "links": [
+            "notification_hub_wire_out_60b370e6ed3a"
+        ],
+        "x": 150,
+        "y": 2941,
+        "wires": [
+            [
+                "vehicle_visual_refresh_load"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_52c38c981fa9",
+        "type": "link out",
+        "z": "monitoramento_tuya_tab",
+        "g": "startup_callers_monitoramento_tuya_tab",
+        "name": "Encurtar: Tuya após retomada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_52c38c981fa9"
+        ],
+        "x": 530,
+        "y": 2996,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_52c38c981fa9",
+        "type": "link in",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_triggers",
+        "name": "Continuar: FONTE: registro de entidades",
+        "links": [
+            "notification_hub_wire_out_52c38c981fa9"
+        ],
+        "x": 420,
+        "y": 560,
+        "wires": [
+            [
+                "tuya_entity_registry"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_c2a9b8b76be3",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "startup_callers_local_ai_rtx_recovery_tab",
+        "name": "Encurtar: Sonda RTX após retomada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_c2a9b8b76be3"
+        ],
+        "x": 530,
+        "y": 1766,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_c2a9b8b76be3",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_policy_group",
+        "name": "Continuar: Tick passivo → leitura de saúde",
+        "links": [
+            "notification_hub_wire_out_c2a9b8b76be3"
+        ],
+        "x": 590,
+        "y": 190,
+        "wires": [
+            [
+                "local_ai_rtx_health_tick_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_85fd3a777a29",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "startup_callers_codex_alertas_tab",
+        "name": "Encurtar: Resumo após retomada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_85fd3a777a29"
+        ],
+        "x": 530,
+        "y": 1579,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_85fd3a777a29",
+        "type": "link in",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_inputs",
+        "name": "Continuar: Acumular snapshot (sem política)",
+        "links": [
+            "notification_hub_wire_out_85fd3a777a29"
+        ],
+        "x": 1251,
+        "y": 200,
+        "wires": [
+            [
+                "codex_alert_logic"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_ec10e7fd535e",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "name": "Encurtar: POLÍTICA: indisponível contínuo 60 s",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_ec10e7fd535e"
+        ],
+        "x": 1250,
+        "y": 1250,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_ec10e7fd535e",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "name": "Continuar: Estado confirmado → lifecycle",
+        "links": [
+            "notification_hub_wire_out_ec10e7fd535e"
+        ],
+        "x": 1500,
+        "y": 1280,
+        "wires": [
+            [
+                "startup_worker_return_out"
+            ]
+        ]
+    },
+    {
+        "id": "startup_gate_consume",
+        "type": "function",
+        "name": "Consumir versão atual da intenção",
+        "func": "const key = \"startup_pending\" + (msg._startup_test === true ? \"__test\" : \"\");\nconst current = flow.get(key, \"memoryOnly\");\nif (!current || current.revision !== msg.pending.revision) return null;\nflow.set(key, undefined, \"memoryOnly\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 330,
+        "wires": [
+            [
+                "startup_gate_test"
+            ]
+        ],
+        "z": "startup_readiness_gate",
+        "g": "startup_gate_group"
+    },
+    {
+        "id": "zigbee_route_exhausted_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Limite atingido → alerta final",
+        "mode": "link",
+        "links": [
+            "zigbee_route_exhausted_in"
+        ],
+        "x": 2490,
+        "y": 1540,
+        "wires": []
+    },
+    {
+        "id": "zigbee_route_exhausted_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Tentativas esgotadas sem resposta",
+        "links": [
+            "zigbee_route_exhausted_out"
+        ],
+        "x": 1600,
+        "y": 3820,
+        "wires": [
+            [
+                "zigbee_route_exhausted"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_exhausted",
+        "type": "change",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Registrar esgotamento uma única vez",
+        "rules": [
+            {
+                "t": "set",
+                "p": "zigbee_route_action",
+                "pt": "msg",
+                "to": "recovery_failed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "zigbee_route_event",
+                "pt": "msg",
+                "to": "route_recovery_failed",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1900,
+        "y": 3820,
+        "wires": [
+            [
+                "zigbee_route_exhausted_return"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_route_exhausted_return",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Esgotamento → persistência",
+        "mode": "link",
+        "links": [
+            "zigbee_route_confirm_in"
+        ],
+        "x": 2190,
+        "y": 3820,
+        "wires": []
+    },
+    {
+        "id": "startup_source_vehicle_visual_refresh_command_in",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Comando → aguardar conexões",
+        "mode": "link",
+        "links": [
+            "startup_destination_vehicle_visual_refresh_command_in"
+        ],
+        "x": 150,
+        "y": 2841,
+        "wires": [],
+        "startup_managed": true
+    },
+    {
+        "id": "startup_destination_vehicle_visual_refresh_command_in",
+        "type": "link in",
+        "name": "Intenção externa após normalização",
+        "links": [
+            "startup_source_vehicle_visual_refresh_command_in"
+        ],
+        "x": 130,
+        "y": 3377,
+        "wires": [
+            [
+                "startup_caller_vehicle_visual_refresh_command_in"
+            ]
+        ],
+        "startup_managed": true,
+        "z": "c22d8b12055e87f7",
+        "g": "startup_callers_c22d8b12055e87f7"
+    },
+    {
+        "id": "startup_worker_test_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "TESTE → confirmação do worker",
+        "mode": "link",
+        "links": [
+            "startup_worker_test_in"
+        ],
+        "x": 435,
+        "y": 410,
+        "wires": [],
+        "startup_managed": true
+    },
+    {
+        "id": "startup_worker_test_in",
+        "type": "link in",
+        "name": "Receber TESTE do worker",
+        "links": [
+            "startup_worker_test_out"
+        ],
+        "x": 110,
+        "y": 1350,
+        "wires": [
+            [
+                "startup_worker_identity"
+            ]
+        ],
+        "z": "weekly_docs_review_tab",
+        "g": "startup_worker_group",
+        "startup_managed": true
+    },
+    {
+        "id": "global_observer_coverage__startup_readiness_tab__group",
+        "type": "group",
+        "z": "startup_readiness_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__startup_readiness_tab__annotate",
+            "global_observer_coverage__startup_readiness_tab__catch",
+            "global_observer_coverage__startup_readiness_tab__out",
+            "global_observer_coverage__startup_readiness_tab__status"
+        ],
+        "x": 3120,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__startup_readiness_tab__catch",
+        "type": "catch",
+        "z": "startup_readiness_tab",
+        "g": "global_observer_coverage__startup_readiness_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 3260,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__startup_readiness_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__startup_readiness_tab__status",
+        "type": "status",
+        "z": "startup_readiness_tab",
+        "g": "global_observer_coverage__startup_readiness_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 3270,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__startup_readiness_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__startup_readiness_tab__annotate",
+        "type": "function",
+        "z": "startup_readiness_tab",
+        "g": "global_observer_coverage__startup_readiness_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"startup_readiness_tab\",\"flow_label\":\"retomada_servicos\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3540,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__startup_readiness_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__startup_readiness_tab__out",
+        "type": "link out",
+        "z": "startup_readiness_tab",
+        "g": "global_observer_coverage__startup_readiness_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 3785,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_zigbee_tab__catch",
+            "global_observer_coverage__monitoramento_zigbee_tab__status",
+            "global_observer_coverage__monitoramento_zigbee_tab__annotate",
+            "global_observer_coverage__monitoramento_zigbee_tab__out"
+        ],
+        "x": 7960,
+        "y": 59,
+        "w": 722,
+        "h": 142
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 8116,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__status",
+        "type": "status",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 8126,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_zigbee_tab\",\"flow_label\":\"monitoramento_zigbee\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 8396,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 8641,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_e701eb22e5a2",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Encurtar: Registrar falha da varredura",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_e701eb22e5a2"
+        ],
+        "x": 3420,
+        "y": 1640,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_e701eb22e5a2",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Continuar: Persistir lifecycle da rota",
+        "links": [
+            "notification_hub_wire_out_e701eb22e5a2"
+        ],
+        "x": 2800,
+        "y": 1280,
+        "wires": [
+            [
+                "zigbee_route_state_mutate"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_0bb8d336406e",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Encurtar: Configure aceito: aguardar evidência",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_0bb8d336406e"
+        ],
+        "x": 3400,
+        "y": 1700,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_0bb8d336406e",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Continuar: Persistir lifecycle da rota",
+        "links": [
+            "notification_hub_wire_out_0bb8d336406e"
+        ],
+        "x": 2760,
+        "y": 1580,
+        "wires": [
+            [
+                "zigbee_route_state_mutate"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_fa5b9c4a397e",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Encurtar: Registrar falha e cooldown",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_fa5b9c4a397e"
+        ],
+        "x": 3400,
+        "y": 1800,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_fa5b9c4a397e",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Continuar: Persistir lifecycle da rota",
+        "links": [
+            "notification_hub_wire_out_fa5b9c4a397e"
+        ],
+        "x": 2840,
+        "y": 1530,
+        "wires": [
+            [
+                "zigbee_route_state_mutate"
+            ]
+        ]
     }
 ]

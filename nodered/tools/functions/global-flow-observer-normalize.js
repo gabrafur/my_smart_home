@@ -15,6 +15,13 @@ state.status_sources ??= {};
 state.status_incidents ??= {};
 state.connection_events ??= {};
 const now=Number(msg.observer_now??Date.now());
+const bootKey = "global_observer_boot_at" + (testMode ? "__test" : "");
+let bootAt = flow.get(bootKey, "memoryOnly");
+if (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, "memoryOnly"); }
+const readiness = typeof global !== "undefined" && typeof global.get === "function"
+    ? global.get("startup_readiness_v1", "memoryOnly") : null;
+const startupGrace = readiness?.ready === false ||
+    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;
 const observer=msg._global_observer??{};
 const flowId=String(observer.flow_id??"unknown").slice(0,100);
 const flowLabel = String(observer.flow_label ?? "fluxo desconhecido").replace(/[\r\n]+/g, " ").slice(0, 100);
@@ -58,7 +65,7 @@ if (msg.error) {
     Object.assign(data, { kind: "error", error_text: errorText, classification, signature, key, previous,
         accepted_wake_pending: flowId === "c22d8b12055e87f7" && sourceId === "8907830bb7f6c40c" &&
             /Bluelink wake accepted but fresh data is pending/i.test(errorText),
-        connection_suppressed: Boolean(sharedIncidentKey && (sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });
+        connection_suppressed: Boolean(sharedIncidentKey && classification !== "autenticação" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });
 } else if (msg.status) {
     const text = String(msg.status.text ?? "").toLowerCase();
     const shared = haSource || mqttSource;

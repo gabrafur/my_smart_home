@@ -1,0 +1,10 @@
+const f = msg.startup;
+const previous = f.previous;
+const state = { ...previous, ready: msg.startup_decision === "ready", reason: msg.startup_decision, evaluated_at: f.now };
+if (["waiting_internet", "waiting_vpn"].includes(msg.startup_decision)) state.stable_since = null;
+else state.stable_since ??= f.now;
+state.ready_since = state.ready ? (previous.ready && previous.ready_since || f.now) : null;
+flow.set("startup_lifecycle_v1" + f.suffix, state, "memoryOnly");
+msg.payload = { version: 1, ...state, internet_state: f.internet_state, vpn_state: f.vpn_state };
+node.status({fill: state.ready ? "green" : "yellow", shape: state.ready ? "dot" : "ring", text: state.reason});
+return msg;

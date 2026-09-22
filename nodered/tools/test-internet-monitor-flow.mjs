@@ -192,7 +192,15 @@ assert.equal(result.internet_event, "recovery");
 assert.equal(result.internet_state.phase, "online");
 assert.ok(result.internet_state.last_outage_duration_s > 0);
 assert.equal(buildNotification(result, flow, nodeMock, globalMock).notification.dismiss_id, "internet_connection_failure");
-assert.equal(expand(result, flow, nodeMock, globalMock).length, 3);
+const publicationOutputs = expand(result, flow, nodeMock, globalMock);
+assert.equal(byId.get("internet_publications_expand").outputs, 1);
+assert.equal(publicationOutputs.length, 1, "all MQTT messages use the single connected output");
+assert.equal(publicationOutputs[0].length, 3);
+assert.deepEqual(publicationOutputs[0].map(({ topic }) => topic), [
+  "nodered/infrastructure/internet/connection",
+  "nodered/infrastructure/internet/attributes",
+  "nodered/infrastructure/internet/state",
+]);
 
 for (let attempt = 0; attempt < 3; attempt += 1) {
   now += 30000;

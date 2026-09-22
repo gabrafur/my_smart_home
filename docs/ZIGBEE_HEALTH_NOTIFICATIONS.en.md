@@ -76,7 +76,7 @@ last valid ping, last outage, last recovery, and outage duration as attributes.
 ## Zigbee monitor
 
 Bridge health comes directly from `zigbee2mqtt/bridge/state` plus MQTT broker
-connection status. The previous criteria are preserved: 30 seconds offline
+connection status. After a 180-second runtime startup grace: 30 seconds offline
 confirms failure and 60 seconds continuously online confirms recovery. A
 retained online value at startup establishes a baseline without a recovery
 alert. States are exposed through `binary_sensor.zigbee_network` and
@@ -86,9 +86,9 @@ An unresolved network incident updates the same persistent alert and repeats
 mobile push and Echo voice delivery every 24 hours. Recovery stops reminders.
 
 Retained `zigbee2mqtt/.../availability` messages cover components, including
-friendly names containing `/`. The first offline value opens one persisted
-incident; duplicate offline values are ignored; the first later online value
-produces one recovery; retained online at startup is silent.
+friendly names containing `/`. An offline value confirmed for 30 seconds opens one persisted incident;
+duplicates are ignored. Recovery requires 60 seconds continuously online.
+The bridge must also be stable, and retained online at startup stays silent.
 
 A periodic tick repeats the same component alert every 24 hours while it stays
 offline, even when no new MQTT availability message arrives. Recovery cancels
@@ -98,14 +98,20 @@ Notification identifiers combine a readable slug with a stable hash of the
 complete friendly name. Hierarchical names remain readable and distinct names
 that normalize to the same slug cannot overwrite each other's alerts.
 
-The legacy implementation alerted immediately after Zigbee2MQTT itself marked
-a component offline. This was intentionally preserved. Its known weakness is
-the lack of another grace period beyond Zigbee2MQTT availability timeouts
-(commonly 10 minutes for active and 25 hours for passive devices). A short
-per-device confirmation delay can be considered separately because it changes
-alert latency.
+The native tick reevaluates observed availability, including startup and recovery
+confirmation. Route recovery keeps one incident across failed attempts and late
+configure errors. A successful configure response starts verification; fresh
+non-retained device data after 300 seconds without another route failure is
+required to announce recovery. Duplicate map responses cannot start concurrent
+configure requests. Attempts remain bounded to three, with a 15-minute cooldown.
 
-Zigbee2MQTT still requires:
+The shared startup coordinator waits at least 180 seconds after startup and
+120 seconds with both internet and VPN confirmed online before releasing
+external tasks. Local protection and the connection monitors start independently.
+See the [canonical startup contract](NODERED_STARTUP_RECOVERY.md) for scope,
+parameters, queue behavior, persistence and dry-run tests.
+
+The private Zigbee2MQTT configuration must enable availability:
 
 ```yaml
 availability:

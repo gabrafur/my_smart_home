@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { NOTIFICATION_HUBS, installNotificationHubs, refreshNotificationWireRoutes, routeCanvasWires } from "./install-notification-hubs.mjs";
+import { installStartupReadiness } from "./install-startup-readiness.mjs";
 import { installOperationalAlerts } from "./install-operational-alerts.mjs";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
@@ -24,7 +25,7 @@ const externalEventOutIds = [
   "notification_hub_alexa_observer_out",
   "notification_hub_persistent_observer_out",
 ];
-const parsedFlows = installOperationalAlerts(JSON.parse(fs.readFileSync(sourcePath, "utf8")));
+const parsedFlows = installStartupReadiness(installOperationalAlerts(JSON.parse(fs.readFileSync(sourcePath, "utf8"))));
 const notificationHubTabs = Object.values(NOTIFICATION_HUBS).map(({ tab }) => tab);
 const hasNotificationHubs = notificationHubTabs.every((tabId) =>
   parsedFlows.some((node) => node.id === tabId && node.type === "tab")
