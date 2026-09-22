@@ -482,9 +482,13 @@ exclusivamente de um `delay` residente em memória.
   ficam no grupo `0c. Renovação GPS` e o prazo de aproximação no grupo `0b` de
   `localizacao_pessoas`; a validade continua em 15 min.
   Sem posição nova, são até três pedidos com espaçamento mínimo de 60 s.
-  Após a terceira tentativa sem resposta, um aviso de domínio por morador segue
-  ao observador central. O incidente persiste através de restart e não repete o
-  aviso; uma posição realmente nova e atual encerra o incidente e zera tentativas.
+  Após a terceira tentativa sem resposta, a ausência de evidência fica somente
+  no diagnóstico persistente e no status do nó, sem push nem aviso persistente.
+  Pedidos best-effort sem GPS novo não comprovam falha de conexão ou permissão,
+  e podem esgotar as tentativas antes de a posição vencer. Avisos antigos dessa
+  condição são removidos silenciosamente, sem declarar recuperação do GPS.
+  Erros efetivos de serviço e conexão continuam no observador global.
+  Uma posição realmente nova e atual zera tentativas e o diagnóstico pendente.
   Aceite do serviço, heartbeat ou posição mais nova porém vencida não são sucesso.
   Depois da rajada, os intervalos crescem de 30 min para 1 h, 2 h e no máximo 4 h,
   evitando sobrecarregar os serviços externos. Nenhuma cadência garante resposta
@@ -501,11 +505,11 @@ exclusivamente de um `delay` residente em memória.
   bloqueado com localização vencida.
   Sondas do anel, vigília e tick periódico compartilham o mesmo dedupe e backoff
   antes dos serviços Companion/iCloud; não somam chamadas concorrentes. Testes
-  usam memória separada e o aviso termina no dry-run do observador central.
+  usam memória separada e a remoção de aviso legado termina no dry-run central.
   Para verificar manualmente, use os estados sintéticos e o reset do tab de
   pessoas; para avançar o relógio sem esperar nem alterar produção, execute
   `node nodered/tools/test-people-proactive-refresh.mjs`. O replay cobre as bordas
-  de 5/10 min, tentativas, alerta, recuperação, restart lógico e isolamento.
+  de 5/10 min, tentativas silenciosas, recuperação, restart lógico e isolamento.
 - `request_location_update` é best-effort: `public_bindings` agenda a
   notificação móvel sem aguardar a conclusão do serviço remoto. O aceite do
   Home Assistant não comprova uma posição nova; o ciclo seguinte reavalia os

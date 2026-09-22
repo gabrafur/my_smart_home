@@ -113,7 +113,7 @@ export function installPeopleLocationRefresh(flows) {
   });
 
   const group = required(GROUP);
-  group.name = "3. GPS preventivo: 5/10 min, retry limitado e aviso de falha";
+  group.name = "3. GPS preventivo: 5/10 min, retry limitado e diagnóstico";
   group.h = Math.max(Number(group.h) || 0, 313);
 
   const decider = required("402fd0cc609443b7");
@@ -129,7 +129,7 @@ export function installPeopleLocationRefresh(flows) {
   arrival.func = decider.func;
   arrival.outputs = 3;
   arrival.wires = structuredClone(decider.wires);
-  linkOut("people_visual_refresh_alert_out", "GPS sem resposta → aviso central",
+  linkOut("people_visual_refresh_alert_out", "Encerrar aviso GPS legado → central",
     "global_observer_alert_to_dispatch_in", 550, 980);
   const observer = required("global_observer_alert_to_dispatch_in");
   observer.links = [...new Set([...(observer.links ?? []), "people_visual_refresh_alert_out"])];

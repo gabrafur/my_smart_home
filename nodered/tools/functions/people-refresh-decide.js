@@ -27,17 +27,22 @@ for (const [index, role] of ["resident_primary", "resident_secondary"].entries()
     const current = resident.ready === true && resident.stale !== true && validPast(observed) &&
         now - observed <= Number(policy.location_fresh_minutes) * 60000;
     const entry = state.residents[role] ?? {};
-    const priorObservation = Number(entry.observed_at_before_request ?? entry.last_success_at ?? 0);
-    if (current && observed > priorObservation) {
-        if (entry.failure_notified === true) alerts.push({ _location_test: test,
+    // A best-effort request without new GPS is diagnostic, not proof of failure.
+    // Retire legacy notices without claiming that the location has recovered.
+    if (entry.failure_notified === true) {
+        alerts.push({ _location_test: test,
             payload: { test_mode: test, observer_kind: "node_recovery",
                 persistent_incident_kind: "domain_alert", persistent_notification_operation: "dismiss",
                 mobile_notification: false, incident_key: "people_location_refresh_" + role,
-                resolution: "fresh_location_received" },
-            alert: { title: "Localização recuperada", message: role + ": posição nova confirmada." } });
+                resolution: "routine_location_notice_retired" },
+            alert: { title: "Aviso de localização removido",
+                message: "Ausência de posição nova permanece apenas como diagnóstico." } });
+    }
+    entry.failure_notified = false;
+    const priorObservation = Number(entry.observed_at_before_request ?? entry.last_success_at ?? 0);
+    if (current && observed > priorObservation) {
         entry.awaiting_evidence = false;
         entry.attempts = 0;
-        entry.failure_notified = false;
         entry.last_success_at = observed;
         entry.observed_at_before_request = observed;
     }
@@ -45,16 +50,8 @@ for (const [index, role] of ["resident_primary", "resident_secondary"].entries()
     const lastRequest = validPast(Number(entry.last_request_at)) ? Number(entry.last_request_at) : 0;
     const pending = entry.awaiting_evidence === true;
     const failed = pending && attempts >= limit && now - lastRequest >= retryMs;
-    if (failed && entry.failure_notified !== true) {
-        entry.failure_notified = true;
-        alerts.push({ _location_test: test, payload: { test_mode: test,
-            observer_kind: "domain_alert", incident_key: "people_location_refresh_" + role,
-            reason: "location_refresh_without_new_evidence", severity: "warning", source: role,
-            attempts, location_observed_at: validPast(observed) ? observed : null },
-            alert: { title: "Localização sem atualização",
-                message: role + ": os pedidos ao aplicativo e ao iCloud não trouxeram uma posição nova. " +
-                    "Verifique a conexão e as permissões de localização do celular. Dados vencidos não autorizam a chegada." } });
-    }
+    entry.diagnostic_reason = failed ? "location_refresh_without_new_evidence"
+        : pending ? "awaiting_location_evidence" : "current_location_evidence";
     const interval = attempts >= limit
         ? Math.min(Number(policy.people_refresh_backoff_max_minutes),
             Number(policy.people_refresh_backoff_minutes) * 2 ** Math.min(10, attempts - limit)) * 60000
@@ -66,6 +63,7 @@ for (const [index, role] of ["resident_primary", "resident_secondary"].entries()
     if (due && now >= entry.next_allowed_at - 500) {
         entry.attempts = attempts + 1;
         entry.awaiting_evidence = true;
+        entry.diagnostic_reason = "awaiting_location_evidence";
         entry.last_request_at = now;
         entry.observed_at_before_request = validPast(observed) ? observed : null;
         output[index] = { ...msg, _location_test: test, payload: { ...input,
@@ -79,6 +77,8 @@ for (const [index, role] of ["resident_primary", "resident_secondary"].entries()
 state.updated_at = now;
 set(state);
 output[2] = alerts.length ? alerts : null;
-node.status({ fill: alerts.length ? "yellow" : "grey", shape: "ring",
-    text: alerts.length ? "sem evidência nova; aviso e backoff" : "GPS preventivo 5/10 min; retry limitado" });
+const waiting = Object.values(state.residents).some(e =>
+    e.diagnostic_reason === "location_refresh_without_new_evidence");
+node.status({ fill: waiting ? "yellow" : "grey", shape: "ring",
+    text: waiting ? "sem evidência nova; backoff sem aviso" : "GPS preventivo 5/10 min; retry limitado" });
 return output.some(Boolean) ? output : null;
