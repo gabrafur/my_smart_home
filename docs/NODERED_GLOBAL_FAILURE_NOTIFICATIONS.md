@@ -37,7 +37,10 @@ entidade indisponível não representa o servidor inteiro. Conexões do Home
 Assistant e MQTT são agregadas, evitando um push para cada nó quando a
 dependência compartilhada cai. O primeiro sinal explícito de conexão
 restabelecida encerra todas as fontes da mesma conexão compartilhada e libera
-o alerta do próximo incidente após a carência de reconexão. Se o incidente já
+o alerta do próximo incidente após a carência de reconexão. O adaptador também
+reconhece as chaves nativas `home-assistant.status.connected` e
+`home-assistant.status.running`, emitidas sem tradução pela integração.
+`connecting`, sucesso de serviço e valores de entidades não comprovam recuperação. Se o incidente já
 havia sido notificado, o monitor remove silenciosamente a notificação
 persistente correspondente, sem gerar um push adicional de recuperação.
 

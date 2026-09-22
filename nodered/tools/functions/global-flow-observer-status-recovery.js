@@ -2,7 +2,9 @@ const data = msg._observer_event;
 if (data.shared_incident_key) {
     // A value/status update is not proof that the shared connection recovered.
     const text = String(msg.status?.text || "").toLowerCase();
-    if (!/^(?:connected|online|conectado)(?:$|\s+to\b)/.test(text)) {
+    const haConnectionRestored = data.incident_kind === "home_assistant" &&
+        /^home-assistant\.status\.(?:connected|running)$/.test(text);
+    if (!haConnectionRestored && !/^(?:connected|online|conectado)(?:$|\s+to\b)/.test(text)) {
         if (data.store) flow.set(data.state_key, data.state, data.store);
         else flow.set(data.state_key, data.state);
         return null;

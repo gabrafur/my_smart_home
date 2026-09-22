@@ -292,6 +292,36 @@ const statusFailure = {
     source: { id: "ha_test", type: "api-call-service", name: "HA teste" },
   },
 };
+// The HA integration emits untranslated i18n keys directly through node.status.
+for (const recoveryText of ["home-assistant.status.connected", "home-assistant.status.running"]) {
+  const replay = memory();
+  for (const id of ["ha_first", "ha_second"]) {
+    const failure = structuredClone(statusFailure);
+    failure.status.text = "home-assistant.status.disconnected";
+    failure.status.source.id = id;
+    runIngest(failure, replay);
+  }
+  const recovery = structuredClone(statusFailure);
+  recovery.observer_now = 215_000;
+  recovery.status.fill = "green";
+  recovery.status.text = recoveryText;
+  runIngest(recovery, replay);
+  assert.equal(Object.keys(replay.get("global_flow_observer_v1__test").status_sources).length, 0,
+    `${recoveryText} must clear the shared incident`);
+  assert.equal(runEvaluate({ _global_observer_test: true, observer_now: 270_000 }, replay)[0], null);
+  assert.equal(runEvaluate({ _global_observer_test: true, observer_now: 22_000_000 }, replay)[0], null,
+    "recovered short outage must not produce a six-hour reminder");
+}
+for (const text of ["home-assistant.status.connecting", "home-assistant.status.success", "running", "on"]) {
+  const replay = memory();
+  runIngest(structuredClone(statusFailure), replay);
+  const update = structuredClone(statusFailure);
+  update.status = { ...update.status, fill: "green", text };
+  runIngest(update, replay);
+  assert.equal(Object.keys(replay.get("global_flow_observer_v1__test").status_sources).length, 1,
+    `${text} is not explicit evidence of shared recovery`);
+}
+
 const domainStatus = structuredClone(statusFailure);
 domainStatus.status = {
   ...domainStatus.status,
