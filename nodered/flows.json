@@ -3660,7 +3660,11 @@
             "notification_hub_wire_out_ec2aa148678e",
             "notification_hub_wire_in_ec2aa148678e",
             "notification_hub_wire_out_ffabeb70a8fe",
-            "notification_hub_wire_in_ffabeb70a8fe"
+            "notification_hub_wire_in_ffabeb70a8fe",
+            "global_observer_events_in_diagnostic_out",
+            "global_observer_internal_catch_diagnostic_out",
+            "global_observer_notification_catch_diagnostic_out",
+            "global_observer_alert_to_dispatch_in_diagnostic_out"
         ],
         "x": 64,
         "y": 39,
@@ -43995,7 +43999,8 @@
         "y": 220,
         "wires": [
             [
-                "global_observer_ingest"
+                "global_observer_ingest",
+                "global_observer_events_in_diagnostic_out"
             ]
         ]
     },
@@ -44307,7 +44312,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Registrar fonte indisponível",
-        "func": "const data = msg._observer_event;\nconst previous = data.state.status_sources[data.key];\nif (data.shared_incident_key) {\n    const event = data.state.connection_events[data.incident_key] ?? {};\n    data.state.connection_events[data.incident_key] = { ...event, last_failure_at: data.now };\n}\ndata.state.status_sources[data.key] = {\n    flow_id: data.flow_id, flow_label: data.flow_label, source_id: data.source_id,\n    source_type: data.source_type, source_name: data.source_name,\n    incident_key: data.incident_key, incident_kind: data.incident_kind,\n    first_seen_at: previous?.incident_key === data.incident_key ? previous.first_seen_at : data.now,\n    last_seen_at: data.now\n};\nif (data.store) flow.set(data.state_key, data.state, data.store);\nelse flow.set(data.state_key, data.state);\nreturn null;",
+        "func": "const data = msg._observer_event;\nconst previous = data.state.status_sources[data.key];\nif (data.shared_incident_key) {\n    const event = data.state.connection_events[data.incident_key] ?? {};\n    data.state.connection_events[data.incident_key] = { ...event, last_failure_at: data.now };\n}\ndata.state.status_sources[data.key] = {\n    flow_id: data.flow_id, flow_label: data.flow_label, source_id: data.source_id,\n    source_type: data.source_type, source_name: data.source_name,\n    incident_key: data.incident_key, incident_kind: data.incident_kind,\n    status_text: String(msg.status?.text ?? \"\"),\n    first_seen_at: previous?.incident_key === data.incident_key ? previous.first_seen_at : data.now,\n    last_seen_at: data.now\n};\nif (data.store) flow.set(data.state_key, data.state, data.store);\nelse flow.set(data.state_key, data.state);\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -44627,7 +44632,8 @@
         "y": 300,
         "wires": [
             [
-                "global_observer_dispatch_guard"
+                "global_observer_dispatch_guard",
+                "global_observer_alert_to_dispatch_in_diagnostic_out"
             ]
         ]
     },
@@ -44921,7 +44927,8 @@
         "y": 400,
         "wires": [
             [
-                "notification_hub_wire_out_ffabeb70a8fe"
+                "notification_hub_wire_out_ffabeb70a8fe",
+                "global_observer_notification_catch_diagnostic_out"
             ]
         ]
     },
@@ -44973,7 +44980,8 @@
         "y": 480,
         "wires": [
             [
-                "global_observer_internal_failure"
+                "global_observer_internal_failure",
+                "global_observer_internal_catch_diagnostic_out"
             ]
         ]
     },
@@ -45263,7 +45271,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_test_group",
         "name": "Resetar estado de teste",
-        "func": "flow.set(\"global_flow_observer_v1__test\", undefined);\nflow.set(\"global_flow_observer_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "func": "flow.set(\"global_flow_observer_v1__test\", undefined);\nflow.set(\"global_observer_diagnostic_last_test\", undefined, \"memoryOnly\");\nflow.set(\"global_flow_observer_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -80273,5 +80281,406 @@
                 "zigbee_route_state_mutate"
             ]
         ]
+    },
+    {
+        "id": "global_observer_diagnostic_group",
+        "type": "group",
+        "z": "global_flow_observer_tab",
+        "name": "Diagnóstico detalhado — registrar antes do dedupe; TESTE somente em memória",
+        "style": {
+            "label": true,
+            "color": "#0891b2"
+        },
+        "nodes": [
+            "global_observer_diagnostic_catch_in",
+            "global_observer_diagnostic_catch_in_tag",
+            "global_observer_diagnostic_dispatch_in",
+            "global_observer_diagnostic_dispatch_in_tag",
+            "global_observer_diagnostic_build",
+            "global_observer_diagnostic_test_gate",
+            "global_observer_diagnostic_dry",
+            "global_observer_diagnostic_file",
+            "global_observer_diagnostic_ack",
+            "global_observer_diagnostic_tick",
+            "global_observer_diagnostic_retention",
+            "global_observer_diagnostic_purge",
+            "global_observer_diagnostic_purge_result",
+            "global_observer_diagnostic_catch",
+            "global_observer_diagnostic_failure",
+            "global_observer_diagnostic_comment"
+        ],
+        "x": 64,
+        "y": 1700,
+        "w": 2820,
+        "h": 440
+    },
+    {
+        "id": "global_observer_events_in_diagnostic_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "catch: Receber falhas de todas as abas → diagnóstico",
+        "mode": "link",
+        "links": [
+            "global_observer_diagnostic_catch_in"
+        ],
+        "x": 290,
+        "y": 275,
+        "wires": []
+    },
+    {
+        "id": "global_observer_internal_catch_diagnostic_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "catch: Capturar falha interna do monitor → diagnóstico",
+        "mode": "link",
+        "links": [
+            "global_observer_diagnostic_catch_in"
+        ],
+        "x": 2690,
+        "y": 535,
+        "wires": []
+    },
+    {
+        "id": "global_observer_notification_catch_diagnostic_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "catch: Capturar falha do canal de notificação → diagnóstico",
+        "mode": "link",
+        "links": [
+            "global_observer_diagnostic_catch_in"
+        ],
+        "x": 3660,
+        "y": 455,
+        "wires": []
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_catch_in",
+        "type": "link in",
+        "name": "Receber catch para registro",
+        "links": [
+            "global_observer_events_in_diagnostic_out",
+            "global_observer_internal_catch_diagnostic_out",
+            "global_observer_notification_catch_diagnostic_out"
+        ],
+        "x": 140,
+        "y": 1780,
+        "wires": [
+            [
+                "global_observer_diagnostic_catch_in_tag"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_catch_in_tag",
+        "type": "change",
+        "name": "Origem: catch",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_observer_diagnostic_origin",
+                "pt": "msg",
+                "to": "catch",
+                "tot": "str"
+            }
+        ],
+        "x": 320,
+        "y": 1780,
+        "wires": [
+            [
+                "global_observer_diagnostic_build"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_alert_to_dispatch_in_diagnostic_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "dispatch: Receber alertas, encerramentos ou eventos de domínio → diagnóstico",
+        "mode": "link",
+        "links": [
+            "global_observer_diagnostic_dispatch_in"
+        ],
+        "x": 2740,
+        "y": 355,
+        "wires": []
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_dispatch_in",
+        "type": "link in",
+        "name": "Receber dispatch para registro",
+        "links": [
+            "global_observer_alert_to_dispatch_in_diagnostic_out"
+        ],
+        "x": 140,
+        "y": 1870,
+        "wires": [
+            [
+                "global_observer_diagnostic_dispatch_in_tag"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_dispatch_in_tag",
+        "type": "change",
+        "name": "Origem: dispatch",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_observer_diagnostic_origin",
+                "pt": "msg",
+                "to": "dispatch",
+                "tot": "str"
+            }
+        ],
+        "x": 320,
+        "y": 1870,
+        "wires": [
+            [
+                "global_observer_diagnostic_build"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_build",
+        "type": "function",
+        "name": "Preservar causa, stack e retorno; remover credenciais",
+        "func": "// Protocol adapter: preserve error evidence without serializing the incoming msg.\nconst test = msg._global_observer_test === true || msg.payload?.test_mode === true;\nconst error = msg.error;\nconst domain = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\n// Node errors are already recorded at catch ingress, before notification gates.\nif (msg._observer_diagnostic_origin === \"dispatch\" && domain.observer_kind === \"node_error\") return null;\nif (!error && !msg.alert) return null;\nconst clipped = [];\nconst clean = (value, field) => {\n    if (value === undefined || value === null) return null;\n    let text = String(value)\n        .replace(/(https?:\\/\\/)[^\\s/@]+:[^\\s/@]+@/gi, \"$1[REDACTED]@\")\n        .replace(/(https?:\\/\\/[^\\s?'\"<>]+)\\?[^\\s'\"<>)]*/gi, \"$1?[REDACTED]\")\n        .replace(/\\b(Bearer|Basic)\\s+[A-Za-z0-9+/_.=:-]+/gi, \"$1 [REDACTED]\")\n        .replace(/((?:[\"']?)(?:password|passwd|token|access_token|refresh_token|api[_-]?key|authorization|cookie|secret|clientId|dsid)(?:[\"']?)\\s*[:=]\\s*)(?:\"[^\"\\r\\n]*\"|'[^'\\r\\n]*'|[^\\s,;}]+)/gi, \"$1[REDACTED]\")\n        .replace(/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f]/g, \"\");\n    if (text.length > 20000) { clipped.push(field); text = text.slice(0, 20000); }\n    return text;\n};\nconst seen = new Set();\nconst describe = (value, depth = 0) => {\n    if (value === undefined || value === null) return null;\n    if (typeof value !== \"object\") return { message: clean(value, \"cause\") };\n    if (seen.has(value) || depth >= 8) { clipped.push(\"cause_chain\"); return { message: \"[cause chain limited]\" }; }\n    seen.add(value);\n    return {\n        name: clean(value.name, \"error.name\"), message: clean(value.message, \"error.message\"),\n        code: clean(value.code, \"error.code\"), stack: clean(value.stack, \"error.stack\"),\n        cause: describe(value.cause, depth + 1)\n    };\n};\nconst observer = msg._global_observer ?? msg._observer_event ?? {};\nconst source = error?.source ?? {};\nconst now = new Date(test ? Number(msg.observer_now ?? Date.now()) : Date.now()).toISOString();\nconst details = {};\nfor (const key of [\"reason\", \"status\", \"request_id\", \"exit_code\", \"signal\", \"stderr\", \"stdout\"]) {\n    const value = msg.observer_diagnostic?.[key] ?? domain[key] ?? msg[key];\n    if ([\"string\", \"number\", \"boolean\"].includes(typeof value)) details[key] = clean(value, key);\n}\nconst record = {\n    version: 1, recorded_at: now, event_type: error ? \"node_error\" : clean(domain.observer_kind ?? \"domain_alert\", \"kind\"),\n    correlation_id: clean(msg._msgid, \"correlation_id\"),\n    flow_id: clean(observer.flow_id ?? domain.flow_id, \"flow_id\"),\n    flow_label: clean(observer.flow_label, \"flow_label\"),\n    source_id: clean(source.id ?? domain.source_id, \"source_id\"),\n    source_type: clean(source.type, \"source_type\"), source_name: clean(source.name, \"source_name\"),\n    incident_key: clean(domain.incident_key, \"incident_key\"),\n    error: describe(error), details,\n    alert: msg.alert ? { title: clean(msg.alert.title, \"alert.title\"), message: clean(msg.alert.message, \"alert.message\") } : null,\n    sources: (msg._observer_evaluation?.sources ?? []).map(entry => ({\n        flow_id: clean(entry.flow_id, \"status.flow_id\"), source_id: clean(entry.source_id, \"status.source_id\"),\n        source_name: clean(entry.source_name, \"status.source_name\"), status_text: clean(entry.status_text, \"status.text\"),\n        first_seen_at: entry.first_seen_at, last_seen_at: entry.last_seen_at\n    })),\n    truncated_fields: clipped, test_mode: test\n};\nmsg._observer_diagnostic_record = record;\nmsg._observer_diagnostic_test = test;\nmsg.payload = JSON.stringify(record);\nmsg.filename = `/data/failure-history/${now.slice(0, 13)}.jsonl`;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "fs.mkdirSync(\"/data/failure-history\", {recursive:true,mode:0o700});\nfs.chmodSync(\"/data/failure-history\", 0o700);",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "fs",
+                "module": "fs"
+            }
+        ],
+        "x": 650,
+        "y": 1810,
+        "wires": [
+            [
+                "global_observer_diagnostic_test_gate"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_test_gate",
+        "type": "switch",
+        "name": "Diagnóstico de TESTE?",
+        "property": "_observer_diagnostic_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1000,
+        "y": 1810,
+        "wires": [
+            [
+                "global_observer_diagnostic_dry"
+            ],
+            [
+                "global_observer_diagnostic_file"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_dry",
+        "type": "function",
+        "name": "TESTE FINAL: registro simulado",
+        "func": "flow.set(\"global_observer_diagnostic_last_test\", {\n    record: msg._observer_diagnostic_record, simulated: true, dispatched: false\n}, \"memoryOnly\");\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: diagnóstico preservado em memória\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1340,
+        "y": 1760,
+        "wires": []
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_file",
+        "type": "file",
+        "name": "EFEITO: anexar causa ao histórico privado",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "utf8",
+        "x": 1340,
+        "y": 1860,
+        "wires": [
+            [
+                "global_observer_diagnostic_ack"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_ack",
+        "type": "function",
+        "name": "Registro gravado",
+        "func": "node.status({fill:\"green\",shape:\"dot\",text:\"causa detalhada gravada\"});\nreturn null;",
+        "outputs": 0,
+        "libs": [],
+        "x": 1660,
+        "y": 1860,
+        "wires": []
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_tick",
+        "type": "inject",
+        "name": "Retenção: diariamente",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "86400",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "payloadType": "date",
+        "x": 270,
+        "y": 2030,
+        "wires": [
+            [
+                "global_observer_diagnostic_retention"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_retention",
+        "type": "function",
+        "name": "Ler retenção da política visual (1–30 dias)",
+        "func": "const policy = flow.get(\"global_observer_policy_v1\", \"persistent\");\nconst days = policy?.error_retention_days;\nif (!Number.isInteger(days) || days < 1 || days > 30) return null;\nmsg.payload = String(days);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 2030,
+        "wires": [
+            [
+                "global_observer_diagnostic_purge"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_purge",
+        "type": "exec",
+        "name": "Remover somente histórico vencido",
+        "command": "node /data/tools/purge-failure-history.mjs",
+        "addpay": "payload",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "30",
+        "winHide": false,
+        "oldrc": false,
+        "x": 1050,
+        "y": 2030,
+        "wires": [
+            [],
+            [],
+            [
+                "global_observer_diagnostic_purge_result"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_purge_result",
+        "type": "function",
+        "name": "Verificar retenção",
+        "func": "if (Number(msg.payload?.code ?? msg.payload) !== 0) node.warn(\"NODERED_FAILURE_HISTORY_PURGE_FAILED\");\nreturn null;",
+        "outputs": 0,
+        "libs": [],
+        "x": 1420,
+        "y": 2030,
+        "wires": []
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_catch",
+        "type": "catch",
+        "name": "Falha ao registrar — sem recursão",
+        "scope": [
+            "global_observer_diagnostic_build",
+            "global_observer_diagnostic_file",
+            "global_observer_diagnostic_purge"
+        ],
+        "uncaught": false,
+        "x": 2060,
+        "y": 1780,
+        "wires": [
+            [
+                "global_observer_diagnostic_failure"
+            ]
+        ]
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_failure",
+        "type": "function",
+        "name": "Fallback: erro do registro no log do runtime",
+        "func": "node.warn(\"NODERED_FAILURE_HISTORY_WRITE_FAILED \" + String(msg.error?.message ?? \"unknown\").slice(0, 2000));\nreturn null;",
+        "outputs": 0,
+        "libs": [],
+        "x": 2520,
+        "y": 1780,
+        "wires": []
+    },
+    {
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_diagnostic_group",
+        "id": "global_observer_diagnostic_comment",
+        "type": "comment",
+        "name": "TESTE: reset → erro repetido → status → avaliar; conferir registro simulado",
+        "info": "Todos os catches são gravados, inclusive erros repetidos e suprimidos. Status confirmados e alertas de domínio são registrados na entrada do dispatch. Histórico JSONL privado em /data/failure-history, retenção pela política error_retention_days. Campos ausentes permanecem null; campos acima de 20.000 caracteres e cadeias acima de oito causas declaram truncamento. Não serializa msg inteiro. Falha no próprio escritor segue somente ao log do runtime.",
+        "x": 2160,
+        "y": 2030,
+        "wires": []
     }
 ]

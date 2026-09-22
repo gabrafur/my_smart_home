@@ -81,7 +81,12 @@ for (const id of [
   "notification_hub_alexa_observer_out",
   "notification_hub_persistent_observer_out",
 ]) assert.ok(dispatchInput.links.includes(id), `entrada de domínio não referencia ${id}`);
-assert.deepEqual(input.wires, [["global_observer_ingest"]]);
+assert.deepEqual(input.wires, [["global_observer_ingest", "global_observer_events_in_diagnostic_out"]]);
+assert.equal(required("global_observer_diagnostic_file").type, "file");
+assert.equal(required("global_observer_diagnostic_file").appendNewline, true);
+assert.deepEqual(required("global_observer_diagnostic_test_gate").wires, [
+  ["global_observer_diagnostic_dry"], ["global_observer_diagnostic_file"]
+]);
 const notify = required("global_observer_notify_primary");
 const persistent = required("global_observer_notify_persistent");
 const guard = required("global_observer_dispatch_guard");
@@ -129,7 +134,7 @@ const expectedInternalScope = [
   "global_observer_integration_lifecycle",
 ];
 assert.deepEqual(internalCatch.scope, expectedInternalScope);
-assert.deepEqual(internalCatch.wires, [["global_observer_internal_failure"]]);
+assert.deepEqual(logicalWireTargets(internalCatch.id), ["global_observer_internal_failure", "global_observer_internal_catch_diagnostic_out"]);
 assert.deepEqual(logicalWireTargets("global_observer_internal_failure", 0), [notify.id]);
 assert.deepEqual(logicalWireTargets("global_observer_internal_failure", 1), [persistent.id]);
 assert.ok(required("global_observer_test_delivery").props.some(

@@ -5,7 +5,7 @@ import { installOperationalAlerts } from './install-operational-alerts.mjs';
 
 const flows = JSON.parse(fs.readFileSync(new URL('../flows.json', import.meta.url)));
 const byId = new Map(flows.map(n => [n.id, n]));
-const stores = { memory: new Map(), persistent: new Map() };
+const stores = { memory: new Map(), memoryOnly: new Map(), persistent: new Map() };
 const flow = { get: (k, s = 'memory') => stores[s].get(k), set: (k, v, s = 'memory') => stores[s].set(k, structuredClone(v)) };
 const observed = [];
 const node = { status() {}, warn() {}, log() {}, error(message) { throw Error(message); } };
@@ -71,6 +71,8 @@ await replay('host_memory_guardian_result_in', { ...pressure, payload: { ...pres
 assert.equal(observed.length, beforePressure + 2, 'recovery reaches shared dry-run');
 assert.ok(observed.every(result => result?.simulated === true && result.dispatched === false && result.notification_sent === false));
 assert.equal(stores.persistent.size, 0, 'full dry-run never changes production state');
+assert.equal(stores.memoryOnly.get('global_observer_diagnostic_last_test').simulated, true);
+assert.equal(stores.memoryOnly.get('global_observer_diagnostic_last_test').dispatched, false);
 
 // Production lifecycle persists across a fresh context wrapper (restart),
 // updates for a new version, silently dismisses and rearms after recovery.

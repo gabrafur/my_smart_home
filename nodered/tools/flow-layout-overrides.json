@@ -13193,6 +13193,22 @@
         "notification_hub_wire_in_ec2aa148678e": {
           "x": 3155,
           "y": 300
+        },
+        "global_observer_events_in_diagnostic_out": {
+          "x": 290,
+          "y": 275
+        },
+        "global_observer_internal_catch_diagnostic_out": {
+          "x": 2690,
+          "y": 535
+        },
+        "global_observer_notification_catch_diagnostic_out": {
+          "x": 3660,
+          "y": 455
+        },
+        "global_observer_alert_to_dispatch_in_diagnostic_out": {
+          "x": 2740,
+          "y": 355
         }
       },
       "node_positions": {

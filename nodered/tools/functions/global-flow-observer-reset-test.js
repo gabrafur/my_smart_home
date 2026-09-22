@@ -1,4 +1,5 @@
 flow.set("global_flow_observer_v1__test", undefined);
+flow.set("global_observer_diagnostic_last_test", undefined, "memoryOnly");
 flow.set("global_flow_observer_last_dry_run_v1", {
     version: 1,
     reset: true,

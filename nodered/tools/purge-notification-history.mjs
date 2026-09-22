@@ -9,11 +9,12 @@ const root = fileURLToPath(new URL("../notification-history/", import.meta.url))
 
 // Only old hour buckets are touched. The file node appends to the current hour,
 // so pruning never races a writer or requires loading the full history in RAM.
-export async function purgeHistory(directory, now = Date.now()) {
+export async function purgeHistory(directory, now = Date.now(), retentionDays = RETENTION_DAYS) {
+  if (!Number.isInteger(retentionDays) || retentionDays < 1 || retentionDays > 30) throw new Error("invalid retention");
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   if (!(await fs.lstat(directory)).isDirectory()) throw new Error("invalid history directory");
   await fs.chmod(directory, 0o700);
-  const cutoff = now - RETENTION_DAYS * 24 * HOUR;
+  const cutoff = now - retentionDays * 24 * HOUR;
   let removed = 0;
   for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
     if (!entry.isFile() || !/^\d{4}-\d{2}-\d{2}T\d{2}\.jsonl$/.test(entry.name)) continue;
@@ -29,7 +30,8 @@ export async function purgeHistory(directory, now = Date.now()) {
     const contents = await fs.readFile(filename, "utf8");
     const lines = contents.split("\n").filter(Boolean);
     const retained = lines.filter((line) => {
-      const timestamp = Date.parse(JSON.parse(line).accepted_at);
+      const record = JSON.parse(line);
+      const timestamp = Date.parse(record.recorded_at ?? record.accepted_at);
       if (!Number.isFinite(timestamp)) throw new Error("invalid history timestamp");
       return timestamp >= cutoff;
     });
@@ -38,7 +40,7 @@ export async function purgeHistory(directory, now = Date.now()) {
     await fs.writeFile(temporary, retained.length ? `${retained.join("\n")}\n` : "", { mode: 0o600 });
     await fs.rename(temporary, filename);
   }
-  return { retention_days: RETENTION_DAYS, removed_buckets: removed };
+  return { retention_days: retentionDays, removed_buckets: removed };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

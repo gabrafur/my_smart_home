@@ -53,6 +53,49 @@ o processador que falhou, aplica deduplicação de seis horas e chama diretament
 os dois canais de entrega. O manipulador interno e os terminais de log ficam
 fora do seu próprio escopo para impedir realimentação recursiva.
 
+## Histórico detalhado das causas
+
+O histórico privado em `/data/failure-history/`, dentro do Node-RED, é a fonte de diagnóstico das
+novas falhas. Cada erro recebido por catch gera uma linha JSONL antes dos gates
+de notificação, inclusive duplicatas e erros suprimidos durante a retomada.
+Erros internos do monitor e da entrega também entram nesse registro. Alertas de
+domínio e indisponibilidades confirmadas são registrados na entrada do dispatch;
+a entrega do mesmo erro não cria uma segunda cópia.
+
+Cada registro preserva horário, origem, ID de correlação, mensagem completa até
+o limite estrutural, código, stack trace e causas encadeadas, quando fornecidos
+pelo produtor. `reason`, `status`, `request_id`, `exit_code`, `signal`, `stdout`
+e `stderr` são preservados quando presentes no retorno ou no contrato explícito
+`msg.observer_diagnostic`. Status confirmados incluem os textos originais dos
+nós que corroboraram a indisponibilidade. O resumo enviado ao celular continua
+separado do diagnóstico.
+
+O adaptador remove padrões de credenciais dos textos e não serializa o `msg`
+inteiro. Campos individuais têm limite de 20.000 caracteres e cadeias de causa
+têm limite de oito níveis; `truncated_fields` declara qualquer corte. Campos que
+o produtor não informou ficam ausentes ou `null`, sem inventar causa. Registros
+antigos que já perderam detalhes não podem ser reconstruídos por esta mudança.
+
+O diretório tem permissão `0700` e está fora do Git. Arquivos por hora são
+anexados pelo nó File, independentemente do flush do contexto, e permanecem
+após restart. A política visual `error_retention_days` controla a retenção
+(sete dias por padrão, limites de 1–30 dias); a limpeza diária opera somente
+sobre os arquivos vencidos. O histórico contém dados operacionais privados e
+não deve ser copiado para documentação ou memória pública.
+
+Os testes manuais existentes também percorrem o gravador, mas terminam em
+`global_observer_diagnostic_dry`, sem arquivo ou notificação de produção. Use
+reset → erro (repita para testar dedupe) → indisponibilidade → avaliação e
+confira o registro simulado. Falha no gravador ou na limpeza segue ao log do
+runtime com os marcadores `NODERED_FAILURE_HISTORY_WRITE_FAILED` ou
+`NODERED_FAILURE_HISTORY_PURGE_FAILED`, sem recursão. Quando houver investigação,
+filtre os arquivos JSONL por `recorded_at`, `source_id` ou `incident_key`.
+
+`test-failure-diagnostics.mjs` cobre causas encadeadas, credenciais, truncamento
+explícito, erros suprimidos, duplicatas, status, domínio, dry-run, leitura após
+restart e retenção. A serialização permanece em um adaptador próprio para
+manter a política de notificação independente do armazenamento.
+
 ## Auditoria de cobertura
 
 O validador exige, para cada tab funcional, um `catch` universal com erros já

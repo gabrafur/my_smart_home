@@ -110,6 +110,7 @@ nodered/.config.users.json*
 nodered/.config.runtime.json*
 nodered/context/
 nodered/notification-history/
+nodered/failure-history/
 nodered/backups/
 nodered/flows.json.bak*
 

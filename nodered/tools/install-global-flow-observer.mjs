@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { NOTIFICATION_HUBS, installNotificationHubs, refreshNotificationWireRoutes, routeCanvasWires } from "./install-notification-hubs.mjs";
 import { installStartupReadiness } from "./install-startup-readiness.mjs";
+import { installGlobalDiagnostics } from "./install-global-diagnostics.mjs";
 import { installOperationalAlerts } from "./install-operational-alerts.mjs";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
@@ -1355,6 +1356,7 @@ for (const node of observerNodes) {
   if (node.id === testGroup || node.g === testGroup) node.y += 580;
 }
 
+installGlobalDiagnostics(observerNodes, parsedFlows);
 next.push(...coverageNodes, ...observerNodes);
 // Rebuild the generated visual routes after replacing the observer nodes.
 // Existing hubs do not imply that their old routes still belong to the newly
