@@ -336,6 +336,11 @@ assert.equal(
 
 const falsePositiveStore = memory();
 for (const status of [
+  ...["offline : Jan 1, 1:00 AM", "unavailable : Jan 1, 1:01 AM", "offline", "unavailable",
+    "device disconnected : Jan 1, 1:02 AM", "service unavailable"].map((text) => ({
+    fill: "red", text,
+    source: { id: `entity_${text}`, type: "server-state-changed", name: "Estado de entidade" },
+  })),
   {
     fill: "red",
     text: "true",
@@ -734,3 +739,18 @@ execute(code.dryRun, simulated[2], dryRunStore);
 assert.equal(dryRunStore.values.get("global_flow_observer_last_dry_run_v1").dispatched, false);
 
 console.log("Global flow observer: topology and incident lifecycle scenarios passed.");
+
+// Deployment removes timestamped entity evidence persisted by the old observer.
+{
+  const replay = memory();
+  replay.set("global_flow_observer_v1", { version: 2, errors: {}, status_sources: {
+    offline: { incident_key: "connection:home_assistant", status_text: "offline : Jan 1, 1:00 AM" },
+    unavailable: { incident_key: "connection:home_assistant", status_text: "unavailable : Jan 1, 1:01 AM" },
+    real: { incident_key: "connection:home_assistant", status_text: "home-assistant.status.disconnected" },
+    mqtt: { incident_key: "connection:mqtt", status_text: "offline" },
+  }, status_incidents: {} });
+  execute(code.policyStore, { observer_policy_candidate: structuredClone(DEFAULT_POLICY) }, replay);
+  assert.deepEqual(Object.keys(replay.get("global_flow_observer_v1").status_sources), ["real", "mqtt"]);
+  execute(code.policyStore, { observer_policy_candidate: structuredClone(DEFAULT_POLICY) }, replay);
+  assert.deepEqual(Object.keys(replay.get("global_flow_observer_v1").status_sources), ["real", "mqtt"]);
+}

@@ -664,8 +664,24 @@ No dashboard **Chat** há duas abas separadas:
 
 Na aba **Uso do Codex**, a coleta do bridge atualiza a cada dois segundos. O
 bridge recebe, em modo somente leitura, as sessões do próprio container e as
-sessões locais do host configurado em `CODEX_HOST_SESSIONS_DIR`. Ele verifica
-metadados dos arquivos a cada ciclo e só relê uma sessão que tenha mudado; não
+sessões locais do host configurado em `CODEX_HOST_SESSIONS_DIR`. A imagem usa
+`BRIDGE_UID`/`BRIDGE_GID`, derivados de `REPO_UID`/`REPO_GID` pelo Compose, para
+executar como usuário não root com a identidade do dono do checkout. Isso
+permite ler os diretórios `0700` e arquivos `0600` novos do Codex pela montagem
+somente leitura, preservando suas permissões. Ao migrar uma instalação cujo
+bridge usava outro UID, reconcilie somente arquivos desse UID nos dois volumes
+de autenticação e no diretório de estado do bridge; preserve conteúdo, modos
+e grupos compartilhados. Faça a migração antes de iniciar a nova imagem,
+pois o histórico também precisa ajustar os modos dos próprios arquivos.
+
+Se uma fonte ainda negar leitura (`EACCES`/`EPERM`),
+o agregado responde `status: degraded`, razão `session_source_unreadable` e
+totais/analytics nulos; limites de conta e telemetria Local AI independentes
+continuam no contrato. A próxima leitura tenta novamente. Totais parciais não
+podem ser publicados como completos. Os endpoints de telemetria serializam o
+resultado antes dos headers HTTP: outras falhas retornam JSON 500 sem encerrar
+o processo ou interromper `/health` e o chat. O bridge verifica metadados dos
+arquivos a cada ciclo e só relê uma sessão que tenha mudado; não
 consulta uma API, não envia prompts e não consome o plano. Por isso, a nova
 atividade registrada pelo Codex aparece normalmente em até dois segundos. O
 percentual do limite do plano só é apresentado como atual por até dois minutos

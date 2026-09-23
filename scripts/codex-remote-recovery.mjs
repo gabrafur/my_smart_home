@@ -6,15 +6,24 @@ import { pathToFileURL } from "node:url";
 
 const sleep = (milliseconds) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 
+function listenerLine(controlSocket, output) {
+  // New Codex releases publish an alias to a protected physical Unix socket.
+  // ss reports the physical path, never the alias used by clients.
+  let physicalSocket = controlSocket;
+  try { physicalSocket = fs.realpathSync(controlSocket); } catch { /* absent or legacy socket */ }
+  return String(output).split(/\r?\n/).find((line) =>
+    line.trim().split(/\s+/).includes(physicalSocket));
+}
+
 export function listenerReady(controlSocket, run = spawnSync) {
   const result = run("ss", ["-xl"], { encoding: "utf8", timeout: 5000 });
-  return result?.status === 0 && String(result.stdout).includes(controlSocket);
+  return result?.status === 0 && Boolean(listenerLine(controlSocket, result.stdout));
 }
 
 export function listenerPids(controlSocket, run = spawnSync) {
   const result = run("ss", ["-xlpn"], { encoding: "utf8", timeout: 5000 });
   if (result?.status !== 0) return [];
-  const line = String(result.stdout).split(/\r?\n/).find((entry) => entry.includes(controlSocket));
+  const line = listenerLine(controlSocket, result.stdout);
   if (!line) return [];
   return [...line.matchAll(/pid=(\d+)/g)].map((match) => Number(match[1]));
 }
@@ -30,8 +39,8 @@ function processIsCodexAppServer(pid, readFile = fs.readFileSync) {
 }
 
 function startCodexRemote({ codexBin, controlSocket, run, launch, wait }) {
-  if (fs.existsSync(controlSocket)) fs.rmSync(controlSocket);
-  const child = launch(codexBin, ["-c", "features.code_mode_host=true", "app-server", "--listen", "unix://"], {
+  // Codex owns stale socket/alias reconciliation; never unlink a live alias.
+  const child = launch(codexBin, ["-c", "features.code_mode_host=true", "app-server", "--listen", `unix://${controlSocket}`], {
     detached: true,
     stdio: "ignore",
   });

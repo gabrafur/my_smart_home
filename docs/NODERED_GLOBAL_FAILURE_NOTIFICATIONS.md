@@ -28,6 +28,12 @@ funções não relacionados continuam alertando imediatamente. Somente textos
 explícitos de conexão perdida, indisponibilidade ou reconexão pendente podem
 abrir um incidente compartilhado; cor vermelha, condição de domínio e erro de
 uma chamada de serviço não significam que a conexão inteira caiu. Status de
+entidades como `offline : <horário>` ou `unavailable : <horário>` também não
+comprovam queda, mesmo quando aparecem em vários nós. O adaptador aceita o
+contrato explícito de conexão, incluindo `home-assistant.status.disconnected`
+e `home-assistant.status.error`. Ao carregar a política, remove apenas essas
+evidências antigas de estados de entidades, preservando falhas reais e MQTT;
+a avaliação normal encerra o incidente que perdeu corroboração. Status de
 indisponibilidade do DuloNode continuam considerando também erro e timeout. A
 condição precisa permanecer por um minuto antes do push. Status visuais de
 funções de domínio não abrem alerta global, pois seus incidentes já pertencem

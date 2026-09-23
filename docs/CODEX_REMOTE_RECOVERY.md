@@ -17,10 +17,17 @@ não consulta, reinicia nem reconfigura a VPN.
    para essa operação. A ponte do host o coleta sem conceder shell genérico ao
    container.
 4. `scripts/codex-remote-recovery.mjs` verifica novamente o socket. Se ele já
-   estiver ativo, encerra sem ação; caso contrário, remove somente o socket
-   local obsoleto e inicia o App Server do Codex. O worker nunca encerra um
+   estiver ativo, encerra sem ação; caso contrário, inicia o App Server do
+   Codex, que reconcilia seus próprios sockets obsoletos. O worker nunca encerra um
    processo saudável, reinicia o host, o SSH ou o Tailscale.
 5. O estado recuperado encerra o incidente persistente no observador global.
+
+O caminho anunciado pelo Codex pode ser um link simbólico para um socket
+físico protegido. Tanto a sonda quanto o recovery resolvem esse link e procuram
+o caminho exato no `ss`, inclusive ao verificar o PID antes de um restart
+explícito. Comparar somente o alias ou aceitar prefixos pode declarar ausente
+um servidor saudável. O recovery não remove o alias; o argumento `--listen`
+usa o caminho configurado, também quando há um override de socket.
 
 Produção e teste percorrem as mesmas decisões até o gate final. Os controles
 `TESTE 7` e `TESTE 8` simulam, respectivamente, App Server ausente e recuperado;

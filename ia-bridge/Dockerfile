@@ -27,6 +27,15 @@ COPY server.js history.js usage.js codex-options.js codex-rate-limits.js agent-e
   configure-git-workspace.js configure-local-ai-mcp.js bootstrap.js package.json ./
 RUN chown -R node:node /app
 
+# Match the host owner for read-only session mounts, including private 0700/0600
+# paths created by Codex. Keep the service unprivileged and preserve source modes.
+ARG BRIDGE_UID=1000
+ARG BRIDGE_GID=1000
+RUN test "$BRIDGE_UID" -gt 0 && test "$BRIDGE_GID" -gt 0 && \
+    if [ "$(id -g node)" != "$BRIDGE_GID" ]; then groupmod -g "$BRIDGE_GID" node; fi && \
+    if [ "$(id -u node)" != "$BRIDGE_UID" ]; then usermod -u "$BRIDGE_UID" -g "$BRIDGE_GID" node; fi && \
+    chown -R node:node /home/node /app
+
 USER node
 
 EXPOSE 8099

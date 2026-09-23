@@ -2,6 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { listenerReady } from "./codex-remote-recovery.mjs";
 
 export const CODEX_REMOTE_HEALTH_TOPIC = "nodered/infrastructure/remote-access/host-health";
 
@@ -13,12 +14,11 @@ export function collectCodexRemoteHealth({
 } = {}) {
   const checkedAt = now.toISOString();
   const service = run("systemctl", ["is-active", "dropbear.service"], { encoding: "utf8", timeout: 5000 });
-  const socket = run("ss", ["-xl"], { encoding: "utf8", timeout: 5000 });
+  const socketReady = listenerReady(controlSocket, run);
   const version = run(codexBin, ["--version"], { encoding: "utf8", timeout: 10_000 });
   const sshHealthy = service?.status === 0 && String(service.stdout).trim() === "active";
   const codexInstalled = version?.status === 0;
-  const listenerReady = socket?.status === 0 && String(socket.stdout).includes(controlSocket);
-  const codexHealthy = codexInstalled && listenerReady;
+  const codexHealthy = codexInstalled && socketReady;
   return {
     schema_version: 1,
     checked_at: checkedAt,
@@ -30,7 +30,7 @@ export function collectCodexRemoteHealth({
       codex_remote: {
         installed: codexInstalled,
         healthy: codexHealthy,
-        reason: !codexInstalled ? "binary_unavailable" : listenerReady ? "app_server_ready" : "app_server_absent",
+        reason: !codexInstalled ? "binary_unavailable" : socketReady ? "app_server_ready" : "app_server_absent",
       },
     },
   };

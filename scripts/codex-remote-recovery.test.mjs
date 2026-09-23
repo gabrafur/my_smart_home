@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { recoverCodexRemote, restartCodexRemote } from "./codex-remote-recovery.mjs";
+import { recoverCodexRemote, restartCodexRemote, listenerReady, listenerPids } from "./codex-remote-recovery.mjs";
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "codex-remote-recovery-"));
 const socket = path.join(temp, "control.sock");
@@ -24,7 +24,7 @@ const recovered = recoverCodexRemote({
   launch(command, args, options) {
     launches += 1;
     assert.equal(command, "/opt/codex");
-    assert.deepEqual(args, ["-c", "features.code_mode_host=true", "app-server", "--listen", "unix://"]);
+    assert.deepEqual(args, ["-c", "features.code_mode_host=true", "app-server", "--listen", `unix://${socket}`]);
     assert.equal(options.detached, true);
     return { unref() {} };
   },
@@ -63,7 +63,7 @@ const restart = restartCodexRemote({
   },
   launch(command, args, options) {
     assert.equal(command, "/opt/codex");
-    assert.deepEqual(args, ["-c", "features.code_mode_host=true", "app-server", "--listen", "unix://"]);
+    assert.deepEqual(args, ["-c", "features.code_mode_host=true", "app-server", "--listen", `unix://${socket}`]);
     assert.equal(options.detached, true);
     restarted = true;
     return { unref() {} };
@@ -85,6 +85,19 @@ const unverified = restartCodexRemote({
   launch() { throw new Error("must not start over an unverified listener"); },
 });
 assert.deepEqual(unverified, { status: "failed", action: "restart", reason: "listener_owner_unverified" });
+
+// ss lists the target of the advertised alias after a Codex update.
+const physical = path.join(temp, "physical.sock");
+fs.writeFileSync(physical, "synthetic");
+fs.symlinkSync(physical, socket);
+const aliasedRun = () => ({ status: 0, stdout: `LISTEN ${physical} users:(("codex",pid=1234,fd=9))\n` });
+assert.equal(listenerReady(socket, aliasedRun), true);
+assert.deepEqual(listenerPids(socket, aliasedRun), [1234]);
+assert.equal(listenerReady(socket, () => ({ status: 0, stdout: `LISTEN ${physical}.other\n` })), false);
+assert.equal(recoverCodexRemote({ controlSocket: socket, run: aliasedRun,
+  launch() { throw new Error("must preserve the healthy aliased listener"); },
+}).status, "healthy");
+assert.equal(fs.readlinkSync(socket), physical);
 
 fs.rmSync(temp, { recursive: true, force: true });
 console.log("Codex remote recovery tests passed.");

@@ -1672,8 +1672,24 @@ class CodexUsageReader {
   read(liveRateEvent = null) {
     if (this.cached && Date.now() - this.cachedAt < this.cacheMs) return this.cached;
     const now = new Date();
+    let usage;
+    try {
+      usage = this.readCodexUsage(now, liveRateEvent);
+    } catch (error) {
+      if (!['EACCES', 'EPERM'].includes(error.code)) throw error;
+      // A private source must not disable independent live telemetry or turn
+      // a partial historical count into an apparently complete numeric total.
+      usage = {
+        ...buildCodexUsage([], now, liveRateEvent, { accountLimitOnly: true }),
+        status: 'degraded',
+        error: 'session_source_unreadable',
+        totals: null,
+        analytics: null,
+        daily: [],
+      };
+    }
     this.cached = {
-      ...this.readCodexUsage(now, liveRateEvent),
+      ...usage,
       local_ai: scanLocalAiTelemetry(
         this.localAiTelemetryPath,
         this.localAiStatusPath,

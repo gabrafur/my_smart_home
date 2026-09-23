@@ -185,6 +185,9 @@ services:
     logging: *default-logging
     build:
       context: ./ia-bridge
+      args:
+        BRIDGE_UID: ${REPO_UID:-1000}
+        BRIDGE_GID: ${REPO_GID:-1000}
     container_name: ai-bridge
     restart: always
     # Docker's embedded resolver keeps service discovery on 127.0.0.11 and

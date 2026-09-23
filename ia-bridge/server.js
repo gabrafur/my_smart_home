@@ -353,11 +353,12 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && requestUrl.pathname === '/usage') {
     try {
+      const body = JSON.stringify(codexUsage.read(codexRateLimits.readEvent()));
       res.writeHead(200, {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
       });
-      res.end(JSON.stringify(codexUsage.read(codexRateLimits.readEvent())));
+      res.end(body);
     } catch (err) {
       console.error(`Failed to read Codex usage: ${err.message}`);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -367,15 +368,16 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && requestUrl.pathname === '/local-ai/live') {
     try {
+      const body = JSON.stringify({
+        status: 'ok',
+        collected_at: new Date().toISOString(),
+        local_ai: codexUsage.readLocalAiLive(),
+      });
       res.writeHead(200, {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
       });
-      res.end(JSON.stringify({
-        status: 'ok',
-        collected_at: new Date().toISOString(),
-        local_ai: codexUsage.readLocalAiLive(),
-      }));
+      res.end(body);
     } catch (err) {
       console.error(`Failed to read Local AI live status: ${err.message}`);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -385,15 +387,16 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && requestUrl.pathname === '/local-ai/history') {
     try {
+      const body = JSON.stringify({
+        status: 'ok',
+        collected_at: new Date().toISOString(),
+        local_ai: codexUsage.readLocalAiHistory(),
+      });
       res.writeHead(200, {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
       });
-      res.end(JSON.stringify({
-        status: 'ok',
-        collected_at: new Date().toISOString(),
-        local_ai: codexUsage.readLocalAiHistory(),
-      }));
+      res.end(body);
     } catch (err) {
       console.error(`Failed to read Local AI history: ${err.message}`);
       res.writeHead(500, { 'Content-Type': 'application/json' });

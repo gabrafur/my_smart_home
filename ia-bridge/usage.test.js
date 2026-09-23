@@ -1004,3 +1004,29 @@ test('reports bounded memory retrieval separately from tool-output context savin
   assert.equal(usage.memory.startup_context.observable_startup_context_tokens, 8192);
   assert.equal(usage.memory.latest_decisions[0].source, undefined);
 });
+
+test('unreadable session source degrades totals without losing live account data', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-private-source-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const reader = new CodexUsageReader(directory, null, null, 0);
+  const original = fs.readdirSync;
+  let denied = true;
+  t.mock.method(fs, 'readdirSync', (target, options) => {
+    if (target === directory && denied) throw Object.assign(new Error(`denied: ${directory}`), { code: 'EACCES' });
+    return original(target, options);
+  });
+  const live = { timestamp: new Date(), rateLimits: {
+    limit_id: 'codex', plan_type: 'plus',
+    primary: { used_percent: 12, window_minutes: 300, resets_at: 2000000000 },
+  } };
+  const result = reader.read(live);
+  assert.equal(result.status, 'degraded');
+  assert.equal(result.error, 'session_source_unreadable');
+  assert.equal(result.totals, null);
+  assert.equal(result.analytics, null);
+  assert.equal(result.rate_limit.used_percent, 12);
+  assert.ok(result.local_ai);
+  assert.equal(JSON.stringify(result).includes(directory), false);
+  denied = false;
+  assert.equal(reader.read(live).status, 'ok');
+});
