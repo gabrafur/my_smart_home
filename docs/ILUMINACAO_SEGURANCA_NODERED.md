@@ -325,6 +325,22 @@ timers e todos os demais dispositivos permanecem sem efeitos.
 
 ## Freshness e `vehicle_primary_in_use`
 
+O refletor renova sua observação física também com relatos MQTT vivos `ON` ou
+`OFF`, mesmo quando o estado permanece igual. O tópico vem do binding privado
+`exterior_light.topics.security_state` (`BINDING_SECURITY_LIGHT_STATE_TOPIC`).
+O adaptador `security-light-mqtt-observation.js` rejeita retained, mensagens sem
+estado válido e testes sintéticos; encaminha a observação à mesma reconciliação
+monotônica usada pelo Home Assistant. Não cria chegada nem liga dispositivos.
+Eventos de mudança do Home Assistant continuam fornecendo startup e
+indisponibilidade. Sem novos relatos, o frescor expira conforme a política
+canônica `physical_fresh_seconds`; não se deve aumentar esse limite para
+compensar um observador que escuta somente mudanças entre `on` e `off`.
+
+Regressão: `flows:test-security` mantém `OFF` por vários ciclos de relato,
+rejeita cache retained e confirma o bloqueio após cessarem os relatos. Para
+verificação operacional, observe passivamente os relatos periódicos e o
+contexto de reconciliação; os controles manuais existentes continuam em dry-run.
+
 Freshness é calculada com `last_updated` (ou `last_changed` como fallback),
 sempre em epoch Unix UTC, milissegundos:
 

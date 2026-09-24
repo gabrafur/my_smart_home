@@ -46710,7 +46710,8 @@
         "g": "6013a28eaa95addd",
         "name": "Receber contexto para reconciliação",
         "links": [
-            "68a67feb7cc57957"
+            "68a67feb7cc57957",
+            "security_visual_reports_out"
         ],
         "x": 630,
         "y": 2500,
@@ -80681,6 +80682,87 @@
         "info": "Todos os catches são gravados, inclusive erros repetidos e suprimidos. Status confirmados e alertas de domínio são registrados na entrada do dispatch. Histórico JSONL privado em /data/failure-history, retenção pela política error_retention_days. Campos ausentes permanecem null; campos acima de 20.000 caracteres e cadeias acima de oito causas declaram truncamento. Não serializa msg inteiro. Falha no próprio escritor segue somente ao log do runtime.",
         "x": 2160,
         "y": 2030,
+        "wires": []
+    },
+    {
+        "id": "security_visual_reports_group_v1",
+        "type": "group",
+        "z": "6b7552efb85343f4",
+        "name": "9. Relatos físicos Zigbee — inclusive estado inalterado",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "stroke-opacity": "1",
+            "fill": "#e2e8f0",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "security_visual_reports_mqtt",
+            "security_visual_reports_normalize",
+            "security_visual_reports_out"
+        ],
+        "x": 64,
+        "y": 2600,
+        "w": 1100,
+        "h": 142
+    },
+    {
+        "id": "security_visual_reports_mqtt",
+        "type": "mqtt in",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_reports_group_v1",
+        "name": "Relato do refletor (binding privado)",
+        "topic": "${BINDING_SECURITY_LIGHT_STATE_TOPIC}",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 280,
+        "y": 2670,
+        "wires": [
+            [
+                "security_visual_reports_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_reports_normalize",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_reports_group_v1",
+        "name": "Normalizar relato vivo; rejeitar retained",
+        "func": "// Protocol adapter only. Availability and lifecycle remain in the shared path.\n// Retained broker cache must never masquerade as a new physical observation.\nif (msg.retain === true || msg._location_test === true || msg.payload?.test_mode === true) return null;\nconst state = msg.payload?.state;\nif (state !== \"ON\" && state !== \"OFF\") return null;\nmsg.payload = {\n    kind: \"light_physical\",\n    state: state.toLowerCase(),\n    updated_at: Date.now(),\n    source: \"zigbee_live_report\"\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 2670,
+        "wires": [
+            [
+                "security_visual_reports_out"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_reports_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_reports_group_v1",
+        "name": "Relato físico → reconciliação",
+        "mode": "link",
+        "links": [
+            "cd40f5f8e40b07af"
+        ],
+        "x": 1070,
+        "y": 2670,
         "wires": []
     }
 ]

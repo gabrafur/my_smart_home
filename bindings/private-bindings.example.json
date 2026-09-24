@@ -242,6 +242,9 @@
     },
     "exterior_light": {
       "enabled": true,
+      "topics": {
+        "security_state": "zigbee2mqtt/example_security_light"
+      },
       "entities": {
         "light.exterior_light": {
           "target_entity_id": "light.example_exterior_light",

@@ -24,6 +24,7 @@ const binding = {
       },
     },
     exterior_light: {
+      topics: { security_state: "zigbee2mqtt/example_security_light" },
       mqtt_topics: ["zigbee2mqtt/example_exterior_light/set"],
     },
   },
@@ -66,8 +67,11 @@ try {
     );
   }
   console.log("Node-RED public binding loader test passed.");
+  assert.equal(process.env.BINDING_SECURITY_LIGHT_STATE_TOPIC,
+    binding.roles.exterior_light.topics.security_state);
 } finally {
   delete process.env.PUBLIC_BINDINGS_DIR;
+  delete process.env.BINDING_SECURITY_LIGHT_STATE_TOPIC;
   for (const key of Object.keys(process.env)) {
     if (key.startsWith("BINDING_GARAGE_GATE_")) delete process.env[key];
   }

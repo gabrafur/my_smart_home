@@ -2530,6 +2530,47 @@ for (const state of ["home", "near_home", "not_home"]) {
     }
   }
 }
-assert.equal(passed.length, 80);
+scenario("relatos Zigbee OFF repetidos renovam frescor sem fabricar chegada", () => {
+  const input = byId.get("security_visual_reports_mqtt");
+  assert.equal(input.topic, "${BINDING_SECURITY_LIGHT_STATE_TOPIC}");
+  assert.equal(input.rap, true, "preservar retained para rejeitar cache");
+  assert.deepEqual(input.wires, [["security_visual_reports_normalize"]]);
+  assert(byId.get("cd40f5f8e40b07af").links.includes("security_visual_reports_out"));
+  const originalNow = Date.now;
+  let clock = originalNow();
+  Date.now = () => clock;
+  try {
+    const flow = readyLightFlow({ security_light_physical_observed_at: clock - 180_000 });
+    const candidate = () => ({ payload: { refresh_cycle_id: `report-${clock}` } });
+    assert.equal(run("light_check_inactive", candidate(), flow)[0], null);
+    for (let minute = 0; minute < 6; minute++) {
+      const report = runDirect("security_visual_reports_normalize",
+        { payload: { state: "OFF" }, retain: false }, flow);
+      assert.equal(report.payload.updated_at, clock);
+      assert.equal(report.payload.source, "zigbee_live_report");
+      run("light_reconcile", report, flow);
+      assert.equal(flow.get("security_light_physical_state"), "off");
+      assert.equal(flow.get("security_light_physical_observed_at"), clock);
+      assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, false);
+      assert(run("light_check_inactive", candidate(), flow)[0]);
+      clock += 60_000;
+    }
+    const observed = flow.get("security_light_physical_observed_at");
+    for (const message of [
+      { payload: { state: "OFF" }, retain: true },
+      { payload: { state: "UNKNOWN" }, retain: false },
+      { payload: { linkquality: 100 }, retain: false },
+      { payload: { state: "OFF", test_mode: true }, retain: false },
+      { payload: { state: "OFF" }, _location_test: true, retain: false },
+    ]) assert.equal(runDirect("security_visual_reports_normalize", message, flow), null);
+    assert.equal(flow.get("security_light_physical_observed_at"), observed);
+    clock += 120_001;
+    assert.equal(run("light_check_inactive", candidate(), flow)[0], null,
+      "perda real dos relatos continua stale; nenhum relógio renova evidência");
+  } finally {
+    Date.now = originalNow;
+  }
+});
+assert.equal(passed.length, 81);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

@@ -426,6 +426,25 @@ for (const id of ["eb9ffff62431e1c3", "cd40f5f8e40b07af"]) {
   required(id).wires = [["security_visual_lifecycle_load"]];
 }
 required("eb9ffff62431e1c3").name = "Estado inicial e mudanças físicas do refletor";
+// An unchanged relay still reports its state. HA state-change events alone
+// cannot prove that these periodic observations are reaching the controller.
+const reports = group("security_visual_reports_group_v1",
+  "9. Relatos físicos Zigbee — inclusive estado inalterado", 64, 2600, 1100, 142,
+  "#64748b", "#e2e8f0");
+grouped(reports.id, {
+  id: "security_visual_reports_mqtt", type: "mqtt in", z: TAB, g: reports.id,
+  name: "Relato do refletor (binding privado)",
+  topic: "${BINDING_SECURITY_LIGHT_STATE_TOPIC}", qos: "0", datatype: "json",
+  broker: required("721c47f31046b8bc").id, nl: false, rap: true, rh: 0,
+  inputs: 0, x: 280, y: 2670, wires: [["security_visual_reports_normalize"]],
+});
+fn("security_visual_reports_normalize", reports.id, "Normalizar relato vivo; rejeitar retained",
+  "security-light-mqtt-observation.js", 1, 730, 2670, [["security_visual_reports_out"]]);
+linkOut("security_visual_reports_out", reports.id, "Relato físico → reconciliação",
+  "cd40f5f8e40b07af", 1070, 2670);
+required("cd40f5f8e40b07af").links = [...new Set([
+  ...required("cd40f5f8e40b07af").links, "security_visual_reports_out"
+])];
 for (const [id, x, y] of [
   ["eb9ffff62431e1c3", 210, 2300], ["cd40f5f8e40b07af", 470, 2340]
 ]) Object.assign(required(id), { x, y, g: reconcile.id });
@@ -459,7 +478,7 @@ for (const id of reconcile.nodes ?? []) {
 }
 required(TAB).info = "Decisões de contexto, replay, direção, recovery e políticas de tempo são visíveis. A confirmação HOME de 90 s e o refresh extraordinário pertencem a contexto_chegadas; este tab apenas usa o contexto atualizado para decidir o desligamento. JavaScript remanescente adapta estruturas e aplica transações de estado; produção e teste divergem somente na fronteira final de efeitos.";
 flows = reconcileGeneratedFlows(originalFlows, flows, {
-  isOwned: (node) => generated.has(node.id),
+  isOwned: (node) => node.id.startsWith("security_visual_") || generated.has(node.id),
 });
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Security light visual policy installed in ${outputPath}`);

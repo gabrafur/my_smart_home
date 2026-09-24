@@ -116,6 +116,7 @@ exposeBindingTopic("BINDING_GARAGE_GATE_RELAY_STATE_TOPIC", "garage_gate", "rela
 exposeBindingTopic("BINDING_GARAGE_GATE_ACTION_TOPIC", "garage_gate", "action");
 exposeBindingTopic("BINDING_GARAGE_GATE_COMMAND_TOPIC", "garage_gate", "command");
 exposeBindingTopic("BINDING_GARAGE_GATE_STATE_TOPIC", "garage_gate", "state");
+exposeBindingTopic("BINDING_SECURITY_LIGHT_STATE_TOPIC", "exterior_light", "security_state");
 
 module.exports = {
 
