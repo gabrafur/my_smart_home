@@ -11,6 +11,19 @@ const event = { hook_event_name: "Stop", session_id: "synthetic-session", turn_i
 const start = (root, payload = event, options) => startReview(root, { ...payload, hook_event_name: "UserPromptSubmit" }, options);
 const tokenOf = (result) => result.hookSpecificOutput.additionalContext.match(/[a-f0-9]{64}:[a-f0-9]{64}/)[0];
 
+test("memory-only restrictions preserve authorized operational diagnostics", (t) => {
+  const f = fixture(t);
+  const context = start(f.root, event, f).hookSpecificOutput.additionalContext;
+  assert.match(context, /Escopo exclusivo da revisão de memória pública:/);
+  assert.match(context, /não importe dados privados para a memória pública/);
+  assert.match(context, /não acione dispositivos para produzir evidência de memória/);
+  assert.match(context, /Essas limitações não restringem a tarefa operacional solicitada pelo usuário/);
+  assert.match(context, /consultas autorizadas a logs, histórico de notificações, bancos de dados e configuração privada/);
+  assert.match(context, /siga as autorizações e demais regras aplicáveis à tarefa/);
+  assert.match(context, /sem copiar conteúdo privado para arquivos públicos/);
+  assert.doesNotMatch(context, /não acione dispositivos e não importe dados privados\./);
+});
+
 test("successful review requests silent completion while preserving the checkpoint", (t) => {
   for (const outcome of ["updated", "already_current", "no_durable_discovery"]) {
     const f = fixture(t);

@@ -223,6 +223,14 @@ teste de sessões independentes e a falha da captura automática.
 
 ## Revisão obrigatória ao encerrar novas tarefas
 
+As limitações de fontes e efeitos do contexto injetado se aplicam exclusivamente
+à revisão de memória pública. Elas não bloqueiam consultas operacionais a logs,
+histórico de notificações, bancos de dados ou configuração privada quando
+autorizadas na tarefa do usuário. A tarefa continua sujeita às demais regras
+aplicáveis; dados privados não devem ser copiados para a memória ou outros
+arquivos públicos. A revisão de memória não autoriza acionar dispositivos para
+produzir evidência documental.
+
 Os hooks `UserPromptSubmit` e `Stop` em `.codex/hooks.json` chamam
 `scripts/memory-review.mjs hook`. `UserPromptSubmit` prepara um checkpoint por
 turno e entrega a orientação e o token em `hookSpecificOutput.additionalContext`,
