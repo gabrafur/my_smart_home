@@ -6,8 +6,10 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 import {
+  assertCandidateContent,
   findActiveHostUpdateStage,
   isAllowedCandidatePath,
   nextPromotionStatus,
@@ -140,4 +142,43 @@ test("resume accepts a validated Kia commit before newer unrelated commits", () 
     parent: "candidate-parent",
     appliedCommit: null,
   }), /promotion commit is unavailable/);
+  assert.equal(protectedComparisonBase({
+    resumeGit: true,
+    parent: "candidate-parent",
+    appliedCommit: null,
+    verifiedUncommittedCandidate: true,
+  }), "candidate-parent", "verified runtime bytes can resume before the promotion commit exists");
+});
+
+test("candidate comparison supports deleted files and rejects incomplete or altered runtime bytes", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "kia-candidate-content-test-"));
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  const commit = (subject) => git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", subject);
+  try {
+    git("init", "--quiet");
+    const prefix = "homeassistant/custom_components/kia_uvo/";
+    fs.mkdirSync(path.join(root, prefix), { recursive: true });
+    const deleted = prefix + "old.py";
+    const retained = prefix + "coordinator.py";
+    fs.writeFileSync(path.join(root, deleted), "old implementation\n");
+    fs.writeFileSync(path.join(root, retained), "old coordinator\n");
+    git("add", ".");
+    commit("test: create previous integration fixture");
+    fs.unlinkSync(path.join(root, deleted));
+    fs.writeFileSync(path.join(root, retained), "candidate coordinator\n");
+    git("add", "-A");
+    commit("test: remove obsolete upstream file");
+    const candidate = { commit: git("rev-parse", "HEAD") };
+    assertCandidateContent(candidate, [deleted, retained], root);
+    fs.writeFileSync(path.join(root, deleted), "unexpected leftover\n");
+    assert.throws(() => assertCandidateContent(candidate, [deleted, retained], root), /deletion was not applied/);
+    fs.unlinkSync(path.join(root, deleted));
+    fs.writeFileSync(path.join(root, retained), "unrelated edit\n");
+    assert.throws(() => assertCandidateContent(candidate, [deleted, retained], root), /differs from candidate/);
+    fs.unlinkSync(path.join(root, retained));
+    fs.symlinkSync("missing-target", path.join(root, retained));
+    assert.throws(() => assertCandidateContent(candidate, [deleted, retained], root), /not a regular file/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

@@ -147,8 +147,9 @@ function changedPaths(commit) {
 
 function workingTreePaths() {
   const tracked = git(["diff", "--name-only"]).split("\n").filter(Boolean);
+  const staged = git(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
   const untracked = git(["ls-files", "--others", "--exclude-standard"]).split("\n").filter(Boolean);
-  return [...new Set([...tracked, ...untracked])].sort();
+  return [...new Set([...tracked, ...staged, ...untracked])].sort();
 }
 
 function samePaths(left, right) {
@@ -171,8 +172,9 @@ function findPromotionCommit(candidate, expectedPaths) {
   ));
 }
 
-export function protectedComparisonBase({ resumeGit, parent, appliedCommit }) {
+export function protectedComparisonBase({ resumeGit, parent, appliedCommit, verifiedUncommittedCandidate = false }) {
   if (!resumeGit) return parent;
+  if (!appliedCommit && verifiedUncommittedCandidate) return parent;
   if (!appliedCommit) {
     throw new Error("runtime is applied but the promotion commit is unavailable");
   }
@@ -201,10 +203,17 @@ function fetchAndValidate(candidate, { resumeGit = false } = {}) {
   if (!paths.length || paths.some((file) => !isAllowedCandidatePath(file))) {
     throw new Error(`candidate paths rejected: ${paths.join(", ") || "none"}`);
   }
+  const appliedCommit = resumeGit ? findPromotionCommit(candidate, paths) : null;
+  let verifiedUncommittedCandidate = false;
+  if (resumeGit && !appliedCommit && samePaths(workingTreePaths(), paths)) {
+    assertCandidateContent(candidate, paths);
+    verifiedUncommittedCandidate = true;
+  }
   const comparisonBase = protectedComparisonBase({
     resumeGit,
     parent,
-    appliedCommit: resumeGit ? findPromotionCommit(candidate, paths) : null,
+    appliedCommit,
+    verifiedUncommittedCandidate,
   });
   const newerProtectedChanges = git([
     "diff",
@@ -250,12 +259,24 @@ function extractCandidate(candidate, destination) {
   run("tar", ["-x", "-C", destination], { input: archive });
 }
 
-function assertCandidateContent(candidate, paths) {
+export function assertCandidateContent(candidate, paths, root = repoRoot) {
+  const entries = run("git", ["ls-tree", "-z", candidate.commit, "--", ...paths], { cwd: root });
+  const tree = new Map(entries.split("\0").filter(Boolean).map((entry) => {
+    const separator = entry.indexOf("\t");
+    return [entry.slice(separator + 1), entry.slice(0, separator)];
+  }));
   for (const file of paths) {
-    const expected = run("git", ["show", `${candidate.commit}:${file}`], { encoding: null });
-    const actualPath = path.join(repoRoot, file);
-    if (!fs.existsSync(actualPath) ||
-        !Buffer.from(expected).equals(fs.readFileSync(actualPath))) {
+    const actualPath = path.join(root, file);
+    const stat = fs.lstatSync(actualPath, { throwIfNoEntry: false });
+    if (!tree.has(file)) {
+      if (stat) throw new Error(`candidate deletion was not applied: ${file}`);
+      continue;
+    }
+    if (!/^100(?:644|755) blob [0-9a-f]+$/.test(tree.get(file)) || !stat?.isFile()) {
+      throw new Error(`candidate path is not a regular file: ${file}`);
+    }
+    const expected = run("git", ["show", `${candidate.commit}:${file}`], { cwd: root, encoding: null });
+    if (!Buffer.from(expected).equals(fs.readFileSync(actualPath))) {
       throw new Error(`runtime result differs from candidate content: ${file}`);
     }
   }

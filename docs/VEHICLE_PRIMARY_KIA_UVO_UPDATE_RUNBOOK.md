@@ -77,6 +77,13 @@ O token nao e gravado pelo script. O fluxo:
 No caminho normal, o promotor versiona e publica a sincronização somente depois
 dessas confirmações. Nunca use force push.
 
+Se o runtime já foi validado e a publicação falhar antes do commit, a retomada
+aceita somente os caminhos exatos da candidata e compara todos os bytes antes
+de continuar. Remoções upstream exigem ausência do arquivo local; symlinks,
+arquivos remanescentes e alterações extras são rejeitados. A comparação inclui
+mudanças staged e não staged. A retomada mantém a verificação de alterações
+protegidas desde a base e não reinstala nem reinicia a integração já validada.
+
 ## Conflito e absorcao upstream
 
 Os arquivos alterados localmente e conflitos aparecem no JSON de status. Se a
