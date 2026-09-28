@@ -47,6 +47,7 @@ def _load_coordinator_without_home_assistant():
     )
     _module("homeassistant.helpers", __path__=[])
     _module("homeassistant.helpers.entity_registry", async_get=lambda _hass: None)
+    _module("homeassistant.helpers.dispatcher", async_dispatcher_send=lambda *_args: None)
 
     class FakeStore:
         def __init__(self, _hass, _version, key, **_kwargs):
@@ -100,6 +101,7 @@ def _load_coordinator_without_home_assistant():
         )
     }
     _module("hyundai_kia_connect_api", **api_types)
+    _module("hyundai_kia_connect_api.svm_image", render_views=lambda *_args, **_kwargs: {})
     _module(
         "hyundai_kia_connect_api.const",
         ORDER_STATUS=Enum(

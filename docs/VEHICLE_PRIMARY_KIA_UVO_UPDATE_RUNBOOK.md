@@ -49,6 +49,13 @@ revalida essa candidata no host antes de chamar o mesmo aplicador seguro. Os
 workers Alexa e Kia compartilham um lock, e a promoção também espera qualquer
 etapa ativa de DietPi, Core, containers ou dependências do repositório.
 
+Antes de qualquer instalação, `validateMerged` também executa as regressões
+locais de consumo e refresh contra uma cópia isolada da candidata. Uma falha
+interrompe a preparação, antes de `update.install` ou do restart. Os testes
+simulam as APIs externas, sem consultar o veículo ou tocar a instalação ativa.
+Novos imports upstream precisam ser representados nessa simulação quando
+pertinentes; a simples compilação não comprova preservação dos comportamentos.
+
 O comando abaixo permanece apenas como recuperação operacional ou execução
 manual deliberada, depois de revisar o resultado, o diff e os testes:
 

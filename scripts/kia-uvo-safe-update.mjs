@@ -251,6 +251,23 @@ function applyDelta(delta, mergedDir) {
   return { state: "applied", conflicts: [] };
 }
 
+export function validateLocalRegressions(mergedDir, regressionTest = path.join(
+  repoRoot, "homeassistant/tests/test_vehicle_primary_consumption.py",
+)) {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "kia-uvo-regressions-"));
+  try {
+    const testDir = path.join(workspace, "homeassistant/tests");
+    fs.mkdirSync(testDir, { recursive: true });
+    copyComponent(mergedDir, path.join(workspace, "homeassistant/custom_components/kia_uvo"));
+    fs.copyFileSync(regressionTest, path.join(testDir, "test_vehicle_primary_consumption.py"));
+    command("python3", ["-m", "unittest", "discover", "-s", testDir,
+      "-p", "test_vehicle_primary_consumption.py"], { capture: true });
+    return "passed";
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+}
+
 function validateMerged(mergedDir, targetVersion) {
   const manifest = readJson(path.join(mergedDir, "manifest.json"));
   if (normalizeVersion(manifest.version) !== normalizeVersion(targetVersion)) {
@@ -266,8 +283,10 @@ function validateMerged(mergedDir, targetVersion) {
     );
   }
   command("python3", ["-m", "compileall", "-q", mergedDir]);
+  const localRegressions = validateLocalRegressions(mergedDir);
   return {
     compileall: "passed",
+    local_regressions: localRegressions,
     required_markers: `${REQUIRED_MARKERS.length}/${REQUIRED_MARKERS.length}`,
   };
 }
