@@ -256,3 +256,10 @@ Startup parcial não encerra passeios locais persistidos: a prova ON/OFF é vali
 O frescor físico da iluminação de segurança deve aceitar relatos MQTT vivos de estado inalterado pelo binding exterior_light.topics.security_state. Eventos de mudança do Home Assistant sozinhos não representam relatos periódicos. Rejeitar retained e mensagens sem estado válido; manter a reconciliação monotônica e a expiração canônica quando cessarem os relatos. O adaptador não cria chegada nem aciona dispositivos.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"adiamento-silencioso-da-promocao-kia","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-09-28","evidence":[{"file":"docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md","sha256":"b52486e3eb259ff2c5544193fc01234fa02bab4873b1d55bd841327d82224718"},{"file":"nodered/tools/install-daily-host-update-flow.mjs","sha256":"af415e896e86905954a673c3048856cfcd8981cb44fb58787f6c6fa60c12b42e"},{"file":"nodered/tools/test-daily-host-update-flow.mjs","sha256":"e65e06de3ade6c04efea7a7d6713bb4b78ff701b8ca44a5b63d1739b54577c12"}]} -->
+## Adiamento da promoção e publicação automática
+
+A promoção Kia adiada por pré-requisito é estado esperado: o consumidor no canvas de atualizações mantém status amarelo, sem node.error nem push. O horário do polling não identifica incidente. Falhas reais são deduplicadas por estado e versão candidata em contexto persistente; transições e novas candidatas permitem nova avaliação, com dry-run separado. A publicação automática exige checkout limpo e validação pública: evidências de memória sobre outro serviço não devem depender incidentalmente dos digests do Compose inteiro quando Dockerfile, testes e guia já sustentam a nota. O gerador preserva geometria e links aprovados e possui regressão de idempotência.
+
+<!-- /memory-record -->

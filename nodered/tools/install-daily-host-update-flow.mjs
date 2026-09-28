@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -349,28 +350,31 @@ const result = {
     test_mode: TEST_MODE,
     observed_at: Date.now()
 };
-const signature = [result.state, result.target, result.updated_at].join(":");
+// Poll timestamps are observations, not new promotion incidents.
+const signature = [result.state, result.target].join(":");
 const key = TEST_MODE ? "kia_uvo_promotion_last_result_v1__test" : "kia_uvo_promotion_last_result_v1";
 const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
-if (!TEST_MODE && previous?.signature === signature) return null;
+const duplicate = previous?.state === state && previous?.target === target;
 result.signature = signature;
 if (TEST_MODE) flow.set(key, result);
 else flow.set(key, result, "persistent");
-const failed = ["failed", "deferred"].includes(state);
+const failed = state === "failed";
 const completed = state === "completed";
 node.status({
-    fill: failed ? "red" : completed ? "green" : "blue",
+    fill: failed ? "red" : state === "deferred" ? "yellow" : completed ? "green" : "blue",
     shape: failed ? "ring" : "dot",
     text: completed ? "runtime e main confirmados: " + target
         : state === "applying" ? "validando runtime: " + target
         : state + ": " + target
 });
 if (TEST_MODE) {
+    result.would_notify = failed && !duplicate;
     msg.payload = result;
     return msg;
 }
-if (failed) {
-    node.error("kia_uvo_promotion_failed state=" + state + " target=" + target + " updated_at=" + updatedAt, msg);
+if (failed && !duplicate) {
+    msg.observer_diagnostic = { reason: "promotion_failed", status: state };
+    node.error("kia_uvo_promotion_failed state=" + state + " target=" + target, msg);
 }
 return null;`;
 
@@ -2200,6 +2204,27 @@ for (const node of nodes) {
 }
 
 const replacements = new Map(nodes.map((node) => [node.id, node]));
+// Preserve approved named routes when they still lead to the generated target.
+// Layout overrides preserve geometry; they must not recreate obsolete wiring.
+const existingById = new Map(flows.map((node) => [node.id, node]));
+const isLayoutRoute = (id) => /^notification_hub_wire_(?:out|in)_[a-f0-9]{12}$/.test(id);
+for (const replacement of nodes) {
+  const existing = existingById.get(replacement.id);
+  if (replacement.type === "group" && existing) {
+    replacement.nodes.push(...existing.nodes.filter(isLayoutRoute));
+  }
+  if (!Array.isArray(replacement.wires) || !existing) continue;
+  replacement.wires = replacement.wires.map((targets, output) => targets.map((target) => {
+    return (existing.wires?.[output] ?? []).find((id) => {
+      const route = existingById.get(id);
+      if (!isLayoutRoute(id) || route?.type !== "link out" || route.links?.length !== 1) return false;
+      const destination = existingById.get(route.links[0]);
+      return destination?.type === "link in" && destination.links?.length === 1 &&
+        destination.links[0] === id && destination.wires?.length === 1 &&
+        destination.wires[0].length === 1 && destination.wires[0][0] === target;
+    }) ?? target;
+  }));
+}
 const liveOwnedIds = new Set(replacements.keys());
 const keepReference = (id) => !owned(id) || liveOwnedIds.has(id);
 const next = [];
@@ -2227,5 +2252,6 @@ if (replacements.size) {
     : firstConfig === -1 ? next.length : firstConfig;
   next.splice(insertion, 0, ...replacements.values());
 }
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+const finalized = reconcileGeneratedFlows(flows, next, { isOwned: (node) => owned(node.id) });
+fs.writeFileSync(outputPath, `${JSON.stringify(finalized, null, 4)}\n`);
 console.log(`Installed ${nodes.length} daily host update nodes in ${outputPath}`);

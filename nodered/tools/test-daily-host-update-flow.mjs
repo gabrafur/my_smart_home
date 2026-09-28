@@ -3,6 +3,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -14,7 +16,43 @@ const node = (id) => {
   return found;
 };
 
+function resolvedWires(id) {
+  return node(id).wires.map((targets) => targets.flatMap((targetId) => {
+    const route = node(targetId);
+    if (!/^notification_hub_wire_out_[a-f0-9]{12}$/.test(route.id)) return [targetId];
+    assert.equal(route.type, "link out");
+    assert.equal(route.links.length, 1);
+    const destination = node(route.links[0]);
+    assert.equal(destination.type, "link in");
+    assert.deepEqual(destination.links, [route.id]);
+    return destination.wires[0];
+  }));
+}
+
 assert.equal(node("daily_host_updates_tab").label, "atualizacoes_diarias");
+const generatedDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "daily-update-regeneration-"));
+try {
+  const generatedPath = path.join(generatedDirectory, "flows.json");
+  const regenerate = (source) => {
+    execFileSync(process.execPath, [path.join(here, "install-daily-host-update-flow.mjs"), source, generatedPath]);
+    execFileSync(process.execPath, [path.join(here, "install-global-flow-observer.mjs"), generatedPath, generatedPath]);
+    execFileSync(process.execPath, [path.join(here, "apply-left-margin.mjs"), generatedPath, generatedPath]);
+  };
+  regenerate(flowsPath);
+  const generated = JSON.parse(fs.readFileSync(generatedPath, "utf8"));
+  for (const original of flows.filter((entry) => entry.z === "daily_host_updates_tab")) {
+    const rebuilt = generated.find((entry) => entry.id === original.id);
+    assert.ok(rebuilt, `regeneration must preserve ${original.id}`);
+    for (const field of ["x", "y", "w", "h", "wires", "links"]) {
+      assert.deepEqual(rebuilt[field], original[field], `approved ${field} must survive regeneration: ${original.id}`);
+    }
+  }
+  const first = fs.readFileSync(generatedPath, "utf8");
+  regenerate(generatedPath);
+  assert.equal(fs.readFileSync(generatedPath, "utf8"), first, "daily update generator must be idempotent");
+} finally {
+  fs.rmSync(generatedDirectory, { recursive: true, force: true });
+}
 assert.equal(node("git_backup_tab").label, "backup_git");
 assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_after_backup_in"]);
 assert.deepEqual(node("daily_update_after_backup_in").links, ["git_backup_daily_update_out"]);
@@ -68,7 +106,7 @@ assert.deepEqual(node("daily_update_alexa_media_final_gate").wires, [
 ]);
 assert.deepEqual(node("daily_update_alexa_media_backup_out").links, ["git_backup_request_in"]);
 assert.ok(node("git_backup_request_in").links.includes("daily_update_alexa_media_backup_out"));
-assert.deepEqual(node("daily_update_kia_route_test").wires, [
+assert.deepEqual(resolvedWires("daily_update_kia_route_test"), [
   ["daily_update_kia_test_out"],
   ["daily_update_kia_request_host"],
 ]);
@@ -483,6 +521,32 @@ assert.equal(parseKiaPromotion(
   flow,
 ), null);
 assert.equal(errors.length, errorsBeforePromotionFailure + 1, "duplicate promotion failures must be deduplicated");
+
+// A fresh poll timestamp must never turn one pending promotion into new incidents.
+const promotionErrors = errors.length;
+for (let minute = 0; minute < 10; minute++) {
+  parseKiaPromotion({ payload: `kia-uvo-promotion state=deferred target=v3.12.0 updated_at=poll-${minute}` }, runtimeNode, flow);
+}
+assert.equal(errors.length, promotionErrors, "expected deferral is silent across repeated polls");
+parseKiaPromotion({ payload: "kia-uvo-promotion state=failed target=v3.12.0 updated_at=new-attempt" }, runtimeNode, flow);
+assert.equal(errors.length, promotionErrors + 1, "a real failure after deferral still alerts");
+const restartedPromotion = new Function("msg", "node", "flow", node("daily_update_kia_promotion_parse_result").func);
+restartedPromotion({ payload: "kia-uvo-promotion state=failed target=v3.12.0 updated_at=after-restart" }, runtimeNode, flow);
+assert.equal(errors.length, promotionErrors + 1, "persistent lifecycle survives runtime recreation and timestamp changes");
+assert.doesNotMatch(errors.at(-1), /updated_at=/, "observer signature excludes poll timestamps");
+parseKiaPromotion({ payload: "kia-uvo-promotion state=completed target=v3.12.0 updated_at=recovered" }, runtimeNode, flow);
+parseKiaPromotion({ payload: "kia-uvo-promotion state=failed target=v3.13.0 updated_at=next-target" }, runtimeNode, flow);
+assert.equal(errors.length, promotionErrors + 2, "another target can open a new incident");
+const syntheticDeferred = parseKiaPromotion({ _kia_promotion_test: true,
+  payload: "kia-uvo-promotion state=deferred target=v3.13.0 updated_at=synthetic" }, runtimeNode, flow);
+assert.equal(syntheticDeferred.payload.would_notify, false);
+const syntheticFailure = parseKiaPromotion({ _kia_promotion_test: true,
+  payload: "kia-uvo-promotion state=failed target=v3.13.0 updated_at=synthetic" }, runtimeNode, flow);
+assert.equal(syntheticFailure.payload.would_notify, true);
+const syntheticDuplicate = parseKiaPromotion({ _kia_promotion_test: true,
+  payload: "kia-uvo-promotion state=failed target=v3.13.0 updated_at=synthetic-next" }, runtimeNode, flow);
+assert.equal(syntheticDuplicate.payload.would_notify, false);
+assert.equal(errors.length, promotionErrors + 2, "dry-run evaluates the same lifecycle without production alerts");
 
 const compose = fs.readFileSync(path.resolve(here, "..", "..", "docker-compose.yml"), "utf8");
 assert.match(compose, /\.\/homeassistant\/\.daily-update-trigger:\/run\/daily-update-trigger/);

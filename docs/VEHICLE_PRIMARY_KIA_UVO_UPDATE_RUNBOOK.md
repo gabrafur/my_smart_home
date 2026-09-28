@@ -77,6 +77,30 @@ aplicacao do delta falhar, a versao instalada permanece intacta. Em cada
 versao, compare os marcadores e o diff: funcionalidade incorporada oficialmente
 deve ser removida do delta local e validada usando o upstream.
 
+## Adiamento e alertas da promoção
+
+No canvas `atualizacoes_diarias`, `deferred` indica que a promoção aguarda um
+pré-requisito, como checkout limpo ou término de outra atualização. Esse estado
+fica amarelo e não emite erro nem push. O polling pode atualizar `updated_at`
+a cada leitura; esse horário não identifica um incidente novo.
+
+Uma falha real (`failed`) continua chegando ao observador global. O consumidor
+deduplica por estado e versão candidata em contexto persistente, inclusive após
+restart; uma transição de estado ou outra versão permite nova avaliação. O
+horário permanece no resultado diagnóstico, fora da assinatura do erro.
+
+O replay `flows:test-daily-host-updates` cobre adiamento repetido, falha real,
+mudança de horário, recuperação, nova candidata e isolamento do dry-run.
+
+A promoção retoma automaticamente quando os pré-requisitos voltam a estar
+disponíveis. Uma publicação de imagem rejeitada pode deixar o checkout alterado
+e bloquear essa retomada. Verifique a validação pública antes de repetir o
+update: notas sobre outros serviços devem usar evidências específicas, como
+Dockerfile, testes e guia operacional, sem depender incidentalmente do hash do
+Compose inteiro. Preserve o gate de evidências e confirme que as fontes
+restantes sustentam a nota. O gerador do canvas também preserva a geometria e
+os links nomeados aprovados; sua regressão cobre a regeneração idempotente.
+
 ## Rollback
 
 Antes de instalar, o script preserva:
