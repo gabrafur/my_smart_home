@@ -16,6 +16,7 @@ import uuid
 from collections.abc import Callable
 from datetime import timedelta
 from statistics import median
+from functools import partial
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -30,6 +31,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -50,6 +52,7 @@ from hyundai_kia_connect_api.exceptions import (
     RateLimitingError,
     UnsupportedControlError,
 )
+from hyundai_kia_connect_api.svm_image import render_views
 from .const import (
     CONF_BRAND,
     CONF_ENABLE_GEOLOCATION_ENTITY,
@@ -70,6 +73,10 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Render-invalidation signal for the SVM image entities: sent by
+# set_svm_dewarp, consumed in image.py.
+SIGNAL_SVM_RENDER = DOMAIN + "_{}_svm_render"
 
 BR_CURRENT_APPLICATION_ID = "213a491a-0d7c-4d6a-ac03-a2df127d73b0"
 BR_CURRENT_USER_AGENT = (
@@ -122,6 +129,11 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
         self._svm_details: dict[str, SVMDetails] = {}
         # Per-vehicle SVM fisheye dewarp toggle (local UI state, off by default).
         self._svm_dewarp: dict[str, bool] = {}
+        # Rendered SVM views cache: vehicle_id -> ((captured_at, dewarp), views).
+        # Invalidated by key change on a new capture or a switch toggle.
+        self._svm_views: dict[
+            str, tuple[tuple[dt.datetime | None, bool], dict[str, bytes]]
+        ] = {}
         self._force_refresh_lock = asyncio.Lock()
         self._cache_refresh_lock = asyncio.Lock()
         self._br_rate_limit_key = config_entry.entry_id
@@ -231,6 +243,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
     def set_svm_dewarp(self, vehicle_id: str, enabled: bool) -> None:
         """Set the per-vehicle SVM fisheye dewarp preference."""
         self._svm_dewarp[vehicle_id] = enabled
+        # The render key changes with the toggle, but captured_at does not —
+        # without this signal the image proxy keeps serving the pre-toggle
+        # image until the next capture.
+        async_dispatcher_send(self.hass, SIGNAL_SVM_RENDER.format(vehicle_id))
 
     def get_cached_svm_details(self, vehicle_id: str) -> SVMDetails | None:
         """Return cached SVM details for a vehicle, or None if not yet fetched."""
@@ -254,6 +270,25 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
         self._svm_details[vehicle_id] = details
         self.async_set_updated_data(self.data)
         return details
+
+    async def async_get_svm_views(self, vehicle_id: str) -> dict[str, bytes] | None:
+        """Return the rendered SVM views as JPEG bytes.
+
+        Rendering is cached for each capture and dewarp preference. It runs in
+        an executor because the optional image processing is CPU-bound.
+        """
+        details = self.get_cached_svm_details(vehicle_id)
+        if details is None or not details.image_bytes or not details.image_sizes:
+            return None
+        key = (details.captured_at, self.svm_dewarp_enabled(vehicle_id))
+        cached = self._svm_views.get(vehicle_id)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        views: dict[str, bytes] = await self.hass.async_add_executor_job(
+            partial(render_views, details, dewarp=key[1])
+        )
+        self._svm_views[vehicle_id] = (key, views)
+        return views
 
     def _br_rate_limit_remaining_seconds(self) -> int:
         """Return the active BR rate-limit delay across process restarts."""
