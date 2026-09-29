@@ -255,6 +255,8 @@ export function installPeopleLocationRefresh(flows) {
     [],
   );
 
+  required("people_refresh_connection_handler").func = source("people-refresh-connection-handler.js");
+
   const catcher = required("people_refresh_connection_catch");
   catcher.scope = [...new Set([
     ...(catcher.scope ?? []),

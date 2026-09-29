@@ -62,10 +62,18 @@ if (msg.error) {
     const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);
     const key = `${flowId}:${sourceId}:${signature}`;
     const previous = state.errors[key] ?? {};
+    // Consume the location coordinator's decision; do not duplicate its limits.
+    const transportRetryPending = flowId === "ea0a6aa0d24ff863" &&
+        ["people_visual_primary_icloud_update", "people_visual_secondary_icloud_update"].includes(sourceId) &&
+        sourceType === "api-call-service" &&
+        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&
+        msg.payload?.refresh_transport_retry_pending === true;
     Object.assign(data, { kind: "error", error_text: errorText, classification, signature, key, previous,
+        transport_retry_pending: transportRetryPending,
         accepted_wake_pending: flowId === "c22d8b12055e87f7" && sourceId === "8907830bb7f6c40c" &&
             /Bluelink wake accepted but fresh data is pending/i.test(errorText),
         connection_suppressed: Boolean(sharedIncidentKey && classification !== "autenticação" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });
+    data.expected_pending = data.accepted_wake_pending || transportRetryPending;
 } else if (msg.status) {
     const text = String(msg.status.text ?? "").toLowerCase();
     const shared = haSource || mqttSource;

@@ -34,7 +34,7 @@ from .location import (
     update_location_observation,
 )
 from .service_policy import is_best_effort_notification
-from .icloud import refresh_devices
+from .icloud import is_interrupted_transport, refresh_devices
 
 DOMAIN = "public_bindings"
 DEFAULT_PATH = "/run/private-bindings/private-bindings.json"
@@ -223,8 +223,14 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             if getattr(account, "username", None) != account_identifier:
                 continue
             api = getattr(account, "api", None)
-            if await hass.async_add_executor_job(refresh_devices, api):
-                return
+            try:
+                if await hass.async_add_executor_job(refresh_devices, api):
+                    return
+            except Exception as err:
+                # Protocol classification only; Node-RED owns retries/backoff.
+                if is_interrupted_transport(err):
+                    raise HomeAssistantError("ICLOUD_TRANSPORT_INTERRUPTED") from err
+                raise
             break
         raise HomeAssistantError("iCloud location refresh provider is unavailable")
 

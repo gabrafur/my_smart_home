@@ -70,6 +70,7 @@ for (const [index, role] of ["resident_primary", "resident_secondary"].entries()
             test_mode: test, origin: input.origin ?? "localizacao_pessoas",
             people_refresh_recovery: !current, refresh_source: role,
             refresh_attempt: entry.attempts, refresh_requested_at: now,
+            refresh_transport_retry_pending: entry.attempts < limit,
             refresh_cooldown_minutes: interval / 60000, refresh_routes: ["companion", "icloud"] } };
     }
     state.residents[role] = entry;

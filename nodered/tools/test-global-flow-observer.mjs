@@ -149,7 +149,7 @@ function runIngest(msg, flow) {
   if (!normalized) return null;
   const data = normalized._observer_event;
   if (data.kind === "error") {
-    if (data.accepted_wake_pending || data.connection_suppressed) {
+    if (data.expected_pending || data.connection_suppressed) {
       execute(code.stateSave, normalized, flow);
       return null;
     }
@@ -753,4 +753,41 @@ console.log("Global flow observer: topology and incident lifecycle scenarios pas
   assert.deepEqual(Object.keys(replay.get("global_flow_observer_v1").status_sources), ["real", "mqtt"]);
   execute(code.policyStore, { observer_policy_candidate: structuredClone(DEFAULT_POLICY) }, replay);
   assert.deepEqual(Object.keys(replay.get("global_flow_observer_v1").status_sources), ["real", "mqtt"]);
+}
+
+// Only a typed iCloud transport interruption with a canonical retry pending
+// can defer a notification. Exhaustion still reaches the shared dry-run terminal.
+for (const role of ["primary", "secondary"]) {
+  const replay = memory();
+  const event = (pending = true) => ({
+    _global_observer_test: true, observer_now: 300_000,
+    _global_observer: { flow_id: "ea0a6aa0d24ff863", flow_label: "localizacao_pessoas" },
+    payload: { test_mode: true, refresh_transport_retry_pending: pending },
+    error: { message: "HomeAssistantError: ICLOUD_TRANSPORT_INTERRUPTED",
+      source: { id: `people_visual_${role}_icloud_update`, type: "api-call-service", name: "iCloud" } },
+  });
+  replay.set("global_observer_boot_at__test", 0);
+  assert.equal(runIngest(event(), replay), null);
+  assert.equal(runIngest(event(), replay), null, "retry must not notify");
+  const exhausted = runIngest(event(false), replay);
+  assert.ok(exhausted?.alert, "exhausted transport retries must alert");
+  const guarded = execute(code.guard, exhausted, replay);
+  assert.equal(guarded[0], null);
+  assert.equal(guarded[1], null);
+  execute(code.dryRun, guarded[2], replay);
+  assert.equal(replay.get("global_flow_observer_last_dry_run_v1").dispatched, false);
+  assert.equal(runIngest(event(false), replay), null, "dedupe survives another evaluation");
+  for (const mutation of [
+    msg => { delete msg.payload.refresh_transport_retry_pending; },
+    msg => { msg.payload.refresh_transport_retry_pending = "true"; },
+    msg => { msg.error.source.id = "unrelated_service"; },
+    msg => { msg.error.message = "Request failed to iCloud"; },
+    msg => { msg.error.message = "401 authentication required"; },
+    msg => { msg._global_observer.flow_id = "unrelated_flow"; },
+  ]) {
+    const isolated = memory();
+    isolated.set("global_observer_boot_at__test", 0);
+    const msg = event(); mutation(msg);
+    assert.ok(runIngest(msg, isolated)?.alert, "unknown/invalid/auth errors must not be hidden");
+  }
 }

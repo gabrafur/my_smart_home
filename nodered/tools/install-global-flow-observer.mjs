@@ -414,14 +414,14 @@ const observerNodes = [
     [["global_observer_error_accepted_gate"], ["global_observer_status_monitored_gate"], ["global_observer_unknown_ignore"]],
   ),
   switchNode(
-    "global_observer_error_accepted_gate", productionGroup, "Wake aceito e pendente?",
-    "_observer_event.accepted_wake_pending",
+    "global_observer_error_accepted_gate", productionGroup, "Wake ou retry previsto?",
+    "_observer_event.expected_pending",
     [{ t: "true" }, { t: "else" }], 850, 140,
     [["global_observer_error_accepted_save"], ["global_observer_error_connection_gate"]],
   ),
   functionNode(
     "global_observer_error_accepted_save", productionGroup,
-    "Encerrar wake aceito sem incidente", source("global-flow-observer-state-save.js"),
+    "Aguardar resultado sem incidente", source("global-flow-observer-state-save.js"),
     0, 1090, 100, [],
   ),
   switchNode(

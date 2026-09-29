@@ -123,6 +123,15 @@ O refresh iCloud executa tanto o acesso à propriedade lazy `api.devices` quanto
 pode iniciar HTTP; mover apenas `refresh` deixa I/O bloqueante no event loop.
 Esse adaptador não decide frequência, fonte ou autorização: essas políticas
 continuam no Node-RED. Falha ou ausência do provedor não é tratada como sucesso.
+Uma cadeia de exceções contendo `RemoteDisconnected` é publicada como
+`ICLOUD_TRANSPORT_INTERRUPTED`, preservando a causa original. Texto genérico,
+autenticação e configuração inválida não recebem essa classificação. Não há
+retry HTTP oculto no adaptador: o coordenador de localização publica
+`refresh_transport_retry_pending` segundo seu limite visual de tentativas.
+O observador mantém o diagnóstico e adia o alerta apenas para esse código,
+nos dois nós iCloud conhecidos, enquanto a decisão canônica indica retry.
+Ao esgotar as tentativas, a falha volta ao alerta central com dedupe normal.
+Ausência do contrato falha fechada; aceite do serviço não comprova GPS novo.
 
 Entidades `person.*` não são materializadas no card do Mapa: a posição de cada
 morador é representada somente pelo tracker canônico do Node-RED. Zonas e os

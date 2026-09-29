@@ -73,6 +73,7 @@ for (const zone of ["home", "near_home", "not_home", "unavailable"]) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       const out = run({}, test);
       assert.equal(out[0].payload.refresh_attempt, attempt);
+      assert.equal(out[0].payload.refresh_transport_retry_pending, attempt < policy.people_refresh_attempts);
       assert.equal(out[2], null, "não criar alerta rotineiro em nenhuma zona");
       now += 60000;
     }
