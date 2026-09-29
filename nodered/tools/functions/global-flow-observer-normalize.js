@@ -32,8 +32,11 @@ const sourceName = String(source.name || sourceType || "nó desconhecido").repla
 const haTypes = new Set(["api-call-service", "api-current-state", "api-get-history", "api-render-template",
     "events-all", "ha-api", "poll-state", "server-events", "server-state-changed", "trigger-state"]);
 const haSource = haTypes.has(sourceType) || sourceType.startsWith("ha-");
+// Generated notification link callers depend on HA but do not report its status.
+const haNotificationCaller = sourceType === "link call" && sourceId.endsWith("__hub_call") &&
+    typeof msg.notification?.source === "string" && msg._notification_hub_context !== undefined;
 const mqttSource = ["mqtt in", "mqtt out"].includes(sourceType);
-const sharedIncidentKey = haSource ? "connection:home_assistant" : mqttSource ? "connection:mqtt" : null;
+const sharedIncidentKey = haSource || haNotificationCaller ? "connection:home_assistant" : mqttSource ? "connection:mqtt" : null;
 const hash = (value) => {
     let result = 0x811c9dc5;
     for (const character of String(value)) {
@@ -74,6 +77,22 @@ if (msg.error) {
             /Bluelink wake accepted but fresh data is pending/i.test(errorText),
         connection_suppressed: Boolean(sharedIncidentKey && classification !== "autenticação" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });
     data.expected_pending = data.accepted_wake_pending || transportRetryPending;
+    // A call can fail before the websocket status event reaches this observer.
+    // Parse the transport envelope; domain/service errors cannot prove HA down.
+    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);
+    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\{.*\})$/);
+    if (envelope) {
+        try {
+            const result = JSON.parse(envelope[1]);
+            disconnected = result.type === "result" && result.success === false &&
+                result.error?.code === 3 && result.error?.message === "Connection lost";
+        } catch { /* Unknown errors stay on the ordinary error path. */ }
+    }
+    if (haSource && disconnected) {
+        Object.assign(data, { kind: "status", monitored: true, failing: true,
+            incident_key: "connection:home_assistant", incident_kind: "home_assistant",
+            status_text: "connection lost", key: `${flowId}:${sourceId}` });
+    }
 } else if (msg.status) {
     const text = String(msg.status.text ?? "").toLowerCase();
     const shared = haSource || mqttSource;

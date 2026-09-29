@@ -33,7 +33,15 @@ comprovam queda, mesmo quando aparecem em vários nós. O adaptador aceita o
 contrato explícito de conexão, incluindo `home-assistant.status.disconnected`
 e `home-assistant.status.error`. Ao carregar a política, remove apenas essas
 evidências antigas de estados de entidades, preservando falhas reais e MQTT;
-a avaliação normal encerra o incidente que perdeu corroboração. Status de
+a avaliação normal encerra o incidente que perdeu corroboração. Uma chamada HA
+com `NoConnectionError`, `Connection lost` ou o envelope websocket de resultado
+com código 3 e mensagem `Connection lost` também alimenta essa confirmação,
+mesmo quando chega antes do status de desconexão. Timeout genérico e falha de
+serviço não bastam. Chamadores gerados dos hubs, identificados pelo contrato de
+notificação, compartilham a carência do HA para evitar cascata enquanto a fila
+aguarda reconexão; um link call comum continua alertável. O refresh do veículo
+preserva evidência e deadlines nessa desconexão, sem ativar bypass, criar falha
+da API do provedor ou duplicar o erro no tratador. Status de
 indisponibilidade do DuloNode continuam considerando também erro e timeout. A
 condição precisa permanecer por um minuto antes do push. Status visuais de
 funções de domínio não abrem alerta global, pois seus incidentes já pertencem

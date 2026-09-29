@@ -2403,3 +2403,23 @@ scenario("49 confirmação de chegada atravessa a pausa da madrugada", () => {
 console.log(
   `vehicle_primary refresh scheduler: ${passed.length} cenários aprovados.`,
 );
+
+scenario("HA disconnect preserves vehicle evidence and never enables bypass", () => {
+  const baseline = { request_in_flight: true, in_flight_until: DAY + 90000,
+    attempts: 2, next_allowed_at: DAY + 60000, provider_retry_at: DAY + 120000,
+    engine_communication_failed: false, awaiting_evidence: true };
+  const messages = ["NoConnectionError", "Connection lost",
+    'Error: Unrecognized error: {"type":"result","success":false,"error":{"code":3,"message":"Connection lost"}}'];
+  for (const test of [false, true]) for (const message of messages) {
+    const key = KEY + (test ? "__test" : "");
+    const store = memory({ [KEY]: structuredClone(baseline), [key]: structuredClone(baseline) });
+    const errors = [], warnings = [];
+    const result = execute(code.error, { now: DAY, store, errors, warnings,
+      msg: { _location_test: test, error: { source: { name: "Forçar refresh do vehicle_primary" }, message } } });
+    assert.equal(result, null, "no notification or bypass side effect");
+    assert.equal(errors.length, 0, "do not manufacture a second node error");
+    assert.equal(warnings.length, 1);
+    assert.deepEqual(JSON.parse(JSON.stringify(store.get(key))), { ...baseline, request_in_flight: false, in_flight_until: null });
+    if (test) assert.deepEqual(store.get(KEY), baseline, "dry-run must not alter production");
+  }
+});

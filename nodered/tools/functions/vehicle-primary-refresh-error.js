@@ -3,6 +3,37 @@ const source = String(msg.error?.source?.name ?? "unknown")
 const message = String(msg.error?.message ?? "unknown")
     .replace(/[\r\n]+/g, " ")
     .slice(0, 240);
+// HA transport failure is not evidence that the vehicle/provider is failing.
+// The global observer confirms the shared outage from the original call error.
+let haDisconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(message);
+const envelope = message.match(/^(?:Error: )?Unrecognized error: (\{.*\})$/);
+if (envelope) {
+    try {
+        const result = JSON.parse(envelope[1]);
+        haDisconnected = result.type === "result" && result.success === false &&
+            result.error?.code === 3 && result.error?.message === "Connection lost";
+    } catch { /* Preserve the ordinary failure path for unknown errors. */ }
+}
+if (haDisconnected) {
+    const test = msg._location_test === true || msg.payload?.test_mode === true;
+    const transportKey = "security_vehicle_primary_refresh_v1" + (test ? "__test" : "");
+    const store = test ? undefined : "persistent";
+    const previous = flow.get(transportKey, store);
+    if (previous && !/viagens?|trip/i.test(source)) {
+        const next = { ...previous };
+        if (/cache|reler/i.test(source)) {
+            next.cache_probe_in_flight = false;
+            next.cache_probe_in_flight_until = null;
+        } else {
+            next.request_in_flight = false;
+            next.in_flight_until = null;
+        }
+        // Keep deadlines, provider evidence and any pre-existing failure intact.
+        flow.set(transportKey, next, store);
+    }
+    node.warn("VEHICLE_PRIMARY_REFRESH_HA_DISCONNECTED; canonical retry preserved");
+    return null;
+}
 const failureClass = /service\s+kia_uvo\.update\s+not\s+found/i.test(message)
     ? "integration_unavailable"
     : /(?:did not return fresh data|fresh data is pending|no fresh data)/i.test(message)

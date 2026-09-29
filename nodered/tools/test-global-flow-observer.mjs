@@ -791,3 +791,42 @@ for (const role of ["primary", "secondary"]) {
     assert.ok(runIngest(msg, isolated)?.alert, "unknown/invalid/auth errors must not be hidden");
   }
 }
+
+// Restart race: the failing call precedes status=disconnected; notification
+// calls time out while HA queues their delivery. All belong to one connection.
+for (const recover of [true, false]) {
+  const replay = memory();
+  replay.set("global_observer_boot_at__test", 0);
+  const lost = id => ({
+    _global_observer_test: true, observer_now: 500_000,
+    _global_observer: { flow_id: "synthetic_vehicle", flow_label: "Synthetic vehicle" },
+    error: { source: { id, type: "api-call-service", name: "HA service" },
+      message: 'Error: Unrecognized error: {"type":"result","success":false,"error":{"code":3,"message":"Connection lost"}}' },
+  });
+  assert.equal(runIngest(lost("service_a"), replay), null);
+  const second = lost("service_b"); second.error.message = "NoConnectionError";
+  assert.equal(runIngest(second, replay), null);
+  const timeout = lost("synthetic_notify__hub_call");
+  timeout.observer_now += 30_000;
+  timeout.error.source.type = "link call";
+  timeout.error.message = "timeout";
+  timeout.notification = { source: "synthetic_vehicle" };
+  timeout._notification_hub_context = { payload: {} };
+  assert.equal(runIngest(timeout, replay), null, "known HA queue timeout is a cascade");
+  const unrelated = structuredClone(timeout); delete unrelated._notification_hub_context;
+  assert.ok(runIngest(unrelated, replay)?.alert, "ordinary link timeout must remain visible");
+  if (recover) {
+    const restored = lost("service_a"); delete restored.error;
+    restored.observer_now += 45_000;
+    restored.status = { source: { id: "service_a", type: "api-call-service" }, text: "home-assistant.status.running", fill: "green" };
+    runIngest(restored, replay);
+    assert.equal(runEvaluate({ _global_observer_test: true, observer_now: 570_000 }, replay)[0], null);
+    assert.equal(Object.keys(replay.get("global_flow_observer_v1__test").status_sources).length, 0);
+  } else {
+    const result = runEvaluate({ _global_observer_test: true, observer_now: 570_000 }, replay);
+    assert.equal(result[0].length, 1, "confirmed outage has one shared alert");
+    const guarded = execute(code.guard, result[0][0], replay);
+    execute(code.dryRun, guarded[2], replay);
+    assert.equal(replay.get("global_flow_observer_last_dry_run_v1").dispatched, false);
+  }
+}

@@ -15,6 +15,7 @@ for (const [id, filename] of [
   ["vehicle_visual_normalize", "vehicle-lifecycle-normalize.js"],
   ["vehicle_visual_state_finalize", "vehicle-lifecycle-state-finalize.js"],
   ["vehicle_visual_evidence_read", "vehicle-lifecycle-evidence-read.js"],
+  ["vehicle_primary_api_error_log_v1", "vehicle-primary-refresh-error.js"],
 ]) {
   const node = byId.get(id);
   if (!node || node.type !== "function") {
