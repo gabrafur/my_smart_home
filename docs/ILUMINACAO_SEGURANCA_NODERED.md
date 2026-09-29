@@ -204,7 +204,7 @@ depois `not_home` como fallback. O checker de bindings rejeita
 - A entrada no anel gera `arrival_stage: approach` e não consome o armado.
 - Somente depois do ciclo externo, a entrada em `near_home` ou a reavaliação
   dentro do raio configurado da casa/portão pode publicar a chegada e consumir
-  o armado (700 m por padrão).
+  o armado (350 m por padrão).
 - O bloco `Raio near_home (m)`, dentro do grupo
   `0. Política canônica de localização — edite os números`, guarda o raio em
   metros. Edite o valor do inject, entre 50 e 1.500 m, e faça Deploy para

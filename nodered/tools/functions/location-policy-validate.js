@@ -1,5 +1,5 @@
 const DEFAULTS = {
-    near_home_radius_m: 700,
+    near_home_radius_m: 350,
     home_radius_m: 100,
     location_fresh_minutes: 15,
     source_report_fresh_minutes: 75,

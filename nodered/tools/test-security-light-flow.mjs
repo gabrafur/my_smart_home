@@ -57,7 +57,7 @@ function wireNames(alias, output = 0) {
 const passed = [];
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  near_home_radius_m: 700, location_fresh_minutes: 15,
+  near_home_radius_m: 350, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
@@ -244,10 +244,10 @@ function readyLightFlow(extra = {}) {
 
 function peopleInput({
   event = "location_update", source = "resident_primary", previous = "not_home", current = "near_home",
-  resident_primary = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 650 : 20),
-  resident_primaryIcloud = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 650 : 20),
-  resident_secondary = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 650 : 20),
-  resident_secondaryIcloud = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 650 : 20),
+  resident_primary = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 300 : 20),
+  resident_primaryIcloud = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 300 : 20),
+  resident_secondary = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 300 : 20),
+  resident_secondaryIcloud = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 300 : 20),
   cycle,
 } = {}) {
   return { payload: {
@@ -337,7 +337,7 @@ scenario("02b localização, telemetria e cache alimentam o contexto do veículo
   assert.equal(locationEvent.outputOnlyOnStateChange, false);
 
   const home = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "context_snapshot", current: "home", distance: null }), memoryFlow(), geoEnv)[0];
-  const approaching = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "near_home", distance: 650, engine: "on" }), memoryFlow(), geoEnv);
+  const approaching = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "near_home", distance: 300, engine: "on" }), memoryFlow(), geoEnv);
   const away = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "not_home", distance: 5_000, engine: "on" }), memoryFlow(), geoEnv)[0];
   assert.equal(home.payload.context.home, true);
   assert.equal(home.payload.context.away, false);
@@ -351,12 +351,12 @@ scenario("02b localização, telemetria e cache alimentam o contexto do veículo
 });
 
 scenario("03 vehicle_primary ligado e aproximando-se", () => {
-  const [, detected] = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "on", distance: 650 }), memoryFlow({ vehicle_primary_arrival_armed: true }), geoEnv);
+  const [, detected] = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "on", distance: 300 }), memoryFlow({ vehicle_primary_arrival_armed: true }), geoEnv);
   assert.equal(detected.payload.arrival_stage, "approach");
   assert.equal(detected.payload.request_vehicle_primary_wake, true);
 });
 
-scenario("04 entrada no raio near_home de 700 m", () => {
+scenario("04 entrada no raio near_home de 350 m", () => {
   const flow = memoryFlow();
   const confirmedExternalAt = new Date(Date.now() - 61_000).toISOString();
   run("people_normalize", peopleInput({ event: "context_snapshot", current: "not_home",
@@ -472,13 +472,13 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
   assert.equal(returning[1].payload.external_cycle_confirmed, true);
 });
 
-scenario("04b raio near_home configurável aceita 700 m", () => {
+scenario("04b raio near_home configurável aceita 350 m", () => {
   const flow = memoryFlow({
     people_arrival_armed: { resident_primary: true },
   });
   const [, detected] = run(
     "people_normalize",
-    peopleInput({ previous: "not_home", current: "near_home", resident_primary: entity("near_home", 650), resident_primaryIcloud: entity("near_home", 650) }),
+    peopleInput({ previous: "not_home", current: "near_home", resident_primary: entity("near_home", 300), resident_primaryIcloud: entity("near_home", 300) }),
     flow,
     geoEnv,
   );
@@ -549,7 +549,7 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
   );
   const confirmedVehicleReturn = run(
     "vehicle_primary_normalize",
-    vehicle_primaryInput({ previous: "not_home", current: "near_home", distance: 650, engine: "on" }),
+    vehicle_primaryInput({ previous: "not_home", current: "near_home", distance: 300, engine: "on" }),
     confirmedVehicleFlow,
     geoEnv,
   );
@@ -1256,7 +1256,7 @@ scenario("33a motor ON reavalia morador armado que permanece em near_home", () =
     },
     resident_secondary: {
       ready: true, stale: false, state: "near_home", current_home: false,
-      distance_m: 650, updated_at: now,
+      distance_m: 300, updated_at: now,
     },
   };
   const vehicleOff = {
@@ -2380,7 +2380,7 @@ scenario("42 backtest: motor ON com GPS vencido pede fonte certa e não acende",
     resident_primary: { ready: true, stale: false, state: "home",
       current_home: true, updated_at: now },
     resident_secondary: { ready: true, stale: false, state: "near_home",
-      current_home: false, distance_m: 650, updated_at: oldAt },
+      current_home: false, distance_m: 300, updated_at: oldAt },
   };
   const vehicleOff = { ready: true, lighting_ready: true, in_use: false,
     engine_on: false, engine_state_valid: true, updated_at: now - 1 };

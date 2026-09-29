@@ -12,7 +12,7 @@ const LOCATION_POLICY = {
   version: 1,
   owner: "node_red",
   complete: true,
-  near_home_radius_m: 700,
+  near_home_radius_m: 350,
   location_fresh_minutes: 15,
   source_report_fresh_minutes: 75,
   recency_tie_seconds: 60,
@@ -251,8 +251,8 @@ for (const wakeup of ["resident_primary", "resident_secondary", "refresh"]) {
     clock += 60_000;
     runPeopleVisualEvents(call, paired(2000, 2000));
     clock += 60_000;
-    const primaryDistance = arriving === "resident_secondary" ? 2000 : 650;
-    const secondaryDistance = arriving === "resident_primary" ? 2000 : 650;
+    const primaryDistance = arriving === "resident_secondary" ? 2000 : 300;
+    const secondaryDistance = arriving === "resident_primary" ? 2000 : 300;
     const expected = arriving === "both" ? ["resident_primary", "resident_secondary"] : [arriving];
     const arrivals = runPeopleVisualEvents(call, paired(primaryDistance, secondaryDistance))
       .map((outputs) => outputs[1]).filter(Boolean);
@@ -285,7 +285,7 @@ for (const wakeup of ["resident_primary", "resident_secondary", "refresh"]) {
       .filter((outputs) => outputs[1]).length, 0, "paired callback must not duplicate arrivals");
     clock += 1000;
     const homes = runPeopleVisualEvents(call, paired(
-      primaryDistance === 650 ? 20 : 2000, secondaryDistance === 650 ? 20 : 2000));
+      primaryDistance === 300 ? 20 : 2000, secondaryDistance === 300 ? 20 : 2000));
     assert.deepEqual(homes.map((outputs) => outputs[1]?.payload.source).filter(Boolean).sort(), expected);
     assert.ok(homes.filter((outputs) => outputs[1]).every((outputs) =>
       outputs[0].payload.confirmed_home_transition === true), "90 s refresh home trigger preserved");
@@ -305,7 +305,7 @@ for (const [name, ageMs, elapsed] of [
     tracker(fallbackId, "unavailable", { coordinates: false }), "resident_secondary");
   runPeopleVisualEvents(call, structuredClone(message));
   clock += elapsed;
-  message.payload.resident_primary = tracker(primaryId, "near_home", { distanceM: 650, ageMs });
+  message.payload.resident_primary = tracker(primaryId, "near_home", { distanceM: 300, ageMs });
   const results = runPeopleVisualEvents(call, message);
   assert.ok(results.every((outputs) => !outputs[1] && !outputs[2]), name);
 }
@@ -350,7 +350,7 @@ for (const [name, ageMs, elapsed] of [
   );
   assert.deepEqual(
     [controls.near.payload, controls.home.payload],
-    ["700", "100"],
+    ["350", "100"],
   );
   assert.equal(controls.localExcursion.payload, "90");
   assert.equal(controls.localExcursion.topic, "local_excursion_minutes");
@@ -366,7 +366,7 @@ for (const [name, ageMs, elapsed] of [
   assert.equal(rejected, null);
   assert.equal(
     policyContext.get("location_policy_v1").near_home_radius_m,
-    700,
+    350,
     "um raio além do geofence técnico não pode substituir a política válida",
   );
 }
@@ -380,7 +380,7 @@ for (const [name, ageMs, elapsed] of [
   assert.equal(
     legacyWakeRing.payload.trigger_state,
     "not_home",
-    "o anel técnico de 1.500 m não pode antecipar near_home de 700 m",
+    "o anel técnico de 1.500 m não pode antecipar near_home de 350 m",
   );
   const staleNamedZone = select(input(
     tracker(primaryId, "legacy_custom_zone", { distanceM: 1450 }),
@@ -392,6 +392,15 @@ for (const [name, ageMs, elapsed] of [
     "not_home",
     "um nome de zona bruto não pode escapar como estado canônico",
   );
+
+  for (const [distanceM, expected] of [[349, "near_home"], [351, "not_home"], [650, "not_home"]]) {
+    const result = select(input(
+      tracker(primaryId, "location_update_ring", { distanceM }),
+      tracker(fallbackId, "unavailable", { coordinates: false }),
+      "resident_primary",
+    ));
+    assert.equal(result.payload.trigger_state, expected, `near_home at ${distanceM} m`);
+  }
 
   const defaultBoundary = select(input(
     tracker(primaryId, "location_update_ring", { distanceM: 800 }),
@@ -453,7 +462,7 @@ for (const [name, ageMs, elapsed] of [
   clock += 61_000;
   const near = run(
     "vehicle_primary_classify_near_home_v1",
-    vehicleMessage(650),
+    vehicleMessage(300),
     flow,
   );
   assert.equal(near.payload.trigger_prev_state, "not_home");
@@ -504,7 +513,7 @@ for (const [name, ageMs, elapsed] of [
   ), flow);
   assert.equal(before.payload.event, "context_snapshot");
   clock += 30_000;
-  const approaching = tracker(primaryId, "location_update_ring", { distanceM: 650 });
+  const approaching = tracker(primaryId, "location_update_ring", { distanceM: 300 });
   const current = select(input(
     approaching,
     tracker(fallbackId, "home", { ageMs: 5 * 60_000, distanceM: 20 }),
@@ -526,7 +535,7 @@ for (const [name, ageMs, elapsed] of [
   assert.equal(primaryState.state, "near_home");
   assert.equal(primaryState.raw_location_state, "location_update_ring");
   assert.equal(primaryState.home_radius_m, 100);
-  assert.equal(primaryState.near_home_radius_m, 700);
+  assert.equal(primaryState.near_home_radius_m, 350);
   assert.equal(primaryState.selected_location_source, "Home Assistant App");
   assert.equal(primaryState.location_fresh_minutes, 15);
   assert.equal(primaryState.source_report_fresh_minutes, 75);
@@ -599,7 +608,7 @@ for (const [name, ageMs, elapsed] of [
       source: "vehicle_primary",
       trigger_state: "not_home",
       trigger_prev_state: "not_home",
-      vehicle_primary: tracker("device_tracker.vehicle_primary", "not_home", { distanceM: 650 }),
+      vehicle_primary: tracker("device_tracker.vehicle_primary", "not_home", { distanceM: 300 }),
       vehicle_primary_engine: { state: "on", last_updated: changed },
       vehicle_primary_lock: { state: "locked", last_updated: changed },
       vehicle_primary_last_updated: { state: changed, last_updated: changed },
@@ -697,7 +706,7 @@ for (const [name, ageMs, elapsed] of [
   ), flow);
   clock += 1000;
   let nearRing = select(input(
-    tracker(primaryId, "location_update_ring", { distanceM: 650 }),
+    tracker(primaryId, "location_update_ring", { distanceM: 300 }),
     tracker(fallbackId, "unavailable", { coordinates: false }),
     "resident_primary",
   ), flow);
@@ -707,7 +716,7 @@ for (const [name, ageMs, elapsed] of [
   nearRing = run("people_visual_state_load", nearRing, flow);
   nearRing = run("people_visual_facts", nearRing, flow);
   assert.equal(nearRing._people.facts.approach_entry, true,
-    "posição atual dentro de 700 m deve continuar gerando aproximação");
+    "posição atual dentro de 350 m deve continuar gerando aproximação");
   assert.equal(nearRing._people.facts.wake_ring_entry, false,
     "posição já canônica em near_home não precisa das sondas do anel");
 }
@@ -1024,4 +1033,4 @@ for (const [name, ageMs, elapsed] of [
 }
 
 Date.now = originalNow;
-console.log("canonical location flow: seleção, 700 m, recovery e painéis OK");
+console.log("canonical location flow: seleção, 350 m, recovery e painéis OK");

@@ -1073,7 +1073,7 @@ flows.push(
     w: 820,
     wires: [],
   },
-  inject("people_location_near_home_radius_v1", policyGroup, "Raio near_home (m)", "near_home_radius_m", 700, 250, 160),
+  inject("people_location_near_home_radius_v1", policyGroup, "Raio near_home (m)", "near_home_radius_m", 350, 250, 160),
   inject("people_location_home_radius_v1", policyGroup, "Raio home (m)", "home_radius_m", 100, 250, 200),
   inject("people_location_fresh_minutes_v1", policyGroup, "Posição atual — 15 min", "location_fresh_minutes", 15, 550, 160),
   inject("people_location_source_report_minutes_v1", policyGroup, "Fonte ativa — 75 min", "source_report_fresh_minutes", 75, 550, 200),

@@ -19,7 +19,7 @@ const LOCATION_POLICY = {
   version: 1,
   owner: "node_red",
   complete: true,
-  near_home_radius_m: 700,
+  near_home_radius_m: 350,
   location_fresh_minutes: 15,
   source_report_fresh_minutes: 75,
   recency_tie_seconds: 60,

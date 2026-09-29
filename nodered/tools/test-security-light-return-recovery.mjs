@@ -15,7 +15,7 @@ const location = { version: 1, complete: true, future_tolerance_seconds: 60,
   location_fresh_minutes: 15, source_report_fresh_minutes: 75,
   vehicle_signal_fresh_minutes: 5, local_excursion_minutes: 90,
   arrival_recovery_minutes: 15, arrival_dedupe_minutes: 10,
-  primary_home_grace_minutes: 10, home_radius_m: 100, near_home_radius_m: 700,
+  primary_home_grace_minutes: 10, home_radius_m: 100, near_home_radius_m: 350,
   external_cycle_confirm_seconds: 60, near_home_refresh_minutes: 5 };
 const light = { version: 1, complete: true, physical_fresh_seconds: 120,
   recovery_request_throttle_seconds: 30, backstop_minutes: 15, post_off_cooldown_minutes: 5,

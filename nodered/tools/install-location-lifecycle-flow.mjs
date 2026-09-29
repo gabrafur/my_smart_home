@@ -163,6 +163,8 @@ linkOut("people_visual_lifecycle_config_left_out", config.id, "Tempos de chegada
 linkOut("people_visual_lifecycle_config_middle_out", config.id, "Validade → política", "people_location_values_route_in_v1", 2920, 380);
 linkOut("people_visual_lifecycle_config_right_out", config.id, "Recovery → política", "people_location_values_route_in_v1", 3290, 380);
 
+required("people_location_near_home_radius_v1").payload = "350";
+
 const policyIn = required("people_location_values_route_in_v1");
 policyIn.x = 900;
 policyIn.y = 300;

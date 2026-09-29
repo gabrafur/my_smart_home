@@ -33,7 +33,7 @@ const originalNow = Date.now;
 Date.now = () => NOW;
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  near_home_radius_m: 700, location_fresh_minutes: 15,
+  near_home_radius_m: 350, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
@@ -224,12 +224,12 @@ scenario("02 restart durante viagem", () => {
 
 scenario("03 restart durante aproximação", () => {
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_primary: true } } });
-  const result = run("people_normalize", peopleInput({ event: "location_update", state: "near_home", distance: 650 }), flow);
+  const result = run("people_normalize", peopleInput({ event: "location_update", state: "near_home", distance: 300 }), flow);
   assert.equal(result[1].payload.arrival_stage, "approach");
 });
 
 scenario("04 restart dentro do raio near_home", () => {
-  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "location_update", state: "near_home", distance: 650, engine: "on" }), memoryFlow({ vehicle_primary_arrival_armed: true }));
+  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "location_update", state: "near_home", distance: 300, engine: "on" }), memoryFlow({ vehicle_primary_arrival_armed: true }));
   assert.equal(result[1].payload.request_vehicle_primary_wake, true);
 });
 
@@ -475,14 +475,14 @@ scenario("35 viagem terminando durante restart", () => {
 
 scenario("36 evento de chegada duplicado após restart", () => {
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_primary: true } } });
-  const input = peopleInput({ event: "location_update", state: "near_home", distance: 650 });
+  const input = peopleInput({ event: "location_update", state: "near_home", distance: 300 });
   assert(run("people_normalize", structuredClone(input), flow)[1]);
   assert.equal(run("people_normalize", structuredClone(input), flow)[1], null);
 });
 
 scenario("37 normalizador de pessoas não envia notificações laterais", () => {
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_secondary: true } } });
-  const input = peopleInput({ source: "resident_secondary", event: "location_update", state: "near_home", distance: 650 });
+  const input = peopleInput({ source: "resident_secondary", event: "location_update", state: "near_home", distance: 300 });
   const result = run("people_normalize", structuredClone(input), flow);
   assert.equal(result.length, 4);
   assert(result[1]);
@@ -622,7 +622,7 @@ scenario("46 bateria do iCloud não renova localização congelada", () => {
 });
 
 scenario("47 near_home recente e preciso vence fallback antigo em home", () => {
-  const mobile = entity("near_home", 650, 0, 25);
+  const mobile = entity("near_home", 300, 0, 25);
   mobile.entity_id = "device_tracker.mobile_secondary_source_1";
   const icloud = entity("home", 25, 25 * 60_000, 5);
   icloud.entity_id = "device_tracker.mobile_secondary_source_2";

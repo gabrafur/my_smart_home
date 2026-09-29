@@ -28,7 +28,7 @@ const vehicle = flows.find(
 );
 
 if (
-  nearHomeRadius?.payload !== "700" ||
+  nearHomeRadius?.payload !== "350" ||
   nearHomeRadius?.topic !== "near_home_radius_m" ||
   homeRadius?.payload !== "100" ||
   homeRadius?.topic !== "home_radius_m" ||
