@@ -5,7 +5,9 @@ function offEvidence(vehicle, lifecycle, policy, now) {
     const ageMs = now - observedAt;
     let reason = null;
     if (vehicle.engine_communication_failed === true) reason = "engine_communication_failed";
-    else if (vehicle.ready !== true || vehicle.engine_state_valid !== true) reason = "vehicle_not_ready";
+    // OFF needs current engine evidence; aggregate readiness also depends on GPS
+    // and inferred usage, which must not veto a confirmed stop.
+    else if (vehicle.engine_state_valid !== true) reason = "engine_state_invalid";
     else if (vehicle.engine_on !== false) reason = "engine_not_off";
     else if (raw == null || !Number.isFinite(observedAt) || observedAt <= 0 ||
         vehicle.telemetry_timestamp_future === true || observedAt > now + Number(policy.future_tolerance_seconds) * 1000)

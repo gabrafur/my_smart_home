@@ -563,6 +563,12 @@ A referência é `telemetry_updated_at` do provedor; na ausência dela, usa-se
 a prova do motor. OFF antigo que permitiu o fallback de chegada não pode
 encerrar o ciclo que acaba de começar.
 
+O desligamento valida o motor independentemente de `vehicle.ready`: esse
+indicador agregado também depende do GPS e da inferência de uso do carro.
+GPS vencido ou uso ainda indeterminado não invalidam uma confirmação OFF
+recente. Estado de motor desconhecido, comunicação com falha e evidência
+antiga continuam bloqueando tanto o agendamento quanto o efeito final.
+
 A primeira prova válida agenda 90 s de carência. Duplicatas não prorrogam o
 prazo; motor ON ou perda da prova cancelam a pendência. O prazo é persistido e
 reconstruído após restart, com revalidação do ciclo, disponibilidade física e

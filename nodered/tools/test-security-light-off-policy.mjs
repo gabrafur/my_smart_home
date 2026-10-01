@@ -29,12 +29,28 @@ const schedule = flow => run('374d4e39be0a30ac', {
   _light_context: { kind: 'vehicle_primary_context', accepted: true }, payload: {}
 }, flow);
 for (const extra of [
+  { ready: false, location: { ready: false, stale: true }, in_use: null },
+  { ready: false, location: { ready: true }, in_use: null }
+]) {
+  const flow = fixture(extra); const msg = schedule(flow);
+  assert.equal(msg.delay, 90_000, 'fresh OFF must not depend on GPS or inferred usage');
+  now += 90_000;
+  const command = run('84d450933e67b8c1', msg, flow);
+  assert(command, 'final gate must also accept fresh OFF without aggregate readiness');
+  assert.equal(flow.get('security_light_lifecycle_v1').active_by_arrival, false);
+  checks++;
+}
+for (const extra of [
   { telemetry_updated_at: now - 600_000 },
   { telemetry_updated_at: now - 61_000 },
   { telemetry_updated_at: now + 61_000 },
   { telemetry_updated_at: null, engine_updated_at: null },
   { engine_communication_failed: true }, { engine_on: true }, { engine_state_valid: false }
-]) { assert.equal(schedule(fixture(extra)), null); checks++; }
+]) {
+  for (const ready of [true, false]) {
+    assert.equal(schedule(fixture({ ...extra, ready })), null); checks++;
+  }
+}
 {
   const flow = fixture(); const msg = schedule(flow);
   assert.equal(msg.delay, 90_000); assert.equal(schedule(flow), null);
