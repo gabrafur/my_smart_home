@@ -30,19 +30,31 @@ if (type === "backstop") {
     const forceOffAt = Number(lifecycle.force_off_at);
     if (Number.isFinite(forceOffAt) && now < forceOffAt) return null;
 } else {
-    const physical = flow.get("security_light_physical_state");
-    const physicalObservedAt = Number(flow.get("security_light_physical_observed_at") ?? 0);
+    const physical = flow.get(contextKey("security_light_physical_state"));
+    const physicalObservedAt = Number(flow.get(contextKey("security_light_physical_observed_at")) ?? 0);
     const physicalFresh = Number.isFinite(physicalObservedAt) &&
         physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&
         now - physicalObservedAt <= PHYSICAL_FRESH_MS;
     const vehicleContext = flow.get(contextKey("vehicle_primary_context_v1")) ?? {};
-    const ready = flow.get("light_reconciled") === true && physicalFresh &&
-        type === "immediate" && vehicleContext.ready === true &&
-        vehicleContext.engine_state_valid === true &&
-        vehicleContext.engine_on === false;
+    const ready = flow.get(contextKey("light_reconciled")) === true && physicalFresh &&
+        type === "confirmed_off" &&
+        Number.isFinite(lifecycle.pending_off_at) && now >= lifecycle.pending_off_at &&
+        msg.payload.deadline_at === lifecycle.pending_off_at &&
+        msg.payload.activation_at === lifecycle.on_since &&
+        offEvidence(vehicleContext, lifecycle, LOCATION_POLICY, now).valid &&
+        (TEST_MODE ? flow.get("security_light_engine_communication_failed__test") :
+            flow.get("security_light_engine_communication_failed", "persistent")) !== true;
     if (!ready || physical !== "on") return null;
 }
 
+const vehicleEvidence = offEvidence(flow.get(contextKey("vehicle_primary_context_v1")) ?? {}, lifecycle, LOCATION_POLICY, now);
+msg.payload.off_diagnostic = { reason: msg.payload.off_reason ?? msg.payload.reason ?? type,
+    deadline_type: type, on_since: lifecycle.on_since, requested_at: now,
+    engine_observed_at: Number.isFinite(vehicleEvidence.observed_at) ? vehicleEvidence.observed_at : null,
+    engine_age_ms: Number.isFinite(vehicleEvidence.age_ms) ? vehicleEvidence.age_ms : null,
+    simulated: TEST_MODE, dispatched: false };
+node.log?.("SECURITY_LIGHT_OFF_REQUEST " + JSON.stringify(msg.payload.off_diagnostic));
+msg.payload.test_mode = TEST_MODE;
 lifecycle.active_by_arrival = false;
 lifecycle.on_since = null;
 lifecycle.force_off_at = null;

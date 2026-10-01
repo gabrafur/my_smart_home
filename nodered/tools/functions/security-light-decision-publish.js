@@ -31,6 +31,8 @@ if (!decision && payload.diagnostic === "arrival_trigger_received") {
         payload.vehicle_primary_engine_on === false &&
         payload.engine_communication_failed !== true) {
         decision = "blocked_engine_off";
+    } else if (payload.approach_distance_ready === false) {
+        decision = "waiting_approach_distance";
     } else if (payload.reflector_state === "on") {
         decision = "blocked_reflector_on";
     } else if (payload.decision_context_ready !== true) {

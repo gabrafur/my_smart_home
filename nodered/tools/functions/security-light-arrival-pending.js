@@ -2,7 +2,10 @@ const data = msg._light_arrival;
 const suffix = data.test_mode ? "__test" : "";
 const key = "security_light_pending_arrival_v1";
 const watchKey = "security_light_arrival_watch_v1";
-const existing = data.test_mode ? flow.get(key + suffix) : flow.get(key, "persistent");
+const sharedExisting = data.test_mode ? flow.get(key + suffix) : flow.get(key, "persistent");
+const byResident = data.test_mode ? flow.get("security_light_pending_arrivals_v1" + suffix) :
+    flow.get("security_light_pending_arrivals_v1", "persistent");
+const existing = byResident?.[data.source] ?? (sharedExisting?.source === data.source ? sharedExisting : null);
 const existingAt = Number(existing?.event_at ?? 0);
 const residentApproach = data.resident_arrival && data.stage === "approach";
 if (!existing || !Number.isFinite(existingAt) || data.event_at >= existingAt) {
@@ -30,6 +33,14 @@ if (!existing || !Number.isFinite(existingAt) || data.event_at >= existingAt) {
     };
     if (data.test_mode) flow.set(key + suffix, pending);
     else flow.set(key, pending, "persistent");
+
+    if (["resident_primary", "resident_secondary"].includes(pending.source)) {
+        const mapKey = "security_light_pending_arrivals_v1";
+        const candidates = data.test_mode ? flow.get(mapKey + suffix) ?? {} : flow.get(mapKey, "persistent") ?? {};
+        candidates[pending.source] = pending;
+        if (data.test_mode) flow.set(mapKey + suffix, candidates);
+        else flow.set(mapKey, candidates, "persistent");
+    }
 
     if (residentApproach) {
         const watches = data.test_mode
@@ -59,6 +70,7 @@ data.diagnostic = {
         diagnostic: "arrival_trigger_received",
         gps_trigger_functional: true,
         decision_context_ready: data.logic_ready,
+        approach_distance_ready: data.approach_distance_ready,
         people_context_ready: data.people.ready === true,
         vehicle_primary_context_ready: data.vehicle.ready === true,
         vehicle_primary_lighting_ready: data.vehicle_lighting_ready,

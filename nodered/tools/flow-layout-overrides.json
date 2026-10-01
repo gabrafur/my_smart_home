@@ -4813,7 +4813,7 @@
     "6b7552efb85343f4": {
       "label": "iluminacao_seguranca",
       "compact_groups": true,
-      "apply_nodes": false,
+      "apply_nodes": true,
       "group_positions": {
         "e53f5ed6c320c591": {
           "x": 74,
@@ -5034,8 +5034,8 @@
           "y": 830
         },
         "82539910c43d6cf5": {
-          "x": 1360,
-          "y": 830
+          "x": 1370,
+          "y": 2990
         },
         "security_light_engine_bypass_startup_v1": {
           "x": 290,
@@ -5112,6 +5112,18 @@
         "security_light_engine_bypass_reevaluate_out_v1": {
           "x": 2540,
           "y": 1400
+        },
+        "security_visual_off_service_in": {
+          "x": 1100,
+          "y": 2990
+        },
+        "security_visual_off_accepted": {
+          "x": 1770,
+          "y": 2990
+        },
+        "security_visual_policy_approach_radius_m": {
+          "x": 3320,
+          "y": 2610
         }
       },
       "nodes": {
@@ -5260,8 +5272,8 @@
           "y": 830
         },
         "82539910c43d6cf5": {
-          "x": 1360,
-          "y": 830
+          "x": 1370,
+          "y": 2990
         },
         "2f8ac8be8e84a548": {
           "x": 1800,
@@ -5836,6 +5848,18 @@
         "notification_hub_wire_in_58d452601a4e": {
           "x": 2260,
           "y": 120
+        },
+        "security_visual_off_service_in": {
+          "x": 1100,
+          "y": 2990
+        },
+        "security_visual_off_accepted": {
+          "x": 1770,
+          "y": 2990
+        },
+        "security_visual_policy_approach_radius_m": {
+          "x": 3320,
+          "y": 2610
         }
       },
       "geometry_final": true

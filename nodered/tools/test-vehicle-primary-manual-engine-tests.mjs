@@ -39,7 +39,7 @@ const LOCATION_POLICY = {
 };
 const SECURITY_LIGHT_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
+  approach_radius_m: 150, physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
   off_grace_seconds: 90, backstop_minutes: 15, post_off_cooldown_minutes: 5,
   lifecycle_retention_hours: 24, deadline_slack_minutes: 1,
   unavailable_dedupe_seconds: 10, cooldown_max_minutes: 30,
@@ -182,7 +182,7 @@ const gateFlow = memory({
     resident_primary: {
       ready: true,
       stale: false,
-      state: "near_home",
+      state: "near_home", gate_distance_m: 125,
       current_home: false,
       updated_at: Date.now(),
     },
@@ -418,7 +418,7 @@ const cancelFlow = memory({
     resident_primary: {
       ready: true,
       stale: false,
-      state: "near_home",
+      state: "near_home", gate_distance_m: 125,
       current_home: false,
       updated_at: Date.now() - 1,
     },

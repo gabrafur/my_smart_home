@@ -5,9 +5,15 @@ const get = (name, store) => data.test_mode || !store
 const set = (name, value, store) => data.test_mode || !store
     ? flow.set(name + suffix, value) : flow.set(name, value, store);
 const key = "security_light_pending_arrival_v1";
-let pending = get(key, "persistent");
+const mapKey = "security_light_pending_arrivals_v1";
+let candidates = get(mapKey, "persistent") ?? {};
+const source = data.kind === "people_context" ? data.original_payload.source : null;
+let pending = candidates[source] ?? get(key, "persistent") ??
+    Object.values(candidates).sort((a, b) => Number(b.event_at) - Number(a.event_at))[0] ?? null;
 if (pending && data.lifecycle.active_by_arrival === true) {
     set(key, null, "persistent");
+    candidates = {};
+    set(mapKey, candidates, "persistent");
     pending = null;
 }
 if (pending) {
@@ -28,24 +34,49 @@ if (pending) {
             Number.isFinite(observedAt) && observedAt > 0 &&
             observedAt <= data.now + data.future_ms &&
             data.now - observedAt <= Number(data.location_policy.location_fresh_minutes) * 60000;
-        if (current) {
-            valid = resident?.state === "near_home";
-            if (!valid) reason = resident?.state === "home" ? "resident_home" :
-                "resident_left_approach_zone";
+        const original = pending.message.payload ?? {};
+        const originalObservedAt = Number(original.arrival_resident_snapshot?.updated_at ?? pending.event_at);
+        const confirmedHome = current && resident.state === "home" && resident.current_home === true &&
+            data.kind === "people_context" && data.accepted === true &&
+            data.original_payload.confirmed_home_transition === true &&
+            data.original_payload.source === pending.source && observedAt > originalObservedAt &&
+            original.arrival_direction === "returning" && original.external_cycle_confirmed === true;
+        if (confirmedHome) {
+            // Complete the existing arrival; never infer a new trip from HOME.
+            // Keep the original expiry as an upper bound on this recovery window.
+            pending = { ...pending, retention: "recovery_window", arrival_stage: "home",
+                approach_queued_at: pending.queued_at, queued_at: data.now, event_at: data.now,
+                expires_at: Math.min(expiresAt, data.now + Number(data.location_policy.arrival_recovery_minutes) * 60000),
+                message: { ...pending.message, payload: { ...original, arrival_stage: "home",
+                    event_at: data.now, arrival_resident_snapshot: { ...resident },
+                    arrival_completed_from_pending_approach: true } } };
+            set(key, pending, "persistent");
+            data.pending_replay_allowed = true;
+        } else {
+            if (current && !["near_home", "home"].includes(resident.state)) {
+                valid = false;
+                reason = "resident_left_approach_zone";
+            }
+            // A snapshot may precede the directional HOME event. Hold the intent,
+            // but only a current near_home position or the confirmed event may replay.
+            data.pending_replay_allowed = current && resident.state === "near_home";
         }
-        /* Falta temporária de localização não apaga a direção já confirmada.
-         * Ela apenas impede o replay até chegar uma posição atual. */
-        data.pending_replay_allowed = current && resident?.state === "near_home";
     } else if (valid && pending.retention !== "recovery_window") {
         valid = false;
         reason = "invalid_retention";
     }
     if (!valid) {
+        delete candidates[pending.source];
         set(key, null, "persistent");
         node.warn(`iluminacao_seguranca: chegada pendente cancelada (${reason ?? "invalid_pending"})`);
         pending = null;
     }
 }
+if (pending) {
+    candidates[pending.source] = pending;
+    set(key, pending, "persistent");
+}
+set(mapKey, candidates, "persistent");
 data.pending = pending;
 if (data.pending_replay_allowed === undefined) data.pending_replay_allowed = Boolean(pending);
 data.replay_ready = Boolean(((pending && data.pending_replay_allowed) || data.engine_on_arrival) &&

@@ -10,7 +10,12 @@ const inputPath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flow
 const outputPath = path.resolve(process.argv[3] ?? inputPath);
 const functionsDir = path.join(here, "functions");
 const TAB = "6b7552efb85343f4";
-const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
+const source = (name) => {
+  const helpers = ["security-light-off-decision.js", "security-light-turn-off-if-active.js"].includes(name)
+    ? ["security-light-off-evidence.js"] : ["security-light-arrival-facts.js", "security-light-mark-active.js"].includes(name)
+      ? ["security-light-approach-evidence.js"] : [];
+  return [...helpers, name].map((file) => fs.readFileSync(path.join(functionsDir, file), "utf8").trimEnd()).join("\n");
+};
 let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 const originalFlows = structuredClone(flows);
 const fixedGenerated = new Set([
@@ -174,7 +179,8 @@ const specs = [
   ["lifecycle_retention_hours", "Retenção lifecycle — 24 h [1..168]", 24],
   ["deadline_slack_minutes", "Folga deadline — 1 min [0..10]", 1],
   ["unavailable_dedupe_seconds", "Dedupe indisponível — 10 s [1..120]", 10],
-  ["cooldown_max_minutes", "Cooldown máximo — 30 min [5..120]", 30]
+  ["cooldown_max_minutes", "Cooldown máximo — 30 min [5..120]", 30],
+  ["approach_radius_m", "Acender perto do acesso — 150 m [30..350]", 150]
 ];
 for (let index = 0; index < specs.length; index += 1) {
   const [topic, name, value] = specs[index];
@@ -232,7 +238,7 @@ fn("security_visual_arrival_watch", decision.id,
   "Vigiar GPS da aproximação",
   "security-light-arrival-watch.js", 1, 1160, 1660,
   [["security_visual_pending_validate"]]);
-fn("security_visual_pending_validate", decision.id, "Validar intenção pendente",
+fn("security_visual_pending_validate", decision.id, "Validar intenção e conclusão em HOME",
   "security-light-pending-validate.js", 1, 1420, 1660, [["security_visual_replay_ready"]]);
 sw("security_visual_replay_ready", decision.id,
   "Pendente ou motor ON permitem avaliar agora?",
@@ -282,7 +288,7 @@ fn("security_light_arrival_direction_blocked_v1", decision.id, "BLOQUEADO: sem d
   "security-light-arrival-blocked.js", 1, 990, 1980, [["security_visual_arrival_blocked_out"]]);
 fn("security_visual_arrival_pending", decision.id, "Guardar intenção de chegada mais nova",
   "security-light-arrival-pending.js", 1, 990, 1840, [["security_visual_arrival_logic_ready"]]);
-sw("security_visual_arrival_logic_ready", decision.id, "Luminosidade e veículo estão prontos?",
+sw("security_visual_arrival_logic_ready", decision.id, "Acesso, luminosidade e veículo prontos?",
   "_light_arrival.logic_ready", 1280, 1840,
   [["security_visual_arrival_ready"], ["security_visual_arrival_recovery_needed"]]);
 fn("security_visual_arrival_ready", decision.id, "Montar decisão pronta para os gates",
@@ -418,6 +424,40 @@ evaluateOff.wires = [["light_off_decision_route_out_v1"]];
 const turnOff = required("84d450933e67b8c1");
 turnOff.func = source("security-light-turn-off-if-active.js");
 
+// Named links preserve the existing decision lane; timers and final effects
+// have their own group, including the mandatory dry-run branch.
+const offEffects = group("security_visual_off_effects_group", "10. OFF novo → carência → revalidação → efeito ou dry-run",
+  64, 2820, 2100, 302, "#64748b", "#e2e8f0");
+required("light_off_decision_route_out_v1").links = ["security_visual_off_wait_in"];
+linkIn("security_visual_off_wait_in", offEffects.id, "Receber OFF confirmado",
+  ["light_off_decision_route_out_v1"], "security_visual_off_wait", 180, 2890);
+grouped(offEffects.id, { id: "security_visual_off_wait", type: "delay", z: TAB, g: offEffects.id,
+  name: "Carência OFF (prazo canônico)", pauseType: "delay", timeout: "90", timeoutUnits: "seconds",
+  rate: "1", nbRateUnits: "1", rateUnits: "second", randomFirst: "1", randomLast: "5", randomUnits: "seconds",
+  drop: false, allowrate: false, outputs: 1, x: 460, y: 2890, wires: [["security_visual_off_wait_out"]] });
+linkOut("security_visual_off_wait_out", offEffects.id, "Carência vencida → revalidar OFF",
+  "light_off_decision_route_in_v1", 760, 2890);
+required("light_off_decision_route_in_v1").links = ["security_visual_off_wait_out"];
+turnOff.wires = [["security_visual_off_effect_out"]];
+linkOut("security_visual_off_effect_out", offGroup.id, "OFF autorizado → fronteira final",
+  "security_visual_off_effect_in", 1350, 830);
+linkIn("security_visual_off_effect_in", offEffects.id, "Receber desligamento autorizado",
+  ["security_visual_off_effect_out"], "security_visual_off_test_gate", 180, 2990);
+sw("security_visual_off_test_gate", offEffects.id, "OFF em test_mode?", "payload.test_mode", 450, 2990,
+  [["security_visual_off_dry_run"], ["security_visual_off_service_out"]]);
+fn("security_visual_off_dry_run", offEffects.id, "TESTE OFF: registrar sem dispositivos",
+  "security-light-off-dry-run.js", 0, 850, 2950, []);
+linkOut("security_visual_off_service_out", offEffects.id, "Produção → desligar refletor",
+  "security_visual_off_service_in", 740, 3050);
+linkIn("security_visual_off_service_in", offEffects.id, "Receber OFF de produção",
+  ["security_visual_off_service_out"], "82539910c43d6cf5", 1100, 2990);
+offGroup.nodes = offGroup.nodes.filter((id) => id !== "82539910c43d6cf5");
+offEffects.nodes.push("82539910c43d6cf5");
+Object.assign(required("82539910c43d6cf5"), { g: offEffects.id, x: 1370, y: 2990,
+  wires: [["security_visual_off_accepted"]] });
+fn("security_visual_off_accepted", offEffects.id, "Registrar aceite do desligamento",
+  "security-light-off-accepted.js", 0, 1770, 2990, []);
+
 const reconcile = required("6013a28eaa95addd");
 reconcile.name = "0. Startup e recovery visual do lifecycle";
 reconcile.x = 64; reconcile.y = 2100; reconcile.w = 3150; reconcile.h = 322;
@@ -476,9 +516,32 @@ for (const id of reconcile.nodes ?? []) {
   const node = required(id);
   if (Number.isFinite(node.y)) node.y += 60;
 }
+const offTests = group("security_visual_off_tests_group", "11. Teste OFF isolado — 1 reset; 2 OFF antigo; 3 OFF novo; aguarde 90 s",
+  64, 3180, 1500, 262, "#64748b", "#e2e8f0");
+for (const [topic, name, y] of [["reset", "TESTE OFF 1: reset", 3250],
+  ["old_off", "TESTE OFF 2: rejeitar OFF antigo", 3320], ["new_off", "TESTE OFF 3: OFF novo e carência", 3390]]) {
+  inject("security_visual_off_test_" + topic, offTests.id, name, topic, 0, 320, y, "security_visual_off_test_prepare");
+  required("security_visual_off_test_" + topic).once = false;
+}
+fn("security_visual_off_test_prepare", offTests.id, "Preparar estado sintético separado",
+  "security-light-off-manual-test.js", 1, 770, 3320, [["security_visual_off_test_out"]]);
+linkOut("security_visual_off_test_out", offTests.id, "Teste OFF → normalização canônica",
+  "security_visual_context_route_in", 1120, 3320);
+required("security_visual_context_route_in").links.push("security_visual_off_test_out");
+for (const [id, x, y] of [
+  ["security_visual_bypass_startup", 1720, 1150],
+  ["security_visual_bypass_auto_enable", 1750, 1230],
+  ["security_visual_bypass_manual_enable", 1750, 1470],
+  ["security_visual_bypass_manual_disable", 1720, 1550]
+]) {
+  const out = id + "_result_out";
+  required(id).wires = [[out]];
+  linkOut(out, required(id).g, "Decisão de bypass → publicação", "security_visual_bypass_result_in", x, y);
+  required("security_visual_bypass_result_in").links.push(out);
+}
 required(TAB).info = "Decisões de contexto, replay, direção, recovery e políticas de tempo são visíveis. A confirmação HOME de 90 s e o refresh extraordinário pertencem a contexto_chegadas; este tab apenas usa o contexto atualizado para decidir o desligamento. JavaScript remanescente adapta estruturas e aplica transações de estado; produção e teste divergem somente na fronteira final de efeitos.";
 flows = reconcileGeneratedFlows(originalFlows, flows, {
-  isOwned: (node) => node.id.startsWith("security_visual_") || generated.has(node.id),
+  isOwned: (node) => node.id.startsWith("security_visual_") || generated.has(node.id) || node.id === "82539910c43d6cf5",
 });
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Security light visual policy installed in ${outputPath}`);

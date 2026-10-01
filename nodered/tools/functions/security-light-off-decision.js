@@ -15,26 +15,51 @@ const lifecycle = TEST_MODE
     : flow.get(lifecycleKey, "persistent") ?? {};
 const now = Date.now();
 const vehicle = flow.get(contextKey("vehicle_primary_context_v1")) ?? {};
-const physicalObservedAt = Number(flow.get("security_light_physical_observed_at") ?? 0);
+const physicalObservedAt = Number(flow.get(contextKey("security_light_physical_observed_at")) ?? 0);
 const physicalFresh = Number.isFinite(physicalObservedAt) &&
     physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&
     now - physicalObservedAt <= PHYSICAL_FRESH_MS;
-const ready = flow.get("sun_ready") === true && flow.get("light_reconciled") === true &&
+const ready = flow.get(contextKey("sun_ready")) === true && flow.get(contextKey("light_reconciled")) === true &&
     physicalFresh;
 if (lifecycle.active_by_arrival !== true || !ready) return null;
 
-/* Somente um snapshot novo e aceito do próprio veículo pode encerrar o
- * lifecycle. A trava não participa desta decisão: motor OFF confiável já é a
- * evidência de que a viagem terminou, inclusive quando o carro foi trancado. */
 const acceptedVehicleContext = msg._light_context?.kind === "vehicle_primary_context" &&
     msg._light_context?.accepted === true;
-if (acceptedVehicleContext && vehicle.ready === true &&
-    vehicle.engine_state_valid === true &&
-    msg.payload?.vehicle_primary_ready === true &&
-    msg.payload?.vehicle_primary_engine_state_valid === true &&
-    msg.payload?.vehicle_primary_engine_on === false) {
-    msg.payload.off_reason = "vehicle_primary_motor_off_confirmado";
-    msg.payload.deadline_type = "immediate";
-    return msg;
+if (!acceptedVehicleContext) return null;
+const evidence = offEvidence(vehicle, lifecycle, LOCATION_POLICY, now);
+const communicationFailed = vehicle.engine_communication_failed === true || (TEST_MODE
+    ? flow.get("security_light_engine_communication_failed__test")
+    : flow.get("security_light_engine_communication_failed", "persistent")) === true;
+if (!evidence.valid || communicationFailed) {
+    lifecycle.pending_off_at = null;
+    lifecycle.pending_off_reason = null;
+    lifecycle.pending_off_source = null;
+    lifecycle.updated_at = now;
+    if (TEST_MODE) flow.set(lifecycleKey, lifecycle);
+    else flow.set(lifecycleKey, lifecycle, "persistent");
+    const reason = communicationFailed ? "engine_communication_failed" : evidence.reason;
+    const signature = reason + ":" + evidence.observed_at;
+    if (flow.get(contextKey("security_light_off_diagnostic")) !== signature) {
+        flow.set(contextKey("security_light_off_diagnostic"), signature);
+        node.log?.("SECURITY_LIGHT_OFF_BLOCKED " + JSON.stringify({ reason,
+            engine_observed_at: evidence.observed_at, engine_age_ms: evidence.age_ms,
+            on_since: lifecycle.on_since, simulated: TEST_MODE, dispatched: false }));
+    }
+    return null;
 }
-return null;
+if (Number.isFinite(lifecycle.pending_off_at)) return null;
+lifecycle.pending_off_at = now + Number(LIGHT_POLICY.off_grace_seconds) * 1000;
+lifecycle.pending_off_reason = "vehicle_primary_motor_off_confirmado";
+lifecycle.pending_off_source = "vehicle_primary";
+lifecycle.updated_at = now;
+if (TEST_MODE) flow.set(lifecycleKey, lifecycle);
+else flow.set(lifecycleKey, lifecycle, "persistent");
+msg.payload.off_reason = lifecycle.pending_off_reason;
+msg.payload.deadline_type = "confirmed_off";
+msg.payload.deadline_at = lifecycle.pending_off_at;
+msg.payload.activation_at = lifecycle.on_since;
+msg.delay = lifecycle.pending_off_at - now;
+node.log?.("SECURITY_LIGHT_OFF_SCHEDULED " + JSON.stringify({ reason: msg.payload.off_reason,
+    deadline_at: lifecycle.pending_off_at, engine_observed_at: evidence.observed_at,
+    engine_age_ms: evidence.age_ms, simulated: TEST_MODE, dispatched: false }));
+return msg;

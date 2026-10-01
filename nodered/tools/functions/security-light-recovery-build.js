@@ -7,7 +7,7 @@ for (const deadline of data.deadlines) {
     if (scheduled[deadline.type] === deadline.at) continue;
     scheduled[deadline.type] = deadline.at;
     data.messages.push({ payload: { event: "turn_off", reason: deadline.reason,
-        deadline_type: deadline.type, recovered: true }, delay: Math.max(0, deadline.at - data.now) });
+        deadline_type: deadline.type, deadline_at: deadline.at, activation_at: data.lifecycle.on_since, recovered: true }, delay: Math.max(0, deadline.at - data.now) });
 }
 flow.set("security_light_recovery_scheduled", scheduled);
 return msg;

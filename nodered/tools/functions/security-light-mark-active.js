@@ -100,6 +100,7 @@ const localCurrent = msg.payload?.local_excursion_return !== true || (
 const ready =
     localCurrent &&
     peopleReadyForArrival &&
+    withinLightingApproach(sourcePeopleContext, LIGHT_POLICY) &&
     flow.get("sun_ready") === true &&
     flow.get("sun_below_horizon") === true &&
     physicalAttemptAllowed &&
@@ -148,6 +149,7 @@ if (msg.payload?.local_excursion_return === true) {
 }
 ctxSet("security_light_lifecycle_v1", lifecycle, PERSISTENT);
 ctxSet("security_light_pending_arrival_v1", null, PERSISTENT);
+ctxSet("security_light_pending_arrivals_v1", {}, PERSISTENT);
 const arrivalWatches = ctxGet("security_light_arrival_watch_v1", PERSISTENT);
 if (arrivalWatches?.residents && residentArrival) {
     delete arrivalWatches.residents[arrivalSource];

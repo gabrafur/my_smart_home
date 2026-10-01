@@ -3927,11 +3927,11 @@
             "a5cbd5aa62c5a99b",
             "374d4e39be0a30ac",
             "84d450933e67b8c1",
-            "82539910c43d6cf5",
             "f59d2ceb5ba88ddf",
             "aaeec8223d98ab0b",
             "light_off_decision_route_out_v1",
-            "light_off_decision_route_in_v1"
+            "light_off_decision_route_in_v1",
+            "security_visual_off_effect_out"
         ],
         "x": 159,
         "y": 689,
@@ -4027,7 +4027,11 @@
             "notification_hub_wire_out_6425f4062085",
             "notification_hub_wire_in_6425f4062085",
             "notification_hub_wire_out_dd868e9d342d",
-            "notification_hub_wire_in_dd868e9d342d"
+            "notification_hub_wire_in_dd868e9d342d",
+            "security_visual_bypass_startup_result_out",
+            "security_visual_bypass_auto_enable_result_out",
+            "security_visual_bypass_manual_enable_result_out",
+            "security_visual_bypass_manual_disable_result_out"
         ],
         "x": 74,
         "y": 1109,
@@ -5038,7 +5042,8 @@
             "security_visual_policy_in",
             "security_visual_policy_validate",
             "security_visual_policy_store",
-            "security_visual_policy_reject"
+            "security_visual_policy_reject",
+            "security_visual_policy_approach_radius_m"
         ],
         "x": 3119,
         "y": 2319,
@@ -46145,7 +46150,7 @@
         "z": "6b7552efb85343f4",
         "g": "95e7527bc7a0a9a1",
         "name": "Marcar refletor ativo por chegada",
-        "func": "const now = Date.now();\nconst LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst ARRIVAL_DEDUPE_MS = Number(LOCATION_POLICY.arrival_dedupe_minutes) * 60000;\nconst BACKSTOP_MS = Number(LIGHT_POLICY.backstop_minutes) * 60000;\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\nconst PERSISTENT = \"persistent\";\n\nfunction contextKey(base) {\n    return TEST_MODE ? `${base}__test` : base;\n}\n\nfunction ctxGet(base, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.get(key)\n        : flow.get(key, store);\n}\n\nfunction ctxSet(base, value, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.set(key, value)\n        : flow.set(key, value, store);\n}\n\nconst lifecycle =\n    ctxGet(\"security_light_lifecycle_v1\", PERSISTENT) ??\n    { version: 1 };\nconst physicalObservedAt = Number(\n    flow.get(\"security_light_physical_observed_at\") ?? 0\n);\nconst physicalFresh =\n    Number.isFinite(physicalObservedAt) &&\n    physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    now - physicalObservedAt <= PHYSICAL_FRESH_MS;\nconst physicalState = flow.get(\"security_light_physical_state\") ?? \"unknown\";\nconst attemptingUnavailable = physicalState === \"unavailable\";\nconst physicalAttemptAllowed = attemptingUnavailable ||\n    (physicalState === \"off\" && flow.get(\"light_reconciled\") === true && physicalFresh);\nconst people = ctxGet(\"people_context_v1\") ?? {};\nconst arrivalSource = String(msg.payload?.source ?? \"\");\nconst residentArrival = [\"resident_primary\", \"resident_secondary\"].includes(\n    arrivalSource\n);\n// Evento e contexto usam links independentes. Revalide a observação canônica\n// do evento também nesta fronteira, sem substituir um cache mais recente.\nconst cachedResident = people[arrivalSource];\nconst eventResident = msg.payload?.arrival_resident_snapshot;\nconst eventObservedAt = Number(eventResident?.updated_at ?? 0);\nconst sourcePeopleContext = eventResident?.ready === true && eventResident?.stale !== true &&\n    Number.isFinite(eventObservedAt) && eventObservedAt > 0 &&\n    eventObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    eventObservedAt >= Number(cachedResident?.updated_at ?? 0)\n    ? eventResident : cachedResident;\nconst sourceObservedAt = Number(sourcePeopleContext?.updated_at);\nconst sourceCurrent = sourcePeopleContext?.ready === true &&\n    sourcePeopleContext?.stale !== true && Number.isFinite(sourceObservedAt) &&\n    sourceObservedAt > 0 && sourceObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    now - sourceObservedAt <= Number(LOCATION_POLICY.location_fresh_minutes) * 60000;\nconst sourcePeopleReadinessKnown =\n    sourcePeopleContext &&\n    typeof sourcePeopleContext === \"object\" &&\n    typeof sourcePeopleContext.ready === \"boolean\";\n/* Uma fonte da outra pessoa pode ficar stale sem invalidar a chegada atual.\n * O evento já atravessou seleção, direção e ciclo externo no tab de origem;\n * para uma pessoa, revalide somente a fonte que produziu a chegada. */\nconst peopleReadyForArrival = residentArrival\n    ? sourcePeopleReadinessKnown\n        ? sourceCurrent\n        : people.ready === true\n    : true;\nconst engineGateAllowed =\n    msg.payload?.vehicle_primary_gate === \"known_engine_on\";\nconst bypassAllowed =\n    msg.payload?.vehicle_primary_gate ===\n        \"manual_bypass_for_unreliable_engine\" &&\n    msg.payload?.engine_bypass_allowed === true &&\n    msg.payload?.engine_data_unreliable === true;\nconst staleEngineHomeFallback =\n    msg.payload?.vehicle_primary_gate ===\n        \"confirmed_home_arrival_with_stale_engine_fallback\" &&\n    msg.payload?.stale_engine_home_fallback === true &&\n    msg.payload?.engine_data_unreliable === true;\nconst localCycle = ctxGet(\"security_light_local_excursion_v1\", PERSISTENT)?.residents?.[arrivalSource];\nconst localCurrent = msg.payload?.local_excursion_return !== true || (\n    localCycle?.started_at === msg.payload.local_excursion_started_at &&\n    people.local_excursions?.[arrivalSource]?.started_at === localCycle?.started_at &&\n    Number.isFinite(localCycle?.expires_at) && now <= localCycle.expires_at &&\n    localCycle.consumed_at == null);\nconst ready =\n    localCurrent &&\n    peopleReadyForArrival &&\n    flow.get(\"sun_ready\") === true &&\n    flow.get(\"sun_below_horizon\") === true &&\n    physicalAttemptAllowed &&\n    (engineGateAllowed || bypassAllowed || staleEngineHomeFallback);\n\nif (\n    !ready ||\n    lifecycle.active_by_arrival === true\n) {\n    return null;\n}\n\nconst arrivalKey = msg.payload?.arrival_key;\nconst lastArrivalAt = Number(lifecycle.last_arrival_at ?? 0);\nif (\n    arrivalKey &&\n    lifecycle.last_arrival_key === arrivalKey &&\n    lastArrivalAt <= now + FUTURE_TOLERANCE_MS &&\n    now - lastArrivalAt < ARRIVAL_DEDUPE_MS\n) {\n    return null;\n}\n\nlifecycle.version = 1;\nlifecycle.active_by_arrival = true;\nlifecycle.on_since = now;\nlifecycle.force_off_at = now + BACKSTOP_MS;\nlifecycle.pending_off_at = null;\nlifecycle.pending_off_reason = null;\nlifecycle.pending_off_source = null;\nlifecycle.vehicle_refresh_at = null;\nlifecycle.vehicle_refresh_reason = null;\nlifecycle.vehicle_refresh_source = null;\nlifecycle.last_arrival_key = arrivalKey ?? null;\nlifecycle.last_arrival_at = now;\nlifecycle.updated_at = now;\n\n// Consume only after all final gates authorize the lifecycle, never at preparation.\nif (msg.payload?.local_excursion_return === true) {\n    const local = ctxGet(\"security_light_local_excursion_v1\", PERSISTENT);\n    const cycle = local?.residents?.[arrivalSource];\n    if (cycle && cycle.started_at === msg.payload.local_excursion_started_at) {\n        cycle.consumed_at = now;\n        ctxSet(\"security_light_local_excursion_v1\", local, PERSISTENT);\n    }\n}\nctxSet(\"security_light_lifecycle_v1\", lifecycle, PERSISTENT);\nctxSet(\"security_light_pending_arrival_v1\", null, PERSISTENT);\nconst arrivalWatches = ctxGet(\"security_light_arrival_watch_v1\", PERSISTENT);\nif (arrivalWatches?.residents && residentArrival) {\n    delete arrivalWatches.residents[arrivalSource];\n    ctxSet(\"security_light_arrival_watch_v1\", arrivalWatches, PERSISTENT);\n}\nctxSet(\n    \"security_light_turn_on_notification_latch_v1\",\n    {\n        version: 1,\n        latched: true,\n        reason: attemptingUnavailable\n            ? \"turn_on_dispatched_while_unavailable\"\n            : \"turn_on_dispatched\",\n        latched_at: now,\n        arrival_key: arrivalKey ?? null\n    },\n    PERSISTENT\n);\n\nmsg.delay = BACKSTOP_MS;\nmsg.payload.deadline_type = \"backstop\";\nmsg.payload.deadline_at = lifecycle.force_off_at;\nmsg.payload.reflector_state_before_attempt = physicalState;\nmsg.payload.actuator_available = !attemptingUnavailable;\nmsg.payload.actuator_confirmation_pending = attemptingUnavailable;\nmsg.payload.reason = staleEngineHomeFallback\n    ? (TEST_MODE\n        ? \"test_confirmed_home_arrival_with_stale_engine_fallback\"\n        : \"confirmed_home_arrival_with_stale_engine_fallback\")\n    : bypassAllowed\n    ? (TEST_MODE\n        ? \"test_arrival_after_dark_with_engine_bypass\"\n        : \"arrival_after_dark_with_engine_bypass\")\n    : (TEST_MODE\n        ? \"test_arrival_with_vehicle_primary_engine_on_after_dark\"\n        : \"arrival_with_vehicle_primary_engine_on_after_dark\");\nmsg._security_light_decision_state = attemptingUnavailable\n    ? \"turn_on_attempted_while_unavailable\"\n    : \"turned_on\";\n\nif (TEST_MODE) {\n    msg.payload.simulated = true;\n    msg.payload.dispatched = false;\n    node.status({\n        fill: bypassAllowed || staleEngineHomeFallback ? \"yellow\" : \"green\",\n        shape: \"dot\",\n        text: staleEngineHomeFallback\n            ? \"TESTE: lifecycle criado com chegada confirmada — despacho simulado\"\n            : bypassAllowed\n            ? \"TESTE: lifecycle criado com bypass — despacho simulado\"\n            : \"TESTE: lifecycle criado — despacho simulado\"\n    });\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "func": "// Pure distance gate. Direction and freshness remain the canonical producer's responsibility.\nfunction withinLightingApproach(resident, policy) {\n    if (resident?.current_home === true && resident?.state === \"home\") return true;\n    const radius = Number(policy.approach_radius_m);\n    const distance = resident?.gate_distance_m;\n    return Number.isFinite(radius) && radius > 0 && Number.isFinite(distance) &&\n        distance >= 0 && distance <= radius;\n}\nconst now = Date.now();\nconst LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst ARRIVAL_DEDUPE_MS = Number(LOCATION_POLICY.arrival_dedupe_minutes) * 60000;\nconst BACKSTOP_MS = Number(LIGHT_POLICY.backstop_minutes) * 60000;\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\nconst PERSISTENT = \"persistent\";\n\nfunction contextKey(base) {\n    return TEST_MODE ? `${base}__test` : base;\n}\n\nfunction ctxGet(base, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.get(key)\n        : flow.get(key, store);\n}\n\nfunction ctxSet(base, value, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.set(key, value)\n        : flow.set(key, value, store);\n}\n\nconst lifecycle =\n    ctxGet(\"security_light_lifecycle_v1\", PERSISTENT) ??\n    { version: 1 };\nconst physicalObservedAt = Number(\n    flow.get(\"security_light_physical_observed_at\") ?? 0\n);\nconst physicalFresh =\n    Number.isFinite(physicalObservedAt) &&\n    physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    now - physicalObservedAt <= PHYSICAL_FRESH_MS;\nconst physicalState = flow.get(\"security_light_physical_state\") ?? \"unknown\";\nconst attemptingUnavailable = physicalState === \"unavailable\";\nconst physicalAttemptAllowed = attemptingUnavailable ||\n    (physicalState === \"off\" && flow.get(\"light_reconciled\") === true && physicalFresh);\nconst people = ctxGet(\"people_context_v1\") ?? {};\nconst arrivalSource = String(msg.payload?.source ?? \"\");\nconst residentArrival = [\"resident_primary\", \"resident_secondary\"].includes(\n    arrivalSource\n);\n// Evento e contexto usam links independentes. Revalide a observação canônica\n// do evento também nesta fronteira, sem substituir um cache mais recente.\nconst cachedResident = people[arrivalSource];\nconst eventResident = msg.payload?.arrival_resident_snapshot;\nconst eventObservedAt = Number(eventResident?.updated_at ?? 0);\nconst sourcePeopleContext = eventResident?.ready === true && eventResident?.stale !== true &&\n    Number.isFinite(eventObservedAt) && eventObservedAt > 0 &&\n    eventObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    eventObservedAt >= Number(cachedResident?.updated_at ?? 0)\n    ? eventResident : cachedResident;\nconst sourceObservedAt = Number(sourcePeopleContext?.updated_at);\nconst sourceCurrent = sourcePeopleContext?.ready === true &&\n    sourcePeopleContext?.stale !== true && Number.isFinite(sourceObservedAt) &&\n    sourceObservedAt > 0 && sourceObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    now - sourceObservedAt <= Number(LOCATION_POLICY.location_fresh_minutes) * 60000;\nconst sourcePeopleReadinessKnown =\n    sourcePeopleContext &&\n    typeof sourcePeopleContext === \"object\" &&\n    typeof sourcePeopleContext.ready === \"boolean\";\n/* Uma fonte da outra pessoa pode ficar stale sem invalidar a chegada atual.\n * O evento já atravessou seleção, direção e ciclo externo no tab de origem;\n * para uma pessoa, revalide somente a fonte que produziu a chegada. */\nconst peopleReadyForArrival = residentArrival\n    ? sourcePeopleReadinessKnown\n        ? sourceCurrent\n        : people.ready === true\n    : true;\nconst engineGateAllowed =\n    msg.payload?.vehicle_primary_gate === \"known_engine_on\";\nconst bypassAllowed =\n    msg.payload?.vehicle_primary_gate ===\n        \"manual_bypass_for_unreliable_engine\" &&\n    msg.payload?.engine_bypass_allowed === true &&\n    msg.payload?.engine_data_unreliable === true;\nconst staleEngineHomeFallback =\n    msg.payload?.vehicle_primary_gate ===\n        \"confirmed_home_arrival_with_stale_engine_fallback\" &&\n    msg.payload?.stale_engine_home_fallback === true &&\n    msg.payload?.engine_data_unreliable === true;\nconst localCycle = ctxGet(\"security_light_local_excursion_v1\", PERSISTENT)?.residents?.[arrivalSource];\nconst localCurrent = msg.payload?.local_excursion_return !== true || (\n    localCycle?.started_at === msg.payload.local_excursion_started_at &&\n    people.local_excursions?.[arrivalSource]?.started_at === localCycle?.started_at &&\n    Number.isFinite(localCycle?.expires_at) && now <= localCycle.expires_at &&\n    localCycle.consumed_at == null);\nconst ready =\n    localCurrent &&\n    peopleReadyForArrival &&\n    withinLightingApproach(sourcePeopleContext, LIGHT_POLICY) &&\n    flow.get(\"sun_ready\") === true &&\n    flow.get(\"sun_below_horizon\") === true &&\n    physicalAttemptAllowed &&\n    (engineGateAllowed || bypassAllowed || staleEngineHomeFallback);\n\nif (\n    !ready ||\n    lifecycle.active_by_arrival === true\n) {\n    return null;\n}\n\nconst arrivalKey = msg.payload?.arrival_key;\nconst lastArrivalAt = Number(lifecycle.last_arrival_at ?? 0);\nif (\n    arrivalKey &&\n    lifecycle.last_arrival_key === arrivalKey &&\n    lastArrivalAt <= now + FUTURE_TOLERANCE_MS &&\n    now - lastArrivalAt < ARRIVAL_DEDUPE_MS\n) {\n    return null;\n}\n\nlifecycle.version = 1;\nlifecycle.active_by_arrival = true;\nlifecycle.on_since = now;\nlifecycle.force_off_at = now + BACKSTOP_MS;\nlifecycle.pending_off_at = null;\nlifecycle.pending_off_reason = null;\nlifecycle.pending_off_source = null;\nlifecycle.vehicle_refresh_at = null;\nlifecycle.vehicle_refresh_reason = null;\nlifecycle.vehicle_refresh_source = null;\nlifecycle.last_arrival_key = arrivalKey ?? null;\nlifecycle.last_arrival_at = now;\nlifecycle.updated_at = now;\n\n// Consume only after all final gates authorize the lifecycle, never at preparation.\nif (msg.payload?.local_excursion_return === true) {\n    const local = ctxGet(\"security_light_local_excursion_v1\", PERSISTENT);\n    const cycle = local?.residents?.[arrivalSource];\n    if (cycle && cycle.started_at === msg.payload.local_excursion_started_at) {\n        cycle.consumed_at = now;\n        ctxSet(\"security_light_local_excursion_v1\", local, PERSISTENT);\n    }\n}\nctxSet(\"security_light_lifecycle_v1\", lifecycle, PERSISTENT);\nctxSet(\"security_light_pending_arrival_v1\", null, PERSISTENT);\nctxSet(\"security_light_pending_arrivals_v1\", {}, PERSISTENT);\nconst arrivalWatches = ctxGet(\"security_light_arrival_watch_v1\", PERSISTENT);\nif (arrivalWatches?.residents && residentArrival) {\n    delete arrivalWatches.residents[arrivalSource];\n    ctxSet(\"security_light_arrival_watch_v1\", arrivalWatches, PERSISTENT);\n}\nctxSet(\n    \"security_light_turn_on_notification_latch_v1\",\n    {\n        version: 1,\n        latched: true,\n        reason: attemptingUnavailable\n            ? \"turn_on_dispatched_while_unavailable\"\n            : \"turn_on_dispatched\",\n        latched_at: now,\n        arrival_key: arrivalKey ?? null\n    },\n    PERSISTENT\n);\n\nmsg.delay = BACKSTOP_MS;\nmsg.payload.deadline_type = \"backstop\";\nmsg.payload.deadline_at = lifecycle.force_off_at;\nmsg.payload.reflector_state_before_attempt = physicalState;\nmsg.payload.actuator_available = !attemptingUnavailable;\nmsg.payload.actuator_confirmation_pending = attemptingUnavailable;\nmsg.payload.reason = staleEngineHomeFallback\n    ? (TEST_MODE\n        ? \"test_confirmed_home_arrival_with_stale_engine_fallback\"\n        : \"confirmed_home_arrival_with_stale_engine_fallback\")\n    : bypassAllowed\n    ? (TEST_MODE\n        ? \"test_arrival_after_dark_with_engine_bypass\"\n        : \"arrival_after_dark_with_engine_bypass\")\n    : (TEST_MODE\n        ? \"test_arrival_with_vehicle_primary_engine_on_after_dark\"\n        : \"arrival_with_vehicle_primary_engine_on_after_dark\");\nmsg._security_light_decision_state = attemptingUnavailable\n    ? \"turn_on_attempted_while_unavailable\"\n    : \"turned_on\";\n\nif (TEST_MODE) {\n    msg.payload.simulated = true;\n    msg.payload.dispatched = false;\n    node.status({\n        fill: bypassAllowed || staleEngineHomeFallback ? \"yellow\" : \"green\",\n        shape: \"dot\",\n        text: staleEngineHomeFallback\n            ? \"TESTE: lifecycle criado com chegada confirmada — despacho simulado\"\n            : bypassAllowed\n            ? \"TESTE: lifecycle criado com bypass — despacho simulado\"\n            : \"TESTE: lifecycle criado — despacho simulado\"\n    });\n    return [null, msg];\n}\n\nreturn [msg, null];",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
@@ -46435,7 +46440,7 @@
         "z": "6b7552efb85343f4",
         "g": "a610d085d27ea80d",
         "name": "Desligar quando o carro confirmar OFF",
-        "func": "const LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst contextKey = (base) => TEST_MODE ? `${base}__test` : base;\nconst lifecycleKey = contextKey(\"security_light_lifecycle_v1\");\nconst lifecycle = TEST_MODE\n    ? flow.get(lifecycleKey) ?? {}\n    : flow.get(lifecycleKey, \"persistent\") ?? {};\nconst now = Date.now();\nconst vehicle = flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {};\nconst physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(physicalObservedAt) &&\n    physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    now - physicalObservedAt <= PHYSICAL_FRESH_MS;\nconst ready = flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true &&\n    physicalFresh;\nif (lifecycle.active_by_arrival !== true || !ready) return null;\n\n/* Somente um snapshot novo e aceito do próprio veículo pode encerrar o\n * lifecycle. A trava não participa desta decisão: motor OFF confiável já é a\n * evidência de que a viagem terminou, inclusive quando o carro foi trancado. */\nconst acceptedVehicleContext = msg._light_context?.kind === \"vehicle_primary_context\" &&\n    msg._light_context?.accepted === true;\nif (acceptedVehicleContext && vehicle.ready === true &&\n    vehicle.engine_state_valid === true &&\n    msg.payload?.vehicle_primary_ready === true &&\n    msg.payload?.vehicle_primary_engine_state_valid === true &&\n    msg.payload?.vehicle_primary_engine_on === false) {\n    msg.payload.off_reason = \"vehicle_primary_motor_off_confirmado\";\n    msg.payload.deadline_type = \"immediate\";\n    return msg;\n}\nreturn null;",
+        "func": "// Shared pure evidence check, embedded by the generator in both OFF gates.\nfunction offEvidence(vehicle, lifecycle, policy, now) {\n    const raw = vehicle.telemetry_updated_at ?? vehicle.engine_updated_at;\n    const observedAt = Number(raw);\n    const ageMs = now - observedAt;\n    let reason = null;\n    if (vehicle.engine_communication_failed === true) reason = \"engine_communication_failed\";\n    else if (vehicle.ready !== true || vehicle.engine_state_valid !== true) reason = \"vehicle_not_ready\";\n    else if (vehicle.engine_on !== false) reason = \"engine_not_off\";\n    else if (raw == null || !Number.isFinite(observedAt) || observedAt <= 0 ||\n        vehicle.telemetry_timestamp_future === true || observedAt > now + Number(policy.future_tolerance_seconds) * 1000)\n        reason = \"engine_timestamp_invalid\";\n    else if (ageMs > Number(policy.vehicle_signal_fresh_minutes) * 60000) reason = \"engine_observation_stale\";\n    else if (!Number.isFinite(lifecycle.on_since) || observedAt <= lifecycle.on_since)\n        reason = \"engine_observation_before_activation\";\n    return { valid: reason === null, reason, observed_at: observedAt, age_ms: ageMs };\n}\nconst LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst contextKey = (base) => TEST_MODE ? `${base}__test` : base;\nconst lifecycleKey = contextKey(\"security_light_lifecycle_v1\");\nconst lifecycle = TEST_MODE\n    ? flow.get(lifecycleKey) ?? {}\n    : flow.get(lifecycleKey, \"persistent\") ?? {};\nconst now = Date.now();\nconst vehicle = flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {};\nconst physicalObservedAt = Number(flow.get(contextKey(\"security_light_physical_observed_at\")) ?? 0);\nconst physicalFresh = Number.isFinite(physicalObservedAt) &&\n    physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n    now - physicalObservedAt <= PHYSICAL_FRESH_MS;\nconst ready = flow.get(contextKey(\"sun_ready\")) === true && flow.get(contextKey(\"light_reconciled\")) === true &&\n    physicalFresh;\nif (lifecycle.active_by_arrival !== true || !ready) return null;\n\nconst acceptedVehicleContext = msg._light_context?.kind === \"vehicle_primary_context\" &&\n    msg._light_context?.accepted === true;\nif (!acceptedVehicleContext) return null;\nconst evidence = offEvidence(vehicle, lifecycle, LOCATION_POLICY, now);\nconst communicationFailed = vehicle.engine_communication_failed === true || (TEST_MODE\n    ? flow.get(\"security_light_engine_communication_failed__test\")\n    : flow.get(\"security_light_engine_communication_failed\", \"persistent\")) === true;\nif (!evidence.valid || communicationFailed) {\n    lifecycle.pending_off_at = null;\n    lifecycle.pending_off_reason = null;\n    lifecycle.pending_off_source = null;\n    lifecycle.updated_at = now;\n    if (TEST_MODE) flow.set(lifecycleKey, lifecycle);\n    else flow.set(lifecycleKey, lifecycle, \"persistent\");\n    const reason = communicationFailed ? \"engine_communication_failed\" : evidence.reason;\n    const signature = reason + \":\" + evidence.observed_at;\n    if (flow.get(contextKey(\"security_light_off_diagnostic\")) !== signature) {\n        flow.set(contextKey(\"security_light_off_diagnostic\"), signature);\n        node.log?.(\"SECURITY_LIGHT_OFF_BLOCKED \" + JSON.stringify({ reason,\n            engine_observed_at: evidence.observed_at, engine_age_ms: evidence.age_ms,\n            on_since: lifecycle.on_since, simulated: TEST_MODE, dispatched: false }));\n    }\n    return null;\n}\nif (Number.isFinite(lifecycle.pending_off_at)) return null;\nlifecycle.pending_off_at = now + Number(LIGHT_POLICY.off_grace_seconds) * 1000;\nlifecycle.pending_off_reason = \"vehicle_primary_motor_off_confirmado\";\nlifecycle.pending_off_source = \"vehicle_primary\";\nlifecycle.updated_at = now;\nif (TEST_MODE) flow.set(lifecycleKey, lifecycle);\nelse flow.set(lifecycleKey, lifecycle, \"persistent\");\nmsg.payload.off_reason = lifecycle.pending_off_reason;\nmsg.payload.deadline_type = \"confirmed_off\";\nmsg.payload.deadline_at = lifecycle.pending_off_at;\nmsg.payload.activation_at = lifecycle.on_since;\nmsg.delay = lifecycle.pending_off_at - now;\nnode.log?.(\"SECURITY_LIGHT_OFF_SCHEDULED \" + JSON.stringify({ reason: msg.payload.off_reason,\n    deadline_at: lifecycle.pending_off_at, engine_observed_at: evidence.observed_at,\n    engine_age_ms: evidence.age_ms, simulated: TEST_MODE, dispatched: false }));\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -46456,7 +46461,7 @@
         "z": "6b7552efb85343f4",
         "g": "a610d085d27ea80d",
         "name": "Desativar somente se foi ligado por chegada",
-        "func": "const LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst key = \"security_light_lifecycle_v1\";\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst contextKey = (base) => TEST_MODE ? `${base}__test` : base;\nconst lifecycleKey = contextKey(key);\nconst lifecycle = TEST_MODE\n    ? flow.get(lifecycleKey) ?? {}\n    : flow.get(lifecycleKey, \"persistent\") ?? {};\nconst now = Date.now();\nconst type = msg.payload?.deadline_type ?? \"immediate\";\n\nif (msg.payload?.recovered === true) {\n    const scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\n    delete scheduled[type];\n    flow.set(\"security_light_recovery_scheduled\", scheduled);\n}\nif (lifecycle.active_by_arrival !== true) return null;\n\n/* O backstop é uma garantia do atuador que já foi ligado pela automação.\n * Ele não depende do frescor de pessoas, veículo ou sol para desligar. */\nif (type === \"backstop\") {\n    const forceOffAt = Number(lifecycle.force_off_at);\n    if (Number.isFinite(forceOffAt) && now < forceOffAt) return null;\n} else {\n    const physical = flow.get(\"security_light_physical_state\");\n    const physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\n    const physicalFresh = Number.isFinite(physicalObservedAt) &&\n        physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n        now - physicalObservedAt <= PHYSICAL_FRESH_MS;\n    const vehicleContext = flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {};\n    const ready = flow.get(\"light_reconciled\") === true && physicalFresh &&\n        type === \"immediate\" && vehicleContext.ready === true &&\n        vehicleContext.engine_state_valid === true &&\n        vehicleContext.engine_on === false;\n    if (!ready || physical !== \"on\") return null;\n}\n\nlifecycle.active_by_arrival = false;\nlifecycle.on_since = null;\nlifecycle.force_off_at = null;\nlifecycle.pending_off_at = null;\nlifecycle.pending_off_reason = null;\nlifecycle.pending_off_source = null;\nlifecycle.vehicle_refresh_at = null;\nlifecycle.vehicle_refresh_reason = null;\nlifecycle.vehicle_refresh_source = null;\nlifecycle.cooldown_until = now + Number(LIGHT_POLICY.post_off_cooldown_minutes) * 60000;\nlifecycle.updated_at = now;\nif (TEST_MODE) flow.set(lifecycleKey, lifecycle);\nelse flow.set(lifecycleKey, lifecycle, \"persistent\");\nmsg.payload.off_reason = msg.payload.off_reason ?? msg.payload.reason ?? type;\nif (type === \"backstop\") {\n    msg.payload.backstop_forced = true;\n    node.warn(\"iluminacao_seguranca: backstop venceu; desligamento obrigatório enviado\");\n}\nreturn msg;",
+        "func": "// Shared pure evidence check, embedded by the generator in both OFF gates.\nfunction offEvidence(vehicle, lifecycle, policy, now) {\n    const raw = vehicle.telemetry_updated_at ?? vehicle.engine_updated_at;\n    const observedAt = Number(raw);\n    const ageMs = now - observedAt;\n    let reason = null;\n    if (vehicle.engine_communication_failed === true) reason = \"engine_communication_failed\";\n    else if (vehicle.ready !== true || vehicle.engine_state_valid !== true) reason = \"vehicle_not_ready\";\n    else if (vehicle.engine_on !== false) reason = \"engine_not_off\";\n    else if (raw == null || !Number.isFinite(observedAt) || observedAt <= 0 ||\n        vehicle.telemetry_timestamp_future === true || observedAt > now + Number(policy.future_tolerance_seconds) * 1000)\n        reason = \"engine_timestamp_invalid\";\n    else if (ageMs > Number(policy.vehicle_signal_fresh_minutes) * 60000) reason = \"engine_observation_stale\";\n    else if (!Number.isFinite(lifecycle.on_since) || observedAt <= lifecycle.on_since)\n        reason = \"engine_observation_before_activation\";\n    return { valid: reason === null, reason, observed_at: observedAt, age_ms: ageMs };\n}\nconst LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nconst LIGHT_POLICY = global.get(\"security_light_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||\n    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\nconst key = \"security_light_lifecycle_v1\";\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst contextKey = (base) => TEST_MODE ? `${base}__test` : base;\nconst lifecycleKey = contextKey(key);\nconst lifecycle = TEST_MODE\n    ? flow.get(lifecycleKey) ?? {}\n    : flow.get(lifecycleKey, \"persistent\") ?? {};\nconst now = Date.now();\nconst type = msg.payload?.deadline_type ?? \"immediate\";\n\nif (msg.payload?.recovered === true) {\n    const scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\n    delete scheduled[type];\n    flow.set(\"security_light_recovery_scheduled\", scheduled);\n}\nif (lifecycle.active_by_arrival !== true) return null;\n\n/* O backstop é uma garantia do atuador que já foi ligado pela automação.\n * Ele não depende do frescor de pessoas, veículo ou sol para desligar. */\nif (type === \"backstop\") {\n    const forceOffAt = Number(lifecycle.force_off_at);\n    if (Number.isFinite(forceOffAt) && now < forceOffAt) return null;\n} else {\n    const physical = flow.get(contextKey(\"security_light_physical_state\"));\n    const physicalObservedAt = Number(flow.get(contextKey(\"security_light_physical_observed_at\")) ?? 0);\n    const physicalFresh = Number.isFinite(physicalObservedAt) &&\n        physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&\n        now - physicalObservedAt <= PHYSICAL_FRESH_MS;\n    const vehicleContext = flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {};\n    const ready = flow.get(contextKey(\"light_reconciled\")) === true && physicalFresh &&\n        type === \"confirmed_off\" &&\n        Number.isFinite(lifecycle.pending_off_at) && now >= lifecycle.pending_off_at &&\n        msg.payload.deadline_at === lifecycle.pending_off_at &&\n        msg.payload.activation_at === lifecycle.on_since &&\n        offEvidence(vehicleContext, lifecycle, LOCATION_POLICY, now).valid &&\n        (TEST_MODE ? flow.get(\"security_light_engine_communication_failed__test\") :\n            flow.get(\"security_light_engine_communication_failed\", \"persistent\")) !== true;\n    if (!ready || physical !== \"on\") return null;\n}\n\nconst vehicleEvidence = offEvidence(flow.get(contextKey(\"vehicle_primary_context_v1\")) ?? {}, lifecycle, LOCATION_POLICY, now);\nmsg.payload.off_diagnostic = { reason: msg.payload.off_reason ?? msg.payload.reason ?? type,\n    deadline_type: type, on_since: lifecycle.on_since, requested_at: now,\n    engine_observed_at: Number.isFinite(vehicleEvidence.observed_at) ? vehicleEvidence.observed_at : null,\n    engine_age_ms: Number.isFinite(vehicleEvidence.age_ms) ? vehicleEvidence.age_ms : null,\n    simulated: TEST_MODE, dispatched: false };\nnode.log?.(\"SECURITY_LIGHT_OFF_REQUEST \" + JSON.stringify(msg.payload.off_diagnostic));\nmsg.payload.test_mode = TEST_MODE;\nlifecycle.active_by_arrival = false;\nlifecycle.on_since = null;\nlifecycle.force_off_at = null;\nlifecycle.pending_off_at = null;\nlifecycle.pending_off_reason = null;\nlifecycle.pending_off_source = null;\nlifecycle.vehicle_refresh_at = null;\nlifecycle.vehicle_refresh_reason = null;\nlifecycle.vehicle_refresh_source = null;\nlifecycle.cooldown_until = now + Number(LIGHT_POLICY.post_off_cooldown_minutes) * 60000;\nlifecycle.updated_at = now;\nif (TEST_MODE) flow.set(lifecycleKey, lifecycle);\nelse flow.set(lifecycleKey, lifecycle, \"persistent\");\nmsg.payload.off_reason = msg.payload.off_reason ?? msg.payload.reason ?? type;\nif (type === \"backstop\") {\n    msg.payload.backstop_forced = true;\n    node.warn(\"iluminacao_seguranca: backstop venceu; desligamento obrigatório enviado\");\n}\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -46467,7 +46472,7 @@
         "y": 830,
         "wires": [
             [
-                "82539910c43d6cf5"
+                "security_visual_off_effect_out"
             ]
         ]
     },
@@ -46475,7 +46480,7 @@
         "id": "82539910c43d6cf5",
         "type": "api-call-service",
         "z": "6b7552efb85343f4",
-        "g": "a610d085d27ea80d",
+        "g": "security_visual_off_effects_group",
         "name": "Desligar refletor do portão",
         "server": "4126427d5e161a03",
         "version": 7,
@@ -46497,10 +46502,12 @@
         "blockInputOverrides": true,
         "domain": "switch",
         "service": "turn_off",
-        "x": 1360,
-        "y": 830,
+        "x": 1370,
+        "y": 2990,
         "wires": [
-            []
+            [
+                "security_visual_off_accepted"
+            ]
         ]
     },
     {
@@ -47362,7 +47369,7 @@
         "name": "Pode desligar → rota final",
         "mode": "link",
         "links": [
-            "light_off_decision_route_in_v1"
+            "security_visual_off_wait_in"
         ],
         "x": 690,
         "y": 790,
@@ -47375,7 +47382,7 @@
         "g": "a610d085d27ea80d",
         "name": "Receber decisão de desligar",
         "links": [
-            "light_off_decision_route_out_v1"
+            "security_visual_off_wait_out"
         ],
         "x": 800,
         "y": 810,
@@ -47532,7 +47539,7 @@
         "y": 1150,
         "wires": [
             [
-                "notification_hub_wire_out_50de0a07c816"
+                "security_visual_bypass_startup_result_out"
             ]
         ]
     },
@@ -47553,7 +47560,7 @@
         "y": 1230,
         "wires": [
             [
-                "notification_hub_wire_out_2b2fe948a984"
+                "security_visual_bypass_auto_enable_result_out"
             ]
         ]
     },
@@ -47642,7 +47649,7 @@
         "y": 1470,
         "wires": [
             [
-                "notification_hub_wire_out_6425f4062085"
+                "security_visual_bypass_manual_enable_result_out"
             ]
         ]
     },
@@ -47663,7 +47670,7 @@
         "y": 1550,
         "wires": [
             [
-                "notification_hub_wire_out_dd868e9d342d"
+                "security_visual_bypass_manual_disable_result_out"
             ]
         ]
     },
@@ -47705,7 +47712,11 @@
         "g": "security_light_engine_bypass_group_v1",
         "name": "Receber estado decidido",
         "links": [
-            "security_visual_bypass_result_out"
+            "security_visual_bypass_result_out",
+            "security_visual_bypass_startup_result_out",
+            "security_visual_bypass_auto_enable_result_out",
+            "security_visual_bypass_manual_enable_result_out",
+            "security_visual_bypass_manual_disable_result_out"
         ],
         "x": 2090,
         "y": 1360,
@@ -48087,7 +48098,7 @@
         "z": "6b7552efb85343f4",
         "g": "security_visual_policy_group_v1",
         "name": "Validar valor, unidade e limites",
-        "func": "const DEFAULTS = {\n    physical_fresh_seconds: 120,\n    recovery_request_throttle_seconds: 30,\n    off_grace_seconds: 90,\n    backstop_minutes: 15,\n    post_off_cooldown_minutes: 5,\n    lifecycle_retention_hours: 24,\n    deadline_slack_minutes: 1,\n    unavailable_dedupe_seconds: 10,\n    cooldown_max_minutes: 30\n};\nconst LIMITS = {\n    physical_fresh_seconds: [30, 600],\n    recovery_request_throttle_seconds: [5, 300],\n    off_grace_seconds: [10, 300],\n    backstop_minutes: [2, 60],\n    post_off_cooldown_minutes: [1, 30],\n    lifecycle_retention_hours: [1, 168],\n    deadline_slack_minutes: [0, 10],\n    unavailable_dedupe_seconds: [1, 120],\n    cooldown_max_minutes: [5, 120]\n};\nconst topic = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[topic];\nif (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {\n    msg.security_light_policy_rejection = {\n        parameter: topic || null,\n        rejected_value: msg.payload,\n        limits: bounds ?? null,\n        preserved: true\n    };\n    return [null, msg];\n}\nconst previous = global.get(\"security_light_policy_v1\", \"persistent\");\nmsg.security_light_policy_candidate = {\n    ...DEFAULTS,\n    ...(previous?.version === 1 && previous?.complete === true ? previous : {}),\n    [topic]: value,\n    version: 1,\n    owner: \"node_red\",\n    complete: true,\n    updated_at: Date.now()\n};\nreturn [msg, null];",
+        "func": "const DEFAULTS = {\n    approach_radius_m: 150,\n    physical_fresh_seconds: 120,\n    recovery_request_throttle_seconds: 30,\n    off_grace_seconds: 90,\n    backstop_minutes: 15,\n    post_off_cooldown_minutes: 5,\n    lifecycle_retention_hours: 24,\n    deadline_slack_minutes: 1,\n    unavailable_dedupe_seconds: 10,\n    cooldown_max_minutes: 30\n};\nconst LIMITS = {\n    approach_radius_m: [30, 350],\n    physical_fresh_seconds: [30, 600],\n    recovery_request_throttle_seconds: [5, 300],\n    off_grace_seconds: [10, 300],\n    backstop_minutes: [2, 60],\n    post_off_cooldown_minutes: [1, 30],\n    lifecycle_retention_hours: [1, 168],\n    deadline_slack_minutes: [0, 10],\n    unavailable_dedupe_seconds: [1, 120],\n    cooldown_max_minutes: [5, 120]\n};\nconst topic = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[topic];\nif (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {\n    msg.security_light_policy_rejection = {\n        parameter: topic || null,\n        rejected_value: msg.payload,\n        limits: bounds ?? null,\n        preserved: true\n    };\n    return [null, msg];\n}\nconst previous = global.get(\"security_light_policy_v1\", \"persistent\");\nmsg.security_light_policy_candidate = {\n    ...DEFAULTS,\n    ...(previous?.version === 1 && previous?.complete === true ? previous : {}),\n    [topic]: value,\n    version: 1,\n    owner: \"node_red\",\n    complete: true,\n    updated_at: Date.now()\n};\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -48176,7 +48187,8 @@
         "g": "32a89192d93735b1",
         "name": "Receber contextos canônicos",
         "links": [
-            "security_visual_context_route_out"
+            "security_visual_context_route_out",
+            "security_visual_off_test_out"
         ],
         "x": 129,
         "y": 1850,
@@ -48209,7 +48221,7 @@
         "z": "6b7552efb85343f4",
         "g": "32a89192d93735b1",
         "name": "Normalizar e atualizar cache monotônico",
-        "func": "const testMode = msg._location_test === true || msg.payload?.test_mode === true;\nconst testCase = msg._location_test_case ?? msg.payload?.test_case ?? null;\nconst locationPolicy = global.get(\"location_policy_v1\", \"persistent\");\nconst lightPolicy = global.get(\"security_light_policy_v1\", \"persistent\");\nif (locationPolicy?.version !== 1 || locationPolicy?.complete !== true ||\n    lightPolicy?.version !== 1 || lightPolicy?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst suffix = testMode ? \"__test\" : \"\";\nconst get = (name, store) => testMode || !store\n    ? flow.get(name + suffix) : flow.get(name, store);\nconst set = (name, value, store) => testMode || !store\n    ? flow.set(name + suffix, value) : flow.set(name, value, store);\nif (testMode && msg._location_test_reset === true) {\n    for (const name of [\"security_light_pending_arrival_v1\", \"security_light_lifecycle_v1\",\n        \"security_light_arrival_watch_v1\", \"security_light_local_excursion_v1\",\n        \"security_light_last_dry_run_v1\", \"security_light_turn_on_notification_latch_v1\",\n        \"security_light_engine_bypass_enabled\", \"security_light_engine_bypass_automatic\",\n        \"security_light_engine_communication_failed\"]) set(name, null, \"persistent\");\n}\nconst kind = msg.payload?.kind;\nconst now = Date.now();\nconst futureMs = Number(locationPolicy.future_tolerance_seconds) * 1000;\nconst incomingAt = Number(msg.payload?.updated_at ?? msg.payload?.context?.updated_at ?? 0);\nlet accepted = true;\nconst updateCache = (name) => {\n    const old = get(name);\n    const oldAt = Number(old?.updated_at ?? 0);\n    if (incomingAt > now + futureMs || (old && incomingAt && oldAt && incomingAt < oldAt)) {\n        node.warn(`iluminacao_seguranca: snapshot${testMode ? \" [TESTE]\" : \"\"} fora de ordem ou no futuro; descartado`);\n        return false;\n    }\n    if (!old || (incomingAt && (!oldAt || incomingAt > oldAt))) {\n        set(name, msg.payload.context);\n        return true;\n    }\n    if (!incomingAt) {\n        node.warn(\"iluminacao_seguranca: snapshot sem timestamp; cache atual preservado\");\n        return false;\n    }\n    if (incomingAt === oldAt && JSON.stringify(old) !== JSON.stringify(msg.payload.context)) {\n        set(name, msg.payload.context);\n        return true;\n    }\n    return false;\n};\nif (kind === \"people_context\") accepted = updateCache(\"people_context_v1\");\nif (kind === \"vehicle_primary_context\") accepted = updateCache(\"vehicle_primary_context_v1\");\nif (kind === \"sun_context\") flow.set(\"sun_below_horizon\", msg.payload.sun_below_horizon === true);\nif (kind === \"engine_bypass_context\" && typeof msg.payload?.communication_failed === \"boolean\") {\n    set(\"security_light_engine_communication_failed\", msg.payload.communication_failed, \"persistent\");\n}\nconst people = get(\"people_context_v1\") ?? {};\nconst vehicle = get(\"vehicle_primary_context_v1\") ?? {};\nconst lifecycle = get(\"security_light_lifecycle_v1\", \"persistent\") ?? {};\nconst bypassEnabled = get(\"security_light_engine_bypass_enabled\", \"persistent\") === true;\nconst bypassAutomatic = get(\"security_light_engine_bypass_automatic\", \"persistent\") === true;\nconst communicationFailed = vehicle.engine_communication_failed === true ||\n    get(\"security_light_engine_communication_failed\", \"persistent\") === true || bypassAutomatic;\nconst engineKnown = vehicle.engine_state_valid === true;\nconst engineAllowed = vehicle.in_use === true && vehicle.engine_on === true &&\n    engineKnown && !communicationFailed;\nconst bypassAllowed = bypassEnabled && communicationFailed;\nmsg._light_context = {\n    test_mode: testMode, test_case: testCase, kind, now, future_ms: futureMs,\n    location_policy: locationPolicy, policy: lightPolicy, accepted,\n    people, vehicle, lifecycle, bypass_enabled: bypassEnabled,\n    bypass_allowed: bypassAllowed, communication_failed: communicationFailed,\n    engine_allowed: engineAllowed, sun_ready: flow.get(\"sun_ready\") === true,\n    dark: flow.get(\"sun_below_horizon\") === true,\n    original_payload: { ...(msg.payload ?? {}) }\n};\nreturn msg;",
+        "func": "const testMode = msg._location_test === true || msg.payload?.test_mode === true;\nconst testCase = msg._location_test_case ?? msg.payload?.test_case ?? null;\nconst locationPolicy = global.get(\"location_policy_v1\", \"persistent\");\nconst lightPolicy = global.get(\"security_light_policy_v1\", \"persistent\");\nif (locationPolicy?.version !== 1 || locationPolicy?.complete !== true ||\n    lightPolicy?.version !== 1 || lightPolicy?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst suffix = testMode ? \"__test\" : \"\";\nconst get = (name, store) => testMode || !store\n    ? flow.get(name + suffix) : flow.get(name, store);\nconst set = (name, value, store) => testMode || !store\n    ? flow.set(name + suffix, value) : flow.set(name, value, store);\nif (testMode && msg._location_test_reset === true) {\n    for (const name of [\"security_light_pending_arrival_v1\", \"security_light_pending_arrivals_v1\", \"security_light_lifecycle_v1\",\n        \"security_light_arrival_watch_v1\", \"security_light_local_excursion_v1\",\n        \"security_light_last_dry_run_v1\", \"security_light_turn_on_notification_latch_v1\",\n        \"security_light_engine_bypass_enabled\", \"security_light_engine_bypass_automatic\",\n        \"security_light_engine_communication_failed\"]) set(name, null, \"persistent\");\n}\nconst kind = msg.payload?.kind;\nconst now = Date.now();\nconst futureMs = Number(locationPolicy.future_tolerance_seconds) * 1000;\nconst incomingAt = Number(msg.payload?.updated_at ?? msg.payload?.context?.updated_at ?? 0);\nlet accepted = true;\nconst updateCache = (name) => {\n    const old = get(name);\n    const oldAt = Number(old?.updated_at ?? 0);\n    if (incomingAt > now + futureMs || (old && incomingAt && oldAt && incomingAt < oldAt)) {\n        node.warn(`iluminacao_seguranca: snapshot${testMode ? \" [TESTE]\" : \"\"} fora de ordem ou no futuro; descartado`);\n        return false;\n    }\n    if (!old || (incomingAt && (!oldAt || incomingAt > oldAt))) {\n        set(name, msg.payload.context);\n        return true;\n    }\n    if (!incomingAt) {\n        node.warn(\"iluminacao_seguranca: snapshot sem timestamp; cache atual preservado\");\n        return false;\n    }\n    if (incomingAt === oldAt && JSON.stringify(old) !== JSON.stringify(msg.payload.context)) {\n        set(name, msg.payload.context);\n        return true;\n    }\n    return false;\n};\nif (kind === \"people_context\") accepted = updateCache(\"people_context_v1\");\nif (kind === \"vehicle_primary_context\") accepted = updateCache(\"vehicle_primary_context_v1\");\nif (kind === \"sun_context\") flow.set(\"sun_below_horizon\", msg.payload.sun_below_horizon === true);\nif (kind === \"engine_bypass_context\" && typeof msg.payload?.communication_failed === \"boolean\") {\n    set(\"security_light_engine_communication_failed\", msg.payload.communication_failed, \"persistent\");\n}\nconst people = get(\"people_context_v1\") ?? {};\nconst vehicle = get(\"vehicle_primary_context_v1\") ?? {};\nconst lifecycle = get(\"security_light_lifecycle_v1\", \"persistent\") ?? {};\nconst bypassEnabled = get(\"security_light_engine_bypass_enabled\", \"persistent\") === true;\nconst bypassAutomatic = get(\"security_light_engine_bypass_automatic\", \"persistent\") === true;\nconst communicationFailed = vehicle.engine_communication_failed === true ||\n    get(\"security_light_engine_communication_failed\", \"persistent\") === true || bypassAutomatic;\nconst engineKnown = vehicle.engine_state_valid === true;\nconst engineAllowed = vehicle.in_use === true && vehicle.engine_on === true &&\n    engineKnown && !communicationFailed;\nconst bypassAllowed = bypassEnabled && communicationFailed;\nmsg._light_context = {\n    test_mode: testMode, test_case: testCase, kind, now, future_ms: futureMs,\n    location_policy: locationPolicy, policy: lightPolicy, accepted,\n    people, vehicle, lifecycle, bypass_enabled: bypassEnabled,\n    bypass_allowed: bypassAllowed, communication_failed: communicationFailed,\n    engine_allowed: engineAllowed, sun_ready: flow.get(\"sun_ready\") === true,\n    dark: flow.get(\"sun_below_horizon\") === true,\n    original_payload: { ...(msg.payload ?? {}) }\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -48292,8 +48304,8 @@
         "type": "function",
         "z": "6b7552efb85343f4",
         "g": "32a89192d93735b1",
-        "name": "Validar intenção pendente",
-        "func": "const data = msg._light_context;\nconst suffix = data.test_mode ? \"__test\" : \"\";\nconst get = (name, store) => data.test_mode || !store\n    ? flow.get(name + suffix) : flow.get(name, store);\nconst set = (name, value, store) => data.test_mode || !store\n    ? flow.set(name + suffix, value) : flow.set(name, value, store);\nconst key = \"security_light_pending_arrival_v1\";\nlet pending = get(key, \"persistent\");\nif (pending && data.lifecycle.active_by_arrival === true) {\n    set(key, null, \"persistent\");\n    pending = null;\n}\nif (pending) {\n    const queuedAt = Number(pending.queued_at ?? 0);\n    const expiresAt = Number(pending.expires_at ?? 0);\n    const ttlMs = Number(pending.retention === \"while_approaching\"\n        ? data.location_policy.local_excursion_minutes\n        : data.location_policy.arrival_recovery_minutes) * 60000;\n    let valid = Boolean(pending.message) && Number.isFinite(queuedAt) && queuedAt > 0 &&\n        queuedAt <= data.now + data.future_ms && Number.isFinite(expiresAt) &&\n        data.now <= expiresAt && expiresAt - queuedAt <= ttlMs + 1000;\n    let reason = data.now > expiresAt ? \"arrival_recovery_expired\" : null;\n    if (valid && pending.version === 2 && pending.retention === \"while_approaching\" &&\n        [\"resident_primary\", \"resident_secondary\"].includes(pending.source)) {\n        const resident = data.people[pending.source];\n        const observedAt = Number(resident?.updated_at);\n        const current = resident?.ready === true && resident?.stale !== true &&\n            Number.isFinite(observedAt) && observedAt > 0 &&\n            observedAt <= data.now + data.future_ms &&\n            data.now - observedAt <= Number(data.location_policy.location_fresh_minutes) * 60000;\n        if (current) {\n            valid = resident?.state === \"near_home\";\n            if (!valid) reason = resident?.state === \"home\" ? \"resident_home\" :\n                \"resident_left_approach_zone\";\n        }\n        /* Falta temporária de localização não apaga a direção já confirmada.\n         * Ela apenas impede o replay até chegar uma posição atual. */\n        data.pending_replay_allowed = current && resident?.state === \"near_home\";\n    } else if (valid && pending.retention !== \"recovery_window\") {\n        valid = false;\n        reason = \"invalid_retention\";\n    }\n    if (!valid) {\n        set(key, null, \"persistent\");\n        node.warn(`iluminacao_seguranca: chegada pendente cancelada (${reason ?? \"invalid_pending\"})`);\n        pending = null;\n    }\n}\ndata.pending = pending;\nif (data.pending_replay_allowed === undefined) data.pending_replay_allowed = Boolean(pending);\ndata.replay_ready = Boolean(((pending && data.pending_replay_allowed) || data.engine_on_arrival) &&\n    data.sun_ready && data.dark);\n// Replay reuses the arrival and engine gates, including their HOME fallback.\ndata.reconcile = data.test_mode ? null : { payload: { kind: \"reconcile_signal\", reason: \"context_update\" } };\nif ([\"people_context\", \"vehicle_primary_context\"].includes(data.kind) && !data.accepted) {\n    data.lifecycle_message = null;\n} else {\n    msg.payload = {\n        event: data.original_payload.event ?? \"context_update\",\n        reason: data.original_payload.reason,\n        source: data.original_payload.source,\n        trigger_state: data.original_payload.trigger_state,\n        trigger_prev_state: data.original_payload.trigger_prev_state,\n        confirmed_home_transition: data.original_payload.confirmed_home_transition === true,\n        vehicle_primary_ready: data.vehicle.ready === true,\n        vehicle_primary_lighting_ready: data.vehicle.lighting_ready === true,\n        vehicle_primary_engine_on: data.vehicle.engine_on,\n        vehicle_primary_engine_state_valid: data.vehicle.engine_state_valid === true,\n        engine_communication_failed: data.communication_failed,\n        vehicle_primary_unlocked: data.vehicle.unlocked,\n        vehicle_primary_in_use: data.vehicle.in_use,\n        engine_bypass_enabled: data.bypass_enabled,\n        engine_bypass_allowed: data.bypass_allowed,\n        active: data.lifecycle.active_by_arrival === true\n    };\n    if (data.test_mode) {\n        msg._location_test = true;\n        msg._location_test_case = data.test_case;\n        msg.payload.test_mode = true;\n        msg.payload.test_case = data.test_case;\n    }\n    data.lifecycle_message = msg;\n}\nreturn msg;",
+        "name": "Validar intenção e conclusão em HOME",
+        "func": "const data = msg._light_context;\nconst suffix = data.test_mode ? \"__test\" : \"\";\nconst get = (name, store) => data.test_mode || !store\n    ? flow.get(name + suffix) : flow.get(name, store);\nconst set = (name, value, store) => data.test_mode || !store\n    ? flow.set(name + suffix, value) : flow.set(name, value, store);\nconst key = \"security_light_pending_arrival_v1\";\nconst mapKey = \"security_light_pending_arrivals_v1\";\nlet candidates = get(mapKey, \"persistent\") ?? {};\nconst source = data.kind === \"people_context\" ? data.original_payload.source : null;\nlet pending = candidates[source] ?? get(key, \"persistent\") ??\n    Object.values(candidates).sort((a, b) => Number(b.event_at) - Number(a.event_at))[0] ?? null;\nif (pending && data.lifecycle.active_by_arrival === true) {\n    set(key, null, \"persistent\");\n    candidates = {};\n    set(mapKey, candidates, \"persistent\");\n    pending = null;\n}\nif (pending) {\n    const queuedAt = Number(pending.queued_at ?? 0);\n    const expiresAt = Number(pending.expires_at ?? 0);\n    const ttlMs = Number(pending.retention === \"while_approaching\"\n        ? data.location_policy.local_excursion_minutes\n        : data.location_policy.arrival_recovery_minutes) * 60000;\n    let valid = Boolean(pending.message) && Number.isFinite(queuedAt) && queuedAt > 0 &&\n        queuedAt <= data.now + data.future_ms && Number.isFinite(expiresAt) &&\n        data.now <= expiresAt && expiresAt - queuedAt <= ttlMs + 1000;\n    let reason = data.now > expiresAt ? \"arrival_recovery_expired\" : null;\n    if (valid && pending.version === 2 && pending.retention === \"while_approaching\" &&\n        [\"resident_primary\", \"resident_secondary\"].includes(pending.source)) {\n        const resident = data.people[pending.source];\n        const observedAt = Number(resident?.updated_at);\n        const current = resident?.ready === true && resident?.stale !== true &&\n            Number.isFinite(observedAt) && observedAt > 0 &&\n            observedAt <= data.now + data.future_ms &&\n            data.now - observedAt <= Number(data.location_policy.location_fresh_minutes) * 60000;\n        const original = pending.message.payload ?? {};\n        const originalObservedAt = Number(original.arrival_resident_snapshot?.updated_at ?? pending.event_at);\n        const confirmedHome = current && resident.state === \"home\" && resident.current_home === true &&\n            data.kind === \"people_context\" && data.accepted === true &&\n            data.original_payload.confirmed_home_transition === true &&\n            data.original_payload.source === pending.source && observedAt > originalObservedAt &&\n            original.arrival_direction === \"returning\" && original.external_cycle_confirmed === true;\n        if (confirmedHome) {\n            // Complete the existing arrival; never infer a new trip from HOME.\n            // Keep the original expiry as an upper bound on this recovery window.\n            pending = { ...pending, retention: \"recovery_window\", arrival_stage: \"home\",\n                approach_queued_at: pending.queued_at, queued_at: data.now, event_at: data.now,\n                expires_at: Math.min(expiresAt, data.now + Number(data.location_policy.arrival_recovery_minutes) * 60000),\n                message: { ...pending.message, payload: { ...original, arrival_stage: \"home\",\n                    event_at: data.now, arrival_resident_snapshot: { ...resident },\n                    arrival_completed_from_pending_approach: true } } };\n            set(key, pending, \"persistent\");\n            data.pending_replay_allowed = true;\n        } else {\n            if (current && ![\"near_home\", \"home\"].includes(resident.state)) {\n                valid = false;\n                reason = \"resident_left_approach_zone\";\n            }\n            // A snapshot may precede the directional HOME event. Hold the intent,\n            // but only a current near_home position or the confirmed event may replay.\n            data.pending_replay_allowed = current && resident.state === \"near_home\";\n        }\n    } else if (valid && pending.retention !== \"recovery_window\") {\n        valid = false;\n        reason = \"invalid_retention\";\n    }\n    if (!valid) {\n        delete candidates[pending.source];\n        set(key, null, \"persistent\");\n        node.warn(`iluminacao_seguranca: chegada pendente cancelada (${reason ?? \"invalid_pending\"})`);\n        pending = null;\n    }\n}\nif (pending) {\n    candidates[pending.source] = pending;\n    set(key, pending, \"persistent\");\n}\nset(mapKey, candidates, \"persistent\");\ndata.pending = pending;\nif (data.pending_replay_allowed === undefined) data.pending_replay_allowed = Boolean(pending);\ndata.replay_ready = Boolean(((pending && data.pending_replay_allowed) || data.engine_on_arrival) &&\n    data.sun_ready && data.dark);\n// Replay reuses the arrival and engine gates, including their HOME fallback.\ndata.reconcile = data.test_mode ? null : { payload: { kind: \"reconcile_signal\", reason: \"context_update\" } };\nif ([\"people_context\", \"vehicle_primary_context\"].includes(data.kind) && !data.accepted) {\n    data.lifecycle_message = null;\n} else {\n    msg.payload = {\n        event: data.original_payload.event ?? \"context_update\",\n        reason: data.original_payload.reason,\n        source: data.original_payload.source,\n        trigger_state: data.original_payload.trigger_state,\n        trigger_prev_state: data.original_payload.trigger_prev_state,\n        confirmed_home_transition: data.original_payload.confirmed_home_transition === true,\n        vehicle_primary_ready: data.vehicle.ready === true,\n        vehicle_primary_lighting_ready: data.vehicle.lighting_ready === true,\n        vehicle_primary_engine_on: data.vehicle.engine_on,\n        vehicle_primary_engine_state_valid: data.vehicle.engine_state_valid === true,\n        engine_communication_failed: data.communication_failed,\n        vehicle_primary_unlocked: data.vehicle.unlocked,\n        vehicle_primary_in_use: data.vehicle.in_use,\n        engine_bypass_enabled: data.bypass_enabled,\n        engine_bypass_allowed: data.bypass_allowed,\n        active: data.lifecycle.active_by_arrival === true\n    };\n    if (data.test_mode) {\n        msg._location_test = true;\n        msg._location_test_case = data.test_case;\n        msg.payload.test_mode = true;\n        msg.payload.test_case = data.test_case;\n    }\n    data.lifecycle_message = msg;\n}\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -48393,7 +48405,7 @@
         "z": "6b7552efb85343f4",
         "g": "32a89192d93735b1",
         "name": "Derivar fatos sem decidir efeitos",
-        "func": "if (msg.payload?.kind !== \"arrival\") return null;\nconst testMode = msg._location_test === true || msg.payload?.test_mode === true;\nconst testCase = msg._location_test_case ?? msg.payload?.test_case ?? null;\nconst locationPolicy = global.get(\"location_policy_v1\", \"persistent\");\nconst lightPolicy = global.get(\"security_light_policy_v1\", \"persistent\");\nif (locationPolicy?.version !== 1 || locationPolicy?.complete !== true ||\n    lightPolicy?.version !== 1 || lightPolicy?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst suffix = testMode ? \"__test\" : \"\";\nconst get = (name, store) => testMode || !store\n    ? flow.get(name + suffix) : flow.get(name, store);\nconst now = Date.now();\nconst futureMs = Number(locationPolicy.future_tolerance_seconds) * 1000;\nconst vehicle = get(\"vehicle_primary_context_v1\") ?? {};\nconst people = get(\"people_context_v1\") ?? {};\nconst lifecycle = get(\"security_light_lifecycle_v1\", \"persistent\") ?? {};\nconst physical = flow.get(\"security_light_physical_state\") ?? \"unknown\";\nconst observedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(observedAt) && observedAt <= now + futureMs &&\n    now - observedAt <= Number(lightPolicy.physical_fresh_seconds) * 1000;\nconst source = msg.payload?.source;\nconst stage = msg.payload?.arrival_stage;\nconst residentArrival = [\"resident_primary\", \"resident_secondary\"].includes(source);\nconst cachedResident = people[source];\nconst eventResident = msg.payload?.arrival_resident_snapshot;\nconst cachedObservedAt = Number(cachedResident?.updated_at ?? 0);\nconst eventObservedAt = Number(eventResident?.updated_at ?? 0);\nconst eventResidentValid = eventResident && typeof eventResident === \"object\" &&\n    eventResident.ready === true && eventResident.stale !== true &&\n    Number.isFinite(eventObservedAt) && eventObservedAt > 0 &&\n    eventObservedAt <= now + futureMs &&\n    now - eventObservedAt <= Number(locationPolicy.location_fresh_minutes) * 60000;\n/* O contexto e o evento percorrem links independentes. A evidência canônica\n * carregada pelo próprio evento fecha a corrida sem aceitar dado mais antigo. */\nconst resident = eventResidentValid && eventObservedAt >= cachedObservedAt\n    ? { ...(cachedResident ?? {}), ...eventResident }\n    : cachedResident;\nconst residentObservedAt = Number(resident?.updated_at);\nconst residentCurrent = resident?.ready === true && resident?.stale !== true &&\n    Number.isFinite(residentObservedAt) && residentObservedAt > 0 &&\n    residentObservedAt <= now + futureMs &&\n    now - residentObservedAt <= Number(locationPolicy.location_fresh_minutes) * 60000;\nconst previousState = msg.payload?.arrival_previous_state;\nconst previousAway = typeof previousState === \"string\" &&\n    ![\"\", \"home\", \"near_home\", \"unknown\", \"unavailable\"].includes(previousState);\nconst previousUnavailable = [\"unknown\", \"unavailable\"].includes(previousState);\nconst recoveredAway = msg.payload?.illumination_only === true &&\n    previousUnavailable &&\n    msg.payload?.external_cycle_confirmed === true;\nconst localCycle = get(\"security_light_local_excursion_v1\", \"persistent\")?.residents?.[source];\nconst canonicalCycle = people.local_excursions?.[source];\nconst localExcursionReturn = msg.payload?.local_excursion_return === true &&\n    msg.payload?.arrival_direction === \"returning_local_excursion\" &&\n    localCycle?.started_at === msg.payload.local_excursion_started_at &&\n    canonicalCycle?.started_at === msg.payload.local_excursion_started_at &&\n    Number.isFinite(localCycle?.expires_at) && now <= localCycle.expires_at &&\n    localCycle.consumed_at == null;\n/* O iPhone pode atualizar em not_home fora do raio near_home e somente voltar a\n * publicar depois de já cruzar os 100 m. O produtor canônico confirma esse\n * ciclo externo e carrega um snapshot atual no próprio evento. Aceitar esse\n * salto direto evita perder a chegada sem transformar near_home → home ou\n * um catch-up stale em autorização. */\nconst directHomeRecovery =\n    stage === \"home\" &&\n    (previousAway || previousUnavailable) &&\n    msg.payload?.arrival_direction === \"returning\" &&\n    msg.payload?.external_cycle_confirmed === true &&\n    resident?.state === \"home\" &&\n    resident?.current_home === true;\nconst residentArrivalValid =\n    residentArrival &&\n    residentCurrent &&\n    ((stage === \"approach\" &&\n        (previousAway || recoveredAway) &&\n        resident?.state === \"near_home\" &&\n        resident?.current_home !== true) ||\n     directHomeRecovery ||\n     (stage === \"local_return\" && localExcursionReturn &&\n        [\"home\", \"near_home\"].includes(resident?.state)));\nconst bypassEnabled = get(\"security_light_engine_bypass_enabled\", \"persistent\") === true;\nconst bypassAutomatic = get(\"security_light_engine_bypass_automatic\", \"persistent\") === true;\nconst engineKnown = vehicle.engine_state_valid === true;\nconst communicationFailed = vehicle.engine_communication_failed === true ||\n    get(\"security_light_engine_communication_failed\", \"persistent\") === true || bypassAutomatic;\nconst staleEngineOff = engineKnown && vehicle.engine_on === false &&\n    vehicle.engine_stale === true;\n/* Um ciclo externo confirmado pode terminar diretamente em home depois de uma\n * parada longa em near_home. Nesse caso, um OFF vencido não prova que o motor\n * continuou desligado durante o último trecho. A contingência é restrita ao\n * salto final confirmado; chegadas comuns continuam exigindo ON ou bypass. */\nconst staleEngineHomeFallback = directHomeRecovery && staleEngineOff && !communicationFailed;\nconst engineKnownOff = engineKnown && vehicle.engine_on === false &&\n    !communicationFailed && !staleEngineOff;\nconst manualBypassAllowed = bypassEnabled && communicationFailed;\nconst bypassAllowed = manualBypassAllowed || staleEngineHomeFallback;\nconst trustedEngine = engineKnown && !communicationFailed;\nconst vehicleLightingReady = trustedEngine && residentArrival;\nconst vehicleDecisionReady = engineKnownOff || vehicleLightingReady || bypassAllowed;\nconst sunReady = flow.get(\"sun_ready\") === true;\nconst eventAt = Number(msg.payload?.event_at ?? msg.payload?.updated_at ?? now);\nconst queuedCandidate = Number(msg.payload?.arrival_originally_queued_at ?? now);\nconst queuedAt = Number.isFinite(queuedCandidate) && queuedCandidate > 0 &&\n    queuedCandidate <= now + futureMs ? queuedCandidate : now;\nconst lastRecoveryAt = Number(get(\"security_light_last_recovery_request_at\") ?? 0);\nconst recoveryThrottleMs = Number(lightPolicy.recovery_request_throttle_seconds) * 1000;\nconst directionValid = (msg.payload?.arrival_direction === \"returning\" &&\n    msg.payload?.external_cycle_confirmed === true) || localExcursionReturn;\nmsg._light_arrival = {\n    test_mode: testMode,\n    test_case: testCase,\n    location_policy: locationPolicy,\n    policy: lightPolicy,\n    future_ms: futureMs,\n    now,\n    source,\n    stage,\n    event_at: eventAt,\n    queued_at: queuedAt,\n    vehicle,\n    people,\n    lifecycle,\n    physical,\n    physical_fresh: physicalFresh,\n    light_reconciled: flow.get(\"light_reconciled\") === true,\n    resident_arrival: residentArrival,\n    resident_arrival_valid: residentArrivalValid,\n    direct_home_recovery: directHomeRecovery,\n    arrival_path: directHomeRecovery ? \"direct_home_recovery\"\n        : stage === \"approach\" ? \"near_home_approach\"\n        : localExcursionReturn ? \"local_excursion_return\"\n        : \"invalid\",\n    bypass_enabled: bypassEnabled,\n    bypass_allowed: bypassAllowed,\n    manual_bypass_allowed: manualBypassAllowed,\n    stale_engine_home_fallback: staleEngineHomeFallback,\n    engine_communication_failed: communicationFailed,\n    engine_unreliable: communicationFailed || staleEngineOff,\n    vehicle_lighting_ready: vehicleLightingReady,\n    logic_ready: sunReady && vehicleDecisionReady,\n    sun_ready: sunReady,\n    dark: flow.get(\"sun_below_horizon\") === true,\n    direction_valid: directionValid,\n    direction_and_arrival_valid: directionValid && residentArrivalValid,\n    recovery_needed: !vehicleLightingReady && !bypassAllowed,\n    recovery_allowed: !Number.isFinite(lastRecoveryAt) || lastRecoveryAt <= 0 ||\n        now - lastRecoveryAt >= recoveryThrottleMs,\n    arrival_recovery_ms: Number(stage === \"approach\"\n        ? locationPolicy.local_excursion_minutes\n        : locationPolicy.arrival_recovery_minutes) * 60000\n};\nreturn msg;",
+        "func": "// Pure distance gate. Direction and freshness remain the canonical producer's responsibility.\nfunction withinLightingApproach(resident, policy) {\n    if (resident?.current_home === true && resident?.state === \"home\") return true;\n    const radius = Number(policy.approach_radius_m);\n    const distance = resident?.gate_distance_m;\n    return Number.isFinite(radius) && radius > 0 && Number.isFinite(distance) &&\n        distance >= 0 && distance <= radius;\n}\nif (msg.payload?.kind !== \"arrival\") return null;\nconst testMode = msg._location_test === true || msg.payload?.test_mode === true;\nconst testCase = msg._location_test_case ?? msg.payload?.test_case ?? null;\nconst locationPolicy = global.get(\"location_policy_v1\", \"persistent\");\nconst lightPolicy = global.get(\"security_light_policy_v1\", \"persistent\");\nif (locationPolicy?.version !== 1 || locationPolicy?.complete !== true ||\n    lightPolicy?.version !== 1 || lightPolicy?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente\", msg);\n    return null;\n}\nconst suffix = testMode ? \"__test\" : \"\";\nconst get = (name, store) => testMode || !store\n    ? flow.get(name + suffix) : flow.get(name, store);\nconst now = Date.now();\nconst futureMs = Number(locationPolicy.future_tolerance_seconds) * 1000;\nconst vehicle = get(\"vehicle_primary_context_v1\") ?? {};\nconst people = get(\"people_context_v1\") ?? {};\nconst lifecycle = get(\"security_light_lifecycle_v1\", \"persistent\") ?? {};\nconst physical = flow.get(\"security_light_physical_state\") ?? \"unknown\";\nconst observedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(observedAt) && observedAt <= now + futureMs &&\n    now - observedAt <= Number(lightPolicy.physical_fresh_seconds) * 1000;\nconst source = msg.payload?.source;\nconst stage = msg.payload?.arrival_stage;\nconst residentArrival = [\"resident_primary\", \"resident_secondary\"].includes(source);\nconst cachedResident = people[source];\nconst eventResident = msg.payload?.arrival_resident_snapshot;\nconst cachedObservedAt = Number(cachedResident?.updated_at ?? 0);\nconst eventObservedAt = Number(eventResident?.updated_at ?? 0);\nconst eventResidentValid = eventResident && typeof eventResident === \"object\" &&\n    eventResident.ready === true && eventResident.stale !== true &&\n    Number.isFinite(eventObservedAt) && eventObservedAt > 0 &&\n    eventObservedAt <= now + futureMs &&\n    now - eventObservedAt <= Number(locationPolicy.location_fresh_minutes) * 60000;\n/* O contexto e o evento percorrem links independentes. A evidência canônica\n * carregada pelo próprio evento fecha a corrida sem aceitar dado mais antigo. */\nconst resident = eventResidentValid && eventObservedAt >= cachedObservedAt\n    ? { ...(cachedResident ?? {}), ...eventResident }\n    : cachedResident;\nconst residentObservedAt = Number(resident?.updated_at);\nconst residentCurrent = resident?.ready === true && resident?.stale !== true &&\n    Number.isFinite(residentObservedAt) && residentObservedAt > 0 &&\n    residentObservedAt <= now + futureMs &&\n    now - residentObservedAt <= Number(locationPolicy.location_fresh_minutes) * 60000;\nconst previousState = msg.payload?.arrival_previous_state;\nconst previousAway = typeof previousState === \"string\" &&\n    ![\"\", \"home\", \"near_home\", \"unknown\", \"unavailable\"].includes(previousState);\nconst previousUnavailable = [\"unknown\", \"unavailable\"].includes(previousState);\nconst recoveredAway = msg.payload?.illumination_only === true &&\n    previousUnavailable &&\n    msg.payload?.external_cycle_confirmed === true;\nconst localCycle = get(\"security_light_local_excursion_v1\", \"persistent\")?.residents?.[source];\nconst canonicalCycle = people.local_excursions?.[source];\nconst localExcursionReturn = msg.payload?.local_excursion_return === true &&\n    msg.payload?.arrival_direction === \"returning_local_excursion\" &&\n    localCycle?.started_at === msg.payload.local_excursion_started_at &&\n    canonicalCycle?.started_at === msg.payload.local_excursion_started_at &&\n    Number.isFinite(localCycle?.expires_at) && now <= localCycle.expires_at &&\n    localCycle.consumed_at == null;\n/* O iPhone pode atualizar em not_home fora do raio near_home e somente voltar a\n * publicar depois de já cruzar os 100 m. O produtor canônico confirma esse\n * ciclo externo e carrega um snapshot atual no próprio evento. Aceitar esse\n * salto direto evita perder a chegada sem transformar near_home → home ou\n * um catch-up stale em autorização. */\nconst directHomeRecovery =\n    stage === \"home\" &&\n    (previousAway || previousUnavailable) &&\n    msg.payload?.arrival_direction === \"returning\" &&\n    msg.payload?.external_cycle_confirmed === true &&\n    resident?.state === \"home\" &&\n    resident?.current_home === true;\nconst residentArrivalValid =\n    residentArrival &&\n    residentCurrent &&\n    ((stage === \"approach\" &&\n        (previousAway || recoveredAway) &&\n        resident?.state === \"near_home\" &&\n        resident?.current_home !== true) ||\n     directHomeRecovery ||\n     (stage === \"local_return\" && localExcursionReturn &&\n        [\"home\", \"near_home\"].includes(resident?.state)));\nconst bypassEnabled = get(\"security_light_engine_bypass_enabled\", \"persistent\") === true;\nconst bypassAutomatic = get(\"security_light_engine_bypass_automatic\", \"persistent\") === true;\nconst engineKnown = vehicle.engine_state_valid === true;\nconst communicationFailed = vehicle.engine_communication_failed === true ||\n    get(\"security_light_engine_communication_failed\", \"persistent\") === true || bypassAutomatic;\nconst staleEngineOff = engineKnown && vehicle.engine_on === false &&\n    vehicle.engine_stale === true;\n/* Um ciclo externo confirmado pode terminar diretamente em home depois de uma\n * parada longa em near_home. Nesse caso, um OFF vencido não prova que o motor\n * continuou desligado durante o último trecho. A contingência é restrita ao\n * salto final confirmado; chegadas comuns continuam exigindo ON ou bypass. */\nconst staleEngineHomeFallback = directHomeRecovery && staleEngineOff && !communicationFailed;\nconst engineKnownOff = engineKnown && vehicle.engine_on === false &&\n    !communicationFailed && !staleEngineOff;\nconst manualBypassAllowed = bypassEnabled && communicationFailed;\nconst bypassAllowed = manualBypassAllowed || staleEngineHomeFallback;\nconst trustedEngine = engineKnown && !communicationFailed;\nconst vehicleLightingReady = trustedEngine && residentArrival;\nconst vehicleDecisionReady = engineKnownOff || vehicleLightingReady || bypassAllowed;\nconst sunReady = flow.get(\"sun_ready\") === true;\nconst eventAt = Number(msg.payload?.event_at ?? msg.payload?.updated_at ?? now);\nconst queuedCandidate = Number(msg.payload?.arrival_originally_queued_at ?? now);\nconst queuedAt = Number.isFinite(queuedCandidate) && queuedCandidate > 0 &&\n    queuedCandidate <= now + futureMs ? queuedCandidate : now;\nconst lastRecoveryAt = Number(get(\"security_light_last_recovery_request_at\") ?? 0);\nconst recoveryThrottleMs = Number(lightPolicy.recovery_request_throttle_seconds) * 1000;\nconst directionValid = (msg.payload?.arrival_direction === \"returning\" &&\n    msg.payload?.external_cycle_confirmed === true) || localExcursionReturn;\nmsg._light_arrival = {\n    test_mode: testMode,\n    test_case: testCase,\n    location_policy: locationPolicy,\n    policy: lightPolicy,\n    future_ms: futureMs,\n    now,\n    source,\n    stage,\n    event_at: eventAt,\n    queued_at: queuedAt,\n    vehicle,\n    people,\n    lifecycle,\n    physical,\n    physical_fresh: physicalFresh,\n    light_reconciled: flow.get(\"light_reconciled\") === true,\n    resident_arrival: residentArrival,\n    resident_arrival_valid: residentArrivalValid,\n    direct_home_recovery: directHomeRecovery,\n    arrival_path: directHomeRecovery ? \"direct_home_recovery\"\n        : stage === \"approach\" ? \"near_home_approach\"\n        : localExcursionReturn ? \"local_excursion_return\"\n        : \"invalid\",\n    bypass_enabled: bypassEnabled,\n    bypass_allowed: bypassAllowed,\n    manual_bypass_allowed: manualBypassAllowed,\n    stale_engine_home_fallback: staleEngineHomeFallback,\n    engine_communication_failed: communicationFailed,\n    engine_unreliable: communicationFailed || staleEngineOff,\n    vehicle_lighting_ready: vehicleLightingReady,\n    logic_ready: sunReady && vehicleDecisionReady && withinLightingApproach(resident, lightPolicy),\n    approach_distance_ready: withinLightingApproach(resident, lightPolicy),\n    sun_ready: sunReady,\n    dark: flow.get(\"sun_below_horizon\") === true,\n    direction_valid: directionValid,\n    direction_and_arrival_valid: directionValid && residentArrivalValid,\n    recovery_needed: !vehicleLightingReady && !bypassAllowed,\n    recovery_allowed: !Number.isFinite(lastRecoveryAt) || lastRecoveryAt <= 0 ||\n        now - lastRecoveryAt >= recoveryThrottleMs,\n    arrival_recovery_ms: Number(stage === \"approach\"\n        ? locationPolicy.local_excursion_minutes\n        : locationPolicy.arrival_recovery_minutes) * 60000\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -48465,7 +48477,7 @@
         "z": "6b7552efb85343f4",
         "g": "32a89192d93735b1",
         "name": "Guardar intenção de chegada mais nova",
-        "func": "const data = msg._light_arrival;\nconst suffix = data.test_mode ? \"__test\" : \"\";\nconst key = \"security_light_pending_arrival_v1\";\nconst watchKey = \"security_light_arrival_watch_v1\";\nconst existing = data.test_mode ? flow.get(key + suffix) : flow.get(key, \"persistent\");\nconst existingAt = Number(existing?.event_at ?? 0);\nconst residentApproach = data.resident_arrival && data.stage === \"approach\";\nif (!existing || !Number.isFinite(existingAt) || data.event_at >= existingAt) {\n    /* Persist only the replay contract. The live Node-RED message contains\n     * transient runtime objects (including _light_arrival itself); retaining\n     * that object graph makes the file context circular after we attach the\n     * diagnostic below. */\n    const replayMessage = {\n        payload: { ...(msg.payload ?? {}) }\n    };\n    if (msg.topic !== undefined) replayMessage.topic = msg.topic;\n    if (msg._location_test === true) replayMessage._location_test = true;\n    if (msg._location_test_case !== undefined) {\n        replayMessage._location_test_case = msg._location_test_case;\n    }\n    const pending = {\n        version: 2,\n        queued_at: data.queued_at,\n        expires_at: data.queued_at + data.arrival_recovery_ms,\n        event_at: data.event_at,\n        retention: residentApproach ? \"while_approaching\" : \"recovery_window\",\n        source: data.source,\n        arrival_stage: data.stage,\n        message: replayMessage\n    };\n    if (data.test_mode) flow.set(key + suffix, pending);\n    else flow.set(key, pending, \"persistent\");\n\n    if (residentApproach) {\n        const watches = data.test_mode\n            ? (flow.get(watchKey + suffix) ?? { version: 1, residents: {} })\n            : (flow.get(watchKey, \"persistent\") ?? { version: 1, residents: {} });\n        const oldWatch = watches.residents?.[data.source];\n        if (!oldWatch || Number(oldWatch.event_at ?? 0) <= data.event_at) {\n            watches.version = 1;\n            watches.residents = { ...(watches.residents ?? {}) };\n            watches.residents[data.source] = {\n                source: data.source,\n                event_at: data.event_at,\n                created_at: data.queued_at,\n                attempts: 0,\n                last_refresh_at: null,\n                waiting_for_callback: false\n            };\n            if (data.test_mode) flow.set(watchKey + suffix, watches);\n            else flow.set(watchKey, watches, \"persistent\");\n        }\n    }\n}\ndata.diagnostic = {\n    ...msg,\n    payload: {\n        ...(msg.payload ?? {}),\n        diagnostic: \"arrival_trigger_received\",\n        gps_trigger_functional: true,\n        decision_context_ready: data.logic_ready,\n        people_context_ready: data.people.ready === true,\n        vehicle_primary_context_ready: data.vehicle.ready === true,\n        vehicle_primary_lighting_ready: data.vehicle_lighting_ready,\n        vehicle_primary_location_required: false,\n        vehicle_primary_engine_state_valid: data.vehicle.engine_state_valid === true,\n        vehicle_primary_engine_stale: data.vehicle.engine_stale === true,\n        engine_communication_failed: data.engine_communication_failed,\n        engine_bypass_enabled: data.bypass_enabled,\n        engine_bypass_allowed: data.bypass_allowed,\n        engine_data_unreliable: data.engine_unreliable,\n        sun_ready: data.sun_ready,\n        sun_below_horizon: data.dark,\n        vehicle_primary_in_use: data.vehicle.in_use,\n        vehicle_primary_engine_on: data.vehicle.engine_on,\n        reflector_state: data.physical,\n        reflector_physical_fresh: data.physical_fresh,\n        reflector_reconciled: data.light_reconciled,\n        would_evaluate_turn_on: data.logic_ready,\n        arrival_replay: msg._arrival_replay === true,\n        pending_arrival_queued: true,\n        pending_arrival_retention: residentApproach ? \"while_approaching\" : \"recovery_window\",\n        pending_arrival_ttl_ms: data.arrival_recovery_ms\n    }\n};\nif (data.test_mode) {\n    data.diagnostic._location_test = true;\n    data.diagnostic._location_test_case = data.test_case;\n    data.diagnostic.payload.test_mode = true;\n    data.diagnostic.payload.test_case = data.test_case;\n}\nreturn msg;",
+        "func": "const data = msg._light_arrival;\nconst suffix = data.test_mode ? \"__test\" : \"\";\nconst key = \"security_light_pending_arrival_v1\";\nconst watchKey = \"security_light_arrival_watch_v1\";\nconst sharedExisting = data.test_mode ? flow.get(key + suffix) : flow.get(key, \"persistent\");\nconst byResident = data.test_mode ? flow.get(\"security_light_pending_arrivals_v1\" + suffix) :\n    flow.get(\"security_light_pending_arrivals_v1\", \"persistent\");\nconst existing = byResident?.[data.source] ?? (sharedExisting?.source === data.source ? sharedExisting : null);\nconst existingAt = Number(existing?.event_at ?? 0);\nconst residentApproach = data.resident_arrival && data.stage === \"approach\";\nif (!existing || !Number.isFinite(existingAt) || data.event_at >= existingAt) {\n    /* Persist only the replay contract. The live Node-RED message contains\n     * transient runtime objects (including _light_arrival itself); retaining\n     * that object graph makes the file context circular after we attach the\n     * diagnostic below. */\n    const replayMessage = {\n        payload: { ...(msg.payload ?? {}) }\n    };\n    if (msg.topic !== undefined) replayMessage.topic = msg.topic;\n    if (msg._location_test === true) replayMessage._location_test = true;\n    if (msg._location_test_case !== undefined) {\n        replayMessage._location_test_case = msg._location_test_case;\n    }\n    const pending = {\n        version: 2,\n        queued_at: data.queued_at,\n        expires_at: data.queued_at + data.arrival_recovery_ms,\n        event_at: data.event_at,\n        retention: residentApproach ? \"while_approaching\" : \"recovery_window\",\n        source: data.source,\n        arrival_stage: data.stage,\n        message: replayMessage\n    };\n    if (data.test_mode) flow.set(key + suffix, pending);\n    else flow.set(key, pending, \"persistent\");\n\n    if ([\"resident_primary\", \"resident_secondary\"].includes(pending.source)) {\n        const mapKey = \"security_light_pending_arrivals_v1\";\n        const candidates = data.test_mode ? flow.get(mapKey + suffix) ?? {} : flow.get(mapKey, \"persistent\") ?? {};\n        candidates[pending.source] = pending;\n        if (data.test_mode) flow.set(mapKey + suffix, candidates);\n        else flow.set(mapKey, candidates, \"persistent\");\n    }\n\n    if (residentApproach) {\n        const watches = data.test_mode\n            ? (flow.get(watchKey + suffix) ?? { version: 1, residents: {} })\n            : (flow.get(watchKey, \"persistent\") ?? { version: 1, residents: {} });\n        const oldWatch = watches.residents?.[data.source];\n        if (!oldWatch || Number(oldWatch.event_at ?? 0) <= data.event_at) {\n            watches.version = 1;\n            watches.residents = { ...(watches.residents ?? {}) };\n            watches.residents[data.source] = {\n                source: data.source,\n                event_at: data.event_at,\n                created_at: data.queued_at,\n                attempts: 0,\n                last_refresh_at: null,\n                waiting_for_callback: false\n            };\n            if (data.test_mode) flow.set(watchKey + suffix, watches);\n            else flow.set(watchKey, watches, \"persistent\");\n        }\n    }\n}\ndata.diagnostic = {\n    ...msg,\n    payload: {\n        ...(msg.payload ?? {}),\n        diagnostic: \"arrival_trigger_received\",\n        gps_trigger_functional: true,\n        decision_context_ready: data.logic_ready,\n        approach_distance_ready: data.approach_distance_ready,\n        people_context_ready: data.people.ready === true,\n        vehicle_primary_context_ready: data.vehicle.ready === true,\n        vehicle_primary_lighting_ready: data.vehicle_lighting_ready,\n        vehicle_primary_location_required: false,\n        vehicle_primary_engine_state_valid: data.vehicle.engine_state_valid === true,\n        vehicle_primary_engine_stale: data.vehicle.engine_stale === true,\n        engine_communication_failed: data.engine_communication_failed,\n        engine_bypass_enabled: data.bypass_enabled,\n        engine_bypass_allowed: data.bypass_allowed,\n        engine_data_unreliable: data.engine_unreliable,\n        sun_ready: data.sun_ready,\n        sun_below_horizon: data.dark,\n        vehicle_primary_in_use: data.vehicle.in_use,\n        vehicle_primary_engine_on: data.vehicle.engine_on,\n        reflector_state: data.physical,\n        reflector_physical_fresh: data.physical_fresh,\n        reflector_reconciled: data.light_reconciled,\n        would_evaluate_turn_on: data.logic_ready,\n        arrival_replay: msg._arrival_replay === true,\n        pending_arrival_queued: true,\n        pending_arrival_retention: residentApproach ? \"while_approaching\" : \"recovery_window\",\n        pending_arrival_ttl_ms: data.arrival_recovery_ms\n    }\n};\nif (data.test_mode) {\n    data.diagnostic._location_test = true;\n    data.diagnostic._location_test_case = data.test_case;\n    data.diagnostic.payload.test_mode = true;\n    data.diagnostic.payload.test_case = data.test_case;\n}\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -48485,7 +48497,7 @@
         "type": "switch",
         "z": "6b7552efb85343f4",
         "g": "32a89192d93735b1",
-        "name": "Luminosidade e veículo estão prontos?",
+        "name": "Acesso, luminosidade e veículo prontos?",
         "property": "_light_arrival.logic_ready",
         "propertyType": "msg",
         "rules": [
@@ -49079,7 +49091,7 @@
         "z": "6b7552efb85343f4",
         "g": "security_visual_decision_diagnostic_group_v1",
         "name": "Classificar e publicar decisão",
-        "func": "const TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nif (TEST_MODE) return null;\n\nconst stateTopic = \"smart_home/security_light/last_decision/state\";\nconst attributesTopic = \"smart_home/security_light/last_decision/attributes\";\nif (msg.topic === \"security_light_decision_discovery\") {\n    return [[{\n        topic: \"homeassistant/sensor/security_light_last_decision/config\",\n        qos: \"1\",\n        retain: true,\n        payload: JSON.stringify({\n            name: \"Iluminação de segurança — última decisão\",\n            unique_id: \"security_light_last_decision\",\n            object_id: \"security_light_last_decision\",\n            default_entity_id: \"sensor.security_light_last_decision\",\n            state_topic: stateTopic,\n            json_attributes_topic: attributesTopic,\n            icon: \"mdi:shield-home-outline\",\n            entity_category: \"diagnostic\"\n        })\n    }]];\n}\n\nlet decision = msg._security_light_decision_state;\nconst payload = msg.payload ?? {};\nif (!decision && payload.kind === \"arrival_blocked\") decision = \"blocked_direction\";\nif (!decision && payload.diagnostic === \"arrival_trigger_received\") {\n    if (payload.sun_ready !== true || payload.sun_below_horizon !== true) {\n        decision = \"blocked_daylight\";\n    } else if (payload.vehicle_primary_engine_state_valid === true &&\n        payload.vehicle_primary_engine_on === false &&\n        payload.engine_communication_failed !== true) {\n        decision = \"blocked_engine_off\";\n    } else if (payload.reflector_state === \"on\") {\n        decision = \"blocked_reflector_on\";\n    } else if (payload.decision_context_ready !== true) {\n        decision = \"waiting_context\";\n    } else {\n        decision = \"evaluating\";\n    }\n}\nif (!decision) return null;\n\nconst now = Date.now();\nconst source = [\"resident_primary\", \"resident_secondary\"].includes(payload.source)\n    ? payload.source : null;\nflow.set(\"security_light_last_decision_v1\", {\n    version: 1, decision, source, reason: payload.reason ?? payload.direction_reason ?? null,\n    updated_at: now\n}, \"persistent\");\nreturn [[\n    { topic: stateTopic, qos: \"1\", retain: true, payload: decision },\n    { topic: attributesTopic, qos: \"1\", retain: true, payload: JSON.stringify({\n        decision, source,\n        reason: payload.reason ?? payload.direction_reason ?? null,\n        attempt: Number.isFinite(Number(payload.attempt)) ? Number(payload.attempt) : null,\n        updated_at: new Date(now).toISOString()\n    }) }\n]];",
+        "func": "const TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nif (TEST_MODE) return null;\n\nconst stateTopic = \"smart_home/security_light/last_decision/state\";\nconst attributesTopic = \"smart_home/security_light/last_decision/attributes\";\nif (msg.topic === \"security_light_decision_discovery\") {\n    return [[{\n        topic: \"homeassistant/sensor/security_light_last_decision/config\",\n        qos: \"1\",\n        retain: true,\n        payload: JSON.stringify({\n            name: \"Iluminação de segurança — última decisão\",\n            unique_id: \"security_light_last_decision\",\n            object_id: \"security_light_last_decision\",\n            default_entity_id: \"sensor.security_light_last_decision\",\n            state_topic: stateTopic,\n            json_attributes_topic: attributesTopic,\n            icon: \"mdi:shield-home-outline\",\n            entity_category: \"diagnostic\"\n        })\n    }]];\n}\n\nlet decision = msg._security_light_decision_state;\nconst payload = msg.payload ?? {};\nif (!decision && payload.kind === \"arrival_blocked\") decision = \"blocked_direction\";\nif (!decision && payload.diagnostic === \"arrival_trigger_received\") {\n    if (payload.sun_ready !== true || payload.sun_below_horizon !== true) {\n        decision = \"blocked_daylight\";\n    } else if (payload.vehicle_primary_engine_state_valid === true &&\n        payload.vehicle_primary_engine_on === false &&\n        payload.engine_communication_failed !== true) {\n        decision = \"blocked_engine_off\";\n    } else if (payload.approach_distance_ready === false) {\n        decision = \"waiting_approach_distance\";\n    } else if (payload.reflector_state === \"on\") {\n        decision = \"blocked_reflector_on\";\n    } else if (payload.decision_context_ready !== true) {\n        decision = \"waiting_context\";\n    } else {\n        decision = \"evaluating\";\n    }\n}\nif (!decision) return null;\n\nconst now = Date.now();\nconst source = [\"resident_primary\", \"resident_secondary\"].includes(payload.source)\n    ? payload.source : null;\nflow.set(\"security_light_last_decision_v1\", {\n    version: 1, decision, source, reason: payload.reason ?? payload.direction_reason ?? null,\n    updated_at: now\n}, \"persistent\");\nreturn [[\n    { topic: stateTopic, qos: \"1\", retain: true, payload: decision },\n    { topic: attributesTopic, qos: \"1\", retain: true, payload: JSON.stringify({\n        decision, source,\n        reason: payload.reason ?? payload.direction_reason ?? null,\n        attempt: Number.isFinite(Number(payload.attempt)) ? Number(payload.attempt) : null,\n        updated_at: new Date(now).toISOString()\n    }) }\n]];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -49119,7 +49131,7 @@
         "z": "6b7552efb85343f4",
         "g": "6013a28eaa95addd",
         "name": "Validar lifecycle persistido e limites",
-        "func": "const now = Date.now();\nconst locationPolicy = global.get(\"location_policy_v1\", \"persistent\");\nconst policy = global.get(\"security_light_policy_v1\", \"persistent\");\nif (locationPolicy?.version !== 1 || locationPolicy?.complete !== true ||\n    policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente na reconciliação\", msg);\n    return null;\n}\nconst futureMs = Number(locationPolicy.future_tolerance_seconds) * 1000;\nconst retentionMs = Number(policy.lifecycle_retention_hours) * 3600000;\nconst maxDeadlineMs = (Number(policy.backstop_minutes) + Number(policy.deadline_slack_minutes)) * 60000;\nlet lifecycle = flow.get(\"security_light_lifecycle_v1\", \"persistent\");\nif (!lifecycle || lifecycle.version !== 1 || !Number.isFinite(lifecycle.updated_at) ||\n    lifecycle.updated_at > now + futureMs || now - lifecycle.updated_at > retentionMs) {\n    if (lifecycle) node.warn(\"iluminacao_seguranca: lifecycle persistido inválido ou expirado; descartado\");\n    lifecycle = { version: 1, active_by_arrival: false, updated_at: now };\n}\nif (lifecycle.active_by_arrival !== true) lifecycle.active_by_arrival = false;\nif (lifecycle.active_by_arrival === true && (!Number.isFinite(lifecycle.on_since) ||\n    lifecycle.on_since > now + futureMs || !Number.isFinite(lifecycle.force_off_at) ||\n    lifecycle.force_off_at < lifecycle.on_since || lifecycle.force_off_at > lifecycle.on_since + maxDeadlineMs)) {\n    node.warn(\"iluminacao_seguranca: lifecycle ativo sem deadline coerente; tratado como origem desconhecida\");\n    Object.assign(lifecycle, { active_by_arrival: false, on_since: null, force_off_at: null,\n        pending_off_at: null, pending_off_reason: null, pending_off_source: null,\n        vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null });\n}\nif (lifecycle.pending_off_at != null || lifecycle.vehicle_refresh_at != null) {\n    node.warn(\"iluminacao_seguranca: deadline legado de refresh removido; regra pertence a contexto_chegadas\");\n}\nObject.assign(lifecycle, {\n    pending_off_at: null, pending_off_reason: null, pending_off_source: null,\n    vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null\n});\nconst cooldownMaxMs = Number(policy.cooldown_max_minutes) * 60000;\nif (lifecycle.cooldown_until != null && (!Number.isFinite(lifecycle.cooldown_until) ||\n    lifecycle.cooldown_until <= now || lifecycle.cooldown_until > now + cooldownMaxMs)) lifecycle.cooldown_until = null;\nmsg._light_reconcile = { now, policy, location_policy: locationPolicy, future_ms: futureMs,\n    lifecycle, physical_signal: msg.payload?.kind === \"light_physical\", physical_accepted: true };\nreturn msg;",
+        "func": "const now = Date.now();\nconst locationPolicy = global.get(\"location_policy_v1\", \"persistent\");\nconst policy = global.get(\"security_light_policy_v1\", \"persistent\");\nif (locationPolicy?.version !== 1 || locationPolicy?.complete !== true ||\n    policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"iluminacao_seguranca: política canônica ausente na reconciliação\", msg);\n    return null;\n}\nconst futureMs = Number(locationPolicy.future_tolerance_seconds) * 1000;\nconst retentionMs = Number(policy.lifecycle_retention_hours) * 3600000;\nconst maxDeadlineMs = (Number(policy.backstop_minutes) + Number(policy.deadline_slack_minutes)) * 60000;\nlet lifecycle = flow.get(\"security_light_lifecycle_v1\", \"persistent\");\nif (!lifecycle || lifecycle.version !== 1 || !Number.isFinite(lifecycle.updated_at) ||\n    lifecycle.updated_at > now + futureMs || now - lifecycle.updated_at > retentionMs) {\n    if (lifecycle) node.warn(\"iluminacao_seguranca: lifecycle persistido inválido ou expirado; descartado\");\n    lifecycle = { version: 1, active_by_arrival: false, updated_at: now };\n}\nif (lifecycle.active_by_arrival !== true) lifecycle.active_by_arrival = false;\nif (lifecycle.active_by_arrival === true && (!Number.isFinite(lifecycle.on_since) ||\n    lifecycle.on_since > now + futureMs || !Number.isFinite(lifecycle.force_off_at) ||\n    lifecycle.force_off_at < lifecycle.on_since || lifecycle.force_off_at > lifecycle.on_since + maxDeadlineMs)) {\n    node.warn(\"iluminacao_seguranca: lifecycle ativo sem deadline coerente; tratado como origem desconhecida\");\n    Object.assign(lifecycle, { active_by_arrival: false, on_since: null, force_off_at: null,\n        pending_off_at: null, pending_off_reason: null, pending_off_source: null,\n        vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null });\n}\nif (lifecycle.pending_off_at != null || lifecycle.vehicle_refresh_at != null) {\n    node.warn(\"iluminacao_seguranca: deadline legado de refresh removido; regra pertence a contexto_chegadas\");\n}\nObject.assign(lifecycle, {\n    vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null\n});\nif (lifecycle.pending_off_at != null && (!Number.isFinite(lifecycle.pending_off_at) ||\n    lifecycle.active_by_arrival !== true || lifecycle.pending_off_at < lifecycle.on_since ||\n    lifecycle.pending_off_at > lifecycle.force_off_at)) {\n    lifecycle.pending_off_at = null;\n    lifecycle.pending_off_reason = null;\n    lifecycle.pending_off_source = null;\n}\nconst cooldownMaxMs = Number(policy.cooldown_max_minutes) * 60000;\nif (lifecycle.cooldown_until != null && (!Number.isFinite(lifecycle.cooldown_until) ||\n    lifecycle.cooldown_until <= now || lifecycle.cooldown_until > now + cooldownMaxMs)) lifecycle.cooldown_until = null;\nmsg._light_reconcile = { now, policy, location_policy: locationPolicy, future_ms: futureMs,\n    lifecycle, physical_signal: msg.payload?.kind === \"light_physical\", physical_accepted: true };\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -49161,7 +49173,7 @@
         "z": "6b7552efb85343f4",
         "g": "6013a28eaa95addd",
         "name": "Derivar readiness e deadlines",
-        "func": "const data = msg._light_reconcile;\nconst observedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst freshMs = Number(data.policy.physical_fresh_seconds) * 1000;\nconst physicalFresh = Number.isFinite(observedAt) && observedAt <= data.now + data.future_ms &&\n    data.now - observedAt <= freshMs;\nif (!physicalFresh) flow.set(\"light_reconciled\", false);\nconst people = flow.get(\"people_context_v1\") ?? {};\nconst vehicle = flow.get(\"vehicle_primary_context_v1\") ?? {};\nconst ready = people.ready === true && vehicle.ready === true && flow.get(\"sun_ready\") === true &&\n    flow.get(\"light_reconciled\") === true && physicalFresh;\nconst wasReady = flow.get(\"security_light_ready\");\nflow.set(\"security_light_ready\", ready);\nif (wasReady !== ready) node.log?.(`iluminacao_seguranca: readiness ${ready ? \"completo\" : \"pendente\"}`);\nconst activePhysical = data.physical_accepted &&\n    flow.get(\"security_light_physical_state\") === \"on\" &&\n    data.lifecycle.active_by_arrival === true;\ndata.deadlines = activePhysical ? [\n    Number.isFinite(data.lifecycle.force_off_at)\n        ? { type: \"backstop\", at: data.lifecycle.force_off_at, reason: \"recovered_backstop\" } : null\n].filter(Boolean) : [];\ndata.recovery_needed = data.deadlines.length > 0;\nreturn msg;",
+        "func": "const data = msg._light_reconcile;\nconst observedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst freshMs = Number(data.policy.physical_fresh_seconds) * 1000;\nconst physicalFresh = Number.isFinite(observedAt) && observedAt <= data.now + data.future_ms &&\n    data.now - observedAt <= freshMs;\nif (!physicalFresh) flow.set(\"light_reconciled\", false);\nconst people = flow.get(\"people_context_v1\") ?? {};\nconst vehicle = flow.get(\"vehicle_primary_context_v1\") ?? {};\nconst ready = people.ready === true && vehicle.ready === true && flow.get(\"sun_ready\") === true &&\n    flow.get(\"light_reconciled\") === true && physicalFresh;\nconst wasReady = flow.get(\"security_light_ready\");\nflow.set(\"security_light_ready\", ready);\nif (wasReady !== ready) node.log?.(`iluminacao_seguranca: readiness ${ready ? \"completo\" : \"pendente\"}`);\nconst activePhysical = data.physical_accepted &&\n    flow.get(\"security_light_physical_state\") === \"on\" &&\n    data.lifecycle.active_by_arrival === true;\ndata.deadlines = activePhysical ? [\n    Number.isFinite(data.lifecycle.pending_off_at)\n        ? { type: \"confirmed_off\", at: data.lifecycle.pending_off_at, reason: data.lifecycle.pending_off_reason } : null,\n    Number.isFinite(data.lifecycle.force_off_at)\n        ? { type: \"backstop\", at: data.lifecycle.force_off_at, reason: \"recovered_backstop\" } : null\n].filter(Boolean) : [];\ndata.recovery_needed = data.deadlines.length > 0;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -49210,7 +49222,7 @@
         "z": "6b7552efb85343f4",
         "g": "6013a28eaa95addd",
         "name": "Reconstruir timers sem duplicar",
-        "func": "const data = msg._light_reconcile;\nconst scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\nconst current = Object.fromEntries(data.deadlines.map((deadline) => [deadline.type, deadline.at]));\nfor (const type of Object.keys(scheduled)) if (scheduled[type] !== current[type]) delete scheduled[type];\ndata.messages = [];\nfor (const deadline of data.deadlines) {\n    if (scheduled[deadline.type] === deadline.at) continue;\n    scheduled[deadline.type] = deadline.at;\n    data.messages.push({ payload: { event: \"turn_off\", reason: deadline.reason,\n        deadline_type: deadline.type, recovered: true }, delay: Math.max(0, deadline.at - data.now) });\n}\nflow.set(\"security_light_recovery_scheduled\", scheduled);\nreturn msg;",
+        "func": "const data = msg._light_reconcile;\nconst scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\nconst current = Object.fromEntries(data.deadlines.map((deadline) => [deadline.type, deadline.at]));\nfor (const type of Object.keys(scheduled)) if (scheduled[type] !== current[type]) delete scheduled[type];\ndata.messages = [];\nfor (const deadline of data.deadlines) {\n    if (scheduled[deadline.type] === deadline.at) continue;\n    scheduled[deadline.type] = deadline.at;\n    data.messages.push({ payload: { event: \"turn_off\", reason: deadline.reason,\n        deadline_type: deadline.type, deadline_at: deadline.at, activation_at: data.lifecycle.on_since, recovered: true }, delay: Math.max(0, deadline.at - data.now) });\n}\nflow.set(\"security_light_recovery_scheduled\", scheduled);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -74998,9 +75010,7 @@
         "x": 1810,
         "y": 1360,
         "wires": [
-            [
-                "security_visual_bypass_result_out"
-            ]
+            []
         ]
     },
     {
@@ -75029,9 +75039,7 @@
         "x": 1810,
         "y": 1460,
         "wires": [
-            [
-                "security_visual_bypass_result_out"
-            ]
+            []
         ]
     },
     {
@@ -75060,9 +75068,7 @@
         "x": 1810,
         "y": 1260,
         "wires": [
-            [
-                "security_visual_bypass_result_out"
-            ]
+            []
         ]
     },
     {
@@ -75091,9 +75097,7 @@
         "x": 1810,
         "y": 1560,
         "wires": [
-            [
-                "security_visual_bypass_result_out"
-            ]
+            []
         ]
     },
     {
@@ -80763,6 +80767,457 @@
         ],
         "x": 1070,
         "y": 2670,
+        "wires": []
+    },
+    {
+        "id": "security_visual_policy_approach_radius_m",
+        "type": "inject",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_policy_group_v1",
+        "name": "Acender perto do acesso — 150 m [30..350]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.8",
+        "topic": "approach_radius_m",
+        "payload": "150",
+        "payloadType": "num",
+        "x": 3320,
+        "y": 2610,
+        "wires": [
+            [
+                "security_visual_policy_out_0"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_effects_group",
+        "type": "group",
+        "z": "6b7552efb85343f4",
+        "name": "10. OFF novo → carência → revalidação → efeito ou dry-run",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "stroke-opacity": "1",
+            "fill": "#e2e8f0",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "security_visual_off_wait_in",
+            "security_visual_off_wait",
+            "security_visual_off_wait_out",
+            "security_visual_off_effect_in",
+            "security_visual_off_test_gate",
+            "security_visual_off_dry_run",
+            "security_visual_off_service_out",
+            "security_visual_off_accepted",
+            "security_visual_off_service_in",
+            "82539910c43d6cf5"
+        ],
+        "x": 64,
+        "y": 2820,
+        "w": 2100,
+        "h": 302
+    },
+    {
+        "id": "security_visual_off_wait_in",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "Receber OFF confirmado",
+        "links": [
+            "light_off_decision_route_out_v1"
+        ],
+        "x": 180,
+        "y": 2890,
+        "wires": [
+            [
+                "security_visual_off_wait"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_wait",
+        "type": "delay",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "Carência OFF (prazo canônico)",
+        "pauseType": "delay",
+        "timeout": "90",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 460,
+        "y": 2890,
+        "wires": [
+            [
+                "security_visual_off_wait_out"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_wait_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "Carência vencida → revalidar OFF",
+        "mode": "link",
+        "links": [
+            "light_off_decision_route_in_v1"
+        ],
+        "x": 760,
+        "y": 2890,
+        "wires": []
+    },
+    {
+        "id": "security_visual_off_effect_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "a610d085d27ea80d",
+        "name": "OFF autorizado → fronteira final",
+        "mode": "link",
+        "links": [
+            "security_visual_off_effect_in"
+        ],
+        "x": 1350,
+        "y": 830,
+        "wires": []
+    },
+    {
+        "id": "security_visual_off_effect_in",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "Receber desligamento autorizado",
+        "links": [
+            "security_visual_off_effect_out"
+        ],
+        "x": 180,
+        "y": 2990,
+        "wires": [
+            [
+                "security_visual_off_test_gate"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_test_gate",
+        "type": "switch",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "OFF em test_mode?",
+        "property": "payload.test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 450,
+        "y": 2990,
+        "wires": [
+            [
+                "security_visual_off_dry_run"
+            ],
+            [
+                "security_visual_off_service_out"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_dry_run",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "TESTE OFF: registrar sem dispositivos",
+        "func": "const result = { ...(msg.payload.off_diagnostic ?? {}), version: 1,\n    simulated: true, dispatched: false, actions: [\"switch.turn_off:exterior_light\"] };\nflow.set(\"security_light_last_off_dry_run_v1__test\", result);\nnode.log?.(\"SECURITY_LIGHT_OFF_DRY_RUN \" + JSON.stringify(result));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 2950,
+        "wires": []
+    },
+    {
+        "id": "security_visual_off_service_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "Produção → desligar refletor",
+        "mode": "link",
+        "links": [
+            "security_visual_off_service_in"
+        ],
+        "x": 740,
+        "y": 3050,
+        "wires": []
+    },
+    {
+        "id": "security_visual_off_service_in",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "Receber OFF de produção",
+        "links": [
+            "security_visual_off_service_out"
+        ],
+        "x": 1100,
+        "y": 2990,
+        "wires": [
+            [
+                "82539910c43d6cf5"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_accepted",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_effects_group",
+        "name": "Registrar aceite do desligamento",
+        "func": "node.log(\"SECURITY_LIGHT_OFF_ACCEPTED \" + JSON.stringify({\n    ...(msg.payload?.off_diagnostic ?? {}), accepted_at: Date.now(), dispatched: true\n}));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1770,
+        "y": 2990,
+        "wires": []
+    },
+    {
+        "id": "security_visual_bypass_startup_result_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Decisão de bypass → publicação",
+        "mode": "link",
+        "links": [
+            "security_visual_bypass_result_in"
+        ],
+        "x": 1720,
+        "y": 1150,
+        "wires": []
+    },
+    {
+        "id": "security_visual_bypass_auto_enable_result_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Decisão de bypass → publicação",
+        "mode": "link",
+        "links": [
+            "security_visual_bypass_result_in"
+        ],
+        "x": 1750,
+        "y": 1230,
+        "wires": []
+    },
+    {
+        "id": "security_visual_bypass_manual_enable_result_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Decisão de bypass → publicação",
+        "mode": "link",
+        "links": [
+            "security_visual_bypass_result_in"
+        ],
+        "x": 1750,
+        "y": 1470,
+        "wires": []
+    },
+    {
+        "id": "security_visual_bypass_manual_disable_result_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Decisão de bypass → publicação",
+        "mode": "link",
+        "links": [
+            "security_visual_bypass_result_in"
+        ],
+        "x": 1720,
+        "y": 1550,
+        "wires": []
+    },
+    {
+        "id": "security_visual_off_tests_group",
+        "type": "group",
+        "z": "6b7552efb85343f4",
+        "name": "11. Teste OFF isolado — 1 reset; 2 OFF antigo; 3 OFF novo; aguarde 90 s",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "stroke-opacity": "1",
+            "fill": "#e2e8f0",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "security_visual_off_test_reset",
+            "security_visual_off_test_old_off",
+            "security_visual_off_test_new_off",
+            "security_visual_off_test_prepare",
+            "security_visual_off_test_out"
+        ],
+        "x": 64,
+        "y": 3180,
+        "w": 1500,
+        "h": 262
+    },
+    {
+        "id": "security_visual_off_test_reset",
+        "type": "inject",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_tests_group",
+        "name": "TESTE OFF 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.8",
+        "topic": "reset",
+        "payload": "0",
+        "payloadType": "num",
+        "x": 320,
+        "y": 3250,
+        "wires": [
+            [
+                "security_visual_off_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_test_old_off",
+        "type": "inject",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_tests_group",
+        "name": "TESTE OFF 2: rejeitar OFF antigo",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.8",
+        "topic": "old_off",
+        "payload": "0",
+        "payloadType": "num",
+        "x": 320,
+        "y": 3320,
+        "wires": [
+            [
+                "security_visual_off_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_test_new_off",
+        "type": "inject",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_tests_group",
+        "name": "TESTE OFF 3: OFF novo e carência",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.8",
+        "topic": "new_off",
+        "payload": "0",
+        "payloadType": "num",
+        "x": 320,
+        "y": 3390,
+        "wires": [
+            [
+                "security_visual_off_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_test_prepare",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_tests_group",
+        "name": "Preparar estado sintético separado",
+        "func": "// Isolated synthetic fixtures enter the same context normalization and OFF gates.\nconst keys = [\"security_light_lifecycle_v1\", \"vehicle_primary_context_v1\", \"security_light_physical_state\",\n    \"security_light_physical_observed_at\", \"light_reconciled\", \"sun_ready\", \"security_light_off_diagnostic\",\n    \"security_light_last_off_dry_run_v1\", \"security_light_engine_communication_failed\"];\nif (msg.topic === \"reset\") {\n    for (const key of keys) flow.set(key + \"__test\", null);\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"TESTE OFF resetado; produção preservada\" });\n    return null;\n}\nconst now = Date.now();\nconst policy = global.get(\"security_light_policy_v1\", \"persistent\");\nflow.set(\"security_light_lifecycle_v1__test\", { version: 1, active_by_arrival: true,\n    on_since: now - 10000, force_off_at: now + Number(policy.backstop_minutes) * 60000, updated_at: now });\nflow.set(\"security_light_physical_state__test\", \"on\");\nflow.set(\"security_light_physical_observed_at__test\", now);\nflow.set(\"light_reconciled__test\", true);\nflow.set(\"sun_ready__test\", true);\nflow.set(\"security_light_engine_communication_failed__test\", false);\nconst observed = msg.topic === \"old_off\" ? now - 600000 : now;\nmsg._location_test = true;\nmsg.payload = { test_mode: true, kind: \"vehicle_primary_context\", updated_at: now,\n    context: { ready: true, engine_state_valid: true, engine_on: false,\n        telemetry_updated_at: observed, engine_updated_at: observed, updated_at: now } };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 770,
+        "y": 3320,
+        "wires": [
+            [
+                "security_visual_off_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_off_test_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_visual_off_tests_group",
+        "name": "Teste OFF → normalização canônica",
+        "mode": "link",
+        "links": [
+            "security_visual_context_route_in"
+        ],
+        "x": 1120,
+        "y": 3320,
         "wires": []
     }
 ]

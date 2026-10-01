@@ -28,9 +28,15 @@ if (lifecycle.pending_off_at != null || lifecycle.vehicle_refresh_at != null) {
     node.warn("iluminacao_seguranca: deadline legado de refresh removido; regra pertence a contexto_chegadas");
 }
 Object.assign(lifecycle, {
-    pending_off_at: null, pending_off_reason: null, pending_off_source: null,
     vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null
 });
+if (lifecycle.pending_off_at != null && (!Number.isFinite(lifecycle.pending_off_at) ||
+    lifecycle.active_by_arrival !== true || lifecycle.pending_off_at < lifecycle.on_since ||
+    lifecycle.pending_off_at > lifecycle.force_off_at)) {
+    lifecycle.pending_off_at = null;
+    lifecycle.pending_off_reason = null;
+    lifecycle.pending_off_source = null;
+}
 const cooldownMaxMs = Number(policy.cooldown_max_minutes) * 60000;
 if (lifecycle.cooldown_until != null && (!Number.isFinite(lifecycle.cooldown_until) ||
     lifecycle.cooldown_until <= now || lifecycle.cooldown_until > now + cooldownMaxMs)) lifecycle.cooldown_until = null;

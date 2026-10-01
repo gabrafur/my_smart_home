@@ -78,7 +78,7 @@ const LOCATION_POLICY = {
 };
 const SECURITY_LIGHT_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
+  approach_radius_m: 150, physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
   off_grace_seconds: 90, backstop_minutes: 15, post_off_cooldown_minutes: 5,
   lifecycle_retention_hours: 24, deadline_slack_minutes: 1,
   unavailable_dedupe_seconds: 10, cooldown_max_minutes: 30,
@@ -339,7 +339,7 @@ scenario("11 deadline recuperado vence mesmo com estado físico stale", () => {
 scenario("12 dedupe do refletor so e gravado depois dos gates", () => {
   const flow = readyLight({
     people_context_v1: { ready: true, updated_at: clock,
-      resident_primary: { ready: true, stale: false, state: "near_home", current_home: false, updated_at: clock } },
+      resident_primary: { ready: true, stale: false, state: "near_home", gate_distance_m: 125, current_home: false, updated_at: clock } },
     security_light_physical_state: "off",
     security_light_lifecycle_v1: { version: 1, active_by_arrival: false, updated_at: clock },
   });
@@ -431,7 +431,10 @@ scenario("16 side effects criticos estao ligados aos gates corretos", () => {
   assert.deepEqual(wireNames(unavailableTerminalIn.id), [
     "TESTE FINAL: ações simuladas — nenhum dispositivo acionado",
   ]);
-  assert.deepEqual(wireNames("light_turn_off_if_active"), ["Desligar refletor do portão"]);
+  assert.deepEqual(wireNames("light_turn_off_if_active"), ["OFF autorizado → fronteira final"]);
+  assert.deepEqual(byId.get("security_visual_off_test_gate").wires,
+    [["security_visual_off_dry_run"], ["security_visual_off_service_out"]]);
+  assert.deepEqual(byId.get("security_visual_off_service_in").wires, [["82539910c43d6cf5"]]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 0), ["Chegada → coordenador único de refresh"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 1), ["Separar viagens reais e dry-run"]);
   assert.deepEqual(wireNames("vehicle_primary_refresh_decide"), ["Wake → gate final"]);

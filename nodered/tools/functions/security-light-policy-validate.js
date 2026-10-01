@@ -1,4 +1,5 @@
 const DEFAULTS = {
+    approach_radius_m: 150,
     physical_fresh_seconds: 120,
     recovery_request_throttle_seconds: 30,
     off_grace_seconds: 90,
@@ -10,6 +11,7 @@ const DEFAULTS = {
     cooldown_max_minutes: 30
 };
 const LIMITS = {
+    approach_radius_m: [30, 350],
     physical_fresh_seconds: [30, 600],
     recovery_request_throttle_seconds: [5, 300],
     off_grace_seconds: [10, 300],

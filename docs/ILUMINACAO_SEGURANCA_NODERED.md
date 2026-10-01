@@ -370,14 +370,16 @@ próximo snapshot periódico para iniciar ou encerrar o contexto de uso, mantend
 o mesmo filtro contra oscilações nos dois sentidos.
 
 Quando uma chegada `not_home -> near_home` ocorre antes do anoitecer ou antes de
-a integração atualizar o motor, `iluminacao_seguranca` preserva a intenção por
-até 15 minutos, valor editável no mesmo grupo de política canônica. Durante
-esse prazo, uma aproximação de morador exige que a mesma pessoa permaneça em
-`near_home`, com localização `ready` e não stale. A posição do veículo não cria
-nem mantém intenção de acendimento. A intenção é cancelada ao entrar em
-`home`, sair de `near_home`, perder a atualidade da localização ou vencer a
-janela. Assim, uma entrada às 17:31 ainda pode ser reavaliada se o pôr do sol ou
-a telemetria do motor convergirem alguns minutos depois.
+a integração atualizar o motor, `iluminacao_seguranca` preserva a intenção de
+aproximação por até `local_excursion_minutes` (90 minutos). Para reexecutá-la,
+a mesma pessoa precisa estar em `near_home`, com localização `ready` e atual.
+GPS vencido suspende o replay sem apagar a intenção. Uma posição atual fora
+de `near_home` e `home`, ou o vencimento do prazo, cancela a pendência.
+Uma transição confirmada para `home` pode concluir a mesma chegada na janela
+de `arrival_recovery_minutes` (15 minutos), conforme os gates descritos abaixo.
+A posição do veículo não mantém a intenção de um morador. Assim, uma entrada
+antes do anoitecer pode ser reavaliada quando a luminosidade e a telemetria do
+motor convergirem, respeitando a validade da localização e o prazo original.
 
 O replay exige luminosidade ready e `below_horizon`. O gate normal exige
 `in_use=true`, motor `on` conhecido e comunicação saudável com o Bluelink. A chave
@@ -494,8 +496,8 @@ segundos depois dessa confirmação de `home`. O prazo não começa na entrada e
 `near_home` nem no acendimento do refletor. Quando vence, a solicitação atravessa
 o deadline periódico de 30 minutos e a pausa noturna, mas continua serializada
 pelo controle de chamada em andamento. A confirmação de `home` não desliga a
-luz diretamente: somente a telemetria nova com motor `off` e porta destravada
-usa o caminho normal de desligamento antes do backstop de 15 minutos.
+luz diretamente: somente uma observação nova do motor `off`, posterior ao acendimento,
+pode iniciar a carência de desligamento antes do backstop de 15 minutos.
 
 O primeiro ciclo que liga o refletor — ou que determinaria o acendimento, mas
 encontra o atuador `unknown`, `unavailable`, stale ou não reconciliado — grava
@@ -508,7 +510,7 @@ fique indisponível logo depois.
 
 | # | Condição | Efeito |
 | --- | --- | --- |
-| 1 | motor desligado e porta destravada | imediato, após o filtro de 5 s do evento do veículo |
+| 1 | motor OFF com observação posterior ao acendimento e atual | carência de `off_grace_seconds` (90 s); revalidar antes do efeito |
 | 2 | refletor ativo por 15 min | imediato ao vencer o backstop |
 
 Uma transição confirmada de `resident_primary` ou `resident_secondary` para
@@ -521,6 +523,54 @@ atualização genérica da trava não ignora o filtro de 5 s. O backstop grava
 `force_off_at`. Após desligar, `cooldown_until` bloqueia religamento por cinco
 minutos. Os prazos são absolutos e reconstruídos no restart; nenhum depende
 exclusivamente de um `delay` residente em memória.
+
+### Aproximação para iluminação e diagnóstico de OFF
+
+`near_home` permanece uma classificação canônica de preparação em 350 m.
+O refletor exige a distância canônica ao acesso (`gate_distance_m`) dentro de
+`approach_radius_m`: padrão 150 m, ajustável entre 30 e 350 m no grupo de
+política da iluminação. Chegada confirmada em `home` continua aceita; seu raio
+permanece 100 m. Coordenadas pertencem somente à configuração privada.
+A intenção fora do limite permanece pendente e atravessa novamente os mesmos
+gates quando a posição muda. Ausência de distância bloqueia a aproximação;
+a fronteira final revalida a posição. O diagnóstico publica
+`waiting_approach_distance` quando aguarda o acesso.
+
+Cada morador mantém sua própria intenção persistente em
+`security_light_pending_arrivals_v1`; a aproximação de outro morador não a
+substitui. O campo singular continua como seleção compatível para o replay.
+Se o GPS saltar da aproximação para `home`, a intenção existente só passa à
+janela de recuperação após transição HOME confirmada, aceita e da mesma
+pessoa, com observação atual e posterior à original. Preserva a prova de
+retorno e limita a nova janela ao prazo original. Snapshot isolado, fonte
+diferente, posição antiga e intenção expirada não autorizam essa promoção.
+O acendimento consome todas as intenções concorrentes do ciclo.
+
+O OFF exige observação posterior a `on_since`, com idade máxima definida em
+`vehicle_signal_fresh_minutes`, sem falha de comunicação nem timestamp futuro.
+A referência é `telemetry_updated_at` do provedor; na ausência dela, usa-se
+`engine_updated_at`. Atualização do contexto, trava ou GPS sozinha não renova
+a prova do motor. OFF antigo que permitiu o fallback de chegada não pode
+encerrar o ciclo que acaba de começar.
+
+A primeira prova válida agenda 90 s de carência. Duplicatas não prorrogam o
+prazo; motor ON ou perda da prova cancelam a pendência. O prazo é persistido e
+reconstruído após restart, com revalidação do ciclo, disponibilidade física e
+telemetria no efeito final. O backstop de 15 min permanece independente.
+`SECURITY_LIGHT_OFF_BLOCKED`, `SECURITY_LIGHT_OFF_SCHEDULED` e
+`SECURITY_LIGHT_OFF_REQUEST` registram motivo, timestamp e idade da evidência;
+`SECURITY_LIGHT_OFF_ACCEPTED` registra aceite do serviço, sem confundi-lo com
+confirmação física do relé. Não incluem coordenadas.
+
+Teste manual: no grupo **11. Teste OFF isolado**, execute **1: reset**, depois
+**2: rejeitar OFF antigo** (não deve agendar OFF), depois **3: OFF novo e
+carência**. Aguarde 90 s e verifique `SECURITY_LIGHT_OFF_DRY_RUN`, com
+`simulated: true` e `dispatched: false`. Repita o reset ao terminar. Todo o
+estado fica em chaves `__test`; não há chamada ao dispositivo. Regressões em
+`test-security-light-off-policy.mjs` cobrem prova velha, futura, ausente,
+falha de comunicação, cancelamento, duplicata, restart e backstop; o replay
+em `test-security-light-flow.mjs` cobre o limite de aproximação, o salto para
+HOME e a preservação de intenções simultâneas por morador.
 
 ## Refresh
 
@@ -821,7 +871,7 @@ npm run flows:test-security
 npm run flows:test-alarm-arrival
 ```
 
-`flows:test-security` executa 80 cenários de regressão, incluindo
+`flows:test-security` executa 85 cenários de regressão, incluindo
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
 de refresh, inclusive movimento dentro da mesma zona, simetria de motor
 `on`/`off`, replay real de chegada após atraso `off -> on` e preservação de
@@ -841,3 +891,10 @@ Os casos autorizados atravessam o terminal final com `simulated: true` e
 `dispatched: false`; nenhum dispositivo ou notificação é acionado. Use esse replay
 para testar reinícios e ordenação sem reiniciar o Node-RED residencial. Os controles
 manuais existentes continuam usando reset e contexto sintético separado.
+
+Backtests históricos devem declarar janela, cobertura por fonte e hipóteses
+do simulador. Transições GPS não são uma contagem de chegadas físicas; rebotes
+durante a saída exigem revisão. Um replay com entradas históricas fixas não
+prevê respostas a novos pedidos de GPS ou do veículo, nem atribui comandos
+manuais do refletor. Evidências de localização e resultados residenciais
+permanecem privados; somente regressões sintéticas são versionadas.
