@@ -60,8 +60,8 @@ const communicationFailed = vehicle.engine_communication_failed === true ||
     get("security_light_engine_communication_failed", "persistent") === true || bypassAutomatic;
 const engineKnown = vehicle.engine_state_valid === true;
 const engineAllowed = vehicle.in_use === true && vehicle.engine_on === true &&
-    engineKnown && !communicationFailed;
-const bypassAllowed = bypassEnabled && communicationFailed;
+    engineKnown && vehicle.engine_stale !== true && !communicationFailed;
+const bypassAllowed = bypassEnabled && !bypassAutomatic && communicationFailed;
 msg._light_context = {
     test_mode: testMode, test_case: testCase, kind, now, future_ms: futureMs,
     location_policy: locationPolicy, policy: lightPolicy, accepted,

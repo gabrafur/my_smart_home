@@ -101,4 +101,28 @@ for (const zone of ["home", "near_home", "not_home", "unavailable"]) {
     assert.equal(run({}, test), null, "migração silenciosa só uma vez, inclusive após restart lógico");
   }
 }
+// Armed residents near home request GPS every minute without bypassing retry/backoff.
+for (const role of ["resident_primary", "resident_secondary"]) {
+  setup("not_home", 1);
+  const nearby = flow.get("people_context_v1__test");
+  nearby.arrival_armed = { [role]: true };
+  nearby[role] = { state: "not_home", ready: true, stale: false, distance_m: 500, updated_at: now - 60000 };
+  const index = role === "resident_primary" ? 0 : 1;
+  assert(run()[index], "retorno no bairro solicita posição antes do near_home");
+  assert.equal(run(), null, "tick duplicado continua deduplicado");
+  now += 60000; assert.equal(run()[index].payload.refresh_attempt, 2);
+  now += 60000; assert.equal(run()[index].payload.refresh_attempt, 3);
+  now += 60000; assert.equal(run(), null, "proximidade não burla o backoff");
+}
+for (const patch of [ { distance_m: 1600 }, { distance_m: null },
+    { state: "home" }, { distance_m: "500" } ]) {
+  setup("not_home", 1);
+  const nearby = flow.get("people_context_v1__test");
+  nearby.arrival_armed = { resident_primary: true };
+  Object.assign(nearby.resident_primary, { distance_m: 500 }, patch);
+  assert.equal(run(), null, "fora, home ou distância inválida não acelera GPS");
+}
+setup("not_home", 1);
+flow.get("people_context_v1__test").resident_primary.distance_m = 500;
+assert.equal(run(), null, "ausência de ciclo externo confirmado não acelera GPS");
 console.log("People GPS: 5/10 min, silent retries, legacy dismissal, bounded backoff, recovery and dry-run passed.");

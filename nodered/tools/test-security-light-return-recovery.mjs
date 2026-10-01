@@ -243,7 +243,7 @@ for (const role of ['resident_primary', 'resident_secondary']) {
     assert.equal(waiting[0], null, 'missing sun context waits without dispatch');
     const replay = context(flow, 'sun_context', { sun_below_horizon: true })[2];
     assert(replay, 'context recovery must re-evaluate canonical motor policy');
-    if (['on', 'stale_off'].includes(motor)) finish(flow, replay);
+    if (motor === 'on') finish(flow, replay);
     else {
       const prepared = runSecurityArrivalVisual((id, msg) => call(flow, id, msg), replay)?.[0];
       if (prepared) assert.equal(call(flow, flows.find(n => n.name === 'vehicle_primary está em uso?').id, prepared), null);

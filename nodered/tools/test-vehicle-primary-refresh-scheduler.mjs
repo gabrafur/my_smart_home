@@ -1358,7 +1358,7 @@ scenario("30 telemetria nova confirma wake comum com motor sem mudança", () => 
   assert.equal(state.attempts, 0);
   assert.equal(state.state, "cooldown");
   assert.deepEqual([...state.last_evidence_domains], ["telemetry"]);
-  assert.equal(normalized[0].payload.context.engine_stale, true);
+  assert.equal(normalized[0].payload.context.engine_stale, false);
   assert.equal(normalized[0].payload.context.engine_state_valid, true);
   assert.equal(normalized[0].payload.context.lighting_ready, true);
   assert.equal(state.lighting_ready_after_wake, true);
@@ -1392,14 +1392,14 @@ scenario("31 wake da iluminação aceita estado conhecido sem exigir mudança", 
   assert.equal(state.attempts, 0);
   assert.equal(state.state, "cooldown");
   assert.equal(state.last_failure_class, null);
-  assert.equal(normalized[0].payload.context.engine_stale, true);
+  assert.equal(normalized[0].payload.context.engine_stale, false);
   assert.equal(normalized[0].payload.context.engine_state_valid, true);
   assert.equal(normalized[0].payload.context.lighting_ready, true);
   assert.equal(state.lighting_ready_after_wake, true);
   assert.equal(state.last_success_reason, "fresh_telemetry_engine_state_known");
 });
 
-scenario("31a ON antigo continua válido enquanto a API está saudável", () => {
+scenario("31a telemetria recente confirma ON sem mudança de estado", () => {
   const staleSignalAt = DAY - 3 * 60 * 60_000;
   const store = memory({
     vehicle_primary_context_v1: readyContext(DAY - 60_000),
@@ -1416,14 +1416,24 @@ scenario("31a ON antigo continua válido enquanto a API está saudável", () => 
   });
   const context = normalized[0].payload.context;
   assert.equal(context.engine_on, true);
-  assert.equal(context.engine_stale, true);
+  assert.equal(context.engine_stale, false);
   assert.equal(context.engine_state_valid, true);
   assert.equal(context.engine_communication_failed, false);
   assert.equal(context.in_use, true);
   assert.equal(context.lighting_ready, true);
+  const oldProvider = normalize(memory(), DAY, DAY, DAY - 10 * 60_000, {
+    engineAt: DAY, engineState: "on",
+  });
+  assert.equal(oldProvider[0].payload.context.engine_stale, true,
+    "recibo recente não atualiza telemetria antiga do provedor");
+  const futureProvider = normalize(memory(), DAY, DAY, DAY + 120_000, {
+    engineAt: DAY, engineState: "on",
+  });
+  assert.equal(futureProvider[0].payload.context.engine_stale, true);
+
 });
 
-scenario("31b OFF antigo continua conhecido e bloqueante", () => {
+scenario("31b telemetria recente confirma OFF sem mudança de estado", () => {
   const staleSignalAt = DAY - 3 * 60 * 60_000;
   const store = memory({
     vehicle_primary_context_v1: readyContext(DAY - 60_000),
@@ -1440,7 +1450,7 @@ scenario("31b OFF antigo continua conhecido e bloqueante", () => {
   });
   const context = normalized[0].payload.context;
   assert.equal(context.engine_on, false);
-  assert.equal(context.engine_stale, true);
+  assert.equal(context.engine_stale, false);
   assert.equal(context.engine_state_valid, true);
   assert.equal(context.engine_communication_failed, false);
   assert.equal(context.in_use, false);

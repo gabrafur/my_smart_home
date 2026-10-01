@@ -366,6 +366,9 @@ scenario("04 entrada no raio near_home de 350 m", () => {
   assert.equal(detected.payload.arrival_stage, "approach");
   assert.equal(detected.payload.arrival_direction, "returning");
   assert.equal(detected.payload.external_cycle_confirmed, true);
+  assert(Number.isFinite(detected.payload.arrival_resident_snapshot.gate_distance_m),
+    "o produtor deve transportar a distância canônica até o gate final");
+
 });
 
 scenario("04a saída e rebote near_home → home não viram chegada", () => {
@@ -791,6 +794,7 @@ scenario("23 Node-RED reiniciado: gates falham de forma segura", () => {
 scenario("24 OFF conhecido permanece bloqueante mesmo antigo", () => {
   const input = vehicle_primaryInput({ event: "context_snapshot", current: "not_home", distance: 5_000, engine: "off" });
   input.payload.vehicle_primary_engine.last_updated = new Date(Date.now() - 10 * 60_000).toISOString();
+  input.payload.vehicle_primary_last_updated.state = input.payload.vehicle_primary_engine.last_updated;
   const result = run("vehicle_primary_normalize", input, memoryFlow(), geoEnv)[0];
   assert.equal(result.payload.context.in_use, false);
   assert.equal(result.payload.context.in_use_pending, false);
@@ -1180,6 +1184,7 @@ scenario("32 movimento na mesma zona solicita refresh sem autorizar iluminação
     engine: "off", changed: new Date().toISOString(),
   });
   second.payload.vehicle_primary_engine.last_updated = staleAt;
+  second.payload.vehicle_primary_last_updated.state = staleAt;
   const [context, arrivalEvent, refresh] = run("vehicle_primary_normalize", second, flow, geoEnv);
   assert.equal(arrivalEvent, null);
   assert.equal(context.payload.context.in_use, false);
@@ -1548,7 +1553,7 @@ scenario("34a posição antiga do carro não bloqueia chegada de morador", () =>
       in_use: true,
       engine_on: true,
       engine_state_valid: true,
-      engine_stale: true,
+      engine_stale: false,
       engine_communication_failed: false,
       location: { state: "not_home", stale: true, ready: false },
       updated_at: Date.now(),
@@ -1565,7 +1570,7 @@ scenario("34a posição antiga do carro não bloqueia chegada de morador", () =>
     assert(decision[0], `${source}: motor ON confiável deve liberar a decisão`);
     assert.equal(decision[2], null, `${source}: posição antiga não deve pedir wake`);
     assert.equal(decision[0].payload.vehicle_primary_lighting_ready, true);
-    assert.equal(decision[0].payload.vehicle_primary_engine_stale, true);
+    assert.equal(decision[0].payload.vehicle_primary_engine_stale, false);
     assert(run("light_check_vehicle_primary_in_use", decision[0], flow, geoEnv));
 
     const vehicleDecision = run(
@@ -1609,7 +1614,7 @@ scenario("34b OFF conhecido bloqueia morador mesmo com posição antiga", () => 
   );
 });
 
-scenario("34c falha de comunicação invalida OFF antigo e libera fallback", () => {
+scenario("34c falha de comunicação não autoriza acendimento automático", () => {
   const flow = readyLightFlow({
     security_light_engine_bypass_enabled: true,
     security_light_engine_bypass_automatic: true,
@@ -1632,12 +1637,7 @@ scenario("34c falha de comunicação invalida OFF antigo e libera fallback", () 
     flow,
     geoEnv,
   );
-  assert(decision[0], "falha da API deve manter a chegada avaliável");
-  assert.equal(decision[0].payload.engine_bypass_allowed, true);
-  assert(
-    run("light_check_vehicle_primary_in_use", decision[0], flow, geoEnv),
-    "bypass automático deve superar um OFF antigo não confiável",
-  );
+  assert.equal(decision[0], null, "bypass automático não comprova retorno de carro");
 });
 
 scenario("34b GPS recuperado diretamente em home chega ao dry-run do refletor", () => {
@@ -1907,7 +1907,7 @@ scenario("35a gate final recupera away → home e rejeita direção inválida", 
   );
 });
 
-scenario("35b backtest preserva near_home longo e recupera home com OFF vencido", () => {
+scenario("35b chegada home com OFF vencido não comprova retorno de carro", () => {
   const now = Date.now();
   const homePeople = {
     ready: true,
@@ -1943,19 +1943,10 @@ scenario("35b backtest preserva near_home longo e recupera home com OFF vencido"
   const prepared = run("light_prepare_arrival", finalHome, flow, geoEnv);
   assert(prepared[0],
     "chegada home confirmada após perda temporária do GPS deve ser recuperada");
-  assert.equal(prepared[0].payload.stale_engine_home_fallback, true);
-  assert.equal(prepared[0].payload.engine_data_unreliable, true);
+  assert.equal(prepared[0].payload.stale_engine_home_fallback, false);
   const gated = run("light_check_vehicle_primary_in_use", prepared[0], flow, geoEnv);
-  assert(gated, "OFF de 50 min não pode vetar o último trecho confirmado");
-  assert.equal(gated.payload.vehicle_primary_gate,
-    "confirmed_home_arrival_with_stale_engine_fallback");
-  const available = run("light_check_inactive", gated, flow, geoEnv);
-  assert(available[0], "refletor OFF deve aceitar a contingência confirmada");
-  const dispatched = run("light_mark_active", available[0], flow, geoEnv);
-  assert(dispatched[0], "contingência deve alcançar o comando real de turn_on");
-  assert.equal(dispatched[0].payload.reason,
-    "confirmed_home_arrival_with_stale_engine_fallback");
-  assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, true);
+  assert.equal(gated, null, "OFF antigo não comprova viagem de carro");
+  assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, false);
 
   const unconfirmed = structuredClone(finalHome);
   unconfirmed.payload.external_cycle_confirmed = false;
@@ -2029,7 +2020,7 @@ scenario("35c aproximação sobrevive a GPS stale sem autorizar replay", () => {
   assert(refreshed[2], "GPS atual em near_home com motor ON deve reprocessar a aproximação");
 });
 
-scenario("35d matriz de chegada home mantém fallback estritamente delimitado", () => {
+scenario("35d matriz de chegada home exige motor ON", () => {
   const previousStates = ["not_home", "work", "unknown", "unavailable", "near_home", "home"];
   const engineCases = [
     { name: "on", engine_on: true, in_use: true, engine_stale: false },
@@ -2074,19 +2065,16 @@ scenario("35d matriz de chegada home mantém fallback estritamente delimitado", 
           `${previous}/${confirmed}/${engine.name}: decisão direcional inesperada`);
         if (!directional) continue;
         const gated = run("light_check_vehicle_primary_in_use", decision[0], flow, geoEnv);
-        const shouldPass = engine.name === "on" || engine.name === "off_stale";
+        const shouldPass = engine.name === "on";
         assert.equal(Boolean(gated), shouldPass,
           `${previous}/${confirmed}/${engine.name}: resultado do motor inesperado`);
-        if (engine.name === "off_stale") {
-          assert.equal(gated.payload.vehicle_primary_gate,
-            "confirmed_home_arrival_with_stale_engine_fallback");
-        }
+
       }
     }
   }
 });
 
-scenario("35e fallback de home tenta ligar mesmo com refletor unavailable", () => {
+scenario("35e home com motor ON tenta ligar mesmo com refletor unavailable", () => {
   const now = Date.now();
   const people = {
     ready: true, updated_at: now,
@@ -2100,9 +2088,9 @@ scenario("35e fallback de home tenta ligar mesmo com refletor unavailable", () =
   const flow = readyLightFlow({
     people_context_v1: people,
     vehicle_primary_context_v1: {
-      ready: true, lighting_ready: false, in_use: false, engine_on: false,
-      engine_state_valid: true, engine_stale: true,
-      engine_updated_at: now - 50 * 60_000, updated_at: now,
+      ready: true, lighting_ready: true, in_use: true, engine_on: true,
+      engine_state_valid: true, engine_stale: false,
+      engine_updated_at: now, updated_at: now,
     },
     security_light_physical_state: "unavailable",
     light_reconciled: false,
@@ -2256,6 +2244,7 @@ scenario("36 unavailable tenta ligar uma vez e aguarda reconciliação física",
   assert.equal(testResult[2], null);
   testResult[0].payload.source = "resident_secondary";
   testResult[0].payload.vehicle_primary_gate = "known_engine_on";
+  testFlow.set("vehicle_primary_context_v1__test", { engine_on: true, engine_state_valid: true, engine_stale: false });
   const simulated = run("light_mark_active", testResult[0], testFlow, geoEnv);
   assert.equal(simulated[0], null, "TESTE não pode usar o ramo de produção");
   assert(simulated[1], "TESTE deve chegar ao terminal dry-run após todos os gates");
@@ -2668,7 +2657,48 @@ scenario("51 aproximações simultâneas preservam a intenção de cada morador"
   assert(run("light_mark_active", gated, flow, geoEnv));
   assert.equal(Object.keys(flow.get("security_light_pending_arrivals_v1")).length, 0);
 });
-assert.equal(passed.length, 85);
+scenario("52 aproximação a 320 m com ON atual chega ao dry-run para ambos", () => {
+  const previousRadius = SECURITY_LIGHT_POLICY.approach_radius_m;
+  SECURITY_LIGHT_POLICY.approach_radius_m = 350;
+  try {
+    for (const source of ["resident_primary", "resident_secondary"]) {
+      const flow = readyLightFlow();
+      flow.get("people_context_v1")[source].gate_distance_m = 320;
+      for (const key of ["people_context_v1", "vehicle_primary_context_v1", "security_light_lifecycle_v1"]) {
+        flow.set(key + "__test", structuredClone(flow.get(key)));
+      }
+      const event = arrival(source);
+      event.payload.arrival_resident_snapshot = { ...flow.get("people_context_v1")[source] };
+      delete event.payload.arrival_resident_snapshot.gate_distance_m; // Legacy event, same observation.
+      event._location_test = true; event.payload.test_mode = true;
+      const prepared = run("light_prepare_arrival", event, flow, geoEnv)[0];
+      assert(prepared);
+      const gated = run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv);
+      const available = run("light_check_inactive", gated, flow, geoEnv)[0];
+      const result = run("light_mark_active", available, flow, geoEnv);
+      assert.equal(result[0], null);
+      run("light_full_dry_run_terminal_v1", result[1], flow, geoEnv);
+      assert.equal(flow.get("security_light_last_dry_run_v1__test").dispatched, false);
+      assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, false);
+    }
+  } finally { SECURITY_LIGHT_POLICY.approach_radius_m = previousRadius; }
+});
+scenario("53 gate final rejeita fallback antigo e perda da prova ON", () => {
+  for (const update of [{ engine_on: false }, { engine_stale: true }, { engine_communication_failed: true }]) {
+    const flow = readyLightFlow();
+    const prepared = run("light_prepare_arrival", arrival("resident_primary"), flow, geoEnv)[0];
+    const gated = run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv);
+    Object.assign(flow.get("vehicle_primary_context_v1"), update);
+    assert.equal(run("light_mark_active", gated, flow, geoEnv), null);
+  }
+  const flow = readyLightFlow();
+  assert.equal(run("light_mark_active", { payload: { source: "resident_primary",
+    vehicle_primary_gate: "confirmed_home_arrival_with_stale_engine_fallback",
+    stale_engine_home_fallback: true, engine_data_unreliable: true } }, flow, geoEnv), null);
+  const stale = readyLightFlow(); stale.get("vehicle_primary_context_v1").engine_stale = true;
+  assert.equal(run("light_prepare_arrival", arrival("resident_primary"), stale, geoEnv)[0], null);
+});
+assert.equal(passed.length, 87);
 
 
 

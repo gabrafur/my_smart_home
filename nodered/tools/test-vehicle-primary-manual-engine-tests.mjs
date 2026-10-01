@@ -204,8 +204,7 @@ const staleKnownOn = execute(gate, {
     engine_communication_failed: false,
   },
 }, gateFlow, shared);
-assert(staleKnownOn, "ON conhecido não pode expirar somente pela idade");
-assert.equal(staleKnownOn.payload.vehicle_primary_gate, "known_engine_on");
+assert.equal(staleKnownOn, null, "ON vencido não comprova retorno atual de carro");
 assert.equal(execute(gate, {
   payload: {
     vehicle_primary_in_use: false,

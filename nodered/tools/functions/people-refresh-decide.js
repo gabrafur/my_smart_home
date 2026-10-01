@@ -56,7 +56,14 @@ for (const [index, role] of ["resident_primary", "resident_secondary"].entries()
         ? Math.min(Number(policy.people_refresh_backoff_max_minutes),
             Number(policy.people_refresh_backoff_minutes) * 2 ** Math.min(10, attempts - limit)) * 60000
         : retryMs;
-    const ageLimit = Number(resident.state === "near_home"
+    const distance = resident.distance_m;
+    const approachRadius = Number(policy.people_approach_radius_m);
+    const approachInterval = Number(policy.people_approach_refresh_seconds) * 1000;
+    const returningNearby = people.arrival_armed?.[role] === true && current &&
+        resident.state !== "home" && typeof distance === "number" &&
+        Number.isFinite(distance) && distance >= 0 && distance <= approachRadius &&
+        Number.isFinite(approachInterval) && approachInterval > 0;
+    const ageLimit = returningNearby ? approachInterval : Number(resident.state === "near_home"
         ? policy.near_home_refresh_minutes : policy.people_refresh_minutes) * 60000;
     const due = explicit || !current || now - observed >= ageLimit;
     entry.next_allowed_at = lastRequest ? lastRequest + interval : now;
@@ -81,5 +88,5 @@ output[2] = alerts.length ? alerts : null;
 const waiting = Object.values(state.residents).some(e =>
     e.diagnostic_reason === "location_refresh_without_new_evidence");
 node.status({ fill: waiting ? "yellow" : "grey", shape: "ring",
-    text: waiting ? "sem evidência nova; backoff sem aviso" : "GPS preventivo 5/10 min; retry limitado" });
+    text: waiting ? "sem evidência nova; backoff sem aviso" : "GPS por proximidade; retry limitado" });
 return output.some(Boolean) ? output : null;

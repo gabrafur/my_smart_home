@@ -35,7 +35,8 @@ const eventResidentValid = eventResident && typeof eventResident === "object" &&
 /* O contexto e o evento percorrem links independentes. A evidência canônica
  * carregada pelo próprio evento fecha a corrida sem aceitar dado mais antigo. */
 const resident = eventResidentValid && eventObservedAt >= cachedObservedAt
-    ? { ...(cachedResident ?? {}), ...eventResident }
+    ? (eventObservedAt === cachedObservedAt
+        ? { ...(cachedResident ?? {}), ...eventResident } : eventResident)
     : cachedResident;
 const residentObservedAt = Number(resident?.updated_at);
 const residentCurrent = resident?.ready === true && resident?.stale !== true &&
@@ -86,18 +87,13 @@ const communicationFailed = vehicle.engine_communication_failed === true ||
     get("security_light_engine_communication_failed", "persistent") === true || bypassAutomatic;
 const staleEngineOff = engineKnown && vehicle.engine_on === false &&
     vehicle.engine_stale === true;
-/* Um ciclo externo confirmado pode terminar diretamente em home depois de uma
- * parada longa em near_home. Nesse caso, um OFF vencido não prova que o motor
- * continuou desligado durante o último trecho. A contingência é restrita ao
- * salto final confirmado; chegadas comuns continuam exigindo ON ou bypass. */
-const staleEngineHomeFallback = directHomeRecovery && staleEngineOff && !communicationFailed;
 const engineKnownOff = engineKnown && vehicle.engine_on === false &&
     !communicationFailed && !staleEngineOff;
-const manualBypassAllowed = bypassEnabled && communicationFailed;
-const bypassAllowed = manualBypassAllowed || staleEngineHomeFallback;
-const trustedEngine = engineKnown && !communicationFailed;
+const manualBypassAllowed = bypassEnabled && !bypassAutomatic && communicationFailed;
+const bypassAllowed = manualBypassAllowed;
+const trustedEngine = engineKnown && vehicle.engine_stale !== true && !communicationFailed;
 const vehicleLightingReady = trustedEngine && residentArrival;
-const vehicleDecisionReady = engineKnownOff || vehicleLightingReady || bypassAllowed;
+const vehicleDecisionReady = engineKnownOff || (staleEngineOff && !communicationFailed) || vehicleLightingReady || bypassAllowed;
 const sunReady = flow.get("sun_ready") === true;
 const eventAt = Number(msg.payload?.event_at ?? msg.payload?.updated_at ?? now);
 const queuedCandidate = Number(msg.payload?.arrival_originally_queued_at ?? now);
@@ -134,7 +130,7 @@ msg._light_arrival = {
     bypass_enabled: bypassEnabled,
     bypass_allowed: bypassAllowed,
     manual_bypass_allowed: manualBypassAllowed,
-    stale_engine_home_fallback: staleEngineHomeFallback,
+    stale_engine_home_fallback: false,
     engine_communication_failed: communicationFailed,
     engine_unreliable: communicationFailed || staleEngineOff,
     vehicle_lighting_ready: vehicleLightingReady,

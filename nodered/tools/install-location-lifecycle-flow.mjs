@@ -137,7 +137,7 @@ const nearHomeRefresh = inject("people_visual_near_home_refresh", config.id,
   2740, 260, "people_visual_lifecycle_config_middle_out");
 nearHomeRefresh.onceDelay = "1.6";
 const refreshConfig = group("people_visual_refresh_config_group",
-  "0c. Renovação GPS — idade, retry e limites por morador", 3200, 79, 1120, 282,
+  "0c. Renovação GPS — idade, retry e limites por morador", 3200, 79, 1120, 342,
   "#7c3aed", "#ede9fe");
 for (const [i, item] of [
   ["people_refresh_minutes", "Idade geral — 10 min [3..14]", 10],
@@ -145,15 +145,18 @@ for (const [i, item] of [
   ["people_refresh_attempts", "Tentativas rápidas — 3 [1..5]", 3],
   ["people_refresh_backoff_minutes", "Após falha — 30 min [15..60]", 30],
   ["people_refresh_backoff_max_minutes", "Espera máxima — 240 min [60..240]", 240],
+  ["people_approach_radius_m", "Raio de renovação no retorno — 1500 m [350..3000]", 1500],
+  ["people_approach_refresh_seconds", "GPS no retorno — 60 s [60..300]", 60],
 ].entries()) {
   const [topic, name, value] = item;
   inject("people_visual_config_" + topic, refreshConfig.id, name, topic, value,
-    i < 3 ? 3450 : 4000, 140 + (i < 3 ? i : i - 3) * 60,
-    "people_visual_refresh_config_" + (i < 3 ? "left" : "right") + "_out");
+    i < 3 || i === 5 ? 3450 : 4000,
+    140 + (i < 3 ? i : i === 5 ? 3 : i === 6 ? 2 : i - 3) * 60,
+    "people_visual_refresh_config_" + (i < 3 || i === 5 ? "left" : "right") + "_out");
 }
 for (const [side, x] of [["left", 3680], ["right", 4230]]) {
   linkOut("people_visual_refresh_config_" + side + "_out", refreshConfig.id,
-    "Renovação GPS " + side + " → política", "people_location_values_route_in_v1", x, 320);
+    "Renovação GPS " + side + " → política", "people_location_values_route_in_v1", x, 380);
 }
 inject("people_visual_vehicle_recovery", config.id, "Recovery veículo — 24 h [1..168]", "vehicle_recovery_hours", 24, 3110, 160, "people_visual_lifecycle_config_right_out");
 inject("people_visual_external_confirm", config.id, "Confirmar ciclo externo — 60 s [15..600]", "external_cycle_confirm_seconds", 60, 3110, 210, "people_visual_lifecycle_config_right_out");

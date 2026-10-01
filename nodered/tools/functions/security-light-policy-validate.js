@@ -1,5 +1,5 @@
 const DEFAULTS = {
-    approach_radius_m: 150,
+    approach_radius_m: 350,
     physical_fresh_seconds: 120,
     recovery_request_throttle_seconds: 30,
     off_grace_seconds: 90,

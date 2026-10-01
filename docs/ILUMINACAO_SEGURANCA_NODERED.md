@@ -197,7 +197,7 @@ depois `not_home` como fallback. O checker de bindings rejeita
   do externo e fica dentro do `near_home` padrão de 350 m. Seus nomes e raios
   não autorizam efeitos: o Node-RED continua exigindo coordenadas confiáveis,
   atuais, direção de retorno e ciclo externo. `home` permanece em 100 m e o
-  refletor mantém seu próprio limite de 150 m.
+  refletor usa seu próprio limite ao portão, padrão de 350 m.
   Após recarregar as zonas no Home Assistant, abra o Companion App em cada
   iPhone para sincronizar os geofences. A leitura ao cruzar o anel depende do
   iOS; testes sintéticos comprovam o consumo do evento, não sua entrega física.
@@ -358,11 +358,15 @@ sempre em epoch Unix UTC, milissegundos:
 | --- | ---: | --- |
 | trackers de resident_primary e resident_secondary | 15 min | pessoa `stale`, snapshot não ready; nunca vira `false` |
 | localização do vehicle_primary | 30 min | localização `stale` não participa do acendimento; chegada de morador continua usando apenas motor/API do carro, nunca sua posição |
-| motor | 5 min | idade fica diagnóstica e pode motivar wake; `on`/`off` conhecidos não expiram apenas pelo tempo |
+| motor | 5 min | o contexto preserva o estado conhecido; a iluminação exige ON atual e pede recuperação quando vencido |
 | trava | 5 min | sinal inválido/stale; não confirma destravamento atual |
 | snapshots derivados | monotônico por `updated_at` | antigo e futuro >60 s são descartados; conflito no mesmo timestamp preserva o primeiro |
 
-O estado pertence exclusivamente a `contexto_vehicle_primary`:
+O frescor do motor usa o timestamp da telemetria do provedor quando disponível.
+Uma leitura nova pode confirmar ON/OFF inalterado; um recibo de cache recente
+não atualiza uma observação antiga. Timestamp futuro permanece inválido.
+
+O estado de uso pertence exclusivamente a `contexto_vehicle_primary`:
 
 - liga quando o motor conhecido é `on`, mesmo que o evento do sensor seja
   antigo, enquanto a comunicação com o Bluelink estiver saudável;
@@ -408,9 +412,10 @@ posse nem a desliga na recuperação; um `ON` automático só volta para `OFF`
 depois que a API confirma recuperação. A intenção só é removida depois que o despacho de acendimento passa
 por todos os gates, ou quando uma das condições de cancelamento ocorre.
 
-O gate não usa apenas a leitura ao vivo do motor porque o backend brasileiro
-pode manter esse sensor antigo durante uma viagem. A iluminação recebe apenas
-`context.in_use` e não sabe como a trava foi calculada.
+O gate recebe `context.in_use` e a validade canônica do motor. ON vencido não
+autoriza o efeito: a chegada fica pendente até uma confirmação atual, dentro
+da janela de recuperação. A posição antiga do carro não invalida, por si só,
+um motor atual.
 
 `security.vehicle_primary-context.v1` foi mantido em `v1` após a auditoria dos
 consumidores reais do repositório. A ampliação de `in_use` de booleano para
@@ -436,11 +441,10 @@ verdadeiras:
    `near_home -> home` ou evento malformado termina em `BLOQUEADO`;
 3. `sun.sun` está `below_horizon`;
 4. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`, **ou** o
-   bypass manual ou automático está ligado e a telemetria do motor está comprovadamente não
-   confiável. O salto direto confirmado para `home` também preserva a
-   contingência existente para motor `off` vencido, sem falha de comunicação.
-   Um `off` confiável continua bloqueando; falha de comunicação exige bypass
-   ligado;
+   bypass de posse manual está ligado e a comunicação do motor falhou.
+   ON vencido, OFF atual ou antigo e bypass de posse automática não autorizam
+   o acendimento automático, inclusive no salto direto para HOME. O gate final
+   revalida o contexto do motor para rejeitar perda da prova entre os gates;
 5. pessoas, sol e estado físico do refletor estão ready/reconciliados; o
    readiness do motor é obrigatório no caminho normal e dispensado apenas pelo
    bypass restrito descrito acima;
@@ -538,12 +542,15 @@ exclusivamente de um `delay` residente em memória.
 
 `near_home` permanece uma classificação canônica de preparação em 350 m.
 O refletor exige a distância canônica ao acesso (`gate_distance_m`) dentro de
-`approach_radius_m`: padrão 150 m, ajustável entre 30 e 350 m no grupo de
+`approach_radius_m`: padrão 350 m, ajustável entre 30 e 350 m no grupo de
 política da iluminação. Chegada confirmada em `home` continua aceita; seu raio
 permanece 100 m. Coordenadas pertencem somente à configuração privada.
 A intenção fora do limite permanece pendente e atravessa novamente os mesmos
 gates quando a posição muda. Ausência de distância bloqueia a aproximação;
-a fronteira final revalida a posição. O diagnóstico publica
+o evento carrega a distância canônica ao portão até a fronteira final.
+Eventos legados parciais só podem completar essa distância com um cache da
+mesma observação; uma posição nova sem distância não herda a distância antiga.
+A fronteira final revalida a posição. O diagnóstico publica
 `waiting_approach_distance` quando aguarda o acesso.
 
 Cada morador mantém sua própria intenção persistente em
@@ -560,8 +567,8 @@ O OFF exige observação posterior a `on_since`, com idade máxima definida em
 `vehicle_signal_fresh_minutes`, sem falha de comunicação nem timestamp futuro.
 A referência é `telemetry_updated_at` do provedor; na ausência dela, usa-se
 `engine_updated_at`. Atualização do contexto, trava ou GPS sozinha não renova
-a prova do motor. OFF antigo que permitiu o fallback de chegada não pode
-encerrar o ciclo que acaba de começar.
+a prova do motor. OFF antigo não autoriza acendimento nem encerra um ciclo
+posterior à observação.
 
 O desligamento valida o motor independentemente de `vehicle.ready`: esse
 indicador agregado também depende do GPS e da inferência de uso do carro.
@@ -823,10 +830,9 @@ e mostra `TESTE: vehicle_primary em uso — gate aprovado`; `OFF` produz
 `in_use=false` e mantém a chegada pendente enquanto a pessoa sintética
 permanecer em `near_home`. Na aba `iluminacao_seguranca`, os controles
 `TESTE: bypass ON (isolado)` e `TESTE: bypass OFF (isolado)` exercitam a chave
-sem alterar o switch real. O cenário comprova que `ON` antigo continua válido
-com API saudável, que falha real ativa o bypass em dry-run, que motor `OFF`
-conhecido bloqueia com API saudável e deixa de prevalecer durante falha real de
-comunicação. A mesma chegada pode ser mantida por até 15
+sem alterar o switch real. O cenário comprova que `ON` antigo não autoriza
+iluminação, que somente o bypass de posse manual pode autorizar durante falha
+real de comunicação e que `OFF` conhecido bloqueia com API saudável. A mesma chegada pode ser mantida por até 15
 minutos e reprocessada quando o sol muda para `below_horizon` ou quando o
 Bluelink conclui sua atualização tardia.
 O `test_mode` então atravessa disponibilidade do refletor, dedupe e lifecycle
@@ -914,3 +920,18 @@ durante a saída exigem revisão. Um replay com entradas históricas fixas não
 prevê respostas a novos pedidos de GPS ou do veículo, nem atribui comandos
 manuais do refletor. Evidências de localização e resultados residenciais
 permanecem privados; somente regressões sintéticas são versionadas.
+
+### Renovação durante retorno pelo bairro
+
+Com ciclo externo armado, posição atual fora de HOME e distância dentro de
+`people_approach_radius_m` (padrão 1.500 m; limites 350–3.000 m), o coordenador
+solicita posição após `people_approach_refresh_seconds` (padrão 60 s; limites
+60–300 s). Os controles ficam no grupo 0c de `localizacao_pessoas`. Ausência de
+distância válida, morador em HOME ou ciclo não armado mantém a cadência normal.
+As sondas compartilham dedupe, três tentativas e backoff com os demais pedidos;
+proximidade não remove bloqueios do provedor nem renova artificialmente o GPS.
+
+Isso aumenta as oportunidades de receber posição antes da chegada. Não produz
+um aviso antecipado sem observação: saltos diretos para HOME seguem a mensagem
+de chegada confirmada. Os avisos são independentes do meio de transporte, e
+a aceitação pelo serviço não comprova apresentação no celular.

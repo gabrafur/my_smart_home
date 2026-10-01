@@ -61,7 +61,9 @@ const sourcePeopleContext = eventResident?.ready === true && eventResident?.stal
     Number.isFinite(eventObservedAt) && eventObservedAt > 0 &&
     eventObservedAt <= now + FUTURE_TOLERANCE_MS &&
     eventObservedAt >= Number(cachedResident?.updated_at ?? 0)
-    ? eventResident : cachedResident;
+    ? (eventObservedAt === Number(cachedResident?.updated_at ?? 0)
+        ? { ...cachedResident, ...eventResident } : eventResident)
+    : cachedResident;
 const sourceObservedAt = Number(sourcePeopleContext?.updated_at);
 const sourceCurrent = sourcePeopleContext?.ready === true &&
     sourcePeopleContext?.stale !== true && Number.isFinite(sourceObservedAt) &&
@@ -79,17 +81,17 @@ const peopleReadyForArrival = residentArrival
         ? sourceCurrent
         : people.ready === true
     : true;
+const latestVehicle = ctxGet("vehicle_primary_context_v1") ?? {};
 const engineGateAllowed =
-    msg.payload?.vehicle_primary_gate === "known_engine_on";
+    msg.payload?.vehicle_primary_gate === "known_engine_on" &&
+    msg.payload?.vehicle_primary_engine_stale !== true &&
+    latestVehicle.engine_on === true && latestVehicle.engine_state_valid === true &&
+    latestVehicle.engine_stale !== true && latestVehicle.engine_communication_failed !== true;
 const bypassAllowed =
     msg.payload?.vehicle_primary_gate ===
         "manual_bypass_for_unreliable_engine" &&
+    ctxGet("security_light_engine_bypass_automatic", PERSISTENT) !== true &&
     msg.payload?.engine_bypass_allowed === true &&
-    msg.payload?.engine_data_unreliable === true;
-const staleEngineHomeFallback =
-    msg.payload?.vehicle_primary_gate ===
-        "confirmed_home_arrival_with_stale_engine_fallback" &&
-    msg.payload?.stale_engine_home_fallback === true &&
     msg.payload?.engine_data_unreliable === true;
 const localCycle = ctxGet("security_light_local_excursion_v1", PERSISTENT)?.residents?.[arrivalSource];
 const localCurrent = msg.payload?.local_excursion_return !== true || (
@@ -104,7 +106,7 @@ const ready =
     flow.get("sun_ready") === true &&
     flow.get("sun_below_horizon") === true &&
     physicalAttemptAllowed &&
-    (engineGateAllowed || bypassAllowed || staleEngineHomeFallback);
+    (engineGateAllowed || bypassAllowed);
 
 if (
     !ready ||
@@ -175,11 +177,7 @@ msg.payload.deadline_at = lifecycle.force_off_at;
 msg.payload.reflector_state_before_attempt = physicalState;
 msg.payload.actuator_available = !attemptingUnavailable;
 msg.payload.actuator_confirmation_pending = attemptingUnavailable;
-msg.payload.reason = staleEngineHomeFallback
-    ? (TEST_MODE
-        ? "test_confirmed_home_arrival_with_stale_engine_fallback"
-        : "confirmed_home_arrival_with_stale_engine_fallback")
-    : bypassAllowed
+msg.payload.reason = bypassAllowed
     ? (TEST_MODE
         ? "test_arrival_after_dark_with_engine_bypass"
         : "arrival_after_dark_with_engine_bypass")
@@ -194,11 +192,9 @@ if (TEST_MODE) {
     msg.payload.simulated = true;
     msg.payload.dispatched = false;
     node.status({
-        fill: bypassAllowed || staleEngineHomeFallback ? "yellow" : "green",
+        fill: bypassAllowed ? "yellow" : "green",
         shape: "dot",
-        text: staleEngineHomeFallback
-            ? "TESTE: lifecycle criado com chegada confirmada — despacho simulado"
-            : bypassAllowed
+        text: bypassAllowed
             ? "TESTE: lifecycle criado com bypass — despacho simulado"
             : "TESTE: lifecycle criado — despacho simulado"
     });

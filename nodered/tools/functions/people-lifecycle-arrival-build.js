@@ -17,6 +17,8 @@ data.arrival = {
         event_at: source?.updated_at ?? Date.now(),
         arrival_resident_snapshot: {
             state: source?.state ?? null,
+            gate_distance_m: source?.gate_distance_m ?? null,
+            distance_m: source?.distance_m ?? null,
             current_home: source?.current_home === true,
             ready: source?.ready === true,
             stale: source?.stale === true,

@@ -82,7 +82,11 @@ msg._vehicle = {
     engine_on: engineOn,
     engine_off: engineOff,
     engine_known: engineKnown,
-    engine_fresh: engineFresh,
+    // A new provider observation refreshes an unchanged engine state; a cache
+    // receipt alone must not freshen older provider telemetry.
+    engine_fresh: Number.isFinite(reportedTelemetryAt)
+        ? !telemetryTimestampFuture && Date.now() - reportedTelemetryAt <= signalMs
+        : engineFresh,
     engine_communication_failed: engineCommunicationFailed,
     engine_updated_at: observedAt(msg.payload?.vehicle_primary_engine),
     lock_state: lockState,

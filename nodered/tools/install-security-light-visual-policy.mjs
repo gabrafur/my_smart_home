@@ -180,7 +180,7 @@ const specs = [
   ["deadline_slack_minutes", "Folga deadline — 1 min [0..10]", 1],
   ["unavailable_dedupe_seconds", "Dedupe indisponível — 10 s [1..120]", 10],
   ["cooldown_max_minutes", "Cooldown máximo — 30 min [5..120]", 30],
-  ["approach_radius_m", "Acender perto do acesso — 150 m [30..350]", 150]
+  ["approach_radius_m", "Acender na aproximação — 350 m [30..350]", 350]
 ];
 for (let index = 0; index < specs.length; index += 1) {
   const [topic, name, value] = specs[index];
