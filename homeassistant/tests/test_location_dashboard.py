@@ -110,8 +110,8 @@ class LocationDashboardTest(unittest.TestCase):
         zones = PRESENCE_ZONES.read_text(encoding="utf-8")
         blocks = zones.split("  - name: ")[1:]
         by_name = {block.splitlines()[0]: block for block in blocks}
-        self.assertEqual(set(by_name), {"location_update_ring", "location_update_inner_ring"})
-        for name, radius in [("location_update_ring", 1500), ("location_update_inner_ring", 300)]:
+        self.assertEqual(set(by_name), {"location_update_ring", "location_update_inner_ring", "location_update_notification_ring"})
+        for name, radius in [("location_update_ring", 1500), ("location_update_inner_ring", 300), ("location_update_notification_ring", 700)]:
             block = by_name[name]
             self.assertIn(f"    radius: {radius}\n", block)
             self.assertIn("    passive: false", block)

@@ -480,11 +480,13 @@ scenario("36 evento de chegada duplicado após restart", () => {
   assert.equal(run("people_normalize", structuredClone(input), flow)[1], null);
 });
 
-scenario("37 normalizador de pessoas não envia notificações laterais", () => {
+scenario("37 pessoas separam o contrato de aviso da iluminação", () => {
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_secondary: true } } });
   const input = peopleInput({ source: "resident_secondary", event: "location_update", state: "near_home", distance: 300 });
   const result = run("people_normalize", structuredClone(input), flow);
-  assert.equal(result.length, 4);
+  assert.equal(result.length, 5);
+  assert.equal(result[4]?.payload?.source, "resident_secondary");
+  assert.notEqual(result[4], result[1], "notification contract has a separate message");
   assert(result[1]);
   assert.equal(result[2], null);
   assert.equal(result[3], null);

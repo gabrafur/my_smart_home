@@ -252,4 +252,20 @@ for (const role of ['resident_primary', 'resident_secondary']) {
     count++;
   }
 }
+// A cached motor entity must use the provider observation for the local cycle.
+for (const freshProvider of [true, false]) {
+  const { flow, people } = fixture('resident_primary');
+  context(flow, 'people_context', { context: people, updated_at: now });
+  context(flow, 'sun_context', { sun_below_horizon: true });
+  const output = context(flow, 'vehicle_primary_context', { updated_at: now,
+    context: { ready: true, updated_at: now, engine_on: true, in_use: true,
+      engine_state_valid: true, engine_stale: false,
+      engine_updated_at: freshProvider ? now - 20 * 60000 : now,
+      telemetry_updated_at: freshProvider ? now : now - 20 * 60000 } });
+  if (freshProvider) {
+    assert(output?.[2], 'current provider telemetry proves ON after the local stop');
+    finish(flow, output[2]);
+  } else assert.equal(output?.[2], null, 'fresh cache receipt cannot freshen old provider ON');
+  count++;
+}
 console.log(`Security return recovery: ${count} restart, local, long-return and dry-run scenarios passed.`);

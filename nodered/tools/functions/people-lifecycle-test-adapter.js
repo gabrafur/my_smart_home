@@ -3,6 +3,7 @@ if (!TEST_MODE || msg.payload?.event !== "context_snapshot") return msg;
 if (msg._location_test_reset === true) {
     for (const key of [
         "security_people_recovery_v1__test",
+        "people_notification_cycles_v1__test",
         "people_arrival_armed__test",
         "people_context_v1__test",
         "security_people_ready_logged__test",

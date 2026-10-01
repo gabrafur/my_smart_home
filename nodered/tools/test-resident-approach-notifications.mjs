@@ -107,7 +107,7 @@ assert.ok(byId.get("light_arrival_replay_route_out_v1").links.includes(canonical
 assert.ok(canonicalIn.links.includes("resident_notifications_test_event_out"));
 assert.ok(byId.get("resident_notifications_test_event_out").links.includes(canonicalIn.id));
 assert.deepEqual(byId.get("resident_notifications_event_in").links, ["resident_notifications_canonical_out"]);
-assert.ok(peopleFinalizer.wires[1].includes(peopleOut.id), "avisos devem receber apenas retorno confirmado");
+assert.ok(peopleFinalizer.wires[4].includes(peopleOut.id), "avisos devem receber apenas retorno confirmado");
 assert.ok(!peopleClassifier.wires.flat().includes(peopleOut.id), "classificação bruta não pode decidir aviso");
 assert.equal(byId.get("resident_notifications_home_confirmation_primary")?.entity_id,
   "device_tracker.resident_primary_location");
@@ -526,6 +526,22 @@ assert.deepEqual(byId.get("resident_notifications_delivery_ack").wires, []);
 
 const maxFunctionSize = Math.max(...tabNodes.filter((node) => node.type === "function").map((node) => node.func.length));
 assert.ok(maxFunctionSize < 1500, `JavaScript residual grande: ${maxFunctionSize}`);
+
+// The same canonical journey must not notify again at 350 m, even after TTL.
+for (const role of ["resident_primary", "resident_secondary"]) {
+  const isolated = context();
+  const target = role === "resident_primary" ? "resident_secondary" : "resident_primary";
+  const prepare = (cycle) => readState(recipient(normalize(arrival(role, "approach", 0, true,
+    { notification_cycle_id: role + ":" + cycle }), isolated, mock, {}), target), isolated, mock, {});
+  const first = prepare("trip1");
+  assert.equal(first.notification_duplicate, false);
+  dryRun(first, isolated, mock, privateBindings);
+  const saved = isolated.get("resident_notification_delivery_v4__test");
+  saved.deliveries[role + ":" + target].accepted_at -= 20 * 60000;
+  assert.equal(prepare("trip1").notification_duplicate, true);
+  assert.equal(prepare("trip2").notification_duplicate, false);
+  assert.equal(isolated.get("resident_notification_delivery_v4", "persistent"), undefined);
+}
 
 Date.now = originalNow;
 console.log(`Resident notification tests passed, including ${confirmationBacktest.length} adversarial HOME cases.`);

@@ -191,7 +191,8 @@ depois `not_home` como fallback. O checker de bindings rejeita
   salto `home -> not_home -> home` não basta.
 - O estado `near_home` é calculado somente pelo Node-RED quando a fonte
   selecionada cruza o raio configurado ao redor da casa ou do portão. A zona
-  `zone.location_update_ring`, de 1.500 m, e
+  `zone.location_update_ring`, de 1.500 m,
+  `zone.location_update_notification_ring`, de 700 m, e
   `zone.location_update_inner_ring`, de 300 m, oferecem gatilhos de atualização
   ao Companion App do iOS. O anel interno cobre trajetos que permanecem dentro
   do externo e fica dentro do `near_home` padrão de 350 m. Seus nomes e raios
@@ -211,7 +212,10 @@ depois `not_home` como fallback. O checker de bindings rejeita
 - Um rebote posterior `near_home -> home` continua bloqueado enquanto não houver
   ciclo externo confirmado. Pessoas e veículo terminam em blocos visuais
   `BLOQUEADO`, sem iluminação, alarme, notificação ou chamada externa.
-- A entrada no anel gera `arrival_stage: approach` e não consome o armado.
+- A entrada no raio de aviso de 700 m de HOME, após posição fora dele e ciclo
+  externo confirmado, gera `arrival_stage: approach` somente para notificações;
+  não consome o armado nem autoriza iluminação. Atualizações de coordenadas
+  dentro da mesma zona também são avaliadas.
 - Somente depois do ciclo externo, a entrada em `near_home` ou a reavaliação
   dentro do raio configurado da casa/portão pode publicar a chegada e consumir
   o armado (350 m por padrão).
@@ -275,11 +279,33 @@ incoerente sem substituir a última política válida.
 O tab `notificacoes_chegadas_residentes` recebe apenas a transição canônica
 `security.arrival.v1` decidida em `localizacao_pessoas`; ele não observa trackers
 brutos nem recalcula zonas. Uma chegada confirmada com ciclo externo notifica o
-outro residente imediatamente, tanto no estágio `approach` quanto na chegada
-direta ao estágio `home`, sem consultar horário, sol, veículo ou os snapshots de
-`contexto_chegadas`. A transição `home -> near_home` continua sendo saída e não
-gera aviso. O dedupe persistente da entrega evita repetição entre fontes e após
-restart.
+outro residente no estágio `approach`, sem consultar horário, sol ou motor.
+O parâmetro `notification_approach_radius_m` fica visível no tab de pessoas:
+padrão 700 m de HOME, limites de 350 a 1.500 m, rejeição preserva o último valor
+válido. Exige posição anterior fora do raio, nova posição mais próxima dentro
+dele e ciclo externo confirmado. O contrato exclusivo do aviso não segue para
+a iluminação, que conserva 350 m do portão e os gates de noite e motor ON atual.
+
+Se o GPS pular os 700 m, a chegada canônica em 350 m continua como fallback.
+A mesma identidade persistente de viagem deduplica 700/350 m mesmo depois de
+10 minutos e após restart. Uma nova saída após HOME cria outra identidade.
+Um salto direto para HOME mantém a confirmação de permanência por 90 s antes de
+“chegou”; não fabrica uma aproximação anterior. A passagem na saída não avisa.
+
+O retorno local `home -> near_home -> home` continua independente dos 700 m:
+exige ON na saída, OFF posterior na parada e novo ON, dentro do ciclo de 90 min,
+com posição atual. Esses sinais usam a observação da telemetria do provedor,
+ou o timestamp do motor quando o provedor não o fornece. Se uma parada rápida
+não produzir OFF observado, a volta local não fica comprovada. O evento
+`local_return` também alimenta o aviso ao outro residente.
+
+Teste manual sem efeitos: no grupo `3c` de `localizacao_pessoas`, execute RESET,
+800 m, aguarde 60 s, 900 m (saída: sem aviso), 650 m (retorno: aviso simulado),
+300 m (mesma viagem: sem novo aviso). O caminho usa normalização, lifecycle,
+gates e o terminal `resident_notifications_dry_run_terminal`; nenhum push ou
+dispositivo é acionado. O reset e a memória sintética ficam separados da produção.
+A zona HA de 700 m oferece mais um gatilho ao iOS, mas não garante entrega exata
+na borda. O replay histórico não simula novos pontos que o telefone não enviou.
 
 No tab `alarme_desarme_chegada`, a confirmação deixou de ser uma função
 monolítica. O canvas valida contrato, origem, estágio, direção e ciclo externo;

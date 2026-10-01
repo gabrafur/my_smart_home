@@ -1,6 +1,6 @@
 export function runPeopleVisual(call, message) {
   const results = runPeopleVisualEvents(call, message);
-  return [0, 1, 2, 3].map((output) => {
+  return [0, 1, 2, 3, 4].map((output) => {
     const messages = results.map((result) => result?.[output]).filter(Boolean);
     return messages.length > 1 ? messages : messages[0] ?? null;
   });
@@ -38,6 +38,8 @@ export function runPeopleLifecycleVisual(call, msg) {
   } else if (data.is_location_event && facts.directional_candidate) {
     msg = call("people_visual_blocked_build", msg);
   }
+  msg = call("people_visual_notification_facts", msg);
+  if (msg._people.notification_eligible) msg = call("people_visual_notification_build", msg);
   return call("554cb653b2fa4504", msg);
 }
 

@@ -1054,5 +1054,85 @@ for (const [name, ageMs, elapsed] of [
   assert.doesNotMatch(locationDashboard, /report_age|gps_age|4500|10800|900/);
 }
 
+// Independent notification boundary: real selection/lifecycle, both residents.
+for (const role of ["resident_primary", "resident_secondary"]) {
+  const state = memory();
+  const globals = runtimeGlobal({ notification_approach_radius_m: 700 });
+  const call = (id, msg) => run(id, msg, state, globals);
+  const step = (distance, options = {}) => {
+    clock += 61000;
+    const message = input(tracker(primaryId, "not_home", { distanceM: role === "resident_primary" ? distance : 20, ...options }),
+      tracker(fallbackId, "unavailable", { coordinates: false }), role);
+    if (role === "resident_secondary") {
+      message.payload.resident_secondary = tracker("device_tracker.mobile_secondary_source_1", "not_home", { distanceM: distance, ...options });
+      message.payload.resident_secondary_icloud = tracker("device_tracker.mobile_secondary_source_2", "unavailable", { coordinates: false });
+    }
+    return runPeopleVisualEvents(call, message);
+  };
+  const notices = results => results.map(row => row[4]).filter(Boolean);
+  assert.equal(notices(step(20)).length, 0);
+  assert.equal(notices(step(500)).length, 0, "outbound inside notification circle");
+  assert.equal(notices(step(800)).length, 0, "outward crossing");
+  assert.equal(notices(step(1000)).length, 0);
+  const near = step(650);
+  const early = notices(near);
+  assert.equal(early.length, 1, "inward 700m crossing publishes notification");
+  assert.equal(early[0].payload.notification_only, true);
+  assert.equal(early[0].payload.source, role);
+  assert.equal(near.filter(row => row[1] || row[2]).length, 0, "700m never emits lighting arrival");
+  assert.equal(notices(step(600)).length, 0, "same approach once only");
+  const later = notices(step(300));
+  assert.equal(later.length, 1, "350m fallback still exists");
+  assert.equal(later[0].payload.notification_cycle_id, early[0].payload.notification_cycle_id,
+    "delivery dedupe shares identity across 700/350m");
+  step(20);
+  step(900);
+  step(1000);
+  const next = notices(step(600));
+  assert.equal(next.length, 1);
+  assert.notEqual(next[0].payload.notification_cycle_id, early[0].payload.notification_cycle_id);
+}
+for (const bad of [{ ageMs: 16 * 60000 }, { accuracy: 500 }, { coordinates: false }]) {
+  const state = memory();
+  const globals = runtimeGlobal({ notification_approach_radius_m: 700 });
+  const call = (id, msg) => run(id, msg, state, globals);
+  const step = (distance, extra = {}) => {
+    clock += 61000;
+    return runPeopleVisualEvents(call, input(tracker(primaryId, "not_home", { distanceM: distance, ...extra }),
+      tracker(fallbackId, "unavailable", { coordinates: false }), "resident_primary"));
+  };
+  step(1000); step(1100);
+  assert.equal(step(650, bad).filter(row => row[4]?.payload?.notification_only).length, 0,
+    "invalid GPS cannot authorize early notice");
+  const home = step(20);
+  assert.equal(home.filter(row => row[4]?.payload?.notification_only).length, 0,
+    "direct HOME cannot fabricate anticipation");
+}
+
+// Manual 700m controls use the same lifecycle and isolated state.
+{
+  const state = memory();
+  const globals = runtimeGlobal({ notification_approach_radius_m: 700 });
+  const call = (id, msg) => run(id, msg, state, globals);
+  const step = (meters, reset = false) => {
+    clock += 61000;
+    const message = call("people_visual_notification_test_adapter", { payload: meters, topic: reset ? "reset" : "position" });
+    // The manual adapter supplies a timestamp from Date construction.
+    for (const resident of [message.payload.resident_primary_selected, message.payload.resident_secondary_selected]) {
+      resident.last_changed = resident.last_updated = new Date(clock).toISOString();
+      resident.attributes.location_observed_at = resident.attributes.source_reported_at = resident.last_updated;
+    }
+    return runPeopleVisualEvents(call, message);
+  };
+  step(20, true); step(800); step(900);
+  const early = step(650).map(row => row[4]).filter(Boolean);
+  assert.equal(early.length, 1);
+  assert.equal(early[0]._location_test, true);
+  assert.equal(early[0].payload.test_mode, true);
+  assert.equal(state.get("people_notification_cycles_v1"), undefined);
+  step(20, true);
+  assert.equal(step(650).map(row => row[4]).filter(Boolean).length, 0);
+}
+
 Date.now = originalNow;
 console.log("canonical location flow: seleção, 350 m, recovery e painéis OK");

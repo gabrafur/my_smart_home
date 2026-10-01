@@ -1,4 +1,5 @@
 # Geofences de transporte para atualizacoes do Companion App.
+# O anel intermediario (700 m) solicita uma observacao perto do raio do aviso.
 # O anel externo (1500 m) oferece um gatilho nos trajetos longos; o interno
 # (300 m) oferece outro nos trajetos que permanecem dentro do anel externo.
 # Sao zonas ativas para monitoramento de entrada/saida, sem efeito residencial
@@ -12,6 +13,12 @@
 # os trackers canonicos. Ver docs/ILUMINACAO_SEGURANCA_NODERED.md.
 
 zone:
+  - name: location_update_notification_ring
+    latitude: !secret home_latitude
+    longitude: !secret home_longitude
+    radius: 700
+    icon: mdi:map-marker-radius
+    passive: false
   - name: location_update_ring
     latitude: !secret home_latitude
     longitude: !secret home_longitude

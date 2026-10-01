@@ -26,7 +26,7 @@ msg.notification_delivery_state = state;
 msg.notification_delivery_id = deliveryId;
 msg.notification_recipient_state = recipient;
 msg.notification_duplicate = recipient.accepted_key === msg.notification_key &&
-    acceptedRecently || laterHomeForSameArrival ||
+    (acceptedRecently || msg.notification_canonical_cycle === true) || laterHomeForSameArrival ||
     recipient.pending_key === msg.notification_key &&
     Number.isFinite(recipient.pending_at) &&
     now - recipient.pending_at < msg.policy.service_retry_seconds * 1000;

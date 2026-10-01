@@ -58,7 +58,7 @@ for (const source of ["resident_primary", "resident_secondary"]) {
     } else old.expires_at = incoming.expires_at;
 }
 
-const engineObservedAt = Number(data.vehicle?.engine_updated_at);
+const engineObservedAt = Number(data.vehicle?.telemetry_updated_at ?? data.vehicle?.engine_updated_at);
 const currentEngineOn = data.engine_allowed === true &&
     Number.isFinite(engineObservedAt) && engineObservedAt > 0 &&
     engineObservedAt <= data.now + data.future_ms &&

@@ -137,7 +137,7 @@
         "type": "tab",
         "label": "localizacao_pessoas",
         "disabled": false,
-        "info": "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; somente uma posição canônica em near_home publica o aviso antecipado. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.",
+        "info": "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; o aviso tem raio independente de 700 m de HOME, exige posição anterior fora e retorno confirmado. A iluminação conserva 350 m do portão. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.",
         "env": []
     },
     {
@@ -4152,7 +4152,9 @@
             "people_visual_wake_ring_first_delay",
             "people_visual_wake_ring_second_delay",
             "people_visual_wake_ring_first_out",
-            "people_visual_wake_ring_second_out"
+            "people_visual_wake_ring_second_out",
+            "people_visual_notification_route_out",
+            "people_visual_notification_done_in"
         ],
         "x": 64,
         "y": 2019,
@@ -48242,7 +48244,7 @@
         "z": "6b7552efb85343f4",
         "g": "32a89192d93735b1",
         "name": "Retorno local: OFF → novo ON",
-        "func": "const data = msg._light_context;\nif (!data) return null;\n\nconst suffix = data.test_mode ? \"__test\" : \"\";\nconst key = \"security_light_local_excursion_v1\";\nconst get = () => data.test_mode\n    ? flow.get(key + suffix)\n    : flow.get(key, \"persistent\");\nconst set = (value) => data.test_mode\n    ? flow.set(key + suffix, value)\n    : flow.set(key, value, \"persistent\");\nconst state = get()?.version === 1\n    ? get()\n    : { version: 1, residents: {} };\nstate.residents = { ...(state.residents ?? {}) };\nconst timestampDefined = (value) =>\n    value !== null && value !== undefined && Number.isFinite(Number(value));\n\nconst signalFreshMs = Number(data.location_policy.vehicle_signal_fresh_minutes ?? 5) * 60000;\nconst maxMs = Number(data.location_policy.local_excursion_minutes) * 60000;\nconst validCycle = (item) => Number.isFinite(item?.started_at) && item.started_at > 0 &&\n    item.started_at <= data.now + data.future_ms && Number.isFinite(item.expires_at) &&\n    item.expires_at > item.started_at && data.now <= item.expires_at &&\n    item.expires_at - item.started_at <= maxMs + 1000;\nconst configured = data.people?.local_excursions;\nconst known = configured && typeof configured === \"object\" && !Array.isArray(configured);\nfor (const source of [\"resident_primary\", \"resident_secondary\"]) {\n    if (!validCycle(state.residents[source])) delete state.residents[source];\n    const persisted = state.residents[source];\n    if (persisted) {\n        const firstOn = Number(persisted.departure_engine_on_seen_at);\n        const off = Number(persisted.engine_off_seen_at);\n        if (!timestampDefined(persisted.departure_engine_on_seen_at) ||\n            firstOn < persisted.started_at - signalFreshMs || firstOn > data.now + data.future_ms) {\n            persisted.departure_engine_on_seen_at = null;\n            persisted.engine_off_seen_at = null;\n        } else if (!timestampDefined(persisted.engine_off_seen_at) || off <= firstOn ||\n            off < persisted.started_at || off > data.now + data.future_ms) {\n            persisted.engine_off_seen_at = null;\n        }\n    }\n    // Partial startup is not evidence that the canonical cycle has ended.\n    if (!known) continue;\n    const incoming = configured[source];\n    if (!validCycle(incoming)) {\n        delete state.residents[source];\n        continue;\n    }\n    const old = state.residents[source];\n    if (!old || old.started_at !== incoming.started_at) {\n        state.residents[source] = {\n            started_at: incoming.started_at,\n            expires_at: incoming.expires_at,\n            departure_engine_on_seen_at: null,\n            engine_off_seen_at: null,\n            consumed_at: null\n        };\n    } else old.expires_at = incoming.expires_at;\n}\n\nconst engineObservedAt = Number(data.vehicle?.engine_updated_at);\nconst currentEngineOn = data.engine_allowed === true &&\n    Number.isFinite(engineObservedAt) && engineObservedAt > 0 &&\n    engineObservedAt <= data.now + data.future_ms &&\n    data.now - engineObservedAt <= signalFreshMs;\nif (currentEngineOn) {\n    for (const item of Object.values(state.residents)) {\n        const departureOnSeen = timestampDefined(item.departure_engine_on_seen_at);\n        const observationFitsDeparture = engineObservedAt >=\n            Number(item.started_at) - signalFreshMs;\n        if (!departureOnSeen && observationFitsDeparture) {\n            /* O primeiro ON pertence à saída. Somente um OFF posterior e outro\n             * ON podem transformar o passeio em retorno. */\n            item.departure_engine_on_seen_at = engineObservedAt;\n        }\n    }\n}\nconst acceptedEngineOff = data.kind === \"vehicle_primary_context\" &&\n    data.accepted === true &&\n    data.vehicle?.engine_state_valid === true &&\n    data.vehicle?.engine_on === false &&\n    data.communication_failed !== true &&\n    Number.isFinite(engineObservedAt) && engineObservedAt > 0 &&\n    engineObservedAt <= data.now + data.future_ms &&\n    data.now - engineObservedAt <= signalFreshMs;\nif (acceptedEngineOff) {\n    for (const item of Object.values(state.residents)) {\n        const departureOnAt = Number(item.departure_engine_on_seen_at);\n        if (timestampDefined(item.departure_engine_on_seen_at) &&\n            engineObservedAt > departureOnAt &&\n            engineObservedAt >= Number(item.started_at) &&\n            (!timestampDefined(item.engine_off_seen_at) ||\n                engineObservedAt > Number(item.engine_off_seen_at))) {\n            item.engine_off_seen_at = engineObservedAt;\n        }\n    }\n}\n\nconst current = (resident) => {\n    const observedAt = Number(resident?.updated_at);\n    return resident?.ready === true && resident?.stale !== true &&\n        Number.isFinite(observedAt) && observedAt > 0 &&\n        observedAt <= data.now + data.future_ms &&\n        data.now - observedAt <=\n            Number(data.location_policy.location_fresh_minutes) * 60000;\n};\nconst engineOnAfterStop = data.engine_allowed === true &&\n    Number.isFinite(engineObservedAt) && engineObservedAt > 0 &&\n    engineObservedAt <= data.now + data.future_ms &&\n    data.now - engineObservedAt <= signalFreshMs;\n\nif (!data.engine_on_arrival && engineOnAfterStop) {\n    const candidates = [\"resident_primary\", \"resident_secondary\"]\n        .map((source) => ({\n            source,\n            resident: data.people?.[source],\n            excursion: state.residents[source]\n        }))\n        .filter(({ source, resident, excursion }) =>\n            known && validCycle(configured[source]) &&\n            excursion && !timestampDefined(excursion.consumed_at) &&\n            timestampDefined(excursion.departure_engine_on_seen_at) &&\n            timestampDefined(excursion.engine_off_seen_at) &&\n            Number(excursion.engine_off_seen_at) > Number(excursion.departure_engine_on_seen_at) &&\n            Number(excursion.engine_off_seen_at) >= Number(excursion.started_at) &&\n            engineObservedAt > Number(excursion.engine_off_seen_at) &&\n            current(resident) && [\"home\", \"near_home\"].includes(resident?.state))\n        .sort((left, right) =>\n            Number(left.excursion.started_at) - Number(right.excursion.started_at));\n    const candidate = candidates[0];\n    if (candidate) {\n        data.engine_on_arrival = {\n            payload: {\n                contract: \"security.arrival.v1\",\n                kind: \"arrival\",\n                source: candidate.source,\n                arriving: [candidate.source],\n                arrival_source_type: \"person\",\n                arrival_stage: \"local_return\",\n                arrival_previous_state: \"near_home\",\n                arrival_direction: \"returning_local_excursion\",\n                external_cycle_confirmed: false,\n                local_excursion_return: true,\n                local_excursion_started_at: candidate.excursion.started_at,\n                arrival_resident_snapshot: { ...candidate.resident },\n                event_at: engineObservedAt,\n                arrival_replayed_after_engine_on: true\n            },\n            _arrival_replay: true\n        };\n        if (data.test_mode) {\n            data.engine_on_arrival._location_test = true;\n            data.engine_on_arrival._location_test_case = data.test_case;\n            data.engine_on_arrival.payload.test_mode = true;\n            data.engine_on_arrival.payload.test_case = data.test_case;\n        }\n    }\n}\n\nstate.updated_at = data.now;\nset(state);\ndata.local_excursions = state;\nreturn msg;",
+        "func": "const data = msg._light_context;\nif (!data) return null;\n\nconst suffix = data.test_mode ? \"__test\" : \"\";\nconst key = \"security_light_local_excursion_v1\";\nconst get = () => data.test_mode\n    ? flow.get(key + suffix)\n    : flow.get(key, \"persistent\");\nconst set = (value) => data.test_mode\n    ? flow.set(key + suffix, value)\n    : flow.set(key, value, \"persistent\");\nconst state = get()?.version === 1\n    ? get()\n    : { version: 1, residents: {} };\nstate.residents = { ...(state.residents ?? {}) };\nconst timestampDefined = (value) =>\n    value !== null && value !== undefined && Number.isFinite(Number(value));\n\nconst signalFreshMs = Number(data.location_policy.vehicle_signal_fresh_minutes ?? 5) * 60000;\nconst maxMs = Number(data.location_policy.local_excursion_minutes) * 60000;\nconst validCycle = (item) => Number.isFinite(item?.started_at) && item.started_at > 0 &&\n    item.started_at <= data.now + data.future_ms && Number.isFinite(item.expires_at) &&\n    item.expires_at > item.started_at && data.now <= item.expires_at &&\n    item.expires_at - item.started_at <= maxMs + 1000;\nconst configured = data.people?.local_excursions;\nconst known = configured && typeof configured === \"object\" && !Array.isArray(configured);\nfor (const source of [\"resident_primary\", \"resident_secondary\"]) {\n    if (!validCycle(state.residents[source])) delete state.residents[source];\n    const persisted = state.residents[source];\n    if (persisted) {\n        const firstOn = Number(persisted.departure_engine_on_seen_at);\n        const off = Number(persisted.engine_off_seen_at);\n        if (!timestampDefined(persisted.departure_engine_on_seen_at) ||\n            firstOn < persisted.started_at - signalFreshMs || firstOn > data.now + data.future_ms) {\n            persisted.departure_engine_on_seen_at = null;\n            persisted.engine_off_seen_at = null;\n        } else if (!timestampDefined(persisted.engine_off_seen_at) || off <= firstOn ||\n            off < persisted.started_at || off > data.now + data.future_ms) {\n            persisted.engine_off_seen_at = null;\n        }\n    }\n    // Partial startup is not evidence that the canonical cycle has ended.\n    if (!known) continue;\n    const incoming = configured[source];\n    if (!validCycle(incoming)) {\n        delete state.residents[source];\n        continue;\n    }\n    const old = state.residents[source];\n    if (!old || old.started_at !== incoming.started_at) {\n        state.residents[source] = {\n            started_at: incoming.started_at,\n            expires_at: incoming.expires_at,\n            departure_engine_on_seen_at: null,\n            engine_off_seen_at: null,\n            consumed_at: null\n        };\n    } else old.expires_at = incoming.expires_at;\n}\n\nconst engineObservedAt = Number(data.vehicle?.telemetry_updated_at ?? data.vehicle?.engine_updated_at);\nconst currentEngineOn = data.engine_allowed === true &&\n    Number.isFinite(engineObservedAt) && engineObservedAt > 0 &&\n    engineObservedAt <= data.now + data.future_ms &&\n    data.now - engineObservedAt <= signalFreshMs;\nif (currentEngineOn) {\n    for (const item of Object.values(state.residents)) {\n        const departureOnSeen = timestampDefined(item.departure_engine_on_seen_at);\n        const observationFitsDeparture = engineObservedAt >=\n            Number(item.started_at) - signalFreshMs;\n        if (!departureOnSeen && observationFitsDeparture) {\n            /* O primeiro ON pertence à saída. Somente um OFF posterior e outro\n             * ON podem transformar o passeio em retorno. */\n            item.departure_engine_on_seen_at = engineObservedAt;\n        }\n    }\n}\nconst acceptedEngineOff = data.kind === \"vehicle_primary_context\" &&\n    data.accepted === true &&\n    data.vehicle?.engine_state_valid === true &&\n    data.vehicle?.engine_on === false &&\n    data.communication_failed !== true &&\n    Number.isFinite(engineObservedAt) && engineObservedAt > 0 &&\n    engineObservedAt <= data.now + data.future_ms &&\n    data.now - engineObservedAt <= signalFreshMs;\nif (acceptedEngineOff) {\n    for (const item of Object.values(state.residents)) {\n        const departureOnAt = Number(item.departure_engine_on_seen_at);\n        if (timestampDefined(item.departure_engine_on_seen_at) &&\n            engineObservedAt > departureOnAt &&\n            engineObservedAt >= Number(item.started_at) &&\n            (!timestampDefined(item.engine_off_seen_at) ||\n                engineObservedAt > Number(item.engine_off_seen_at))) {\n            item.engine_off_seen_at = engineObservedAt;\n        }\n    }\n}\n\nconst current = (resident) => {\n    const observedAt = Number(resident?.updated_at);\n    return resident?.ready === true && resident?.stale !== true &&\n        Number.isFinite(observedAt) && observedAt > 0 &&\n        observedAt <= data.now + data.future_ms &&\n        data.now - observedAt <=\n            Number(data.location_policy.location_fresh_minutes) * 60000;\n};\nconst engineOnAfterStop = data.engine_allowed === true &&\n    Number.isFinite(engineObservedAt) && engineObservedAt > 0 &&\n    engineObservedAt <= data.now + data.future_ms &&\n    data.now - engineObservedAt <= signalFreshMs;\n\nif (!data.engine_on_arrival && engineOnAfterStop) {\n    const candidates = [\"resident_primary\", \"resident_secondary\"]\n        .map((source) => ({\n            source,\n            resident: data.people?.[source],\n            excursion: state.residents[source]\n        }))\n        .filter(({ source, resident, excursion }) =>\n            known && validCycle(configured[source]) &&\n            excursion && !timestampDefined(excursion.consumed_at) &&\n            timestampDefined(excursion.departure_engine_on_seen_at) &&\n            timestampDefined(excursion.engine_off_seen_at) &&\n            Number(excursion.engine_off_seen_at) > Number(excursion.departure_engine_on_seen_at) &&\n            Number(excursion.engine_off_seen_at) >= Number(excursion.started_at) &&\n            engineObservedAt > Number(excursion.engine_off_seen_at) &&\n            current(resident) && [\"home\", \"near_home\"].includes(resident?.state))\n        .sort((left, right) =>\n            Number(left.excursion.started_at) - Number(right.excursion.started_at));\n    const candidate = candidates[0];\n    if (candidate) {\n        data.engine_on_arrival = {\n            payload: {\n                contract: \"security.arrival.v1\",\n                kind: \"arrival\",\n                source: candidate.source,\n                arriving: [candidate.source],\n                arrival_source_type: \"person\",\n                arrival_stage: \"local_return\",\n                arrival_previous_state: \"near_home\",\n                arrival_direction: \"returning_local_excursion\",\n                external_cycle_confirmed: false,\n                local_excursion_return: true,\n                local_excursion_started_at: candidate.excursion.started_at,\n                arrival_resident_snapshot: { ...candidate.resident },\n                event_at: engineObservedAt,\n                arrival_replayed_after_engine_on: true\n            },\n            _arrival_replay: true\n        };\n        if (data.test_mode) {\n            data.engine_on_arrival._location_test = true;\n            data.engine_on_arrival._location_test_case = data.test_case;\n            data.engine_on_arrival.payload.test_mode = true;\n            data.engine_on_arrival.payload.test_case = data.test_case;\n        }\n    }\n}\n\nstate.updated_at = data.now;\nset(state);\ndata.local_excursions = state;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -49592,8 +49594,8 @@
         "z": "ea0a6aa0d24ff863",
         "g": "8e1c3a19399ad44d",
         "name": "Persistir contexto e emitir contratos",
-        "func": "const data = msg._people;\nif (!data) return [null, null, null, null];\nconst key = (name) => data.test_mode ? name + \"__test\" : name;\nconst set = (name, value, store) => data.test_mode || !store\n    ? flow.set(key(name), value) : flow.set(key(name), value, store);\nconst latest = flow.get(key(\"security_people_recovery_v1\"), data.test_mode ? undefined : \"persistent\");\n// Preserve sibling deltas committed after this message loaded its state.\nfor (const field of [\"arrival_armed\", \"external_since\", \"local_excursions\", \"home_arrival_candidates\"]) {\n    const target = field === \"arrival_armed\" ? \"armed\" : field;\n    if (data.state_baseline && latest?.version === 1 && latest[field]) {\n        for (const role of Object.keys(data.people)) {\n            if (JSON.stringify(data[target][role]) === JSON.stringify(data.state_baseline[field][role]))\n                data[target][role] = latest[field]?.[role];\n        }\n    }\n    data.recovery[field] = { ...data[target] };\n}\ndata.recovery.recent_arrivals = {\n    ...(latest?.recent_arrivals ?? {}), ...data.recovery.recent_arrivals\n};\nfor (const [event, at] of Object.entries(data.recovery.recent_arrivals)) {\n    if (!Number.isFinite(at) || at > Date.now() + data.policy.future_tolerance_seconds * 1000 ||\n        Date.now() - at > data.policy.arrival_dedupe_minutes * 60000)\n        delete data.recovery.recent_arrivals[event];\n}\ndata.recovery.updated_at = Date.now();\nset(\"people_arrival_armed\", data.armed);\nset(\"security_people_recovery_v1\", data.recovery, \"persistent\");\nconst primary = data.people.resident_primary;\nconst secondary = data.people.resident_secondary;\nconst distances = Object.values(data.people).map((item) => item.distance_m)\n    .filter((value) => value !== null);\nconst contextValue = {\n    resident_primary: primary,\n    resident_secondary: secondary,\n    home_radius_m: Number(data.policy.home_radius_m),\n    near_home_radius_m: Number(data.policy.near_home_radius_m),\n    best_location_away: primary.best_location_away === true || secondary.best_location_away === true,\n    any_tracker_away: primary.any_tracker_away === true || secondary.any_tracker_away === true,\n    anyone_away: primary.ready && secondary.ready\n        ? Object.values(data.people).some((item) => item.ready === true &&\n            (item.distance_m !== null\n                ? item.distance_m > Number(data.policy.home_radius_m)\n                : item.state === \"not_home\"))\n        : null,\n    nearest_distance_m: distances.length ? Math.min(...distances) : null,\n    state_valid: primary.state_valid && secondary.state_valid,\n    ready: primary.ready && secondary.ready,\n    stale: primary.stale || secondary.stale,\n    updated_at: Math.max(...[primary.updated_at, secondary.updated_at].filter(Number.isFinite), 0),\n    arrival_armed: { ...data.armed },\n    local_excursions: { ...data.local_excursions }\n};\nset(\"people_context_v1\", contextValue);\nconst previousReady = flow.get(key(\"security_people_ready_logged\"));\nif (previousReady !== contextValue.ready) {\n    node.log?.(\"localizacao_pessoas: contexto \" +\n        (contextValue.ready ? \"ready\" : \"pending/stale\"));\n    flow.set(key(\"security_people_ready_logged\"), contextValue.ready);\n}\nmsg.payload = {\n    contract: \"security.people-context.v1\",\n    kind: \"people_context\",\n    context: contextValue,\n    trigger_entity: data.trigger_entity,\n    trigger_state: data.trigger_state,\n    trigger_prev_state: data.trigger_prev_state,\n    confirmed_home_transition: data.is_location_event && data.facts.source_ready &&\n        data.facts.trigger_prev_valid && data.trigger_state === \"home\" &&\n        data.trigger_prev_state !== \"home\",\n    refresh_cycle_id: data.refresh_cycle_id,\n    updated_at: contextValue.updated_at,\n    valid: contextValue.state_valid,\n    ready: contextValue.ready,\n    stale: contextValue.stale,\n    source: data.source ?? \"people\",\n    reason: contextValue.ready ? \"current_entities\" : \"entity_stale_or_unavailable\"\n};\nif (data.test_mode) {\n    msg.payload.test_mode = true;\n    msg.payload.test_case = msg._location_test_case ?? null;\n    if (data.arrival?.payload) {\n        data.arrival.payload.test_mode = true;\n        data.arrival.payload.test_case = msg._location_test_case ?? null;\n    }\n}\ndelete msg._people;\nreturn [msg, data.arrival ?? null, data.lighting_only ?? null, data.blocked ?? null];",
-        "outputs": 4,
+        "func": "const data = msg._people;\nif (!data) return [null, null, null, null, null];\nconst key = (name) => data.test_mode ? name + \"__test\" : name;\nconst set = (name, value, store) => data.test_mode || !store\n    ? flow.set(key(name), value) : flow.set(key(name), value, store);\nconst latest = flow.get(key(\"security_people_recovery_v1\"), data.test_mode ? undefined : \"persistent\");\n// Preserve sibling deltas committed after this message loaded its state.\nfor (const field of [\"arrival_armed\", \"external_since\", \"local_excursions\", \"home_arrival_candidates\"]) {\n    const target = field === \"arrival_armed\" ? \"armed\" : field;\n    if (data.state_baseline && latest?.version === 1 && latest[field]) {\n        for (const role of Object.keys(data.people)) {\n            if (JSON.stringify(data[target][role]) === JSON.stringify(data.state_baseline[field][role]))\n                data[target][role] = latest[field]?.[role];\n        }\n    }\n    data.recovery[field] = { ...data[target] };\n}\ndata.recovery.recent_arrivals = {\n    ...(latest?.recent_arrivals ?? {}), ...data.recovery.recent_arrivals\n};\nfor (const [event, at] of Object.entries(data.recovery.recent_arrivals)) {\n    if (!Number.isFinite(at) || at > Date.now() + data.policy.future_tolerance_seconds * 1000 ||\n        Date.now() - at > data.policy.arrival_dedupe_minutes * 60000)\n        delete data.recovery.recent_arrivals[event];\n}\ndata.recovery.updated_at = Date.now();\nset(\"people_arrival_armed\", data.armed);\nset(\"security_people_recovery_v1\", data.recovery, \"persistent\");\nconst primary = data.people.resident_primary;\nconst secondary = data.people.resident_secondary;\nconst distances = Object.values(data.people).map((item) => item.distance_m)\n    .filter((value) => value !== null);\nconst contextValue = {\n    resident_primary: primary,\n    resident_secondary: secondary,\n    home_radius_m: Number(data.policy.home_radius_m),\n    near_home_radius_m: Number(data.policy.near_home_radius_m),\n    best_location_away: primary.best_location_away === true || secondary.best_location_away === true,\n    any_tracker_away: primary.any_tracker_away === true || secondary.any_tracker_away === true,\n    anyone_away: primary.ready && secondary.ready\n        ? Object.values(data.people).some((item) => item.ready === true &&\n            (item.distance_m !== null\n                ? item.distance_m > Number(data.policy.home_radius_m)\n                : item.state === \"not_home\"))\n        : null,\n    nearest_distance_m: distances.length ? Math.min(...distances) : null,\n    state_valid: primary.state_valid && secondary.state_valid,\n    ready: primary.ready && secondary.ready,\n    stale: primary.stale || secondary.stale,\n    updated_at: Math.max(...[primary.updated_at, secondary.updated_at].filter(Number.isFinite), 0),\n    arrival_armed: { ...data.armed },\n    local_excursions: { ...data.local_excursions }\n};\nset(\"people_context_v1\", contextValue);\nconst previousReady = flow.get(key(\"security_people_ready_logged\"));\nif (previousReady !== contextValue.ready) {\n    node.log?.(\"localizacao_pessoas: contexto \" +\n        (contextValue.ready ? \"ready\" : \"pending/stale\"));\n    flow.set(key(\"security_people_ready_logged\"), contextValue.ready);\n}\nmsg.payload = {\n    contract: \"security.people-context.v1\",\n    kind: \"people_context\",\n    context: contextValue,\n    trigger_entity: data.trigger_entity,\n    trigger_state: data.trigger_state,\n    trigger_prev_state: data.trigger_prev_state,\n    confirmed_home_transition: data.is_location_event && data.facts.source_ready &&\n        data.facts.trigger_prev_valid && data.trigger_state === \"home\" &&\n        data.trigger_prev_state !== \"home\",\n    refresh_cycle_id: data.refresh_cycle_id,\n    updated_at: contextValue.updated_at,\n    valid: contextValue.state_valid,\n    ready: contextValue.ready,\n    stale: contextValue.stale,\n    source: data.source ?? \"people\",\n    reason: contextValue.ready ? \"current_entities\" : \"entity_stale_or_unavailable\"\n};\nif (data.test_mode) {\n    msg.payload.test_mode = true;\n    msg.payload.test_case = msg._location_test_case ?? null;\n    if (data.arrival?.payload) {\n        data.arrival.payload.test_mode = true;\n        data.arrival.payload.test_case = msg._location_test_case ?? null;\n    }\n}\ndelete msg._people;\nreturn [msg, data.arrival ?? null, data.lighting_only ?? null, data.blocked ?? null, data.notification ?? null];",
+        "outputs": 5,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -49606,14 +49608,16 @@
                 "487984b3aaa29663"
             ],
             [
-                "397c6032b3dad342",
-                "people_location_notification_out_v1"
+                "397c6032b3dad342"
             ],
             [
                 "people_lighting_tracker_recovery_arrival_out"
             ],
             [
                 "people_arrival_departure_blocked_v1"
+            ],
+            [
+                "people_location_notification_out_v1"
             ]
         ]
     },
@@ -51017,7 +51021,8 @@
         "g": "8e1c3a19399ad44d",
         "name": "Receber decisão canônica",
         "links": [
-            "people_location_to_normalizer_out_v1"
+            "people_location_to_normalizer_out_v1",
+            "people_visual_notification_test_out"
         ],
         "x": 105,
         "y": 2140,
@@ -51520,7 +51525,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "people_location_policy_group_v1",
         "name": "Validar valor, unidade e limites",
-        "func": "const DEFAULTS = {\n    near_home_radius_m: 350,\n    home_radius_m: 100,\n    location_fresh_minutes: 15,\n    source_report_fresh_minutes: 75,\n    recency_tie_seconds: 60,\n    max_gps_accuracy_m: 100,\n    vehicle_location_fresh_minutes: 30,\n    movement_threshold_m: 250,\n    arrival_recovery_minutes: 15,\n    local_excursion_minutes: 90,\n    near_home_refresh_minutes: 5,\n    people_refresh_minutes: 10,\n    people_approach_radius_m: 1500,\n    people_approach_refresh_seconds: 60,\n    people_refresh_retry_seconds: 60,\n    people_refresh_attempts: 3,\n    people_refresh_backoff_minutes: 30,\n    people_refresh_backoff_max_minutes: 240,\n    arrival_dedupe_minutes: 10,\n    primary_home_grace_minutes: 10,\n    external_cycle_confirm_seconds: 60,\n    wake_ring_refresh_delay_seconds: 45,\n    wake_ring_refresh_repeat_seconds: 60,\n    future_tolerance_seconds: 60,\n    vehicle_signal_fresh_minutes: 5,\n    vehicle_recovery_hours: 24\n};\nconst LIMITS = {\n    near_home_radius_m: [50, 1500],\n    home_radius_m: [20, 500],\n    location_fresh_minutes: [1, 120],\n    source_report_fresh_minutes: [5, 1440],\n    recency_tie_seconds: [0, 300],\n    max_gps_accuracy_m: [5, 1000],\n    vehicle_location_fresh_minutes: [5, 180],\n    movement_threshold_m: [10, 2000],\n    arrival_recovery_minutes: [3, 30],\n    local_excursion_minutes: [15, 180],\n    near_home_refresh_minutes: [3, 14],\n    people_refresh_minutes: [3, 14],\n    people_approach_radius_m: [350, 3000],\n    people_approach_refresh_seconds: [60, 300],\n    people_refresh_retry_seconds: [60, 300],\n    people_refresh_attempts: [1, 5],\n    people_refresh_backoff_minutes: [15, 60],\n    people_refresh_backoff_max_minutes: [60, 240],\n    arrival_dedupe_minutes: [1, 60],\n    primary_home_grace_minutes: [1, 60],\n    external_cycle_confirm_seconds: [15, 600],\n    wake_ring_refresh_delay_seconds: [15, 180],\n    wake_ring_refresh_repeat_seconds: [30, 180],\n    future_tolerance_seconds: [0, 300],\n    vehicle_signal_fresh_minutes: [1, 30],\n    vehicle_recovery_hours: [1, 168]\n};\nconst topic = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[topic];\nif (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {\n    msg.location_policy_rejection = {\n        parameter: topic || null,\n        rejected_value: msg.payload,\n        limits: bounds ?? null,\n        preserved: true\n    };\n    return [null, msg];\n}\nconst previous = global.get(\"location_policy_v1\", \"persistent\");\nconst base = previous?.version === 1 && previous?.complete === true\n    ? previous\n    : DEFAULTS;\nmsg.location_policy_candidate = {\n    ...DEFAULTS,\n    ...base,\n    [topic]: value,\n    version: 1,\n    owner: \"node_red\",\n    complete: true,\n    updated_at: Date.now()\n};\nif (msg.location_policy_candidate.near_home_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes ||\n    msg.location_policy_candidate.people_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes ||\n    !Number.isInteger(msg.location_policy_candidate.people_refresh_attempts) ||\n    msg.location_policy_candidate.people_refresh_backoff_minutes >\n    msg.location_policy_candidate.people_refresh_backoff_max_minutes) {\n    msg.location_policy_rejection = {\n        parameter: topic,\n        rejected_value: msg.payload,\n        reason: \"near_home_refresh_must_precede_location_stale\",\n        preserved: true\n    };\n    return [null, msg];\n}\ndelete msg.location_policy_candidate.people_fast_refresh_radius_m;\nreturn [msg, null];",
+        "func": "const DEFAULTS = {\n    near_home_radius_m: 350,\n    notification_approach_radius_m: 700,\n    home_radius_m: 100,\n    location_fresh_minutes: 15,\n    source_report_fresh_minutes: 75,\n    recency_tie_seconds: 60,\n    max_gps_accuracy_m: 100,\n    vehicle_location_fresh_minutes: 30,\n    movement_threshold_m: 250,\n    arrival_recovery_minutes: 15,\n    local_excursion_minutes: 90,\n    near_home_refresh_minutes: 5,\n    people_refresh_minutes: 10,\n    people_approach_radius_m: 1500,\n    people_approach_refresh_seconds: 60,\n    people_refresh_retry_seconds: 60,\n    people_refresh_attempts: 3,\n    people_refresh_backoff_minutes: 30,\n    people_refresh_backoff_max_minutes: 240,\n    arrival_dedupe_minutes: 10,\n    primary_home_grace_minutes: 10,\n    external_cycle_confirm_seconds: 60,\n    wake_ring_refresh_delay_seconds: 45,\n    wake_ring_refresh_repeat_seconds: 60,\n    future_tolerance_seconds: 60,\n    vehicle_signal_fresh_minutes: 5,\n    vehicle_recovery_hours: 24\n};\nconst LIMITS = {\n    near_home_radius_m: [50, 1500],\n    notification_approach_radius_m: [350, 1500],\n    home_radius_m: [20, 500],\n    location_fresh_minutes: [1, 120],\n    source_report_fresh_minutes: [5, 1440],\n    recency_tie_seconds: [0, 300],\n    max_gps_accuracy_m: [5, 1000],\n    vehicle_location_fresh_minutes: [5, 180],\n    movement_threshold_m: [10, 2000],\n    arrival_recovery_minutes: [3, 30],\n    local_excursion_minutes: [15, 180],\n    near_home_refresh_minutes: [3, 14],\n    people_refresh_minutes: [3, 14],\n    people_approach_radius_m: [350, 3000],\n    people_approach_refresh_seconds: [60, 300],\n    people_refresh_retry_seconds: [60, 300],\n    people_refresh_attempts: [1, 5],\n    people_refresh_backoff_minutes: [15, 60],\n    people_refresh_backoff_max_minutes: [60, 240],\n    arrival_dedupe_minutes: [1, 60],\n    primary_home_grace_minutes: [1, 60],\n    external_cycle_confirm_seconds: [15, 600],\n    wake_ring_refresh_delay_seconds: [15, 180],\n    wake_ring_refresh_repeat_seconds: [30, 180],\n    future_tolerance_seconds: [0, 300],\n    vehicle_signal_fresh_minutes: [1, 30],\n    vehicle_recovery_hours: [1, 168]\n};\nconst topic = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[topic];\nif (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {\n    msg.location_policy_rejection = {\n        parameter: topic || null,\n        rejected_value: msg.payload,\n        limits: bounds ?? null,\n        preserved: true\n    };\n    return [null, msg];\n}\nconst previous = global.get(\"location_policy_v1\", \"persistent\");\nconst base = previous?.version === 1 && previous?.complete === true\n    ? previous\n    : DEFAULTS;\nmsg.location_policy_candidate = {\n    ...DEFAULTS,\n    ...base,\n    [topic]: value,\n    version: 1,\n    owner: \"node_red\",\n    complete: true,\n    updated_at: Date.now()\n};\nif (msg.location_policy_candidate.near_home_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes ||\n    msg.location_policy_candidate.people_refresh_minutes >=\n    msg.location_policy_candidate.location_fresh_minutes ||\n    !Number.isInteger(msg.location_policy_candidate.people_refresh_attempts) ||\n    msg.location_policy_candidate.people_refresh_backoff_minutes >\n    msg.location_policy_candidate.people_refresh_backoff_max_minutes) {\n    msg.location_policy_rejection = {\n        parameter: topic,\n        rejected_value: msg.payload,\n        reason: \"near_home_refresh_must_precede_location_stale\",\n        preserved: true\n    };\n    return [null, msg];\n}\ndelete msg.location_policy_candidate.people_fast_refresh_radius_m;\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -51561,7 +51566,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "8e1c3a19399ad44d",
         "name": "Adaptar somente o estado sintético",
-        "func": "const TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nif (!TEST_MODE || msg.payload?.event !== \"context_snapshot\") return msg;\nif (msg._location_test_reset === true) {\n    for (const key of [\n        \"security_people_recovery_v1__test\",\n        \"people_arrival_armed__test\",\n        \"people_context_v1__test\",\n        \"security_people_ready_logged__test\",\n        \"security_people_test_clock\"\n    ]) flow.set(key, undefined);\n}\nconst SHARED = \"security_location_test_state_v1\";\nlet shared = global.get(SHARED);\nif (!shared || shared.version !== 1) {\n    shared = {\n        version: 1,\n        resident_primary: \"home\",\n        resident_secondary: \"home\",\n        vehicle_primary: \"home\",\n        vehicle_primary_engine: \"off\",\n        vehicle_primary_lock: \"locked\",\n        observed_at: Date.now(),\n        transitions: {}\n    };\n    global.set(SHARED, shared);\n}\nconst observedAt = Math.max(Date.now(), Number(shared.observed_at || 0));\nconst timestamp = new Date(observedAt).toISOString();\nconst tracker = (entity_id, state) => ({\n    entity_id,\n    state,\n    attributes: { gps_accuracy: 20 },\n    last_changed: timestamp,\n    last_updated: timestamp\n});\nconst transition = shared.transitions?.people;\nconst active = transition?.domain === \"people\" &&\n    transition?.test_case === msg._location_test_case &&\n    msg._location_test_reset !== true;\nconst source = active ? transition.source : \"refresh\";\nconst refreshCycleId = msg.payload?.refresh_cycle_id;\nmsg.payload = {\n    event: active ? \"location_update\" : \"context_snapshot\",\n    source,\n    refresh_cycle_id: refreshCycleId,\n    trigger_entity: active\n        ? \"device_tracker.\" + (source === \"resident_primary\"\n            ? \"mobile_primary_source_1\" : \"mobile_secondary_source_1\")\n        : undefined,\n    trigger_state: active ? transition.state : undefined,\n    trigger_prev_state: active ? transition.prev : undefined,\n    resident_primary: tracker(\"device_tracker.mobile_primary_source_1\", shared.resident_primary),\n    resident_primary_icloud: tracker(\"device_tracker.mobile_primary_source_2\", shared.resident_primary),\n    resident_secondary: tracker(\"device_tracker.mobile_secondary_source_1\", shared.resident_secondary),\n    resident_secondary_icloud: tracker(\"device_tracker.mobile_secondary_source_2\", shared.resident_secondary)\n};\nmsg.payload.resident_primary_selected = msg.payload.resident_primary;\nmsg.payload.resident_secondary_selected = msg.payload.resident_secondary;\nreturn msg;",
+        "func": "const TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nif (!TEST_MODE || msg.payload?.event !== \"context_snapshot\") return msg;\nif (msg._location_test_reset === true) {\n    for (const key of [\n        \"security_people_recovery_v1__test\",\n        \"people_notification_cycles_v1__test\",\n        \"people_arrival_armed__test\",\n        \"people_context_v1__test\",\n        \"security_people_ready_logged__test\",\n        \"security_people_test_clock\"\n    ]) flow.set(key, undefined);\n}\nconst SHARED = \"security_location_test_state_v1\";\nlet shared = global.get(SHARED);\nif (!shared || shared.version !== 1) {\n    shared = {\n        version: 1,\n        resident_primary: \"home\",\n        resident_secondary: \"home\",\n        vehicle_primary: \"home\",\n        vehicle_primary_engine: \"off\",\n        vehicle_primary_lock: \"locked\",\n        observed_at: Date.now(),\n        transitions: {}\n    };\n    global.set(SHARED, shared);\n}\nconst observedAt = Math.max(Date.now(), Number(shared.observed_at || 0));\nconst timestamp = new Date(observedAt).toISOString();\nconst tracker = (entity_id, state) => ({\n    entity_id,\n    state,\n    attributes: { gps_accuracy: 20 },\n    last_changed: timestamp,\n    last_updated: timestamp\n});\nconst transition = shared.transitions?.people;\nconst active = transition?.domain === \"people\" &&\n    transition?.test_case === msg._location_test_case &&\n    msg._location_test_reset !== true;\nconst source = active ? transition.source : \"refresh\";\nconst refreshCycleId = msg.payload?.refresh_cycle_id;\nmsg.payload = {\n    event: active ? \"location_update\" : \"context_snapshot\",\n    source,\n    refresh_cycle_id: refreshCycleId,\n    trigger_entity: active\n        ? \"device_tracker.\" + (source === \"resident_primary\"\n            ? \"mobile_primary_source_1\" : \"mobile_secondary_source_1\")\n        : undefined,\n    trigger_state: active ? transition.state : undefined,\n    trigger_prev_state: active ? transition.prev : undefined,\n    resident_primary: tracker(\"device_tracker.mobile_primary_source_1\", shared.resident_primary),\n    resident_primary_icloud: tracker(\"device_tracker.mobile_primary_source_2\", shared.resident_primary),\n    resident_secondary: tracker(\"device_tracker.mobile_secondary_source_1\", shared.resident_secondary),\n    resident_secondary_icloud: tracker(\"device_tracker.mobile_secondary_source_2\", shared.resident_secondary)\n};\nmsg.payload.resident_primary_selected = msg.payload.resident_primary;\nmsg.payload.resident_secondary_selected = msg.payload.resident_secondary;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -51907,7 +51912,7 @@
         "y": 2170,
         "wires": [
             [
-                "554cb653b2fa4504"
+                "people_visual_notification_route_out"
             ]
         ]
     },
@@ -52755,7 +52760,7 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_input_group",
         "name": "Adaptar estrutura do contrato",
-        "func": "const input = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst source = input.source;\nconst testMode = msg._location_test === true || input.test_mode === true;\nconst numericEventAt = Number(input.event_at);\nconst parsedEventAt = Date.parse(input.event_at ?? \"\");\nconst eventAt = Number.isFinite(numericEventAt) && numericEventAt > 0\n    ? numericEventAt\n    : parsedEventAt;\nconst localReturn = input.arrival_stage === \"local_return\" &&\n    input.arrival_direction === \"returning_local_excursion\" &&\n    input.local_excursion_return === true;\n\nmsg._location_test = testMode;\nmsg.resident_source = source;\nmsg.arrival_stage = input.arrival_stage;\nmsg.event_at = eventAt;\nmsg.arrival_contract_valid = input.contract === \"security.arrival.v1\";\nmsg.arrival_kind_valid = input.kind === \"arrival\" && input.arrival_source_type === \"person\";\nmsg.arrival_returning = input.arrival_direction === \"returning\" || localReturn;\nmsg.arrival_external_cycle_confirmed = input.external_cycle_confirmed === true || localReturn;\nmsg.arrival_cycle_confirmed = input.external_cycle_confirmed === true || localReturn;\nmsg.arrival_local_return_valid = localReturn;\nmsg.arrival_event_time_valid = Number.isFinite(eventAt) && eventAt > 0;\nmsg.notification_key = [source, input.arrival_stage, eventAt].join(\":\");\nreturn msg;",
+        "func": "const input = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst source = input.source;\nconst testMode = msg._location_test === true || input.test_mode === true;\nconst numericAt = Number(input.event_at);\nconst eventAt = Number.isFinite(numericAt) && numericAt > 0\n    ? numericAt\n    : Date.parse(input.event_at ?? \"\");\nconst localReturn = input.arrival_stage === \"local_return\" &&\n    input.arrival_direction === \"returning_local_excursion\" &&\n    input.local_excursion_return === true;\n\nmsg._location_test = testMode;\nmsg.resident_source = source;\nmsg.arrival_stage = input.arrival_stage;\nmsg.event_at = eventAt;\nmsg.arrival_contract_valid = input.contract === \"security.arrival.v1\";\nmsg.arrival_kind_valid = input.kind === \"arrival\" && input.arrival_source_type === \"person\";\nmsg.arrival_returning = input.arrival_direction === \"returning\" || localReturn;\nmsg.arrival_external_cycle_confirmed = input.external_cycle_confirmed === true || localReturn;\nmsg.arrival_cycle_confirmed = input.external_cycle_confirmed === true || localReturn;\nmsg.arrival_local_return_valid = localReturn;\nmsg.arrival_event_time_valid = Number.isFinite(eventAt) && eventAt > 0;\nmsg.notification_canonical_cycle = typeof input.notification_cycle_id === \"string\" &&\n    input.notification_cycle_id.startsWith(source + \":\");\nmsg.notification_key = msg.notification_canonical_cycle\n    ? \"cycle:\" + input.notification_cycle_id\n    : [source, input.arrival_stage, eventAt].join(\":\");\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -53451,7 +53456,7 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_state_group",
         "name": "Ler recibo e reserva do destinatário",
-        "func": "const testMode = msg._location_test === true;\nconst key = testMode\n    ? \"resident_notification_delivery_v4__test\"\n    : \"resident_notification_delivery_v4\";\nlet state = testMode ? flow.get(key) : flow.get(key, \"persistent\");\nif (!state || state.version !== 4 || typeof state.deliveries !== \"object\") {\n    state = { version: 4, deliveries: {} };\n}\nconst deliveryId = msg.resident_source + \":\" + msg.resident_recipient;\nconst recipient = state.deliveries[deliveryId] ?? {\n    accepted_key: null,\n    accepted_at: 0,\n    accepted_stage: null,\n    pending_key: null,\n    pending_at: 0\n};\nconst now = Date.now();\nconst acceptedRecently = Number.isFinite(recipient.accepted_at) &&\n    now - recipient.accepted_at < msg.policy.dedupe_ttl_ms;\nconst laterHomeForSameArrival = msg.arrival_stage === \"home\" &&\n    [\"approach\", \"local_return\"].includes(recipient.accepted_stage) &&\n    acceptedRecently;\n\nmsg.notification_state_key = key;\nmsg.notification_delivery_state = state;\nmsg.notification_delivery_id = deliveryId;\nmsg.notification_recipient_state = recipient;\nmsg.notification_duplicate = recipient.accepted_key === msg.notification_key &&\n    acceptedRecently || laterHomeForSameArrival ||\n    recipient.pending_key === msg.notification_key &&\n    Number.isFinite(recipient.pending_at) &&\n    now - recipient.pending_at < msg.policy.service_retry_seconds * 1000;\nreturn msg;",
+        "func": "const testMode = msg._location_test === true;\nconst key = testMode\n    ? \"resident_notification_delivery_v4__test\"\n    : \"resident_notification_delivery_v4\";\nlet state = testMode ? flow.get(key) : flow.get(key, \"persistent\");\nif (!state || state.version !== 4 || typeof state.deliveries !== \"object\") {\n    state = { version: 4, deliveries: {} };\n}\nconst deliveryId = msg.resident_source + \":\" + msg.resident_recipient;\nconst recipient = state.deliveries[deliveryId] ?? {\n    accepted_key: null,\n    accepted_at: 0,\n    accepted_stage: null,\n    pending_key: null,\n    pending_at: 0\n};\nconst now = Date.now();\nconst acceptedRecently = Number.isFinite(recipient.accepted_at) &&\n    now - recipient.accepted_at < msg.policy.dedupe_ttl_ms;\nconst laterHomeForSameArrival = msg.arrival_stage === \"home\" &&\n    [\"approach\", \"local_return\"].includes(recipient.accepted_stage) &&\n    acceptedRecently;\n\nmsg.notification_state_key = key;\nmsg.notification_delivery_state = state;\nmsg.notification_delivery_id = deliveryId;\nmsg.notification_recipient_state = recipient;\nmsg.notification_duplicate = recipient.accepted_key === msg.notification_key &&\n    (acceptedRecently || msg.notification_canonical_cycle === true) || laterHomeForSameArrival ||\n    recipient.pending_key === msg.notification_key &&\n    Number.isFinite(recipient.pending_at) &&\n    now - recipient.pending_at < msg.policy.service_retry_seconds * 1000;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -76289,7 +76294,8 @@
             "people_visual_refresh_config_left_out",
             "people_visual_refresh_config_right_out",
             "people_visual_config_people_approach_radius_m",
-            "people_visual_config_people_approach_refresh_seconds"
+            "people_visual_config_people_approach_refresh_seconds",
+            "people_visual_config_notification_approach_radius_m"
         ],
         "x": 3200,
         "y": 79,
@@ -81279,6 +81285,574 @@
         "wires": [
             [
                 "people_visual_refresh_config_right_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_config_notification_approach_radius_m",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_refresh_config_group",
+        "name": "Aviso de retorno — 700 m [350..1500]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "notification_approach_radius_m",
+        "payload": "700",
+        "payloadType": "num",
+        "x": 4000,
+        "y": 320,
+        "wires": [
+            [
+                "people_visual_refresh_config_right_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_route_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Avaliar aviso independente",
+        "mode": "link",
+        "links": [
+            "people_visual_notification_in"
+        ],
+        "x": 2710,
+        "y": 2280,
+        "wires": []
+    },
+    {
+        "id": "people_visual_notification_group",
+        "type": "group",
+        "z": "ea0a6aa0d24ff863",
+        "name": "3b. Aviso de retorno — cruzar o raio para dentro, uma vez por viagem",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "people_visual_notification_in",
+            "people_visual_notification_facts",
+            "people_visual_notification_gate",
+            "people_visual_notification_build",
+            "people_visual_notification_done_out",
+            "notification_hub_wire_out_acee2ad30f98",
+            "notification_hub_wire_in_acee2ad30f98"
+        ],
+        "x": 64,
+        "y": 2380,
+        "w": 1590,
+        "h": 240
+    },
+    {
+        "id": "people_visual_notification_in",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_group",
+        "name": "Receber decisão de presença",
+        "links": [
+            "people_visual_notification_route_out"
+        ],
+        "x": 110,
+        "y": 2450,
+        "wires": [
+            [
+                "people_visual_notification_facts"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_facts",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_group",
+        "name": "Persistir posição anterior e ciclo do aviso",
+        "func": "const data = msg._people;\nif (!data) return null;\nconst key = \"people_notification_cycles_v1\" + (data.test_mode ? \"__test\" : \"\");\nconst store = data.test_mode ? undefined : \"persistent\";\nconst saved = flow.get(key, store);\nconst state = saved?.version === 1 ? saved : { version: 1, residents: {} };\nconst radius = Number(data.policy.notification_approach_radius_m);\ndata.notification_candidates = [];\nfor (const [role, resident] of Object.entries(data.people)) {\nconst observedAt = resident?.updated_at;\nconst distance = resident?.distance_m;\nlet cycle = state.residents[role];\n// Paired snapshots also carry new GPS positions without a zone transition.\n// Only a newer canonical observation advances the saved position.\nconst current = resident?.ready === true &&\n    resident.stale !== true && Number.isFinite(distance) &&\n    Number.isFinite(observedAt) && observedAt > 0 &&\n    observedAt <= Date.now() + data.policy.future_tolerance_seconds * 1000 &&\n    Date.now() - observedAt <= data.policy.location_fresh_minutes * 60000;\nif (current && Number.isFinite(radius) && (!cycle || observedAt > cycle.observed_at)) {\n    if (!cycle || cycle.radius_m !== radius || cycle.completed && !resident.current_home) {\n        cycle = { id: role + \":\" + observedAt, radius_m: radius,\n            outside: false, issued: false, completed: false };\n    }\n    const eligible = !cycle.issued && !cycle.completed && cycle.outside &&\n        distance <= radius && distance < cycle.distance_m && !resident.current_home &&\n        data.armed[role] === true;\n    if (eligible) data.notification_candidates.push({ role, resident, cycle });\n    if (distance > radius) cycle.outside = true;\n    if (resident.current_home) cycle.completed = true;\n    cycle.observed_at = observedAt;\n    cycle.distance_m = distance;\n    state.residents[role] = cycle;\n}\n}\n// Keep the existing 350 m / HOME recovery when the wider crossing was missed.\n// Once the early event exists, later events share its identity for delivery\n// dedupe; lighting retains its original contract and independent radius.\ndata.notification = data.arrival ? { ...data.arrival, payload: { ...data.arrival.payload } } : null;\nconst cycle = state.residents[data.source];\nif (cycle && data.notification?.payload) {\n    data.notification.payload.notification_cycle_id = cycle.id;\n}\ndata.notification_eligible = data.notification_candidates.length > 0;\ndata.notification_state = state;\ndata.notification_state_key = key;\nflow.set(key, state, store);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 2450,
+        "wires": [
+            [
+                "people_visual_notification_gate"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_gate",
+        "type": "switch",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_group",
+        "name": "Retorno confirmado dentro do raio?",
+        "property": "_people.notification_eligible",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 780,
+        "y": 2450,
+        "wires": [
+            [
+                "people_visual_notification_build"
+            ],
+            [
+                "notification_hub_wire_out_acee2ad30f98"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_build",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_group",
+        "name": "Montar aviso sem autorizar iluminação",
+        "func": "const data = msg._people;\nif (!data?.notification_eligible) return msg;\nconst notifications = data.notification_candidates.map(({role, resident, cycle}) => {\ncycle.issued = true;\nreturn {\n    _location_test: data.test_mode,\n    payload: {\n        contract: \"security.arrival.v1\", kind: \"arrival\",\n        source: role, arriving: [role], arrival_source_type: \"person\",\n        arrival_stage: \"approach\", arrival_direction: \"returning\",\n        external_cycle_confirmed: true, notification_only: true,\n        notification_cycle_id: cycle.id,\n        notification_radius_m: Number(data.policy.notification_approach_radius_m),\n        event_at: resident.updated_at,\n        arrival_resident_snapshot: { ...resident },\n        test_mode: data.test_mode,\n        test_case: msg._location_test_case ?? null\n    }\n};\n});\n// Preserve a simultaneous HOME fallback for the other resident.\nif (data.notification && !notifications.some(item =>\n    item.payload.source === data.notification.payload.source)) notifications.push(data.notification);\ndata.notification = notifications.length === 1 ? notifications[0] : notifications;\nflow.set(data.notification_state_key, data.notification_state,\n    data.test_mode ? undefined : \"persistent\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1170,
+        "y": 2450,
+        "wires": [
+            [
+                "people_visual_notification_done_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_done_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_group",
+        "name": "Aviso avaliado → publicar contratos",
+        "mode": "link",
+        "links": [
+            "people_visual_notification_done_in"
+        ],
+        "x": 1520,
+        "y": 2540,
+        "wires": []
+    },
+    {
+        "id": "people_visual_notification_done_in",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Receber aviso avaliado",
+        "links": [
+            "people_visual_notification_done_out"
+        ],
+        "x": 2735,
+        "y": 2170,
+        "wires": [
+            [
+                "554cb653b2fa4504"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_acee2ad30f98",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_group",
+        "name": "Encurtar: Retorno confirmado dentro do raio?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_acee2ad30f98"
+        ],
+        "x": 960,
+        "y": 2450,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_acee2ad30f98",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_group",
+        "name": "Continuar: Aviso avaliado → publicar contratos",
+        "links": [
+            "notification_hub_wire_out_acee2ad30f98"
+        ],
+        "x": 1340,
+        "y": 2540,
+        "wires": [
+            [
+                "people_visual_notification_done_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_tests_group",
+        "type": "group",
+        "z": "ea0a6aa0d24ff863",
+        "name": "3c. TESTE seguro: reset → 800 m → aguarde 60 s → 900 m (saída) → 650 m → 300 m (sem duplicar)",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "people_visual_notification_test_0",
+            "people_visual_notification_test_1",
+            "people_visual_notification_test_2",
+            "people_visual_notification_test_3",
+            "people_visual_notification_test_4",
+            "people_visual_notification_test_adapter",
+            "people_visual_notification_test_out",
+            "notification_hub_wire_out_7d0044d5fe69",
+            "notification_hub_wire_in_7d0044d5fe69",
+            "notification_hub_wire_out_37705bc751a1",
+            "notification_hub_wire_in_37705bc751a1",
+            "notification_hub_wire_out_dc6d4cb0f302",
+            "notification_hub_wire_in_dc6d4cb0f302",
+            "notification_hub_wire_out_7bff331f05fb",
+            "notification_hub_wire_in_7bff331f05fb"
+        ],
+        "x": 64,
+        "y": 2690,
+        "w": 1600,
+        "h": 260
+    },
+    {
+        "id": "people_visual_notification_test_0",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "RESET — 20 m",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.5",
+        "topic": "reset",
+        "payload": "20",
+        "payloadType": "num",
+        "x": 230,
+        "y": 2760,
+        "wires": [
+            [
+                "notification_hub_wire_out_7d0044d5fe69"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_test_1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "1: fora — 800 m",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.5",
+        "topic": "position",
+        "payload": "800",
+        "payloadType": "num",
+        "x": 540,
+        "y": 2760,
+        "wires": [
+            [
+                "notification_hub_wire_out_37705bc751a1"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_test_2",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "2: saída — 900 m",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.5",
+        "topic": "position",
+        "payload": "900",
+        "payloadType": "num",
+        "x": 850,
+        "y": 2760,
+        "wires": [
+            [
+                "people_visual_notification_test_adapter"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_test_3",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "3: retorno — 650 m",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.5",
+        "topic": "position",
+        "payload": "650",
+        "payloadType": "num",
+        "x": 230,
+        "y": 2830,
+        "wires": [
+            [
+                "notification_hub_wire_out_dc6d4cb0f302"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_test_4",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "4: dedupe — 300 m",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.5",
+        "topic": "position",
+        "payload": "300",
+        "payloadType": "num",
+        "x": 540,
+        "y": 2830,
+        "wires": [
+            [
+                "notification_hub_wire_out_7bff331f05fb"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_test_adapter",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Preparar posição sintética cumulativa",
+        "func": "const key = \"people_notification_manual_v1__test\";\nconst policy = global.get(\"location_policy_v1\", \"persistent\");\nconst distance = Number(msg.payload);\nconst reset = msg.topic === \"reset\";\nif (reset) {\n    for (const name of [\"people_notification_cycles_v1\", \"security_people_recovery_v1\",\n        \"people_arrival_armed\", \"people_context_v1\", \"people_notification_manual_v1\"])\n        flow.set(name + \"__test\", undefined);\n}\nconst previous = flow.get(key) ?? \"home\";\nconst state = distance <= policy.home_radius_m ? \"home\" :\n    distance <= policy.near_home_radius_m ? \"near_home\" : \"not_home\";\nflow.set(key, state);\nconst stamp = new Date().toISOString();\nconst tracker = (role, meters, zone) => ({\n    entity_id: \"device_tracker.\" + role + \"_location\", state: zone,\n    last_changed: stamp, last_updated: stamp,\n    attributes: { latitude: 0, longitude: 0, gps_accuracy: 10,\n        canonical_distance_home_m: meters, canonical_distance_gate_m: meters,\n        location_observed_at: stamp, source_reported_at: stamp }\n});\nmsg._location_test = true;\nmsg._location_test_case = \"notification_700_\" + (reset ? \"reset\" : distance);\nmsg.payload = {\n    event: \"location_update\", test_mode: true, source: \"resident_primary\",\n    trigger_state: state, trigger_prev_state: previous,\n    resident_primary_selected: tracker(\"resident_primary\", distance, state),\n    resident_secondary_selected: tracker(\"resident_secondary\", 20, \"home\")\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1250,
+        "y": 2800,
+        "wires": [
+            [
+                "people_visual_notification_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_visual_notification_test_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Teste → normalização e decisões reais",
+        "mode": "link",
+        "links": [
+            "people_location_to_normalizer_in_v1"
+        ],
+        "x": 1540,
+        "y": 2800,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_7d0044d5fe69",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Encurtar: RESET — 20 m",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_7d0044d5fe69"
+        ],
+        "x": 410,
+        "y": 2760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_7d0044d5fe69",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Continuar: Preparar posição sintética cumulativa",
+        "links": [
+            "notification_hub_wire_out_7d0044d5fe69"
+        ],
+        "x": 1070,
+        "y": 2800,
+        "wires": [
+            [
+                "people_visual_notification_test_adapter"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_37705bc751a1",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Encurtar: 1: fora — 800 m",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_37705bc751a1"
+        ],
+        "x": 720,
+        "y": 2760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_37705bc751a1",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Continuar: Preparar posição sintética cumulativa",
+        "links": [
+            "notification_hub_wire_out_37705bc751a1"
+        ],
+        "x": 1070,
+        "y": 2900,
+        "wires": [
+            [
+                "people_visual_notification_test_adapter"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_dc6d4cb0f302",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Encurtar: 3: retorno — 650 m",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_dc6d4cb0f302"
+        ],
+        "x": 410,
+        "y": 2830,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_dc6d4cb0f302",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Continuar: Preparar posição sintética cumulativa",
+        "links": [
+            "notification_hub_wire_out_dc6d4cb0f302"
+        ],
+        "x": 990,
+        "y": 2800,
+        "wires": [
+            [
+                "people_visual_notification_test_adapter"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_7bff331f05fb",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Encurtar: 4: dedupe — 300 m",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_7bff331f05fb"
+        ],
+        "x": 720,
+        "y": 2830,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_7bff331f05fb",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_visual_notification_tests_group",
+        "name": "Continuar: Preparar posição sintética cumulativa",
+        "links": [
+            "notification_hub_wire_out_7bff331f05fb"
+        ],
+        "x": 990,
+        "y": 2900,
+        "wires": [
+            [
+                "people_visual_notification_test_adapter"
             ]
         ]
     }

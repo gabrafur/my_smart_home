@@ -1,11 +1,10 @@
 const input = msg.payload && typeof msg.payload === "object" ? msg.payload : {};
 const source = input.source;
 const testMode = msg._location_test === true || input.test_mode === true;
-const numericEventAt = Number(input.event_at);
-const parsedEventAt = Date.parse(input.event_at ?? "");
-const eventAt = Number.isFinite(numericEventAt) && numericEventAt > 0
-    ? numericEventAt
-    : parsedEventAt;
+const numericAt = Number(input.event_at);
+const eventAt = Number.isFinite(numericAt) && numericAt > 0
+    ? numericAt
+    : Date.parse(input.event_at ?? "");
 const localReturn = input.arrival_stage === "local_return" &&
     input.arrival_direction === "returning_local_excursion" &&
     input.local_excursion_return === true;
@@ -21,5 +20,9 @@ msg.arrival_external_cycle_confirmed = input.external_cycle_confirmed === true |
 msg.arrival_cycle_confirmed = input.external_cycle_confirmed === true || localReturn;
 msg.arrival_local_return_valid = localReturn;
 msg.arrival_event_time_valid = Number.isFinite(eventAt) && eventAt > 0;
-msg.notification_key = [source, input.arrival_stage, eventAt].join(":");
+msg.notification_canonical_cycle = typeof input.notification_cycle_id === "string" &&
+    input.notification_cycle_id.startsWith(source + ":");
+msg.notification_key = msg.notification_canonical_cycle
+    ? "cycle:" + input.notification_cycle_id
+    : [source, input.arrival_stage, eventAt].join(":");
 return msg;

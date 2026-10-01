@@ -147,11 +147,12 @@ for (const [i, item] of [
   ["people_refresh_backoff_max_minutes", "Espera máxima — 240 min [60..240]", 240],
   ["people_approach_radius_m", "Raio de renovação no retorno — 1500 m [350..3000]", 1500],
   ["people_approach_refresh_seconds", "GPS no retorno — 60 s [60..300]", 60],
+  ["notification_approach_radius_m", "Aviso de retorno — 700 m [350..1500]", 700],
 ].entries()) {
   const [topic, name, value] = item;
   inject("people_visual_config_" + topic, refreshConfig.id, name, topic, value,
     i < 3 || i === 5 ? 3450 : 4000,
-    140 + (i < 3 ? i : i === 5 ? 3 : i === 6 ? 2 : i - 3) * 60,
+    140 + (i < 3 ? i : i === 5 ? 3 : i === 6 ? 2 : i === 7 ? 3 : i - 3) * 60,
     "people_visual_refresh_config_" + (i < 3 || i === 5 ? "left" : "right") + "_out");
 }
 for (const [side, x] of [["left", 3680], ["right", 4230]]) {
@@ -250,7 +251,23 @@ linkOut("people_visual_unchanged_out", lifecycle.id, "Sem chegada → estado can
 linkIn("people_visual_finalize_in", lifecycle.id, "Convergir exatamente um caminho", [
   "people_visual_arrival_out", "people_visual_recovery_out",
   "people_visual_blocked_out", "people_visual_unchanged_out"
-], "554cb653b2fa4504", 4680, 590);
+], "people_visual_notification_route_out", 4680, 590);
+linkOut("people_visual_notification_route_out", lifecycle.id, "Avaliar aviso independente", "people_visual_notification_in", 2710, 2280);
+const notifyGroup = group("people_visual_notification_group",
+  "3b. Aviso de retorno — cruzar o raio para dentro, uma vez por viagem", 64, 2380, 1590, 240);
+linkIn("people_visual_notification_in", notifyGroup.id, "Receber decisão de presença",
+  ["people_visual_notification_route_out"], "people_visual_notification_facts", 110, 2450);
+fn("people_visual_notification_facts", notifyGroup.id, "Persistir posição anterior e ciclo do aviso",
+  "people-notification-facts.js", 1, 380, 2450, [["people_visual_notification_gate"]]);
+sw("people_visual_notification_gate", notifyGroup.id, "Retorno confirmado dentro do raio?",
+  "_people.notification_eligible", "msg", [{t:"true"}, {t:"else"}], "false",
+  780, 2450, [["people_visual_notification_build"], ["people_visual_notification_done_out"]]);
+fn("people_visual_notification_build", notifyGroup.id, "Montar aviso sem autorizar iluminação",
+  "people-notification-build.js", 1, 1170, 2450, [["people_visual_notification_done_out"]]);
+linkOut("people_visual_notification_done_out", notifyGroup.id, "Aviso avaliado → publicar contratos",
+  "people_visual_notification_done_in", 1520, 2540);
+linkIn("people_visual_notification_done_in", lifecycle.id, "Receber aviso avaliado",
+  ["people_visual_notification_done_out"], "554cb653b2fa4504", 2735, 2170);
 linkOut("people_visual_wake_ring_candidate_out", lifecycle.id,
   "Anel técnico → avaliar sondas", "people_visual_wake_ring_candidate_in", 3540, 700);
 linkIn("people_visual_wake_ring_candidate_in", lifecycle.id,
@@ -274,6 +291,22 @@ linkOut("people_visual_wake_ring_first_out", lifecycle.id,
   "1ª sonda → refresh seletivo", "people_visual_arrival_refresh_in", 6570, 510);
 linkOut("people_visual_wake_ring_second_out", lifecycle.id,
   "2ª sonda → refresh seletivo", "people_visual_arrival_refresh_in", 6570, 630);
+const notifyTests = group("people_visual_notification_tests_group",
+  "3c. TESTE seguro: reset → 800 m → aguarde 60 s → 900 m (saída) → 650 m → 300 m (sem duplicar)",
+  64, 2690, 1600, 260);
+for (const [i, [label, meters]] of [["RESET", 20], ["1: fora", 800],
+  ["2: saída", 900], ["3: retorno", 650], ["4: dedupe", 300]].entries()) {
+  const control = inject("people_visual_notification_test_" + i, notifyTests.id,
+    label + " — " + meters + " m", i === 0 ? "reset" : "position", meters,
+    230 + (i % 3) * 310, 2760 + Math.floor(i / 3) * 70,
+    "people_visual_notification_test_adapter");
+  control.once = false;
+}
+fn("people_visual_notification_test_adapter", notifyTests.id, "Preparar posição sintética cumulativa",
+  "people-notification-manual-test.js", 1, 1250, 2800, [["people_visual_notification_test_out"]]);
+linkOut("people_visual_notification_test_out", notifyTests.id, "Teste → normalização e decisões reais",
+  "people_location_to_normalizer_in_v1", 1540, 2800);
+required("people_location_to_normalizer_in_v1").links.push("people_visual_notification_test_out");
 const finalizer = required("554cb653b2fa4504");
 const notificationOut = required("people_location_notification_out_v1");
 const peopleClassifier = required("people_location_classify_near_home_v1");
@@ -287,12 +320,13 @@ for (const candidate of flows.filter((node) => node.type === "group")) {
 }
 finalizer.name = "Persistir contexto e emitir contratos";
 finalizer.func = source("people-lifecycle-finalize.js");
-finalizer.outputs = 4; finalizer.x = 4910; finalizer.y = 590;
+finalizer.outputs = 5; finalizer.x = 4910; finalizer.y = 590;
 finalizer.wires = [
   ["487984b3aaa29663"],
-  ["397c6032b3dad342", "people_location_notification_out_v1"],
+  ["397c6032b3dad342"],
   ["people_lighting_tracker_recovery_arrival_out"],
   ["people_arrival_departure_blocked_v1"],
+  ["people_location_notification_out_v1"],
 ];
 for (const [id, x, y] of [
   ["487984b3aaa29663", 5230, 480],
@@ -305,7 +339,7 @@ for (const [id, x, y] of [
   if (!lifecycle.nodes.includes(id)) lifecycle.nodes.push(id);
 }
 notificationOut.name = "RETORNO confirmado → avisos de residentes";
-required(PEOPLE_TAB).info = "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; somente uma posição canônica em near_home publica o aviso antecipado. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.";
+required(PEOPLE_TAB).info = "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; o aviso tem raio independente de 700 m de HOME, exige posição anterior fora e retorno confirmado. A iluminação conserva 350 m do portão. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.";
 
 const vehicleLifecycle = required("d860cb4ad0d1fd89");
 vehicleLifecycle.name = "2. Lifecycle visual do veículo, chegada e confirmação de refresh";

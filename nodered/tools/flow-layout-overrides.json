@@ -3553,6 +3553,14 @@
         "notification_hub_wire_in_ea83b8ce73cb": {
           "x": 2672,
           "y": 851
+        },
+        "people_visual_notification_route_out": {
+          "x": 2710,
+          "y": 2280
+        },
+        "people_visual_notification_done_in": {
+          "x": 2735,
+          "y": 2170
         }
       },
       "geometry_final": true

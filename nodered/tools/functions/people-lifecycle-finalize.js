@@ -1,5 +1,5 @@
 const data = msg._people;
-if (!data) return [null, null, null, null];
+if (!data) return [null, null, null, null, null];
 const key = (name) => data.test_mode ? name + "__test" : name;
 const set = (name, value, store) => data.test_mode || !store
     ? flow.set(key(name), value) : flow.set(key(name), value, store);
@@ -85,4 +85,4 @@ if (data.test_mode) {
     }
 }
 delete msg._people;
-return [msg, data.arrival ?? null, data.lighting_only ?? null, data.blocked ?? null];
+return [msg, data.arrival ?? null, data.lighting_only ?? null, data.blocked ?? null, data.notification ?? null];

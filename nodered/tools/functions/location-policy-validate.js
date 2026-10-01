@@ -1,5 +1,6 @@
 const DEFAULTS = {
     near_home_radius_m: 350,
+    notification_approach_radius_m: 700,
     home_radius_m: 100,
     location_fresh_minutes: 15,
     source_report_fresh_minutes: 75,
@@ -28,6 +29,7 @@ const DEFAULTS = {
 };
 const LIMITS = {
     near_home_radius_m: [50, 1500],
+    notification_approach_radius_m: [350, 1500],
     home_radius_m: [20, 500],
     location_fresh_minutes: [1, 120],
     source_report_fresh_minutes: [5, 1440],
