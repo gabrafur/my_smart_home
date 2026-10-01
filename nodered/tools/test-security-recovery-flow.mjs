@@ -460,7 +460,7 @@ scenario("33 recuperação posterior do Bluelink", () => {
 
 scenario("34 OFF conhecido encerra viagem mesmo antigo", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 1, in_use: true, trip_active: true, last_confirmed_at: NOW - 60_000 } });
-  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ state: "not_home", distance: 10_000, engine: "off", engineAge: 10 * 60_000 }), flow)[0].payload.context;
+  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ state: "not_home", distance: 10_000, engine: "off", engineAge: 10 * 60_000, telemetryAge: 10 * 60_000 }), flow)[0].payload.context;
   assert.equal(result.in_use, false);
   assert.equal(result.in_use_reason, "known_engine_off");
   assert.equal(result.engine_stale, true);
