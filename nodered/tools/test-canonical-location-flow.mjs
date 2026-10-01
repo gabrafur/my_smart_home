@@ -231,6 +231,7 @@ const primaryId = "device_tracker.mobile_primary_source_1";
 const fallbackId = "device_tracker.mobile_primary_source_2";
 
 // Paired snapshots must emit the resident who moved, not just their wakeup source.
+for (const rawZone of ["not_home", "location_update_inner_ring"])
 for (const wakeup of ["resident_primary", "resident_secondary", "refresh"]) {
   for (const arriving of ["resident_primary", "resident_secondary", "both"]) {
     const state = memory();
@@ -238,11 +239,11 @@ for (const wakeup of ["resident_primary", "resident_secondary", "refresh"]) {
     const call = (id, msg) => run(id, msg, state, globals);
     const paired = (primaryDistance, secondaryDistance, ageMs = 0) => {
       const message = input(
-        tracker(primaryId, "not_home", { distanceM: primaryDistance, ageMs }),
+        tracker(primaryId, rawZone, { distanceM: primaryDistance, ageMs }),
         tracker(fallbackId, "unavailable", { coordinates: false }), wakeup,
       );
       message.payload.resident_secondary = tracker("device_tracker.mobile_secondary_source_1",
-        "not_home", { distanceM: secondaryDistance, ageMs });
+        rawZone, { distanceM: secondaryDistance, ageMs });
       message.payload.resident_secondary_icloud = tracker("device_tracker.mobile_secondary_source_2",
         "unavailable", { coordinates: false });
       return message;
@@ -290,6 +291,27 @@ for (const wakeup of ["resident_primary", "resident_secondary", "refresh"]) {
     assert.ok(homes.filter((outputs) => outputs[1]).every((outputs) =>
       outputs[0].payload.confirmed_home_transition === true), "90 s refresh home trigger preserved");
   }
+}
+
+// Inner geofence is an observation source, never arrival authorization by name.
+for (const scenario of ["outbound", "missing_coordinates", "bad_accuracy", "stale"]) {
+  const state = memory();
+  const globals = runtimeGlobal();
+  const call = (id, msg) => run(id, msg, state, globals);
+  const sample = (raw, options) => input(tracker(primaryId, raw, options),
+    tracker(fallbackId, "unavailable", { coordinates: false }), "resident_primary");
+  const startDistance = scenario === "outbound" ? 20 : 800;
+  runPeopleVisualEvents(call, sample(startDistance === 20 ? "home" : "not_home", { distanceM: startDistance }));
+  clock += 60_000;
+  runPeopleVisualEvents(call, sample(startDistance === 20 ? "home" : "not_home", { distanceM: startDistance }));
+  clock += 60_000;
+  const results = runPeopleVisualEvents(call, sample("location_update_inner_ring", {
+    distanceM: 300, coordinates: scenario !== "missing_coordinates",
+    accuracy: scenario === "bad_accuracy" ? 999 : 10,
+    ageMs: scenario === "stale" ? 16 * 60_000 : 0,
+  }));
+  assert.equal(results.filter((outputs) => outputs[1]).length, 0,
+    `inner geofence must not authorize ${scenario}: ${JSON.stringify(results.map(x=>x[1]?.payload).filter(Boolean))}`);
 }
 
 // Cross-resident dispatch still requires fresh evidence and a confirmed trip.

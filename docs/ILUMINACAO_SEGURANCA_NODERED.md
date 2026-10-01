@@ -191,8 +191,18 @@ depois `not_home` como fallback. O checker de bindings rejeita
   salto `home -> not_home -> home` não basta.
 - O estado `near_home` é calculado somente pelo Node-RED quando a fonte
   selecionada cruza o raio configurado ao redor da casa ou do portão. A zona
-  `zone.location_update_ring`, de 1.500 m, apenas acorda o Companion App do iOS;
-  seu nome e seu raio não participam das decisões, painéis ou automações.
+  `zone.location_update_ring`, de 1.500 m, e
+  `zone.location_update_inner_ring`, de 300 m, oferecem gatilhos de atualização
+  ao Companion App do iOS. O anel interno cobre trajetos que permanecem dentro
+  do externo e fica dentro do `near_home` padrão de 350 m. Seus nomes e raios
+  não autorizam efeitos: o Node-RED continua exigindo coordenadas confiáveis,
+  atuais, direção de retorno e ciclo externo. `home` permanece em 100 m e o
+  refletor mantém seu próprio limite de 150 m.
+  Após recarregar as zonas no Home Assistant, abra o Companion App em cada
+  iPhone para sincronizar os geofences. A leitura ao cruzar o anel depende do
+  iOS; testes sintéticos comprovam o consumo do evento, não sua entrega física.
+  Distâncias canônicas ausentes permanecem desconhecidas na normalização;
+  `null`, texto vazio e booleanos não podem virar zero metros e confirmar HOME.
 - Se todas as posições disponíveis ultrapassarem a janela de frescor de 15
   minutos, o tracker canônico publica `unavailable` e não repete como atual o
   último `home` ou `near_home`. O diagnóstico preserva o estado bruto, a fonte

@@ -15,15 +15,19 @@ const timestamp = (entity, attribute, fallback) => {
 };
 const fresh = (value, ttl) => value !== null &&
     value <= Date.now() + futureMs && Date.now() - value <= ttl;
+// Missing canonical distances must remain unknown, never become zero/home.
+const numericObservation = (value) =>
+    value === null || value === undefined || typeof value === "boolean" ||
+    typeof value === "string" && value.trim() === "" ? NaN : Number(value);
 function position(selected, primary, fallback) {
     const attrs = selected?.attributes ?? {};
     const observedAt = timestamp(selected, "location_observed_at", "last_changed");
     const reportedAt = timestamp(selected, "source_reported_at", "last_updated");
-    const latitude = Number(attrs.latitude);
-    const longitude = Number(attrs.longitude);
-    const accuracy = Number(attrs.gps_accuracy);
-    const distanceHome = Number(attrs.canonical_distance_home_m);
-    const distanceGate = Number(attrs.canonical_distance_gate_m);
+    const latitude = numericObservation(attrs.latitude);
+    const longitude = numericObservation(attrs.longitude);
+    const accuracy = numericObservation(attrs.gps_accuracy);
+    const distanceHome = numericObservation(attrs.canonical_distance_home_m);
+    const distanceGate = numericObservation(attrs.canonical_distance_gate_m);
     const state = selected?.state;
     const ready = validState(state) && fresh(observedAt, locationFreshMs);
     const home = Number.isFinite(distanceHome)

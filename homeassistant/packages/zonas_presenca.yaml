@@ -1,31 +1,15 @@
-# Zonas de presenca
+# Geofences de transporte para atualizacoes do Companion App.
+# O anel externo (1500 m) oferece um gatilho nos trajetos longos; o interno
+# (300 m) oferece outro nos trajetos que permanecem dentro do anel externo.
+# Sao zonas ativas para monitoramento de entrada/saida, sem efeito residencial
+# direto. A entrega e a precisao da observacao continuam dependentes do iOS.
 #
-# zone.location_update_ring: geofence de transporte usado apenas para acordar
-# o Companion App no iOS. Ele nao define o estado canônico near_home e nenhum
-# painel ou automacao deve consumir diretamente este nome de zona.
-#
-# Por que isto existe (ver docs/ILUMINACAO_SEGURANCA_NODERED.md):
-# o app Companion registra cada zona nao-passiva do HA como um geofence de
-# region monitoring do iOS. Enquanto so existia a zone.home (raio 100 m), o
-# iOS era instruido a avisar sobre um unico limite e nao reportava NADA no
-# caminho - por projeto, e assim que ele economiza bateria. Medido no
-# recorder: 0 leituras na faixa de 100-300 m em 2 dias, nos tres trackers.
-# Nao era GPS ruim; era ausencia de zona. Com este anel, o proprio iOS avisa
-# na hora da travessia, mesmo com o app suspenso ou encerrado.
-#
-# O raio fixo de 1500 m nao participa de uma decisao residencial. Os raios
-# home, near_home e refresh rapido sao calculados exclusivamente no tab
-# localizacao_pessoas do Node-RED e podem ser ajustados em blocos numericos.
-# Manter este anel maior que near_home melhora a chance de receber coordenadas
-# antes da borda canônica. Por isso o bloco near_home limita ajustes a 1500 m;
-# o refresh adaptativo do Node-RED continua sendo a fonte complementar.
-#
-# passive: false e obrigatorio - zona passiva NAO e usada para geofence nem
-# entra no estado dos device_tracker/person.
-#
-# Efeito colateral esperado: fontes brutas podem reportar
-# "location_update_ring". O Node-RED converte isso para home, near_home ou
-# not_home antes de publicar os trackers canônicos.
+# O anel interno fica dentro do near_home padrao de 350 m e fora do home de
+# 100 m. Seus raios nao sao parametros de decisao: localizacao_pessoas no
+# Node-RED continua classificando coordenadas frescas, direcao e ciclo externo.
+# Um nome bruto de zona, sozinho, nunca comprova aproximacao ou chegada.
+# As fontes podem publicar qualquer um destes nomes; consumidores usam somente
+# os trackers canonicos. Ver docs/ILUMINACAO_SEGURANCA_NODERED.md.
 
 zone:
   - name: location_update_ring
@@ -33,4 +17,10 @@ zone:
     longitude: !secret home_longitude
     radius: 1500
     icon: mdi:car-arrow-right
+    passive: false
+  - name: location_update_inner_ring
+    latitude: !secret home_latitude
+    longitude: !secret home_longitude
+    radius: 300
+    icon: mdi:map-marker-radius
     passive: false

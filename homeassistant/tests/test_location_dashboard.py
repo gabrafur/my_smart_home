@@ -106,6 +106,18 @@ class LocationDashboardTest(unittest.TestCase):
         self.assertIn("radius: 1500", zones)
         self.assertNotIn("name: near_home", zones)
 
+    def test_inner_wake_zone_preserves_external_zone_and_private_coordinates(self):
+        zones = PRESENCE_ZONES.read_text(encoding="utf-8")
+        blocks = zones.split("  - name: ")[1:]
+        by_name = {block.splitlines()[0]: block for block in blocks}
+        self.assertEqual(set(by_name), {"location_update_ring", "location_update_inner_ring"})
+        for name, radius in [("location_update_ring", 1500), ("location_update_inner_ring", 300)]:
+            block = by_name[name]
+            self.assertIn(f"    radius: {radius}\n", block)
+            self.assertIn("    passive: false", block)
+            self.assertIn("latitude: !secret home_latitude", block)
+            self.assertIn("longitude: !secret home_longitude", block)
+
 
 if __name__ == "__main__":
     unittest.main()
