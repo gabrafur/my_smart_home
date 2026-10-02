@@ -120,8 +120,20 @@ const pendingResidentApproach = [
 // arrival event and cannot authorize the security light.
 const vehicleApproaching = vehicleContext.near_home === true &&
     vehicleContext.location?.ready === true;
+// A nearby stop can be outside near_home. Keep obtaining engine evidence
+// before the return; this radius changes polling, never effect authorization.
+const pollingRadius = Number(locationPolicy.people_approach_radius_m);
+const nearbyResident = ["resident_primary", "resident_secondary"].some((role) => {
+    const distance = msg.payload?.[role + "_distance_m"] ?? peopleContext[role]?.distance_m;
+    const observed = Number(msg.payload?.[role + "_updated_at"] ?? peopleContext[role]?.updated_at);
+    const ready = msg.payload?.[role + "_ready"] ?? peopleContext[role]?.ready;
+    return ready === true && typeof distance === "number" && Number.isFinite(distance) &&
+        distance > Number(locationPolicy.home_radius_m) && distance <= pollingRadius &&
+        observed > 0 && observed <= now + futureMs &&
+        now - observed <= Number(locationPolicy.location_fresh_minutes) * 60000;
+});
 const anyoneApproaching = !bothResidentsHome &&
-    (residentApproaching || pendingResidentApproach || vehicleApproaching);
+    (residentApproaching || pendingResidentApproach || vehicleApproaching || nearbyResident);
 const knownEngineOff = vehicleContext.engine_state_valid === true &&
     vehicleContext.engine_on === false;
 const arrivalRestartPending = anyoneApproaching && (knownEngineOff ||
@@ -158,6 +170,7 @@ msg.payload.refresh_both_residents_home = bothResidentsHome;
 msg.payload.refresh_anyone_approaching = anyoneApproaching;
 msg.payload.refresh_proximity_source = residentApproaching ? "resident_current"
     : pendingResidentApproach ? "resident_return_pending"
+    : nearbyResident ? "resident_nearby_stop"
     : vehicleApproaching ? "vehicle_current" : null;
 msg.payload.refresh_arrival_restart_pending = arrivalRestartPending;
 msg.payload.refresh_anyone_away = anyoneAway;

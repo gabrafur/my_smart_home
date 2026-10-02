@@ -105,7 +105,7 @@ const policy = {
   future_tolerance_ms: 60000,
   service_retry_seconds: 60,
   home_confirmation_seconds: 90,
-  home_confirmation_window_seconds: 300,
+  home_confirmation_window_seconds: 600,
   home_confirmation_recheck_seconds: 30,
 };
 
@@ -125,7 +125,7 @@ for (const [id, name, topic, value, x, y] of [
   ["resident_notifications_policy_future", "Tolerância futura — padrão 60 s [0..300]", "future_tolerance_ms", policy.future_tolerance_ms, 250, 270],
   ["resident_notifications_policy_retry", "Retry do serviço — padrão 60 s [10..600]", "service_retry_seconds", policy.service_retry_seconds, 250, 330],
   ["resident_notifications_policy_home_stable", "HOME contínuo — padrão 90 s [30..300]", "home_confirmation_seconds", policy.home_confirmation_seconds, 570, 160],
-  ["resident_notifications_policy_home_window", "Janela de confirmação — padrão 300 s [90..900]", "home_confirmation_window_seconds", policy.home_confirmation_window_seconds, 570, 240],
+  ["resident_notifications_policy_home_window", "Janela de confirmação — padrão 600 s [90..900]", "home_confirmation_window_seconds", policy.home_confirmation_window_seconds, 570, 240],
   ["resident_notifications_policy_home_recheck", "Rechecagem — padrão 30 s [10..60]", "home_confirmation_recheck_seconds", policy.home_confirmation_recheck_seconds, 570, 320],
 ]) inject(id, groups.config, name, [{ p: "payload", v: String(value), vt: "num" }, { p: "topic", v: topic, vt: "str" }], x === 250 ? 200 : 500, y, [["resident_notifications_policy_join"]], { once: true, onceDelay: "1", w: 200 });
 grouped(groups.config, {
@@ -193,10 +193,10 @@ terminal("resident_notifications_future_terminal", groups.state, "Descartar even
 sw("resident_notifications_stale_switch", groups.state, "Evento excede idade máxima?", "$millis() - event_at > policy.max_event_age_ms", "jsonata", [{ t: "true" }, { t: "else" }], 8170, 240, [["resident_notifications_stale_terminal"], ["resident_notifications_state_migrate"]]);
 terminal("resident_notifications_stale_terminal", groups.state, "Descartar evento antigo", { fill: "yellow", shape: "ring", text: "evento antigo descartado" }, 8440, 110);
 fn("resident_notifications_state_migrate", groups.state, "Migrar recibos para estado por destinatário", "resident-notifications-state-migrate.js", 1, 8210, 330, [["resident_notifications_state_read"]], { w: 160 });
-fn("resident_notifications_state_read", groups.state, "Ler recibo e reserva do destinatário", "resident-notifications-state-read.js", 1, 8470, 330, [["resident_notifications_duplicate_switch"]], { w: 160 });
+fn("resident_notifications_state_read", groups.state, "Ler e reservar entrega atomicamente", "resident-notifications-state-read.js", 1, 8470, 330, [["resident_notifications_duplicate_switch"]], { w: 160 });
 sw("resident_notifications_duplicate_switch", groups.state, "Entrega já ocorreu ou está reservada?", "notification_duplicate", "msg", [{ t: "true" }, { t: "else" }], 8730, 330, [["resident_notifications_duplicate_terminal"], ["resident_notifications_state_write"]], { w: 160 });
 terminal("resident_notifications_duplicate_terminal", groups.state, "Duplicata descartada", { fill: "grey", shape: "ring", text: "entrega duplicada" }, 8740, 150);
-fn("resident_notifications_state_write", groups.state, "Reservar entrega antes do efeito", "resident-notifications-state-write.js", 1, 8990, 410, [["resident_notifications_delivery_out"]], { w: 160 });
+fn("resident_notifications_state_write", groups.state, "Consumir reserva uma única vez", "resident-notifications-state-write.js", 1, 8990, 410, [["resident_notifications_delivery_out"]], { w: 160 });
 linkOut("resident_notifications_delivery_out", groups.state, "Entrega reservada → gate final", "resident_notifications_delivery_in", 9100, 470);
 
 linkIn("resident_notifications_delivery_in", groups.output, "Receber entrega reservada", "resident_notifications_delivery_out", "resident_notifications_message_build", 9250, 240);

@@ -262,11 +262,25 @@ for (const [id, x, y] of [["77f539388438547c", 2460, 1560],
 }
 const arrivalReplayOut = required("light_arrival_replay_route_out_v1");
 const residentNotificationIn = required("resident_notifications_canonical_in_v1");
+// Lighting replays are retries of an existing arrival, not new notices.
+const localNotice = group("security_visual_local_notice_group",
+  "Aviso do retorno local — replays comuns seguem somente para iluminação",
+  64, 3600, 1250, 180, "#2563eb", "#dbeafe");
+linkIn("security_visual_local_notice_in", localNotice.id, "Receber replay para classificar",
+  [arrivalReplayOut.id], "security_visual_local_notice_gate", 120, 3670);
+const localNoticeGate = sw("security_visual_local_notice_gate", localNotice.id, "É retorno local confirmado?",
+  'payload.arrival_stage = "local_return" and payload.local_excursion_return = true',
+  430, 3670, [["security_visual_local_notice_out"], []]);
+localNoticeGate.propertyType = "jsonata";
+linkOut("security_visual_local_notice_out", localNotice.id,
+  "Retorno local → avisar outro morador", residentNotificationIn.id, 780, 3670);
 arrivalReplayOut.links = Array.from(new Set([
-  ...(arrivalReplayOut.links ?? []), residentNotificationIn.id,
+  ...(arrivalReplayOut.links ?? []).filter(id => id !== residentNotificationIn.id),
+  "security_visual_local_notice_in",
 ]));
 residentNotificationIn.links = Array.from(new Set([
-  ...(residentNotificationIn.links ?? []), arrivalReplayOut.id,
+  ...(residentNotificationIn.links ?? []).filter(id => id !== arrivalReplayOut.id),
+  "security_visual_local_notice_out",
 ]));
 linkOut("security_visual_people_refresh_out", decision.id,
   "Atualizar iPhone da chegada", "people_visual_arrival_refresh_in", 2460, 1740);

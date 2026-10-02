@@ -1,11 +1,10 @@
 const pending = msg.context_pending;
 const people = msg.context_people;
-const vehicle = msg.context_vehicle;
-const testMode = msg._location_test === true;
+const test = msg._location_test === true;
 msg.payload = {
     contract: "security.refresh-command.v1", kind: "refresh_command",
     refresh_cycle_id: pending.cycle,
-    anyone_away: people.anyone_away === true || vehicle.away === true,
+    anyone_away: people.anyone_away === true || msg.context_vehicle.away === true,
     any_resident_away: people.anyone_away === true,
     people_arrival_armed: { ...(people.arrival_armed ?? {}) },
     people_local_excursions: { ...(people.local_excursions ?? {}) },
@@ -21,18 +20,19 @@ msg.payload = {
     arrival_stage: pending.arrival_stage ?? null,
     recovery_reason: msg.context_recovery_reason,
     origin: "contexto_chegadas",
-    reason: pending.request_reason || (testMode
+    reason: pending.request_reason || (test
         ? (msg.context_recovery_needed ? "test_readiness_recovery_needed" : "paired_ready_test_snapshots")
         : (msg.context_recovery_needed ? msg.context_recovery_reason : "paired_ready_snapshots")),
     issued_at: msg.context_now,
     ready: msg.context_contexts_ready,
     rejected_snapshot_reason: msg.context_rejected_reason || null,
-    ...(testMode ? { test_mode: true, test_case: msg._location_test_case } : {})
+    ...(test ? { test_mode: true, test_case: msg._location_test_case } : {})
 };
 for (const role of ["resident_primary", "resident_secondary"]) {
-    const resident = people[role] ?? {};
-    msg.payload[role + "_state"] = resident.state ?? null;
-    msg.payload[role + "_ready"] = resident.ready === true;
-    msg.payload[role + "_updated_at"] = resident.updated_at ?? null;
+    const item = people[role] ?? {};
+    msg.payload[role + "_state"] = item.state ?? null;
+    msg.payload[role + "_ready"] = item.ready === true;
+    msg.payload[role + "_updated_at"] = item.updated_at ?? null;
+    msg.payload[role + "_distance_m"] = item.distance_m ?? null;
 }
 return msg;

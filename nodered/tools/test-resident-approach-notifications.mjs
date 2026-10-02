@@ -85,7 +85,7 @@ const policyControls = [
   ["resident_notifications_policy_future", "future_tolerance_ms", "60000"],
   ["resident_notifications_policy_retry", "service_retry_seconds", "60"],
   ["resident_notifications_policy_home_stable", "home_confirmation_seconds", "90"],
-  ["resident_notifications_policy_home_window", "home_confirmation_window_seconds", "300"],
+  ["resident_notifications_policy_home_window", "home_confirmation_window_seconds", "600"],
   ["resident_notifications_policy_home_recheck", "home_confirmation_recheck_seconds", "30"],
 ];
 assert.match(byId.get("resident_notifications_config_group")?.name ?? "", /PARÂMETROS AJUSTÁVEIS/);
@@ -102,8 +102,10 @@ const peopleFinalizer = byId.get("554cb653b2fa4504");
 const peopleClassifier = byId.get("people_location_classify_near_home_v1");
 assert.ok(peopleOut.links.includes(canonicalIn.id));
 assert.ok(canonicalIn.links.includes(peopleOut.id));
-assert.ok(canonicalIn.links.includes("light_arrival_replay_route_out_v1"));
-assert.ok(byId.get("light_arrival_replay_route_out_v1").links.includes(canonicalIn.id));
+assert.ok(!canonicalIn.links.includes("light_arrival_replay_route_out_v1"));
+assert.ok(canonicalIn.links.includes("security_visual_local_notice_out"));
+assert.ok(!byId.get("light_arrival_replay_route_out_v1").links.includes(canonicalIn.id));
+assert.ok(byId.get("light_arrival_replay_route_out_v1").links.includes("security_visual_local_notice_in"));
 assert.ok(canonicalIn.links.includes("resident_notifications_test_event_out"));
 assert.ok(byId.get("resident_notifications_test_event_out").links.includes(canonicalIn.id));
 assert.deepEqual(byId.get("resident_notifications_event_in").links, ["resident_notifications_canonical_out"]);
@@ -151,7 +153,7 @@ const defaults = {
   future_tolerance_ms: 60000,
   service_retry_seconds: 60,
   home_confirmation_seconds: 90,
-  home_confirmation_window_seconds: 300,
+  home_confirmation_window_seconds: 600,
   home_confirmation_recheck_seconds: 30,
 };
 let message = validatePolicy({ payload: defaults }, flow, mock, {});
@@ -388,13 +390,14 @@ function confirmationCase({
 
 const confirmationBacktest = [
   ["HOME fresco por 90 s", {}, "confirmed"],
-  ["HOME fresco no limite de 300 s", { checkedAfter: 300_000, stableFor: 90_000 }, "confirmed"],
-  ["HOME somente após expirar a janela", { checkedAfter: 301_000, stableFor: 90_000 }, "rejected"],
+  ["HOME fresco no limite de 600 s", { checkedAfter: 600_000, stableFor: 90_000 }, "confirmed"],
+  ["HOME somente após expirar a janela", { checkedAfter: 601_000, stableFor: 90_000 }, "rejected"],
+  ["HOME estabilizado após oscilação de quatro minutos", { checkedAfter: 330_000, stableFor: 90_000 }, "confirmed"],
   ["HOME sem frescor", { fresh: false }, "retry"],
   ["HOME com observação anterior ao evento", { observedAfter: -1 }, "retry"],
   ["near_home durante a janela", { state: "near_home", stableFor: 0 }, "retry"],
   ["unavailable durante a janela", { state: "unavailable", stableFor: 0 }, "retry"],
-  ["unknown depois da janela", { state: "unknown", checkedAfter: 301_000, stableFor: 0 }, "rejected"],
+  ["unknown depois da janela", { state: "unknown", checkedAfter: 601_000, stableFor: 0 }, "rejected"],
   ["retorno explícito a not_home", { state: "not_home", checkedAfter: 10_000, stableFor: 0 }, "rejected"],
   ["evento além da tolerância futura", { eventOffset: 60_001, checkedAfter: 0, stableFor: 90_000, observedAfter: 60_001 }, "rejected"],
   ["evento mais velho que a idade máxima", { eventOffset: -900_001, checkedAfter: 0, stableFor: 90_000, observedAfter: 0 }, "rejected"],
@@ -524,7 +527,9 @@ assert.equal((byId.get("resident_notifications_dry_run_terminal").wires ?? []).f
 assert.deepEqual(byId.get("resident_notifications_delivery_catch").scope.sort(), ["resident_notifications_notify_primary__hub_call", "resident_notifications_notify_secondary__hub_call"].sort());
 assert.deepEqual(byId.get("resident_notifications_delivery_ack").wires, []);
 
-const maxFunctionSize = Math.max(...tabNodes.filter((node) => node.type === "function").map((node) => node.func.length));
+// The atomic reservation must read/check/write in one function to prevent races.
+assert.ok(byId.get("resident_notifications_state_read").func.length < 2600);
+const maxFunctionSize = Math.max(...tabNodes.filter((node) => node.type === "function" && node.id !== "resident_notifications_state_read").map((node) => node.func.length));
 assert.ok(maxFunctionSize < 1500, `JavaScript residual grande: ${maxFunctionSize}`);
 
 // The same canonical journey must not notify again at 350 m, even after TTL.
@@ -541,6 +546,74 @@ for (const role of ["resident_primary", "resident_secondary"]) {
   assert.equal(prepare("trip1").notification_duplicate, true);
   assert.equal(prepare("trip2").notification_duplicate, false);
   assert.equal(isolated.get("resident_notification_delivery_v4", "persistent"), undefined);
+}
+
+// Recorder incident shape: canonical HOME plus lighting retries; one delivery.
+{
+  const isolated = context();
+  const prepare = (overrides = {}) => recipient(normalize(arrival("resident_secondary", "home", 0, true,
+    overrides), isolated, mock, {}), "resident_primary");
+  const one = readState(prepare({ notification_cycle_id: "resident_secondary:trip-a" }), isolated, mock, {});
+  const concurrent = readState(prepare({ notification_cycle_id: "resident_secondary:trip-a" }), isolated, mock, {});
+  assert.equal(one.notification_duplicate, false);
+  assert.equal(concurrent.notification_duplicate, true, "reserve before another branch can read");
+  assert(reserve(one, isolated, mock, {}));
+  assert.equal(reserve(structuredClone(one), isolated, mock, {}), null, "same message dispatches once");
+  dryRun(one, isolated, mock, {});
+  assert.equal(readState(prepare(), isolated, mock, {}).notification_duplicate, true,
+    "legacy retry of accepted HOME cannot overwrite the cycle receipt");
+  assert.equal(readState(prepare({ notification_cycle_id: "resident_secondary:trip-b" }), isolated, mock, {}).notification_duplicate, false,
+    "a genuinely new short trip is not swallowed by the old HOME cooldown");
+  assert.equal(isolated.get("resident_notification_delivery_v4", "persistent"), undefined);
+}
+// Repeated interleavings, restarts and delayed service callbacks stay isolated.
+for (const testMode of [false, true]) for (const role of ["resident_primary", "resident_secondary"]) {
+  const target = role === "resident_primary" ? "resident_secondary" : "resident_primary";
+  for (let repeat = 0; repeat < 6; repeat++) {
+    let isolated = context();
+    const prepare = (cycle) => recipient(normalize(arrival(role, "home", repeat + ({ a: 0, b: 1000, c: 2000 })[cycle], testMode,
+      { notification_cycle_id: role + ":trip-" + cycle }), isolated, mock, {}), target);
+    const first = readState(prepare("a"), isolated, mock, {});
+    assert(reserve(first, isolated, mock, {}));
+    const second = readState(prepare("b"), isolated, mock, {});
+    assert.equal(second.notification_duplicate, false);
+    assert.equal(readState(prepare("a"), isolated, mock, {}).notification_duplicate, true,
+      "an old retry cannot replace a newer pending journey");
+    const key = first.notification_state_key;
+    const store = testMode ? undefined : "persistent";
+    // Rebuild the runtime with only the matching saved context.
+    const saved = structuredClone(isolated.get(key, store));
+    isolated = context({ [testMode ? "default" : "persistent"]: { [key]: saved } });
+    const accept = testMode ? dryRun : acknowledge;
+    const callbacks = [
+      () => accept(first, isolated, mock, {}),
+      () => assert.equal(failDelivery(first, isolated, mock, {}).notification_retry_allowed, false),
+      () => assert(Array.from({ length: 5 }, () => readState(prepare("b"), isolated, mock, {}))
+        .every(item => item.notification_duplicate))
+    ];
+    for (const index of [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]][repeat]) callbacks[index]();
+    assert.equal(isolated.get(key, store).deliveries[role + ":" + target].pending_token,
+      second.notification_reservation, "late callbacks preserve the newer pending trip");
+    assert(reserve(second, isolated, mock, {}));
+    assert.equal(reserve(structuredClone(second), isolated, mock, {}), null);
+    accept(second, isolated, mock, {});
+    assert.equal(readState(prepare("a"), isolated, mock, {}).notification_duplicate, true,
+      "a delayed retry cannot revive an older journey after a newer delivery");
+    assert.equal(readState(prepare("b"), isolated, mock, {}).notification_duplicate, true);
+    assert.equal(readState(prepare("c"), isolated, mock, {}).notification_duplicate, false);
+  }
+}
+// Canonical routing rejects ordinary lighting replays before the notifier.
+{
+  const { createRequire } = await import("node:module");
+  const jsonata = createRequire(import.meta.url)("jsonata");
+  const gate = byId.get("security_visual_local_notice_gate");
+  assert.equal(gate.propertyType, "jsonata");
+  for (const stage of ["home", "approach", "local_return"]) {
+    const allowed = await jsonata(gate.property).evaluate({ payload: {
+      arrival_stage: stage, local_excursion_return: stage === "local_return" } });
+    assert.equal(allowed, stage === "local_return");
+  }
 }
 
 Date.now = originalNow;

@@ -64,7 +64,7 @@ const code = {
 };
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  near_home_radius_m: 350, location_fresh_minutes: 15,
+  near_home_radius_m: 350, people_approach_radius_m: 1500, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
@@ -2410,9 +2410,6 @@ scenario("49 confirmação de chegada atravessa a pausa da madrugada", () => {
   assert.equal(ordinary, null, "sem o gate visual explícito a pausa deve permanecer");
 });
 
-console.log(
-  `vehicle_primary refresh scheduler: ${passed.length} cenários aprovados.`,
-);
 
 scenario("HA disconnect preserves vehicle evidence and never enables bypass", () => {
   const baseline = { request_in_flight: true, in_flight_until: DAY + 90000,
@@ -2433,3 +2430,41 @@ scenario("HA disconnect preserves vehicle evidence and never enables bypass", ()
     if (test) assert.deepEqual(store.get(KEY), baseline, "dry-run must not alter production");
   }
 });
+
+scenario("nearby stop outside near_home keeps engine polling active", () => {
+  const policy = { version: 1, complete: true, arrival_armed_interval_minutes: 1,
+    approaching_interval_minutes: 5, away_interval_minutes: 15, home_interval_minutes: 30,
+    quiet_start_hour: 0, quiet_end_hour: 6, in_flight_lease_seconds: 120,
+    cache_probe_settle_seconds: 15, provider_backoff_max_hours: 6,
+    semantic_evidence_window_minutes: 20, unknown_location_start_hour: 7, unknown_location_end_hour: 22 };
+  for (const role of ["resident_primary", "resident_secondary"])
+  for (const sample of [
+    { distance: 500, age: 0, ready: true, on: false, expected: true },
+    { distance: 500, age: 0, ready: true, on: true, expected: true },
+    { distance: 1501, age: 0, ready: true, on: false, expected: false },
+    { distance: null, age: 0, ready: true, on: false, expected: false },
+    { distance: 500, age: 16 * 60000, ready: true, on: false, expected: false },
+    { distance: 500, age: 0, ready: false, on: false, expected: false },
+  ]) {
+    const store = memory({ [POLICY_KEY]: policy, vehicle_primary_context_v1: {
+      ...readyContext(DAY), engine_state_valid: true, engine_on: sample.on } });
+    const selected = execute(code.policy, { now: DAY, store, msg: { payload: {
+      kind: "refresh_command", resident_primary_state: "home", resident_secondary_state: "home",
+      resident_primary_ready: true, resident_secondary_ready: true,
+      [role + "_state"]: "not_home", [role + "_ready"]: sample.ready,
+      [role + "_distance_m"]: sample.distance, [role + "_updated_at"]: DAY - sample.age,
+      vehicle_primary_ready: true,
+    } } }).find(Boolean);
+    assert.equal(selected.payload.refresh_anyone_approaching, sample.expected);
+    assert.equal(selected.payload.refresh_arrival_restart_pending, sample.expected && !sample.on);
+    if (sample.expected) {
+      assert.equal(selected.payload.refresh_proximity_source, "resident_nearby_stop");
+      runVisualCoordinator(selected, store, DAY);
+      assert.equal(store.get(KEY).interval_ms, (sample.on ? 5 : 1) * 60000,
+        "the published coordinator must consume the selected fast interval");
+    }
+    assert.equal(selected.payload.kind, "refresh_command", "polling is not an arrival or light authorization");
+  }
+});
+
+console.log(`vehicle_primary refresh scheduler: ${passed.length} cenários aprovados.`);

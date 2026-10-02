@@ -57,7 +57,7 @@ function wireNames(alias, output = 0) {
 const passed = [];
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  near_home_radius_m: 350, location_fresh_minutes: 15,
+  near_home_radius_m: 350, notification_approach_radius_m: 700, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
@@ -1439,6 +1439,18 @@ scenario("33e retorno local exige OFF e novo ON antes de acender", () => {
   assert(returnOn, "novo ON após a parada deve reconhecer a volta do passeio local");
   assert.equal(returnOn.payload.arrival_stage, "local_return");
   assert.equal(returnOn.payload.local_excursion_return, true);
+  assert.equal(returnOn.payload.notification_cycle_id, "resident_secondary:" + excursion.started_at);
+  assert.equal(returnOn.payload.notification_cycle_id,
+    peopleFlow.get("people_notification_cycles_v1", "persistent").residents.resident_secondary.id,
+    "local return and the canonical people journey share their notification identity");
+  const laterOn = run("light_merge_context", { payload: {
+    kind: "vehicle_primary_context", event: "context_snapshot", updated_at: returnOnAt + 1000,
+    context: { ...initialVehicle, in_use: true, engine_on: true,
+      engine_updated_at: returnOnAt + 1000, updated_at: returnOnAt + 1000 }
+  } }, lightFlow, geoEnv)[2];
+  assert(laterOn, "a local replay remains possible until the light consumes it");
+  assert.equal(laterOn.payload.notification_cycle_id, returnOn.payload.notification_cycle_id,
+    "new engine observations cannot create another notification for the same local trip");
   const prepared = run("light_prepare_arrival", returnOn, lightFlow, geoEnv)[0];
   assert(prepared, "retorno local deve atravessar a decisão de iluminação");
   assert(run("light_check_vehicle_primary_in_use", prepared, lightFlow, geoEnv));

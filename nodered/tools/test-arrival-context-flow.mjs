@@ -26,7 +26,8 @@ function context(initial = {}) {
   };
 }
 const nodeMock = { status() {}, warn() {}, error(error) { throw new Error(String(error)); } };
-const globalMock = { get() { return undefined; } };
+const globalMock = { get(key) { return key === "location_policy_v1"
+  ? { future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5 } : undefined; } };
 const call = (fn, msg, flow) => fn(msg, flow, nodeMock, globalMock);
 
 assert.equal(byId.get(TAB)?.label, "contexto_chegadas");
@@ -295,13 +296,33 @@ const offFlow = context({
     } } },
   default: {
     people_context_v1: { resident_primary: { ready: true, stale: false, current_home: true } },
-    vehicle_primary_context_v1: { updated_at: now + 30_000, engine_state_valid: true,
+    vehicle_primary_context_v1: { updated_at: now + 30_000, telemetry_updated_at: now + 30_000, engine_state_valid: true,
       engine_on: false, refresh: {} },
   },
 });
-dueMsg = call(homeRefreshDueRead, { payload: { kind: "home_confirmation_tick" } }, offFlow);
+dueMsg = call(homeRefreshDueRead, { monitor_now: now + 95_000, payload: { kind: "home_confirmation_tick" } }, offFlow);
 assert.equal(dueMsg.home_refresh_due.explicit_engine_off, true,
   "OFF confirmado após HOME cancela a consulta desnecessária");
+
+// A fresh cache envelope cannot make pre-arrival OFF into post-arrival proof.
+for (const proof of [
+  { telemetry_updated_at: now - 600_000, engine_updated_at: now + 30_000 },
+  { telemetry_updated_at: now - 10_000 },
+  { telemetry_updated_at: now + 600_000 },
+  { telemetry_updated_at: now + 30_000, engine_communication_failed: true },
+  {},
+]) {
+  offFlow.set("vehicle_primary_context_v1", { updated_at: now + 95_000,
+    engine_state_valid: true, engine_on: false, ...proof });
+  const message = call(homeRefreshDueRead, { monitor_now: now + 95_000,
+    policy: { version: 1, ...defaults }, payload: { kind: "home_confirmation_tick" } }, offFlow);
+  assert.equal(message.home_refresh_due.explicit_engine_off, false);
+  assert.equal(message.home_refresh_due.engine_allows, true,
+    "unknown/old OFF still requires the independent HOME confirmation");
+  assert.equal(message.home_refresh_due.due, true);
+  const built = call(homeRefreshBuild, message, offFlow);
+  assert.equal(built.payload.resident_arrival_force, true);
+}
 
 const independentFlow = context({
   persistent: { arrival_context_policy_v1: { version: 1, ...defaults } },

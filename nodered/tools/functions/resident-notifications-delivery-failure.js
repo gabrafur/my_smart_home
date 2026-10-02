@@ -4,7 +4,9 @@ const stored = testMode
     : flow.get(msg.notification_state_key, "persistent");
 const delivery = stored?.version === 4 ? stored : msg.notification_delivery_state;
 const recipient = delivery?.deliveries?.[msg.notification_delivery_id] || msg.notification_recipient_state;
-if (delivery?.version === 4 && recipient?.pending_key === msg.notification_key) {
+const ownsReservation = delivery?.version === 4 && recipient?.pending_key === msg.notification_key &&
+    recipient?.pending_token === msg.notification_reservation;
+if (ownsReservation) {
     recipient.pending_key = null;
     recipient.pending_at = 0;
     delivery.deliveries[msg.notification_delivery_id] = recipient;
@@ -15,7 +17,7 @@ if (delivery?.version === 4 && recipient?.pending_key === msg.notification_key) 
 
 msg.notification_retry_count = Number(msg.notification_retry_count ?? 0) + 1;
 msg.delay = msg.policy.service_retry_seconds * 1000;
-msg.notification_retry_allowed = msg.notification_retry_count <= 2;
+msg.notification_retry_allowed = ownsReservation && msg.notification_retry_count <= 2;
 node.status({
     fill: msg.notification_retry_allowed ? "yellow" : "red",
     shape: "ring",

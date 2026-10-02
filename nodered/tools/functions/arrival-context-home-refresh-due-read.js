@@ -27,4 +27,11 @@ msg.home_refresh_due_base = {
     people: flow.get(testMode ? "people_context_v1__test" : "people_context_v1") ?? {},
     vehicle: flow.get(testMode ? "vehicle_primary_context_v1__test" : "vehicle_primary_context_v1") ?? {}
 };
+const base = msg.home_refresh_due_base;
+const policy = global.get("location_policy_v1", "persistent") ?? {};
+base.engine_at = Number(base.vehicle.telemetry_updated_at ?? base.vehicle.engine_updated_at);
+base.engine_fresh = base.engine_at > 0 &&
+    base.engine_at <= base.now + Number(policy.future_tolerance_seconds) * 1000 &&
+    base.now - base.engine_at <= Number(policy.vehicle_signal_fresh_minutes) * 60000 &&
+    base.vehicle.engine_communication_failed !== true;
 return msg;

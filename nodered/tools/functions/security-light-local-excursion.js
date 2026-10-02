@@ -142,6 +142,7 @@ if (!data.engine_on_arrival && engineOnAfterStop) {
                 external_cycle_confirmed: false,
                 local_excursion_return: true,
                 local_excursion_started_at: candidate.excursion.started_at,
+                notification_cycle_id: candidate.source + ":" + candidate.excursion.started_at,
                 arrival_resident_snapshot: { ...candidate.resident },
                 event_at: engineObservedAt,
                 arrival_replayed_after_engine_on: true

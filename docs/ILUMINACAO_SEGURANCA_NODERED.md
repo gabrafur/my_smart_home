@@ -288,16 +288,25 @@ a iluminação, que conserva 350 m do portão e os gates de noite e motor ON atu
 
 Se o GPS pular os 700 m, a chegada canônica em 350 m continua como fallback.
 A mesma identidade persistente de viagem deduplica 700/350 m mesmo depois de
-10 minutos e após restart. Uma nova saída após HOME cria outra identidade.
+10 minutos e após restart. A consulta do recibo e a reserva de entrega ocorrem
+na mesma operação síncrona. O gate final consome cada reserva uma vez, inclusive
+quando a mesma mensagem percorre caminhos concorrentes. Respostas e falhas
+atrasadas do serviço não substituem uma reserva de viagem mais recente. Uma
+tentativa com evento anterior à viagem pendente ou aceita é descartada. Um HOME legado após
+HOME aceito também é deduplicado; uma nova identidade canônica de viagem mantém
+a autorização de uma nova chegada curta. Uma nova saída após HOME cria outra identidade.
 Um salto direto para HOME mantém a confirmação de permanência por 90 s antes de
-“chegou”; não fabrica uma aproximação anterior. A passagem na saída não avisa.
+“chegou”. A janela de confirmação é de 10 min, com rechecagem a cada 30 s,
+para tolerar oscilação HOME/near_home sem reduzir os 90 s contínuos exigidos. A passagem na saída não avisa.
 
 O retorno local `home -> near_home -> home` continua independente dos 700 m:
 exige ON na saída, OFF posterior na parada e novo ON, dentro do ciclo de 90 min,
 com posição atual. Esses sinais usam a observação da telemetria do provedor,
 ou o timestamp do motor quando o provedor não o fornece. Se uma parada rápida
 não produzir OFF observado, a volta local não fica comprovada. O evento
-`local_return` também alimenta o aviso ao outro residente.
+`local_return` também alimenta o aviso ao outro residente, com a mesma identidade estável de viagem usada pelo produtor de pessoas. Replays de iluminação nos estágios `home` e `approach` não
+entram no consumidor de notificações: são novas tentativas do efeito físico da
+mesma chegada, e não outro aviso.
 
 Teste manual sem efeitos: no grupo `3c` de `localizacao_pessoas`, execute RESET,
 800 m, aguarde 60 s, 900 m (saída: sem aviso), 650 m (retorno: aviso simulado),
@@ -961,3 +970,20 @@ Isso aumenta as oportunidades de receber posição antes da chegada. Não produz
 um aviso antecipado sem observação: saltos diretos para HOME seguem a mensagem
 de chegada confirmada. Os avisos são independentes do meio de transporte, e
 a aceitação pelo serviço não comprova apresentação no celular.
+
+### Leitura do motor durante paradas próximas
+
+O comando conjunto transporta a distância canônica de cada residente. Uma
+posição atual fora de HOME e dentro de `people_approach_radius_m` (1.500 m)
+mantém a faixa de leitura do veículo mesmo fora de near_home: 1 min com motor
+OFF conhecido, 5 min com motor ON. Ausência de distância, posição vencida ou
+indisponível não ativa essa faixa. Ambos em HOME encerram a faixa próxima; o
+prazo imposto pelo provedor, a chamada em voo e os limites de retry continuam
+prevalecendo. Isso muda a obtenção de evidência, nunca autoriza a iluminação.
+
+A consulta extraordinária 90 s após HOME também ocorre quando o motor está
+indisponível ou o OFF é anterior à chegada. Somente OFF atual do provedor
+(`telemetry_updated_at`, ou `engine_updated_at` quando ausente), posterior à
+chegada e sem falha de comunicação dispensa a consulta. Atualização do envelope
+de contexto não renova essa prova. O replay com telemetria histórica não pode
+inventar o ON que uma consulta adicional poderia ter obtido.
