@@ -16,6 +16,7 @@ function period(raw = {}) {
     for (const [key, source] of Object.entries(fields)) p[key] = n(raw[source]);
     p.completed = subtract(p.calls, p.failed);
     p.gated = sum(p.rejected, p.no_gain, p.validated);
+    p.accepted = sum(p.no_gain, p.validated);
     p.without_gate = subtract(p.completed, p.gated);
     p.without_cost = subtract(p.validated, p.measured);
     p.net = subtract(p.gross, p.gate);
@@ -31,6 +32,18 @@ function period(raw = {}) {
 }
 const local = msg.rtx.local;
 for (const key of ["today", "week", "month", "total"]) msg.report.periods[key] = period(key === "total" ? local.totals : local.periods?.[key]);
+// Preserve the waterfall's total-context denominator, separately from attempted context.
+const usage = msg.report.data_status === "current" ? msg.usage?.attributes || {} : {};
+const utcDay = new Date(msg.rtx.now).toISOString().slice(0, 10);
+const daily = Array.isArray(usage.daily) ? usage.daily : null;
+const dailyUsage = daily?.find(row => row?.date === utcDay);
+msg.report.periods.today.codex_tokens = daily ? (dailyUsage ? n(dailyUsage.total_tokens) : 0) : null;
+msg.report.periods.total.codex_tokens = n(usage.totals?.total_tokens);
+for (const key of ["today", "total"]) {
+    const p = msg.report.periods[key];
+    const baseline = sum(p.codex_tokens, p.net);
+    p.overall_reduction = p.net !== null && baseline !== null && baseline > 0 ? Math.round(1000000 * p.net / baseline) / 10000 : null;
+}
 const today = msg.report.periods.today;
 Object.assign(msg.report.metrics, { net_today: today.net, calls_today: today.calls, used_today: today.used, reduction_today: today.reduction, use_rate_today: today.use_rate, net_total: msg.report.periods.total.net });
 const r = local.routing?.periods?.today || {};

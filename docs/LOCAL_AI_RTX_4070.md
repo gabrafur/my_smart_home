@@ -625,8 +625,14 @@ numéricos preservam histórico. GPU, VRAM e potência ociosas permanecem sem
 amostra, sem produzir zeros artificiais. Os gráficos novos começam com seus
 próprios sensores; o histórico legado permanece preservado.
 
-O layout separa Agora, Resultado de hoje, Qualidade, Evolução, Execuções e
-Amostras da GPU. Contagens usam as janelas UTC do produtor; horários individuais
+O layout mantém os dois waterfalls em tiles: **hoje · UTC** e **total
+preservado**, com as mesmas 18 etapas, cores, nomes e unidades. Entidades
+`sensor.rtx_waterfall_today_*` e `sensor.rtx_waterfall_total_*` são publicadas
+pelo Node-RED. Fidelidade aprovada inclui os resultados fiéis sem ganho líquido;
+redução no total usa saldo / (tokens Codex + saldo), preservando a distinção da
+redução do contexto tentado. Seleção do dia UTC e fórmulas ficam no canvas;
+MQTT e cards apenas apresentam valores. O layout também separa Agora,
+Evolução, Execuções e Amostras da GPU. Contagens usam as janelas UTC do produtor; horários individuais
 são apresentados no fuso local. Jinja se limita a localização, tabelas e rótulos
 já decididos no contrato; nenhuma taxa, validade ou classificação é decidida no
 card. Os detalhes de benchmarks continuam disponíveis nos sensores de diagnóstico

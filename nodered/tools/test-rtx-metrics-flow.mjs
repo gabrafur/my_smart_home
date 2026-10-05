@@ -16,6 +16,22 @@ assert.equal(nominal.report.metrics.reduction_today, 45);
 assert.equal(nominal.report.periods.today.without_gate, 0);
 assert.equal(nominal.report.health.label, "Em uso");
 assert.equal(nominal.report.metrics.gpu, 70);
+const denominators = fixture("nominal");
+denominators.usage.attributes.totals = {total_tokens: 9100};
+denominators.usage.attributes.daily = [{date: new Date(denominators.now).toISOString().slice(0,10), total_tokens: 8100}];
+const ratios = compute(denominators).report.periods;
+assert.equal(ratios.today.overall_reduction, 10);
+assert.equal(ratios.total.overall_reduction, 9);
+assert.equal(ratios.today.reduction, 45);
+assert.equal(ratios.today.accepted, 2);
+const fidelity = fixture("nominal");
+fidelity.usage.attributes.local_ai.periods.today.operational_not_beneficial_calls = 1;
+assert.equal(compute(fidelity).report.periods.today.accepted, 3);
+const noDay = fixture("nominal"); noDay.usage.attributes.daily = [];
+assert.equal(compute(noDay).report.periods.today.codex_tokens, 0);
+assert.equal(nominal.report.periods.today.overall_reduction, null);
+const emptyBaseline = fixture("empty"); emptyBaseline.usage.attributes.daily = [];
+assert.equal(compute(emptyBaseline).report.periods.today.overall_reduction, null);
 const empty = compute(fixture("empty"));
 assert.equal(empty.report.metrics.net_today, 0);
 assert.equal(empty.report.metrics.use_rate_today, null);
@@ -27,6 +43,7 @@ for (const scenario of ["stale", "invalid"]) {
     assert.equal(result.report.metrics.calls_today, null);
     assert.equal(result.report.metrics.net_today, null);
     assert.equal(result.report.data_status, "unavailable");
+    assert.equal(result.report.periods.today.codex_tokens, null);
 }
 assert.equal(compute(fixture("nominal")).report.data_status, "current", "Recovery must clear stale classification");
 const noHost = fixture("nominal"); noHost.host.state = "unknown";
@@ -72,6 +89,15 @@ assert.ok(Buffer.byteLength(bounded.payload) <= 12000);
 assert.equal(JSON.parse(bounded.payload).history_truncated, true);
 
 const config = messages.map(m => JSON.parse(m.payload)).find(c => c.unique_id === "rtx_metrics_net_today");
+const waterfallConfigs = messages.map(m => JSON.parse(m.payload)).filter(c => c.unique_id?.startsWith("rtx_metrics_waterfall_"));
+assert.equal(waterfallConfigs.length, 36);
+for (const entry of waterfallConfigs) {
+    assert.equal(entry.state_class, "measurement");
+    assert.ok(entry.unit_of_measurement);
+    if (entry.unique_id.endsWith("_overall_reduction")) assert.equal(entry.suggested_display_precision, 4);
+    assert.match(entry.value_template, /value_json\.periods\.(today|total)\./);
+    assert.doesNotMatch(entry.value_template, /\| float|\| int|\*| \/ /);
+}
 assert.equal(config.default_entity_id, "sensor.rtx_contexto_evitado_hoje");
 assert.equal(config.state_class, "measurement");
 assert.equal(config.unit_of_measurement, "tokens");

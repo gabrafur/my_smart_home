@@ -77,9 +77,15 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         view = rtx_view()
         self.assertIn("    max_columns: 3", view)
         headings = re.findall(r"^            heading: (.+)$", view, re.MULTILINE)
-        self.assertEqual(headings, ["Agora", "Evolução do contexto", "Resultado de hoje · UTC", "Execuções recentes", "Qualidade e aproveitamento", "Amostras da GPU", "Entenda os dados"])
+        self.assertEqual(headings, ["Agora", "Evolução do contexto", "Resultado de hoje · UTC", "Execuções recentes", "Total acumulado", "Amostras da GPU", "Entenda os dados"])
         self.assertEqual(view.count("      - type: grid\n        cards:\n"), 3)
-        self.assertNotIn("Waterfall", view)
+        self.assertIn("title: Waterfall — hoje · UTC", view)
+        self.assertIn("title: Waterfall — total preservado", view)
+        expected = ["calls", "completed", "failed", "without_gate", "gated", "rejected", "accepted", "no_gain", "without_cost", "measured", "unconfirmed", "used", "codex_tokens", "attempted", "gross", "gate", "net", "overall_reduction"]
+        for period in ["today", "total"]:
+            fields = re.findall(rf"entity: sensor\.rtx_waterfall_{period}_(\w+)", view)
+            self.assertEqual(fields, expected)
+        self.assertNotIn("title: Caminho dos resultados", view)
         self.assertIn("não uma medição da cobrança OpenAI", view)
         self.assertIn("CPU", view)
 

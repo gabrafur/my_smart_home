@@ -359,48 +359,108 @@ views:
             heading: Resultado de hoje · UTC
             heading_style: title
             icon: mdi:chart-box-outline
-          - type: tile
-            entity: sensor.rtx_contexto_evitado_hoje
-            name: Contexto evitado hoje · saldo estimado
-            grid_options:
-              columns: full
-            color: green
           - type: grid
+            title: Waterfall — hoje · UTC
             columns: 2
             square: false
             cards:
               - type: tile
-                entity: sensor.rtx_tentativas_hoje
+                entity: sensor.rtx_waterfall_today_calls
                 name: Tentativas
                 color: blue
+                vertical: true
               - type: tile
-                entity: sensor.rtx_uso_confirmado_hoje
-                name: Usados no chat
+                entity: sensor.rtx_waterfall_today_completed
+                name: Sem falha técnica
+                color: cyan
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_failed
+                name: Falhas técnicas
+                color: red
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_without_gate
+                name: Sem classificação
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_gated
+                name: Avaliados pelo gate
+                color: purple
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_rejected
+                name: Rejeitados pelo gate
+                color: red
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_accepted
+                name: Fidelidade aprovada
+                color: cyan
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_no_gain
+                name: Fiéis sem ganho
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_without_cost
+                name: Custo não mensurado
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_measured
+                name: Custo mensurado
                 color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_unconfirmed
+                name: Uso não confirmado
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_used
+                name: Usados pelo chat
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_codex_tokens
+                name: Tokens totais
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_attempted
+                name: Contexto tentado
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_gross
+                name: Contexto evitado
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_gate
+                name: Custo da validação
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_net
+                name: Saldo líquido
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_overall_reduction
+                name: Redução no total
+                color: green
+                vertical: true
           - type: markdown
             content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set p = (state_attr('sensor.rtx_painel', 'periods') or {}).get('today', {}) %}
-              {% macro percent(v) %}{{ format_number_ptbr(v, 1) ~ ' %' if v is number else '—' }}{% endmacro %}
-              Contexto tentado reduzido: **{{ percent(p.get('reduction')) }}**
+              As etapas mostram tentativas, qualidade, custo mensurado e uso confirmado. Depois, os valores passam a representar tokens estimados.
 
-              Resultados usados / tentativas: **{{ percent(p.get('use_rate')) }}**
+              **Contexto evitado − custo da validação = saldo líquido equivalente.** A redução no total compara esse saldo com tokens Codex mais saldo; a redução do contexto tentado usa outra base.
 
-              {{ p.get('reason', 'Sem dados válidos') }}.
-          - type: markdown
-            title: De onde vem o saldo
-            content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set p = (state_attr('sensor.rtx_painel', 'periods') or {}).get('today', {}) %}
-              {% macro number(v) %}{{ format_number_ptbr(v) if v is number else '—' }}{% endmacro %}
-              | Contexto · tokens estimados | Hoje |
-              |:--|--:|
-              | Tentado no processamento local | {{ number(p.get('attempted')) }} |
-              | Evitado com entrega confirmada | {{ number(p.get('gross')) }} |
-              | Custo local da validação | {{ number(p.get('gate')) }} |
-              | **Saldo líquido equivalente** | **{{ number(p.get('net')) }}** |
-
-              O saldo desconta o custo de validação das entregas confirmadas. É um índice de contexto, **não uma medição da cobrança OpenAI**. Resultados descartados ou sem uso confirmado não contam economia.
+              O saldo é um índice de contexto, **não uma medição da cobrança OpenAI**. Uso não confirmado, descartes e diagnósticos não contam economia. Valores desconhecidos indicam ausência de dados ou de base para a taxa.
           - type: markdown
             title: Atenção de roteamento · hoje
             content: |-
@@ -438,31 +498,111 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Qualidade e aproveitamento
+            heading: Total acumulado
             heading_style: title
             icon: mdi:shield-check-outline
+          - type: grid
+            title: Waterfall — total preservado
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.rtx_waterfall_total_calls
+                name: Tentativas
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_completed
+                name: Sem falha técnica
+                color: cyan
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_failed
+                name: Falhas técnicas
+                color: red
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_without_gate
+                name: Sem classificação
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_gated
+                name: Avaliados pelo gate
+                color: purple
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_rejected
+                name: Rejeitados pelo gate
+                color: red
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_accepted
+                name: Fidelidade aprovada
+                color: cyan
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_no_gain
+                name: Fiéis sem ganho
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_without_cost
+                name: Custo não mensurado
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_measured
+                name: Custo mensurado
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_unconfirmed
+                name: Uso não confirmado
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_used
+                name: Usados pelo chat
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_codex_tokens
+                name: Tokens totais
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_attempted
+                name: Contexto tentado
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_gross
+                name: Contexto evitado
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_gate
+                name: Custo da validação
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_net
+                name: Saldo líquido
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_overall_reduction
+                name: Redução no total
+                color: green
+                vertical: true
           - type: markdown
-            title: Caminho dos resultados · hoje
             content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set p = (state_attr('sensor.rtx_painel', 'periods') or {}).get('today', {}) %}
-              {% macro number(v) %}{{ format_number_ptbr(v) if v is number else '—' }}{% endmacro %}
-              | Etapa | Resultados |
-              |:--|--:|
-              | Tentativas operacionais | {{ number(p.get('calls')) }} |
-              | Falhas técnicas | {{ number(p.get('failed')) }} |
-              | Concluídos sem falha | {{ number(p.get('completed')) }} |
-              | Sem classificação de qualidade | {{ number(p.get('without_gate')) }} |
-              | Avaliados pelo gate | {{ number(p.get('gated')) }} |
-              | Rejeitados por fidelidade | {{ number(p.get('rejected')) }} |
-              | Fiéis, mas sem ganho líquido | {{ number(p.get('no_gain')) }} |
-              | Aprovados | {{ number(p.get('validated')) }} |
-              | Aprovados sem custo mensurado | {{ number(p.get('without_cost')) }} |
-              | Aprovados com custo mensurado | {{ number(p.get('measured')) }} |
-              | Uso pelo chat não confirmado | {{ number(p.get('unconfirmed')) }} |
-              | **Uso pelo chat confirmado** | **{{ number(p.get('used')) }}** |
+              As etapas mostram tentativas, qualidade, custo mensurado e uso confirmado. Depois, os valores passam a representar tokens estimados.
 
-              As linhas descrevem etapas e suas saídas; não devem ser somadas. **—** significa ausência de dados ou de base para a taxa.
+              **Contexto evitado − custo da validação = saldo líquido equivalente.** A redução no total compara esse saldo com tokens Codex mais saldo; a redução do contexto tentado usa outra base.
+
+              O saldo é um índice de contexto, **não uma medição da cobrança OpenAI**. Uso não confirmado, descartes e diagnósticos não contam economia. Valores desconhecidos indicam ausência de dados ou de base para a taxa.
           - type: markdown
             title: Fora da contagem operacional
             content: |-
