@@ -84,9 +84,30 @@ O caminho de controle do App Server pode ser um link simbólico para um socket f
 
 <!-- /memory-record -->
 
-<!-- memory-record {"id":"identidade-e-telemetria-do-bridge","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-09-28","evidence":[{"file":"ia-bridge/Dockerfile","sha256":"631078302b64c93e6bf4134fdd6c48763e2621cd7faf235bd4fa0358ef2f6e1f"},{"file":"ia-bridge/server.js","sha256":"53a617b9a3382a35e86d2cf7f956b0767574e3fc6fda5738fd1b2813ecd5b436"},{"file":"ia-bridge/server-telemetry.test.js","sha256":"78af75161d420311e41860b2299d10a585c89f4e619075d28f87ae3a3bc574db"},{"file":"ia-bridge/usage.js","sha256":"3fe37231d5c9aae548907dcd6639ae7cf07c49a9205376877073b7854dd67757"},{"file":"ia-bridge/usage.test.js","sha256":"715d8fa29808129f382ab12c7ffc5131a2fd5ae3fcc9cc39c822348f348f2003"},{"file":"docs/LOCAL_AI_RTX_4070.md","sha256":"9ead348e3fb5d2e32aab9c1e2f4a3b828f2c382cb50693961a976f6caacd040d"}]} -->
+<!-- memory-record {"id":"identidade-e-telemetria-do-bridge","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-10-05","evidence":[{"file":"ia-bridge/Dockerfile","sha256":"631078302b64c93e6bf4134fdd6c48763e2621cd7faf235bd4fa0358ef2f6e1f"},{"file":"ia-bridge/server.js","sha256":"53a617b9a3382a35e86d2cf7f956b0767574e3fc6fda5738fd1b2813ecd5b436"},{"file":"ia-bridge/server-telemetry.test.js","sha256":"78af75161d420311e41860b2299d10a585c89f4e619075d28f87ae3a3bc574db"},{"file":"ia-bridge/usage.js","sha256":"3fe37231d5c9aae548907dcd6639ae7cf07c49a9205376877073b7854dd67757"},{"file":"ia-bridge/usage.test.js","sha256":"715d8fa29808129f382ab12c7ffc5131a2fd5ae3fcc9cc39c822348f348f2003"},{"file":"docs/LOCAL_AI_RTX_4070.md","sha256":"d02204f276319c66113449e1b0c8b8b7ba81917263163d24cde884e406666517"}]} -->
 ## Identidade e telemetria do bridge
 
 O bridge executa sem root com UID/GID derivados de REPO_UID/REPO_GID para ler por montagem somente leitura as sessões privadas do dono do checkout, inclusive diretórios 0700 e arquivos 0600. Migração de UID exige reconciliar os arquivos do antigo usuário nos volumes de autenticação e no estado do bridge antes da nova imagem; preservar conteúdo, modos e grupos compartilhados. Os endpoints de telemetria serializam respostas antes dos headers HTTP. Fonte sem permissão degrada explicitamente o agregado, publica totais e analytics nulos e preserva dados independentes de conta e Local AI; não deve derrubar o processo, ampliar permissões ou apresentar totais parciais como completos.
+
+<!-- /memory-record -->
+
+<!-- memory-record {"id":"publicacao-rtx-na-retomada-do-windows","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-10-05","evidence":[{"file":"docs/LOCAL_AI_RTX_4070.md","sha256":"d02204f276319c66113449e1b0c8b8b7ba81917263163d24cde884e406666517"}]} -->
+## Publicação RTX na retomada do Windows
+
+A inicialização nativa da publicação RTX usa a tarefa LocalAiRtxStartupPortproxy em boot, logon e retomada, com espera limitada por rede e API loopback. O hook republica somente a porta restrita já autorizada pelo firewall, com no máximo duas tentativas, sem reiniciar IP Helper ou seus dependentes de VPN. A existência da regra portproxy não comprova listener ativo. Preserve a separação entre esse hook local, o keepalive do WSL e o recovery MCP remoto explícito; sondagens residenciais continuam passivas. Execução manual e teste de listener ausente não comprovam um ciclo real de suspensão ou boot. Consulte docs/LOCAL_AI_RTX_4070.md e os scripts PowerShell de local-ai-integration.
+
+<!-- /memory-record -->
+
+<!-- memory-record {"id":"saida-tap-local-sem-perda","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-10-05","evidence":[{"file":"scripts/local-ai/compact_output.py","sha256":"a4383e580ae2e630bc4fa9a9dfa5cb140c76bffe1ca4a6b6bb7f224f65ae40c4"},{"file":"scripts/local-ai/run.py","sha256":"385e58e0a9bc34fe7e5c7681a7a3d98ff3913b6fbee6c3db12c7f2d925ac3975"},{"file":"scripts/local-ai/test_compact_output.py","sha256":"11c13477c2089abe4fa47e418873fb41910595007cc188766773473051cd4595"},{"file":"docs/LOCAL_AI_RTX_4070.md","sha256":"d02204f276319c66113449e1b0c8b8b7ba81917263163d24cde884e406666517"},{"file":"docs/benchmarks/local-context-output/summary.json","sha256":"de691d4e95607ea8fce6bdd4bda641c73ed447b45722f85fb3960f3548cae755"}]} -->
+## Saída TAP local sem perda
+
+O formatador de saídas TAP roda antes da fronteira da ferramenta, preserva falhas e linhas desconhecidas literalmente e exige reconstrução byte a byte. Ele cobre saídas de testes sem ativar perfis generativos ou alterar hooks e contabiliza a economia separadamente de GPU, inferência e faturamento. O wrapper Python evita o custo de inicialização de outro Node; comandos pequenos e interativos seguem o caminho usual. A cobertura de hooks aninhados depende do cliente: feedback não prova que o objeto JavaScript foi substituído. Consulte o contrato e o benchmark operacional antes de extrapolar a redução de saídas para a conversa inteira.
+
+<!-- /memory-record -->
+
+<!-- memory-record {"id":"metricas-rtx-calculadas-no-node-red","category":"ARCHITECTURE","kind":"VERIFIED_FACT","last_verified":"2026-10-05","evidence":[{"file":"docs/LOCAL_AI_RTX_4070.md","sha256":"d02204f276319c66113449e1b0c8b8b7ba81917263163d24cde884e406666517"},{"file":"nodered/tools/functions/rtx-metrics-periods.js","sha256":"4d0b1bbb8d02d98f3e1112dd470e33e22ad735163496e558fafd8c55b52a2424"},{"file":"nodered/tools/test-rtx-metrics-flow.mjs","sha256":"6d13112395063c98fdd1cd0eb4f2395f154dbe432f4d1f98e8585ac28a5c5848"},{"file":"homeassistant/tests/test_chat_rtx_dashboard_layout.py","sha256":"4c5bddac2a667ad195d6a5cff91b96c6f0beabce945ae28e43c246d9c43af964"}]} -->
+## Métricas RTX calculadas no Node-RED
+
+O painel uso-rtx consome o contrato do tab metricas_rtx. O bridge fornece contadores e recibos sanitizados; Node-RED calcula taxas, saldo e classificações de disponibilidade e histórico. Sondas passivas incluem collected_at para não confundir uma leitura repetida com dado antigo. Ausência de amostra não vira zero; contadores Local AI não provam execução exclusiva na GPU. O sensor de atributos é excluído do Recorder, sensores numéricos mantêm séries próprias, e testes atravessam o mesmo cálculo até o gate dry-run anterior ao MQTT. Preserve o legado codex_* para outros consumidores.
 
 <!-- /memory-record -->

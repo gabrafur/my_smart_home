@@ -108,6 +108,51 @@ systemd do WSL. Quando a máquina está ligada ou responde ao Wake-on-LAN, uma
 chamada MCP pode iniciar o WSL/Ollama e restaurar a publicação restrita sem
 depender de logon interativo.
 
+### Publicação nativa ao iniciar ou retomar o Windows
+
+`local-ai-integration/windows-rtx-portproxy.ps1` verifica a publicação restrita
+depois que a rede e a API loopback do Ollama estão disponíveis. O instalador
+`local-ai-integration/install-windows-rtx-portproxy.ps1` registra a tarefa
+`LocalAiRtxStartupPortproxy` como SYSTEM, com gatilhos de boot, logon e retorno
+da suspensão (`Power-Troubleshooter`, evento 1), atrasados em 30/20/20 segundos.
+Não há agenda periódica, Wake-on-LAN nem inicialização de WSL nessa tarefa.
+O mecanismo existente que inicia/mantém o WSL e o serviço Ollama continua
+responsável pelo backend.
+
+O hook aguarda até 18 verificações, com intervalo de cinco segundos e timeout
+de dois segundos na API local. Só republica `GPU_HOST:11435 -> 127.0.0.1:11434`,
+no máximo duas vezes, depois de conferir o endereço local e a regra de firewall
+existente, limitada ao único `CODEX_HOST`. Conflito com outro destino, endereço
+genérico ou firewall amplo falha fechado. Um listener saudável não sofre
+mutação. O script não reinicia IP Helper, Tailscale, SSH, WSL nem outro serviço
+e não altera firewall ou outros proxies. O timeout da tarefa é quatro minutos,
+com instância única e sem despertar o computador.
+
+Execute o instalador em PowerShell elevado, fornecendo `-ListenAddress`,
+`-ClientAddress` e `-FirewallRuleName` a partir da configuração privada atual.
+Ele copia o script para `%ProgramData%\LocalAiRtx`, restringe a pasta a SYSTEM
+e administradores e guarda backups do script e de uma tarefa anterior ali.
+Os endereços e o XML instalado não pertencem ao repositório. Para desfazer,
+desabilite/remova somente `LocalAiRtxStartupPortproxy` e restaure o backup
+anterior, quando existente; preserve o keepalive do WSL e o firewall.
+O processo da tarefa usa `RemoteSigned`, sem mudar a política persistente do
+Windows. O resultado sanitizado fica em `windows-rtx-portproxy-status.json` na
+mesma pasta protegida, com estado, motivo ou contagem de reparos e timestamp;
+o Agendador registra retorno zero no sucesso e um na falha.
+
+Valide sem efeitos com `powershell.exe -NoProfile -NonInteractive -File
+local-ai-integration/windows-rtx-portproxy.test.ps1`. O teste de integração deve
+confirmar retorno zero da tarefa, listener restrito e `/api/tags` acessível
+pelo cliente, preservando PIDs/estados dos serviços compartilhados, firewall
+e demais regras. A execução manual da tarefa não comprova um ciclo real de
+suspensão ou boot; esse ciclo deve ser observado separadamente. Se a
+republicação limitada não resolver, mantenha a recuperação MCP como ação
+explícita; não acrescente restart de IP Helper a este hook, pois ele possui
+dependentes de VPN.
+
+Referências: [portproxy do Windows](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/netsh-interface)
+e [atraso de gatilho por evento](https://learn.microsoft.com/en-us/windows/win32/taskschd/taskschedulerschema-delay-eventtriggertype-element).
+
 ## Configuração do cliente Codex
 
 Cada máquina mantém sua configuração fora do Git, por exemplo em
@@ -186,10 +231,38 @@ isolar um corpo não sensível, aplicar ferramentas determinísticas e chamar
 | Origem do candidato | Aplicação | Garantia disponível |
 | --- | --- | --- |
 | Saída grande de `Bash` direto | Automática pelo `PostToolUse` | Determinística somente após `/hooks` mostrar `Installed = 1` e `Active = 1` |
-| `exec_command` aninhado no Code Mode | Explícita dentro da mesma orquestração | Recibo `code-mode-orchestrator-v1`; o resultado bruto não pode ser emitido |
+| `exec_command` aninhado no Code Mode | Redução antes da emissão; hooks dependem do cliente | Feedback do hook não prova substituição do objeto JavaScript; use o formatador local para TAP grande |
 | Texto ou anexo do prompt | Explícita pelo agente conforme `AGENTS.md` | Política; `UserPromptSubmit` só prepara a revisão de memória |
 | Resultado de outro tool ou MCP | Explícita sobre o menor trecho não sensível | O hook de `Bash` não intercepta esse caminho |
 | Conteúdo pequeno, estruturado, secreto ou privado | Não aplicar RTX | Fallback determinístico/modelo principal |
+
+### Redução local sem perda de saídas de testes
+
+Para suítes grandes em formato Node TAP, execute
+`python3 scripts/local-ai/run.py -- COMMAND [ARG ...]`, preservando o wrapper
+de recursos ou alvo Make já usado. O formatador atua antes de a saída chegar
+ao Codex. Não usa rede, modelos, GPU, cache de respostas ou armazenamento de
+logs; a saída pequena, desconhecida ou que não compensa passa intacta.
+
+Somente registros de sucesso com estrutura reconhecida são compactados em
+linhas `@pass [id,nome,duration_ms,tipo]`. O cabeçalho informa colunas, contagem,
+tamanho e SHA-256 do original. Mensagens de falha, assertions multilinha,
+warnings, skips, TODOs e qualquer linha desconhecida permanecem literais.
+`expand_tap`, em `scripts/local-ai/compact_output.py`, reconstrói a saída, e o
+formatador exige igualdade byte a byte antes de entregá-la. A redução mínima
+é 15% incluindo o envelope; o limiar é 4.800 bytes e o limite de buffer é
+8 MiB. Acima desse limite, a saída segue integralmente em streaming. O comando
+mantém seu código de saída, argumentos literais e cancelamento por grupo de
+processos; não use este wrapper em terminais interativos ou serviços duradouros.
+
+O lançamento usa Python da biblioteca padrão para evitar o custo de iniciar
+outro processo Node. A biblioteca de contagem de tokens é usada somente pelo
+benchmark, fora do runtime. Resultados e método ficam em
+[`benchmarks/local-context-output/README.md`](benchmarks/local-context-output/README.md).
+As contagens `o200k_base` se referem a texto das saídas, não a tokens faturados
+ou economia percentual da conversa inteira. Não entram nos contadores de
+inferência, GPU ou recibos de compressão generativa. Para rollback, execute o
+comando original sem o wrapper; hooks e runtime MCP não foram alterados.
 
 O runtime 1.3.3 promoveu historicamente `summarize-log` com pelo menos 3.000
 tokens estimados e o gate `deterministic-log-anchors-v1`. O pivot restrito de
@@ -317,14 +390,16 @@ Depois da aprovação ou de uma atualização da extensão, execute
 conversa já aberta pode continuar reportando `HOOK_NOT_ACTIVE` até a janela ser
 recarregada.
 
-Quando a compressão é útil em uma chamada `Bash` observável, o hook retorna
-`continue: false` com contexto adicional limitado. Entretanto, o Code Mode do
-cliente atual executa `exec_command` dentro da ferramenta programática e não
-propaga esse evento aninhado ao `PostToolUse` do projeto. Nesse caminho o agente
-mantém o resultado bruto dentro da mesma orquestração, roteia/comprime, chama
-`local-ai confirm-delivery` com o `job_id` e a contagem exata de caracteres e
-emite somente o envelope abaixo de 12.000 caracteres. Uma falha não cria recibo
-e vale zero redução útil.
+Quando a extração determinística é útil em uma chamada Bash observável, o hook
+retorna `continue: false` com contexto adicional limitado. A cobertura de
+chamadas aninhadas depende do cliente. A documentação atual admite hooks em
+Code Mode e distingue o feedback visível do valor retornado à promessa
+JavaScript; portanto receber feedback não autoriza emitir novamente o resultado
+bruto. Consulte a [semântica oficial de hooks](https://learn.chatgpt.com/docs/hooks).
+Mantenha a saída dentro da orquestração até concluir a redução, ou use o
+formatador TAP antes da fronteira da ferramenta. Os recibos
+`code-mode-orchestrator-v1` são evidência histórica: não crie novos recibos de
+compressão enquanto os perfis generativos continuarem sem promoção.
 
 ## Política de roteamento e auditoria
 
@@ -417,15 +492,14 @@ $HOME/.local/share/local-ai-rtx/current/local-ai route analyze-tests --input-cha
 ```
 
 O `UserPromptSubmit` de memória não chama a RTX nem exige confirmação inicial
-ou a palavra `feito`; ele apenas prepara o checkpoint e o contexto interno. O hook de projeto `PostToolUse` trata somente
-saídas grandes de `Bash`: detecta padrões de credenciais em memória, consulta o MCP
-na primeira candidata elegível da conversa e substitui o corpo pelo JSON
-limitado somente quando a rota e a compressão têm sucesso. Saídas pequenas,
-consultas determinísticas, histórico privado e comandos que apontem para
-credenciais são ignorados; código proprietário, logs e configuração privada sem
-segredos podem seguir para a RTX. Falha ou indisponibilidade preserva o fallback para
-o modelo principal. Anexos já incluídos no prompt continuam fora desse ponto de
-interceptação, portanto nunca devem ser enviados integralmente apenas para
+ou a palavra `feito`; ele apenas prepara o checkpoint e o contexto interno.
+O `PostToolUse` do runtime fixado detecta padrões de credenciais e reduz somente
+logs grandes elegíveis por extração determinística. Não consulta o MCP nem
+inicia inferência enquanto os perfis de compressão estão sem promoção.
+A classificação `analyze-tests` não ativa essa rota; o formatador TAP explícito
+cobre essa lacuna sem mudar hooks. Saídas pequenas, comandos sensíveis e perfis
+não promovidos seguem o caminho original. Anexos já enviados no prompt estão
+fora desse ponto de interceptação; nunca os envie integralmente apenas para
 provocar roteamento.
 
 O hook falha fechado quando detecta um padrão de segredo: nesse caso não cria o
@@ -523,6 +597,52 @@ a memória versionada e a restauração de Git continuam disponíveis por retrie
 
 ## Telemetria e painéis
 
+### Painel operacional calculado no Node-RED
+
+A aba `uso-rtx` consome exclusivamente o contrato MQTT do tab `metricas_rtx`:
+`sensor.rtx_painel` contém disponibilidade, razões, períodos, roteamento,
+série diária e histórico limitado; sensores numéricos separados alimentam tiles
+e gráficos com localização pt-BR. Os antigos sensores `codex_*` permanecem por
+compatibilidade com outros consumidores, mas não calculam este painel.
+
+O bridge continua produtor dos contadores sanitizados e dos recibos de entrega.
+O Node-RED valida a idade das observações, calcula saldo bruto menos custo do
+gate, reconcilia esse saldo com o contador confirmado e calcula taxas usando
+somente denominadores válidos. Inconsistência, dado ausente ou vencido produz
+`null`, nunca zero medido. Zero tentativas produz saldo zero e taxas sem amostra.
+Os contadores podem incluir processamento determinístico na CPU: não são prova
+de inferência na RTX nem medição de cobrança OpenAI. Benchmarks e diagnósticos
+ficam separados das tentativas operacionais. O formatador local de TAP não é
+inferência e não é acrescentado a esses contadores.
+
+As sondas passivas publicam `collected_at`, inclusive quando estado/valores não
+mudam. O canvas lê snapshots do HA a cada 2 s; não chama recovery, Wake-on-LAN,
+SSH nem Ollama. Parâmetros visíveis delimitam idades e quantidade de jobs; o
+validador preserva a última configuração válida. A disponibilidade do painel
+usa também o LWT do Node-RED e expiração MQTT de 45 s. O discovery retido é
+renovado a cada minuto. O sensor de atributos é excluído do Recorder; os sensores
+numéricos preservam histórico. GPU, VRAM e potência ociosas permanecem sem
+amostra, sem produzir zeros artificiais. Os gráficos novos começam com seus
+próprios sensores; o histórico legado permanece preservado.
+
+O layout separa Agora, Resultado de hoje, Qualidade, Evolução, Execuções e
+Amostras da GPU. Contagens usam as janelas UTC do produtor; horários individuais
+são apresentados no fuso local. Jinja se limita a localização, tabelas e rótulos
+já decididos no contrato; nenhuma taxa, validade ou classificação é decidida no
+card. Os detalhes de benchmarks continuam disponíveis nos sensores de diagnóstico
+e nos artefatos versionados, fora do painel operacional.
+
+Fontes: `nodered/tools/install-rtx-metrics-flow.mjs` e funções
+`nodered/tools/functions/rtx-metrics-*.js`. Regenerar com
+`npm --prefix nodered run flows:update-rtx-metrics`. Os controles TESTE 0–5
+percorrem a normalização e os cálculos reais, terminando no gate anterior ao MQTT.
+Após reset, executar nominal, offline, stale/unknown, vazio e fonte inválida;
+repetir nominal comprova recuperação. Estado sintético é separado do estado de
+produção. Regressões: `test-rtx-metrics-flow.mjs`, replay do observador global e
+`homeassistant/tests/test_chat_rtx_dashboard_layout.py`.
+
+### Contrato de telemetria preservado
+
 O helper não grava prompt, diff, código-fonte, resposta do modelo nem
 credenciais. Em `.agent-history/` (ignorado pelo Git) ele preserva somente
 metadados: tarefa, modelo, duração, contagens, status e amostras de GPU/VRAM.
@@ -607,6 +727,11 @@ gate final os envia exclusivamente ao terminal dry-run (`simulated: true`,
 credenciais; o token do bridge vem apenas do ambiente do container. Desse modo,
 o polling passivo nunca acorda nem altera o host; a recuperação exige a ação
 manual e não cria uma segunda rotina mutável fora do MCP auditável.
+
+Isso se aplica à recuperação remota e ao polling residencial. O hook nativo de
+inicialização/retomada descrito acima apenas republica a porta restrita quando
+o backend já responde; ele não executa o recovery remoto nem reinicia serviços
+compartilhados.
 
 A sondagem de GPU mantém `StrictHostKeyChecking=yes` e usa por padrão o arquivo
 `known_hosts` persistente ao lado de `gpu_probe.ssh_key_path`. Isso é necessário
@@ -709,6 +834,8 @@ uma sessão Codex separada para não retomar contexto com outro modelo. O bridge
 desativa o recurso `apps` somente para essas execuções, pois nenhum conector de
 apps é configurado nele; isso evita a inicialização do MCP ambiental
 `codex_apps` com credencial expirada sem afetar o Codex fora do bridge.
+
+### Histórico da apresentação anterior (substituído pelo contrato acima)
 
 No painel RTX, **chamadas Local AI** e **saldo líquido equivalente** ficam em
 gráficos separados: chamadas contam tentativas de tarefas; o saldo soma somente
@@ -951,7 +1078,7 @@ segundos.
 | Ollama responde mas sem GPU | `ollama ps`, `nvidia-smi`, driver NVIDIA/WSL e tamanho/quantização do modelo |
 | CPU offload | reduza o modelo/contexto; não assuma que uma resposta rápida significa GPU integral |
 | RTX não aparece no painel | `GET /local-ai/live`, arquivo privado de telemetria e sensores do pacote HA |
-| `HOOK_NOT_ACTIVE` em Code Mode apesar de `/hooks` ativo | use o transporte `code-mode-orchestrator-v1`; hooks do projeto não recebem o `exec_command` aninhado |
+| Feedback de hook em Code Mode, mas saída bruta ainda presente | não reemita o objeto JavaScript bruto; teste a cobertura do cliente e, para TAP grande, use `python3 scripts/local-ai/run.py` antes da entrega |
 | Roteamento automático de `Bash` direto não roda | identifique o cliente que envia os prompts; execute `/hooks` nesse mesmo cliente e estado, confirme `PostToolUse` com `Installed = 1` e `Active = 1` e, para a extensão do VS Code, recarregue a janela e abra uma conversa nova |
 
 ## Reprodução em um fork

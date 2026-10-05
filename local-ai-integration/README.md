@@ -3,6 +3,17 @@
 This directory is the Home Assistant repository's consumer boundary for the
 standalone [`local-ai-rtx`](https://github.com/gabrafur/local-ai-rtx) runtime.
 
+Large Node TAP test output can be reduced locally with
+`python3 scripts/local-ai/run.py -- COMMAND [ARG ...]`, preserving the original
+resource-safe validation command. This standard-library formatter packs only
+recognized success records, keeps failures and unknown lines verbatim, and
+requires exact byte-for-byte reconstruction plus at least 15% reduction. It
+does not invoke a model, use the network, change hooks, or store logs. Small,
+unsupported and oversized output passes through unchanged. Measured text-token
+savings on two real test outputs were 23.33% and 39.75%, with 16–43 ms median
+launcher overhead across the full benchmark; these are not Codex billing or
+whole-conversation savings. See the [method and results](../docs/benchmarks/local-context-output/README.md).
+
 `local-ai-rtx.lock.json` pins the repository, tag, commit, release asset, and
 SHA-256 digest. `manage-runtime.mjs` validates that lock, installs the verified
 release into an immutable content-addressed directory, and verifies the runtime
