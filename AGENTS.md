@@ -216,19 +216,21 @@ completa: persistência não autoriza sacrificar a disponibilidade residencial.
 
 ## Local AI / RTX context compression
 
-Use deterministic tools first. Do not run Local AI pre-analysis or status at
-conversation startup. When deterministic preprocessing leaves a large,
-non-sensitive, compressible candidate of roughly 1,200 tokens or more, use the
-repository skill `.agents/skills/rtx-context-optimizer/SKILL.md` and the global
-`local-ai-rtx` MCP server. Do not ask for confirmation merely to route eligible
-context.
+Use deterministic tools first; never run Local AI pre-analysis/status at startup.
+For a remaining non-sensitive, compressible candidate of roughly 1,200 tokens
+or more, use `.agents/skills/rtx-context-optimizer/SKILL.md` and global MCP
+`local-ai-rtx`, without routing confirmation.
 
-Apply this decision to every user request. Isolate the smallest candidate.
-No generative context-compression profile is promoted. For logs, use the
-versioned deterministic fact extractor; send raw context if it cannot preserve
-critical signals or reduce safely. All MCP compression profiles fail closed
-until versioned evidence and routing promote one. `PostToolUse` may replace
-large `Bash` logs deterministically, but not prompts or nested Code Mode calls.
+Reassess every request using the smallest candidate. No generative compression
+profile is promoted; MCP compression fails closed until versioned evidence and
+routing promote one. For logs, use the versioned deterministic fact extractor;
+fall back to raw context if fidelity or reduction fails. `PostToolUse` can
+replace large Bash logs, not prompts. Nested Code Mode coverage is client-specific;
+hook feedback does not prove JavaScript received reduced output. Never re-emit
+raw output after an accepted reduction.
+
+For large Node TAP suites, use `python3 scripts/local-ai/run.py -- COMMAND [ARG ...]`
+with the existing resource-safe wrapper. The skill documents its lossless format.
 
 The residual `structured_extraction` canary is not context compression. It is
 off by repository defaults (`false`/`0`); only private runtime may activate its
@@ -248,15 +250,13 @@ use only after successful compression returns the required execution and
 telemetry metadata. Local telemetry is metadata-only and must never persist
 prompts, source input, model output, or secrets.
 
-MCP/CLI success proves only inference. Historical operational claims require a
-`PostToolUse` replacement or `code-mode-orchestrator-v1` receipt bound to the
-same job and input size and matched by `job_id`.
-Do not create compression receipts while every generative profile is unpromoted.
+MCP/CLI success proves inference only. Historical operational claims require
+`PostToolUse` replacement or a `code-mode-orchestrator-v1` receipt matching
+`job_id` and input size. No new receipts while generative profiles are unpromoted.
 
-Count context reduction as useful only when the task-specific fidelity gate
-accepts the result. A rejected or discarded Local AI result must fall back to
-the original context and record zero useful tokens avoided, regardless of how
-small the rejected JSON was.
+Useful reduction requires the task-specific fidelity gate. Rejected/discarded
+Local AI output falls back to original context and counts zero tokens avoided,
+regardless of its size.
 
 ## Local AI do projeto
 

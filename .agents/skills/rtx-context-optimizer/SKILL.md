@@ -65,7 +65,20 @@ reduction guard, otherwise emit the raw result. Do not call
 `local_ai_compress_context` or create a `code-mode-orchestrator-v1` receipt
 under the current unpromoted compression policy. Treat the project
 `PostToolUse` hook as a complementary deterministic guardrail, not a substitute
-for this decision; nested `exec_command` calls are not delivered to that hook.
+for this decision. Current clients may dispatch nested calls to hooks while
+still returning the original output to JavaScript. Hook feedback alone does
+not authorize emitting that raw output a second time.
+
+For large Node TAP test output, use the repository's explicit local formatter:
+`python3 scripts/local-ai/run.py -- COMMAND [ARG ...]`. Keep the existing
+resource-safe wrapper/Make target and avoid this path for small queries,
+interactive commands or persistent services. It packs only recognized success
+records; `@pass` rows retain ID, name, duration and type. Failure blocks and all
+unrecognized text stay verbatim. A full byte-for-byte reconstruction and at
+least 15% savings including the envelope are required; otherwise output passes
+through unchanged. It uses neither inference nor network, stores no output,
+preserves the command's exit status, and caps buffering at 8 MiB. This is an
+explicit pre-delivery formatter, not a hook, LLM summary or compression receipt.
 
 # Interpret routing and telemetry precisely
 

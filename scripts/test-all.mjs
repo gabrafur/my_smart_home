@@ -33,7 +33,7 @@ if (!tests.length) {
   process.exit(1);
 }
 console.log(`Discovered ${tests.length} public repository Node.js test files.`);
-const result = spawnSync(process.execPath, ["--test", ...tests], {
+const result = spawnSync(process.execPath, ["--test", "--test-concurrency=1", ...tests], {
   cwd: path.dirname(scriptsDirectory),
   stdio: "inherit",
 });

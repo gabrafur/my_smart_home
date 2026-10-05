@@ -95,6 +95,7 @@ validate-bridge:
 validate-local-ai:
 	node local-ai-integration/manage-runtime.mjs validate-lock
 	node --test local-ai-integration/manage-runtime.test.mjs
+	python3 -m unittest discover -s scripts/local-ai -p 'test_*.py'
 
 benchmark-local-ai-high-potential-unit:
 	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/high_potential_dataset.py --check
@@ -300,7 +301,7 @@ restore-verify:
 
 restore-test:
 	node scripts/restore.mjs manifest-validate
-	node --test scripts/restore.test.mjs scripts/restore-prompt.test.mjs
+	node --test --test-concurrency=1 scripts/restore.test.mjs scripts/restore-prompt.test.mjs
 
 restore-apply:
 	@test -n "$(BACKUP_DIR)" || (echo "BACKUP_DIR is required" >&2; exit 2)
