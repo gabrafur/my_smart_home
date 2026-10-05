@@ -1109,6 +1109,42 @@ for (const bad of [{ ageMs: 16 * 60000 }, { accuracy: 500 }, { coordinates: fals
     "direct HOME cannot fabricate anticipation");
 }
 
+// A local bend inside 700 m is not an early notice; the later real crossing is.
+for (const role of ["resident_primary", "resident_secondary"]) {
+  const state = memory();
+  const globals = runtimeGlobal({ notification_approach_radius_m: 700 });
+  const call = (id, msg) => run(id, msg, state, globals);
+  const step = (meters) => {
+    clock += 61000;
+    const message = input(tracker(primaryId, "not_home", { distanceM: role === "resident_primary" ? meters : 20 }),
+      tracker(fallbackId, "unavailable", { coordinates: false }), role);
+    if (role === "resident_secondary") {
+      message.payload.resident_secondary = tracker("device_tracker.mobile_secondary_source_1", "not_home", { distanceM: meters });
+      message.payload.resident_secondary_icloud = tracker("device_tracker.mobile_secondary_source_2", "unavailable", { coordinates: false });
+    }
+    return runPeopleVisualEvents(call, message);
+  };
+  const notices = rows => rows.flatMap(row => [row[4]].flat()).filter(Boolean);
+  step(20); step(180); step(400); step(500);
+  const bend = step(280);
+  assert.equal(notices(bend).length, 0, "lighting radius must not consume the notification journey");
+  assert(bend.some(row => row[1]), "the lighting arrival contract remains independent");
+  step(360); step(800); step(1600); step(1000);
+  const returning = notices(step(650));
+  assert.equal(returning.length, 1, "the actual inward crossing must still notify");
+  assert.equal(returning[0].payload.notification_only, true);
+  const home = notices(step(20));
+  assert.equal(home.length, 1);
+  assert.equal(home[0].payload.notification_cycle_id, returning[0].payload.notification_cycle_id);
+  // Another short trip never leaves 700 m: only confirmed HOME is a fallback.
+  step(200); step(500); step(550);
+  assert.equal(notices(step(280)).length, 0);
+  const localHome = notices(step(20));
+  assert.equal(localHome.length, 1);
+  assert.equal(localHome[0].payload.arrival_stage, "home");
+  assert.notEqual(localHome[0].payload.notification_cycle_id, home[0].payload.notification_cycle_id);
+}
+
 // Manual 700m controls use the same lifecycle and isolated state.
 {
   const state = memory();

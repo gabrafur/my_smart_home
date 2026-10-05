@@ -286,7 +286,11 @@ válido. Exige posição anterior fora do raio, nova posição mais próxima den
 dele e ciclo externo confirmado. O contrato exclusivo do aviso não segue para
 a iluminação, que conserva 350 m do portão e os gates de noite e motor ON atual.
 
-Se o GPS pular os 700 m, a chegada canônica em 350 m continua como fallback.
+Se o GPS pular a amostra de entrada nos 700 m, a chegada canônica em 350 m
+continua como fallback somente quando houve posição anterior fora dos 700 m.
+Uma passagem de volta pelos 350 m durante um passeio inteiramente dentro dos
+700 m não envia aviso de aproximação nem consome a identidade de entrega.
+Nesse caso, HOME confirmado continua disponível para avisar a chegada.
 A mesma identidade persistente de viagem deduplica 700/350 m mesmo depois de
 10 minutos e após restart. A consulta do recibo e a reserva de entrega ocorrem
 na mesma operação síncrona. O gate final consome cada reserva uma vez, inclusive

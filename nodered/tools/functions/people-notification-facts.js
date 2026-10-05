@@ -33,11 +33,14 @@ if (current && Number.isFinite(radius) && (!cycle || observedAt > cycle.observed
     state.residents[role] = cycle;
 }
 }
-// Keep the existing 350 m / HOME recovery when the wider crossing was missed.
+// A 350 m lighting arrival cannot bypass the independent notification radius.
+// Keep HOME confirmation for local trips and missed wider crossings.
 // Once the early event exists, later events share its identity for delivery
 // dedupe; lighting retains its original contract and independent radius.
 data.notification = data.arrival ? { ...data.arrival, payload: { ...data.arrival.payload } } : null;
 const cycle = state.residents[data.source];
+if (data.notification?.payload.arrival_stage === "approach" && cycle?.outside !== true)
+    data.notification = null;
 if (cycle && data.notification?.payload) {
     data.notification.payload.notification_cycle_id = cycle.id;
 }

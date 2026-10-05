@@ -33,7 +33,7 @@ const originalNow = Date.now;
 Date.now = () => NOW;
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  near_home_radius_m: 350, location_fresh_minutes: 15,
+  near_home_radius_m: 350, notification_approach_radius_m: 700, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
@@ -482,6 +482,8 @@ scenario("36 evento de chegada duplicado após restart", () => {
 
 scenario("37 pessoas separam o contrato de aviso da iluminação", () => {
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_secondary: true } } });
+  run("people_normalize", peopleInput({ source: "resident_secondary", state: "not_home",
+    distance: 900, age: 61000 }), flow);
   const input = peopleInput({ source: "resident_secondary", event: "location_update", state: "near_home", distance: 300 });
   const result = run("people_normalize", structuredClone(input), flow);
   assert.equal(result.length, 5);
@@ -490,6 +492,15 @@ scenario("37 pessoas separam o contrato de aviso da iluminação", () => {
   assert(result[1]);
   assert.equal(result[2], null);
   assert.equal(result[3], null);
+});
+
+scenario("37a armado de iluminação não comprova saída dos 700 m", () => {
+  const flow = memoryFlow({ security_people_recovery_v1: { version: 1,
+    arrival_armed: { resident_secondary: true } } });
+  const result = run("people_normalize", peopleInput({ source: "resident_secondary",
+    event: "location_update", state: "near_home", distance: 300 }), flow);
+  assert(result[1], "o contrato de iluminação continua disponível");
+  assert.equal(result[4], null, "o aviso exige sua própria evidência de distância");
 });
 
 scenario("38 lifecycle legado perde somente o refresh movido", () => {
@@ -664,6 +675,6 @@ scenario("48 posição recente sem precisão aceitável não vence posição pre
 });
 
 Date.now = originalNow;
-assert.equal(passed.length, 48);
+assert.equal(passed.length, 49);
 console.log(`security recovery replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);
