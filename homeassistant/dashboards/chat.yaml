@@ -284,1023 +284,246 @@ views:
   - title: RTX 4070
     path: uso-rtx
     icon: mdi:expansion-card-variant
-    # Uma seção contínua por coluna evita que cards altos criem lacunas. A
-    # distribuição equilibra roteamento/diagnóstico, atividade/economia e qualidade/histórico.
     type: sections
     max_columns: 3
     dense_section_placement: false
     sections:
       - type: grid
         cards:
-          - type: grid
-            title: Saúde da infraestrutura
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_local_ai_status
-                name: Local AI
-                color: blue
-              - type: tile
-                entity: sensor.codex_rtx_4070
-                name: RTX 4070
-                color: cyan
-              - type: tile
-                entity: sensor.codex_ollama_local
-                name: Ollama
-                color: purple
-              - type: tile
-                entity: sensor.codex_modelo_local
-                name: Modelo local
-                color: blue
-
+          - type: heading
+            heading: Agora
+            heading_style: title
+            icon: mdi:expansion-card
+          - type: tile
+            entity: sensor.rtx_painel
+            name: Serviço local
+            grid_options:
+              columns: full
+            color: cyan
           - type: markdown
-            content: >-
-              # RTX 4070 / Local AI
+            content: |-
+              {% set h = state_attr('sensor.rtx_painel', 'health') or {} %}
+              **{{ h.get('reason', 'Aguardando o produtor de métricas') }}**
 
-              {% set live = states('sensor.codex_rtx_ao_vivo') %}
-              {% if live == 'em uso' %}
-              🟢 **Inferência local ativa** — {{ state_attr('sensor.codex_rtx_ao_vivo', 'tarefa') }} ·
-              {{ state_attr('sensor.codex_rtx_ao_vivo', 'modelo') }}.
-              {% elif live == 'disponível' %}
-              🟢 **Infraestrutura pronta.** Local AI, Ollama e RTX estão disponíveis;
-              aguardando uma tarefa em que a compactação local traga benefício real.
-              {% elif live == 'desatualizado' %}
-              🟡 **Sinal da RTX desatualizado.** A última verificação de saúde tem mais de dois
-              minutos; aguardando a próxima confirmação do bridge antes de afirmar que a RTX está pronta.
-              {% elif live == 'sem sinal' %}
-              🔴 **Sem sinal do bridge Local AI.** O painel tentará novamente automaticamente.
-              {% else %}
-              🔴 **Local AI indisponível.** Consulte os cards de infraestrutura e o diagnóstico recente.
+              Modelo: **{{ h.get('model') or '—' }}**
+              {% if h.get('task') %}
+              Tarefa atual: **{{ h.get('task') }}**
               {% endif %}
 
-              _Atualização automática: atividade e métricas em ~2 s; saúde em ~1 min._
-
-              {% set chats = state_attr('sensor.codex_rtx_ao_vivo', 'chats_ativos') or [] %}
-              {% if chats %}
-              ## Chats usando a RTX agora
-
-              {% for chat in chats %}
-              - **{{ chat.chat_name or ('Chat Codex #' ~ chat.chat_id) }}** — {{ chat.task }} · {{ chat.model }} ·
-                GPU {{ chat.gpu_util_percent if chat.gpu_util_percent is not none else 'amostrando' }}% ·
-                VRAM {{ chat.vram_mib if chat.vram_mib is not none else 'amostrando' }} MiB
-              {% endfor %}
-
-              Nomes explícitos enviados pelo chat aparecem aqui; caso contrário, o
-              identificador curto é usado sem revelar conteúdo da conversa.
-              {% endif %}
-
-          - type: grid
-            title: Atenção de roteamento — hoje
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_oportunidades_rtx_perdidas_hoje
-                name: Oportunidades realmente perdidas
-                color: red
-              - type: tile
-                entity: sensor.codex_tokens_de_oportunidades_rtx_perdidas_hoje
-                name: Tokens potenciais dessas perdas
-                color: red
-              - type: tile
-                entity: sensor.codex_local_ai_indisponivel_hoje
-                name: RTX indisponível (confirmado)
-                color: red
-              - type: tile
-                entity: sensor.codex_disponibilidade_rtx_desconhecida_hoje
-                name: Estado RTX desconhecido
-                color: amber
-              - type: tile
-                entity: sensor.codex_falhas_de_roteamento_local_ai_hoje
-                name: Falhas após delegação
-                color: red
-              - type: tile
-                entity: sensor.codex_disponibilidade_nas_tarefas_elegiveis_hoje
-                name: Disponibilidade nas elegíveis
-                color: green
+              {{ h.get('sample_reason', 'Sem amostra recente') }}.
           - type: markdown
-            content: >-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {} %}
-              **Fluxo avaliado:** {{ format_number_ptbr(today.get('tasks', 0)) }} tarefas ·
-              {{ format_number_ptbr(today.get('eligible_tasks', 0)) }} elegíveis ·
-              {{ format_number_ptbr(today.get('eligible_and_available_tasks', 0)) }} com RTX disponível.
-
-              **Execução do roteamento:** delegação
-              {{ format_number_ptbr(today.get('rtx_delegation_rate_percent', 0), 1) }}% ·
-              realização do potencial estimado
-              {{ format_number_ptbr(today.get('weighted_context_savings_coverage_percent', 0), 1) }}%.
-
-              **Como ler:** *elegível* significa que tamanho, tipo e
-              compressibilidade justificavam a RTX; *disponível* confirma
-              que o endpoint respondia; *perdida* é uma tarefa elegível e
-              disponível que não chamou o helper. *Falha após delegação*
-              confirma erro técnico depois da escolha da RTX. Este bloco
-              contém somente sinais acionáveis; rejeições de qualidade
-              aparecem em **Waterfall — hoje · UTC**. *Delegação* mede
-              usos entre tarefas elegíveis e disponíveis; *realização do
-              potencial* compara o saldo útil com a economia estimada do fluxo.
-
-          - type: entities
-            title: Decisão de roteamento
-            show_header_toggle: false
-            entities:
-              - entity: sensor.codex_ultima_decisao_de_roteamento_local_ai
-                name: Decisão
-
-          - type: markdown
-            content: >-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set task = state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'tarefa') %}
-              {% set decision = states('sensor.codex_ultima_decisao_de_roteamento_local_ai') %}
-              {% if task %}
-              ## Última decisão Local AI
-
-              **Tarefa:** {{ task }}
-
-              **Elegível:** {{ 'SIM' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'elegivel') else 'NÃO' }}
-
-              **RTX disponível:** {{ 'SIM' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'rtx_disponivel') else 'NÃO' }}
-
-              **Decisão:** {{ decision }}
-
-              **Motivo:** {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'motivo') }}
-
-              Entrada: ~{{ format_number_ptbr(state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'input_tokens_estimados')) }} tokens ·
-              economia esperada: ~{{ format_number_ptbr(state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_esperada_tokens')) }} tokens ·
-              economia bruta: {{ format_number_ptbr(state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_bruta_tokens')) if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_bruta_tokens') is not none else 'não mensurada' }} ·
-              custo do gate: {{ format_number_ptbr(state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'custo_gate_validacao_tokens')) if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'custo_gate_validacao_tokens') is not none else 'não mensurado' }} ·
-              saldo líquido equivalente: {{ format_number_ptbr(state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens')) if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') is not none else 'não mensurado' }}.
-              {% else %}
-              ## Última decisão Local AI
-
-              Ainda não há uma decisão de roteamento registrada.
-              {% endif %}
-
-              **Como ler:** *economia esperada* é a previsão antes da chamada;
-              *saldo líquido equivalente* é o delta aprovado menos os tokens locais usados
-              pelo gate do resultado; quando há rejeição ou falha, vale zero. Como
-              entrada e gate podem usar tokenizadores diferentes, ele é um índice
-              conservador, não uma contagem faturável da OpenAI.
-              *Elegível* não prova execução: uso real exige uma decisão
-              `LOCAL_AI_USED` com resultado validado.
-
-          - type: markdown
-            content: >-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set routing = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {} %}
-              {% set missed = routing.get('latest_decisions', []) | selectattr('decision', 'eq', 'ROUTING_MISSED_OPPORTUNITY') | list %}
-              ## Oportunidades RTX perdidas
-
-              **Como ler:** este bloco lista somente decisões operacionais
-              `ROUTING_MISSED_OPPORTUNITY`; o potencial é estimado antes da
-              inferência e não representa cobrança.
-
-              **Hoje:** {{ format_number_ptbr(states('sensor.codex_oportunidades_rtx_perdidas_hoje')) }} ·
-              potencial de contexto das perdas de hoje: ~{{ format_number_ptbr(((routing.get('periods') or {}).get('today') or {}).get('missed_potential_tokens_avoidable', 0)) }} tokens.
-
-              {% if missed %}
-              {% for item in missed %}
-              - {{ item.get('task_type') }} · ~{{ format_number_ptbr(item.get('expected_tokens_saved')) }} tokens potenciais · {{ item.get('reason') }}
-              {% endfor %}
-              {% else %}
-              Nenhuma oportunidade perdida recente registrada.
-              {% endif %}
-
-          - type: markdown
-            title: Diagnóstico da última execução
-            content: >-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set task = state_attr('sensor.codex_ultimo_job_local_ai', 'tarefa') %}
-              {% set status = states('sensor.codex_ultimo_job_local_ai') %}
-              {% set generator = state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') %}
-              {% set verifier = state_attr('sensor.codex_ultimo_job_local_ai', 'modelo_verificador') %}
-              {% set gate_type = state_attr('sensor.codex_ultimo_job_local_ai', 'tipo_gate_qualidade') %}
-              {% set validator_label = 'gate determinístico de âncoras' if gate_type == 'deterministic-log-anchors-v1' else ('verificador ' ~ verifier if verifier else none) %}
-              {% set primary_used = state_attr('sensor.codex_ultimo_job_local_ai', 'uso_modelo_principal_confirmado') == true %}
-              {% set delivery_transport = state_attr('sensor.codex_ultimo_job_local_ai', 'transporte_entrega') %}
-              {% if task and status == 'em andamento' %}
-              ## Inferência em andamento
-
-              **{{ task }}** · gerador {{ generator }}{% if validator_label %} · {{ validator_label }}{% endif %} ·
-              iniciada em {{ state_attr('sensor.codex_ultimo_job_local_ai', 'iniciado_em') }}.
-
-              GPU, VRAM e potência são atualizadas na seção **Atividade ao vivo**.
-              {% elif task and status == 'success' %}
-              ## Último job de GPU
-
-              **{{ task }}** · gerador {{ generator }}{% if validator_label %} · {{ validator_label }}{% endif %} ·
-              {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s'), 3) }} s ·
-              {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_por_segundo'), 2) }} tok/s
-
-              GPU pico: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'pico_gpu_percentual')) }}%** ·
-              VRAM pico: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'pico_vram_mib')) }} MiB** ·
-              Contexto: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_entrada')) }} →
-              {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_saida')) }} tokens** ·
-              {% if primary_used %}
-              economia bruta **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'economia_bruta_validada_tokens')) }}** −
-              gate **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'custo_gate_validacao_tokens')) }}** =
-              útil líquido **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados')) }} tokens** ·
-              redução útil líquida **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'reducao_contexto_percentual'), 1) }}%** ·
-              entrega **{{ 'Code Mode' if delivery_transport == 'code-mode-orchestrator-v1' else 'PostToolUse' if delivery_transport == 'post-tool-hook' else delivery_transport or 'canônica' }}** ·
-              {% else %}
-              saída aprovada, mas **uso pelo modelo principal não confirmado**; contribuição líquida **0 tokens** ·
-              {% endif %}
-              gate de qualidade **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'qualidade_percentual')) }}%** ·
-              {{ state_attr('sensor.codex_ultimo_job_local_ai', 'processador') or 'processador não amostrado' }}.
-
-              Overhead do envelope OpenAI: **não mensurado**; a economia é uma estimativa de
-              conteúdo aprovada pelo gate, pelo método `{{ state_attr('sensor.codex_ultimo_job_local_ai', 'metodo_contagem_tokens') }}`.
-              {% elif task and status in ['failed', 'discarded'] %}
-              ## Último job de GPU
-
-              {% set discard_reason = state_attr('sensor.codex_ultimo_job_local_ai', 'motivo_descarte') %}
-              A última execução de **{{ task }}** foi {{ 'descartada por não gerar ganho líquido suficiente' if status == 'discarded' and discard_reason == 'insufficient_net_savings' else 'descartada pelo gate de fidelidade' if status == 'discarded' else 'interrompida por falha técnica' }} em
-              {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s'), 3) }} s
-              com gerador {{ generator }}{% if validator_label %} e {{ validator_label }}{% endif %}
-              ({{ state_attr('sensor.codex_ultimo_job_local_ai', 'erro_tipo') or 'tipo não informado' }}).
-              Nenhum token economizado é contabilizado para uma execução sem sucesso.
-              {% else %}
-              ## Último job de GPU
-
-              Nenhuma inferência local foi registrada ainda.
-              {% endif %}
-
-              **Como ler:** este diagnóstico descreve a tentativa mais recente;
-              a “última falha” do resumo acima considera somente erros técnicos.
-              *job* é uma tentativa de inferência; *success*
-              indica que o helper produziu resultado validado, mas somente
-              `uso_modelo_principal_confirmado=true` o torna útil; *discarded* indica resultado
-              não utilizado por fidelidade ou ganho líquido insuficiente;
-              *failed* indica falha técnica. GPU/VRAM são picos
-              amostrados durante o job, não valores de repouso.
-
-          - type: markdown
-            title: Histórico de uso da RTX — últimas 48 horas
             content: |-
               {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
-              {% set full_history = state_attr('sensor.codex_rtx_historico_48h_raw', 'jobs') %}
-              {% set jobs = full_history if full_history is not none else local.get('latest_jobs', []) %}
-              {% set task_names = {
-                'review-diff': 'Revisão de alterações',
-                'summarize-memory': 'Resumo de memória',
-                'summarize-document': 'Resumo de documento',
-                'summarize-log': 'Resumo de logs',
-                'analyze-tests': 'Análise de testes',
-                'inspect-files': 'Análise de arquivos'
-              } %}
-              | Quando | Trabalho delegado à RTX | Aproveitamento | Tempo | Economia líquida |
-              |:--|:--|:--|--:|--:|
-              {% for job in jobs -%}
-              {% set timestamp = as_timestamp(job.get('finished_at') or job.get('started_at'), none) -%}
-              {% set status = job.get('status', '—') -%}
-              {% set discard_reason = job.get('discard_reason') -%}
-              {% set task = job.get('task', '—') -%}
-              {% set task_label = task_names.get(task, task | replace('-', ' ') | capitalize) -%}
-              {% set result = '🟠 Descartado: economia insuficiente' if status == 'discarded' and discard_reason == 'insufficient_net_savings' else '🟠 Descartado: fidelidade insuficiente' if status == 'discarded' else '✅ Aproveitado' if status == 'success' and job.get('primary_context_used') == true else '🟡 Uso não confirmado' if status == 'success' and job.get('quality_accepted') == true else '🔴 Falha técnica' if status == 'failed' else status -%}
-              {% set quality = (format_number_ptbr(job.get('quality_score_percent')) ~ '%') if job.get('quality_score_percent') is number else '—' -%}
-              | {{ timestamp | timestamp_custom('%d/%m %H:%M', true) if timestamp is number else '—' }} | **{{ task_label }}**<br>Modelo local: `{{ job.get('model', '—') }}` | {{ result }}<br>Qualidade do conteúdo: {{ quality }} | {{ (format_number_ptbr(job.get('duration_seconds'), 1) ~ ' s') if job.get('duration_seconds') is number else '—' }} | {{ format_number_ptbr(job.get('useful_context_tokens_avoided', 0)) }} tokens eq. |
-              {% else -%}
-              | — | Nenhuma inferência registrada nesta janela | — | — | 0 |
+              {% set m = state_attr('sensor.rtx_painel', 'metrics') or {} %}
+              {% macro number(v, d=0) %}{{ format_number_ptbr(v, d) if v is number else '—' }}{% endmacro %}
+              | GPU | VRAM | Potência |
+              |:--:|:--:|:--:|
+              | **{{ number(m.get('gpu')) }} %** | **{{ number(m.get('vram')) }} MiB** | **{{ number(m.get('power'), 1) }} W** |
+          - type: heading
+            heading: Evolução do contexto
+            heading_style: title
+            icon: mdi:chart-timeline-variant
+          - type: tile
+            entity: sensor.rtx_contexto_evitado_total
+            name: Saldo confirmado · total preservado
+            grid_options:
+              columns: full
+            color: green
+          - type: markdown
+            title: Períodos · UTC
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set periods = state_attr('sensor.rtx_painel', 'periods') or {} %}
+              {% macro number(v) %}{{ format_number_ptbr(v) if v is number else '—' }}{% endmacro %}
+              | Período | Tentativas | Usados | Saldo · tokens |
+              |:--|--:|--:|--:|
+              {% for key, label in [('today', 'Hoje'), ('week', 'Semana'), ('month', 'Mês'), ('total', 'Total')] -%}
+              {% set p = periods.get(key, {}) -%}
+              | {{ label }} | {{ number(p.get('calls')) }} | {{ number(p.get('used')) }} | {{ number(p.get('net')) }} |
               {% endfor %}
-
-              **Como ler:** *aproveitado* significa que o resultado local foi de
-              fato entregue ao modelo principal após passar pela qualidade e ainda economizar contexto.
-              *Uso não confirmado* vale zero mesmo com aprovação do gate.
-              *Economia insuficiente* significa que o custo da validação consumiu
-              o benefício; *fidelidade insuficiente* significa conteúdo não
-              confiável; *falha técnica* significa que a execução não terminou.
-              **Qualidade do conteúdo** mede aderência ao original, não economia.
-              **Economia líquida** já desconta o custo do gate e vale zero em todo
-              resultado descartado. Os valores são tokens equivalentes estimados,
-              não cobrança oficial. Benchmarks são omitidos e a tabela atualiza a
-              cada 30 segundos.
-
-              {% if full_history is none %}
-              _Exibindo temporariamente os jobs recentes do feed principal até a próxima recarga programada do Home Assistant._
-              {% endif %}
-
+          - type: markdown
+            title: Últimos 7 dias
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set rows = state_attr('sensor.rtx_painel', 'daily') or [] %}
+              {% macro number(v) %}{{ format_number_ptbr(v) if v is number else '—' }}{% endmacro %}
+              | Dia · UTC | Tentativas | Usados | Saldo · tokens |
+              |:--|--:|--:|--:|
+              {% for row in rows -%}
+              | {{ as_timestamp(row.get('day')) | timestamp_custom('%d/%m', false) }} | {{ number(row.get('calls')) }} | {{ number(row.get('used')) }} | {{ number(row.get('net')) }} |
+              {% endfor %}
+              {% if not rows %}Sem série diária disponível.{% endif %}
       - type: grid
         cards:
+          - type: heading
+            heading: Resultado de hoje · UTC
+            heading_style: title
+            icon: mdi:chart-box-outline
+          - type: tile
+            entity: sensor.rtx_contexto_evitado_hoje
+            name: Contexto evitado hoje · saldo estimado
+            grid_options:
+              columns: full
+            color: green
           - type: grid
-            title: Atividade ao vivo
             columns: 2
             square: false
             cards:
               - type: tile
-                entity: sensor.codex_rtx_ao_vivo
-                name: Estado
-                color: green
-              - type: tile
-                entity: sensor.codex_rtx_gpu_agora
-                name: GPU agora
-                color: cyan
-              - type: tile
-                entity: sensor.codex_rtx_vram_agora
-                name: VRAM agora
-                color: purple
-              - type: tile
-                entity: sensor.codex_rtx_potencia_agora
-                name: Potência agora
-                color: amber
-
-          - type: grid
-            title: Última atividade
-            columns: 3
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_ultimo_job_local_ai
-                name: Job atual / último
+                entity: sensor.rtx_tentativas_hoje
+                name: Tentativas
                 color: blue
               - type: tile
-                entity: sensor.codex_ultima_decisao_de_roteamento_local_ai
-                name: Última decisão
-                color: purple
-              - type: tile
-                entity: sensor.codex_ultima_falha_local_ai
-                name: Última falha
-                color: red
-
+                entity: sensor.rtx_uso_confirmado_hoje
+                name: Usados no chat
+                color: green
           - type: markdown
-            content: >-
-              **Como ler:** *Job atual / último* acompanha a inferência; *última
-              decisão* mostra a escolha do roteador; *última falha* considera
-              apenas erro técnico. Os horários podem ser diferentes porque são eventos
-              independentes.
-
-          - type: grid
-            title: Saldo líquido equivalente acumulado
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_hoje_estimados
-                name: Hoje · UTC
-                color: green
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_semana_estimados
-                name: Últimos 7 dias
-                color: green
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_mes_estimados
-                name: Mês atual · UTC
-                color: green
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_estimados
-                name: Total preservado
-                color: green
-
-          - type: markdown
-            content: >-
+            content: |-
               {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
-              {% set daily = local.get('daily_series', []) %}
-              {% set positive = daily | selectattr('useful_context_tokens_avoided', 'gt', 0) | list %}
-              {% set last = positive[-1] if positive else none %}
-              **Como ler:** **chamadas** medem quantas tarefas locais foram tentadas; o
-              **saldo líquido equivalente** mostra o contexto validado menos os tokens
-              locais usados por seus gates de fidelidade.
-              São unidades diferentes e não devem ser comparadas no mesmo gráfico. A estimativa
-              combina tokenizadores diferentes e não representa cobrança oficial da
-              OpenAI; descartes contam zero.
-              *Hoje* e *mês atual* usam calendário UTC; *últimos 7 dias* é uma
-              janela móvel, não a semana do calendário; *total* cobre toda a
-              telemetria preservada.
+              {% set p = (state_attr('sensor.rtx_painel', 'periods') or {}).get('today', {}) %}
+              {% macro percent(v) %}{{ format_number_ptbr(v, 1) ~ ' %' if v is number else '—' }}{% endmacro %}
+              Contexto tentado reduzido: **{{ percent(p.get('reduction')) }}**
 
-              {% if last %}
-              **Último dia com saldo positivo:** {{ last.get('day')[8:10] }}/{{ last.get('day')[5:7] }} ·
-              {{ format_number_ptbr(last.get('useful_context_tokens_avoided', 0)) }} tokens equivalentes.
-              Se hoje estiver em zero e as demais janelas repetirem o total, toda
-              a redução útil dessas janelas veio desse dia anterior.
-              {% else %}
-              **Nenhum dos últimos 7 dias teve saldo útil positivo.**
-              {% endif %}
+              Resultados usados / tentativas: **{{ percent(p.get('use_rate')) }}**
 
-          - type: grid
-            title: Waterfall — total preservado
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_chamadas_operacionais_local_ai
-                name: Tentativas operacionais
-                color: blue
-              - type: tile
-                entity: sensor.codex_conclusoes_operacionais_local_ai
-                name: Sem falha técnica
-                color: cyan
-              - type: tile
-                entity: sensor.codex_falhas_operacionais_local_ai
-                name: Falhas técnicas
-                color: red
-              - type: tile
-                entity: sensor.codex_resultados_operacionais_sem_classificacao_de_qualidade
-                name: Sem classificação de qualidade
-                color: amber
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_com_gate
-                name: Avaliados pelo gate
-                color: purple
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_rejeitados_no_gate
-                name: Rejeitados pelo gate
-                color: red
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_aprovados_no_gate
-                name: Fidelidade aprovada
-                color: cyan
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_sem_ganho_liquido
-                name: Fiéis sem ganho líquido
-                color: amber
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel
-                name: Aprovados sem custo mensurável
-                color: amber
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_validados_mensuraveis
-                name: Aprovados com custo mensurado
-                color: green
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_com_uso_nao_confirmado
-                name: Uso pelo modelo não confirmado
-                color: amber
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal
-                name: Utilizados pelo modelo principal
-                color: green
-              - type: tile
-                entity: sensor.codex_tokens_totais
-                name: Tokens totais
-                color: blue
-              - type: tile
-                entity: sensor.codex_contexto_tentado_local_ai
-                name: Contexto tentado
-                color: blue
-              - type: tile
-                entity: sensor.codex_economia_bruta_validada
-                name: Contexto OpenAI evitado validado
-                color: blue
-              - type: tile
-                entity: sensor.codex_custo_gate_validacao_resultados
-                name: Custo do gate nos validados
-                color: amber
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_estimados
-                name: Saldo líquido equivalente
-                color: green
-              - type: tile
-                entity: sensor.codex_reducao_de_contexto_local_ai
-                name: Redução útil líquida
-                color: green
-
+              {{ p.get('reason', 'Sem dados válidos') }}.
           - type: markdown
-            content: >-
+            title: De onde vem o saldo
+            content: |-
               {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set totals = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {} %}
-              {% set calls = totals.get('operational_calls', 0) | int(0) %}
-              {% set failed = totals.get('operational_failed_calls', 0) | int(0) %}
-              {% set completed = [calls - failed, 0] | max %}
-              {% set accepted = totals.get('operational_quality_validated_calls', 0) | int(0) %}
-              {% set rejected = totals.get('operational_quality_rejected_calls', 0) | int(0) %}
-              {% set not_beneficial = totals.get('operational_not_beneficial_calls', 0) | int(0) %}
-              {% set gated = accepted + rejected + not_beneficial %}
-              {% set unclassified = [completed - gated, 0] | max %}
-              {% set approved = accepted + not_beneficial %}
-              {% set accepted_measured = totals.get('operational_quality_validated_measured_calls', 0) | int(0) %}
-              {% set accepted_unmeasured = [accepted - accepted_measured, 0] | max %}
-              {% set primary_used = totals.get('operational_primary_context_used_calls', 0) | int(0) %}
-              {% set usage_unconfirmed = totals.get('operational_primary_context_unconfirmed_calls', 0) | int(0) %}
-              {% set gate_unmeasured = totals.get('quality_validation_unmeasured_calls', 0) | int(0) %}
-              {% set unmeasured_gross = totals.get('quality_validation_unmeasured_gross_tokens', 0) | float(0) %}
-              **Reconciliação:** tentativas = sem falha técnica + falhas técnicas;
-              sem falha técnica = sem classificação + avaliados pelo gate;
-              avaliados = rejeitados + fidelidade aprovada; fidelidade aprovada =
-              fiéis sem ganho + aprovados sem custo mensurável + aprovados com custo mensurado.
+              {% set p = (state_attr('sensor.rtx_painel', 'periods') or {}).get('today', {}) %}
+              {% macro number(v) %}{{ format_number_ptbr(v) if v is number else '—' }}{% endmacro %}
+              | Contexto · tokens estimados | Hoje |
+              |:--|--:|
+              | Tentado no processamento local | {{ number(p.get('attempted')) }} |
+              | Evitado com entrega confirmada | {{ number(p.get('gross')) }} |
+              | Custo local da validação | {{ number(p.get('gate')) }} |
+              | **Saldo líquido equivalente** | **{{ number(p.get('net')) }}** |
 
-              **Conferência atual:** {{ format_number_ptbr(calls) }} =
-              {{ format_number_ptbr(completed) }} + {{ format_number_ptbr(failed) }};
-              {{ format_number_ptbr(completed) }} = {{ format_number_ptbr(unclassified) }} +
-              {{ format_number_ptbr(gated) }}; {{ format_number_ptbr(gated) }} =
-              {{ format_number_ptbr(rejected) }} + {{ format_number_ptbr(approved) }};
-              {{ format_number_ptbr(approved) }} = {{ format_number_ptbr(not_beneficial) }} +
-              {{ format_number_ptbr(accepted_unmeasured) }} + {{ format_number_ptbr(accepted_measured) }};
-              {{ format_number_ptbr(accepted_measured) }} =
-              {{ format_number_ptbr(usage_unconfirmed) }} + {{ format_number_ptbr(primary_used) }}.
+              O saldo desconta o custo de validação das entregas confirmadas. É um índice de contexto, **não uma medição da cobrança OpenAI**. Resultados descartados ou sem uso confirmado não contam economia.
+          - type: markdown
+            title: Atenção de roteamento · hoje
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set r = state_attr('sensor.rtx_painel', 'routing') or {} %}
+              {% macro number(v, d=0) %}{{ format_number_ptbr(v, d) if v is number else '—' }}{% endmacro %}
+              | Ocorrência | Quantidade |
+              |:--|--:|
+              | Oportunidades elegíveis perdidas | {{ number(r.get('missed_opportunities')) }} |
+              | Serviço indisponível em tarefa elegível | {{ number(r.get('confirmed_unavailable_tasks')) }} |
+              | Disponibilidade desconhecida | {{ number(r.get('availability_unknown_tasks')) }} |
+              | Falhas após delegação | {{ number(r.get('failed_tasks')) }} |
 
-              {% if accepted_unmeasured > 0 %}
-              ⚠️ {{ format_number_ptbr(accepted_unmeasured) }} resultados aprovados
-              não têm custo do verificador separável. Seus {{ format_number_ptbr(unmeasured_gross) }}
-              tokens brutos auditáveis valem zero no saldo líquido. Ao todo,
-              {{ format_number_ptbr(gate_unmeasured) }} avaliações antigas não têm
-              custo separável, incluindo resultados rejeitados que já valem zero.
-              {% endif %}
+              Elegíveis: **{{ number(r.get('eligible_tasks')) }}** · disponíveis: **{{ number(r.get('eligible_and_available_tasks')) }}** · disponibilidade: **{{ number(r.get('availability_percent'), 1) }} %**.
+          - type: heading
+            heading: Execuções recentes
+            heading_style: title
+            icon: mdi:history
+          - type: markdown
+            title: Últimas 48 horas
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set jobs = state_attr('sensor.rtx_painel', 'jobs') or [] %}
+              {{ state_attr('sensor.rtx_painel', 'history_reason') or 'Aguardando histórico' }}.
 
-              **Fora do waterfall operacional:** {{ format_number_ptbr(totals.get('diagnostic_calls', 0)) }}
-              benchmarks diagnósticos.
+              {% for job in jobs %}
+              **{{ job.get('task') }} · {{ job.get('result') }}**
 
-              **Fallbacks explicitamente informados:** {{ format_number_ptbr(totals.get('fallbacks_reported', 0)) }}.
-              Essa contagem se sobrepõe a falhas e descartes; por isso não é
-              somada como uma etapa independente do waterfall.
+              {% if job.get('at') %}{{ as_timestamp(job.get('at')) | timestamp_custom('%d/%m %H:%M', true) }} · {% endif %}{{ format_number_ptbr(job.get('duration'), 1) if job.get('duration') is number else '—' }} s · saldo **{{ format_number_ptbr(job.get('net')) if job.get('net') is number else '—' }} tokens**
 
-              **Como ler:** os indicadores de chamadas e resultados explicitam
-              cada saída do fluxo até um resultado utilizável e mensurável. Os quatro últimos mudam para tokens:
-              contexto OpenAI evitado, aprovado e entregue ao modelo principal − tokens locais de entrada e
-              saída do gate desses resultados = saldo líquido equivalente. Como os
-              tokenizadores são diferentes, esse saldo é um índice conservador,
-              não uma contagem faturável. A redução útil divide o saldo pela base
-              contrafactual: tokens Codex totais preservados + saldo útil. Falhas,
-              rejeições, fallbacks, uso não confirmado e demais tokens fora dos
-              resultados úteis permanecem no denominador e valem zero no numerador.
+              Modelo: {{ job.get('model') }} · processador: {{ job.get('processor') }}
 
+              ---
+              {% endfor %}
+      - type: grid
+        cards:
+          - type: heading
+            heading: Qualidade e aproveitamento
+            heading_style: title
+            icon: mdi:shield-check-outline
+          - type: markdown
+            title: Caminho dos resultados · hoje
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set p = (state_attr('sensor.rtx_painel', 'periods') or {}).get('today', {}) %}
+              {% macro number(v) %}{{ format_number_ptbr(v) if v is number else '—' }}{% endmacro %}
+              | Etapa | Resultados |
+              |:--|--:|
+              | Tentativas operacionais | {{ number(p.get('calls')) }} |
+              | Falhas técnicas | {{ number(p.get('failed')) }} |
+              | Concluídos sem falha | {{ number(p.get('completed')) }} |
+              | Sem classificação de qualidade | {{ number(p.get('without_gate')) }} |
+              | Avaliados pelo gate | {{ number(p.get('gated')) }} |
+              | Rejeitados por fidelidade | {{ number(p.get('rejected')) }} |
+              | Fiéis, mas sem ganho líquido | {{ number(p.get('no_gain')) }} |
+              | Aprovados | {{ number(p.get('validated')) }} |
+              | Aprovados sem custo mensurado | {{ number(p.get('without_cost')) }} |
+              | Aprovados com custo mensurado | {{ number(p.get('measured')) }} |
+              | Uso pelo chat não confirmado | {{ number(p.get('unconfirmed')) }} |
+              | **Uso pelo chat confirmado** | **{{ number(p.get('used')) }}** |
+
+              As linhas descrevem etapas e suas saídas; não devem ser somadas. **—** significa ausência de dados ou de base para a taxa.
+          - type: markdown
+            title: Fora da contagem operacional
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set p = (state_attr('sensor.rtx_painel', 'periods') or {}).get('today', {}) %}
+              Diagnósticos e benchmarks: **{{ format_number_ptbr(p.get('diagnostics')) if p.get('diagnostics') is number else '—' }}**.
+
+              Chamadas sem classificação de origem: **{{ format_number_ptbr(p.get('unclassified')) if p.get('unclassified') is number else '—' }}**.
+
+              Testes de inferência comprovam funcionamento. A economia exige resultado aprovado, custo mensurado e recibo de entrega ao modelo principal.
+          - type: heading
+            heading: Amostras da GPU
+            heading_style: title
+            icon: mdi:chart-line
           - type: statistics-graph
-            title: GPU — últimas 48 horas
+            title: GPU · picos em 48 horas
             chart_type: line
             period: 5minute
             days_to_show: 2
-            stat_types:
-              - max
+            stat_types: [max]
             entities:
-              - entity: sensor.codex_rtx_gpu_historico
+              - entity: sensor.rtx_metricas_gpu
                 name: GPU
-
           - type: statistics-graph
-            title: VRAM — últimas 48 horas
+            title: VRAM · picos em 48 horas
             chart_type: line
             period: 5minute
             days_to_show: 2
-            stat_types:
-              - max
+            stat_types: [max]
             entities:
-              - entity: sensor.codex_rtx_vram_historico
+              - entity: sensor.rtx_metricas_vram
                 name: VRAM
-
           - type: statistics-graph
-            title: Potência — últimas 48 horas
+            title: Potência · picos em 48 horas
             chart_type: line
             period: 5minute
             days_to_show: 2
-            stat_types:
-              - max
+            stat_types: [max]
             entities:
-              - entity: sensor.codex_rtx_potencia_historico
+              - entity: sensor.rtx_metricas_potencia
                 name: Potência
-
-      - type: grid
-        cards:
-          - type: grid
-            title: Waterfall — hoje · UTC
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_chamadas_operacionais_local_ai_hoje
-                name: Tentativas operacionais
-                color: blue
-              - type: tile
-                entity: sensor.codex_conclusoes_operacionais_local_ai_hoje
-                name: Sem falha técnica
-                color: cyan
-              - type: tile
-                entity: sensor.codex_falhas_operacionais_local_ai_hoje
-                name: Falhas técnicas
-                color: red
-              - type: tile
-                entity: sensor.codex_resultados_operacionais_sem_classificacao_de_qualidade_hoje
-                name: Sem classificação de qualidade
-                color: amber
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_com_gate_hoje
-                name: Avaliados pelo gate
-                color: purple
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_descartados_hoje
-                name: Rejeitados pelo gate
-                color: red
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_aprovados_no_gate_hoje
-                name: Fidelidade aprovada
-                color: cyan
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_sem_ganho_liquido_hoje
-                name: Fiéis sem ganho líquido
-                color: amber
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel_hoje
-                name: Aprovados sem custo mensurável
-                color: amber
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_validados_mensuraveis_hoje
-                name: Aprovados com custo mensurado
-                color: green
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_com_uso_nao_confirmado_hoje
-                name: Uso pelo modelo não confirmado
-                color: amber
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal_hoje
-                name: Utilizados pelo modelo principal
-                color: green
-              - type: tile
-                entity: sensor.codex_tokens_totais_hoje
-                name: Tokens totais
-                color: blue
-              - type: tile
-                entity: sensor.codex_contexto_tentado_local_ai_hoje
-                name: Contexto tentado
-                color: blue
-              - type: tile
-                entity: sensor.codex_economia_bruta_validada_hoje
-                name: Contexto OpenAI evitado validado
-                color: blue
-              - type: tile
-                entity: sensor.codex_custo_gate_validacao_resultados_hoje
-                name: Custo do gate nos validados
-                color: amber
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_hoje_estimados
-                name: Saldo líquido equivalente
-                color: green
-              - type: tile
-                entity: sensor.codex_reducao_de_contexto_local_ai_hoje
-                name: Redução útil líquida
-                color: green
-
+          - type: heading
+            heading: Entenda os dados
+            heading_style: title
+            icon: mdi:information-outline
           - type: markdown
-            content: >-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set today = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {} %}
-              {% set calls = today.get('operational_calls', 0) | int(0) %}
-              {% set failed = today.get('operational_failed_calls', 0) | int(0) %}
-              {% set completed = [calls - failed, 0] | max %}
-              {% set accepted = today.get('operational_quality_validated_calls', 0) | int(0) %}
-              {% set rejected = today.get('operational_quality_rejected_calls', 0) | int(0) %}
-              {% set not_beneficial = today.get('operational_not_beneficial_calls', 0) | int(0) %}
-              {% set gated = accepted + rejected + not_beneficial %}
-              {% set unclassified = [completed - gated, 0] | max %}
-              {% set approved = accepted + not_beneficial %}
-              {% set accepted_measured = today.get('operational_quality_validated_measured_calls', 0) | int(0) %}
-              {% set accepted_unmeasured = [accepted - accepted_measured, 0] | max %}
-              {% set primary_used = today.get('operational_primary_context_used_calls', 0) | int(0) %}
-              {% set usage_unconfirmed = today.get('operational_primary_context_unconfirmed_calls', 0) | int(0) %}
-              **Conferência de hoje:** {{ format_number_ptbr(calls) }} =
-              {{ format_number_ptbr(completed) }} + {{ format_number_ptbr(failed) }};
-              {{ format_number_ptbr(completed) }} = {{ format_number_ptbr(unclassified) }} +
-              {{ format_number_ptbr(gated) }}; {{ format_number_ptbr(gated) }} =
-              {{ format_number_ptbr(rejected) }} + {{ format_number_ptbr(approved) }};
-              {{ format_number_ptbr(approved) }} = {{ format_number_ptbr(not_beneficial) }} +
-              {{ format_number_ptbr(accepted_unmeasured) }} + {{ format_number_ptbr(accepted_measured) }};
-              {{ format_number_ptbr(accepted_measured) }} =
-              {{ format_number_ptbr(usage_unconfirmed) }} + {{ format_number_ptbr(primary_used) }}.
-
-              **Como ler:** este bloco usa as mesmas etapas, fórmulas e unidades
-              do **Waterfall — total preservado**, mas inclui somente eventos do
-              dia UTC atual. *contexto evitado validado* é somente o delta dos
-              resultados aprovados, com custo mensurável e uso confirmado; contexto evitado validado − custo do gate = saldo
-              líquido equivalente; a redução útil divide esse saldo pela base
-              contrafactual de hoje: tokens Codex totais + saldo útil. Uso não
-              confirmado, descartes, fallbacks, falhas e demais tokens fora dos
-              resultados úteis valem zero no numerador.
-
-          - type: grid
-            title: Diagnóstico do gate — hoje · UTC
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_taxa_de_aproveitamento_do_gate_hoje
-                name: Aproveitamento de qualidade
-                color: purple
-              - type: tile
-                entity: sensor.codex_cobertura_do_custo_do_gate_hoje
-                name: Gates com custo mensurado
-                color: amber
-              - type: tile
-                entity: sensor.codex_cobertura_da_classificacao_operacional_hoje
-                name: Eventos com classificação
-                color: cyan
-              - type: tile
-                entity: sensor.codex_taxa_de_uso_efetivo_local_ai_hoje
-                name: Resultados efetivamente usados
-                color: green
-              - type: tile
-                entity: sensor.codex_cobertura_da_confirmacao_de_uso_hoje
-                name: Uso com confirmação
-                color: amber
-              - type: tile
-                entity: sensor.codex_fallbacks_local_ai_informados_hoje
-                name: Fallbacks informados
-                color: red
-
-          - type: markdown
-            content: >-
-              **Como ler:** estes percentuais diagnosticam a qualidade da medição
-              e ficam separados do waterfall. *Aproveitamento de qualidade* mede
-              resultados fiéis entre os avaliados pelo gate; *gates com custo
-              mensurado* mede avaliações cujo custo local foi registrado;
-              *eventos com classificação* mede a cobertura da telemetria
-              operacional; *resultados efetivamente usados* usa todas as tentativas
-              operacionais como denominador; e *uso com confirmação* mede quanto
-              dos aprovados mensuráveis teve entrega comprovada ao modelo principal.
-              Nenhum deles significa economia de tokens isoladamente.
-
-          - type: markdown
-            title: Redução útil líquida por tarefa — total preservado
+            title: Como este chat usa a RTX
             content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set rows = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('tasks', []) %}
-              {% if rows %}
-              | Tarefa | Tentativas | Uso confirmado | Saldo líquido | Redução ponderada |
-              |:--|--:|--:|--:|--:|
-              {% for item in rows if (item.get('operational_calls', 0) | int(0)) > 0 -%}
-              | `{{ item.get('task') }}` | {{ format_number_ptbr(item.get('operational_calls', 0)) }} | {{ format_number_ptbr(item.get('operational_primary_context_used_calls', 0)) }} | {{ format_number_ptbr(item.get('confirmed_useful_context_tokens_avoided', 0)) }} tokens | {{ format_number_ptbr(item.get('useful_reduction_percent', 0), 1) }}% |
-              {% endfor %}
-              {% else %}
-              Ainda não há agregados por tarefa na versão atual da telemetria.
-              {% endif %}
+              **Disponível** indica que a RTX está pronta para tarefas locais elegíveis. O chat principal continua no modelo escolhido no Codex.
 
-              Tentativas rejeitadas, falhas, fallbacks e saídas sem confirmação
-              de uso permanecem no denominador da própria tarefa e somam zero.
-
+              Os contadores de **Local AI** incluem também trabalho na CPU; não comprovam uso exclusivo da GPU.
           - type: markdown
-            title: Redução por gerador / verificador — total preservado
+            title: Integridade dos dados
             content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set pairs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('model_pairs', []) %}
-              {% if pairs %}
-              | Gerador | Verificador | Tentativas | Uso confirmado | Saldo líquido | Redução ponderada |
-              |:--|:--|--:|--:|--:|--:|
-              {% for item in pairs if (item.get('operational_calls', 0) | int(0)) > 0 -%}
-              | `{{ item.get('generator_model') }}` | `{{ item.get('verifier_model') }}`{% if item.get('independent_verifier') != true %} ⚠️{% endif %} | {{ format_number_ptbr(item.get('operational_calls', 0)) }} | {{ format_number_ptbr(item.get('operational_primary_context_used_calls', 0)) }} | {{ format_number_ptbr(item.get('confirmed_useful_context_tokens_avoided', 0)) }} tokens | {{ format_number_ptbr(item.get('useful_reduction_percent', 0), 1) }}% |
-              {% endfor %}
-              {% else %}
-              Ainda não há agregados por par de modelos na versão atual da telemetria.
-              {% endif %}
+              {% set data = state_attr('sensor.rtx_painel', 'data_reason') %}
+              {{ data or 'Aguardando métricas do Node-RED' }}.
 
-              ⚠️ indica autoavaliação ou histórico sem verificador mensurado;
-              ambos reivindicam zero sem confirmação independente de uso.
+              {% set at = state_attr('sensor.rtx_painel', 'source_at') %}
+              {% if at %}Leitura da fonte: **{{ as_timestamp(at) | timestamp_custom('%d/%m %H:%M:%S', true) }}**.{% endif %}
 
-          - type: markdown
-            title: Benchmark RTX — quality-first por atividade
-            content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set basis = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'base_de_medicao') or {} %}
-              {% set totals = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'totais') or {} %}
-              {% set primaries = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'resultados_primary') or [] %}
-              {% set verifiers = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'resultados_verifier') or [] %}
-              {% set decisions = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'decisoes_promocao') or [] %}
-              {% set models = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'modelos') or [] %}
-              {% set dataset = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'dataset') or {} %}
-              {% set status = states('sensor.codex_benchmark_rtx_alto_potencial') %}
-              {% set idade_s = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'idade_benchmark_s') %}
-              {% set ground_truth = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'independencia_ground_truth') %}
-              {% set decisao = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'decisao_operacional') %}
-              {% set adversarial = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'cenarios_adversariais') or {} %}
-              {% set badges = {
-                'measured': '🟢 MEDIDO',
-                'recomputed': '🟣 RECALCULADO',
-                'estimated': '🟡 ESTIMADO',
-                'simulated': '🔵 SIMULADO',
-                'not_applicable': '⚪ NÃO APLICÁVEL',
-                'insufficient_sample': '⚪ AMOSTRA INSUFICIENTE',
-                'legacy_schema': '⚪ SCHEMA LEGADO',
-                'not_tested': '⚪ NÃO TESTADO'
-              } %}
-              {% if primaries %}
-              **Execução:** `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'benchmark_run_id') or '—' }}` · **schema:** {{ format_number_ptbr(state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'schema_version'), 0) if state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'schema_version') is number else 'não informado' }} · **escopo:** múltiplos modelos
-
-              **Data:** {{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'ultima_execucao') or 'não informada' }} · **idade:** {{ (format_number_ptbr((idade_s | float(0)) / 86400, 1) ~ ' dias') if idade_s is number else 'não informada' }} · **decisão global:** `{{ decisao or 'não informada' }}`
-
-              **Evidência:** inferência local {{ badges.get(basis.get('local_inference'), '⚪ NÃO INFORMADO') }} · GPU {{ badges.get(basis.get('gpu_telemetry'), '⚪ NÃO INFORMADO') }} · tokens GPT {{ badges.get(basis.get('gpt_tokens'), '⚪ NÃO INFORMADO') }} · GPT direto {{ badges.get(basis.get('gpt_direct_execution'), '⚪ NÃO INFORMADO') }} · qualidade GPT {{ badges.get(basis.get('gpt_final_quality'), '⚪ NÃO INFORMADO') }}.
-
-              **Ground truth:** `{{ ground_truth or 'não informado' }}`; autoria independente/manual externa não foi comprovada. Hashes do dataset e do oracle estão versionados.
-
-              **Dataset residual:** {{ format_number_ptbr(dataset.get('residual_cases')) if dataset.get('residual_cases') is number else 'indisponível' }} casos · calibração/holdout: {{ format_number_ptbr(dataset.get('calibration_cases')) if dataset.get('calibration_cases') is number else 'indisponível' }}/{{ format_number_ptbr(dataset.get('promotion_holdout_cases')) if dataset.get('promotion_holdout_cases') is number else 'indisponível' }} · prompt injection: {{ format_number_ptbr(adversarial.get('prompt_injection_cases')) if adversarial.get('prompt_injection_cases') is number else 'indisponível' }} · estabilidade: {{ format_number_ptbr(adversarial.get('stability_cases')) if adversarial.get('stability_cases') is number else 'indisponível' }} · eventos auditáveis: {{ format_number_ptbr(state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'total_eventos_benchmark')) if state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'total_eventos_benchmark') is number else 'indisponível' }}.
-
-              | Casos primary | Inferências primary | Aceitas | Fallbacks | Casos críticos |
-              |--:|--:|--:|--:|--:|
-              | {{ format_number_ptbr(totals.get('total_cases')) if totals.get('total_cases') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('local_inference_calls')) if totals.get('local_inference_calls') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('accepted_cases')) if totals.get('accepted_cases') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('fallback_cases')) if totals.get('fallback_cases') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('cases_with_critical_error')) if totals.get('cases_with_critical_error') is number else 'indisponível' }} |
-
-              **Primary — promotion holdout**
-
-              | Atividade | Modelo | Casos | Pass@1 | Úteis | Fallback | Críticos | Recall crítico | Consistência | p50 | VRAM | Offload |
-              |:--|:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|:--:|
-              {% for item in primaries -%}
-              | `{{ item.get('activity') }}` | `{{ item.get('model_key') }}` | {{ format_number_ptbr(item.get('total_cases')) }} | {{ format_number_ptbr((item.get('pass_at_1') | float(0)) * 100, 2) }}% | {{ format_number_ptbr(item.get('accepted_cases')) }} | {{ format_number_ptbr(item.get('fallback_cases')) }} | {{ format_number_ptbr(item.get('cases_with_critical_error')) }} | {{ format_number_ptbr((item.get('critical_fact_recall') | float(0)) * 100, 2) }}% | {{ (format_number_ptbr((item.get('run_to_run_consistency') | float(0)) * 100, 2) ~ '%') if item.get('run_to_run_consistency') is number else 'não medida' }} | {{ format_number_ptbr(item.get('duration_p50'), 3) }} s | {{ format_number_ptbr(item.get('vram_peak'), 0) }} MiB | {{ 'SIM' if item.get('cpu_offload_observed') == true else 'NÃO' }} |
-              {% endfor %}
-
-              **Verifier — corpus controlado + erros naturais**
-
-              | Atividade | Verifier | Casos | Falsos aceites críticos | Recall de erro | Falso rejeite | Erros naturais | Recall natural | Aprovado |
-              |:--|:--|--:|--:|--:|--:|--:|--:|:--:|
-              {% for item in verifiers -%}
-              | `{{ item.get('activity') }}` | `{{ item.get('verifier_model_key') }}` | {{ format_number_ptbr(item.get('total_cases')) }} | {{ format_number_ptbr(item.get('critical_false_accepts')) }} | {{ format_number_ptbr((item.get('critical_error_detection_recall') | float(0)) * 100, 2) }}% | {{ format_number_ptbr((item.get('false_reject_rate') | float(0)) * 100, 2) }}% | {{ format_number_ptbr(item.get('natural_primary_errors_total')) }} | {{ format_number_ptbr((item.get('natural_primary_error_recall') | float(0)) * 100, 2) }}% | {{ 'SIM' if item.get('approved') == true else 'NÃO' }} |
-              {% endfor %}
-
-              **Decisão por atividade**
-
-              | Atividade | Vencedor | Verifier | Vantagem | Modo | Produção | Gates reprovados |
-              |:--|:--|:--|:--|:--|:--:|:--|
-              {% for item in decisions -%}
-              | `{{ item.get('activity') }}` | `{{ item.get('winner') or 'NO_WINNER' }}` | `{{ item.get('verifier') or 'null' }}` | `{{ item.get('operational_advantage_status') or 'não informado' }}` | `{{ item.get('mode') or 'disabled' }}` | {{ 'SIM' if item.get('production_enabled') == true else 'NÃO' }} | {{ (item.get('failed_gates') or []) | join(', ') or 'nenhum' }} |
-              {% endfor %}
-
-              **Inventário:** {% for item in models %}`{{ item.get('model_key') }}`={{ 'EXECUTADO' if item.get('executed') == true else item.get('not_run_status') or 'NÃO EXECUTADO' }}{% if not loop.last %} · {% endif %}{% endfor %}
-
-              **Pipeline:** feature flag `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'feature_flag_pipeline') or 'não informada' }}`; rollback central disponível. `summarize-log` está excluído desta bateria e foi posteriormente substituído pela política determinística mostrada no card do pivot. Estas chamadas não entram nos contadores operacionais.
-              {% else %}
-              {{ badges.get(status, '⚪ AMOSTRA INSUFICIENTE') }} — nenhum artefato
-              de benchmark sanitizado foi carregado pelo bridge.
-              {% endif %}
-
-          - type: markdown
-            title: Pivot RTX — expansão restrita
-            content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set basis = state_attr('sensor.codex_pivot_rtx_restrito', 'base_de_medicao') or {} %}
-              {% set decisions = state_attr('sensor.codex_pivot_rtx_restrito', 'decisoes') or {} %}
-              {% set structured = state_attr('sensor.codex_pivot_rtx_restrito', 'extracao_estruturada') or {} %}
-              {% set logs = state_attr('sensor.codex_pivot_rtx_restrito', 'resumo_de_logs') or {} %}
-              {% set retrieval = state_attr('sensor.codex_pivot_rtx_restrito', 'retrieval_reranking') or {} %}
-              {% set similarity = state_attr('sensor.codex_pivot_rtx_restrito', 'similaridade_de_erros') or {} %}
-              {% set flags = state_attr('sensor.codex_pivot_rtx_restrito', 'feature_flags') or {} %}
-              {% set idade_s = state_attr('sensor.codex_pivot_rtx_restrito', 'idade_benchmark_s') %}
-              {% set labels = {
-                'MEASURED': '🟢 MEDIDO',
-                'ESTIMATED': '🟡 ESTIMADO',
-                'NOT_TESTED': '⚪ NÃO TESTADO'
-              } %}
-              {% if structured %}
-              **Execução offline:** `{{ state_attr('sensor.codex_pivot_rtx_restrito', 'benchmark_run_id') or '—' }}` · **data:** {{ state_attr('sensor.codex_pivot_rtx_restrito', 'ultima_execucao') or 'não informada' }} · **idade:** {{ (format_number_ptbr((idade_s | float(0)) / 86400, 1) ~ ' dias') if idade_s is number else 'não informada' }}
-
-              **Decisão global:** `{{ decisions.get('local_ai_expansion', 'não informada') }}`. Economia operacional deste benchmark: **{{ format_number_ptbr(basis.get('benchmark_operational_savings')) if basis.get('benchmark_operational_savings') is number else 'não medida' }}**; os resultados abaixo não entram no waterfall operacional.
-
-              **A · Extração estruturada — `{{ decisions.get('structured_extraction', 'não informada') }}`**
-
-              Inferência {{ labels.get(basis.get('structured_local_inference'), '⚪ NÃO INFORMADO') }} · modelo `{{ (structured.get('model') or {}).get('model', '—') }}` · digest `{{ ((structured.get('model') or {}).get('digest') or '—')[:12] }}` · ground truth `{{ structured.get('ground_truth_independence', '—') }}`.
-
-              | Holdout | Recall crítico | Schema válido | Números preservados | Úteis | Fallback | Erros críticos | p50 | VRAM | Produção |
-              |--:|--:|--:|--:|--:|--:|--:|--:|--:|:--:|
-              | {{ format_number_ptbr(structured.get('holdout_cases')) if structured.get('holdout_cases') is number else '—' }} | {{ (format_number_ptbr(structured.get('critical_field_recall') * 100, 2) ~ '%') if structured.get('critical_field_recall') is number else '—' }} | {{ (format_number_ptbr(structured.get('schema_validity') * 100, 2) ~ '%') if structured.get('schema_validity') is number else '—' }} | {{ (format_number_ptbr(structured.get('numeric_preservation') * 100, 2) ~ '%') if structured.get('numeric_preservation') is number else '—' }} | {{ (format_number_ptbr(structured.get('useful_rate') * 100, 2) ~ '%') if structured.get('useful_rate') is number else '—' }} | {{ (format_number_ptbr(structured.get('fallback_rate') * 100, 2) ~ '%') if structured.get('fallback_rate') is number else '—' }} | {{ format_number_ptbr(structured.get('cases_with_critical_error')) if structured.get('cases_with_critical_error') is number else '—' }} | {{ (format_number_ptbr(structured.get('duration_p50'), 3) ~ ' s') if structured.get('duration_p50') is number else '—' }} | {{ (format_number_ptbr(structured.get('vram_peak_mib')) ~ ' MiB') if structured.get('vram_peak_mib') is number else '—' }} | {{ 'SIM' if structured.get('production_enabled') == true else 'NÃO' }} |
-
-              Aceitas/úteis: **{{ format_number_ptbr(structured.get('holdout_cases') * structured.get('useful_rate')) if structured.get('holdout_cases') is number and structured.get('useful_rate') is number else '—' }}**; fallbacks: **{{ format_number_ptbr(structured.get('holdout_cases') * structured.get('fallback_rate')) if structured.get('holdout_cases') is number and structured.get('fallback_rate') is number else '—' }}**. Este bloco preserva a evidência offline; a ativação e a amostra reais aparecem separadamente no card operacional abaixo. A flag independente `{{ flags.get('structured_extraction', '—') }}` permanece desligada por padrão no repositório.
-
-              **B · Logs — `{{ decisions.get('summarize_log', 'não informada') }}`**
-
-              Inferência local {{ labels.get(basis.get('summarize_log_local_inference'), '⚪ NÃO INFORMADO') }}. O braço determinístico reteve os fatos com menos contexto que o braço local.
-
-              | Braço | Holdout | Recall crítico | Contexto estimado | Redução estimada | Não suportadas |
-              |:--|--:|--:|--:|--:|--:|
-              {% for label, arm in [('raw', logs.get('raw') or {}), ('determinístico', logs.get('deterministic') or {}), ('determinístico + local', logs.get('deterministic_plus_local') or {})] -%}
-              | {{ label }} | {{ format_number_ptbr(arm.get('cases')) if arm.get('cases') is number else '—' }} | {{ (format_number_ptbr(arm.get('critical_fact_recall') * 100, 2) ~ '%') if arm.get('critical_fact_recall') is number else '—' }} | {{ (format_number_ptbr(arm.get('estimated_context_tokens')) ~ ' tokens') if arm.get('estimated_context_tokens') is number else '—' }} | {{ (format_number_ptbr(arm.get('estimated_context_reduction') * 100, 2) ~ '%') if arm.get('estimated_context_reduction') is number else '—' }} | {{ format_number_ptbr(arm.get('unsupported_claims')) if arm.get('unsupported_claims') is number else '—' }} |
-              {% endfor %}
-
-              {% set local_log = logs.get('deterministic_plus_local') or {} %}
-              Logs no dataset: **{{ format_number_ptbr(logs.get('dataset_cases')) if logs.get('dataset_cases') is number else '—' }}**; resumos locais aceitos: **{{ format_number_ptbr(local_log.get('cases') * local_log.get('accepted_rate')) if local_log.get('cases') is number and local_log.get('accepted_rate') is number else '—' }}**; rejeitados: **{{ format_number_ptbr(local_log.get('cases') * (1 - local_log.get('accepted_rate'))) if local_log.get('cases') is number and local_log.get('accepted_rate') is number else '—' }}**; fallbacks: **{{ format_number_ptbr(local_log.get('cases') * local_log.get('fallback_rate')) if local_log.get('cases') is number and local_log.get('fallback_rate') is number else '—' }}**; omissões críticas: **{{ format_number_ptbr(local_log.get('critical_omissions')) if local_log.get('critical_omissions') is number else '—' }}**.
-
-              Ganho incremental local versus determinístico: **{{ (format_number_ptbr(logs.get('additional_context_reduction_vs_deterministic') * 100, 2) ~ '%') if logs.get('additional_context_reduction_vs_deterministic') is number else 'não medido' }}**; política atual `{{ logs.get('production_policy', 'não informada') }}`.
-
-              **C · Retrieval/reranking — `{{ decisions.get('retrieval_reranking', 'não informada') }}`**
-
-              {% set embedding_model = retrieval.get('embedding_baseline') or {} %}
-              Embeddings {{ labels.get(basis.get('embedding_inference'), '⚪ NÃO INFORMADO') }} · modelo `{{ embedding_model.get('model', '—') }}` · dimensão {{ format_number_ptbr(embedding_model.get('embedding_length')) if embedding_model.get('embedding_length') is number else '—' }} · reranking {{ labels.get(basis.get('reranking'), '⚪ NÃO INFORMADO') }} (`{{ retrieval.get('reranker_status', '—') }}`). Índice persistente: **{{ 'SIM' if retrieval.get('persistent_index_implemented') == true else 'NÃO' }}**; idade, arquivos e chunks do índice: **{{ 'não informados' if retrieval.get('persistent_index_implemented') == true else 'não aplicáveis' }}**.
-
-              | Braço | Holdout | Recall crítico@10 | MRR@10 | nDCG@10 | Contexto@10 | Precisa de mais contexto |
-              |:--|--:|--:|--:|--:|--:|--:|
-              {% for label, arm in [('determinístico', retrieval.get('deterministic') or {}), ('embedding', retrieval.get('embedding') or {}), ('híbrido', retrieval.get('hybrid') or {})] -%}
-              | {{ label }} | {{ format_number_ptbr(arm.get('cases')) if arm.get('cases') is number else '—' }} | {{ (format_number_ptbr(arm.get('critical_file_recall_at_10') * 100, 2) ~ '%') if arm.get('critical_file_recall_at_10') is number else '—' }} | {{ format_number_ptbr(arm.get('mrr_at_10'), 4) if arm.get('mrr_at_10') is number else '—' }} | {{ format_number_ptbr(arm.get('ndcg_at_10'), 4) if arm.get('ndcg_at_10') is number else '—' }} | {{ format_number_ptbr(arm.get('context_tokens_at_10')) if arm.get('context_tokens_at_10') is number else '—' }} | {{ (format_number_ptbr(arm.get('needs_more_context_rate') * 100, 2) ~ '%') if arm.get('needs_more_context_rate') is number else '—' }} |
-              {% endfor %}
-
-              **D · Similaridade de erros — `{{ decisions.get('error_similarity', 'não informada') }}`**
-
-              Similaridade {{ labels.get(basis.get('error_similarity'), '⚪ NÃO INFORMADO') }}; `{{ similarity.get('decision', '—') }}` porque retrieval não atingiu o gate. Pares sugeridos, recall e falsos positivos: **não testados**. Modo somente sugestão: **não ativado**; merge automático: **{{ 'SIM' if similarity.get('automatic_merge') == true else 'NÃO' }}**.
-              {% else %}
-              ⚪ NÃO MEDIDO — nenhum artefato sanitizado do pivot restrito foi carregado pelo bridge.
-              {% endif %}
-
-          - type: markdown
-            title: Canário de extração residual
-            content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set status = states('sensor.codex_canario_extracao_estruturada') %}
-              {% set config = state_attr('sensor.codex_canario_extracao_estruturada', 'configuracao') or {} %}
-              {% set breaker = state_attr('sensor.codex_canario_extracao_estruturada', 'circuit_breaker') or {} %}
-              {% set metrics = state_attr('sensor.codex_canario_extracao_estruturada', 'metricas') or {} %}
-              {% set sample = state_attr('sensor.codex_canario_extracao_estruturada', 'amostra_atual') %}
-              {% set required = state_attr('sensor.codex_canario_extracao_estruturada', 'amostra_minima') %}
-              {% set age = state_attr('sensor.codex_canario_extracao_estruturada', 'idade_telemetria_s') %}
-              {% set last_age = state_attr('sensor.codex_canario_extracao_estruturada', 'idade_ultima_execucao_s') %}
-              {% set badge = {
-                'DISABLED': '⚪',
-                'READY': '🔵',
-                'CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE': '🟡',
-                'CANARY_ACTIVE_GATE_PASSING': '🟢',
-                'MANUAL_HOLD': '🟠',
-                'ROLLBACK_TRIGGERED': '🔴',
-                'CANARY_GATE_PASSED': '🟢'
-              } %}
-              {{ badge.get(status, '⚪') }} **Status:** `{{ status }}` · **decisão:** `{{ state_attr('sensor.codex_canario_extracao_estruturada', 'decisao') or 'HOLD' }}`
-
-              **Roteamento:** parser determinístico → residual `UNSUPPORTED/AMBIGUOUS` → coorte estável **{{ (format_number_ptbr(config.get('rollout_percentage')) ~ '%') if config.get('rollout_percentage') is number else '—' }}** → `{{ config.get('model', '—') }}` → JSON Schema + validação integral → aceite local ou GPT direto.
-
-              **Controles:** master **{{ 'ON' if config.get('master_switch') == true else 'OFF' }}** · flag **{{ 'ON' if config.get('structured_extraction') == true else 'OFF' }}** · circuit breaker `{{ breaker.get('status', '—') }}` · schema `{{ config.get('schema_version', '—') }}` · assignment `{{ config.get('assignment_version', '—') }}` · digest `{{ (config.get('model_digest') or '—')[:12] }}`.
-
-              | Residuais elegíveis | Selecionados | Controle | Bypass | Tentativas | Concluídas | Aceitas | Rejeitadas | Fallbacks | Resolvidas localmente | Erros críticos |
-              |--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-              | {{ format_number_ptbr(metrics.get('residual_eligible_cases')) if metrics.get('residual_eligible_cases') is number else '—' }} | {{ format_number_ptbr(metrics.get('canary_selected_cases')) if metrics.get('canary_selected_cases') is number else '—' }} | {{ format_number_ptbr(metrics.get('control_cases')) if metrics.get('control_cases') is number else '—' }} | {{ format_number_ptbr(metrics.get('control_bypass_cases')) if metrics.get('control_bypass_cases') is number else '—' }} | {{ format_number_ptbr(metrics.get('local_inference_attempts')) if metrics.get('local_inference_attempts') is number else '—' }} | {{ format_number_ptbr(metrics.get('local_inference_completed')) if metrics.get('local_inference_completed') is number else '—' }} | {{ format_number_ptbr(metrics.get('accepted_local_outputs')) if metrics.get('accepted_local_outputs') is number else '—' }} | {{ format_number_ptbr(metrics.get('rejected_local_outputs')) if metrics.get('rejected_local_outputs') is number else '—' }} | {{ format_number_ptbr(metrics.get('safe_fallbacks')) if metrics.get('safe_fallbacks') is number else '—' }} | {{ format_number_ptbr(metrics.get('safe_local_resolutions')) if metrics.get('safe_local_resolutions') is number else '—' }} | {{ format_number_ptbr(metrics.get('cases_with_critical_error')) if metrics.get('cases_with_critical_error') is number else '—' }} |
-
-              **Qualidade:** recall crítico {{ (format_number_ptbr(metrics.get('critical_field_recall') * 100, 2) ~ '% MEDIDO') if metrics.get('critical_field_recall') is number else 'NÃO TESTADO' }} · números {{ (format_number_ptbr(metrics.get('numeric_preservation') * 100, 2) ~ '% MEDIDO') if metrics.get('numeric_preservation') is number else 'NÃO TESTADO' }} · schema {{ (format_number_ptbr(metrics.get('schema_validity') * 100, 2) ~ '% MEDIDO') if metrics.get('schema_validity') is number else 'NÃO TESTADO' }} · útil {{ (format_number_ptbr(metrics.get('useful_rate') * 100, 2) ~ '% MEDIDO') if metrics.get('useful_rate') is number else 'NÃO TESTADO' }} · fallback {{ (format_number_ptbr(metrics.get('fallback_rate') * 100, 2) ~ '% MEDIDO') if metrics.get('fallback_rate') is number else 'NÃO TESTADO' }} · timeout {{ (format_number_ptbr(metrics.get('timeout_rate') * 100, 2) ~ '% MEDIDO') if metrics.get('timeout_rate') is number else 'NÃO TESTADO' }} · OOM {{ (format_number_ptbr(metrics.get('oom_rate') * 100, 2) ~ '% MEDIDO') if metrics.get('oom_rate') is number else 'NÃO TESTADO' }}.
-
-              **Amostra operacional:** {{ format_number_ptbr(sample) if sample is number else '—' }} / {{ format_number_ptbr(required) if required is number else '—' }} tentativas reais selecionadas. Probes, benchmark, shadow, controle, parser resolvido e retries duplicados ficam fora. Telemetria atualizada há {{ (format_number_ptbr(age) ~ ' s') if age is number else '—' }}; última execução real há {{ (format_number_ptbr(last_age) ~ ' s') if last_age is number else 'NÃO TESTADO' }}.
-
-          - type: markdown
-            title: Referência controlada de qualidade
-            content: >-
-              **Benchmark offline v4 · 24/08/2026:** gerador
-              `qwen2.5-coder:14b`, 8 fixtures de desenvolvimento/holdout e 2
-              repetições. Tanto `qwen3:8b` quanto `qwen3:14b` produziram **2/16
-              candidatos selecionáveis**, **4.096 tokens líquidos offline** e
-              redução ponderada **13,6%**, com mediana por tentativa **0,0%**.
-              O 14B reduziu falsos rejeites de **9 para 6**, mas elevou a taxa do
-              gate sem aumentar o saldo líquido; portanto não foi promovido.
-
-              Somente `summarize-log` de 3.000–5.999 tokens apresentou benefício
-              (65,8% nesta amostra). Os 14 casos abaixo de 3.000 tokens ficaram em
-              0%. O antigo **23,2%** veio de autoavaliação e permanece histórico.
-              O v4 ainda é offline: não executa o modelo principal nos dois braços,
-              logo a economia operacional confirmada desta bateria é **0**.
-
-          - type: markdown
-            title: Economia útil diária — últimos 7 dias
-            content: >-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
-              {% set daily = local.get('daily_series', []) %}
-              {% set values = daily | map(attribute='useful_context_tokens_avoided') | list %}
-              {% set peak = values | max if values else 0 %}
-              {% if daily %}
-              {% for item in daily %}
-              {% set value = item.get('useful_context_tokens_avoided', 0) | float(0) %}
-              {% set reduction = item.get('useful_reduction_percent') %}
-              {% set raw_blocks = ((value * 20 / peak) | int) if peak > 0 else 0 %}
-              {% set blocks = [1, raw_blocks] | max if value > 0 else 0 %}
-              **{{ item.get('day')[8:10] }}/{{ item.get('day')[5:7] }}** `{{ '█' * blocks }}{{ '░' * (20 - blocks) }}` **{{ format_number_ptbr(value) }} tokens** · {{ (format_number_ptbr(reduction, 1) ~ '%') if reduction is number else '—' }}
-
-              {% endfor %}
-              {% else %}
-              Série diária ainda não recebida do bridge.
-              {% endif %}
-
-              **Como ler:** as barras vêm diretamente dos agregados diários UTC
-              preservados pela telemetria, portanto os dias anteriores aparecem
-              imediatamente e não dependem do histórico de uma entidade recém-criada.
-              Somente resultados utilizados, com custo mensurado e saldo positivo,
-              elevam a barra; descartes, falhas, benchmarks e legado sem custo
-              separável valem zero. O valor é um saldo equivalente, não cobrança oficial.
-
-          - type: markdown
-            title: Fluxo operacional diário — últimos 7 dias
-            content: |-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set daily = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('daily_series', []) %}
-              {% if daily %}
-              {% for item in daily %}
-              {% set calls = item.get('operational_calls', 0) | int(0) %}
-              {% set failed = item.get('operational_failed_calls', 0) | int(0) %}
-              {% set rejected = item.get('operational_quality_rejected_calls', 0) | int(0) %}
-              {% set no_gain = item.get('operational_not_beneficial_calls', 0) | int(0) %}
-              {% set accepted = item.get('operational_quality_validated_calls', 0) | int(0) %}
-              {% set measured = item.get('operational_quality_validated_measured_calls', 0) | int(0) %}
-              {% set used = item.get('operational_primary_context_used_calls', 0) | int(0) %}
-              {% set usage_unconfirmed = item.get('operational_primary_context_unconfirmed_calls', 0) | int(0) %}
-              {% set accepted_unmeasured = [accepted - measured, 0] | max %}
-              {% set unclassified = [calls - failed - rejected - no_gain - accepted, 0] | max %}
-              **{{ item.get('day')[8:10] }}/{{ item.get('day')[5:7] }} · {{ format_number_ptbr(calls) }} tentativas**
-              {% if calls == 0 %}
-              _Sem atividade operacional._
-              {% else %}
-              {% set ns = namespace(first=true) %}
-              {% if used > 0 %}🟢 **{{ format_number_ptbr(used) }} usadas**{% set ns.first = false %}{% endif %}{% if usage_unconfirmed > 0 %}{{ ' · ' if not ns.first else '' }}🟡 **{{ format_number_ptbr(usage_unconfirmed) }} sem uso confirmado**{% set ns.first = false %}{% endif %}{% if rejected > 0 %}{{ ' · ' if not ns.first else '' }}🟠 **{{ format_number_ptbr(rejected) }} rejeitadas**{% set ns.first = false %}{% endif %}{% if no_gain > 0 %}{{ ' · ' if not ns.first else '' }}⚖️ **{{ format_number_ptbr(no_gain) }} sem ganho**{% set ns.first = false %}{% endif %}{% if failed > 0 %}{{ ' · ' if not ns.first else '' }}🔴 **{{ format_number_ptbr(failed) }} falhas**{% set ns.first = false %}{% endif %}{% if unclassified > 0 %}{{ ' · ' if not ns.first else '' }}⚪ **{{ format_number_ptbr(unclassified) }} sem classificação**{% set ns.first = false %}{% endif %}{% if accepted_unmeasured > 0 %}{{ ' · ' if not ns.first else '' }}🟡 **{{ format_number_ptbr(accepted_unmeasured) }} sem custo mensurado**{% endif %}
-
-              Saldo líquido: **{{ format_number_ptbr(item.get('useful_context_tokens_avoided', 0)) }} tokens**
-              {% endif %}
-
-              {% endfor %}
-              {% else %}
-              Série diária ainda não recebida do bridge.
-              {% endif %}
-
-              **Como ler:** cada linha é o waterfall daquele dia UTC e vem dos
-              mesmos agregados preservados usados por **Waterfall — hoje · UTC** e
-              **total preservado**. *Tentativas* mede volume; categorias zeradas
-              são ocultadas para facilitar a leitura. *Úteis* são resultados
-              utilizados com custo do gate mensurado; rejeições, fiéis sem ganho,
-              falhas e itens sem classificação ou custo valem zero na Redução
-              útil líquida. Aprovação sem confirmação de uso também vale zero.
-              Benchmarks ficam fora.
+              Cálculos e classificações: **Node-RED**. Períodos de contagem: **UTC**; horários de leitura e execução: hora local.
 
   - title: Assistentes
     path: assistentes

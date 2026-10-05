@@ -2,7 +2,10 @@ command_line:
   - sensor:
       name: Codex RTX Host Reachability Raw
       unique_id: codex_rtx_host_reachability_raw
-      command: "python3 /config/tools/rtx_host_reachability.py --timeout-seconds 2"
+      command: "python3 /config/tools/rtx_host_reachability.py --timeout-seconds 2 --json"
+      value_template: "{{ value_json.state }}"
+      json_attributes:
+        - collected_at
       command_timeout: 6
       scan_interval: 30
   - sensor:
@@ -16,6 +19,7 @@ command_line:
       scan_interval: 2
       value_template: "{{ value_json.state }}"
       json_attributes:
+        - collected_at
         - task
         - model
         - started_at
@@ -64,6 +68,7 @@ command_line:
       scan_interval: 30
       value_template: "{{ value_json.count }}"
       json_attributes:
+        - collected_at
         - window_hours
         - jobs
         - error
@@ -77,6 +82,8 @@ recorder:
   exclude:
     entities:
       - sensor.codex_usage_raw
+      - sensor.rtx_painel
+      - sensor.codex_rtx_host_reachability_raw
       - sensor.codex_rtx_live_raw
       - sensor.codex_rtx_historico_48h_raw
       - binary_sensor.codex_rtx_sinal_estavel

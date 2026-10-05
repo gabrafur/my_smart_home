@@ -186,6 +186,14 @@ class DashboardNumberFormattingTest(unittest.TestCase):
             dashboard,
         )
 
+    def test_rtx_activity_uses_explicit_local_dates_and_ptbr_numbers(self):
+        dashboard = (DASHBOARDS / "chat.yaml").read_text(encoding="utf-8")
+        self.assertIn("heading: Execuções recentes", dashboard)
+        self.assertIn("timestamp_custom('%d/%m %H:%M', true)", dashboard)
+        self.assertIn("format_number_ptbr(job.get('duration'), 1)", dashboard)
+        self.assertIn("format_number_ptbr(job.get('net'))", dashboard)
+        self.assertIn("state_attr('sensor.rtx_painel', 'jobs')", dashboard)
+
     def test_native_dashboard_counters_keep_numeric_display_metadata(self):
         config = CODEX_PACKAGE.read_text(encoding="utf-8")
 

@@ -534,6 +534,24 @@
                 "startup_dry"
             ],
             "reason": "Reset, internet sem VPN, ambas online, oscilação e unknown atravessam a mesma confirmação canônica; dry-run não altera prontidão de produção nem executa tarefas."
+        },
+        "rtx_metrics_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "rtx_metrics_test_group",
+                "rtx_metrics_test_reset",
+                "rtx_metrics_test_nominal",
+                "rtx_metrics_test_offline",
+                "rtx_metrics_test_stale",
+                "rtx_metrics_test_empty",
+                "rtx_metrics_test_invalid"
+            ],
+            "automated_test": "test-rtx-metrics-flow.mjs",
+            "dry_run_terminal_ids": [
+                "rtx_metrics_dry_run",
+                "global_observer_dry_run_terminal"
+            ],
+            "reason": "Snapshots sintéticos cumulativos percorrem validação, disponibilidade, cálculo e serialização reais; gate final bloqueia MQTT. Reset e estado de teste isolados. Replay do observador cobre erro e indisponibilidade sem notificação."
         }
     }
 }

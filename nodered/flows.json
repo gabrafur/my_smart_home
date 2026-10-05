@@ -43996,6 +43996,7 @@
             "global_observer_coverage__notification_hub_persistent_tab__out",
             "global_observer_coverage__recorder_retention_tab__out",
             "global_observer_coverage__resident_notifications_tab__out",
+            "global_observer_coverage__rtx_metrics_tab__out",
             "global_observer_coverage__shared_integrations_tab__out",
             "global_observer_coverage__startup_readiness_tab__out",
             "global_observer_coverage__storage_health_tab__out",
@@ -81937,6 +81938,999 @@
         ],
         "x": 780,
         "y": 3670,
+        "wires": []
+    },
+    {
+        "id": "rtx_metrics_tab",
+        "type": "tab",
+        "label": "metricas_rtx",
+        "disabled": false,
+        "info": "Fatos: sensores brutos do bridge. Cálculos e classificações: este canvas. Consumidor: painel RTX. Sondas passivas; nenhum recovery. Hoje/semana/mês usam as janelas UTC do produtor."
+    },
+    {
+        "id": "rtx_metrics_policy_group",
+        "type": "group",
+        "z": "rtx_metrics_tab",
+        "name": "0. Parâmetros · segundos / registros · limites no validador",
+        "nodes": [
+            "rtx_metrics_policy_set",
+            "rtx_metrics_policy",
+            "rtx_metrics_policy_help"
+        ],
+        "x": 64,
+        "y": 20,
+        "w": 720,
+        "h": 210,
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        }
+    },
+    {
+        "id": "rtx_metrics_policy_set",
+        "type": "inject",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_policy_group",
+        "name": "Validade 30/15/90/90 s · até 15 jobs",
+        "x": 280,
+        "y": 100,
+        "wires": [
+            [
+                "rtx_metrics_policy"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "{\"usage_max_age_s\":30,\"live_max_age_s\":15,\"history_max_age_s\":90,\"host_max_age_s\":90,\"history_limit\":15}",
+        "payloadType": "json",
+        "topic": "",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.2
+    },
+    {
+        "id": "rtx_metrics_policy",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_policy_group",
+        "name": "Validar e preservar último válido",
+        "x": 600,
+        "y": 100,
+        "wires": [],
+        "func": "// Only validated, visible parameters replace the last valid policy.\nconst limits = { usage_max_age_s: [15, 300], live_max_age_s: [5, 60], history_max_age_s: [30, 600], host_max_age_s: [35, 300], history_limit: [1, 30] };\nconst policy = msg.payload;\nif (!policy || Object.entries(limits).some(([key, [min, max]]) => !Number.isInteger(policy[key]) || policy[key] < min || policy[key] > max)) {\n    node.warn(\"Política RTX inválida; preservada a última configuração válida\");\n    return null;\n}\nflow.set(msg.test_mode === true ? \"rtx_metrics_test_policy\" : \"rtx_metrics_policy\", policy);\nnode.status({ fill: \"green\", shape: \"dot\", text: \"parâmetros válidos\" });\nreturn msg;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_policy_help",
+        "type": "comment",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_policy_group",
+        "name": "Uso 15–300 s; live 5–60 s; histórico 30–600 s; host 35–300 s; jobs 1–30",
+        "x": 410,
+        "y": 170,
+        "wires": [],
+        "info": "Idades máximas de cada observação; rejeitar configuração inválida sem sobrescrever a anterior. Agenda fixa de leitura: 2 s; validade MQTT: 45 s; discovery retido: 60 s. Não acorda a RTX."
+    },
+    {
+        "id": "rtx_metrics_sources_group",
+        "type": "group",
+        "z": "rtx_metrics_tab",
+        "name": "1. Ler fatos do Home Assistant · sem acordar nem recuperar a RTX",
+        "nodes": [
+            "rtx_metrics_tick",
+            "rtx_metrics_usage",
+            "rtx_metrics_live",
+            "rtx_metrics_history",
+            "rtx_metrics_host",
+            "rtx_metrics_snapshot_out"
+        ],
+        "x": 64,
+        "y": 270,
+        "w": 1830,
+        "h": 180,
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        }
+    },
+    {
+        "id": "rtx_metrics_tick",
+        "type": "inject",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_sources_group",
+        "name": "Atualizar a cada 2 s",
+        "x": 230,
+        "y": 360,
+        "wires": [
+            [
+                "rtx_metrics_usage"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "{}",
+        "payloadType": "json",
+        "topic": "",
+        "repeat": "2",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 3
+    },
+    {
+        "id": "rtx_metrics_usage",
+        "type": "api-current-state",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_sources_group",
+        "name": "Contadores e recibos",
+        "x": 530,
+        "y": 360,
+        "wires": [
+            [
+                "rtx_metrics_live"
+            ]
+        ],
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.codex_usage_raw",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "usage",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false
+    },
+    {
+        "id": "rtx_metrics_live",
+        "type": "api-current-state",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_sources_group",
+        "name": "Atividade atual",
+        "x": 870,
+        "y": 360,
+        "wires": [
+            [
+                "rtx_metrics_history"
+            ]
+        ],
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.codex_rtx_live_raw",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "live",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false
+    },
+    {
+        "id": "rtx_metrics_history",
+        "type": "api-current-state",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_sources_group",
+        "name": "Histórico de 48 horas",
+        "x": 1210,
+        "y": 360,
+        "wires": [
+            [
+                "rtx_metrics_host"
+            ]
+        ],
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.codex_rtx_historico_48h_raw",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "history",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false
+    },
+    {
+        "id": "rtx_metrics_host",
+        "type": "api-current-state",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_sources_group",
+        "name": "Computador: online/offline/unknown",
+        "x": 1550,
+        "y": 360,
+        "wires": [
+            [
+                "rtx_metrics_snapshot_out"
+            ]
+        ],
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.codex_rtx_host_reachability_raw",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "host",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false
+    },
+    {
+        "id": "rtx_metrics_snapshot_out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_sources_group",
+        "name": "Snapshot → métricas",
+        "x": 1820,
+        "y": 360,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_metrics_calculate_in"
+        ]
+    },
+    {
+        "id": "rtx_metrics_calculation_group",
+        "type": "group",
+        "z": "rtx_metrics_tab",
+        "name": "2. Contrato canônico · validade → disponibilidade → taxas e saldo → histórico",
+        "nodes": [
+            "rtx_metrics_calculate_in",
+            "rtx_metrics_normalize",
+            "rtx_metrics_health",
+            "rtx_metrics_periods",
+            "rtx_metrics_jobs",
+            "rtx_metrics_result_out"
+        ],
+        "x": 64,
+        "y": 490,
+        "w": 1830,
+        "h": 180,
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "fill": "#ede9fe",
+            "fill-opacity": "0.35"
+        }
+    },
+    {
+        "id": "rtx_metrics_calculate_in",
+        "type": "link in",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_calculation_group",
+        "name": "Fatos reais ou sintéticos",
+        "x": 120,
+        "y": 580,
+        "wires": [
+            [
+                "rtx_metrics_normalize"
+            ]
+        ],
+        "links": [
+            "rtx_metrics_snapshot_out",
+            "rtx_metrics_test_out"
+        ]
+    },
+    {
+        "id": "rtx_metrics_normalize",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_calculation_group",
+        "name": "Validar fontes e idades",
+        "x": 350,
+        "y": 580,
+        "wires": [
+            [
+                "rtx_metrics_health"
+            ]
+        ],
+        "func": "// Adapt HA transport entities. Missing/stale data never become measured zeroes.\nconst policy = flow.get(msg.test_mode === true ? \"rtx_metrics_test_policy\" : \"rtx_metrics_policy\");\nif (!policy) { node.warn(\"Métricas RTX aguardam política válida\"); return null; }\nconst now = msg.test_mode === true && Number.isFinite(msg.now) ? msg.now : Date.now();\nconst age = value => { const t = Date.parse(value); return Number.isFinite(t) ? Math.max(0, (now - t) / 1000) : null; };\nconst fresh = (entity, seconds, timestamp) => {\n    const secondsOld = age(timestamp || entity?.last_updated);\n    return Boolean(entity && ![\"unknown\", \"unavailable\", \"error\"].includes(entity.state) && secondsOld !== null && secondsOld <= seconds);\n};\nconst usage = msg.usage?.attributes || {};\nconst local = usage.local_ai;\nconst usageOk = msg.usage?.state === \"ok\" && fresh(msg.usage, policy.usage_max_age_s, usage.collected_at) && local && typeof local === \"object\";\n// Explicit observation timestamps also advance on repeated idle/empty samples.\nconst liveOk = fresh(msg.live, policy.live_max_age_s, msg.live?.attributes?.collected_at);\nconst historyOk = fresh(msg.history, policy.history_max_age_s, msg.history?.attributes?.collected_at) && Array.isArray(msg.history?.attributes?.jobs) && !msg.history.attributes.error;\nconst hostOk = fresh(msg.host, policy.host_max_age_s, msg.host?.attributes?.collected_at);\nmsg.rtx = { now, policy, local: usageOk ? local : {}, live: liveOk ? msg.live : null, history: historyOk ? msg.history.attributes.jobs : null };\nmsg.report = {\n    schema_version: 1, updated_at: new Date(now).toISOString(), period_timezone: \"UTC\",\n    data_status: usageOk ? \"current\" : \"unavailable\", data_reason: usageOk ? \"Telemetria atualizada\" : \"Telemetria ausente, inválida ou desatualizada\",\n    source_at: usageOk ? usage.collected_at : null,\n    history_status: historyOk ? \"current\" : \"unavailable\",\n    host: hostOk && [\"online\", \"offline\"].includes(msg.host.state) ? msg.host.state : \"unknown\",\n    metrics: {}, periods: {}, jobs: [], daily: [],\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_health",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_calculation_group",
+        "name": "Classificar disponibilidade",
+        "x": 690,
+        "y": 580,
+        "wires": [
+            [
+                "rtx_metrics_periods"
+            ]
+        ],
+        "func": "// Availability decisions are canonical here; GPU measurements remain observations.\nconst live = msg.rtx.live;\nconst attrs = live?.attributes || {};\nconst states = {\n    in_use: [\"Em uso\", \"Há uma tarefa local em execução\"],\n    available: [\"Disponível\", \"Serviço pronto; nenhuma tarefa local em execução\"],\n    stale: [\"Sem confirmação recente\", \"A verificação do serviço expirou\"],\n};\nlet [label, reason] = states[live?.state] || [\"Indisponível\", \"Serviço local sem disponibilidade confirmada\"];\nif (!live) [label, reason] = [\"Sem sinal\", \"Não há uma leitura recente da atividade local\"];\nif (msg.report.host === \"offline\" && live?.state !== \"in_use\") [label, reason] = [\"Computador desligado\", \"Computador offline; nenhuma recuperação automática solicitada\"];\nmsg.report.health = { label, reason, model: attrs.model || null, task: attrs.task || null, sampled_at: attrs.sampled_at || null };\nconst active = live?.state === \"in_use\";\nfor (const [key, source] of [[\"gpu\", \"gpu_util_percent\"], [\"vram\", \"vram_mib\"], [\"power\", \"power_watts\"]]) {\n    const value = attrs[source];\n    msg.report.metrics[key] = active && typeof value === \"number\" && Number.isFinite(value) && value >= 0 ? value : null;\n}\nmsg.report.health.sample_reason = active ? \"Medições da tarefa ativa; valores ausentes ainda não foram amostrados\" : \"Sem amostra ativa: GPU, VRAM e potência não são medidas de repouso\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_periods",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_calculation_group",
+        "name": "Calcular saldo, etapas e taxas",
+        "x": 1050,
+        "y": 580,
+        "wires": [
+            [
+                "rtx_metrics_jobs"
+            ]
+        ],
+        "func": "// The bridge owns sanitized counters/receipts; Node-RED owns dashboard formulas.\nconst n = value => typeof value === \"number\" && Number.isFinite(value) && value >= 0 ? value : null;\nconst sum = (...values) => values.every(v => v !== null) ? values.reduce((a, b) => a + b, 0) : null;\nconst subtract = (a, b) => a !== null && b !== null && a >= b ? a - b : null;\nconst ratio = (a, b) => a !== null && b !== null && b > 0 && a <= b ? Math.round(1000 * a / b) / 10 : null;\nfunction period(raw = {}) {\n    const p = {};\n    const fields = {\n        calls: \"operational_calls\", failed: \"operational_failed_calls\", rejected: \"operational_quality_rejected_calls\",\n        no_gain: \"operational_not_beneficial_calls\", validated: \"operational_quality_validated_calls\",\n        measured: \"operational_quality_validated_measured_calls\", used: \"operational_primary_context_used_calls\",\n        unconfirmed: \"operational_primary_context_unconfirmed_calls\", diagnostics: \"diagnostic_calls\",\n        unclassified: \"unclassified_calls\", attempted: \"attempted_context_input_tokens\",\n        gross: \"confirmed_gross_useful_context_tokens_avoided\", gate: \"confirmed_quality_validation_tokens\",\n    };\n    for (const [key, source] of Object.entries(fields)) p[key] = n(raw[source]);\n    p.completed = subtract(p.calls, p.failed);\n    p.gated = sum(p.rejected, p.no_gain, p.validated);\n    p.without_gate = subtract(p.completed, p.gated);\n    p.without_cost = subtract(p.validated, p.measured);\n    p.net = subtract(p.gross, p.gate);\n    // A mismatched source contract must not manufacture a confirmed saving.\n    p.accounting_valid = p.net !== null && p.net === n(raw.confirmed_useful_context_tokens_avoided);\n    if (!p.accounting_valid) p.net = null;\n    p.use_rate = ratio(p.used, p.calls);\n    p.failure_rate = ratio(p.failed, p.calls);\n    p.reduction = ratio(p.net, p.attempted);\n    p.confirmation = ratio(p.used, sum(p.used, p.unconfirmed));\n    p.reason = p.calls === 0 ? \"Sem tentativas operacionais neste período\" : p.calls === null ? \"Sem dados válidos neste período\" : \"Contadores de Local AI; não comprovam execução exclusiva na GPU\";\n    return p;\n}\nconst local = msg.rtx.local;\nfor (const key of [\"today\", \"week\", \"month\", \"total\"]) msg.report.periods[key] = period(key === \"total\" ? local.totals : local.periods?.[key]);\nconst today = msg.report.periods.today;\nObject.assign(msg.report.metrics, { net_today: today.net, calls_today: today.calls, used_today: today.used, reduction_today: today.reduction, use_rate_today: today.use_rate, net_total: msg.report.periods.total.net });\nconst r = local.routing?.periods?.today || {};\nmsg.report.routing = {};\nfor (const key of [\"tasks\", \"eligible_tasks\", \"eligible_and_available_tasks\", \"missed_opportunities\", \"missed_potential_tokens_avoidable\", \"confirmed_unavailable_tasks\", \"availability_unknown_tasks\", \"failed_tasks\"]) msg.report.routing[key] = n(r[key]);\nmsg.report.routing.availability_percent = ratio(n(r.eligible_and_available_tasks), n(r.eligible_tasks));\nmsg.report.daily = (Array.isArray(local.daily_series) ? local.daily_series : []).filter(row => /^\\d{4}-\\d{2}-\\d{2}$/.test(row?.day)).slice(-7).map(row => ({\n    day: row.day, calls: n(row.operational_calls), used: n(row.operational_primary_context_used_calls),\n    net: n(row.useful_context_tokens_avoided), reduction: ratio(n(row.useful_context_tokens_avoided), n(row.attempted_context_input_tokens)),\n}));\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_jobs",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_calculation_group",
+        "name": "Classificar histórico limitado",
+        "x": 1430,
+        "y": 580,
+        "wires": [
+            [
+                "rtx_metrics_result_out"
+            ]
+        ],
+        "func": "// Classify bounded execution metadata. Never expose prompts, chat names or endpoints.\nconst tasks = { \"review-diff\": \"Revisão de alterações\", \"summarize-memory\": \"Resumo de memória\", \"summarize-document\": \"Resumo de documento\", \"summarize-log\": \"Resumo de logs\", \"analyze-tests\": \"Análise de testes\", \"inspect-files\": \"Análise de arquivos\", \"structured_extraction\": \"Extração estruturada\" };\nconst n = v => typeof v === \"number\" && Number.isFinite(v) && v >= 0 ? v : null;\nconst text = v => typeof v === \"string\" ? v.replace(/[|<>\\r\\n`]/g, \" \").slice(0, 100) : \"—\";\nmsg.report.jobs = (msg.rtx.history || []).filter(job => job && typeof job === \"object\").slice(0, msg.rtx.policy.history_limit).map(job => {\n    const confirmed = job.status === \"success\" && job.primary_context_used === true && job.quality_accepted === true && job.quality_validation_tokens_measured === true;\n    const gross = n(job.gross_useful_context_tokens_avoided), cost = n(job.quality_validation_tokens);\n    const net = confirmed && gross !== null && cost !== null ? Math.max(0, gross - cost) : 0;\n    const result = job.status === \"failed\" ? \"Falha técnica\" : job.status === \"discarded\" ? (job.discard_reason === \"insufficient_net_savings\" ? \"Descartado: sem ganho líquido\" : \"Descartado: fidelidade\") : confirmed ? \"Uso confirmado\" : job.status === \"success\" ? \"Uso não confirmado\" : \"Sem classificação\";\n    const timestamp = Date.parse(job.finished_at || job.started_at);\n    return { at: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null, task: tasks[job.task] || text(job.task), model: text(job.model), result, duration: n(job.duration_seconds), net, quality: n(job.quality_score_percent), processor: text(job.processor), gpu_peak: n(job.gpu_peak_percent) };\n});\nmsg.report.history_reason = msg.report.history_status === \"unavailable\" ? \"Histórico sem leitura recente\" : msg.report.jobs.length ? \"Execuções recentes; somente entregas confirmadas contam economia\" : \"Nenhuma execução registrada nas últimas 48 horas\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_result_out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_calculation_group",
+        "name": "Contrato → gate de publicação",
+        "x": 1820,
+        "y": 580,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_metrics_publish_in"
+        ]
+    },
+    {
+        "id": "rtx_metrics_effect_group",
+        "type": "group",
+        "z": "rtx_metrics_tab",
+        "name": "3. Publicar somente métricas · TESTE termina antes do MQTT",
+        "nodes": [
+            "rtx_metrics_publish_in",
+            "rtx_metrics_serialize",
+            "rtx_metrics_test_gate",
+            "rtx_metrics_dry_run",
+            "rtx_metrics_mqtt"
+        ],
+        "x": 64,
+        "y": 710,
+        "w": 1830,
+        "h": 260,
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "fill": "#dcfce7",
+            "fill-opacity": "0.35"
+        }
+    },
+    {
+        "id": "rtx_metrics_publish_in",
+        "type": "link in",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_effect_group",
+        "name": "Receber contrato",
+        "x": 120,
+        "y": 800,
+        "wires": [
+            [
+                "rtx_metrics_serialize"
+            ]
+        ],
+        "links": [
+            "rtx_metrics_result_out"
+        ]
+    },
+    {
+        "id": "rtx_metrics_serialize",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_effect_group",
+        "name": "Serializar estado e discovery",
+        "x": 350,
+        "y": 800,
+        "wires": [
+            [
+                "rtx_metrics_test_gate"
+            ]
+        ],
+        "func": "// Serialize a bounded, numeric contract. Final test/production gate is downstream.\nconst topic = \"local_ai/rtx_metrics/state\";\nconst definitions = [\n    [\"painel\", \"RTX Painel\", null, \"mdi:expansion-card\"],\n    [\"gpu\", \"RTX Metricas GPU\", \"%\", \"mdi:chip\"],\n    [\"vram\", \"RTX Metricas VRAM\", \"MiB\", \"mdi:memory\"],\n    [\"power\", \"RTX Metricas Potencia\", \"W\", \"mdi:lightning-bolt\"],\n    [\"net_today\", \"RTX Contexto Evitado Hoje\", \"tokens\", \"mdi:arrow-collapse-horizontal\"],\n    [\"calls_today\", \"RTX Tentativas Hoje\", \"tentativas\", \"mdi:counter\"],\n    [\"used_today\", \"RTX Uso Confirmado Hoje\", \"resultados\", \"mdi:check-decagram\"],\n    [\"reduction_today\", \"RTX Reducao Hoje\", \"%\", \"mdi:percent\"],\n    [\"use_rate_today\", \"RTX Aproveitamento Hoje\", \"%\", \"mdi:chart-donut\"],\n    [\"net_total\", \"RTX Contexto Evitado Total\", \"tokens\", \"mdi:sigma\"],\n];\nconst output = definitions.map(([key, name, unit, icon]) => {\n    const config = { name, unique_id: `rtx_metrics_${key}`, state_topic: topic, expire_after: 45, icon,\n        default_entity_id: `sensor.${name.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase().replaceAll(\" \", \"_\")}`,\n        availability_topic: \"nodered/status\", payload_available: \"online\", payload_not_available: \"offline\",\n        value_template: key === \"painel\" ? \"{{ value_json.health.label }}\" : `{{ value_json.metrics.${key} if value_json.metrics.${key} is not none else 'None' }}`,\n        device: { identifiers: [\"rtx_metrics_nodered\"], name: \"RTX · métricas Node-RED\", manufacturer: \"Local AI\", model: \"Observabilidade\" },\n    };\n    if (unit) Object.assign(config, { unit_of_measurement: unit, state_class: \"measurement\" });\n    if (key === \"power\") config.device_class = \"power\";\n    if (key === \"painel\") config.json_attributes_topic = topic;\n    return { topic: `homeassistant/sensor/rtx_metrics/${key}/config`, payload: JSON.stringify(config), qos: \"1\", retain: true, test_mode: msg.test_mode === true };\n});\n// Discovery is retained and refreshed each minute, including after HA reconnects.\nconst key = msg.test_mode === true ? \"rtx_metrics_test_discovery\" : \"rtx_metrics_discovery\";\nconst last = context.get(key) || 0;\nconst messages = msg.rtx.now - last >= 60000 ? output : [];\nif (messages.length) context.set(key, msg.rtx.now);\nconst report = { ...msg.report, jobs: [...msg.report.jobs], history_truncated: false };\nwhile (Buffer.byteLength(JSON.stringify(report), \"utf8\") > 12000 && report.jobs.length) {\n    report.jobs.pop(); report.history_truncated = true;\n}\nmessages.push({ topic, payload: JSON.stringify(report), qos: \"0\", retain: true, test_mode: msg.test_mode === true });\nreturn [messages];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_test_gate",
+        "type": "switch",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_effect_group",
+        "name": "Gate final: é TESTE?",
+        "x": 700,
+        "y": 800,
+        "wires": [
+            [
+                "rtx_metrics_dry_run"
+            ],
+            [
+                "rtx_metrics_mqtt"
+            ]
+        ],
+        "property": "test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_metrics_dry_run",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_effect_group",
+        "name": "TESTE: simulado, não publicado",
+        "x": 1090,
+        "y": 770,
+        "wires": [],
+        "func": "const result = { simulated: true, dispatched: false, topic: msg.topic, valid_json: false };\ntry { JSON.parse(msg.payload); result.valid_json = true; } catch (_) { /* Invalid output stays test-only. */ }\nflow.set(\"rtx_metrics_test_result\", result);\nnode.status({ fill: result.valid_json ? \"green\" : \"red\", shape: \"dot\", text: \"TESTE: sem publicar MQTT\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_mqtt",
+        "type": "mqtt out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_effect_group",
+        "name": "Sensores do painel · MQTT retido",
+        "x": 1090,
+        "y": 870,
+        "wires": [],
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc"
+    },
+    {
+        "id": "rtx_metrics_test_group",
+        "type": "group",
+        "z": "rtx_metrics_tab",
+        "name": "4. TESTE completo · reset → nominal → indisponível → stale → recuperação",
+        "nodes": [
+            "rtx_metrics_test_reset",
+            "rtx_metrics_reset",
+            "rtx_metrics_test_nominal",
+            "rtx_metrics_test_nominal_out",
+            "rtx_metrics_test_offline",
+            "rtx_metrics_test_offline_out",
+            "rtx_metrics_test_stale",
+            "rtx_metrics_test_stale_out",
+            "rtx_metrics_test_empty",
+            "rtx_metrics_test_empty_out",
+            "rtx_metrics_test_invalid",
+            "rtx_metrics_test_invalid_out",
+            "rtx_metrics_test_merge",
+            "rtx_metrics_fixture",
+            "rtx_metrics_test_out",
+            "rtx_metrics_test_help"
+        ],
+        "x": 64,
+        "y": 1010,
+        "w": 1830,
+        "h": 420,
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "fill": "#fef3c7",
+            "fill-opacity": "0.35"
+        }
+    },
+    {
+        "id": "rtx_metrics_test_reset",
+        "type": "inject",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 0: reset isolado",
+        "x": 260,
+        "y": 1090,
+        "wires": [
+            [
+                "rtx_metrics_reset"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "{\"scenario\":\"reset\"}",
+        "payloadType": "json",
+        "topic": "",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.2
+    },
+    {
+        "id": "rtx_metrics_reset",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "Limpar somente estado de TESTE",
+        "x": 680,
+        "y": 1090,
+        "wires": [],
+        "func": "flow.set(\"rtx_metrics_test_result\", undefined); flow.set(\"rtx_metrics_test_snapshot\", undefined); flow.set(\"rtx_metrics_test_policy\", undefined); node.status({fill:\"green\",shape:\"dot\",text:\"TESTE reiniciado\"}); return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_test_nominal",
+        "type": "inject",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 1: com uso confirmado",
+        "x": 310,
+        "y": 1170,
+        "wires": [
+            [
+                "rtx_metrics_test_nominal_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "{\"scenario\":\"nominal\"}",
+        "payloadType": "json",
+        "topic": "",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.2
+    },
+    {
+        "id": "rtx_metrics_test_nominal_out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 1 → fatos",
+        "x": 570,
+        "y": 1170,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_metrics_test_merge"
+        ]
+    },
+    {
+        "id": "rtx_metrics_test_offline",
+        "type": "inject",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 2: computador offline",
+        "x": 310,
+        "y": 1220,
+        "wires": [
+            [
+                "rtx_metrics_test_offline_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "{\"scenario\":\"offline\"}",
+        "payloadType": "json",
+        "topic": "",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.2
+    },
+    {
+        "id": "rtx_metrics_test_offline_out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 2 → fatos",
+        "x": 570,
+        "y": 1220,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_metrics_test_merge"
+        ]
+    },
+    {
+        "id": "rtx_metrics_test_stale",
+        "type": "inject",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 3: dados antigos / unknown",
+        "x": 310,
+        "y": 1270,
+        "wires": [
+            [
+                "rtx_metrics_test_stale_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "{\"scenario\":\"stale\"}",
+        "payloadType": "json",
+        "topic": "",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.2
+    },
+    {
+        "id": "rtx_metrics_test_stale_out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 3 → fatos",
+        "x": 570,
+        "y": 1270,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_metrics_test_merge"
+        ]
+    },
+    {
+        "id": "rtx_metrics_test_empty",
+        "type": "inject",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 4: disponível sem amostra",
+        "x": 310,
+        "y": 1320,
+        "wires": [
+            [
+                "rtx_metrics_test_empty_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "{\"scenario\":\"empty\"}",
+        "payloadType": "json",
+        "topic": "",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.2
+    },
+    {
+        "id": "rtx_metrics_test_empty_out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 4 → fatos",
+        "x": 570,
+        "y": 1320,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_metrics_test_merge"
+        ]
+    },
+    {
+        "id": "rtx_metrics_test_invalid",
+        "type": "inject",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 5: fonte indisponível",
+        "x": 310,
+        "y": 1370,
+        "wires": [
+            [
+                "rtx_metrics_test_invalid_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "{\"scenario\":\"invalid\"}",
+        "payloadType": "json",
+        "topic": "",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.2
+    },
+    {
+        "id": "rtx_metrics_test_invalid_out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE 5 → fatos",
+        "x": 570,
+        "y": 1370,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_metrics_test_merge"
+        ]
+    },
+    {
+        "id": "rtx_metrics_test_merge",
+        "type": "link in",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "Receber cenário sintético",
+        "x": 710,
+        "y": 1270,
+        "wires": [
+            [
+                "rtx_metrics_fixture"
+            ]
+        ],
+        "links": [
+            "rtx_metrics_test_nominal_out",
+            "rtx_metrics_test_offline_out",
+            "rtx_metrics_test_stale_out",
+            "rtx_metrics_test_empty_out",
+            "rtx_metrics_test_invalid_out"
+        ]
+    },
+    {
+        "id": "rtx_metrics_fixture",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "Acumular fatos sintéticos isolados",
+        "x": 920,
+        "y": 1270,
+        "wires": [
+            [
+                "rtx_metrics_test_out"
+            ]
+        ],
+        "func": "// Cumulative, isolated snapshots enter the very same production calculations.\nconst scenario = msg.payload?.scenario;\nconst now = Date.now(), at = new Date(now).toISOString();\nconst entity = (state, attributes = {}) => ({ state, attributes: { collected_at: at, ...attributes }, last_updated: at, last_reported: at });\nconst empty = Object.fromEntries([\"operational_calls\", \"operational_failed_calls\", \"operational_quality_rejected_calls\", \"operational_not_beneficial_calls\", \"operational_quality_validated_calls\", \"operational_quality_validated_measured_calls\", \"operational_primary_context_used_calls\", \"operational_primary_context_unconfirmed_calls\", \"diagnostic_calls\", \"unclassified_calls\", \"attempted_context_input_tokens\", \"confirmed_gross_useful_context_tokens_avoided\", \"confirmed_quality_validation_tokens\", \"confirmed_useful_context_tokens_avoided\"].map(k => [k, 0]));\nconst counters = scenario === \"empty\" ? empty : { ...empty, operational_calls: 4, operational_failed_calls: 1, operational_quality_validated_calls: 2, operational_quality_validated_measured_calls: 2, operational_quality_rejected_calls: 1, operational_primary_context_used_calls: 1, operational_primary_context_unconfirmed_calls: 1, attempted_context_input_tokens: 2000, confirmed_gross_useful_context_tokens_avoided: 1000, confirmed_quality_validation_tokens: 100, confirmed_useful_context_tokens_avoided: 900 };\nconst snapshot = flow.get(\"rtx_metrics_test_snapshot\") || {};\nObject.assign(snapshot, { usage: entity(\"ok\", { collected_at: at, local_ai: { periods: { today: counters, week: counters, month: counters }, totals: counters, daily_series: [] } }), live: entity(scenario === \"empty\" ? \"available\" : \"in_use\", { gpu_util_percent: 70, vram_mib: 4000, power_watts: 80, task: \"analyze-tests\", model: \"synthetic-model\" }), history: entity(\"0\", { jobs: [] }), host: entity(\"online\") });\nif (scenario === \"offline\") { snapshot.host.state = \"offline\"; snapshot.live.state = \"unavailable\"; }\nif (scenario === \"stale\") { snapshot.usage.attributes.collected_at = new Date(now - 600000).toISOString(); snapshot.live.attributes.collected_at = snapshot.usage.attributes.collected_at; snapshot.host.state = \"unknown\"; }\nif (scenario === \"invalid\") snapshot.usage.state = \"unavailable\";\nflow.set(\"rtx_metrics_test_snapshot\", snapshot);\nflow.set(\"rtx_metrics_test_policy\", { usage_max_age_s: 30, live_max_age_s: 15, history_max_age_s: 90, host_max_age_s: 90, history_limit: 15 });\nreturn { ...snapshot, test_mode: true, now };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_metrics_test_out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "TESTE → mesmo cálculo e gate",
+        "x": 1200,
+        "y": 1270,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_metrics_calculate_in"
+        ]
+    },
+    {
+        "id": "rtx_metrics_test_help",
+        "type": "comment",
+        "z": "rtx_metrics_tab",
+        "g": "rtx_metrics_test_group",
+        "name": "Repetir TESTE 1 após 2/3/5: recuperação sem publicar sensores",
+        "x": 1460,
+        "y": 1360,
+        "wires": [],
+        "info": "A ordem é livre após reset. TESTE 1 cobre recuperação. Inspecione rtx_metrics_test_result; simulated=true, dispatched=false. Falhas de nós/status têm replay pelo observador global compartilhado. Nenhum teste altera produção."
+    },
+    {
+        "id": "global_observer_coverage__rtx_metrics_tab__group",
+        "type": "group",
+        "z": "rtx_metrics_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__rtx_metrics_tab__catch",
+            "global_observer_coverage__rtx_metrics_tab__status",
+            "global_observer_coverage__rtx_metrics_tab__annotate",
+            "global_observer_coverage__rtx_metrics_tab__out"
+        ],
+        "x": 2000,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__rtx_metrics_tab__catch",
+        "type": "catch",
+        "z": "rtx_metrics_tab",
+        "g": "global_observer_coverage__rtx_metrics_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2140,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__rtx_metrics_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__rtx_metrics_tab__status",
+        "type": "status",
+        "z": "rtx_metrics_tab",
+        "g": "global_observer_coverage__rtx_metrics_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2150,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__rtx_metrics_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__rtx_metrics_tab__annotate",
+        "type": "function",
+        "z": "rtx_metrics_tab",
+        "g": "global_observer_coverage__rtx_metrics_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"rtx_metrics_tab\",\"flow_label\":\"metricas_rtx\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2420,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__rtx_metrics_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__rtx_metrics_tab__out",
+        "type": "link out",
+        "z": "rtx_metrics_tab",
+        "g": "global_observer_coverage__rtx_metrics_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2665,
+        "y": 130,
         "wires": []
     }
 ]

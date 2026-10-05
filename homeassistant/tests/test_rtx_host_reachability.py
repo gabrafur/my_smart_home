@@ -2,6 +2,10 @@
 
 from pathlib import Path
 import importlib.util
+import io
+import json
+from contextlib import redirect_stdout
+from datetime import datetime
 import subprocess
 import sys
 import unittest
@@ -20,6 +24,20 @@ SPEC.loader.exec_module(MODULE)
 
 class RtxHostReachabilityTest(unittest.TestCase):
     """Classify reachability without waking or mutating the workstation."""
+
+    @patch.object(MODULE, "read_secret", return_value="host.test")
+    @patch.object(MODULE, "probe_host", return_value="online")
+    def test_json_observation_keeps_plain_cli_compatible(self, probe, secret):
+        for args in [[], ["--json"]]:
+            output = io.StringIO()
+            with patch.object(sys, "argv", ["probe", *args]), redirect_stdout(output):
+                self.assertEqual(MODULE.main(), 0)
+            if args:
+                payload = json.loads(output.getvalue())
+                self.assertEqual(payload["state"], "online")
+                self.assertIsNotNone(datetime.fromisoformat(payload["collected_at"]).tzinfo)
+            else:
+                self.assertEqual(output.getvalue(), "online\n")
 
     def test_missing_host_is_unknown(self) -> None:
         self.assertEqual(MODULE.probe_host(None, "22", 1), "unknown")

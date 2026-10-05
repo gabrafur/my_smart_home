@@ -50,12 +50,9 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertNotIn("validation_trace", sensor)
 
         view = rtx_view()
-        self.assertIn("title: Canário de extração residual", view)
-        self.assertIn("sensor.codex_canario_extracao_estruturada", view)
-        self.assertIn("CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE", view)
-        self.assertIn("Probes, benchmark, shadow, controle, parser resolvido", view)
+        self.assertIn("title: Fora da contagem operacional", view)
+        self.assertIn("Diagnósticos e benchmarks", view)
         self.assertIn("format_number_ptbr", view)
-        self.assertNotIn("CANARY_GATE_PASSED` antes", view)
 
     def test_quality_bakeoff_sensor_exposes_v3_evidence_without_operational_mix(self):
         package = CODEX_PACKAGE.read_text(encoding="utf-8")
@@ -76,364 +73,48 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertNotIn("operational_calls", sensor)
         self.assertNotIn("useful_context_tokens_avoided", sensor)
 
-    def test_three_independent_columns_preserve_priority_and_fill_gaps(self):
-        """Keep one continuous section per column so tall cards cannot open gaps."""
+    def test_sections_prioritize_current_results_quality_and_history(self):
         view = rtx_view()
+        self.assertIn("    max_columns: 3", view)
+        headings = re.findall(r"^            heading: (.+)$", view, re.MULTILINE)
+        self.assertEqual(headings, ["Agora", "Evolução do contexto", "Resultado de hoje · UTC", "Execuções recentes", "Qualidade e aproveitamento", "Amostras da GPU", "Entenda os dados"])
+        self.assertEqual(view.count("      - type: grid\n        cards:\n"), 3)
+        self.assertNotIn("Waterfall", view)
+        self.assertIn("não uma medição da cobrança OpenAI", view)
+        self.assertIn("CPU", view)
 
-        self.assertIn("    type: sections\n", view)
-        self.assertIn("    max_columns: 3\n", view)
-        self.assertIn("    dense_section_placement: false\n", view)
-        marker = "      - type: grid\n        cards:\n"
-        columns = view.split(marker)[1:]
-        self.assertEqual(len(columns), 3)
-        self.assertEqual(
-            [re.search(r"^\s+title: (.+)$", column, re.MULTILINE).group(1) for column in columns],
-            [
-            "Saúde da infraestrutura",
-            "Atividade ao vivo",
-            "Waterfall — hoje · UTC",
-            ],
-        )
-        self.assertEqual(
-            sum(len(re.findall(r"^          - type:", column, re.MULTILINE)) for column in columns),
-            31,
-        )
-        for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico da última execução", "Histórico de uso da RTX — últimas 48 horas"):
-            self.assertIn(f"title: {title}", columns[0])
-        for title in ("Última atividade", "Saldo líquido equivalente acumulado", "Waterfall — total preservado"):
-            self.assertIn(f"title: {title}", columns[1])
-        for title in ("Economia útil diária — últimos 7 dias", "Fluxo operacional diário — últimos 7 dias"):
-            self.assertIn(f"title: {title}", columns[2])
-        self.assertNotIn("title: Histórico de uso da RTX — últimas 48 horas", columns[2])
-        history = columns[0].index("title: Histórico de uso da RTX — últimas 48 horas")
-        self.assertEqual(columns[0].rfind("          - type:"), columns[0].rfind("          - type:", 0, history))
-        self.assertNotIn("title: Última decisão de memória", view)
-        self.assertIsNone(re.search(r"^\s+title: \d+ ·", view, re.MULTILINE))
-
-    def test_live_section_preserves_quality_history_table_and_metric_peaks(self):
-        """Keep the quality-aware job table and line charts with five-minute maxima."""
+    def test_dashboard_only_consumes_canonical_metrics(self):
         view = rtx_view()
+        self.assertNotIn("sensor.codex_usage_raw", view)
+        self.assertNotIn("sensor.codex_rtx_live_raw", view)
+        self.assertNotIn("sensor.codex_rtx_historico_48h_raw", view)
+        self.assertNotRegex(view, r"\|\s*(?:float|int)\(0\)|now\(\)|timedelta|namespace\(|\|\s*sum")
+        self.assertNotRegex(view, r"\{%[^%]*(?:\s[+*/<>]\s|\s-\s)[^%]*%\}")
+        self.assertIn("state_attr('sensor.rtx_painel', 'periods')", view)
+        self.assertIn("state_attr('sensor.rtx_painel', 'routing')", view)
+        self.assertIn("job.get('result')", view)
+        self.assertNotIn("job.get('status')", view)
 
-        self.assertIn("title: Atividade ao vivo", view)
-        self.assertNotIn("entity: binary_sensor.codex_rtx_em_uso", view)
-        self.assertIn("title: Histórico de uso da RTX — últimas 48 horas", view)
-        self.assertIn("state_attr('sensor.codex_rtx_historico_48h_raw', 'jobs')", view)
-        self.assertIn(
-            "| Quando | Trabalho delegado à RTX | Aproveitamento | Tempo | Economia líquida |",
-            view,
-        )
-        self.assertIn("{% for job in jobs -%}", view)
-        self.assertIn("Modelo local: `{{ job.get('model', '—') }}`", view)
-        self.assertIn("'review-diff': 'Revisão de alterações'", view)
-        self.assertIn("job.get('discard_reason')", view)
-        self.assertIn("🟠 Descartado: economia insuficiente", view)
-        self.assertIn("🟠 Descartado: fidelidade insuficiente", view)
-        self.assertLess(view.index("'🟠 Descartado: economia insuficiente' if status == 'discarded'"), view.index("'✅ Aproveitado' if status == 'success'"))
-        self.assertIn("Qualidade do conteúdo: {{ quality }}", view)
-        self.assertIn("mede aderência ao original, não economia", view)
-        self.assertIn("já desconta o custo do gate", view)
-        self.assertNotIn(
-            "| Horário | Tarefa | Modelo | Resultado | Qualidade | Duração | Tokens úteis líquidos |",
-            view,
-        )
-        self.assertLess(
-            view.index("title: Diagnóstico da última execução"),
-            view.index("title: Histórico de uso da RTX — últimas 48 horas"),
-        )
-
-        metric_graphs = re.findall(
-            r"          - type: statistics-graph\n"
-            r"            title: (GPU|VRAM|Potência) — últimas 48 horas\n"
-            r"            chart_type: line\n"
-            r"            period: 5minute\n"
-            r"            days_to_show: 2\n"
-            r"            stat_types:\n"
-            r"              - max\n"
-            r"            entities:\n"
-            r"              - entity: (sensor\.codex_rtx_[a-z_]+_historico)",
-            view,
-        )
-        self.assertEqual(metric_graphs, [
-            ("GPU", "sensor.codex_rtx_gpu_historico"),
-            ("VRAM", "sensor.codex_rtx_vram_historico"),
-            ("Potência", "sensor.codex_rtx_potencia_historico"),
-        ])
-        self.assertLess(
-            view.index("title: Waterfall — total preservado"),
-            view.index("title: GPU — últimas 48 horas"),
-        )
-
-    def test_quality_rejection_is_not_duplicated_and_useful_reduction_is_explicit(self):
+    def test_numbers_keep_pt_br_and_unknown_is_not_zero(self):
         view = rtx_view()
+        self.assertIn("from 'formatting.jinja' import format_number_ptbr", view)
+        self.assertIn("else '—'", view)
+        self.assertIn("ausência de dados ou de base para a taxa", view)
+        package = CODEX_PACKAGE.read_text()
+        self.assertIn("      - sensor.rtx_painel\n", package)
+        publisher = (CODEX_PACKAGE.parents[2] / "nodered/tools/functions/rtx-metrics-publish.js").read_text()
+        self.assertIn('state_class: "measurement"', publisher)
+        self.assertIn("unit_of_measurement: unit", publisher)
+        self.assertNotIn("toLocaleString", publisher)
 
-        self.assertEqual(view.count("name: Rejeitados pelo gate"), 2)
-        self.assertNotIn("today.get('quality_rejected_tasks', 0)", view)
-        self.assertEqual(view.count("name: Redução útil líquida"), 2)
-        self.assertEqual(view.count("name: Tokens totais"), 2)
-        self.assertIn("name: Aproveitamento de qualidade", view)
-        self.assertEqual(view.count("name: Fiéis sem ganho líquido"), 2)
-        self.assertIn("entity: sensor.codex_falhas_operacionais_local_ai_hoje", view)
-        self.assertIn("'modelo_verificador'", view)
-
-    def test_quality_bakeoff_separates_primary_verifier_decision_and_evidence(self):
+    def test_live_graphs_use_numeric_canonical_sensors(self):
         view = rtx_view()
+        for sensor in ["gpu", "vram", "potencia"]:
+            self.assertIn(f"entity: sensor.rtx_metricas_{sensor}", view)
+        self.assertEqual(view.count("stat_types: [max]"), 3)
+        self.assertIn("period: 5minute", view)
+        self.assertIn("title: Últimas 48 horas", view)
 
-        self.assertIn("title: Benchmark RTX — quality-first por atividade", view)
-        self.assertIn("sensor.codex_benchmark_rtx_alto_potencial", view)
-        for collection in ("resultados_primary", "resultados_verifier", "decisoes_promocao", "modelos", "dataset"):
-            self.assertIn(collection, view)
-        for field in (
-            "total_cases", "local_inference_calls", "accepted_cases", "fallback_cases",
-            "cases_with_critical_error", "pass_at_1", "critical_fact_recall",
-            "run_to_run_consistency", "duration_p50", "vram_peak", "cpu_offload_observed",
-            "critical_false_accepts", "critical_error_detection_recall", "false_reject_rate",
-            "natural_primary_errors_total", "natural_primary_error_recall", "approved",
-            "winner", "verifier", "operational_advantage_status", "production_enabled",
-            "failed_gates", "prompt_injection_cases", "stability_cases",
-        ):
-            self.assertIn(field, view)
-        for label in ("MEDIDO", "ESTIMADO", "NÃO TESTADO"):
-            self.assertIn(label, view)
-        self.assertIn("indisponível", view)
-        self.assertIn("independencia_ground_truth", view)
-        self.assertIn("autoria independente/manual externa não foi comprovada", view)
-        self.assertIn("Primary — promotion holdout", view)
-        self.assertIn("Verifier — corpus controlado + erros naturais", view)
-        self.assertIn("Decisão por atividade", view)
-        self.assertIn("Estas chamadas não entram nos contadores operacionais", view)
-        self.assertNotIn("weighted_token_savings", view)
-        self.assertIn("`summarize-log` está excluído", view)
 
-    def test_restricted_pivot_separates_all_four_tracks_and_measurement_basis(self):
-        view = rtx_view()
-
-        self.assertIn("title: Pivot RTX — expansão restrita", view)
-        self.assertIn("sensor.codex_pivot_rtx_restrito", view)
-        for heading in (
-            "A · Extração estruturada", "B · Logs", "C · Retrieval/reranking",
-            "D · Similaridade de erros",
-        ):
-            self.assertIn(heading, view)
-        for decision in (
-            "structured_extraction", "summarize_log", "retrieval_reranking",
-            "error_similarity", "local_ai_expansion",
-        ):
-            self.assertIn(decision, view)
-        for label in ("MEDIDO", "ESTIMADO", "NÃO TESTADO"):
-            self.assertIn(label, view)
-        self.assertIn("não entram no waterfall operacional", view)
-        self.assertIn("format_number_ptbr", view)
-        self.assertIn("persistent_index_implemented", view)
-        self.assertIn("automatic_merge", view)
-        self.assertIn("Aceitas/úteis", view)
-        self.assertIn("resumos locais aceitos", view)
-        self.assertIn("idade, arquivos e chunks do índice", view)
-        self.assertIn("Pares sugeridos, recall e falsos positivos", view)
-
-    def test_daily_operational_flow_reconciles_quality_outcomes(self):
-        view = rtx_view()
-
-        flow_start = view.index("title: Fluxo operacional diário — últimos 7 dias")
-        flow = view[flow_start:]
-        self.assertIn("get('daily_series', [])", flow)
-        self.assertIn("operational_failed_calls", flow)
-        self.assertIn("operational_quality_rejected_calls", flow)
-        self.assertIn("operational_not_beneficial_calls", flow)
-        self.assertIn("operational_quality_validated_measured_calls", flow)
-        self.assertIn("accepted_unmeasured", flow)
-        self.assertIn("unclassified", flow)
-        self.assertIn("mesmos agregados preservados", flow)
-        self.assertIn("categorias zeradas", flow)
-        self.assertIn("_Sem atividade operacional._", flow)
-        self.assertNotIn("{{ '█' * blocks }}", flow)
-        self.assertNotIn("type: statistics-graph", flow)
-        self.assertNotIn("entity: sensor.codex_taxa_de_falhas_qwen_2_5_coder_14b", view)
-        for stale_model in (
-            "sensor.codex_taxa_de_falhas_qwen_2_5_coder_7b",
-            "sensor.codex_taxa_de_falhas_qwen_3_8b",
-            "sensor.codex_taxa_de_falhas_qwen_2_5_coder_1_5b",
-        ):
-            self.assertNotIn(f"entity: {stale_model}", view)
-        self.assertIn("fiéis sem ganho", flow)
-        self.assertIn("valem zero na Redução", flow)
-        self.assertIn("útil líquida", flow)
-
-    def test_savings_graph_uses_daily_quality_validated_bars(self):
-        view = rtx_view()
-
-        savings_start = view.index("title: Economia útil diária — últimos 7 dias")
-        savings_end = view.index("title: Fluxo operacional diário — últimos 7 dias", savings_start)
-        savings = view[savings_start:savings_end]
-        self.assertIn("local.get('daily_series', [])", savings)
-        self.assertIn("useful_context_tokens_avoided", savings)
-        self.assertIn("{{ '█' * blocks }}{{ '░' * (20 - blocks) }}", savings)
-        self.assertIn("agregados diários UTC", savings)
-        self.assertIn("não dependem do histórico de uma entidade recém-criada", savings)
-        self.assertNotIn("chart_type: bar", savings)
-        self.assertNotIn("name: Economia útil líquida · hoje", view)
-        self.assertIn("com custo mensurado e saldo positivo", view)
-        self.assertIn("descartes,", view)
-        self.assertIn("falhas, benchmarks e legado sem custo", view)
-        self.assertIn("separável valem zero", view)
-        self.assertIn("entity: sensor.codex_resultados_local_ai_validados_mensuraveis_hoje", view)
-        self.assertNotIn("entity: sensor.codex_rtx_usos_hoje", view)
-        self.assertIn("title: Referência controlada de qualidade", view)
-        self.assertIn("title: Redução por gerador / verificador — total preservado", view)
-        self.assertIn("get('model_pairs', [])", view)
-        self.assertIn("2/16", view)
-        self.assertIn("economia operacional confirmada desta bateria é **0**", view)
-        self.assertIn("O antigo **23,2%**", view)
-
-    def test_indicator_groups_explain_how_to_read_their_metrics(self):
-        view = rtx_view()
-
-        self.assertEqual(view.count("**Como ler:**"), 12)
-        definitions = re.findall(
-            r"\*\*Como ler:\*\*(.*?)(?:\n\s*\n|$)",
-            view,
-            re.DOTALL,
-        )
-        self.assertEqual(len(definitions), 12)
-        for definition_text in definitions:
-            self.assertNotIn("{{", definition_text)
-            self.assertNotIn("{%", definition_text)
-        for definition in (
-            "*elegível* significa",
-            "*economia esperada* é",
-            "*job* é uma tentativa",
-            "*contexto evitado validado* é",
-            "*saldo líquido equivalente* é",
-            "*aproveitado* significa",
-        ):
-            self.assertIn(definition, view)
-
-    def test_memory_telemetry_is_not_mixed_with_net_operational_dashboard(self):
-        view = rtx_view()
-
-        self.assertNotIn("title: Contexto inicial e memória — hoje", view)
-        self.assertNotIn("memory_tokens_avoided", view)
-        self.assertNotIn("sensor.codex_contexto_inicial_observavel", view)
-        self.assertNotIn("sensor.codex_ultima_decisao_de_memoria", view)
-        self.assertIn("title: Waterfall — hoje · UTC", view)
-
-    def test_accumulated_waterfall_reconciles_every_quality_stage(self):
-        view = rtx_view()
-
-        for field in (
-            "totals.get('operational_failed_calls', 0)",
-            "totals.get('operational_quality_rejected_calls', 0)",
-            "totals.get('operational_not_beneficial_calls', 0)",
-            "totals.get('operational_quality_validated_calls', 0)",
-            "totals.get('operational_quality_validated_measured_calls', 0)",
-            "totals.get('quality_validation_unmeasured_calls', 0)",
-            "totals.get('diagnostic_calls', 0)",
-        ):
-            self.assertIn(field, view)
-        for entity in (
-            "sensor.codex_chamadas_operacionais_local_ai",
-            "sensor.codex_conclusoes_operacionais_local_ai",
-            "sensor.codex_falhas_operacionais_local_ai",
-            "sensor.codex_resultados_operacionais_sem_classificacao_de_qualidade",
-            "sensor.codex_resultados_local_ai_com_gate",
-            "sensor.codex_resultados_local_ai_rejeitados_no_gate",
-            "sensor.codex_resultados_local_ai_aprovados_no_gate",
-            "sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel",
-            "sensor.codex_resultados_local_ai_validados_mensuraveis",
-            "sensor.codex_resultados_local_ai_com_uso_nao_confirmado",
-            "sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal",
-            "sensor.codex_resultados_local_ai_sem_ganho_liquido",
-            "sensor.codex_tokens_totais",
-            "sensor.codex_contexto_tentado_local_ai",
-            "sensor.codex_economia_bruta_validada",
-            "sensor.codex_custo_gate_validacao_resultados",
-            "sensor.codex_tokens_openai_evitados_estimados",
-            "sensor.codex_reducao_de_contexto_local_ai",
-        ):
-            self.assertIn(f"entity: {entity}", view)
-        self.assertNotIn("| Etapa | Restante |", view)
-        self.assertIn("tentativas = sem falha técnica + falhas técnicas", view)
-        self.assertIn("fidelidade aprovada =", view)
-        self.assertIn("contexto OpenAI evitado, aprovado e entregue ao modelo principal − tokens locais", view)
-        self.assertIn("entity: sensor.codex_fallbacks_local_ai_informados_hoje", view)
-        self.assertNotIn("entity: sensor.codex_fallbacks_local_ai_informados\n", view)
-
-    def test_today_and_preserved_waterfalls_use_identical_semantics(self):
-        view = rtx_view()
-
-        total_start = view.index("title: Waterfall — total preservado")
-        total_end = view.index("          - type: markdown", total_start)
-        today_start = view.index("title: Waterfall — hoje · UTC")
-        today_end = view.index("          - type: markdown", today_start)
-        total_entities = re.findall(r"entity: (sensor\.[a-z0-9_]+)", view[total_start:total_end])
-        today_entities = re.findall(r"entity: (sensor\.[a-z0-9_]+)", view[today_start:today_end])
-
-        expected_total = [
-            "sensor.codex_chamadas_operacionais_local_ai",
-            "sensor.codex_conclusoes_operacionais_local_ai",
-            "sensor.codex_falhas_operacionais_local_ai",
-            "sensor.codex_resultados_operacionais_sem_classificacao_de_qualidade",
-            "sensor.codex_resultados_local_ai_com_gate",
-            "sensor.codex_resultados_local_ai_rejeitados_no_gate",
-            "sensor.codex_resultados_local_ai_aprovados_no_gate",
-            "sensor.codex_resultados_local_ai_sem_ganho_liquido",
-            "sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel",
-            "sensor.codex_resultados_local_ai_validados_mensuraveis",
-            "sensor.codex_resultados_local_ai_com_uso_nao_confirmado",
-            "sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal",
-            "sensor.codex_tokens_totais",
-            "sensor.codex_contexto_tentado_local_ai",
-            "sensor.codex_economia_bruta_validada",
-            "sensor.codex_custo_gate_validacao_resultados",
-            "sensor.codex_tokens_openai_evitados_estimados",
-            "sensor.codex_reducao_de_contexto_local_ai",
-        ]
-        expected_today = [f"{entity}_hoje" for entity in expected_total]
-        expected_today[5] = "sensor.codex_resultados_local_ai_descartados_hoje"
-        expected_today[14] = "sensor.codex_economia_bruta_validada_hoje"
-        expected_today[15] = "sensor.codex_custo_gate_validacao_resultados_hoje"
-        expected_today[16] = "sensor.codex_tokens_openai_evitados_hoje_estimados"
-        expected_today[17] = "sensor.codex_reducao_de_contexto_local_ai_hoje"
-
-        self.assertEqual(total_entities, expected_total)
-        self.assertEqual(today_entities, expected_today)
-        self.assertIn("mesmas etapas, fórmulas e unidades", view)
-        self.assertIn("Nenhum deles significa economia de tokens", view)
-
-    def test_semantic_tile_colors_distinguish_dashboard_signals(self):
-        view = rtx_view()
-
-        for color in ("blue", "cyan", "purple", "green", "amber", "red"):
-            self.assertIn(f"color: {color}", view)
-        self.assertRegex(view, r"name: Saldo líquido equivalente\n\s+color: green")
-        self.assertRegex(view, r"name: Custo do gate nos validados\n\s+color: amber")
-        self.assertRegex(view, r"name: Rejeitados pelo gate\n\s+color: red")
-
-    def test_routing_attention_keeps_only_actionable_signals(self):
-        view = rtx_view()
-
-        for entity in (
-            "sensor.codex_oportunidades_rtx_perdidas_hoje",
-            "sensor.codex_local_ai_indisponivel_hoje",
-            "sensor.codex_disponibilidade_rtx_desconhecida_hoje",
-            "sensor.codex_falhas_de_roteamento_local_ai_hoje",
-        ):
-            self.assertIn(f"entity: {entity}", view)
-        for contextual_entity in (
-            "sensor.codex_decisoes_de_roteamento_hoje",
-            "sensor.codex_tarefas_local_ai_elegiveis_hoje",
-            "sensor.codex_tarefas_local_ai_elegiveis_e_disponiveis_hoje",
-        ):
-            self.assertNotIn(f"entity: {contextual_entity}", view)
-        self.assertIn("entity: sensor.codex_disponibilidade_nas_tarefas_elegiveis_hoje", view)
-        self.assertIn("name: Disponibilidade nas elegíveis", view)
-        self.assertIn("**Fluxo avaliado:**", view)
-
-        routing_start = view.index("title: Atenção de roteamento — hoje")
-        routing_end = view.index("title: Decisão de roteamento", routing_start)
-        routing_block = view[routing_start:routing_end]
-        self.assertRegex(
-            routing_block,
-            r"\n          - type: markdown\n"
-            r"            content: >-\n"
-            r"(?:.*\n)*?\s+\*\*Fluxo avaliado:\*\*",
-        )
+if __name__ == "__main__":
+    unittest.main()

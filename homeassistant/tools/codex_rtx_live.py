@@ -2,6 +2,7 @@
 """Read only the active Local AI job for the one-second RTX dashboard indicator."""
 
 import json
+from datetime import datetime, timezone
 import urllib.error
 import urllib.request
 
@@ -65,6 +66,7 @@ def main() -> None:
         }
     except (OSError, ValueError, urllib.error.URLError) as error:
         result = {"state": "error", "error": type(error).__name__}
+    result["collected_at"] = datetime.now(timezone.utc).isoformat()
     print(json.dumps(result, separators=(",", ":")))
 
 

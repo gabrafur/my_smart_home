@@ -2,6 +2,7 @@
 """Fetch the compact 48-hour Local AI execution history."""
 
 import json
+from datetime import datetime, timezone
 import urllib.error
 import urllib.request
 
@@ -28,4 +29,5 @@ except (OSError, ValueError, urllib.error.URLError) as error:
         "error": type(error).__name__,
     }
 
+payload["collected_at"] = datetime.now(timezone.utc).isoformat()
 print(json.dumps(payload, separators=(",", ":")))

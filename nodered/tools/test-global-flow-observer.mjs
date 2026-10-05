@@ -830,3 +830,25 @@ for (const recover of [true, false]) {
     assert.equal(replay.get("global_flow_observer_last_dry_run_v1").dispatched, false);
   }
 }
+
+// The RTX metrics tab participates in the real observer path, ending in dry-run.
+{
+  const memoryStore = memory();
+  const annotation = { flow_id: "rtx_metrics_tab", flow_label: "metricas_rtx" };
+  const error = runIngest({ ...baseError(), _global_observer: annotation,
+    error: { message: "synthetic metrics failure", source: { id: "rtx_metrics_periods", type: "function", name: "Métricas" } },
+  }, memoryStore);
+  const status = { _global_observer_test: true, observer_now: 200000, _global_observer: annotation,
+    status: { fill: "red", text: "disconnected", source: { id: "rtx_metrics_mqtt", type: "mqtt out", name: "Métricas MQTT" } } };
+  runIngest(status, memoryStore);
+  const alerts = runEvaluate({ _global_observer_test: true, observer_now: 261000 }, memoryStore)[0];
+  assert.ok(error);
+  assert.equal(alerts.length, 1);
+  for (const alert of [error, ...alerts]) {
+    const guarded = execute(code.guard, { ...alert, _global_observer_test: true }, memoryStore);
+    assert.ok(guarded[2]);
+    assert.equal(guarded[0], null);
+    execute(code.dryRun, guarded[2], memoryStore);
+    assert.equal(memoryStore.get("global_flow_observer_last_dry_run_v1").dispatched, false);
+  }
+}

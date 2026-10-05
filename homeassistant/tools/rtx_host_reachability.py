@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+from datetime import datetime, timezone
 import socket
 import subprocess
 
@@ -44,17 +46,17 @@ def probe_host(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeout-seconds", type=float, default=2.0)
+    parser.add_argument("--json", action="store_true", help="Include observation time for passive consumers")
     args = parser.parse_args()
     if not 0.2 <= args.timeout_seconds <= 10:
         parser.error("--timeout-seconds must be between 0.2 and 10")
 
-    print(
-        probe_host(
+    state = probe_host(
             read_secret("pc_power_host"),
             read_secret("pc_power_port", "22"),
             args.timeout_seconds,
         )
-    )
+    print(json.dumps({"state": state, "collected_at": datetime.now(timezone.utc).isoformat()}) if args.json else state)
     return 0
 
 

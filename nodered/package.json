@@ -77,7 +77,9 @@
         "flows:validate-observability": "node tools/validate-global-flow-observer.mjs",
         "flows:validate-manual-tests": "node tools/validate-manual-test-policy.mjs",
         "flows:summary": "node tools/summarize-flows.mjs",
-        "test:all": "node tools/test-all.mjs"
+        "test:all": "node tools/test-all.mjs",
+        "flows:update-rtx-metrics": "node tools/install-rtx-metrics-flow.mjs && node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
+        "flows:test-rtx-metrics": "node tools/test-rtx-metrics-flow.mjs"
     },
     "dependencies": {
         "elkjs": "0.12.0",
