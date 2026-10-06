@@ -26,7 +26,14 @@ msg.error ??= {
 node.status({ fill: "red", shape: "ring", text: `${channel}: entrega falhou` });
 node.warn(`NOTIFICATION_HUB_FAILED channel=${channel} source=${source}`);
 
-const observer = source === "observabilidade_global" ? null : {
+const readiness = typeof global !== "undefined" && typeof global.get === "function"
+    ? global.get("startup_readiness_v1", "memoryOnly")
+    : null;
+const internetState = String(readiness?.internet_state ?? "unknown").toLowerCase();
+const expectedWanFailure = channel === "mobile" &&
+    new Set(["offline", "recovering"]).has(internetState);
+
+const observer = source === "observabilidade_global" || expectedWanFailure ? null : {
     payload: {
         observer_kind: "notification_hub_failure",
         incident_key: `${channel}:${source}`,

@@ -766,14 +766,15 @@ const observerNodes = [
   functionNode(
     "global_observer_internal_failure",
     productionGroup,
-    "Notificar falha interna sem recursão",
+    "Separar fonte HA e falhas internas",
     source("global-flow-observer-internal-failure.js"),
-    2,
+    3,
     880,
     320,
     [
       ["global_observer_notify_primary"],
       ["global_observer_notify_persistent"],
+      ["global_observer_ingest"],
     ],
   ),
   {
@@ -882,6 +883,7 @@ const observerNodes = [
     nodes: [
       "global_observer_integration_architecture",
       "global_observer_integration_tick",
+      "global_observer_integration_status",
       "global_observer_integration_test_in",
       "global_observer_integration_entries",
       "global_observer_integration_normalize",
@@ -924,6 +926,17 @@ const observerNodes = [
     x: 2340,
     y: 720,
     wires: [["global_observer_integration_entries"]],
+  },
+  {
+    id: "global_observer_integration_status",
+    type: "status",
+    z: OBSERVER_TAB,
+    g: integrationGroup,
+    name: "Conexão da fonte HA → monitor central",
+    scope: ["global_observer_integration_entries"],
+    x: 2900,
+    y: 820,
+    wires: [["global_observer_internal_failure"]],
   },
   {
     id: "global_observer_integration_test_in",

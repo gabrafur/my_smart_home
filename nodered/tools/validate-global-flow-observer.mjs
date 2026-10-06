@@ -20,7 +20,7 @@ const logicalWireTargets = (id, output = 0) => (required(id).wires?.[output] ?? 
   const generatedRoute = target.notification_hub_wire_route ||
     /^notification_hub_wire_out_[a-f0-9]{12}$/.test(target.id);
   if (target.type !== "link out" || !generatedRoute) return [targetId];
-  return (target.links ?? []).flatMap((linkInId) => required(linkInId).wires?.[0] ?? []);
+  return (target.links ?? []).flatMap((linkInId) => logicalWireTargets(linkInId));
 });
 const observerTab = required("global_flow_observer_tab");
 assert.equal(observerTab.type, "tab");
@@ -137,6 +137,10 @@ assert.deepEqual(internalCatch.scope, expectedInternalScope);
 assert.deepEqual(logicalWireTargets(internalCatch.id), ["global_observer_internal_failure", "global_observer_internal_catch_diagnostic_out"]);
 assert.deepEqual(logicalWireTargets("global_observer_internal_failure", 0), [notify.id]);
 assert.deepEqual(logicalWireTargets("global_observer_internal_failure", 1), [persistent.id]);
+assert.deepEqual(logicalWireTargets("global_observer_internal_failure", 2), ["global_observer_ingest"]);
+assert.deepEqual(required("global_observer_integration_status").scope, ["global_observer_integration_entries"]);
+assert.deepEqual(logicalWireTargets("global_observer_integration_status"), ["global_observer_internal_failure"]);
+
 assert.ok(required("global_observer_test_delivery").props.some(
   (property) => property.p === "_observer_delivery_test" && property.v === "true",
 ));

@@ -74,10 +74,11 @@ function memory() {
   };
 }
 
-function execute(body, msg, flow, events = []) {
+function execute(body, msg, flow, events = [], globalValues = {}) {
   return vm.runInNewContext(`(function () {\n${body}\n})()`, {
     msg,
     flow,
+    global: { get: (key) => globalValues[key] },
     structuredClone,
     node: {
       status(value) { events.push(["status", value]); },
@@ -132,7 +133,7 @@ const DEFAULT_POLICY = {
     startupFlow,
     internalEvents,
   );
-  assert.equal(internalResult.length, 2);
+  assert.equal(internalResult.length, 3);
   assert.equal(internalResult[0], null);
   assert.equal(internalResult[1], null);
   assert.equal(internalEvents.some(([kind]) => kind === "error" || kind === "warn"), false);
@@ -333,6 +334,40 @@ assert.equal(
   undefined,
   "status visual de função não deve duplicar o alerta do monitor de domínio",
 );
+
+const duloStatus = {
+  _global_observer_test: true,
+  observer_now: 200_000,
+  _global_observer: { flow_id: "shared_integrations_tab", flow_label: "integracoes_compartilhadas" },
+  status: {
+    fill: "red",
+    text: "MQTT error",
+    source: { id: "dulo_hub", type: "DuloNodeHub", name: "DuloNodeHub" },
+  },
+};
+for (const internetState of ["offline", "recovering", "unknown", "checking"]) {
+  const replay = memory();
+  ensurePolicy(replay);
+  const normalized = execute(code.normalize, structuredClone(duloStatus), replay, [], {
+    startup_readiness_v1: { internet_state: internetState },
+  });
+  assert.equal(normalized._observer_event.monitored, false,
+    `DuloNodeHub não deve alertar sem internet online: ${internetState}`);
+  execute(code.statusUnmonitored, normalized, replay);
+  assert.deepEqual(Object.keys(replay.get("global_flow_observer_v1__test").status_sources), []);
+}
+{
+  const replay = memory();
+  ensurePolicy(replay);
+  const normalized = execute(code.normalize, structuredClone(duloStatus), replay, [], {
+    startup_readiness_v1: { internet_state: "online" },
+  });
+  assert.equal(normalized._observer_event.monitored, true);
+  execute(code.statusFailure, normalized, replay);
+  const alerts = runEvaluate({ _global_observer_test: true, observer_now: 261_000 }, replay)[0];
+  assert.equal(alerts.length, 1, "DuloNodeHub deve alertar quando a internet está online");
+  assert.match(alerts[0].alert.message, /DuloNodeHub/);
+}
 
 const falsePositiveStore = memory();
 for (const status of [
@@ -738,7 +773,6 @@ const dryRunStore = memory();
 execute(code.dryRun, simulated[2], dryRunStore);
 assert.equal(dryRunStore.values.get("global_flow_observer_last_dry_run_v1").dispatched, false);
 
-console.log("Global flow observer: topology and incident lifecycle scenarios passed.");
 
 // Deployment removes timestamped entity evidence persisted by the old observer.
 {
@@ -852,3 +886,52 @@ for (const recover of [true, false]) {
     assert.equal(memoryStore.get("global_flow_observer_last_dry_run_v1").dispatched, false);
   }
 }
+
+// The monitor's own HA inventory follows the shared dependency lifecycle.
+for (const recover of [true, false]) {
+  const store = memory();
+  store.set("global_observer_boot_at__test", 0);
+  const event = {
+    _global_observer_test: true, observer_now: 500_000,
+    error: { message: "NoConnectionError", source: {
+      id: "global_observer_integration_entries", type: "ha-api", name: "HA inventory"
+    } }
+  };
+  const routed = execute(code.internalFailure, structuredClone(event), store);
+  assert.equal(routed[0], null);
+  assert.equal(routed[1], null);
+  assert.equal(routed[2]._global_observer.flow_id, "global_flow_observer_tab");
+  assert.equal(runIngest(routed[2], store), null);
+  const corroboration = structuredClone(event);
+  corroboration.error.source.id = "synthetic_other_ha_node";
+  assert.equal(runIngest(corroboration, store), null);
+  if (recover) {
+    const restored = { _global_observer_test: true, observer_now: 520_000,
+      status: { source: event.error.source, text: "home-assistant.status.running", fill: "green" } };
+    runIngest(execute(code.internalFailure, restored, store)[2], store);
+    assert.equal(runEvaluate({ _global_observer_test: true, observer_now: 570_000 }, store)[0], null);
+    assert.equal(runEvaluate({ _global_observer_test: true, observer_now: 22_170_000 }, store)[0], null);
+  } else {
+    const alerts = runEvaluate({ _global_observer_test: true, observer_now: 570_000 }, store)[0];
+    assert.equal(alerts.length, 1);
+    const guarded = execute(code.guard, alerts[0], store);
+    assert.equal(guarded[0], null);
+    assert.equal(guarded[1], null);
+    execute(code.dryRun, guarded[2], store);
+    assert.equal(store.get("global_flow_observer_last_dry_run_v1").dispatched, false);
+  }
+  assert.equal(store.get("global_flow_observer_internal_failure_v1"), undefined);
+}
+{
+  const store = memory();
+  store.set("global_observer_boot_at__test", 0);
+  const msg = { _global_observer_test: true, observer_now: 500_000,
+    error: { message: "Invalid API request", source: { id: "global_observer_integration_entries", type: "ha-api" } } };
+  const result = runIngest(execute(code.internalFailure, msg, store)[2], store);
+  assert.ok(result?.alert, "non-connection API failures remain actionable");
+  const guarded = execute(code.guard, result, store);
+  execute(code.dryRun, guarded[2], store);
+  assert.equal(store.get("global_flow_observer_last_dry_run_v1").dispatched, false);
+}
+
+console.log("Global flow observer: topology and incident lifecycle scenarios passed.");

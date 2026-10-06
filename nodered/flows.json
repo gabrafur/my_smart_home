@@ -3664,7 +3664,12 @@
             "global_observer_events_in_diagnostic_out",
             "global_observer_internal_catch_diagnostic_out",
             "global_observer_notification_catch_diagnostic_out",
-            "global_observer_alert_to_dispatch_in_diagnostic_out"
+            "global_observer_alert_to_dispatch_in_diagnostic_out",
+            "notification_hub_wire_out_07a157c23102",
+            "notification_hub_wire_in_07a157c23102",
+            "notification_hub_wire_in_1110c5c7ef32",
+            "notification_hub_wire_out_942330fc1b08",
+            "notification_hub_wire_in_942330fc1b08"
         ],
         "x": 64,
         "y": 39,
@@ -3745,7 +3750,9 @@
             "global_observer_integration_entries",
             "global_observer_integration_normalize",
             "global_observer_integration_lifecycle",
-            "global_observer_integration_alert_out"
+            "global_observer_integration_alert_out",
+            "global_observer_integration_status",
+            "notification_hub_wire_out_1110c5c7ef32"
         ],
         "x": 2174,
         "y": 579,
@@ -44018,7 +44025,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Classificar erro ou status",
-        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\n// Generated notification link callers depend on HA but do not report its status.\nconst haNotificationCaller = sourceType === \"link call\" && sourceId.endsWith(\"__hub_call\") &&\n    typeof msg.notification?.source === \"string\" && msg._notification_hub_context !== undefined;\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource || haNotificationCaller ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    // Consume the location coordinator's decision; do not duplicate its limits.\n    const transportRetryPending = flowId === \"ea0a6aa0d24ff863\" &&\n        [\"people_visual_primary_icloud_update\", \"people_visual_secondary_icloud_update\"].includes(sourceId) &&\n        sourceType === \"api-call-service\" &&\n        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&\n        msg.payload?.refresh_transport_retry_pending === true;\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        transport_retry_pending: transportRetryPending,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n    data.expected_pending = data.accepted_wake_pending || transportRetryPending;\n    // A call can fail before the websocket status event reaches this observer.\n    // Parse the transport envelope; domain/service errors cannot prove HA down.\n    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);\n    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\n    if (envelope) {\n        try {\n            const result = JSON.parse(envelope[1]);\n            disconnected = result.type === \"result\" && result.success === false &&\n                result.error?.code === 3 && result.error?.message === \"Connection lost\";\n        } catch { /* Unknown errors stay on the ordinary error path. */ }\n    }\n    if (haSource && disconnected) {\n        Object.assign(data, { kind: \"status\", monitored: true, failing: true,\n            incident_key: \"connection:home_assistant\", incident_kind: \"home_assistant\",\n            status_text: \"connection lost\", key: `${flowId}:${sourceId}` });\n    }\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    // HA entity values carry timestamps and may themselves be offline/unavailable.\n    // Only the connection status contract can open a shared incident.\n    const connectionFailure = haSource\n        ? /^(?:home-assistant\\.status\\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)\n        : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\",\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
+        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst duloSource = sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\";\nconst internetState = String(readiness?.internet_state ?? \"unknown\").toLowerCase();\n// Generated notification link callers depend on HA but do not report its status.\nconst haNotificationCaller = sourceType === \"link call\" && sourceId.endsWith(\"__hub_call\") &&\n    typeof msg.notification?.source === \"string\" && msg._notification_hub_context !== undefined;\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource || haNotificationCaller ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    // Consume the location coordinator's decision; do not duplicate its limits.\n    const transportRetryPending = flowId === \"ea0a6aa0d24ff863\" &&\n        [\"people_visual_primary_icloud_update\", \"people_visual_secondary_icloud_update\"].includes(sourceId) &&\n        sourceType === \"api-call-service\" &&\n        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&\n        msg.payload?.refresh_transport_retry_pending === true;\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        transport_retry_pending: transportRetryPending,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n    data.expected_pending = data.accepted_wake_pending || transportRetryPending;\n    // A call can fail before the websocket status event reaches this observer.\n    // Parse the transport envelope; domain/service errors cannot prove HA down.\n    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);\n    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\n    if (envelope) {\n        try {\n            const result = JSON.parse(envelope[1]);\n            disconnected = result.type === \"result\" && result.success === false &&\n                result.error?.code === 3 && result.error?.message === \"Connection lost\";\n        } catch { /* Unknown errors stay on the ordinary error path. */ }\n    }\n    if (haSource && disconnected) {\n        Object.assign(data, { kind: \"status\", monitored: true, failing: true,\n            incident_key: \"connection:home_assistant\", incident_kind: \"home_assistant\",\n            status_text: \"connection lost\", key: `${flowId}:${sourceId}` });\n    }\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    // HA entity values carry timestamps and may themselves be offline/unavailable.\n    // Only the connection status contract can open a shared incident.\n    const connectionFailure = haSource\n        ? /^(?:home-assistant\\.status\\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)\n        : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || (duloSource && internetState === \"online\"),\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -44998,9 +45005,9 @@
         "type": "function",
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
-        "name": "Notificar falha interna sem recursão",
-        "func": "const STATE_KEY = \"global_flow_observer_internal_failure_v1\";\nconst STORE = \"persistent\";\nconst now = Date.now();\nconst policy = flow.get(\"global_observer_policy_v1\", STORE);\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return [null, null];\n}\nconst source = msg.error?.source ?? {};\nconst sourceId = String(source.id ?? \"unknown\").slice(0, 100);\nconst sourceName = String(source.name || source.type || \"nó desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\nconst errorMessage = String(msg.error?.message ?? \"erro desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst signature = `${sourceId}:${errorMessage}`;\nconst previous = flow.get(STATE_KEY, STORE) ?? {};\n\nif (\n    previous.signature === signature &&\n    now - Number(previous.notified_at ?? 0) < Number(policy.reminder_hours) * 60 * 60 * 1000\n) {\n    return [null, null];\n}\n\nflow.set(STATE_KEY, { signature, notified_at: now }, STORE);\nmsg.payload = {\n    observer_kind: \"monitor_internal_error\",\n    source_id: sourceId\n};\nmsg.alert = {\n    title: \"Falha no monitor global do Node-RED\",\n    message:\n        `O próprio monitor de observabilidade falhou no nó “${sourceName}”: ` +\n        `${errorMessage}. Incidentes idênticos serão silenciados por ` +\n        `${policy.reminder_hours} horas.`\n};\nmsg._observer_persistent_notification_id =\n    `nodered_observabilidade_global_monitor_internal_error_${sourceId}`\n        .replace(/[^a-zA-Z0-9_-]+/g, \"_\")\n        .slice(0, 255);\n\nreturn [msg, msg];",
-        "outputs": 2,
+        "name": "Separar fonte HA e falhas internas",
+        "func": "// The HA inventory source is an external dependency, not monitor logic.\n// Let the canonical classifier decide connection failures and other API errors.\nconst eventSource = msg.error?.source ?? msg.status?.source;\nif (eventSource?.id === \"global_observer_integration_entries\") {\n    msg._global_observer = {\n        flow_id: \"global_flow_observer_tab\",\n        flow_label: \"observabilidade_global\"\n    };\n    return [null, null, msg];\n}\nconst STATE_KEY = \"global_flow_observer_internal_failure_v1\";\nconst STORE = \"persistent\";\nconst now = Date.now();\nconst policy = flow.get(\"global_observer_policy_v1\", STORE);\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return [null, null, null];\n}\nconst source = msg.error?.source ?? {};\nconst sourceId = String(source.id ?? \"unknown\").slice(0, 100);\nconst sourceName = String(source.name || source.type || \"nó desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\nconst errorMessage = String(msg.error?.message ?? \"erro desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst signature = `${sourceId}:${errorMessage}`;\nconst previous = flow.get(STATE_KEY, STORE) ?? {};\n\nif (\n    previous.signature === signature &&\n    now - Number(previous.notified_at ?? 0) < Number(policy.reminder_hours) * 60 * 60 * 1000\n) {\n    return [null, null, null];\n}\n\nflow.set(STATE_KEY, { signature, notified_at: now }, STORE);\nmsg.payload = {\n    observer_kind: \"monitor_internal_error\",\n    source_id: sourceId\n};\nmsg.alert = {\n    title: \"Falha no monitor global do Node-RED\",\n    message:\n        `O próprio monitor de observabilidade falhou no nó “${sourceName}”: ` +\n        `${errorMessage}. Incidentes idênticos serão silenciados por ` +\n        `${policy.reminder_hours} horas.`\n};\nmsg._observer_persistent_notification_id =\n    `nodered_observabilidade_global_monitor_internal_error_${sourceId}`\n        .replace(/[^a-zA-Z0-9_-]+/g, \"_\")\n        .slice(0, 255);\n\nreturn [msg, msg, null];",
+        "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -45014,6 +45021,9 @@
             ],
             [
                 "notification_hub_wire_out_ec2aa148678e"
+            ],
+            [
+                "notification_hub_wire_out_942330fc1b08"
             ]
         ]
     },
@@ -45847,7 +45857,7 @@
         "type": "link out",
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
-        "name": "Encurtar: Notificar falha interna sem recursão",
+        "name": "Encurtar: Separar fonte HA e falhas internas",
         "mode": "link",
         "links": [
             "notification_hub_wire_in_5ff53957a24f"
@@ -45878,7 +45888,7 @@
         "type": "link out",
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
-        "name": "Encurtar: Notificar falha interna sem recursão",
+        "name": "Encurtar: Separar fonte HA e falhas internas",
         "mode": "link",
         "links": [
             "notification_hub_wire_in_ec2aa148678e"
@@ -82932,5 +82942,115 @@
         "x": 2665,
         "y": 130,
         "wires": []
+    },
+    {
+        "id": "global_observer_integration_status",
+        "type": "status",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "Conexão da fonte HA → monitor central",
+        "scope": [
+            "global_observer_integration_entries"
+        ],
+        "x": 2900,
+        "y": 820,
+        "wires": [
+            [
+                "notification_hub_wire_out_1110c5c7ef32"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_07a157c23102",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Encurtar: Separar fonte HA e falhas internas",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_07a157c23102"
+        ],
+        "x": 2740,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_07a157c23102",
+        "type": "link in",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Continuar: Classificar erro ou status",
+        "links": [
+            "notification_hub_wire_out_07a157c23102"
+        ],
+        "x": 170,
+        "y": 320,
+        "wires": [
+            [
+                "global_observer_ingest"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_1110c5c7ef32",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "Encurtar: Conexão da fonte HA → monitor central",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_1110c5c7ef32"
+        ],
+        "x": 3080,
+        "y": 820,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_1110c5c7ef32",
+        "type": "link in",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Continuar: Separar fonte HA e falhas internas",
+        "links": [
+            "notification_hub_wire_out_1110c5c7ef32"
+        ],
+        "x": 2740,
+        "y": 540,
+        "wires": [
+            [
+                "global_observer_internal_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_942330fc1b08",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Encurtar: Separar fonte HA e falhas internas",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_942330fc1b08"
+        ],
+        "x": 3040,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_942330fc1b08",
+        "type": "link in",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Continuar: Encurtar: Separar fonte HA e falhas internas",
+        "links": [
+            "notification_hub_wire_out_942330fc1b08"
+        ],
+        "x": 2560,
+        "y": 280,
+        "wires": [
+            [
+                "notification_hub_wire_out_07a157c23102"
+            ]
+        ]
     }
 ]

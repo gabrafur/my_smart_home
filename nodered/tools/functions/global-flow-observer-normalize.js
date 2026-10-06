@@ -32,6 +32,8 @@ const sourceName = String(source.name || sourceType || "nó desconhecido").repla
 const haTypes = new Set(["api-call-service", "api-current-state", "api-get-history", "api-render-template",
     "events-all", "ha-api", "poll-state", "server-events", "server-state-changed", "trigger-state"]);
 const haSource = haTypes.has(sourceType) || sourceType.startsWith("ha-");
+const duloSource = sourceType === "DuloNodeDevice" || sourceType === "DuloNodeHub";
+const internetState = String(readiness?.internet_state ?? "unknown").toLowerCase();
 // Generated notification link callers depend on HA but do not report its status.
 const haNotificationCaller = sourceType === "link call" && sourceId.endsWith("__hub_call") &&
     typeof msg.notification?.source === "string" && msg._notification_hub_context !== undefined;
@@ -103,7 +105,7 @@ if (msg.error) {
         : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);
     const nodeFailure = connectionFailure || msg.status.fill === "red" ||
         /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);
-    Object.assign(data, { kind: "status", monitored: shared || sourceType === "DuloNodeDevice" || sourceType === "DuloNodeHub",
+    Object.assign(data, { kind: "status", monitored: shared || (duloSource && internetState === "online"),
         failing: shared ? connectionFailure : nodeFailure,
         incident_key: haSource ? "connection:home_assistant" : mqttSource ? "connection:mqtt" : `node:${flowId}:${sourceId}`,
         incident_kind: haSource ? "home_assistant" : mqttSource ? "mqtt" : "node_status",

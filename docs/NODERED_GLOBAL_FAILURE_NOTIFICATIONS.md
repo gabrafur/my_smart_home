@@ -43,7 +43,10 @@ aguarda reconexão; um link call comum continua alertável. O refresh do veícul
 preserva evidência e deadlines nessa desconexão, sem ativar bypass, criar falha
 da API do provedor ou duplicar o erro no tratador. Status de
 indisponibilidade do DuloNode continuam considerando também erro e timeout. A
-condição precisa permanecer por um minuto antes do push. Status visuais de
+condição precisa permanecer por um minuto antes do push, mas somente quando a
+internet canônica está confirmada `online`. Em `offline`, `recovering`,
+`checking` ou `unknown`, o status do DuloNode é consequência ou diagnóstico da
+dependência externa e não abre um segundo incidente. Status visuais de
 funções de domínio não abrem alerta global, pois seus incidentes já pertencem
 ao monitor específico. A queda compartilhada do Home Assistant exige
 corroboração simultânea de pelo menos dois nós; um único nó com domínio ou
@@ -69,6 +72,12 @@ separação de efeitos — possuem um `catch` interno dedicado. Esse caminho ign
 o processador que falhou, aplica deduplicação de seis horas e chama diretamente
 os dois canais de entrega. O manipulador interno e os terminais de log ficam
 fora do seu próprio escopo para impedir realimentação recursiva.
+
+Quando o hub móvel falha durante uma queda de internet já confirmada ou ainda
+em recuperação, a falha continua registrada no histórico privado e retorna ao
+chamador, mas não gera outro push nem outra notificação persistente sobre o
+próprio canal. Estados `unknown` e `checking` não são tratados como confirmação
+de queda e preservam o alerta de entrega.
 
 ## Histórico detalhado das causas
 
@@ -112,6 +121,12 @@ filtre os arquivos JSONL por `recorded_at`, `source_id` ou `incident_key`.
 explícito, erros suprimidos, duplicatas, status, domínio, dry-run, leitura após
 restart e retenção. A serialização permanece em um adaptador próprio para
 manter a política de notificação independente do armazenamento.
+
+A fonte `FONTE: entradas do Home Assistant` encaminha erros e status de conexão
+ao classificador central, com a mesma confirmação, recuperação e dedupe dos
+demais consumidores HA. `NoConnectionError` nessa consulta não representa
+falha interna do monitor. Erros de API sem evidência de desconexão continuam
+alertáveis; falhas nos classificadores preservam a rota interna sem recursão.
 
 ## Auditoria de cobertura
 

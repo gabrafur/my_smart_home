@@ -1,10 +1,20 @@
+// The HA inventory source is an external dependency, not monitor logic.
+// Let the canonical classifier decide connection failures and other API errors.
+const eventSource = msg.error?.source ?? msg.status?.source;
+if (eventSource?.id === "global_observer_integration_entries") {
+    msg._global_observer = {
+        flow_id: "global_flow_observer_tab",
+        flow_label: "observabilidade_global"
+    };
+    return [null, null, msg];
+}
 const STATE_KEY = "global_flow_observer_internal_failure_v1";
 const STORE = "persistent";
 const now = Date.now();
 const policy = flow.get("global_observer_policy_v1", STORE);
 if (policy?.version !== 1 || policy?.complete !== true) {
     node.status({ fill: "yellow", shape: "ring", text: "aguardando política visual" });
-    return [null, null];
+    return [null, null, null];
 }
 const source = msg.error?.source ?? {};
 const sourceId = String(source.id ?? "unknown").slice(0, 100);
@@ -21,7 +31,7 @@ if (
     previous.signature === signature &&
     now - Number(previous.notified_at ?? 0) < Number(policy.reminder_hours) * 60 * 60 * 1000
 ) {
-    return [null, null];
+    return [null, null, null];
 }
 
 flow.set(STATE_KEY, { signature, notified_at: now }, STORE);
@@ -41,4 +51,4 @@ msg._observer_persistent_notification_id =
         .replace(/[^a-zA-Z0-9_-]+/g, "_")
         .slice(0, 255);
 
-return [msg, msg];
+return [msg, msg, null];

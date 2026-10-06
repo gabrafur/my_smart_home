@@ -245,7 +245,7 @@ const functionSources = migrated
 assert.doesNotMatch(functionSources, /persistent_notification\.(?:create|dismiss)|mobile_app|notify_actionable|notify_[23]/,
   "Function Node de negócio não pode esconder uma saída de notificação");
 
-function executeFunction(filename, msg) {
+function executeFunction(filename, msg, globalValues = {}) {
   const code = fs.readFileSync(new URL(`./functions/${filename}`, import.meta.url), "utf8");
   const warnings = [];
   const store = new Map();
@@ -253,6 +253,7 @@ function executeFunction(filename, msg) {
     msg: structuredClone(msg),
     node: { status() {}, warn: (value) => warnings.push(value), error() {}, log() {} },
     flow: { get: (key) => store.get(key), set: (key, value) => store.set(key, value) },
+    global: { get: (key) => globalValues[key] },
     Date, Set, Object, Array, String, JSON,
   };
   const result = vm.runInNewContext(`(function () { ${code}\n})()`, sandbox);
@@ -309,6 +310,28 @@ assert.ok(secondaryFailureInPair.result[1], "falha no segundo destinatário deve
 assert.deepEqual(node("notification_hub_mobile_service_catch").wires, [["notification_hub_mobile_leg_failure"]]);
 assert.deepEqual(node("notification_hub_mobile_leg_failure").wires, [["notification_hub_mobile_pair_retry_out"], ["notification_hub_mobile_failure"]]);
 assert.equal(node("notification_hub_mobile_after_service").wires.length, 3);
+
+const hubFailure = {
+  notification: { source: "monitoramento_internet", operation: "notify" },
+  _notification_hub_channel: "mobile",
+  _notification_hub_recipient: "resident_secondary",
+  error: { message: "mobile push unavailable" },
+};
+for (const internetState of ["offline", "recovering"]) {
+  const failedDuringOutage = executeFunction("notification-hub-failure.js", hubFailure, {
+    startup_readiness_v1: { internet_state: internetState },
+  });
+  assert.ok(failedDuringOutage.result[0], "a falha ainda deve retornar ao chamador");
+  assert.equal(failedDuringOutage.result[1], null,
+    `internet ${internetState} não deve gerar um segundo alerta móvel`);
+}
+for (const internetState of ["online", "unknown", "checking"]) {
+  const actionableFailure = executeFunction("notification-hub-failure.js", hubFailure, {
+    startup_readiness_v1: { internet_state: internetState },
+  });
+  assert.ok(actionableFailure.result[1],
+    `internet ${internetState} não pode ser tratada como queda confirmada`);
+}
 
 const alexaValid = executeFunction("notification-hub-alexa-validate.js", {
   payload: "anúncio",
