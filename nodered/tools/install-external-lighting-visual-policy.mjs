@@ -45,6 +45,9 @@ const linkOut = (id, groupId, name, target, x, y) => grouped(groupId, {
 const linkIn = (id, groupId, name, origins, destination, x, y) => grouped(groupId, {
   id, type: "link in", z: TAB, g: groupId, name, links: origins, x, y, wires: [[destination]],
 });
+const change = (id, groupId, name, rules, x, y, wires) => grouped(groupId, {
+  id, type: "change", z: TAB, g: groupId, name, rules, x, y, wires,
+});
 
 const main = required("external_lighting_full_flow_group");
 Object.assign(main, {
@@ -66,10 +69,10 @@ fn("external_visual_command_allowed", main.id, "Preparar confirmação pelo temp
   "external-lighting-command-allowed.js", 1, 1680, 120,
   [["external_visual_command_mode"]]);
 fn("external_visual_command_blocked", main.id, "Bloquear e cancelar confirmação pendente",
-  "external-lighting-command-blocked.js", 1, 1700, 220,
+  "external-lighting-command-blocked.js", 1, 1830, 80,
   [["external_visual_notification_mode", "ext_wait_confirm"]]);
 sw("external_visual_command_mode", main.id, "Comando de produção ou TESTE?",
-  "_external_command.test_mode", 1930, 120,
+  "_external_command.test_mode", 2120, 240,
   [["ext_wait_confirm"], ["88e6fc3e56fa347c", "ext_wait_confirm"]]);
 sw("external_visual_notification_mode", main.id, "Aviso de produção ou TESTE?",
   "_external_command.test_mode", 2000, 260,
@@ -86,22 +89,24 @@ Object.assign(confirmation, {
   type: "trigger", name: "Aguardar confirmação mais recente — 5 s padrão",
   op1: "", op2: "", op1type: "nul", op2type: "payl", duration: "5",
   extend: true, overrideDelay: true, units: "s", reset: "", bytopic: "all",
-  topic: "topic", outputs: 1, x: 2190, y: 180,
+  topic: "topic", outputs: 1, x: 2470, y: 160,
   wires: [["external_visual_confirmation_mode"]],
 });
 for (const field of ["func", "timeout", "noerr", "initialize", "finalize", "libs"]) delete confirmation[field];
 sw("external_visual_confirmation_mode", main.id, "Confirmar em produção ou TESTE?",
-  "_external_command.test_mode", 2460, 300,
+  "_external_command.test_mode", 2880, 160,
   [["external_visual_command_dry_out"], ["ext_check_states"]]);
-Object.assign(required("ext_check_states"), { x: 2900, y: 280 });
-Object.assign(required("ext_build_alexa_message"), { x: 3200, y: 280 });
-Object.assign(required("9d81b75a18d482f1"), { x: 3480, y: 280 });
+Object.assign(required("ext_check_states"), { x: 3230, y: 280 });
+Object.assign(required("ext_build_alexa_message"), {
+  func: source("external-lighting-confirmation-message.js"), x: 3510, y: 280,
+});
+Object.assign(required("9d81b75a18d482f1"), { x: 3780, y: 280 });
 linkOut("external_visual_alexa_out", main.id, "Avisos → Alexa",
   "external_visual_alexa_in", 2180, 300);
 linkIn("external_visual_alexa_in", main.id, "Receber aviso confirmado",
   ["external_visual_alexa_out"], "9d81b75a18d482f1", 3200, 420);
 linkOut("external_visual_command_dry_out", main.id, "Comando TESTE → terminal",
-  "external_visual_dry_in", 2700, 460);
+  "external_visual_dry_in", 3115, 80);
 linkOut("external_visual_notification_dry_out", main.id, "Aviso TESTE → terminal",
   "external_visual_dry_in", 2260, 280);
 
@@ -129,6 +134,29 @@ linkIn("external_visual_sunset_in", main.id, "Receber comando automático ON",
   "943c87e6b17f0d68", 700, 220);
 required("24743bc9f254d1c1").wires = [["external_visual_sunset_out"], []];
 required("ext_confirm_recovery_sun_check").wires = [["external_visual_confirmed_sunset_out"], []];
+grouped(main.id, {
+  id: "external_visual_sunrise", type: "server-state-changed", z: TAB, g: main.id,
+  name: "Amanhecer", server: "4126427d5e161a03", version: 6, outputs: 2,
+  exposeAsEntityConfig: "", entities: { entity: ["sun.sun"], substring: [], regex: [] },
+  outputInitially: false, stateType: "str", ifState: "above_horizon", ifStateType: "str",
+  ifStateOperator: "is", outputOnlyOnStateChange: true, for: "0", forType: "num",
+  forUnits: "minutes", ignorePrevStateNull: false, ignorePrevStateUnknown: false,
+  ignorePrevStateUnavailable: false, ignoreCurrentStateUnknown: false,
+  ignoreCurrentStateUnavailable: false, outputProperties: [], x: 290, y: 400,
+  wires: [["external_visual_sunrise_out"], []],
+});
+linkOut("external_visual_sunrise_out", main.id, "Amanhecer → comando OFF",
+  "external_visual_sunrise_in", 520, 400);
+linkIn("external_visual_sunrise_in", main.id, "Receber comando automático OFF",
+  ["external_visual_sunrise_out", "external_visual_test_sunrise_out"],
+  "external_visual_sunrise_command", 700, 300);
+change("external_visual_sunrise_command", main.id, "Definir OFF no amanhecer", [
+  { t: "set", p: "payload", pt: "msg", to: '{"state":"OFF"}', tot: "json" },
+  { t: "set", p: "source", pt: "msg", to: "sunrise", tot: "str" },
+  { t: "set", p: "notify_text", pt: "msg", to: "Amanhecer. A iluminação externa foi desligada", tot: "str" },
+  { t: "set", p: "expected_state", pt: "msg", to: "off", tot: "str" },
+  { t: "set", p: "notify_success", pt: "msg", to: "Amanhecer. A iluminação externa foi desligada", tot: "str" },
+], 930, 320, [["ext_zigbee_command_gate"]]);
 
 const policy = group("external_visual_policy_group", "2. Política visual — confirmação e recovery",
   64, 619, 1100, 262, "#b58b3f");
@@ -181,12 +209,20 @@ grouped(tests.id, { id: "external_visual_test_recovery", type: "inject", z: TAB,
   x: 2030, y: 780, wires: [["external_visual_test_recovery_out"]] });
 linkOut("external_visual_test_recovery_out", tests.id, "Recovery TESTE → pipeline",
   "external_visual_test_recovery_in", 2290, 780);
+grouped(tests.id, { id: "external_visual_test_sunrise", type: "inject", z: TAB, g: tests.id,
+  name: "TESTE 5: amanhecer", props: [
+    { p: "_external_lighting_test", v: "true", vt: "bool" },
+    { p: "_external_test_zigbee_state", v: "online", vt: "str" },
+  ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+  x: 2010, y: 840, wires: [["external_visual_test_sunrise_out"]] });
+linkOut("external_visual_test_sunrise_out", tests.id, "Amanhecer TESTE → pipeline",
+  "external_visual_sunrise_in", 2260, 840);
 linkIn("external_visual_dry_in", tests.id, "Receber efeitos simulados",
   ["external_visual_command_dry_out", "external_visual_notification_dry_out", "external_visual_recovery_dry_out"],
   "external_visual_dry_terminal", 2470, 840);
 fn("external_visual_dry_terminal", tests.id, "TESTE FINAL: nenhum efeito enviado",
   "external-lighting-dry-run.js", 0, 2730, 840, []);
 
-required(TAB).info = "Iluminação externa com disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa.";
+required(TAB).info = "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa.";
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`External lighting visual policy installed in ${outputPath}`);

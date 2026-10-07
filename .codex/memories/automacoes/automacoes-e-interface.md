@@ -316,3 +316,10 @@ Uma queda confirmada de internet é o incidente canônico; falhas móveis de ent
 O alerta de indisponibilidade da RTX registra em contexto persistente quando o incidente de produção foi realmente aberto. Disponibilidade do endpoint ou desligamento esperado do computador encerra a responsabilidade, mas só envia persistent_notification.dismiss quando esse marcador está aberto; o marcador é limpo antes do efeito e ciclos seguintes permanecem silenciosos. A mensagem de fechamento remove reset e rtx_alert_condition antes do gate, para que a limpeza da deduplicação não reinicialize a própria detecção de recuperação. TESTE usa estado separado e nunca fecha incidente de produção.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"desligamento-diario-silencioso-iluminacao-externa","category":"LONG_LIVED_DECISION","kind":"PROJECT_DECISION","last_verified":"2026-10-07","evidence":[{"file":"docs/ILUMINACAO_EXTERNA_NODERED.md","sha256":"037ebb6c22765fa44395bc883fbc4b29069671b6ef2825e9042b1f5f04f6bc91"},{"file":"nodered/tools/install-external-lighting-visual-policy.mjs","sha256":"ad7f7d76b1e22975eaac91674596bdbca4b7c8c78de24209cf9634a1f59b7b8d"},{"file":"nodered/tools/test-external-lighting-alarm-flow.mjs","sha256":"135fd8bfa090f7b7d89c82c288e0f4731fffd2df01a7ad2912ef609299a9b962"}]} -->
+## Desligamento diário silencioso da iluminação externa
+
+O tab iluminacao_externa envia OFF na transição real de sun.sun para above_horizon, com outputInitially false para que startup ou redeploy durante o dia não simule um novo amanhecer. O comando percorre a disponibilidade Zigbee, distribuição e confirmação canônicas. Sucesso no amanhecer permanece silencioso; falha Zigbee ou luz ainda ligada continua alertável. O replay manual TESTE 5 atravessa o mesmo pipeline até o terminal dry-run, sem MQTT, Alexa ou notificação.
+
+<!-- /memory-record -->

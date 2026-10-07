@@ -35,7 +35,7 @@
         "type": "tab",
         "label": "iluminacao_externa",
         "disabled": false,
-        "info": "Iluminação externa com disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa."
+        "info": "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa."
     },
     {
         "id": "alarm_house_tab",
@@ -944,6 +944,8 @@
             "ext_recovery_notification_action",
             "ext_validate_recovery_confirmation",
             "ext_confirm_recovery_sun_check",
+            "notification_hub_wire_out_3f1822d6ab4b",
+            "notification_hub_wire_in_3f1822d6ab4b",
             "external_visual_zigbee_available",
             "external_visual_command_allowed",
             "external_visual_command_blocked",
@@ -961,8 +963,10 @@
             "external_visual_sunset_out",
             "external_visual_confirmed_sunset_out",
             "external_visual_sunset_in",
-            "notification_hub_wire_out_3f1822d6ab4b",
-            "notification_hub_wire_in_3f1822d6ab4b"
+            "external_visual_sunrise",
+            "external_visual_sunrise_out",
+            "external_visual_sunrise_in",
+            "external_visual_sunrise_command"
         ],
         "x": 64,
         "y": -1,
@@ -2974,6 +2978,8 @@
             "external_visual_test_command_out",
             "external_visual_test_recovery",
             "external_visual_test_recovery_out",
+            "external_visual_test_sunrise",
+            "external_visual_test_sunrise_out",
             "external_visual_dry_in",
             "external_visual_dry_terminal"
         ],
@@ -10236,7 +10242,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "Montar aviso confirmado",
-        "func": "const expected = msg.expected_state || msg.payload?.expected_state;\nconst labels = {\n    lampada_varanda: 'varanda',\n    lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim'\n};\nconst states = {\n    lampada_varanda: msg.payload?.lampada_varanda,\n    lampadas_garagem: msg.payload?.lampadas_garagem,\n    refletores_jardim: msg.payload?.refletores_jardim\n};\nconst networkFailureStates = new Set([undefined, null, '', 'unknown', 'unavailable']);\nconst unavailable = Object.entries(states)\n    .filter(([, state]) => networkFailureStates.has(state))\n    .map(([entity]) => labels[entity]);\n\nif (flow.get('external_lighting_zigbee_state') === 'offline' || unavailable.length > 0) {\n    msg.zigbee_error = true;\n    const affected = unavailable.length > 0 ? ` Sem comunicação com: ${unavailable.join(', ')}.` : '';\n    msg.notify_text = `Erro na rede Zigbee.${affected} O comando da iluminação externa não será repetido.`;\n    return msg;\n}\n\nconst failed = Object.entries(states)\n    .filter(([, state]) => state !== expected)\n    .map(([entity, state]) => `${labels[entity]} ${state}`);\n\nif (failed.length === 0) {\n    msg.notify_text = msg.notify_success || msg.notify_text;\n    return msg;\n}\n\nconst expectedText = expected === 'on' ? 'ligada' : 'desligada';\nmsg.notify_text = `Erro ao acionar a iluminação externa. Esperado: ${expectedText}. Estado atual: ${failed.join(', ')}. O comando não será repetido.`;\nreturn msg;",
+        "func": "const expected = msg.expected_state || msg.payload?.expected_state;\nconst labels = {\n    lampada_varanda: 'varanda',\n    lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim'\n};\nconst states = {\n    lampada_varanda: msg.payload?.lampada_varanda,\n    lampadas_garagem: msg.payload?.lampadas_garagem,\n    refletores_jardim: msg.payload?.refletores_jardim\n};\nconst networkFailureStates = new Set([undefined, null, '', 'unknown', 'unavailable']);\nconst unavailable = Object.entries(states)\n    .filter(([, state]) => networkFailureStates.has(state))\n    .map(([entity]) => labels[entity]);\n\nif (flow.get('external_lighting_zigbee_state') === 'offline' || unavailable.length > 0) {\n    msg.zigbee_error = true;\n    const affected = unavailable.length > 0 ? ` Sem comunicação com: ${unavailable.join(', ')}.` : '';\n    msg.notify_text = `Erro na rede Zigbee.${affected} O comando da iluminação externa não será repetido.`;\n    return msg;\n}\n\nconst failed = Object.entries(states)\n    .filter(([, state]) => state !== expected)\n    .map(([entity, state]) => `${labels[entity]} ${state}`);\n\nif (failed.length === 0) {\n    if (msg.source === 'sunrise') {\n        node.status({ fill: 'green', shape: 'dot', text: 'amanhecer confirmado; aviso silencioso' });\n        return null;\n    }\n    msg.notify_text = msg.notify_success || msg.notify_text;\n    return msg;\n}\n\nconst expectedText = expected === 'on' ? 'ligada' : 'desligada';\nmsg.notify_text = `Erro ao acionar a iluminação externa. Esperado: ${expectedText}. Estado atual: ${failed.join(', ')}. O comando não será repetido.`;\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -82778,5 +82784,176 @@
                 "host_memory_guardian_result_in"
             ]
         ]
+    },
+    {
+        "id": "external_visual_sunrise",
+        "type": "server-state-changed",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Amanhecer",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 2,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sun.sun"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "above_horizon",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [],
+        "x": 290,
+        "y": 400,
+        "wires": [
+            [
+                "external_visual_sunrise_out"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "external_visual_sunrise_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Amanhecer → comando OFF",
+        "mode": "link",
+        "links": [
+            "external_visual_sunrise_in"
+        ],
+        "x": 520,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "external_visual_sunrise_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Receber comando automático OFF",
+        "links": [
+            "external_visual_sunrise_out",
+            "external_visual_test_sunrise_out"
+        ],
+        "x": 700,
+        "y": 300,
+        "wires": [
+            [
+                "external_visual_sunrise_command"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_sunrise_command",
+        "type": "change",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Definir OFF no amanhecer",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"state\":\"OFF\"}",
+                "tot": "json"
+            },
+            {
+                "t": "set",
+                "p": "source",
+                "pt": "msg",
+                "to": "sunrise",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "notify_text",
+                "pt": "msg",
+                "to": "Amanhecer. A iluminação externa foi desligada",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "expected_state",
+                "pt": "msg",
+                "to": "off",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "notify_success",
+                "pt": "msg",
+                "to": "Amanhecer. A iluminação externa foi desligada",
+                "tot": "str"
+            }
+        ],
+        "x": 930,
+        "y": 320,
+        "wires": [
+            [
+                "ext_zigbee_command_gate"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_sunrise",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "TESTE 5: amanhecer",
+        "props": [
+            {
+                "p": "_external_lighting_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_external_test_zigbee_state",
+                "v": "online",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2010,
+        "y": 840,
+        "wires": [
+            [
+                "external_visual_test_sunrise_out"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_sunrise_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "Amanhecer TESTE → pipeline",
+        "mode": "link",
+        "links": [
+            "external_visual_sunrise_in"
+        ],
+        "x": 2260,
+        "y": 840,
+        "wires": []
     }
 ]

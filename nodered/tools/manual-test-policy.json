@@ -161,13 +161,14 @@
                 "external_visual_test_reset",
                 "external_visual_test_online",
                 "external_visual_test_offline",
-                "external_visual_test_recovery"
+                "external_visual_test_recovery",
+                "external_visual_test_sunrise"
             ],
             "dry_run_terminal_ids": [
                 "external_visual_dry_terminal"
             ],
             "automated_test": "test-external-lighting-alarm-flow.mjs",
-            "reason": "Comando aceito, Zigbee offline e recovery pós-pôr do sol atravessam política, gates e confirmação canônicos; MQTT, push e Alexa terminam no dry-run."
+            "reason": "Comando aceito, Zigbee offline, recovery pós-pôr do sol e desligamento no amanhecer atravessam política, gates e confirmação canônicos; MQTT, push e Alexa terminam no dry-run."
         },
         "alarm_house_tab": {
             "strategy": "manual_full_dry_run",

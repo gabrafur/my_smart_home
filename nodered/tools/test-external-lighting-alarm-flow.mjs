@@ -74,6 +74,19 @@ assert.equal(
 );
 assert.deepEqual(sunset.wires, [["external_visual_sunset_out"], []]);
 
+const sunrise = getNode("external_visual_sunrise");
+assert.equal(sunrise.type, "server-state-changed");
+assert.deepEqual(sunrise.entities.entity, ["sun.sun"]);
+assert.equal(sunrise.ifState, "above_horizon");
+assert.equal(sunrise.outputInitially, false);
+assert.equal(sunrise.outputOnlyOnStateChange, true);
+assert.deepEqual(sunrise.wires, [["external_visual_sunrise_out"], []]);
+assert.deepEqual(getNode("external_visual_sunrise_out").links, ["external_visual_sunrise_in"]);
+assert.deepEqual(
+  getNode("external_visual_sunrise_in").links.sort(),
+  ["external_visual_sunrise_out", "external_visual_test_sunrise_out"].sort(),
+);
+
 for (const removedId of [
   "ext_sunset_alarm_check",
   "ext_alarm_armed_off",
@@ -282,6 +295,7 @@ const commandNodes = [
   ["d940e2132bca7ecc", "on"],
   ["c7fe1a52ffe5091d", "off"],
   ["943c87e6b17f0d68", "on"],
+  ["external_visual_sunrise_command", "off"],
 ];
 
 for (const [id, expectedState] of commandNodes) {
@@ -298,6 +312,21 @@ for (const [id, expectedState] of commandNodes) {
   );
   assert.deepEqual(command.wires, [["ext_zigbee_command_gate"]]);
 }
+
+const sunriseCommand = getNode("external_visual_sunrise_command");
+assert.ok(sunriseCommand.rules.some(
+  (rule) => rule.t === "set" && rule.p === "source" && rule.to === "sunrise",
+));
+assert.ok(sunriseCommand.rules.some(
+  (rule) => rule.t === "set" && rule.p === "payload" && rule.to === '{"state":"OFF"}',
+));
+const sunriseTest = getNode("external_visual_test_sunrise");
+assert.equal(sunriseTest.type, "inject");
+assert.ok(sunriseTest.props.some(
+  (property) => property.p === "_external_lighting_test" && property.v === "true",
+));
+assert.deepEqual(sunriseTest.wires, [["external_visual_test_sunrise_out"]]);
+assert.deepEqual(getNode("external_visual_test_sunrise_out").links, ["external_visual_sunrise_in"]);
 
 const distributor = compileFunction(getNode("88e6fc3e56fa347c"));
 const exteriorTopics = [
@@ -370,6 +399,27 @@ const success = buildMessage(
 );
 assert.equal(success.notify_text, "ok");
 
+const silentSunriseSuccess = buildMessage(
+  {
+    source: "sunrise",
+    expected_state: "off",
+    notify_success: "não anunciar",
+    payload: {
+      lampada_varanda: "off",
+      lampadas_garagem: "off",
+      refletores_jardim: "off",
+    },
+  },
+  { status: () => {} },
+  {},
+  zigbeeFlow,
+  {},
+  {},
+  setTimeout,
+  clearTimeout,
+);
+assert.equal(silentSunriseSuccess, null, "amanhecer bem-sucedido não deve anunciar na Alexa");
+
 const failure = buildMessage(
   {
     expected_state: "off",
@@ -389,6 +439,26 @@ const failure = buildMessage(
 );
 assert.match(failure.notify_text, /garagem on/);
 assert.match(failure.notify_text, /não será repetido/);
+
+const sunriseFailure = buildMessage(
+  {
+    source: "sunrise",
+    expected_state: "off",
+    payload: {
+      lampada_varanda: "off",
+      lampadas_garagem: "on",
+      refletores_jardim: "off",
+    },
+  },
+  {},
+  {},
+  zigbeeFlow,
+  {},
+  {},
+  setTimeout,
+  clearTimeout,
+);
+assert.match(sunriseFailure.notify_text, /garagem on/);
 
 const networkFailure = buildMessage(
   {

@@ -8,8 +8,9 @@ para a iluminacao.
 ## Objetivo
 
 Controlar `switch.lampada_varanda`, `switch.lampadas_garagem` e
-`switch.refletores_jardim` por comando manual ou por do sol. Uma queda do
-Node-RED durante o evento solar nunca e compensada com uma ligacao automatica.
+`switch.refletores_jardim` por comando manual, por do sol e amanhecer. Uma
+queda do Node-RED durante o evento solar nunca e compensada com uma ligacao
+automatica.
 
 ## Entradas e conexoes entre flows
 
@@ -29,26 +30,32 @@ Node-RED durante o evento solar nunca e compensada com uma ligacao automatica.
    `below_horizon` prepara o payload para os tres topicos Zigbee2MQTT. O node
    solar usa `outputInitially: false`: iniciar ou redeployar o Node-RED a noite
    nao equivale a um novo por do sol.
-2. Quinze segundos depois do boot, o fluxo verifica `sun.sun`. Se ja estiver
+2. Uma transicao real de `sun.sun` para `above_horizon` prepara diariamente um
+   comando OFF com origem `sunrise`, que percorre a mesma disponibilidade,
+   distribuicao e confirmacao dos comandos manuais. Esse node tambem usa
+   `outputInitially: false`, portanto um redeploy durante o dia nao simula um
+   novo amanhecer. O sucesso e silencioso para nao gerar anuncio diario na
+   Alexa; falha Zigbee ou luz ainda ligada continua produzindo alerta.
+3. Quinze segundos depois do boot, o fluxo verifica `sun.sun`. Se ja estiver
    abaixo do horizonte e `last_changed` pertencer a mesma data local, prepara
    uma pergunta com token unico. A notificacao do celular oferece `Ligar` e
    `Nao ligar`; a Alexa faz a mesma pergunta e orienta responder pelo celular.
-3. A pergunta e registrada no context store `persistent` somente depois que o
+4. A pergunta e registrada no context store `persistent` somente depois que o
    Home Assistant aceita a notificacao. Ela e deduplicada por data e expira ao
    mudar o dia. Uma resposta `Ligar` ainda revalida que o sol esta abaixo do
    horizonte antes de seguir. Nenhuma resposta da Alexa aciona cargas.
-4. `Bloquear se rede Zigbee offline` consulta o estado mantido a partir de
+5. `Bloquear se rede Zigbee offline` consulta o estado mantido a partir de
    `zigbee2mqtt/bridge/state` e da conexao do broker MQTT. Se a bridge ou o
    broker estiver offline, nenhum comando e publicado, nenhuma repeticao e
    criada e a Alexa informa a falha.
-5. Quando a rede esta disponivel, `Distribuir para topicos Zigbee2MQTT`
+6. Quando a rede esta disponivel, `Distribuir para topicos Zigbee2MQTT`
    publica em:
    - `zigbee2mqtt/example_exterior_light_1/set`;
    - `zigbee2mqtt/example_exterior_light_2/set`;
    - `zigbee2mqtt/example_exterior_light_3/set`.
-6. `Confirmar somente o comando mais recente` aguarda cinco segundos. Um novo
+7. `Confirmar somente o comando mais recente` aguarda cinco segundos. Um novo
    comando cancela a confirmacao anterior para impedir avisos obsoletos.
-7. `Confirmar estados no Home Assistant` le as tres entidades. Estados
+8. `Confirmar estados no Home Assistant` le as tres entidades. Estados
    `unknown` ou `unavailable` sao tratados como falha de comunicacao Zigbee;
    a Alexa informa quais pontos ficaram indisponiveis e o comando nao e
    repetido. Divergencias ON/OFF tambem sao anunciadas sem retry.
@@ -72,6 +79,8 @@ o mesmo hub, evitando fios diretos entre fluxos de negócio.
 - 2026-08-19: removido todo acoplamento com o Moni Mobile. A reavaliacao
   automatica no boot foi substituida por confirmacao no celular, anunciada
   tambem na Alexa, somente na mesma data local do por do sol perdido.
+- 2026-10-07: adicionado desligamento diario no amanhecer pelo mesmo pipeline
+  canonico dos comandos manuais, com cobertura automatizada e teste dry-run.
 
 ## Testes e manutencao
 
@@ -81,6 +90,10 @@ npm run flows:validate
 npm run flows:test-external-lighting
 npm run flows:test-alarm-house
 ```
+
+No grupo de testes do canvas, execute `TESTE 1: reset` e depois
+`TESTE 5: amanhecer`. O terminal deve registrar `simulated: true` e
+`dispatched: false`, sem publicar MQTT nem chamar Alexa ou notificacao.
 
 Depois de alterar `flows.json`, faca Deploy no editor ou reinicie o container
 Node-RED de forma segura.
