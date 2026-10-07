@@ -196,7 +196,7 @@ identifica a chamada ao hub.
 | `iluminacao_seguranca` | refletor ligado | ambos os celulares | duas chamadas explícitas, uma por papel; texto de produção/TESTE igual |
 | `iluminacao_seguranca` | refletor indisponível | ambos os celulares | duas chamadas explícitas, uma por papel; motivo e título iguais |
 | `alarme_desarme_chegada` | confirmação de chegada | ambos os celulares, actionable | duas chamadas explícitas; tag, actions, títulos e correlação iguais |
-| `recuperacao_rtx` | endpoint recuperado | dismiss persistente queued | hub HA `dismiss/queued`; ID do incidente global igual |
+| `recuperacao_rtx` | endpoint recuperado | dismiss persistente queued | hub HA `dismiss/queued`; somente se o incidente global foi aberto, uma vez por recuperação, com o mesmo ID |
 | `alertas_codex` | alerta aceito | somente móvel primário + HA persistente queued | hubs móvel/HA; título, mensagem, tipo no ID, ack, retry e cooldown iguais |
 | `backup_git` | falha final | somente móvel primário + HA persistente queued | hubs móvel/HA; ID `git_backup_failure`, ack e retry iguais |
 | `notificacoes_chegadas_residentes` | `resident_secondary` se aproxima | somente móvel primário, actionable e time-sensitive | hub móvel somente `resident_primary`; tag, som, interruption level, dedupe e mensagem iguais |

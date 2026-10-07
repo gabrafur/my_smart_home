@@ -17,5 +17,6 @@ msg.observer_alert = {
     message: explanation + " Diagnóstico: " + event + ". Motivo: " + detail +
         ". Consulte a ponte do guardião e seu resultado sanitizado."
 };
-node.error(event + " request_id=" + String(result.request_id ?? "unknown") + " reason=" + reason, msg);
+node.warn("HOST_MEMORY_GUARDIAN_FAILURE event=" + event +
+    " request_id=" + String(result.request_id ?? "unknown") + " reason=" + detail);
 return null;

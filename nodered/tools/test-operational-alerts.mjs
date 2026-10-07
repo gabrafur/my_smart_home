@@ -68,7 +68,20 @@ assert.equal(observed.length, beforePressure + 1);
 await replay('host_memory_guardian_result_in', { ...structuredClone(pressure), payload: { ...pressure.payload, request_id: 'next-poll' } });
 assert.equal(observed.length, beforePressure + 1, 'new poll is still the same pressure incident');
 await replay('host_memory_guardian_result_in', { ...pressure, payload: { ...pressure.payload, status: 'healthy', request_id: 'recovered' } });
-assert.equal(observed.length, beforePressure + 2, 'recovery reaches shared dry-run');
+assert.equal(observed.length, beforePressure + 3, 'recovery closes pressure and performs the one-time legacy cleanup');
+const beforeFailure = observed.length;
+await replay('host_memory_guardian_result_in', { _host_memory_guardian_test: true, payload: { status: 'failed', reason: 'worker_unavailable', request_id: 'failed-1', checked_at: '2026-01-01T00:00:00Z', test_mode: true } });
+assert.equal(observed.length, beforeFailure + 1, 'guardian failure reaches shared dry-run');
+await replay('host_memory_guardian_result_in', { _host_memory_guardian_test: true, payload: { status: 'failed', reason: 'worker_unavailable', request_id: 'failed-2', checked_at: '2026-01-01T00:01:00Z', test_mode: true } });
+assert.equal(observed.length, beforeFailure + 1, 'same guardian failure is deduplicated across polls');
+await replay('host_memory_guardian_result_in', {
+  _host_memory_guardian_test: true,
+  payload: {
+    status: 'healthy', request_id: 'failure-recovered',
+    checked_at: '2026-01-01T00:02:00Z', test_mode: true,
+  },
+});
+assert.equal(observed.length, beforeFailure + 2, 'guardian recovery closes the failure incident');
 assert.ok(observed.every(result => result?.simulated === true && result.dispatched === false && result.notification_sent === false));
 assert.equal(stores.persistent.size, 0, 'full dry-run never changes production state');
 assert.equal(stores.memoryOnly.get('global_observer_diagnostic_last_test').simulated, true);
@@ -87,6 +100,25 @@ const resolution = invoke('global_observer_dispatch_guard', resolved);
 assert.equal(resolution[0], null); assert.equal(resolution[1].payload.persistent_notification_operation, 'dismiss');
 assert.ok(invoke('operations_daily_lifecycle', { operational_alert: event }));
 assert.ok(invoke('operations_daily_lifecycle', { operational_alert: { ...event, version: '3' } }));
+
+const guardianPolicy = {
+  source: 'guardiao_memoria_host', subject: 'memory_guardian_failure', active: true,
+  reason: 'memory_guardian_failure', version: 'failed:worker_unavailable',
+  incident_key: 'host_memory_guardian_tab_host_memory_guardian_effect_error',
+  persistent_incident_kind: 'node_error', title: 'Memória', message: 'Falha',
+};
+const legacyRecovery = invoke('operations_memory_lifecycle', {
+  operational_alert: { ...guardianPolicy, active: false, dismiss_if_absent_once: true },
+});
+assert.equal(legacyRecovery.payload.persistent_notification_operation, 'dismiss');
+assert.equal(invoke('operations_memory_lifecycle', {
+  operational_alert: { ...guardianPolicy, active: false, dismiss_if_absent_once: true },
+}), null, 'legacy cleanup runs only once');
+const guardianAlert = invoke('operations_memory_lifecycle', { operational_alert: guardianPolicy });
+assert.equal(guardianAlert.payload.incident_key, guardianPolicy.incident_key);
+assert.equal(guardianAlert.payload.persistent_incident_kind, 'node_error');
+const guardianResolved = invoke('operations_memory_lifecycle', { operational_alert: { ...guardianPolicy, active: false } });
+assert.equal(guardianResolved.payload.persistent_notification_operation, 'dismiss');
 
 const weeklyContext = { values: new Map(), get(k) { return this.values.get(k); }, set(k, v) { this.values.set(k, v); } };
 const weekly = state => invoke('weekly_docs_review_track_status', { payload: state, _weekly_docs_test: true }, weeklyContext);

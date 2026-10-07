@@ -230,7 +230,7 @@ function mobileHubNodes() {
     ["notification_hub_mobile_secondary_background", "Enviar background para resident_secondary", backgroundData("mobile_secondary", "notify_2"), "first", 2380, 360],
   ];
   for (const [id, name, data, queue, x, y] of services) add(service(id, z, main.id, name, "public_bindings.call", data, queue, x, y, [["notification_hub_mobile_after_service"]]));
-  add(sw("notification_hub_mobile_after_service", z, main.id, "Concluir par explícito?", "_notification_hub_recipient_count = 2 and _notification_hub_recipient = \"resident_primary\" ? \"continue\" : $exists(_notification_hub_prior_failure) ? \"failed\" : \"accepted\"", "jsonata", [{ t: "eq", v: "continue", vt: "str" }, { t: "eq", v: "failed", vt: "str" }, { t: "else" }], 2650, 120, [["notification_hub_mobile_pair_continue_out"], ["notification_hub_mobile_failure"], ["notification_hub_mobile_success"]]));
+  add(sw("notification_hub_mobile_after_service", z, main.id, "Concluir par explícito?", "_notification_hub_recipient_count = 2 and _notification_hub_recipient = \"resident_primary\" ? \"continue\" : $exists(_notification_hub_prior_failure) ? \"failed\" : \"accepted\"", "jsonata", [{ t: "eq", v: "continue", vt: "str" }, { t: "eq", v: "failed", vt: "str" }, { t: "else" }], 2650, 155, [["notification_hub_mobile_pair_continue_out"], ["notification_hub_mobile_failure"], ["notification_hub_mobile_success"]]));
   add(linkOut("notification_hub_mobile_pair_continue_out", z, main.id, "Par: seguir para resident_secondary", ["notification_hub_mobile_pair_continue_in"], 2860, 100));
   add(fn("notification_hub_mobile_success", z, main.id, "Registrar aceite do canal móvel", "notification-hub-success.js", 1, 2820, 200, [["notification_hub_mobile_return_success"]]));
   add(linkOut("notification_hub_mobile_return_success", z, main.id, "Retornar aceite ao chamador", [], 3030, 200, "return"));
@@ -367,7 +367,7 @@ function persistentHubNodes() {
 function addNotificationHistory(flows) {
   for (const [channel, { tab: z }] of Object.entries(NOTIFICATION_HUBS)) {
     const prefix = `notification_hub_${channel}_history`;
-    const g = group(`${prefix}_group`, z, "Histórico privado — JSONL | retenção: 7 dias | purge: a cada 5 min", 64, 1000, 1480, 360, "#475569", "#f1f5f9");
+    const g = group(`${prefix}_group`, z, "Histórico privado — JSONL | retenção: 7 dias | purge: a cada 5 min", 64, 1100, 1480, 360, "#475569", "#f1f5f9");
     const groups = new Map([[g.id, g], ...flows.filter((n) => n.z === z && n.type === "group").map((n) => [n.id, n])]);
     flows.push(g);
     const add = (n) => addGrouped(flows, groups, n);
@@ -380,17 +380,17 @@ function addNotificationHistory(flows) {
       // Branch before the acknowledgement restores/deletes the original contract.
       serviceNode.wires[0].push(id);
     }
-    add(comment(`${prefix}_note`, z, g.id, "Um registro por aceite; não comprova entrega/leitura", "Origem, conteúdo, canal, destinatário, correlação e operação. Inclui background commands e dismiss. Retenção fixa de 7 dias; purge no startup e a cada 300 s. Arquivos privados, fora do Git. TESTE usa o mesmo serializador sem gravar nem purgar produção.", 680, 1050));
-    add(linkIn(`${prefix}_in`, z, g.id, "Aceites individuais do serviço", outputs, 140, 1130, [[`${prefix}_record`]]));
-    add(fn(`${prefix}_record`, z, g.id, "Serializar aceite e conteúdo", "notification-hub-history-record.js", 2, 430, 1130, [[`${prefix}_file`], [`${prefix}_dry`]]));
-    add({ id: `${prefix}_file`, type: "file", z, g: g.id, name: "Anexar ao JSONL privado", filename: "filename", filenameType: "msg", appendNewline: true, createDir: true, overwriteFile: "false", encoding: "utf8", x: 780, y: 1110, wires: [[]] });
-    add(fn(`${prefix}_dry`, z, g.id, "TESTE FINAL: nenhum arquivo gravado", "notification-hub-dry-run-terminal.js", 0, 820, 1180, []));
-    const fixture = inject(`${prefix}_test`, z, g.id, "TESTE: registro sem escrita", "TESTE — conteúdo com acentuação", { source: "notification_history_manual_test", title: "TESTE", test_mode: true }, 240, 1190, [[`${prefix}_record`]]);
+    add(comment(`${prefix}_note`, z, g.id, "Um registro por aceite; não comprova entrega/leitura", "Origem, conteúdo, canal, destinatário, correlação e operação. Inclui background commands e dismiss. Retenção fixa de 7 dias; purge no startup e a cada 300 s. Arquivos privados, fora do Git. TESTE usa o mesmo serializador sem gravar nem purgar produção.", 680, 1150));
+    add(linkIn(`${prefix}_in`, z, g.id, "Aceites individuais do serviço", outputs, 140, 1230, [[`${prefix}_record`]]));
+    add(fn(`${prefix}_record`, z, g.id, "Serializar aceite e conteúdo", "notification-hub-history-record.js", 2, 430, 1230, [[`${prefix}_file`], [`${prefix}_dry`]]));
+    add({ id: `${prefix}_file`, type: "file", z, g: g.id, name: "Anexar ao JSONL privado", filename: "filename", filenameType: "msg", appendNewline: true, createDir: true, overwriteFile: "false", encoding: "utf8", x: 780, y: 1210, wires: [[]] });
+    add(fn(`${prefix}_dry`, z, g.id, "TESTE FINAL: nenhum arquivo gravado", "notification-hub-dry-run-terminal.js", 0, 820, 1280, []));
+    const fixture = inject(`${prefix}_test`, z, g.id, "TESTE: registro sem escrita", "TESTE — conteúdo com acentuação", { source: "notification_history_manual_test", title: "TESTE", test_mode: true }, 240, 1290, [[`${prefix}_record`]]);
     fixture.props.push({ p: "_notification_hub_channel", v: channel, vt: "str" });
     add(fixture);
-    add({ id: `${prefix}_schedule`, type: "inject", z, g: g.id, name: "Purge: início + cada 5 min", props: [], repeat: "300", crontab: "", once: true, onceDelay: 10, x: 260, y: 1280, wires: [[`${prefix}_purge`]] });
-    add({ id: `${prefix}_purge`, type: "exec", z, g: g.id, name: "Remover registros > 7 dias", command: `node /data/tools/purge-notification-history.mjs ${channel}`, addpay: false, append: "", useSpawn: "false", timer: "30", winHide: false, oldrc: false, x: 620, y: 1280, wires: [[], [], [`${prefix}_purge_result`]] });
-    add(fn(`${prefix}_purge_result`, z, g.id, "Verificar limpeza ou sinalizar erro", "notification-hub-history-purge-result.js", 0, 1040, 1280, []));
+    add({ id: `${prefix}_schedule`, type: "inject", z, g: g.id, name: "Purge: início + cada 5 min", props: [], repeat: "300", crontab: "", once: true, onceDelay: 10, x: 260, y: 1380, wires: [[`${prefix}_purge`]] });
+    add({ id: `${prefix}_purge`, type: "exec", z, g: g.id, name: "Remover registros > 7 dias", command: `node /data/tools/purge-notification-history.mjs ${channel}`, addpay: false, append: "", useSpawn: "false", timer: "30", winHide: false, oldrc: false, x: 620, y: 1380, wires: [[], [], [`${prefix}_purge_result`]] });
+    add(fn(`${prefix}_purge_result`, z, g.id, "Verificar limpeza ou sinalizar erro", "notification-hub-history-purge-result.js", 0, 1040, 1380, []));
   }
   return flows;
 }
@@ -887,7 +887,7 @@ if (invokedPath === fileURLToPath(import.meta.url)) {
     if (!serviceNode.wires[0].includes(node.id)) serviceNode.wires[0].push(node.id);
     const owner = byId.get(node.g);
     if (!owner.nodes.includes(node.id)) owner.nodes.push(node.id);
-    node.x = serviceNode.x + 210;
+    node.x = serviceNode.x + 150;
     node.y = serviceNode.y + (serviceNode.z === NOTIFICATION_HUBS.alexa.tab ? 50 : 0);
   }
   fs.writeFileSync(outputPath, `${JSON.stringify(reconciled, null, 4)}\n`);

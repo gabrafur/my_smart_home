@@ -175,9 +175,9 @@ const prepareResetRules = (topic) => [
   { t: "set", p: "reset", pt: "msg", to: "true", tot: "bool" },
   { t: "delete", p: "rtx_alert_condition", pt: "msg" },
 ];
-change("local_ai_rtx_prepare_prod_alert", groups.health, "Condição de alerta: produção", prepareAlertRules("production"), 4100, 460, [["local_ai_rtx_alert_rbe", "local_ai_rtx_alert_close_unavailable_out"]]);
+change("local_ai_rtx_prepare_prod_alert", groups.health, "Condição de alerta: produção", prepareAlertRules("production"), 4100, 460, [["local_ai_rtx_alert_rbe"]]);
 change("local_ai_rtx_prepare_test_alert", groups.health, "Condição de alerta: TESTE", prepareAlertRules("test"), 4100, 540, [["local_ai_rtx_alert_rbe"]]);
-change("local_ai_rtx_prepare_prod_alert_reset", groups.health, "Resetar incidente de produção", prepareResetRules("production"), 3500, 360, [["local_ai_rtx_alert_dedupe_reset_out", "local_ai_rtx_status_gate_out", "local_ai_rtx_alert_close_available_out"]]);
+change("local_ai_rtx_prepare_prod_alert_reset", groups.health, "Resetar incidente de produção", prepareResetRules("production"), 3500, 360, [["local_ai_rtx_alert_dedupe_reset_out", "local_ai_rtx_status_gate_out", "local_ai_rtx_alert_close_request_out"]]);
 change("local_ai_rtx_prepare_test_alert_reset", groups.health, "Resetar incidente de TESTE", prepareResetRules("test"), 3500, 420, [["local_ai_rtx_alert_dedupe_reset_out", "local_ai_rtx_status_gate_out"]]);
 linkOut("local_ai_rtx_prod_alert_reset_request_out", groups.health, "Host offline → reset produção", "local_ai_rtx_prod_alert_reset_request_in", 3950, 420);
 linkIn("local_ai_rtx_prod_alert_reset_request_in", groups.health, "Receber reset de produção", "local_ai_rtx_prod_alert_reset_request_out", "local_ai_rtx_prepare_prod_alert_reset", 3300, 300);
@@ -185,8 +185,7 @@ linkOut("local_ai_rtx_test_alert_reset_request_out", groups.health, "Host offlin
 linkIn("local_ai_rtx_test_alert_reset_request_in", groups.health, "Receber reset de TESTE", "local_ai_rtx_test_alert_reset_request_out", "local_ai_rtx_prepare_test_alert_reset", 3350, 580);
 linkIn("local_ai_rtx_test_alert_reset_in", groups.health, "Receber reset manual de TESTE", "local_ai_rtx_test_alert_reset_out", "local_ai_rtx_prepare_test_alert_reset", 3300, 520);
 linkOut("local_ai_rtx_alert_dedupe_reset_out", groups.health, "Reset → dedupe e confirmação", ["local_ai_rtx_alert_dedupe_reset_in", "local_ai_rtx_alert_confirmation_reset_in"], 3800, 390);
-linkOut("local_ai_rtx_alert_close_available_out", groups.health, "Disponível → encerrar alerta", "local_ai_rtx_alert_close_state_in", 3800, 350);
-linkOut("local_ai_rtx_alert_close_unavailable_out", groups.health, "Indisponível → manter alerta", "local_ai_rtx_alert_close_state_in", 4370, 450);
+linkOut("local_ai_rtx_alert_close_request_out", groups.health, "Recuperação → encerrar incidente aberto", "local_ai_rtx_alert_close_request_in", 3800, 350);
 linkIn("local_ai_rtx_alert_dedupe_reset_in", groups.health, "Receber reset por modo", "local_ai_rtx_alert_dedupe_reset_out", "local_ai_rtx_alert_rbe", 4050, 390);
 rbe("local_ai_rtx_alert_rbe", groups.health, "Uma notificação por incidente e modo", "rtx_alert_condition", 4310, 500, [["local_ai_rtx_alert_load_delay"]]);
 change("local_ai_rtx_alert_load_delay", groups.health, "Carregar confirmação visual válida", [{
@@ -224,11 +223,8 @@ fn("local_ai_rtx_recovery_terminal", groups.recovery, "Resultado visível do rec
 linkOut("local_ai_rtx_dry_out", groups.recovery, "TESTE → terminal dry-run", "local_ai_rtx_dry_in", 1340, 810);
 linkIn("local_ai_rtx_test_response_in", groups.recovery, "Receber resposta MCP TESTE", "local_ai_rtx_test_response_out", "local_ai_rtx_recovery_response", 1630, 850);
 
-linkIn("local_ai_rtx_alert_close_state_in", groups.alertClose, "Receber lifecycle do alerta", ["local_ai_rtx_alert_close_available_out", "local_ai_rtx_alert_close_unavailable_out"], "local_ai_rtx_alert_close_rbe", 2920, 740);
-rbe("local_ai_rtx_alert_close_rbe", groups.alertClose, "Somente mudança de disponibilidade", "rtx_status.available", 3160, 740, [["local_ai_rtx_alert_recovered_switch"]]);
-sw("local_ai_rtx_alert_recovered_switch", groups.alertClose, "RTX está recuperada?", "rtx_status.available", [
-  { t: "eq", v: "true", vt: "bool" }, { t: "else" },
-], 3430, 740, [["local_ai_rtx_alert_dismiss"], []]);
+linkIn("local_ai_rtx_alert_close_request_in", groups.alertClose, "Receber recuperação do alerta", "local_ai_rtx_alert_close_request_out", "local_ai_rtx_alert_close_gate", 2920, 740);
+fn("local_ai_rtx_alert_close_gate", groups.alertClose, "Encerrar somente incidente aberto", "local-ai-rtx-alert-close.js", 1, 3290, 740, [["local_ai_rtx_alert_dismiss"]]);
 callService(
   "local_ai_rtx_alert_dismiss",
   groups.alertClose,

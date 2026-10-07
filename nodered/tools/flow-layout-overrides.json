@@ -3034,7 +3034,7 @@
     "ea0a6aa0d24ff863": {
       "label": "localizacao_pessoas",
       "compact_groups": true,
-      "apply_nodes": false,
+      "apply_nodes": true,
       "managed_node_overrides": [
         "555422f47d3a742b"
       ],
@@ -7854,6 +7854,12 @@
           "y": 819,
           "w": 722,
           "h": 142
+        },
+        "operations_memory_group": {
+          "x": 69,
+          "y": 1879,
+          "w": 1580,
+          "h": 650
         }
       },
       "node_positions": {},
@@ -8235,7 +8241,35 @@
         "global_observer_coverage__host_memory_guardian_tab__out": {
           "x": 2290,
           "y": 890
-        }
+        },
+        "operations_memory_group": {
+          "x": 69,
+          "y": 1879,
+          "w": 1580,
+          "h": 650
+        },
+        "operations_memory_pressure_accepted_in": { "x": 150, "y": 1950 },
+        "operations_memory_failure_in": { "x": 150, "y": 2020 },
+        "operations_memory_recovered_in": { "x": 150, "y": 2130 },
+        "operations_memory_pressure_decision_in": { "x": 150, "y": 2260 },
+        "operations_memory_pressure": { "x": 430, "y": 1950 },
+        "operations_memory_failure": { "x": 430, "y": 2020 },
+        "operations_memory_resolved": { "x": 430, "y": 2090 },
+        "operations_memory_failure_resolved": { "x": 430, "y": 2160 },
+        "operations_memory_adapt": { "x": 790, "y": 2055 },
+        "operations_memory_lifecycle": { "x": 1130, "y": 2055 },
+        "operations_memory_alert_out": { "x": 1500, "y": 2055 },
+        "operations_memory_pressure_gate": { "x": 430, "y": 2260 },
+        "operations_memory_pressure_accepted_out": { "x": 700, "y": 2260 },
+        "operations_memory_test_reset": { "x": 790, "y": 2330 },
+        "operations_memory_reset": { "x": 1130, "y": 2330 },
+        "operations_memory_test_pressure": { "x": 430, "y": 2400 },
+        "operations_memory_instructions": { "x": 950, "y": 2470 },
+        "operations_memory_failure_out": { "x": 3000, "y": 1450 },
+        "operations_memory_recovered_out": { "x": 3100, "y": 1800 },
+        "operations_memory_pressure_decision_out": { "x": 2900, "y": 1800 }
+        ,"notification_hub_wire_out_f80d2f3e5783": { "x": 700, "y": 2400 }
+        ,"notification_hub_wire_in_f80d2f3e5783": { "x": 110, "y": 1780 }
       },
       "geometry_final": true
     },
@@ -9679,7 +9713,7 @@
     "monitoramento_internet_tab": {
       "label": "monitoramento_internet",
       "compact_groups": true,
-      "apply_nodes": false,
+      "apply_nodes": true,
       "geometry_final": true,
       "group_positions": {
         "grp_internet_triggers": {
@@ -10176,7 +10210,7 @@
     },
     "monitoramento_zigbee_tab": {
       "label": "monitoramento_zigbee",
-      "apply_nodes": false,
+      "apply_nodes": true,
       "compact_groups": false,
       "group_positions": {
         "grp_zigbee_notify": {
@@ -12272,7 +12306,7 @@
           "x": 2940,
           "y": 1460
         },
-        "local_ai_rtx_alert_close_available_out": {
+        "local_ai_rtx_alert_close_request_out": {
           "x": 3445,
           "y": 1010
         },
@@ -12307,10 +12341,6 @@
         "local_ai_rtx_alert_dedupe_reset_in": {
           "x": 3690,
           "y": 1360
-        },
-        "local_ai_rtx_alert_close_unavailable_out": {
-          "x": 4145,
-          "y": 1440
         },
         "local_ai_rtx_alert_rbe": {
           "x": 3925,
@@ -12360,32 +12390,28 @@
           "x": 5906,
           "y": 1380
         },
-        "local_ai_rtx_alert_close_state_in": {
+        "local_ai_rtx_alert_close_request_in": {
           "x": 155,
           "y": 700
         },
-        "local_ai_rtx_alert_close_rbe": {
+        "local_ai_rtx_alert_close_gate": {
           "x": 425,
           "y": 700
         },
-        "local_ai_rtx_alert_recovered_switch": {
+        "local_ai_rtx_alert_dismiss": {
           "x": 705,
           "y": 700
         },
-        "local_ai_rtx_alert_dismiss": {
+        "local_ai_rtx_alert_dismiss__hub_call": {
           "x": 1005,
           "y": 700
         },
-        "local_ai_rtx_alert_dismiss__hub_call": {
-          "x": 1305,
-          "y": 700
-        },
         "local_ai_rtx_alert_dismiss__hub_result": {
-          "x": 1595,
+          "x": 1295,
           "y": 700
         },
         "local_ai_rtx_alert_closed": {
-          "x": 1905,
+          "x": 1750,
           "y": 700
         },
         "local_ai_rtx_test_reset": {
@@ -12750,32 +12776,24 @@
           "x": 1970,
           "y": 130
         },
-        "local_ai_rtx_alert_close_available_out": {
+        "local_ai_rtx_alert_close_request_out": {
           "x": 3445,
           "y": 1010
         },
-        "local_ai_rtx_alert_close_unavailable_out": {
-          "x": 4145,
-          "y": 1440
-        },
-        "local_ai_rtx_alert_close_state_in": {
+        "local_ai_rtx_alert_close_request_in": {
           "x": 155,
           "y": 700
         },
-        "local_ai_rtx_alert_close_rbe": {
+        "local_ai_rtx_alert_close_gate": {
           "x": 425,
           "y": 700
         },
-        "local_ai_rtx_alert_recovered_switch": {
+        "local_ai_rtx_alert_dismiss": {
           "x": 705,
           "y": 700
         },
-        "local_ai_rtx_alert_dismiss": {
-          "x": 1005,
-          "y": 700
-        },
         "local_ai_rtx_alert_closed": {
-          "x": 1905,
+          "x": 1750,
           "y": 700
         },
         "local_ai_rtx_test_instructions": {
@@ -12851,12 +12869,20 @@
           "y": 530
         },
         "local_ai_rtx_alert_dismiss__hub_call": {
-          "x": 1305,
+          "x": 1005,
           "y": 700
         },
         "local_ai_rtx_alert_dismiss__hub_result": {
-          "x": 1595,
+          "x": 1390,
           "y": 700
+        },
+        "notification_hub_wire_out_c48f2b4356ed": {
+          "x": 510,
+          "y": 190
+        },
+        "notification_hub_wire_in_c2a9b8b76be3": {
+          "x": 590,
+          "y": 190
         }
       },
       "geometry_final": true

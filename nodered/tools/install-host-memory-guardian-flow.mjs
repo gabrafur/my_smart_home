@@ -139,7 +139,7 @@ terminal("host_memory_guardian_request_failed", groups.effect, "Solicitação re
 
 linkIn("host_memory_guardian_effect_in", groups.effect, "Receber decisão canônica", "host_memory_guardian_effect_out", "host_memory_guardian_effect_switch", 4490, 370);
 sw("host_memory_guardian_effect_switch", groups.effect, "Executar erro, auditoria ou status", "guardian_effect", "msg", [{ t: "eq", v: "error", vt: "str" }, { t: "eq", v: "audit", vt: "str" }, { t: "eq", v: "healthy", vt: "str" }, { t: "eq", v: "pressure", vt: "str" }, { t: "else" }], 4790, 370, [["host_memory_guardian_effect_error"], ["host_memory_guardian_effect_log"], ["host_memory_guardian_effect_healthy"], ["host_memory_guardian_effect_pressure"], ["host_memory_guardian_effect_invalid"]]);
-fn("host_memory_guardian_effect_error", groups.effect, "OBSERVAR: falha canônica", "host-memory-guardian-effect-error.js", 0, 5180, 315, []);
+fn("host_memory_guardian_effect_error", groups.effect, "DIAGNÓSTICO: falha canônica", "host-memory-guardian-effect-error.js", 0, 5180, 315, []);
 fn("host_memory_guardian_effect_log", groups.effect, "AUDITAR: memória recuperada", "host-memory-guardian-effect-log.js", 0, 5180, 365, []);
 terminal("host_memory_guardian_effect_healthy", groups.effect, "OBSERVAR: memória saudável", { fill: "green", shape: "dot", text: "memória saudável" }, 5180, 415);
 terminal("host_memory_guardian_effect_pressure", groups.effect, "OBSERVAR: pressão segura", { fill: "yellow", shape: "dot", text: "pressão sem ação insegura" }, 5180, 465);

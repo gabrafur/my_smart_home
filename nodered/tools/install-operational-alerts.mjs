@@ -27,6 +27,22 @@ export function installOperationalAlerts(flows) {
       return desired.id;
     };
     const fn = (id, name, dx, dy, func, outputs, wires) => add(id, 'function', name, dx, dy, { func, outputs, timeout: 0, noerr: 0, initialize: '', finalize: '', libs: [], wires });
+    const decisionLinkOut = (id, name, links, x, y) => {
+      const desired = {
+        id: `${prefix}_${id}`, type: 'link out', z: tab,
+        g: 'host_memory_guardian_decision_group', name, mode: 'link', links,
+        x, y, wires: [],
+      };
+      const current = byId.get(desired.id);
+      if (current) {
+        const position = { x: current.x, y: current.y };
+        Object.assign(current, desired, position);
+      }
+      else { flows.push(desired); byId.set(desired.id, desired); }
+      const decisionGroup = byId.get(desired.g);
+      if (decisionGroup && !decisionGroup.nodes.includes(desired.id)) decisionGroup.nodes.push(desired.id);
+      return desired.id;
+    };
     const reaches = (id, target, seen = new Set()) => {
       if (id === target) return true;
       if (seen.has(id)) return false;
@@ -55,8 +71,8 @@ export function installOperationalAlerts(flows) {
       if (!node.wires[output].some(id => reaches(id, target))) node.wires[output].push(target);
     };
     const adapter = `${prefix}_adapt`;
-    const entry = (id, label, row, active, reason, message) => add(id, 'change', label, 300, 90 + row * 70, {
-      rules: [{ t: 'set', p: 'operational_alert', pt: 'msg', to: JSON.stringify({ source: origin, active, reason, title: origin === 'atualizacoes_diarias' ? 'Atualização exige ação' : 'Memória do servidor exige atenção', message }), tot: 'json' }],
+    const entry = (id, label, row, active, reason, message, extra = {}) => add(id, 'change', label, 300, 90 + row * 70, {
+      rules: [{ t: 'set', p: 'operational_alert', pt: 'msg', to: JSON.stringify({ source: origin, active, reason, title: origin === 'atualizacoes_diarias' ? 'Atualização exige ação' : 'Memória do servidor exige atenção', message, ...extra }), tot: 'json' }],
       action: '', property: '', from: '', to: '', reg: false, wires: [[adapter]],
     });
     if (origin === 'atualizacoes_diarias') {
@@ -74,6 +90,25 @@ export function installOperationalAlerts(flows) {
     } else {
       const pressure = entry('pressure', 'Pressão sem ação segura: pedir intervenção', 0, true, 'memory_pressure', 'A memória está sob pressão e o guardião não encontrou uma ação segura. Revise as sessões e processos em uso.');
       const resolved = entry('resolved', 'Saudável ou recuperado: encerrar aviso', 2, false, 'memory_recovered', 'A pressão de memória foi resolvida.');
+      const failureIdentity = {
+        subject: 'memory_guardian_failure',
+        incident_key: 'host_memory_guardian_tab_host_memory_guardian_effect_error',
+        persistent_incident_kind: 'node_error',
+      };
+      const failure = entry('failure', 'Falha do guardião: pedir intervenção', 1, true, 'memory_guardian_failure', 'O guardião de memória do host falhou.', failureIdentity);
+      const failureResolved = entry('failure_resolved', 'Guardião saudável: encerrar falha', 3, false, 'memory_guardian_recovered', 'O guardião voltou a produzir resultados válidos.', { ...failureIdentity, dismiss_if_absent_once: true });
+      const pressureDecisionIn = add('pressure_decision_in', 'link in', 'Receber pressão canônica', 80, 300, {
+        links: [`${prefix}_pressure_decision_out`], wires: [[`${prefix}_pressure_gate`]],
+      });
+      const failureIn = add('failure_in', 'link in', 'Receber falha canônica', 80, 160, {
+        links: [`${prefix}_failure_out`], wires: [[failure]],
+      });
+      const recoveredIn = add('recovered_in', 'link in', 'Receber recuperação canônica', 80, 230, {
+        links: [`${prefix}_recovered_out`], wires: [[resolved, failureResolved]],
+      });
+      const pressureDecisionOut = decisionLinkOut('pressure_decision_out', 'Pressão → lifecycle', [pressureDecisionIn], 4200, 465);
+      const failureOut = decisionLinkOut('failure_out', 'Falha → lifecycle', [failureIn], 4200, 315);
+      const recoveredOut = decisionLinkOut('recovered_out', 'Recuperação → lifecycle', [recoveredIn], 4200, 385);
       const pressureInput = add('pressure_accepted_in', 'link in', 'Receber pressão que exige ação', 80, 90, {
         links: [`${prefix}_pressure_accepted_out`], wires: [[pressure]],
       });
@@ -84,8 +119,11 @@ export function installOperationalAlerts(flows) {
         property: 'payload.status', propertyType: 'msg', rules: ['pressure_no_safe_duplicate', 'pressure_no_safe_candidate', 'candidate_active'].map(v => ({ t: 'eq', v, vt: 'str' })), checkall: 'false', repair: false, outputs: 3,
         wires: [[pressureOutput], [pressureOutput], [pressureOutput]],
       });
-      branch('host_memory_guardian_status_switch', 6, classify);
-      for (const output of [2, 3, 4]) branch('host_memory_guardian_status_switch', output, resolved);
+      branch('host_memory_guardian_status_switch', 6, pressureDecisionOut);
+      for (const output of [0, 1]) branch('host_memory_guardian_status_switch', output, failureOut);
+      for (const output of [2, 3, 4]) {
+        branch('host_memory_guardian_status_switch', output, recoveredOut);
+      }
     }
     fn('adapt', 'Normalizar decisão e isolar TESTE', 690, 160, source('operational-alert-adapt'), 1, [[`${prefix}_lifecycle`]]);
     fn('lifecycle', 'Deduplicar incidente; persistir produção', 1080, 160, source('operational-alert-lifecycle'), 1, [[`${prefix}_alert_out`]]);

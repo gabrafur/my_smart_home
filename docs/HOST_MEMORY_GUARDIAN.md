@@ -119,8 +119,12 @@ O alerta de falha canônica informa o tipo de falha e o motivo sanitizado do
 worker, distinguindo resultado vencido, limpeza parcial e contrato inválido.
 O diagnóstico permanece no caminho central de deduplicação e entrega.
 
-O tab participa do observador global. Falha do worker, limpeza parcial, ponte
-indisponível ou resultado vencido produz erro centralizado. A recuperação de
+O tab participa do observador global. O primeiro resultado após uma partida do
+Node-RED só é avaliado quando o `request_id` corresponde a um pedido aceito no
+ciclo atual; resultados anteriores ficam em espera e não viram falso
+`stale_result`. Falha do worker, limpeza parcial, ponte indisponível ou resultado
+vencido abre um incidente centralizado, e o primeiro resultado saudável encerra
+explicitamente a notificação persistente. A recuperação de
 temporários registra `HOST_MEMORY_GUARDIAN_RECLAIMED`; o encerramento de uma
 sessão registra `HOST_MEMORY_GUARDIAN_TERMINATED` no log do Node-RED.
 

@@ -232,10 +232,10 @@ A integração Home Assistant emite as chaves não traduzidas home-assistant.sta
 
 <!-- /memory-record -->
 
-<!-- memory-record {"id":"diagnostico-do-guardiao-de-memoria","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-10-06","evidence":[{"file":"docs/HOST_MEMORY_GUARDIAN.md","sha256":"aacee2549c2aae5710ff4ea61602a1c238aec02dc6bac3e777e6ccc6a6bcc22e"},{"file":"docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md","sha256":"ecc2d7eb45de3faaf0481a540094d9d0b88c1f0becdd15caf680b834d5293377"}]} -->
-## Diagnóstico do guardião de memória
+<!-- memory-record {"id":"diagnostico-do-guardiao-de-memoria","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-10-07","evidence":[{"file":"docs/HOST_MEMORY_GUARDIAN.md","sha256":"917dc307ad3315f9d93f02fa36a3577edd2107b6b33f95028c78eaf5807031ad"},{"file":"nodered/tools/functions/host-memory-guardian-request-response-normalize.js","sha256":"23fb79994e054f442ff057137bd43fc4fefe6e29651b2ff83a0c4a68f981adab"},{"file":"nodered/tools/functions/host-memory-guardian-result-freshness.js","sha256":"c40bf53b58ccfcaf9d87243b243b5b352e61b1091a2d8cd6b8309fce0fc9613a"},{"file":"nodered/tools/install-operational-alerts.mjs","sha256":"7d50a1d84dbd92738507eeea58c170c285091e3c189627e00feeadd78f0ea725"},{"file":"nodered/tools/functions/operational-alert-lifecycle.js","sha256":"66410b50f73c7fabc60a2a78128eb2e6de576b263c5e7d2588a1b2ed9c670120"},{"file":"nodered/tools/test-host-memory-guardian-flow.mjs","sha256":"65ef6b8d250bf7f04706c0bd7f132072d77960fd1b12965950204f70f6d459e5"},{"file":"nodered/tools/test-operational-alerts.mjs","sha256":"82cac8ec491c03eaef42142f5d58fcee77a67549cd38d0af5b52e01853c26bad"}]} -->
+## Correlação e lifecycle do guardião de memória
 
-Alertas antigos genéricos não identificam sozinhos a causa do guardião. O alerta canônico atual preserva o motivo sanitizado; a enumeração de processos usa somente nomes e mantém o código de erro do sistema. Investigue o histórico filtrado pelo nó e os campos status/reason; não deduza falta de RAM apenas do título de indisponibilidade. Falha de leitura deve bloquear a limpeza de temporários. Nunca copie registros operacionais para a memória pública.
+O guardião só avalia em produção resultados cujo request_id pertença aos pedidos aceitos ou coalescidos desde a partida atual do Node-RED. Mantém em memória as oito correlações mais recentes para não perder o resultado final do ciclo anterior; um resultado anterior ao startup ou sem correlação fica em espera e não abre falso stale_result. Falha do worker, limpeza parcial e resultado vencido usam incidente explícito com dedupe e recuperação, preservando o ID persistente legado; resultado healthy, reclaimed ou terminated encerra a falha. A primeira recuperação após a migração também remove uma vez um alerta legado que estivesse aberto, sem repetir dismiss nos ciclos seguintes. O diagnóstico local usa warning e não representa condição de domínio como node_error. Para investigar, confira status, reason, request_id e checked_at no resultado sanitizado; nunca copie registros operacionais para a memória pública.
 
 <!-- /memory-record -->
 
@@ -307,5 +307,12 @@ Replays de iluminação HOME/approach não representam outra chegada e não pode
 ## Supressão de alertas dependentes da WAN
 
 Uma queda confirmada de internet é o incidente canônico; falhas móveis de entrega durante offline/recovering continuam diagnosticadas e retornam ao chamador, mas não geram um segundo alerta sobre o próprio canal. Estados unknown/checking não comprovam queda e mantêm a falha alertável. Nós Dulo dependentes da WAN só abrem incidente quando a internet está confirmada online; nos demais estados, o observador remove a evidência dependente em vez de duplicar a causa. Replays cobrem online, offline, recovering, checking e unknown sem produzir efeitos reais.
+
+<!-- /memory-record -->
+
+<!-- memory-record {"id":"dismiss-rtx-repetido-sem-incidente","category":"PROJECT_CONVENTION","kind":"VERIFIED_FACT","last_verified":"2026-10-07","evidence":[{"file":"docs/NODERED_NOTIFICATION_HUBS.md","sha256":"177700ab677fe24cae72ada85926cff6fe95628ed3edd1431d7ef7937be730bf"},{"file":"nodered/tools/functions/local-ai-rtx-alert-build.js","sha256":"6426fce325c283a5d12824894681cde0f302bc3cf2acc2ac2257bcd65039fb3f"},{"file":"nodered/tools/install-local-ai-rtx-recovery-flow.mjs","sha256":"af03b700ba39061e9d7e8a22088ece6171a592f3efbe5d5e53b890a15987fec7"},{"file":"nodered/tools/test-local-ai-rtx-recovery-flow.mjs","sha256":"c460aef245ee772bf15ea9d712a22b6bdbd4e54a04c442854ebb7d9003ca8749"}]} -->
+## Lifecycle do alerta de indisponibilidade da RTX
+
+O alerta de indisponibilidade da RTX registra em contexto persistente quando o incidente de produção foi realmente aberto. Disponibilidade do endpoint ou desligamento esperado do computador encerra a responsabilidade, mas só envia persistent_notification.dismiss quando esse marcador está aberto; o marcador é limpo antes do efeito e ciclos seguintes permanecem silenciosos. A mensagem de fechamento remove reset e rtx_alert_condition antes do gate, para que a limpeza da deduplicação não reinicialize a própria detecção de recuperação. TESTE usa estado separado e nunca fecha incidente de produção.
 
 <!-- /memory-record -->

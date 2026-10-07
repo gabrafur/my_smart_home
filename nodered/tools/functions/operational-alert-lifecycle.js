@@ -7,17 +7,24 @@ const store = testMode ? undefined : "persistent";
 const state = flow.get(key, store) ?? {};
 const identity = event.source + ":" + event.subject;
 const previous = state[identity];
+const closureKey = identity + ":closure_recorded";
 const signature = event.reason + ":" + event.version;
 if (event.active && previous?.signature === signature) return null;
-if (!event.active && !previous) return null;
-if (event.active) state[identity] = { signature };
-else delete state[identity];
+if (!event.active && !previous && (!event.dismiss_if_absent_once || state[closureKey])) return null;
+if (event.active) {
+    state[identity] = { signature };
+    delete state[closureKey];
+} else {
+    delete state[identity];
+    state[closureKey] = { signature: "closed" };
+}
 flow.set(key, state, store);
 return {
     _global_observer_test: testMode,
     payload: {
         test_mode: testMode, observer_kind: "action_required",
-        incident_key: identity, source: event.source,
+        incident_key: event.incident_key ?? identity, source: event.source,
+        persistent_incident_kind: event.persistent_incident_kind,
         persistent_notification_operation: event.active ? "create" : "dismiss",
         mobile_notification: event.active,
         reason: event.reason, severity: "warning"

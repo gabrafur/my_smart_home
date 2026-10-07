@@ -17,6 +17,7 @@ const code = {
   cooldown: source("local-ai-rtx-cooldown-read.js"),
   state: source("local-ai-rtx-state-update.js"),
   alert: source("local-ai-rtx-alert-build.js"),
+  closeAlert: source("local-ai-rtx-alert-close.js"),
   guard: source("local-ai-rtx-side-effect-guard.js"),
   request: source("local-ai-rtx-recovery-request.js"),
   response: source("local-ai-rtx-recovery-response.js"),
@@ -146,6 +147,15 @@ assert.equal(incident.payload.observer_kind, "domain_alert");
 assert.equal(incident.payload.incident_key, "local_ai_rtx_unavailable");
 assert.equal(incident.payload.mobile_notification, false, "falha da RTX deve ficar somente no Home Assistant");
 assert.match(incident.alert.message, /recuperacao_rtx/);
+assert.equal(store.get("local_ai_rtx_alert_incident_open_v1"), true);
+const closeInput = { test_mode: false, reset: true, rtx_alert_condition: true, rtx_status: { available: true } };
+const closeOnce = execute(code.closeAlert, closeInput, store).result;
+assert.ok(closeOnce);
+assert.equal(closeOnce.reset, undefined, "reset do dedupe não pode alcançar o fechamento");
+assert.equal(closeOnce.rtx_alert_condition, undefined);
+assert.equal(store.get("local_ai_rtx_alert_incident_open_v1"), false);
+assert.equal(execute(code.closeAlert, { test_mode: false, reset: true }, store).result, null, "ciclos disponíveis não podem repetir dismiss");
+assert.equal(execute(code.closeAlert, { test_mode: true, reset: true }, store).result, null, "TESTE não pode fechar incidente de produção");
 
 // O gate final é a única fronteira que pode alcançar o HTTP autenticado.
 const guardedTest = execute(code.guard, requested, store).result;
@@ -194,6 +204,7 @@ for (const [id, file] of [
   ["local_ai_rtx_cooldown_read", "local-ai-rtx-cooldown-read.js"],
   ["local_ai_rtx_state_update", "local-ai-rtx-state-update.js"],
   ["local_ai_rtx_alert_build", "local-ai-rtx-alert-build.js"],
+  ["local_ai_rtx_alert_close_gate", "local-ai-rtx-alert-close.js"],
   ["local_ai_rtx_side_effect_guard", "local-ai-rtx-side-effect-guard.js"],
   ["local_ai_rtx_prepare_recovery", "local-ai-rtx-recovery-request.js"],
   ["local_ai_rtx_recovery_response", "local-ai-rtx-recovery-response.js"],
@@ -242,27 +253,18 @@ assert.equal(
 assert.deepEqual(byId.get("local_ai_rtx_prepare_prod_alert_reset")?.wires, [[
   "local_ai_rtx_alert_dedupe_reset_out",
   "local_ai_rtx_status_gate_out",
-  "local_ai_rtx_alert_close_available_out",
+  "local_ai_rtx_alert_close_request_out",
 ]]);
 assert.deepEqual(byId.get("local_ai_rtx_prepare_test_alert_reset")?.wires, [[
   "local_ai_rtx_alert_dedupe_reset_out",
   "local_ai_rtx_status_gate_out",
 ]]);
-assert.equal(
-  byId.get("local_ai_rtx_prepare_prod_alert")?.wires?.[0]?.includes("local_ai_rtx_alert_close_unavailable_out"),
-  true,
-);
-assert.deepEqual(byId.get("local_ai_rtx_alert_close_state_in")?.links?.sort(), [
-  "local_ai_rtx_alert_close_available_out",
-  "local_ai_rtx_alert_close_unavailable_out",
-]);
-assert.equal(byId.get("local_ai_rtx_alert_close_rbe")?.type, "rbe");
-assert.equal(byId.get("local_ai_rtx_alert_close_rbe")?.property, "rtx_status.available");
-assert.equal(byId.get("local_ai_rtx_alert_recovered_switch")?.type, "switch");
-assert.deepEqual(byId.get("local_ai_rtx_alert_recovered_switch")?.wires, [
-  ["local_ai_rtx_alert_dismiss"],
-  [],
-]);
+assert.equal(byId.get("local_ai_rtx_prepare_prod_alert")?.wires?.[0]?.includes("local_ai_rtx_alert_close_request_out"), false);
+assert.deepEqual(byId.get("local_ai_rtx_alert_close_request_in")?.links, ["local_ai_rtx_alert_close_request_out"]);
+assert.equal(byId.get("local_ai_rtx_alert_close_gate")?.type, "function");
+assert.deepEqual(byId.get("local_ai_rtx_alert_close_gate")?.wires, [["local_ai_rtx_alert_dismiss"]]);
+assert.equal(byId.has("local_ai_rtx_alert_close_rbe"), false);
+assert.equal(byId.has("local_ai_rtx_alert_recovered_switch"), false);
 assert.equal(byId.get("local_ai_rtx_alert_dismiss")?.type, "change");
 const dismissContract = byId.get("local_ai_rtx_alert_dismiss").rules.map((rule) => String(rule.to ?? "")).join("\n");
 assert.match(dismissContract, /"operation":"dismiss"/);

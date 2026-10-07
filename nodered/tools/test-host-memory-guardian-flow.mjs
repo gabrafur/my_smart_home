@@ -62,6 +62,7 @@ for (const [id, type] of [
 ]) assert.equal(byId.get(id)?.type, type, `decisão visual ausente: ${id}`);
 
 const prepare = getFunction("host_memory_guardian_prepare_request");
+const normalizeRequest = getFunction("host_memory_guardian_request_ack");
 const normalize = getFunction("host_memory_guardian_parse_result");
 const freshness = getFunction("host_memory_guardian_result_freshness");
 const dedupe = getFunction("host_memory_guardian_result_state");
@@ -81,6 +82,11 @@ message = normalize({
   payload: `host-memory-guardian status=healthy available_mib=4096 available_percent=50.0 candidate_pid=none candidate_mib=0 terminated=0 temp_removed=0 temp_reclaimed_mib=0 cleanup_errors=0 request_id=fresh checked_at=${new Date().toISOString()}`,
 }, flow, mock, {});
 message.guardian_max_age_seconds = 180;
+assert.equal(freshness(structuredClone(message), context(), mock, {}), null, "resultado anterior ao primeiro pedido deve aguardar");
+let request = normalizeRequest({ payload: "host-memory-guardian-request status=accepted request_id=fresh" }, flow, mock, {});
+assert.equal(request.guardian_request_status, "accepted");
+assert.equal(request.guardian_request_id, "fresh");
+assert.equal(flow.get("host_memory_guardian_expected_request_v1", "memoryOnly").request_id, "fresh");
 message = freshness(message, flow, mock, {});
 assert.equal(message.guardian_result_fresh, true);
 
@@ -88,8 +94,14 @@ message = normalize({
   payload: "host-memory-guardian status=healthy available_mib=4096 available_percent=50.0 candidate_pid=none candidate_mib=0 terminated=0 temp_removed=0 temp_reclaimed_mib=0 cleanup_errors=0 request_id=stale checked_at=2020-01-01T00:00:00Z",
 }, flow, mock, {});
 message.guardian_max_age_seconds = 180;
+assert.equal(freshness(structuredClone(message), flow, mock, {}), null, "resultado de outro pedido não pode gerar stale_result");
+request = normalizeRequest({ payload: "host-memory-guardian-request status=coalesced request_id=stale" }, flow, mock, {});
+assert.equal(request.guardian_request_status, "coalesced");
 message = freshness(message, flow, mock, {});
 assert.equal(message.guardian_result_fresh, false);
+assert.equal(flow.get("host_memory_guardian_expected_request_v1", "memoryOnly").request_ids.includes("fresh"), true, "resultado final do pedido anterior permanece correlacionado");
+normalizeRequest({ payload: "host-memory-guardian-request status=coalesced request_id=busy" }, flow, mock, {});
+assert.equal(flow.get("host_memory_guardian_expected_request_v1", "memoryOnly").request_id, "stale", "lock busy não substitui a correlação válida");
 
 const terminated = {
   _host_memory_guardian_test: true,
@@ -174,9 +186,9 @@ for (const id of [
   "host_memory_guardian_test_stale",
 ]) assert.ok(byId.has(id), `evidência manual ausente: ${id}`);
 
-// The error must retain its diagnosis through the actual central alert formatter.
+// Domain failures remain diagnostic locally; notification lifecycle is handled
+// explicitly by operational alerts instead of masquerading as node_error.
 const effectError = getFunction("host_memory_guardian_effect_error");
-const formatAlert = getFunction("global_observer_error_alert");
 for (const [status, reason, event, description] of [
   ["failed", "memory-guardian_status=failed_reason=temporary_process_scan_unavailable", "host_memory_guardian_failed", /listar os processos do host/],
   ["failed", "worker_unavailable", "host_memory_guardian_failed", /worker de memória falhou/],
@@ -184,17 +196,13 @@ for (const [status, reason, event, description] of [
   ["cleanup_partial", "none", "host_memory_guardian_cleanup_partial", /limpeza de temporários/],
   ["invalid", "none", "host_memory_guardian_result_unrecognized", /fora do contrato/],
 ]) {
-  let caught;
-  const errorNode = { status() {}, error(error, msg) { caught = structuredClone(msg); caught.error = { message: error }; } };
-  effectError({ payload: { status, reason, request_id: "synthetic" } }, context(), errorNode, {});
-  assert.match(caught.error.message, new RegExp(event));
-  caught._observer_event = { test_mode: true, flow_id: TAB, source_id: "host_memory_guardian_effect_error", policy: { reminder_hours: 6 } };
-  const notification = formatAlert(caught, context(), nodeMock(), {});
-  assert.match(notification.alert.title, /^TESTE/);
-  assert.match(notification.alert.message, description);
-  assert.ok(notification.alert.message.includes(reason));
-  assert.ok(notification.alert.message.includes(event));
-  assert.equal(notification.payload.test_mode, true);
+  const diagnosticNode = nodeMock();
+  const input = { payload: { status, reason, request_id: "synthetic" } };
+  assert.equal(effectError(input, context(), diagnosticNode, {}), null);
+  assert.equal(diagnosticNode.errors.length, 0, "falha de domínio não pode fingir node_error");
+  assert.match(diagnosticNode.warnings[0], new RegExp(event));
+  assert.match(input.observer_alert.message, description);
+  assert.ok(input.observer_alert.message.includes(reason));
 }
 
 const maxFunctionLength = Math.max(...tabNodes.filter((node) => node.type === "function").map((node) => node.func.length));

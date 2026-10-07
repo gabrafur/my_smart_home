@@ -1,7 +1,9 @@
 const reason = String(msg.rtx_status?.reason || "unknown");
-msg._global_observer_test = msg.test_mode === true;
+const testMode = msg.test_mode === true;
+if (!testMode) flow.set("local_ai_rtx_alert_incident_open_v1", true, "persistent");
+msg._global_observer_test = testMode;
 msg.payload = {
-    test_mode: msg.test_mode === true,
+    test_mode: testMode,
     observer_kind: "domain_alert",
     incident_key: "local_ai_rtx_unavailable",
     mobile_notification: false,
