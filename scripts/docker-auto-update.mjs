@@ -154,12 +154,15 @@ export function replaceServiceImage(compose, service, nextDigest) {
 }
 
 function updateComposeDigests(channels = imageChannels) {
-  let compose = fs.readFileSync(composePath, "utf8");
+  const before = fs.readFileSync(composePath, "utf8");
+  let compose = before;
   const changes = [];
   const changedServices = [];
+  const desiredImages = [];
 
   for (const channel of channels) {
     const nextDigest = repoDigest(channel.repo, channel.tag);
+    desiredImages.push({ service: channel.service, image: nextDigest });
     const replacement = replaceServiceImage(compose, channel.service, nextDigest);
     const { current } = replacement;
     if (current !== nextDigest) {
@@ -171,14 +174,32 @@ function updateComposeDigests(channels = imageChannels) {
 
   if (changes.length === 0) {
     log("docker images already match latest channel digests");
-    return [];
+    return { before, compose, changedServices, desiredImages };
   }
 
   log(`docker image updates found: ${changes.join("; ")}`);
-  if (!dryRun) {
-    fs.writeFileSync(composePath, compose);
+  return { before, compose, changedServices, desiredImages };
+}
+
+export function servicesNeedingRecreate(desiredImages, inspectImage, inspectContainer) {
+  return desiredImages.filter(({ service, image }) => {
+    const desired = inspectImage(image).trim();
+    const running = inspectContainer(service).trim();
+    if (!desired || !running) throw new Error(`Image identity unavailable for ${service}`);
+    return desired !== running;
+  }).map(({ service }) => service);
+}
+
+export function validateComposeCandidate(plan, { read, write, validate }) {
+  if (read() !== plan.before) throw new Error("Compose changed while resolving images");
+  write(plan.compose);
+  try {
+    validate();
+  } catch (error) {
+    // Revert only our candidate, never a concurrent operator's edit.
+    if (read() === plan.compose) write(plan.before);
+    throw error;
   }
-  return changedServices;
 }
 
 function runInDir(command, commandArgs, cwd, options = {}) {
@@ -201,8 +222,20 @@ function validateAfterComposeEdit() {
 
 async function reconcileImages(channels, options = {}) {
   try {
-    const changedServices = updateComposeDigests(channels);
-    validateAfterComposeEdit();
+    const plan = updateComposeDigests(channels);
+    // A previous run can have written the digest before recreation failed.
+    // Compare actual image IDs even when the Compose digest is unchanged.
+    const changedServices = [...new Set([...plan.changedServices, ...servicesNeedingRecreate(
+      plan.desiredImages,
+      (image) => run("docker", ["image", "inspect", image, "--format", "{{.Id}}"], { capture: true }),
+      (service) => run("docker", ["inspect", service, "--format", "{{.Image}}"], { capture: true }),
+    )])];
+    if (dryRun) validateAfterComposeEdit();
+    else validateComposeCandidate(plan, {
+      read: () => fs.readFileSync(composePath, "utf8"),
+      write: (content) => fs.writeFileSync(composePath, content),
+      validate: validateAfterComposeEdit,
+    });
 
     if (changedServices.length > 0) {
       run("docker", ["compose", "up", "-d", "--no-deps", ...changedServices], { mutates: true });

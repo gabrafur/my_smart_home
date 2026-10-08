@@ -298,6 +298,13 @@ esse comando exato. `scripts/docker-auto-update.mjs` continua sendo o adaptador
 limitado do host e aceita `home-assistant-core` e `containers` como etapas
 separadas; `daily` permanece somente para diagnóstico e rollback compatível.
 Um novo digest é registrado por backup Git ao final da reconciliação.
+Se a validação anterior à recriação falhar, o adaptador restaura somente a
+candidata que ele próprio escreveu no Compose, preservando edições concorrentes.
+Em uma retomada, compara também os IDs reais das imagens: um digest já escrito
+no arquivo não comprova que o container foi atualizado. As instalações npm da
+validação e do atualizador usam `umask 022` apenas para pacotes públicos, para
+permitir leitura pelos usuários distintos do host e do container; a máscara
+privada do chamador é preservada fora dessa instalação.
 Falhas em `apt`, `dietpi-update`, na ponte ou nos containers chamam `node.error`
 com a etapa sanitizada e são entregues a `resident_primary` pelo fluxo
 `observabilidade_global`, com a mesma deduplicação de seis horas dos demais

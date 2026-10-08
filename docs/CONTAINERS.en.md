@@ -295,6 +295,12 @@ allows only that exact command. `scripts/docker-auto-update.mjs` remains a
 bounded host adapter with separate `home-assistant-core` and `containers`
 entrypoints; `daily` remains a compatible diagnostic and rollback path. Changed
 digests are recorded by a final Git backup.
+If validation before recreation fails, the adapter restores only the Compose
+candidate it wrote, preserving concurrent edits. On retry it also compares
+actual image IDs: a digest already present in the file does not prove that the
+container was updated. Validation and updater npm installations use `umask 022`
+only for public packages so the different host and container users can read
+them; the caller's private mask is preserved outside that installation.
 Failures in `apt`, `dietpi-update`, the bridge, or container reconciliation
 raise `node.error` with a sanitized stage and are delivered to
 `resident_primary` through `observabilidade_global`, using the same six-hour

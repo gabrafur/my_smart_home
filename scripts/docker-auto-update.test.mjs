@@ -8,6 +8,8 @@ import {
   imageChannelsForMode,
   replaceServiceImage,
   waitForHealthyService,
+  servicesNeedingRecreate,
+  validateComposeCandidate,
 } from "./docker-auto-update.mjs";
 import {
   assessKiaRuntimeStates,
@@ -43,6 +45,34 @@ const healthyKiaRuntimeStates = [
     state: "idle",
   },
 ];
+
+test("retry reconciles a pending digest even when Compose already has it", () => {
+  const desired = [{ service: "homeassistant", image: "example/core@sha256:next" }];
+  assert.deepEqual(servicesNeedingRecreate(desired, () => "next\n", () => "old\n"), ["homeassistant"]);
+  assert.deepEqual(servicesNeedingRecreate(desired, () => "next\n", () => "next\n"), []);
+  assert.throws(() => servicesNeedingRecreate(desired, () => "", () => "old"), /identity unavailable/);
+  assert.throws(() => servicesNeedingRecreate(desired, () => "next", () => { throw new Error("inspect failed"); }), /inspect failed/);
+});
+
+test("validation failure restores only the updater's Compose candidate", () => {
+  let content = "before";
+  const plan = { before: "before", compose: "candidate" };
+  const io = { read: () => content, write: (value) => { content = value; } };
+  assert.throws(() => validateComposeCandidate(plan, { ...io, validate: () => {
+    assert.equal(content, "candidate");
+    throw new Error("dependency unavailable");
+  } }), /dependency unavailable/);
+  assert.equal(content, "before");
+  assert.throws(() => validateComposeCandidate(plan, { ...io, validate: () => {
+    content = "operator edit";
+    throw new Error("validation failed");
+  } }), /validation failed/);
+  assert.equal(content, "operator edit");
+  assert.throws(() => validateComposeCandidate(plan, { ...io, validate: () => assert.fail() }), /Compose changed/);
+  content = "before";
+  validateComposeCandidate(plan, { ...io, validate: () => {} });
+  assert.equal(content, "candidate");
+});
 
 test("replaces an image even when comments precede it", () => {
   const compose = `services:

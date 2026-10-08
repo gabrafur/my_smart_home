@@ -72,13 +72,23 @@ function waitForNodeRed() {
   throw new Error("nodered_health_timeout");
 }
 
+export function withPublicDependencyUmask(install) {
+  const previousMask = process.umask(0o022);
+  try {
+    return install();
+  } finally {
+    process.umask(previousMask);
+  }
+}
+
 function installRuntime() {
-  // The bind-mounted node_modules directory is maintained by the host account.
-  // Installing there as the container's UID can fail after repository checks
-  // legitimately recreate .bin entries with host ownership.
-  run(npmBin, ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
-    cwd: nodeRedDir,
-    failure: "nodered_npm_ci_failed",
+  // Public packages must remain readable by both the host and container UIDs,
+  // including when the scheduler inherits a private 077 mask.
+  withPublicDependencyUmask(() => {
+    run(npmBin, ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
+      cwd: nodeRedDir,
+      failure: "nodered_npm_ci_failed",
+    });
   });
   run(dockerBin, ["exec", "-w", "/data", "nodered", "npm", "run", "flows:validate"], {
     failure: "nodered_dependency_validation_failed",

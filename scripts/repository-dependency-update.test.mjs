@@ -8,13 +8,53 @@ import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { normalizeAudit } from "../nodered/tools/scan-repository-dependency-audit.mjs";
-import { selectSameMajorTarget, validatePackageName } from "./update-repository-dependency.mjs";
+import { selectSameMajorTarget, validatePackageName, withPublicDependencyUmask } from "./update-repository-dependency.mjs";
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const requestScript = path.join(scriptsDir, "request-host-repository-dependency-update.sh");
 const readScript = path.join(scriptsDir, "read-host-repository-dependency-update-result.sh");
 const processScript = path.join(scriptsDir, "process-repository-dependency-update-request.sh");
 const updateScript = path.join(scriptsDir, "update-repository-dependency.mjs");
+
+test("public dependencies remain readable and the private caller mask is restored", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "repository-dependency-mask-"));
+  const old = process.umask(0o077);
+  try {
+    withPublicDependencyUmask(() => {
+      fs.mkdirSync(path.join(fixture, "package"));
+      fs.writeFileSync(path.join(fixture, "package", "index.js"), "public package");
+    });
+    assert.equal(fs.statSync(path.join(fixture, "package")).mode & 0o777, 0o755);
+    assert.equal(fs.statSync(path.join(fixture, "package", "index.js")).mode & 0o777, 0o644);
+    assert.equal(process.umask(), 0o077);
+    assert.throws(() => withPublicDependencyUmask(() => { throw new Error("install failed"); }), /install failed/);
+    assert.equal(process.umask(), 0o077);
+  } finally {
+    process.umask(old);
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test("validation installs public packages with a readable mask under a private caller", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "repository-dependency-make-"));
+  try {
+    fs.writeFileSync(path.join(fixture, "npm"), '#!/bin/sh\nmkdir -p public-package\nprintf public > public-package/index.js\n', { mode: 0o755 });
+    for (const target of ["validate-dependencies", "validate-node-red"]) {
+      const planned = spawnSync("make", ["--no-print-directory", "-n", target], { encoding: "utf8" });
+      assert.equal(planned.status, 0, planned.stderr);
+      const install = planned.stdout.split("\n")[0];
+      const result = spawnSync("sh", ["-c", `umask 077\n${install}`], {
+        cwd: fixture, encoding: "utf8", env: { ...process.env, PATH: `${fixture}:${process.env.PATH}` },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(fs.statSync(path.join(fixture, "public-package")).mode & 0o777, 0o755);
+      assert.equal(fs.statSync(path.join(fixture, "public-package/index.js")).mode & 0o777, 0o644);
+      fs.rmSync(path.join(fixture, "public-package"), { recursive: true });
+    }
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+});
 
 test("audit adapter exposes only sanitized candidates and managed surfaces", () => {
   const report = normalizeAudit({ vulnerabilities: {

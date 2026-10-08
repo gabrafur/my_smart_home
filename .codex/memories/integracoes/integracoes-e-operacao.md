@@ -132,3 +132,10 @@ expor segredos.
 Mudanças de Bluetooth, Matter, D-Bus ou controle de energia devem seguir
 `docs/BLUETOOTH_MATTER.md` e `docs/CONTROLE_ENERGIA_HOME_ASSISTANT.md`.
 Confirme qualquer ampliação de privilégio, acesso ao host ou ação física.
+
+<!-- memory-record {"id":"permissoes-npm-e-retomada-de-imagens","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-10-08","evidence":[{"file":"Makefile","sha256":"de0a7927f1f6c054656b0f9abd15537e90643ab4fc6cb95b849f74eb48d8dc04"},{"file":"scripts/docker-auto-update.mjs","sha256":"4ba4ac785764a86a04caa6bdd9d8f55de15655b6219412768e8516c97a14b72d"},{"file":"scripts/docker-auto-update.test.mjs","sha256":"c631c2e4285484ccb72f8e9b076089c492bd686369e40945ed7099ad40ff274f"},{"file":"scripts/update-repository-dependency.mjs","sha256":"a4439e034f627c34bcd5c85d536321b4999ff79919e7c3af8ec143bf3353cab2"},{"file":"scripts/repository-dependency-update.test.mjs","sha256":"20ab0a090abeac05373f4f2fca47cfcaa00265517afdb0668d6e9f2d9939e008"},{"file":"docs/CONTAINERS.md","sha256":"d6e401436e10bb95a558da13f25255527d41cc1c6551ee449efc3794dc84f94b"}]} -->
+## Permissões npm e retomada de imagens
+
+Instalações de pacotes públicos precisam manter leitura entre os usuários distintos do host e do Node-RED. Os alvos de validação e o instalador de dependências fixam umask 022 durante npm ci; o instalador restaura a máscara privada do chamador mesmo se falhar. Uma validação de imagens que falha antes de recriar o serviço deve restaurar somente a candidata Compose que escreveu, preservando edições concorrentes. Na retomada, compare o ID da imagem realmente usada pelo container com o ID desejado, mesmo quando o digest do Compose já coincide com o canal: arquivo atualizado não comprova deploy.
+
+<!-- /memory-record -->

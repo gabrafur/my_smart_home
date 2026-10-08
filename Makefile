@@ -47,7 +47,7 @@ validate-public:
 	@./scripts/run-resource-safe.sh $(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
 
 validate-dependencies:
-	npm --prefix validation ci --ignore-scripts --no-audit --no-fund
+	umask 022; npm --prefix validation ci --ignore-scripts --no-audit --no-fund
 
 validate-compose:
 	docker compose --env-file .env.example -f docker-compose.yml -f compose.modules.yml config --quiet
@@ -83,7 +83,7 @@ validate-memory:
 	node scripts/ai-context-recovery.mjs --worktree
 
 validate-node-red:
-	npm --prefix nodered ci --ignore-scripts --no-audit --no-fund
+	umask 022; npm --prefix nodered ci --ignore-scripts --no-audit --no-fund
 	npm --prefix nodered run flows:validate
 	npm --prefix nodered run flows:validate-layout
 	node --check nodered/settings.js
