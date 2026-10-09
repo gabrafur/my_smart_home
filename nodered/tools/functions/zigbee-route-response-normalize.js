@@ -15,7 +15,7 @@ msg._zigbee_test = testMode;
 msg.zigbee_route_state_key = stateKey;
 msg.zigbee_route_incidents = incidents;
 msg.zigbee_route_key = key;
-msg.zigbee_route_current = structuredClone(current);
+msg.zigbee_route_current = JSON.parse(JSON.stringify(current));
 msg.zigbee_route_revision = Number(current.revision || 0);
 // Duplicate map responses must not start another configure. Late configure
 // failures remain correlated while a successful response is being verified.

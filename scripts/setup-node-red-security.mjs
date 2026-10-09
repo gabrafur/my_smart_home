@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { nodeRedImageFromCompose } from "./node-red-image.mjs";
 
 const repoRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const envPath = path.join(repoRoot, ".env");
@@ -53,7 +54,7 @@ function bcryptHash(password) {
             "--rm",
             "--entrypoint",
             "node",
-            "nodered/node-red@sha256:a649dd711d55490151a2c39a8e48ad0c44325488fbc0e66315f2d2e19e5e1ace",
+            nodeRedImageFromCompose(fs.readFileSync(path.join(repoRoot, "docker-compose.yml"), "utf8")),
             "-e",
             "const bcrypt=require('bcryptjs'); console.log(bcrypt.hashSync(process.argv[1], 8));",
             password,

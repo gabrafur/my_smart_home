@@ -8,7 +8,7 @@ services:
 
   portainer:
     logging: *default-logging
-    image: portainer/portainer-ce@sha256:4d616db18cfeb5dd41a69c0958bc825c84483ea9cde1106eb82a5d26f3bd8b0e
+    image: portainer/portainer-ce@sha256:03f94a406496dc84d37b552795fc424ccad8d0d7200353b6a82915f6e8f73ab0
     container_name: portainer
     restart: always
     ports:
@@ -109,7 +109,7 @@ services:
 
   nodered:
     logging: *default-logging
-    image: nodered/node-red@sha256:a649dd711d55490151a2c39a8e48ad0c44325488fbc0e66315f2d2e19e5e1ace
+    image: nodered/node-red@sha256:b5adb6c9dd29ab80c852d82bc87daed84e729dcff9b00ca1bf958e6de470f2c1
     container_name: nodered
     restart: always
     command: ["/bin/sh", "/data/tools/start-node-red.sh"]

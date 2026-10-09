@@ -307,7 +307,7 @@ const secondaryFailureInPair = executeFunction("notification-hub-mobile-leg-fail
 });
 assert.equal(secondaryFailureInPair.result[0], null);
 assert.ok(secondaryFailureInPair.result[1], "falha no segundo destinatário deve concluir uma única vez");
-assert.deepEqual(node("notification_hub_mobile_service_catch").wires, [["notification_hub_mobile_leg_failure"]]);
+assert.deepEqual(node("notification_hub_mobile_service_catch").wires, [["notification_hub_mobile_startup_out"]]);
 assert.deepEqual(node("notification_hub_mobile_leg_failure").wires, [["notification_hub_mobile_pair_retry_out"], ["notification_hub_mobile_failure"]]);
 assert.equal(node("notification_hub_mobile_after_service").wires.length, 3);
 
@@ -397,4 +397,16 @@ assert.ok(persistentDismiss.result[0]);
 assert.match(contractText("rpi_emergency_cooling_push_primary"), /"recipients":\["resident_primary"\]/);
 assert.deepEqual(node("349bc099633fee5d__hub_call").links, [NOTIFICATION_HUBS.persistent.input]);
 
+const startupMissing = executeFunction("notification-hub-service-retry.js", {
+  error: { message: "HomeAssistantError: Service public_bindings.call not found." },
+});
+assert.equal(startupMissing.msg.notification_service_missing, true);
+assert.equal(startupMissing.msg.notification_service_attempt, 0);
+for (const message of ["Timeout", "NoConnectionError", "Service unrelated.call not found."]) {
+  assert.equal(executeFunction("notification-hub-service-retry.js", {error:{message}}).msg.notification_service_missing, false);
+}
+const allowed = jsonata(node("notification_hub_mobile_retry_allowed").property);
+assert.equal(await allowed.evaluate({notification_service_missing:true,notification_service_attempt:11}), true);
+assert.equal(await allowed.evaluate({notification_service_missing:true,notification_service_attempt:12}), false);
+assert.equal(node("notification_hub_mobile_retry_delay").timeout, "5");
 console.log(`Notification hubs: ${NOTIFICATION_MIGRATIONS.length} efeitos migrados, ${notificationEffects.length} saídas canônicas, fail-closed validado`);

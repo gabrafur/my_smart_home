@@ -15,14 +15,14 @@ const promptedKey = `external_lighting_recovery_prompted_date_v1${suffix}`;
 const store = testMode ? undefined : "persistent";
 const get = (key) => store ? flow.get(key, store) : flow.get(key);
 const now = new Date(msg.external_now ?? Date.now());
-const sunsetAt = new Date(msg.sun_last_changed);
+const nextSunset = new Date(msg.sun_next_setting);
 const timeZone = env.get("TZ") || "America/Sao_Paulo";
-if (!Number.isFinite(sunsetAt.getTime())) {
+if (!Number.isFinite(nextSunset.getTime()) || nextSunset.getTime() <= now.getTime()) {
     node.status({ fill: "red", shape: "ring", text: "horário do pôr do sol ausente" });
     return null;
 }
 const today = localDate(now, timeZone);
-if (localDate(sunsetAt, timeZone) !== today) {
+if (localDate(nextSunset, timeZone) <= today) {
     node.status({ fill: "grey", shape: "ring", text: "pôr do sol foi em outro dia" });
     return null;
 }

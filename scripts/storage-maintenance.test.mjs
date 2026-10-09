@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { nodeRedImageFromCompose } from "./node-red-image.mjs";
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "storage-maintenance.sh");
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -14,7 +15,16 @@ test("Node-RED security helper reuses the current Compose image digest", () => {
   const helper = fs.readFileSync(path.join(repoRoot, "scripts", "setup-node-red-security.mjs"), "utf8");
   const digest = compose.match(/image:\s+nodered\/node-red@(sha256:[a-f0-9]{64})/)?.[1];
   assert.ok(digest, "Compose must pin the Node-RED image by digest");
-  assert.match(helper, new RegExp(`nodered/node-red@${digest}`));
+  assert.equal(nodeRedImageFromCompose(compose), `nodered/node-red@${digest}`);
+  assert.match(helper, /nodeRedImageFromCompose\(fs\.readFileSync\(path\.join\(repoRoot, "docker-compose.yml"\)/);
+  assert.doesNotMatch(helper, /nodered\/node-red@sha256:/);
+  const nextDigest = `sha256:${"a".repeat(64)}`;
+  assert.equal(nodeRedImageFromCompose(compose.replace(digest, nextDigest)), `nodered/node-red@${nextDigest}`);
+  for (const invalid of ["nodered/node-red:latest", `other/image@${digest}`, "${NODE_RED_IMAGE}"]) {
+    assert.throws(() => nodeRedImageFromCompose(compose.replace(`nodered/node-red@${digest}`, invalid)));
+  }
+  assert.throws(() => nodeRedImageFromCompose(compose.replace("  nodered:", "  another_service:")));
+  assert.throws(() => nodeRedImageFromCompose(compose + `\n  nodered:\n    image: nodered/node-red@${digest}\n`));
 });
 
 function fixture({ name = "storage-maintenance-test-" } = {}) {

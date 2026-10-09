@@ -177,7 +177,7 @@ const service = (id, z, g, name, action, data, queue, x, y, wires) => ({
   domain: action.split(".")[0], service: action.split(".")[1], x, y, wires,
 });
 const caller = (id, z, g, name, target, x, y, wires) => ({
-  id, type: "link call", z, g, name, links: [target], linkType: "static", timeout: "30", x, y, wires,
+  id, type: "link call", z, g, name, links: [target], linkType: "static", timeout: target === NOTIFICATION_HUBS.mobile.input ? "180" : "30", x, y, wires,
 });
 const comment = (id, z, g, name, info, x, y) => ({
   id, type: "comment", z, g, name, info, x, y, wires: [],
@@ -234,7 +234,29 @@ function mobileHubNodes() {
   add(linkOut("notification_hub_mobile_pair_continue_out", z, main.id, "Par: seguir para resident_secondary", ["notification_hub_mobile_pair_continue_in"], 2860, 100));
   add(fn("notification_hub_mobile_success", z, main.id, "Registrar aceite do canal móvel", "notification-hub-success.js", 1, 2820, 200, [["notification_hub_mobile_return_success"]]));
   add(linkOut("notification_hub_mobile_return_success", z, main.id, "Retornar aceite ao chamador", [], 3030, 200, "return"));
-  add({ id: "notification_hub_mobile_service_catch", type: "catch", z, g: main.id, name: "Capturar falha dos serviços móveis", scope: services.map(([id]) => id), uncaught: false, x: 2030, y: 470, wires: [["notification_hub_mobile_leg_failure"]] });
+  add({ id: "notification_hub_mobile_service_catch", type: "catch", z, g: main.id, name: "Capturar falha dos serviços móveis", scope: services.map(([id]) => id), uncaught: false, x: 2030, y: 470, wires: [["notification_hub_mobile_startup_out"]] });
+  add(linkOut("notification_hub_mobile_startup_out", z, main.id, "Falha → verificar serviço em startup", ["notification_hub_mobile_startup_in"], 2050, 580));
+  add(linkIn("notification_hub_mobile_final_failure_in", z, main.id, "Falha definitiva → destinatário seguinte", ["notification_hub_mobile_final_failure_out"], 2140, 530, [["notification_hub_mobile_leg_failure"]]));
+  add(linkIn("notification_hub_mobile_service_retry_in", z, main.id, "Serviço em startup → tentar mesmo destinatário", ["notification_hub_mobile_service_retry_out"], 1660, 280, [["notification_hub_mobile_profile"]]));
+  const retry = group("notification_hub_mobile_startup_group", z, "Serviço HA em startup: 12 tentativas de 5 s; erros diferentes falham", 1450, 700, 1650, 360, "#a16207", "#fef3c7");
+  nodes.push(retry); groups.set(retry.id, retry);
+  add(linkIn("notification_hub_mobile_startup_in", z, retry.id, "Receber falha de serviço", ["notification_hub_mobile_startup_out", "notification_hub_mobile_retry_test_out"], 1500, 780, [["notification_hub_mobile_retry_normalize"]]));
+  add(fn("notification_hub_mobile_retry_normalize", z, retry.id, "Reconhecer ausência explícita de serviço", "notification-hub-service-retry.js", 1, 1740, 780, [["notification_hub_mobile_retry_allowed"]]));
+  add(sw("notification_hub_mobile_retry_allowed", z, retry.id, "Serviço ausente e tentativas < 12?", "notification_service_missing and notification_service_attempt < 12", "jsonata", [{t:"true"},{t:"else"}], 2090, 780, [["notification_hub_mobile_retry_prepare"],["notification_hub_mobile_final_failure_out"]]));
+  add(change("notification_hub_mobile_retry_prepare", z, retry.id, "Incrementar tentativa; limpar erro já tratado", [setRule("notification_service_attempt", "notification_service_attempt + 1", "jsonata"), {t:"delete",p:"error",pt:"msg"}], 2460, 780, [["notification_hub_mobile_retry_delay"]]));
+  add({id:"notification_hub_mobile_retry_delay",type:"delay",z,g:retry.id,name:"Aguardar 5 s para serviço HA",pauseType:"delay",timeout:"5",timeoutUnits:"seconds",rate:"1",nbRateUnits:"1",rateUnits:"second",randomFirst:"1",randomLast:"5",randomUnits:"seconds",drop:false,allowrate:false,outputs:1,x:2830,y:780,wires:[["notification_hub_mobile_retry_delay_out"]]});
+  add(linkOut("notification_hub_mobile_retry_delay_out", z, retry.id, "Espera → gate final", ["notification_hub_mobile_retry_final_in"], 3010, 840));
+  add(linkIn("notification_hub_mobile_retry_final_in", z, retry.id, "Receber tentativa após espera", ["notification_hub_mobile_retry_delay_out"], 1500, 950, [["notification_hub_mobile_retry_test"]]));
+  add(sw("notification_hub_mobile_retry_test", z, retry.id, "TESTE permanece sem push?", "notification.test_mode = true and $not(notification.delivery_under_test = true)", "jsonata", [{t:"true"},{t:"else"}], 1790, 950, [["notification_hub_mobile_retry_dry_out"],["notification_hub_mobile_service_retry_out"]]));
+  add(linkOut("notification_hub_mobile_retry_dry_out", z, retry.id, "Retry TESTE → terminal seguro", ["notification_hub_mobile_dry_in"], 2010, 1010));
+  add(linkOut("notification_hub_mobile_service_retry_out", z, retry.id, "Repetir apenas serviço não executado", ["notification_hub_mobile_service_retry_in"], 2050, 950));
+  add(linkOut("notification_hub_mobile_final_failure_out", z, retry.id, "Falha definitiva → retorno normal", ["notification_hub_mobile_final_failure_in"], 2240, 870));
+  add({id:"notification_hub_mobile_test_startup",type:"inject",z,g:retry.id,name:"TESTE: serviço ausente → espera → dry-run",props:[
+    {p:"payload",v:"TESTE de retomada; nenhum envio",vt:"str"},
+    {p:"notification",v:JSON.stringify({source:"hub_mobile_manual_test",profile:"simple",recipients:["resident_primary"],test_mode:true}),vt:"json"},
+    {p:"error",v:JSON.stringify({message:"HomeAssistantError: Service public_bindings.call not found."}),vt:"json"},
+    {p:"_notification_hub_channel",v:"mobile",vt:"str"}],repeat:"",crontab:"",once:false,onceDelay:0.1,x:2600,y:950,wires:[["notification_hub_mobile_retry_test_out"]]});
+  add(linkOut("notification_hub_mobile_retry_test_out", z, retry.id, "Falha sintética → caminho real", ["notification_hub_mobile_startup_in"], 2870, 950));
   add(fn("notification_hub_mobile_leg_failure", z, main.id, "Tentar segundo destinatário e falhar uma vez", "notification-hub-mobile-leg-failure.js", 2, 2310, 470, [["notification_hub_mobile_pair_retry_out"], ["notification_hub_mobile_failure"]]));
   add(linkOut("notification_hub_mobile_pair_retry_out", z, main.id, "Falha primária: tentar resident_secondary", ["notification_hub_mobile_pair_continue_in"], 2550, 500));
   add(fn("notification_hub_mobile_failure", z, main.id, "Retornar falha e observar", "notification-hub-failure.js", 2, 2630, 440, [["notification_hub_mobile_return_failure"], ["notification_hub_mobile_observer_out"]]));
@@ -255,7 +277,7 @@ function mobileHubNodes() {
   ];
   for (const [id, name, recipients, profile, x, y] of testCases) add(inject(id, z, test.id, name, "TESTE — mensagem sem efeito", { source: "hub_mobile_manual_test", recipients, profile, title: "TESTE", test_mode: true }, x, y, [["notification_hub_mobile_test_out"]]));
   add(linkOut("notification_hub_mobile_test_out", z, test.id, "Cenário TESTE → contrato real", ["notification_hub_mobile_test_in"], 480, 900));
-  add(linkIn("notification_hub_mobile_dry_in", z, test.id, "Receber resultado bloqueado", ["notification_hub_mobile_dry_out"], 720, 900, [["notification_hub_mobile_dry_run_terminal"]]));
+  add(linkIn("notification_hub_mobile_dry_in", z, test.id, "Receber resultado bloqueado", ["notification_hub_mobile_dry_out", "notification_hub_mobile_retry_dry_out"], 720, 900, [["notification_hub_mobile_dry_run_terminal"]]));
   add(fn("notification_hub_mobile_dry_run_terminal", z, test.id, "Registrar resultado dry-run móvel", "notification-hub-dry-run.js", 2, 980, 900, [["notification_hub_mobile_dry_run_assert"], ["notification_hub_mobile_return_dry"]]));
   add(fn("notification_hub_mobile_dry_run_assert", z, test.id, "TESTE FINAL: nenhum celular acionado", "notification-hub-dry-run-terminal.js", 0, 1230, 850, []));
   add(linkOut("notification_hub_mobile_return_dry", z, test.id, "Retornar dry-run ao chamador", [], 1260, 900, "return"));
@@ -871,9 +893,23 @@ if (invokedPath === fileURLToPath(import.meta.url)) {
   const migrated = installNotificationHubs(structuredClone(flows));
   const hubTabs = new Set(Object.values(NOTIFICATION_HUBS).map(({ tab }) => tab));
   const historyNode = (node) => hubTabs.has(node.z) && /_history(?:_|$)/.test(node.id);
-  // Existing canvases may contain approved editor routes. Only reconcile this
-  // additive journal; installing hubs from scratch still uses the full generator.
-  const reconciled = reconcileGeneratedFlows(flows, migrated, { isOwned: historyNode, shouldUpdate: historyNode, preserveLayout: false });
+  // Preserve approved editor routes while reconciling the startup lifecycle.
+  const startupIds = new Set(migrated.filter((node) =>
+    node.g === "notification_hub_mobile_startup_group" ||
+    /notification_hub_mobile_(startup_|service_retry_|final_failure_)/.test(node.id)
+  ).map((node) => node.id));
+  const changedIds = new Set([...startupIds, "notification_hub_mobile_service_catch", "notification_hub_mobile_dry_in"]);
+  const owned = (node) => historyNode(node) || startupIds.has(node.id);
+  const reconciled = reconcileGeneratedFlows(flows, migrated, { isOwned: owned, shouldUpdate: (node) => owned(node) || changedIds.has(node.id), preserveLayout: true });
+  for (const node of reconciled) {
+    if (node.type === "link call" && Object.values(NOTIFICATION_HUBS).some(hub => node.links?.includes(hub.input))) {
+      node.timeout = node.links.includes(NOTIFICATION_HUBS.mobile.input) ? "180" : "30";
+    }
+    if (startupIds.has(node.id) && node.g) {
+      const owner = reconciled.find((candidate) => candidate.id === node.g);
+      if (owner && !owner.nodes.includes(node.id)) owner.nodes.push(node.id);
+    }
+  }
   const byId = new Map(reconciled.map((node) => [node.id, node]));
   // The current approved mobile route is a few pixels beyond the 500 px gate.
   // Keep its direction and lane while bringing the terminal next to its source.

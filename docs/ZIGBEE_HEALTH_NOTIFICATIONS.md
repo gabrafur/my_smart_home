@@ -15,6 +15,13 @@ deve existir uma segunda automação de disponibilidade no Home Assistant.
 
 ## Arquitetura comum
 
+Após reinício, a contagem de falhas de acesso remoto exige um relatório fresco
+recebido neste runtime; cada `checked_at` contribui no máximo uma vez. Contexto
+persistido ou avaliações disparadas por outros eventos não são novas sondas.
+O estado JSON da recuperação Zigbee é copiado sem depender de `structuredClone`
+global, indisponível no sandbox Function do Node-RED. Os replays de startup
+executam os corpos das funções em sandbox isolado para reproduzir essa fronteira.
+
 As abas são separadas por domínio e organizadas da esquerda para a direita:
 
 ```text

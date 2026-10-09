@@ -9,6 +9,7 @@
                 "notification_hub_mobile_test_secondary",
                 "notification_hub_mobile_test_both",
                 "notification_hub_mobile_test_invalid",
+                "notification_hub_mobile_test_startup",
                 "notification_hub_mobile_history_test"
             ],
             "automated_test": "test-notification-hubs.mjs",

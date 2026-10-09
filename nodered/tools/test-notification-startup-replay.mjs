@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {harness} from './startup-replay-harness.mjs';
+const h = harness();
+await h.run('notification_hub_mobile_test_startup', {});
+assert.ok(h.seen.includes('notification_hub_mobile_retry_delay'));
+assert.ok(h.seen.includes('notification_hub_mobile_retry_test'));
+const result = h.flowFor('notification_hub_mobile_tab').get('notification_hub_mobile_last_dry_run_v1');
+assert.equal(result.simulated, true);
+assert.equal(result.dispatched, false);
+assert.equal(h.seen.some(id => /^notification_hub_mobile_(primary|secondary)_/.test(id)), false);
+console.log('Notification startup: real retry path ends at dry-run without a push.');

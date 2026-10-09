@@ -8,10 +8,10 @@ const state = get("internet_remote_access_state_v1") ?? {
     version: 1, phase: "unknown", incident_open: false,
     consecutive_failures: 0, last_request_at: 0
 };
-const reportTime = Date.parse(report?.checked_at ?? "");
-const now = Number(msg.monitor_now ?? msg.remote_access_now ?? (testMode && Number.isFinite(reportTime) ? reportTime : Date.now()));
 const checkedAt = Date.parse(report?.checked_at ?? "");
+const now = Number(msg.monitor_now ?? msg.remote_access_now ?? (testMode && Number.isFinite(checkedAt) ? checkedAt : Date.now()));
 const fresh = Number.isFinite(checkedAt) &&
+    now >= checkedAt &&
     now - checkedAt <= Number(msg.policy.remote_access_report_stale_s) * 1000;
 const sshHealthy = fresh && report?.services?.remote_shell?.healthy === true;
 const codexHealthy = fresh && report?.services?.codex_remote?.healthy === true;
@@ -21,6 +21,7 @@ else if (fresh && sshHealthy && !codexHealthy) reason = String(report.services.c
 else if (fresh) reason = "ready";
 msg._internet_test = testMode;
 msg.remote_access = {
+    report_ready: fresh && (testMode || flow.get("internet_remote_access_report_v1_received", "memoryOnly") === true),
     now, report, internet, state, fresh, ssh_healthy: sshHealthy,
     codex_healthy: codexHealthy,
     healthy: sshHealthy && codexHealthy,

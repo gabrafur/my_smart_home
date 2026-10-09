@@ -96,9 +96,9 @@ const newNodes = [
     blockInputOverrides: true,
     outputProperties: [
       {
-        property: "sun_last_changed",
+        property: "sun_next_setting",
         propertyType: "msg",
-        value: '$entities("sun.sun").last_changed',
+        value: '$entities("sun.sun").attributes.next_setting',
         valueType: "jsonata",
       },
     ],
@@ -126,7 +126,7 @@ const PENDING_KEY = 'external_lighting_recovery_pending_v1';
 const PROMPTED_DATE_KEY = 'external_lighting_recovery_prompted_date_v1';
 const TTL_MS = 12 * 60 * 60 * 1000;
 const now = new Date();
-const sunsetAt = new Date(msg.sun_last_changed);
+const sunsetAt = new Date(msg.sun_next_setting);
 const timeZone = env.get('TZ') || 'America/Sao_Paulo';
 
 if (!Number.isFinite(sunsetAt.getTime())) {
@@ -135,7 +135,7 @@ if (!Number.isFinite(sunsetAt.getTime())) {
 }
 
 const today = localDate(now, timeZone);
-if (localDate(sunsetAt, timeZone) !== today) {
+if (sunsetAt.getTime() <= now.getTime() || localDate(sunsetAt, timeZone) <= today) {
     node.status({ fill: 'grey', shape: 'ring', text: 'pôr do sol foi em outro dia' });
     return null;
 }

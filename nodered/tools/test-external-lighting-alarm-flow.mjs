@@ -150,8 +150,14 @@ const recoveryGlobal = {
   get: (key) => key === "external_lighting_policy_v1" ? externalPolicy : undefined,
 };
 const prepareRecovery = compileFunction(getNode("ext_prepare_recovery_confirmation"));
+assert.equal(prepareRecovery({
+  external_now: "2026-01-02T03:30:00Z",
+  sun_last_changed: "2026-01-02T03:29:00Z",
+  sun_next_setting: "2026-01-02T21:00:00Z",
+}, {status(){}}, {}, recoveryFlow, recoveryGlobal, recoveryEnv, setTimeout, clearTimeout), null,
+"HA restart after midnight cannot masquerade as today's sunset");
 const recoveryMessage = prepareRecovery(
-  { sun_last_changed: new Date().toISOString() },
+  { sun_next_setting: new Date(Date.now() + 86400000).toISOString() },
   { status: () => {} },
   {},
   recoveryFlow,
@@ -183,7 +189,7 @@ assert.equal(
 );
 assert.equal(
   prepareRecovery(
-    { sun_last_changed: new Date().toISOString() },
+    { sun_next_setting: new Date(Date.now() + 86400000).toISOString() },
     { status: () => {} },
     {},
     recoveryFlow,

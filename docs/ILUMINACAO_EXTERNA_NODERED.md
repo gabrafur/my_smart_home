@@ -37,9 +37,11 @@ automatica.
    novo amanhecer. O sucesso e silencioso para nao gerar anuncio diario na
    Alexa; falha Zigbee ou luz ainda ligada continua produzindo alerta.
 3. Quinze segundos depois do boot, o fluxo verifica `sun.sun`. Se ja estiver
-   abaixo do horizonte e `last_changed` pertencer a mesma data local, prepara
+   abaixo do horizonte e `next_setting` apontar para uma data local futura, prepara
    uma pergunta com token unico. A notificacao do celular oferece `Ligar` e
    `Nao ligar`; a Alexa faz a mesma pergunta e orienta responder pelo celular.
+   A madrugada anterior ao proximo por do sol nao gera pergunta. `last_changed`
+   nao comprova o horario astronomico, pois pode mudar ao reiniciar o HA.
 4. A pergunta e registrada no context store `persistent` somente depois que o
    Home Assistant aceita a notificacao. Ela e deduplicada por data e expira ao
    mudar o dia. Uma resposta `Ligar` ainda revalida que o sol esta abaixo do

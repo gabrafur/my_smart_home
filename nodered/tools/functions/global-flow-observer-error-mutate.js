@@ -1,4 +1,9 @@
 const data = msg._observer_event;
+// Normalize and admission are separate nodes; another message can reserve
+// the same incident between them. Read and reserve atomically here.
+const latest = data.store ? flow.get(data.state_key, data.store) : flow.get(data.state_key);
+if (latest?.version === 2) data.state = latest;
+data.previous = data.state.errors[data.key] ?? {};
 const reminderMs = Number(data.policy.reminder_hours) * 3600000;
 const retentionMs = Number(data.policy.error_retention_days) * 86400000;
 const notificationDue = !Number.isFinite(data.previous.notified_at) ||

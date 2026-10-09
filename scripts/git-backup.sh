@@ -113,6 +113,9 @@ fi
   # temporária para que a ponte tente novamente, em vez de esquecer um HEAD
   # já criado e depois falhar como "behind" quando o remoto avançar.
   if ! push_output=$(git push "$REMOTE" "$BRANCH" --quiet 2>&1); then
+    # Keep the actual failed check in this private operational log; a generic
+    # validation_failed code alone cannot diagnose or prevent recurrence.
+    printf '%s\n' "$push_output" | tail -n 160 >> "$LOG_FILE"
     case "$push_output" in
       *"resource-safe: another broad validation is already running"*|\
       *"resource-safe: refusing validation"*)

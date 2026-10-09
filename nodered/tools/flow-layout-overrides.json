@@ -9716,6 +9716,12 @@
       "apply_nodes": true,
       "geometry_final": true,
       "group_positions": {
+        "grp_internet_remote_access": {
+          "x": 114,
+          "y": 1419,
+          "w": 4842,
+          "h": 482
+        },
         "grp_internet_triggers": {
           "x": 84,
           "y": 19,
@@ -9733,12 +9739,6 @@
           "y": 2219,
           "w": 2952,
           "h": 632
-        },
-        "grp_internet_remote_access": {
-          "x": 114,
-          "y": 1419,
-          "w": 4842,
-          "h": 482
         },
         "grp_internet_tests": {
           "x": 64,
@@ -10205,6 +10205,298 @@
         "internet_notify_recovery__dismiss_call": {
           "x": 2920,
           "y": 2690
+        },
+        "grp_internet_remote_access": {
+          "x": 114,
+          "y": 1419,
+          "w": 4842,
+          "h": 482
+        },
+        "internet_remote_access_health_in": {
+          "x": 300,
+          "y": 535
+        },
+        "internet_remote_test_report_in": {
+          "x": 445,
+          "y": 600
+        },
+        "internet_remote_access_report_ingest": {
+          "x": 590,
+          "y": 535
+        },
+        "internet_remote_report_valid": {
+          "x": 840,
+          "y": 535
+        },
+        "internet_remote_report_out": {
+          "x": 1065,
+          "y": 520
+        },
+        "internet_remote_report_invalid": {
+          "x": 1150,
+          "y": 600
+        },
+        "internet_remote_state_out": {
+          "x": 4625,
+          "y": 430
+        },
+        "internet_remote_evaluate_in": {
+          "x": 155,
+          "y": 1760
+        },
+        "internet_remote_policy_load": {
+          "x": 345,
+          "y": 1760
+        },
+        "internet_remote_policy_available": {
+          "x": 585,
+          "y": 1760
+        },
+        "internet_remote_policy_missing": {
+          "x": 840,
+          "y": 1820
+        },
+        "notification_hub_wire_out_347481401649": {"x":3965,"y":1710},
+        "notification_hub_wire_in_347481401649": {"x":4010,"y":1740},
+        "notification_hub_wire_out_a3cbc62f0aa2": {"x":3965,"y":1770},
+        "notification_hub_wire_in_a3cbc62f0aa2": {"x":4010,"y":1780},
+        "notification_hub_wire_out_ed9f1d372540": {"x":3965,"y":1830},
+        "notification_hub_wire_in_ed9f1d372540": {"x":4010,"y":1820},
+        "internet_remote_facts_read": {
+          "x": 850,
+          "y": 1700
+        },
+        "internet_remote_internet_online": {
+          "x": 1150,
+          "y": 1700
+        },
+        "internet_remote_mark_suppress": {
+          "x": 1510,
+          "y": 1740
+        },
+        "internet_remote_suppress_mutate_out": {
+          "x": 1735,
+          "y": 1740
+        },
+        "internet_remote_health_switch": {
+          "x": 1480,
+          "y": 1640
+        },
+        "internet_remote_healthy_incident": {
+          "x": 1810,
+          "y": 1580
+        },
+        "internet_remote_mark_healthy": {
+          "x": 2150,
+          "y": 1580
+        },
+        "internet_remote_failure_incident": {
+          "x": 1790,
+          "y": 1660
+        },
+        "internet_remote_mark_failure": {
+          "x": 2110,
+          "y": 1780
+        },
+        "internet_remote_mutate_late_in": {
+          "x": 2435,
+          "y": 1600
+        },
+        "internet_remote_state_mutate": {
+          "x": 2700,
+          "y": 1580
+        },
+        "internet_remote_action_switch": {
+          "x": 3020,
+          "y": 1580
+        },
+        "internet_remote_failure_threshold": {
+          "x": 3410,
+          "y": 1500
+        },
+        "internet_remote_mark_open": {
+          "x": 3780,
+          "y": 1460
+        },
+        "internet_remote_open_mutate_out": {
+          "x": 4025,
+          "y": 1460
+        },
+        "internet_remote_open_fanout": {
+          "x": 3410,
+          "y": 1580
+        },
+        "internet_remote_recovery_route_out": {
+          "x": 3705,
+          "y": 1640
+        },
+        "internet_remote_recovery_route_in": {
+          "x": 1985,
+          "y": 1700
+        },
+        "internet_remote_alert_build": {
+          "x": 3870,
+          "y": 1600
+        },
+        "internet_remote_alert_test_gate": {
+          "x": 4170,
+          "y": 1640
+        },
+        "internet_remote_access_alert_out": {
+          "x": 4375,
+          "y": 1660
+        },
+        "internet_remote_recovery_event": {
+          "x": 3400,
+          "y": 1540
+        },
+        "internet_remote_dismiss_test_gate": {
+          "x": 3780,
+          "y": 1520
+        },
+        "internet_remote_alert_dismiss": {
+          "x": 4240,
+          "y": 1560
+        },
+        "internet_remote_alert_dismiss__hub_call": {
+          "x": 4520,
+          "y": 1560
+        },
+        "internet_remote_alert_dismiss__hub_result": {
+          "x": 4790,
+          "y": 1560
+        },
+        "internet_remote_recoverable": {
+          "x": 2180,
+          "y": 1640
+        },
+        "internet_remote_request_due": {
+          "x": 2640,
+          "y": 1660
+        },
+        "internet_remote_mark_request": {
+          "x": 2970,
+          "y": 1660
+        },
+        "internet_remote_request_mutate_out": {
+          "x": 3155,
+          "y": 1660
+        },
+        "internet_remote_request_gate": {
+          "x": 3460,
+          "y": 1700
+        },
+        "internet_remote_request_worker": {
+          "x": 3810,
+          "y": 1760
+        },
+        "internet_remote_request_ack": {
+          "x": 4160,
+          "y": 1740
+        },
+        "internet_remote_request_failed": {
+          "x": 4150,
+          "y": 1780
+        },
+        "internet_remote_request_done": {
+          "x": 4130,
+          "y": 1820
+        },
+        "internet_remote_status_out": {
+          "x": 2575,
+          "y": 1720
+        },
+        "internet_remote_status_late_out": {
+          "x": 3325,
+          "y": 1810
+        },
+        "internet_remote_status_in": {
+          "x": 3455,
+          "y": 1860
+        },
+        "internet_remote_status": {
+          "x": 3650,
+          "y": 1840
+        },
+        "internet_remote_dry_out": {
+          "x": 3925,
+          "y": 1700
+        },
+        "internet_test_codex_absent": {
+          "x": 790,
+          "y": 900
+        },
+        "internet_test_codex_ready": {
+          "x": 790,
+          "y": 965
+        },
+        "internet_test_remote_report_out": {
+          "x": 1070,
+          "y": 930
+        },
+        "internet_remote_dry_in": {
+          "x": 1290,
+          "y": 920
+        },
+        "internet_remote_dry_run_terminal": {
+          "x": 1580,
+          "y": 920
+        },
+        "notification_hub_wire_out_d9fc2165c6b7": {
+          "x": 2330,
+          "y": 1580
+        },
+        "notification_hub_wire_in_d9fc2165c6b7": {
+          "x": 2520,
+          "y": 1580
+        },
+        "notification_hub_wire_out_b81275ee29ab": {
+          "x": 2290,
+          "y": 1780
+        },
+        "notification_hub_wire_in_b81275ee29ab": {
+          "x": 2520,
+          "y": 1480
+        },
+        "notification_hub_wire_out_5c0e113e633d": {
+          "x": 4890,
+          "y": 1660
+        },
+        "notification_hub_wire_in_5c0e113e633d": {
+          "x": 3470,
+          "y": 1790
+        },
+        "notification_hub_wire_out_9ff17e7f058b": {
+          "x": 3590,
+          "y": 1500
+        },
+        "notification_hub_wire_in_9ff17e7f058b": {
+          "x": 3145,
+          "y": 1810
+        },
+        "notification_hub_wire_out_e27029711f80": {
+          "x": 4350,
+          "y": 1740
+        },
+        "notification_hub_wire_in_e27029711f80": {
+          "x": 3745,
+          "y": 1700
+        },
+        "notification_hub_wire_out_2ffd1f3ea034": {
+          "x": 3580,
+          "y": 1590
+        },
+        "notification_hub_wire_in_2ffd1f3ea034": {
+          "x": 3145,
+          "y": 1510
+        },
+        "notification_hub_wire_out_2254d3e9bf1a": {
+          "x": 2820,
+          "y": 1760
+        },
+        "notification_hub_wire_in_2254d3e9bf1a": {
+          "x": 2395,
+          "y": 1720
         }
       }
     },
@@ -14111,7 +14403,7 @@
       "group_positions": {
         "global_observer_coverage__notification_hub_mobile_tab__group": {
           "x": 1528,
-          "y": 731
+          "y": 1531
         }
       },
       "node_positions": {
@@ -14463,25 +14755,25 @@
         },
         "global_observer_coverage__notification_hub_mobile_tab__group": {
           "x": 1528,
-          "y": 731,
+          "y": 1531,
           "w": 722,
           "h": 142
         },
         "global_observer_coverage__notification_hub_mobile_tab__catch": {
           "x": 1684,
-          "y": 772
+          "y": 1572
         },
         "global_observer_coverage__notification_hub_mobile_tab__status": {
           "x": 1694,
-          "y": 832
+          "y": 1632
         },
         "global_observer_coverage__notification_hub_mobile_tab__annotate": {
           "x": 1964,
-          "y": 802
+          "y": 1602
         },
         "global_observer_coverage__notification_hub_mobile_tab__out": {
           "x": 2209,
-          "y": 802
+          "y": 1602
         }
       },
       "geometry_final": true

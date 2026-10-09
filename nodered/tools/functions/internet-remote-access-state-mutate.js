@@ -1,16 +1,18 @@
 const testMode = msg._internet_test === true;
 const key = testMode ? "internet_remote_access_state_v1__test" : "internet_remote_access_state_v1";
 const store = testMode ? undefined : "persistent";
-const previous = msg.remote_access?.state ?? {
-    version: 1, phase: "unknown", incident_open: false,
-    consecutive_failures: 0, last_request_at: 0
-};
-const state = { ...previous, version: 1, last_checked_at: msg.remote_access?.now ?? Date.now() };
+const state = { ...(msg.remote_access?.state ?? {
+    phase: "unknown", incident_open: false, consecutive_failures: 0, last_request_at: 0
+}), version: 1, last_checked_at: msg.remote_access?.now ?? Date.now() };
 const action = String(msg.remote_access_state_action ?? "none");
 msg.remote_access_event = "none";
 if (action === "failure") {
     state.phase = state.incident_open ? "unavailable" : "checking";
-    state.consecutive_failures = Number(state.consecutive_failures ?? 0) + 1;
+    const sample = msg.remote_access.report?.checked_at;
+    if (sample && sample !== state.last_failure_report_at) {
+        state.consecutive_failures = Number(state.consecutive_failures ?? 0) + 1;
+        state.last_failure_report_at = sample;
+    }
     state.reason = msg.remote_access.reason;
 } else if (action === "open") {
     state.phase = "unavailable";
@@ -23,6 +25,7 @@ if (action === "failure") {
     state.phase = "ready";
     state.incident_open = false;
     state.consecutive_failures = 0;
+    delete state.last_failure_report_at;
     state.reason = "ready";
     state.last_ready_at = state.last_checked_at;
     if (recovered) {

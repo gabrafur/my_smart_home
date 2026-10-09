@@ -78,7 +78,10 @@ if (msg.error) {
         accepted_wake_pending: flowId === "c22d8b12055e87f7" && sourceId === "8907830bb7f6c40c" &&
             /Bluelink wake accepted but fresh data is pending/i.test(errorText),
         connection_suppressed: Boolean(sharedIncidentKey && classification !== "autenticação" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });
-    data.expected_pending = data.accepted_wake_pending || transportRetryPending;
+    const serviceStartupHandled = sourceType === "api-call-service" &&
+        /^notification_hub_mobile_(primary|secondary)_(simple|actionable|background)$/.test(sourceId) &&
+        /^HomeAssistantError: Service public_bindings\.call not found\.?$/.test(errorText);
+    data.expected_pending = data.accepted_wake_pending || transportRetryPending || serviceStartupHandled;
     // A call can fail before the websocket status event reaches this observer.
     // Parse the transport envelope; domain/service errors cannot prove HA down.
     let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);

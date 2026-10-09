@@ -249,15 +249,23 @@ const remoteReport = (healthy, checkedAt, testMode = false) => ({
   },
 });
 const remoteNow = Date.UTC(2026, 8, 18, 20, 0, 0);
+remoteFlow.set("internet_remote_access_report_v1", remoteReport(false, new Date(remoteNow).toISOString()), "persistent");
+const cold = remoteFacts(load({remote_access_now: remoteNow}, remoteFlow, nodeMock, globalMock), remoteFlow, nodeMock, globalMock);
+assert.equal(cold.remote_access.report_ready, false, "persisted sample is not a post-startup probe");
 let remoteMsg = remoteIngest({ payload: remoteReport(false, new Date(remoteNow).toISOString()) }, remoteFlow, nodeMock, globalMock);
 remoteMsg = load(remoteMsg, remoteFlow, nodeMock, globalMock);
 remoteMsg.remote_access_now = remoteNow;
 remoteMsg = remoteFacts(remoteMsg, remoteFlow, nodeMock, globalMock);
 assert.equal(remoteMsg.remote_access.codex_recoverable, true);
+assert.equal(remoteMsg.remote_access.report_ready, true);
+const future = remoteFacts({...remoteMsg, remote_access_now: remoteNow - 1000}, remoteFlow, nodeMock, globalMock);
+assert.equal(future.remote_access.report_ready, false, "future timestamps do not prove availability");
 assert.equal(remoteMsg.remote_access.request_due, true);
 remoteMsg.remote_access_state_action = "failure";
 remoteMsg = remoteMutate(remoteMsg, remoteFlow, nodeMock, globalMock);
 assert.equal(remoteMsg.remote_access_state.consecutive_failures, 1);
+remoteMsg = remoteMutate(remoteMsg, remoteFlow, nodeMock, globalMock);
+assert.equal(remoteMsg.remote_access_state.consecutive_failures, 1, "one report is one confirmation, regardless of unrelated ticks");
 remoteMsg.remote_access_state_action = "open";
 remoteMsg = remoteMutate(remoteMsg, remoteFlow, nodeMock, globalMock);
 assert.equal(remoteMsg.remote_access_event, "down");

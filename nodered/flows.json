@@ -5338,7 +5338,13 @@
             "notification_hub_wire_out_2ffd1f3ea034",
             "notification_hub_wire_in_2ffd1f3ea034",
             "notification_hub_wire_out_2254d3e9bf1a",
-            "notification_hub_wire_in_2254d3e9bf1a"
+            "notification_hub_wire_in_2254d3e9bf1a",
+            "notification_hub_wire_out_347481401649",
+            "notification_hub_wire_in_347481401649",
+            "notification_hub_wire_out_a3cbc62f0aa2",
+            "notification_hub_wire_in_a3cbc62f0aa2",
+            "notification_hub_wire_out_ed9f1d372540",
+            "notification_hub_wire_in_ed9f1d372540"
         ],
         "x": 114,
         "y": 1419,
@@ -10390,9 +10396,9 @@
         "blockInputOverrides": true,
         "outputProperties": [
             {
-                "property": "sun_last_changed",
+                "property": "sun_next_setting",
                 "propertyType": "msg",
-                "value": "$entities(\"sun.sun\").last_changed",
+                "value": "$entities(\"sun.sun\").attributes.next_setting",
                 "valueType": "jsonata"
             }
         ],
@@ -10419,7 +10425,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "Validar data e dedupe da confirmação",
-        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat(\"en-US\", { timeZone, year: \"numeric\", month: \"2-digit\", day: \"2-digit\" }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\nconst policy = global.get(\"external_lighting_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"iluminacao_externa: política visual ausente\", msg);\n    return null;\n}\nconst testMode = msg._external_lighting_test === true || msg.payload?.test_mode === true;\nconst suffix = testMode ? \"__test\" : \"\";\nconst pendingKey = `external_lighting_recovery_pending_v1${suffix}`;\nconst promptedKey = `external_lighting_recovery_prompted_date_v1${suffix}`;\nconst store = testMode ? undefined : \"persistent\";\nconst get = (key) => store ? flow.get(key, store) : flow.get(key);\nconst now = new Date(msg.external_now ?? Date.now());\nconst sunsetAt = new Date(msg.sun_last_changed);\nconst timeZone = env.get(\"TZ\") || \"America/Sao_Paulo\";\nif (!Number.isFinite(sunsetAt.getTime())) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"horário do pôr do sol ausente\" });\n    return null;\n}\nconst today = localDate(now, timeZone);\nif (localDate(sunsetAt, timeZone) !== today) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"pôr do sol foi em outro dia\" });\n    return null;\n}\nconst pending = get(pendingKey);\nif (get(promptedKey) === today || (pending?.localDate === today && Number(pending.expiresAt) > now.getTime())) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"confirmação já enviada hoje\" });\n    return null;\n}\nconst token = (now.getTime().toString(36) + \"_\" + Math.random().toString(36).slice(2, 10)).toUpperCase();\nconst candidate = { version: 1, localDate: today, createdAt: now.getTime(),\n    expiresAt: now.getTime() + Number(policy.recovery_ttl_hours) * 3600000,\n    confirmAction: \"ILUMINACAO_EXTERNA_LIGAR_\" + token,\n    cancelAction: \"ILUMINACAO_EXTERNA_NAO_LIGAR_\" + token };\nmsg.external_lighting_recovery_candidate = candidate;\nmsg.confirm_action = candidate.confirmAction;\nmsg.cancel_action = candidate.cancelAction;\nmsg.notification_title = \"Iluminação externa\";\nmsg.notification_message = \"O Node-RED voltou depois do pôr do sol de hoje. Deseja ligar as lâmpadas externas agora?\";\nmsg.notification_tag = \"external_lighting_sunset_recovery\";\nmsg.notify_text = \"O Node-RED voltou depois do pôr do sol. Você ainda quer ligar a iluminação externa? Responda pela notificação que enviei ao celular.\";\nmsg._external_lighting_test = testMode;\nnode.status({ fill: \"yellow\", shape: \"dot\", text: \"enviando confirmação\" });\nreturn msg;",
+        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat(\"en-US\", { timeZone, year: \"numeric\", month: \"2-digit\", day: \"2-digit\" }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\nconst policy = global.get(\"external_lighting_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"iluminacao_externa: política visual ausente\", msg);\n    return null;\n}\nconst testMode = msg._external_lighting_test === true || msg.payload?.test_mode === true;\nconst suffix = testMode ? \"__test\" : \"\";\nconst pendingKey = `external_lighting_recovery_pending_v1${suffix}`;\nconst promptedKey = `external_lighting_recovery_prompted_date_v1${suffix}`;\nconst store = testMode ? undefined : \"persistent\";\nconst get = (key) => store ? flow.get(key, store) : flow.get(key);\nconst now = new Date(msg.external_now ?? Date.now());\nconst nextSunset = new Date(msg.sun_next_setting);\nconst timeZone = env.get(\"TZ\") || \"America/Sao_Paulo\";\nif (!Number.isFinite(nextSunset.getTime()) || nextSunset.getTime() <= now.getTime()) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"horário do pôr do sol ausente\" });\n    return null;\n}\nconst today = localDate(now, timeZone);\nif (localDate(nextSunset, timeZone) <= today) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"pôr do sol foi em outro dia\" });\n    return null;\n}\nconst pending = get(pendingKey);\nif (get(promptedKey) === today || (pending?.localDate === today && Number(pending.expiresAt) > now.getTime())) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"confirmação já enviada hoje\" });\n    return null;\n}\nconst token = (now.getTime().toString(36) + \"_\" + Math.random().toString(36).slice(2, 10)).toUpperCase();\nconst candidate = { version: 1, localDate: today, createdAt: now.getTime(),\n    expiresAt: now.getTime() + Number(policy.recovery_ttl_hours) * 3600000,\n    confirmAction: \"ILUMINACAO_EXTERNA_LIGAR_\" + token,\n    cancelAction: \"ILUMINACAO_EXTERNA_NAO_LIGAR_\" + token };\nmsg.external_lighting_recovery_candidate = candidate;\nmsg.confirm_action = candidate.confirmAction;\nmsg.cancel_action = candidate.cancelAction;\nmsg.notification_title = \"Iluminação externa\";\nmsg.notification_message = \"O Node-RED voltou depois do pôr do sol de hoje. Deseja ligar as lâmpadas externas agora?\";\nmsg.notification_tag = \"external_lighting_sunset_recovery\";\nmsg.notify_text = \"O Node-RED voltou depois do pôr do sol. Você ainda quer ligar a iluminação externa? Responda pela notificação que enviei ao celular.\";\nmsg._external_lighting_test = testMode;\nnode.status({ fill: \"yellow\", shape: \"dot\", text: \"enviando confirmação\" });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -10486,7 +10492,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1940,
         "y": 460,
         "wires": [
@@ -11263,9 +11269,14 @@
         "name": "TESTE 4: recovery pós-pôr do sol",
         "props": [
             {
-                "p": "sun_last_changed",
-                "v": "",
-                "vt": "date"
+                "p": "external_now",
+                "v": "2026-01-01T23:00:00Z",
+                "vt": "str"
+            },
+            {
+                "p": "sun_next_setting",
+                "v": "2026-01-02T21:00:00Z",
+                "vt": "str"
             },
             {
                 "p": "_external_lighting_test",
@@ -15974,7 +15985,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1570,
         "y": 1460,
         "wires": [
@@ -16337,7 +16348,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1850,
         "y": 500,
         "wires": [
@@ -20433,7 +20444,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1700,
         "y": 1040,
         "wires": [
@@ -20741,7 +20752,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 4030,
         "y": 1420,
         "wires": [
@@ -32211,7 +32222,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1623,
         "y": 1210,
         "wires": [
@@ -34034,7 +34045,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 3385,
         "y": 580,
         "wires": [
@@ -34127,7 +34138,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 3385,
         "y": 660,
         "wires": [
@@ -36959,7 +36970,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2611,
         "y": 1160,
         "wires": [
@@ -39569,7 +39580,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2340,
         "y": 1800,
         "wires": [
@@ -40491,7 +40502,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Classificar erro ou status",
-        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst duloSource = sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\";\nconst internetState = String(readiness?.internet_state ?? \"unknown\").toLowerCase();\n// Generated notification link callers depend on HA but do not report its status.\nconst haNotificationCaller = sourceType === \"link call\" && sourceId.endsWith(\"__hub_call\") &&\n    typeof msg.notification?.source === \"string\" && msg._notification_hub_context !== undefined;\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource || haNotificationCaller ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    // Consume the location coordinator's decision; do not duplicate its limits.\n    const transportRetryPending = flowId === \"ea0a6aa0d24ff863\" &&\n        [\"people_visual_primary_icloud_update\", \"people_visual_secondary_icloud_update\"].includes(sourceId) &&\n        sourceType === \"api-call-service\" &&\n        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&\n        msg.payload?.refresh_transport_retry_pending === true;\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        transport_retry_pending: transportRetryPending,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n    data.expected_pending = data.accepted_wake_pending || transportRetryPending;\n    // A call can fail before the websocket status event reaches this observer.\n    // Parse the transport envelope; domain/service errors cannot prove HA down.\n    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);\n    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\n    if (envelope) {\n        try {\n            const result = JSON.parse(envelope[1]);\n            disconnected = result.type === \"result\" && result.success === false &&\n                result.error?.code === 3 && result.error?.message === \"Connection lost\";\n        } catch { /* Unknown errors stay on the ordinary error path. */ }\n    }\n    if (haSource && disconnected) {\n        Object.assign(data, { kind: \"status\", monitored: true, failing: true,\n            incident_key: \"connection:home_assistant\", incident_kind: \"home_assistant\",\n            status_text: \"connection lost\", key: `${flowId}:${sourceId}` });\n    }\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    // HA entity values carry timestamps and may themselves be offline/unavailable.\n    // Only the connection status contract can open a shared incident.\n    const connectionFailure = haSource\n        ? /^(?:home-assistant\\.status\\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)\n        : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || (duloSource && internetState === \"online\"),\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
+        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst duloSource = sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\";\nconst internetState = String(readiness?.internet_state ?? \"unknown\").toLowerCase();\n// Generated notification link callers depend on HA but do not report its status.\nconst haNotificationCaller = sourceType === \"link call\" && sourceId.endsWith(\"__hub_call\") &&\n    typeof msg.notification?.source === \"string\" && msg._notification_hub_context !== undefined;\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource || haNotificationCaller ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    // Consume the location coordinator's decision; do not duplicate its limits.\n    const transportRetryPending = flowId === \"ea0a6aa0d24ff863\" &&\n        [\"people_visual_primary_icloud_update\", \"people_visual_secondary_icloud_update\"].includes(sourceId) &&\n        sourceType === \"api-call-service\" &&\n        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&\n        msg.payload?.refresh_transport_retry_pending === true;\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        transport_retry_pending: transportRetryPending,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n    const serviceStartupHandled = sourceType === \"api-call-service\" &&\n        /^notification_hub_mobile_(primary|secondary)_(simple|actionable|background)$/.test(sourceId) &&\n        /^HomeAssistantError: Service public_bindings\\.call not found\\.?$/.test(errorText);\n    data.expected_pending = data.accepted_wake_pending || transportRetryPending || serviceStartupHandled;\n    // A call can fail before the websocket status event reaches this observer.\n    // Parse the transport envelope; domain/service errors cannot prove HA down.\n    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);\n    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\n    if (envelope) {\n        try {\n            const result = JSON.parse(envelope[1]);\n            disconnected = result.type === \"result\" && result.success === false &&\n                result.error?.code === 3 && result.error?.message === \"Connection lost\";\n        } catch { /* Unknown errors stay on the ordinary error path. */ }\n    }\n    if (haSource && disconnected) {\n        Object.assign(data, { kind: \"status\", monitored: true, failing: true,\n            incident_key: \"connection:home_assistant\", incident_kind: \"home_assistant\",\n            status_text: \"connection lost\", key: `${flowId}:${sourceId}` });\n    }\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    // HA entity values carry timestamps and may themselves be offline/unavailable.\n    // Only the connection status contract can open a shared incident.\n    const connectionFailure = haSource\n        ? /^(?:home-assistant\\.status\\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)\n        : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || (duloSource && internetState === \"online\"),\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -40646,7 +40657,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Atualizar dedupe do erro",
-        "func": "const data = msg._observer_event;\nconst reminderMs = Number(data.policy.reminder_hours) * 3600000;\nconst retentionMs = Number(data.policy.error_retention_days) * 86400000;\nconst notificationDue = !Number.isFinite(data.previous.notified_at) ||\n    data.now - data.previous.notified_at >= reminderMs;\ndata.state.errors[data.key] = {\n    flow_id: data.flow_id, flow_label: data.flow_label, source_id: data.source_id,\n    source_type: data.source_type, source_name: data.source_name,\n    failure_class: data.classification,\n    first_seen_at: data.previous.first_seen_at ?? data.now,\n    last_seen_at: data.now,\n    notified_at: notificationDue ? data.now : data.previous.notified_at\n};\nfor (const [key, entry] of Object.entries(data.state.errors)) {\n    if (data.now - Number(entry.last_seen_at ?? data.now) > retentionMs) delete data.state.errors[key];\n}\ndata.notification_due = notificationDue;\nif (data.store) flow.set(data.state_key, data.state, data.store);\nelse flow.set(data.state_key, data.state);\nreturn msg;",
+        "func": "const data = msg._observer_event;\n// Normalize and admission are separate nodes; another message can reserve\n// the same incident between them. Read and reserve atomically here.\nconst latest = data.store ? flow.get(data.state_key, data.store) : flow.get(data.state_key);\nif (latest?.version === 2) data.state = latest;\ndata.previous = data.state.errors[data.key] ?? {};\nconst reminderMs = Number(data.policy.reminder_hours) * 3600000;\nconst retentionMs = Number(data.policy.error_retention_days) * 86400000;\nconst notificationDue = !Number.isFinite(data.previous.notified_at) ||\n    data.now - data.previous.notified_at >= reminderMs;\ndata.state.errors[data.key] = {\n    flow_id: data.flow_id, flow_label: data.flow_label, source_id: data.source_id,\n    source_type: data.source_type, source_name: data.source_name,\n    failure_class: data.classification,\n    first_seen_at: data.previous.first_seen_at ?? data.now,\n    last_seen_at: data.now,\n    notified_at: notificationDue ? data.now : data.previous.notified_at\n};\nfor (const [key, entry] of Object.entries(data.state.errors)) {\n    if (data.now - Number(entry.last_seen_at ?? data.now) > retentionMs) delete data.state.errors[key];\n}\ndata.notification_due = notificationDue;\nif (data.store) flow.set(data.state_key, data.state, data.store);\nelse flow.set(data.state_key, data.state);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -42674,7 +42685,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2070,
         "y": 180,
         "wires": [
@@ -42733,7 +42744,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2720,
         "y": 240,
         "wires": [
@@ -43233,7 +43244,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1840,
         "y": 420,
         "wires": [
@@ -43292,7 +43303,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2070,
         "y": 540,
         "wires": [
@@ -45978,7 +45989,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1010,
         "y": 880,
         "wires": [
@@ -46069,7 +46080,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1010,
         "y": 940,
         "wires": [
@@ -49956,7 +49967,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 10800,
         "y": 230,
         "wires": [
@@ -50066,7 +50077,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 10800,
         "y": 310,
         "wires": [
@@ -50706,7 +50717,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 1520,
         "y": 860,
         "wires": [
@@ -56073,7 +56084,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 3600,
         "y": 780,
         "wires": [
@@ -56890,7 +56901,7 @@
         "z": "monitoramento_internet_tab",
         "g": "grp_internet_triggers",
         "name": "Validar relatório do host",
-        "func": "let payload = msg.payload;\nif (Buffer.isBuffer(payload)) payload = payload.toString(\"utf8\");\ntry {\n    if (typeof payload === \"string\") payload = JSON.parse(payload);\n} catch {\n    payload = null;\n}\nconst services = payload?.services;\nconst valid = payload?.schema_version === 1 &&\n    Number.isFinite(Date.parse(payload?.checked_at ?? \"\")) &&\n    typeof services?.remote_shell?.healthy === \"boolean\" &&\n    typeof services?.codex_remote?.healthy === \"boolean\" &&\n    typeof services?.codex_remote?.installed === \"boolean\";\nmsg._internet_test = msg._internet_test === true || payload?.test_mode === true;\nif (!valid) {\n    msg.remote_access_report_valid = false;\n    return msg;\n}\nconst report = {\n    schema_version: 1,\n    checked_at: payload.checked_at,\n    services: {\n        remote_shell: {\n            healthy: services.remote_shell.healthy,\n            reason: String(services.remote_shell.reason ?? \"unknown\").slice(0, 80)\n        },\n        codex_remote: {\n            installed: services.codex_remote.installed,\n            healthy: services.codex_remote.healthy,\n            reason: String(services.codex_remote.reason ?? \"unknown\").slice(0, 80)\n        }\n    }\n};\nconst key = msg._internet_test ? \"internet_remote_access_report_v1__test\" : \"internet_remote_access_report_v1\";\nif (msg._internet_test) flow.set(key, report);\nelse flow.set(key, report, \"persistent\");\nmsg.remote_access_report_valid = true;\nmsg.remote_access_report = report;\nreturn msg;",
+        "func": "let payload = msg.payload;\nif (Buffer.isBuffer(payload)) payload = payload.toString(\"utf8\");\ntry {\n    if (typeof payload === \"string\") payload = JSON.parse(payload);\n} catch {\n    payload = null;\n}\nconst services = payload?.services;\nconst valid = payload?.schema_version === 1 &&\n    Number.isFinite(Date.parse(payload?.checked_at ?? \"\")) &&\n    typeof services?.remote_shell?.healthy === \"boolean\" &&\n    typeof services?.codex_remote?.healthy === \"boolean\" &&\n    typeof services?.codex_remote?.installed === \"boolean\";\nmsg._internet_test = msg._internet_test === true || payload?.test_mode === true;\nif (!valid) {\n    msg.remote_access_report_valid = false;\n    return msg;\n}\nconst report = {\n    schema_version: 1,\n    checked_at: payload.checked_at,\n    services: {\n        remote_shell: {\n            healthy: services.remote_shell.healthy,\n            reason: String(services.remote_shell.reason ?? \"unknown\").slice(0, 80)\n        },\n        codex_remote: {\n            installed: services.codex_remote.installed,\n            healthy: services.codex_remote.healthy,\n            reason: String(services.codex_remote.reason ?? \"unknown\").slice(0, 80)\n        }\n    }\n};\nconst key = msg._internet_test ? \"internet_remote_access_report_v1__test\" : \"internet_remote_access_report_v1\";\nif (msg._internet_test) flow.set(key, report);\nelse flow.set(key, report, \"persistent\");\nflow.set(key + \"_received\", true, \"memoryOnly\");\nmsg.remote_access_report_valid = true;\nmsg.remote_access_report = report;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -58065,7 +58076,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2630,
         "y": 2260,
         "wires": [
@@ -58124,7 +58135,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2640,
         "y": 2320,
         "wires": [
@@ -58407,7 +58418,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2590,
         "y": 2570,
         "wires": [
@@ -58466,7 +58477,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2620,
         "y": 2630,
         "wires": [
@@ -58826,7 +58837,7 @@
         "z": "monitoramento_internet_tab",
         "g": "grp_internet_remote_access",
         "name": "Ler internet, relatório e estado",
-        "func": "const testMode = msg._internet_test === true || msg.payload?.test_mode === true;\nconst suffix = testMode ? \"__test\" : \"\";\nconst store = testMode ? undefined : \"persistent\";\nconst get = (key) => store ? flow.get(`${key}${suffix}`, store) : flow.get(`${key}${suffix}`);\nconst report = msg.remote_access_report ?? get(\"internet_remote_access_report_v1\");\nconst internet = msg.internet_state ?? get(\"internet_monitor_state_v1\") ?? { phase: \"unknown\" };\nconst state = get(\"internet_remote_access_state_v1\") ?? {\n    version: 1, phase: \"unknown\", incident_open: false,\n    consecutive_failures: 0, last_request_at: 0\n};\nconst reportTime = Date.parse(report?.checked_at ?? \"\");\nconst now = Number(msg.monitor_now ?? msg.remote_access_now ?? (testMode && Number.isFinite(reportTime) ? reportTime : Date.now()));\nconst checkedAt = Date.parse(report?.checked_at ?? \"\");\nconst fresh = Number.isFinite(checkedAt) &&\n    now - checkedAt <= Number(msg.policy.remote_access_report_stale_s) * 1000;\nconst sshHealthy = fresh && report?.services?.remote_shell?.healthy === true;\nconst codexHealthy = fresh && report?.services?.codex_remote?.healthy === true;\nlet reason = \"telemetry_stale\";\nif (fresh && !sshHealthy) reason = String(report.services.remote_shell.reason ?? \"ssh_unavailable\");\nelse if (fresh && sshHealthy && !codexHealthy) reason = String(report.services.codex_remote.reason ?? \"codex_unavailable\");\nelse if (fresh) reason = \"ready\";\nmsg._internet_test = testMode;\nmsg.remote_access = {\n    now, report, internet, state, fresh, ssh_healthy: sshHealthy,\n    codex_healthy: codexHealthy,\n    healthy: sshHealthy && codexHealthy,\n    codex_recoverable: fresh && sshHealthy && !codexHealthy && report?.services?.codex_remote?.installed === true,\n    reason,\n    request_due: now - Number(state.last_request_at ?? 0) >= Number(msg.policy.remote_access_recovery_cooldown_s) * 1000\n};\nreturn msg;",
+        "func": "const testMode = msg._internet_test === true || msg.payload?.test_mode === true;\nconst suffix = testMode ? \"__test\" : \"\";\nconst store = testMode ? undefined : \"persistent\";\nconst get = (key) => store ? flow.get(`${key}${suffix}`, store) : flow.get(`${key}${suffix}`);\nconst report = msg.remote_access_report ?? get(\"internet_remote_access_report_v1\");\nconst internet = msg.internet_state ?? get(\"internet_monitor_state_v1\") ?? { phase: \"unknown\" };\nconst state = get(\"internet_remote_access_state_v1\") ?? {\n    version: 1, phase: \"unknown\", incident_open: false,\n    consecutive_failures: 0, last_request_at: 0\n};\nconst checkedAt = Date.parse(report?.checked_at ?? \"\");\nconst now = Number(msg.monitor_now ?? msg.remote_access_now ?? (testMode && Number.isFinite(checkedAt) ? checkedAt : Date.now()));\nconst fresh = Number.isFinite(checkedAt) &&\n    now >= checkedAt &&\n    now - checkedAt <= Number(msg.policy.remote_access_report_stale_s) * 1000;\nconst sshHealthy = fresh && report?.services?.remote_shell?.healthy === true;\nconst codexHealthy = fresh && report?.services?.codex_remote?.healthy === true;\nlet reason = \"telemetry_stale\";\nif (fresh && !sshHealthy) reason = String(report.services.remote_shell.reason ?? \"ssh_unavailable\");\nelse if (fresh && sshHealthy && !codexHealthy) reason = String(report.services.codex_remote.reason ?? \"codex_unavailable\");\nelse if (fresh) reason = \"ready\";\nmsg._internet_test = testMode;\nmsg.remote_access = {\n    report_ready: fresh && (testMode || flow.get(\"internet_remote_access_report_v1_received\", \"memoryOnly\") === true),\n    now, report, internet, state, fresh, ssh_healthy: sshHealthy,\n    codex_healthy: codexHealthy,\n    healthy: sshHealthy && codexHealthy,\n    codex_recoverable: fresh && sshHealthy && !codexHealthy && report?.services?.codex_remote?.installed === true,\n    reason,\n    request_due: now - Number(state.last_request_at ?? 0) >= Number(msg.policy.remote_access_recovery_cooldown_s) * 1000\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -58846,14 +58857,12 @@
         "type": "switch",
         "z": "monitoramento_internet_tab",
         "g": "grp_internet_remote_access",
-        "name": "Internet canônica está online?",
-        "property": "remote_access.internet.phase",
-        "propertyType": "msg",
+        "name": "Internet online e relatório atual?",
+        "property": "remote_access.internet.phase = \"online\" and remote_access.report_ready",
+        "propertyType": "jsonata",
         "rules": [
             {
-                "t": "eq",
-                "v": "online",
-                "vt": "str"
+                "t": "true"
             },
             {
                 "t": "else"
@@ -59086,7 +59095,7 @@
         "z": "monitoramento_internet_tab",
         "g": "grp_internet_remote_access",
         "name": "Aplicar mutação mínima de estado",
-        "func": "const testMode = msg._internet_test === true;\nconst key = testMode ? \"internet_remote_access_state_v1__test\" : \"internet_remote_access_state_v1\";\nconst store = testMode ? undefined : \"persistent\";\nconst previous = msg.remote_access?.state ?? {\n    version: 1, phase: \"unknown\", incident_open: false,\n    consecutive_failures: 0, last_request_at: 0\n};\nconst state = { ...previous, version: 1, last_checked_at: msg.remote_access?.now ?? Date.now() };\nconst action = String(msg.remote_access_state_action ?? \"none\");\nmsg.remote_access_event = \"none\";\nif (action === \"failure\") {\n    state.phase = state.incident_open ? \"unavailable\" : \"checking\";\n    state.consecutive_failures = Number(state.consecutive_failures ?? 0) + 1;\n    state.reason = msg.remote_access.reason;\n} else if (action === \"open\") {\n    state.phase = \"unavailable\";\n    state.incident_open = true;\n    state.incident_started_at = state.incident_started_at ?? state.last_checked_at;\n    state.reason = msg.remote_access.reason;\n    msg.remote_access_event = \"down\";\n} else if (action === \"healthy\") {\n    const recovered = state.incident_open === true;\n    state.phase = \"ready\";\n    state.incident_open = false;\n    state.consecutive_failures = 0;\n    state.reason = \"ready\";\n    state.last_ready_at = state.last_checked_at;\n    if (recovered) {\n        state.last_recovery_at = state.last_checked_at;\n        msg.remote_access_event = \"recovery\";\n    }\n} else if (action === \"suppress\") {\n    if (!state.incident_open) {\n        state.phase = \"suppressed\";\n        state.consecutive_failures = 0;\n    }\n} else if (action === \"request\") {\n    state.last_request_at = msg.remote_access.now;\n}\nif (store) flow.set(key, state, store);\nelse flow.set(key, state);\nmsg.remote_access_state = state;\nmsg.remote_access.state = state;\nreturn msg;",
+        "func": "const testMode = msg._internet_test === true;\nconst key = testMode ? \"internet_remote_access_state_v1__test\" : \"internet_remote_access_state_v1\";\nconst store = testMode ? undefined : \"persistent\";\nconst state = { ...(msg.remote_access?.state ?? {\n    phase: \"unknown\", incident_open: false, consecutive_failures: 0, last_request_at: 0\n}), version: 1, last_checked_at: msg.remote_access?.now ?? Date.now() };\nconst action = String(msg.remote_access_state_action ?? \"none\");\nmsg.remote_access_event = \"none\";\nif (action === \"failure\") {\n    state.phase = state.incident_open ? \"unavailable\" : \"checking\";\n    const sample = msg.remote_access.report?.checked_at;\n    if (sample && sample !== state.last_failure_report_at) {\n        state.consecutive_failures = Number(state.consecutive_failures ?? 0) + 1;\n        state.last_failure_report_at = sample;\n    }\n    state.reason = msg.remote_access.reason;\n} else if (action === \"open\") {\n    state.phase = \"unavailable\";\n    state.incident_open = true;\n    state.incident_started_at = state.incident_started_at ?? state.last_checked_at;\n    state.reason = msg.remote_access.reason;\n    msg.remote_access_event = \"down\";\n} else if (action === \"healthy\") {\n    const recovered = state.incident_open === true;\n    state.phase = \"ready\";\n    state.incident_open = false;\n    state.consecutive_failures = 0;\n    delete state.last_failure_report_at;\n    state.reason = \"ready\";\n    state.last_ready_at = state.last_checked_at;\n    if (recovered) {\n        state.last_recovery_at = state.last_checked_at;\n        msg.remote_access_event = \"recovery\";\n    }\n} else if (action === \"suppress\") {\n    if (!state.incident_open) {\n        state.phase = \"suppressed\";\n        state.consecutive_failures = 0;\n    }\n} else if (action === \"request\") {\n    state.last_request_at = msg.remote_access.now;\n}\nif (store) flow.set(key, state, store);\nelse flow.set(key, state);\nmsg.remote_access_state = state;\nmsg.remote_access.state = state;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -59636,6 +59645,7 @@
         "type": "exec",
         "z": "monitoramento_internet_tab",
         "g": "grp_internet_remote_access",
+        "name": "EFEITO: solicitar recovery allowlisted",
         "command": "/opt/request-host-codex-remote-recovery.sh",
         "addpay": "",
         "append": "",
@@ -59643,18 +59653,17 @@
         "timer": "15",
         "winHide": false,
         "oldrc": false,
-        "name": "EFEITO: solicitar recovery allowlisted",
         "x": 3810,
         "y": 1760,
         "wires": [
             [
-                "internet_remote_request_ack"
+                "notification_hub_wire_out_347481401649"
             ],
             [
-                "internet_remote_request_failed"
+                "notification_hub_wire_out_a3cbc62f0aa2"
             ],
             [
-                "internet_remote_request_done"
+                "notification_hub_wire_out_ed9f1d372540"
             ]
         ]
     },
@@ -62307,7 +62316,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Ler lifecycle da rota",
-        "func": "const testMode = msg._zigbee_test === true;\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst current = structuredClone(incidents[msg.zigbee_route_key] || {\n    incident_open: false, phase: \"idle\", attempts: 0, next_retry_at: null\n});\nconst nextRetry = Date.parse(current.next_retry_at || \"\") || Number.POSITIVE_INFINITY;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_current = current;\nmsg.zigbee_route_revision = Number(current.revision || 0);\nmsg.zigbee_route_deadline = Number.isFinite(nextRetry) ? nextRetry : null;\nreturn msg;",
+        "func": "const testMode = msg._zigbee_test === true;\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst current = JSON.parse(JSON.stringify(incidents[msg.zigbee_route_key] || {\n    incident_open: false, phase: \"idle\", attempts: 0, next_retry_at: null\n}));\nconst nextRetry = Date.parse(current.next_retry_at || \"\") || Number.POSITIVE_INFINITY;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_current = current;\nmsg.zigbee_route_revision = Number(current.revision || 0);\nmsg.zigbee_route_deadline = Number.isFinite(nextRetry) ? nextRetry : null;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -62764,7 +62773,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Correlacionar mapa de rotas",
-        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = null; }\n}\nconst transaction = String(payload?.transaction || \"\");\nconst testMode = transaction.startsWith(\"nodered-zigbee-route-test-\");\nconst prefixValid = testMode || transaction.startsWith(\"nodered-zigbee-route-\");\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);\nmsg.zigbee_route_response_valid = Boolean(msg.retain !== true && prefixValid && entry && entry[1].incident_open && [\"ok\", \"error\"].includes(payload?.status));\nif (!msg.zigbee_route_response_valid) return msg;\nconst [key, current] = entry;\nmsg._zigbee_test = testMode;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_key = key;\nmsg.zigbee_route_current = structuredClone(current);\nmsg.zigbee_route_revision = Number(current.revision || 0);\n// Duplicate map responses must not start another configure. Late configure\n// failures remain correlated while a successful response is being verified.\nconst scan = msg.topic === \"zigbee2mqtt/bridge/response/networkmap\";\nif ((scan && current.phase !== \"scanning\") ||\n    (!scan && ![\"configuring\", \"verifying\"].includes(current.phase)) ||\n    (!scan && current.phase === \"verifying\" && payload.status === \"ok\")) {\n    msg.zigbee_route_response_valid = false;\n    return msg;\n}\nmsg.zigbee_route_device = current.device;\nmsg.zigbee_route_ieee = current.ieee;\nmsg.zigbee_route_response_status = payload.status;\nmsg.zigbee_route_response_error = String(payload.error || \"\");\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
+        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = null; }\n}\nconst transaction = String(payload?.transaction || \"\");\nconst testMode = transaction.startsWith(\"nodered-zigbee-route-test-\");\nconst prefixValid = testMode || transaction.startsWith(\"nodered-zigbee-route-\");\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);\nmsg.zigbee_route_response_valid = Boolean(msg.retain !== true && prefixValid && entry && entry[1].incident_open && [\"ok\", \"error\"].includes(payload?.status));\nif (!msg.zigbee_route_response_valid) return msg;\nconst [key, current] = entry;\nmsg._zigbee_test = testMode;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_key = key;\nmsg.zigbee_route_current = JSON.parse(JSON.stringify(current));\nmsg.zigbee_route_revision = Number(current.revision || 0);\n// Duplicate map responses must not start another configure. Late configure\n// failures remain correlated while a successful response is being verified.\nconst scan = msg.topic === \"zigbee2mqtt/bridge/response/networkmap\";\nif ((scan && current.phase !== \"scanning\") ||\n    (!scan && ![\"configuring\", \"verifying\"].includes(current.phase)) ||\n    (!scan && current.phase === \"verifying\" && payload.status === \"ok\")) {\n    msg.zigbee_route_response_valid = false;\n    return msg;\n}\nmsg.zigbee_route_device = current.device;\nmsg.zigbee_route_ieee = current.ieee;\nmsg.zigbee_route_response_status = payload.status;\nmsg.zigbee_route_response_error = String(payload.error || \"\");\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -63052,7 +63061,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Correlacionar resposta",
-        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = null; }\n}\nconst transaction = String(payload?.transaction || \"\");\nconst testMode = transaction.startsWith(\"nodered-zigbee-route-test-\");\nconst prefixValid = testMode || transaction.startsWith(\"nodered-zigbee-route-\");\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);\nmsg.zigbee_route_response_valid = Boolean(msg.retain !== true && prefixValid && entry && entry[1].incident_open && [\"ok\", \"error\"].includes(payload?.status));\nif (!msg.zigbee_route_response_valid) return msg;\nconst [key, current] = entry;\nmsg._zigbee_test = testMode;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_key = key;\nmsg.zigbee_route_current = structuredClone(current);\nmsg.zigbee_route_revision = Number(current.revision || 0);\n// Duplicate map responses must not start another configure. Late configure\n// failures remain correlated while a successful response is being verified.\nconst scan = msg.topic === \"zigbee2mqtt/bridge/response/networkmap\";\nif ((scan && current.phase !== \"scanning\") ||\n    (!scan && ![\"configuring\", \"verifying\"].includes(current.phase)) ||\n    (!scan && current.phase === \"verifying\" && payload.status === \"ok\")) {\n    msg.zigbee_route_response_valid = false;\n    return msg;\n}\nmsg.zigbee_route_device = current.device;\nmsg.zigbee_route_ieee = current.ieee;\nmsg.zigbee_route_response_status = payload.status;\nmsg.zigbee_route_response_error = String(payload.error || \"\");\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
+        "func": "let payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = null; }\n}\nconst transaction = String(payload?.transaction || \"\");\nconst testMode = transaction.startsWith(\"nodered-zigbee-route-test-\");\nconst prefixValid = testMode || transaction.startsWith(\"nodered-zigbee-route-\");\nconst stateKey = testMode ? \"zigbee_route_incidents_v1__test\" : \"zigbee_route_incidents_v1\";\nconst incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) || {};\nconst entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);\nmsg.zigbee_route_response_valid = Boolean(msg.retain !== true && prefixValid && entry && entry[1].incident_open && [\"ok\", \"error\"].includes(payload?.status));\nif (!msg.zigbee_route_response_valid) return msg;\nconst [key, current] = entry;\nmsg._zigbee_test = testMode;\nmsg.zigbee_route_state_key = stateKey;\nmsg.zigbee_route_incidents = incidents;\nmsg.zigbee_route_key = key;\nmsg.zigbee_route_current = JSON.parse(JSON.stringify(current));\nmsg.zigbee_route_revision = Number(current.revision || 0);\n// Duplicate map responses must not start another configure. Late configure\n// failures remain correlated while a successful response is being verified.\nconst scan = msg.topic === \"zigbee2mqtt/bridge/response/networkmap\";\nif ((scan && current.phase !== \"scanning\") ||\n    (!scan && ![\"configuring\", \"verifying\"].includes(current.phase)) ||\n    (!scan && current.phase === \"verifying\" && payload.status === \"ok\")) {\n    msg.zigbee_route_response_valid = false;\n    return msg;\n}\nmsg.zigbee_route_device = current.device;\nmsg.zigbee_route_ieee = current.ieee;\nmsg.zigbee_route_response_status = payload.status;\nmsg.zigbee_route_response_error = String(payload.error || \"\");\nmsg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();\nmsg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -63805,7 +63814,7 @@
             "notification_hub_mobile_in"
         ],
         "linkType": "static",
-        "timeout": "30",
+        "timeout": "180",
         "x": 2405,
         "y": 2720,
         "wires": [
@@ -77660,7 +77669,10 @@
             "notification_hub_mobile_primary_actionable_history_out",
             "notification_hub_mobile_secondary_actionable_history_out",
             "notification_hub_mobile_primary_background_history_out",
-            "notification_hub_mobile_secondary_background_history_out"
+            "notification_hub_mobile_secondary_background_history_out",
+            "notification_hub_mobile_startup_out",
+            "notification_hub_mobile_final_failure_in",
+            "notification_hub_mobile_service_retry_in"
         ],
         "x": 64,
         "y": 40,
@@ -78545,7 +78557,7 @@
         "y": 470,
         "wires": [
             [
-                "notification_hub_mobile_leg_failure"
+                "notification_hub_mobile_startup_out"
             ]
         ]
     },
@@ -78887,7 +78899,8 @@
         "g": "notification_hub_mobile_test_group",
         "name": "Receber resultado bloqueado",
         "links": [
-            "notification_hub_mobile_dry_out"
+            "notification_hub_mobile_dry_out",
+            "notification_hub_mobile_retry_dry_out"
         ],
         "x": 720,
         "y": 900,
@@ -81149,7 +81162,7 @@
         "links": [
             "notification_hub_persistent_history_in"
         ],
-        "x": 1860,
+        "x": 1870,
         "y": 90,
         "wires": []
     },
@@ -81163,7 +81176,7 @@
         "links": [
             "notification_hub_persistent_history_in"
         ],
-        "x": 1860,
+        "x": 1870,
         "y": 140,
         "wires": []
     },
@@ -81177,7 +81190,7 @@
         "links": [
             "notification_hub_persistent_history_in"
         ],
-        "x": 1860,
+        "x": 1870,
         "y": 230,
         "wires": []
     },
@@ -81191,7 +81204,7 @@
         "links": [
             "notification_hub_persistent_history_in"
         ],
-        "x": 1860,
+        "x": 1870,
         "y": 280,
         "wires": []
     },
@@ -82357,7 +82370,7 @@
             "global_observer_coverage__notification_hub_mobile_tab__out"
         ],
         "x": 1528,
-        "y": 731,
+        "y": 1531,
         "w": 720,
         "h": 162
     },
@@ -82370,7 +82383,7 @@
         "scope": null,
         "uncaught": false,
         "x": 1668,
-        "y": 791,
+        "y": 1591,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_mobile_tab__annotate"
@@ -82385,7 +82398,7 @@
         "name": "Observar indisponibilidade da aba",
         "scope": null,
         "x": 1678,
-        "y": 851,
+        "y": 1651,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_mobile_tab__annotate"
@@ -82406,7 +82419,7 @@
         "finalize": "",
         "libs": [],
         "x": 1948,
-        "y": 821,
+        "y": 1621,
         "wires": [
             [
                 "global_observer_coverage__notification_hub_mobile_tab__out"
@@ -82424,7 +82437,7 @@
             "global_observer_events_in"
         ],
         "x": 2193,
-        "y": 821,
+        "y": 1621,
         "wires": []
     },
     {
@@ -82954,6 +82967,462 @@
         ],
         "x": 2260,
         "y": 840,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_347481401649",
+        "type": "link out",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_remote_access",
+        "name": "Encurtar: EFEITO: solicitar recovery allowlisted",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_347481401649"
+        ],
+        "x": 3965,
+        "y": 1710,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_347481401649",
+        "type": "link in",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_remote_access",
+        "name": "Continuar: Normalizar aceite do worker",
+        "links": [
+            "notification_hub_wire_out_347481401649"
+        ],
+        "x": 4010,
+        "y": 1740,
+        "wires": [
+            [
+                "internet_remote_request_ack"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_a3cbc62f0aa2",
+        "type": "link out",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_remote_access",
+        "name": "Encurtar: EFEITO: solicitar recovery allowlisted",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_a3cbc62f0aa2"
+        ],
+        "x": 3965,
+        "y": 1770,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_a3cbc62f0aa2",
+        "type": "link in",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_remote_access",
+        "name": "Continuar: Ponte de recovery falhou",
+        "links": [
+            "notification_hub_wire_out_a3cbc62f0aa2"
+        ],
+        "x": 4010,
+        "y": 1780,
+        "wires": [
+            [
+                "internet_remote_request_failed"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_ed9f1d372540",
+        "type": "link out",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_remote_access",
+        "name": "Encurtar: EFEITO: solicitar recovery allowlisted",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_ed9f1d372540"
+        ],
+        "x": 3965,
+        "y": 1830,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_ed9f1d372540",
+        "type": "link in",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_remote_access",
+        "name": "Continuar: Pedido finalizado",
+        "links": [
+            "notification_hub_wire_out_ed9f1d372540"
+        ],
+        "x": 4010,
+        "y": 1820,
+        "wires": [
+            [
+                "internet_remote_request_done"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_startup_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Falha → verificar serviço em startup",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_startup_in"
+        ],
+        "x": 2050,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_final_failure_in",
+        "type": "link in",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Falha definitiva → destinatário seguinte",
+        "links": [
+            "notification_hub_mobile_final_failure_out"
+        ],
+        "x": 2140,
+        "y": 530,
+        "wires": [
+            [
+                "notification_hub_mobile_leg_failure"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_service_retry_in",
+        "type": "link in",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_main_group",
+        "name": "Serviço em startup → tentar mesmo destinatário",
+        "links": [
+            "notification_hub_mobile_service_retry_out"
+        ],
+        "x": 1660,
+        "y": 280,
+        "wires": [
+            [
+                "notification_hub_mobile_profile"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_startup_group",
+        "type": "group",
+        "z": "notification_hub_mobile_tab",
+        "name": "Serviço HA em startup: 12 tentativas de 5 s; erros diferentes falham",
+        "style": {
+            "label": true,
+            "color": "#a16207",
+            "fill": "#fef3c7"
+        },
+        "nodes": [
+            "notification_hub_mobile_startup_in",
+            "notification_hub_mobile_retry_normalize",
+            "notification_hub_mobile_retry_allowed",
+            "notification_hub_mobile_retry_prepare",
+            "notification_hub_mobile_retry_delay",
+            "notification_hub_mobile_retry_delay_out",
+            "notification_hub_mobile_retry_final_in",
+            "notification_hub_mobile_retry_test",
+            "notification_hub_mobile_retry_dry_out",
+            "notification_hub_mobile_service_retry_out",
+            "notification_hub_mobile_final_failure_out",
+            "notification_hub_mobile_test_startup",
+            "notification_hub_mobile_retry_test_out"
+        ],
+        "x": 1450,
+        "y": 700,
+        "w": 1650,
+        "h": 360
+    },
+    {
+        "id": "notification_hub_mobile_startup_in",
+        "type": "link in",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Receber falha de serviço",
+        "links": [
+            "notification_hub_mobile_startup_out",
+            "notification_hub_mobile_retry_test_out"
+        ],
+        "x": 1500,
+        "y": 780,
+        "wires": [
+            [
+                "notification_hub_mobile_retry_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_retry_normalize",
+        "type": "function",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Reconhecer ausência explícita de serviço",
+        "func": "// A missing service proves this attempt did not dispatch a push. Other\n// failures are ambiguous and must not be retried here.\nconst text = String(msg.error?.message ?? \"\");\nconst missing = /^HomeAssistantError: Service public_bindings\\.call not found\\.?$/.test(text);\nmsg.notification_service_missing = missing;\nmsg.notification_service_attempt = Number(msg.notification_service_attempt ?? 0);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1740,
+        "y": 780,
+        "wires": [
+            [
+                "notification_hub_mobile_retry_allowed"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_retry_allowed",
+        "type": "switch",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Serviço ausente e tentativas < 12?",
+        "property": "notification_service_missing and notification_service_attempt < 12",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2090,
+        "y": 780,
+        "wires": [
+            [
+                "notification_hub_mobile_retry_prepare"
+            ],
+            [
+                "notification_hub_mobile_final_failure_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_retry_prepare",
+        "type": "change",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Incrementar tentativa; limpar erro já tratado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "notification_service_attempt",
+                "pt": "msg",
+                "to": "notification_service_attempt + 1",
+                "tot": "jsonata"
+            },
+            {
+                "t": "delete",
+                "p": "error",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2460,
+        "y": 780,
+        "wires": [
+            [
+                "notification_hub_mobile_retry_delay"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_retry_delay",
+        "type": "delay",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Aguardar 5 s para serviço HA",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 2830,
+        "y": 780,
+        "wires": [
+            [
+                "notification_hub_mobile_retry_delay_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_retry_delay_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Espera → gate final",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_retry_final_in"
+        ],
+        "x": 3010,
+        "y": 840,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_retry_final_in",
+        "type": "link in",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Receber tentativa após espera",
+        "links": [
+            "notification_hub_mobile_retry_delay_out"
+        ],
+        "x": 1500,
+        "y": 950,
+        "wires": [
+            [
+                "notification_hub_mobile_retry_test"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_retry_test",
+        "type": "switch",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "TESTE permanece sem push?",
+        "property": "notification.test_mode = true and $not(notification.delivery_under_test = true)",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1790,
+        "y": 950,
+        "wires": [
+            [
+                "notification_hub_mobile_retry_dry_out"
+            ],
+            [
+                "notification_hub_mobile_service_retry_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_retry_dry_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Retry TESTE → terminal seguro",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_dry_in"
+        ],
+        "x": 2010,
+        "y": 1010,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_service_retry_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Repetir apenas serviço não executado",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_service_retry_in"
+        ],
+        "x": 2050,
+        "y": 950,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_final_failure_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Falha definitiva → retorno normal",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_final_failure_in"
+        ],
+        "x": 2240,
+        "y": 870,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_mobile_test_startup",
+        "type": "inject",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "TESTE: serviço ausente → espera → dry-run",
+        "props": [
+            {
+                "p": "payload",
+                "v": "TESTE de retomada; nenhum envio",
+                "vt": "str"
+            },
+            {
+                "p": "notification",
+                "v": "{\"source\":\"hub_mobile_manual_test\",\"profile\":\"simple\",\"recipients\":[\"resident_primary\"],\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "error",
+                "v": "{\"message\":\"HomeAssistantError: Service public_bindings.call not found.\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_notification_hub_channel",
+                "v": "mobile",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 2600,
+        "y": 950,
+        "wires": [
+            [
+                "notification_hub_mobile_retry_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_mobile_retry_test_out",
+        "type": "link out",
+        "z": "notification_hub_mobile_tab",
+        "g": "notification_hub_mobile_startup_group",
+        "name": "Falha sintética → caminho real",
+        "mode": "link",
+        "links": [
+            "notification_hub_mobile_startup_in"
+        ],
+        "x": 2870,
+        "y": 950,
         "wires": []
     }
 ]

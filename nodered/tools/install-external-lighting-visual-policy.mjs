@@ -111,6 +111,10 @@ linkOut("external_visual_notification_dry_out", main.id, "Aviso TESTE → termin
   "external_visual_dry_in", 2260, 280);
 
 const recoveryPrepare = required("ext_prepare_recovery_confirmation");
+required("ext_sunset_recovery_sun_check").outputProperties = [{
+  property: "sun_next_setting", propertyType: "msg",
+  value: '$entities("sun.sun").attributes.next_setting', valueType: "jsonata",
+}];
 Object.assign(recoveryPrepare, { func: source("external-lighting-recovery-prepare.js"),
   name: "Validar data e dedupe da confirmação", outputs: 1, wires: [["external_visual_recovery_mode"]] });
 sw("external_visual_recovery_mode", main.id, "Pergunta de recovery: produção ou TESTE?",
@@ -203,7 +207,8 @@ linkOut("external_visual_test_command_out", tests.id, "Comando TESTE → pipelin
   "external_visual_test_command_in", 1680, 810);
 grouped(tests.id, { id: "external_visual_test_recovery", type: "inject", z: TAB, g: tests.id,
   name: "TESTE 4: recovery pós-pôr do sol", props: [
-    { p: "sun_last_changed", v: "", vt: "date" },
+    { p: "external_now", v: "2026-01-01T23:00:00Z", vt: "str" },
+    { p: "sun_next_setting", v: "2026-01-02T21:00:00Z", vt: "str" },
     { p: "_external_lighting_test", v: "true", vt: "bool" },
   ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
   x: 2030, y: 780, wires: [["external_visual_test_recovery_out"]] });

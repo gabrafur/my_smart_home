@@ -154,6 +154,20 @@ alerta sanitizado no observador global. Se a origem já for
 Contratos inválidos não usam o observador móvel: são apenas rejeitados, de modo
 que destinatário inválido jamais possa produzir outro push.
 
+Durante a inicialização do HA, a resposta explícita
+`HomeAssistantError: Service public_bindings.call not found.` permite até 12
+novas tentativas, separadas por 5 s, no mesmo destinatário. Só essa resposta
+prova que o serviço ainda não executou o efeito; timeout, desconexão e outros
+erros não entram nesse retry. O orçamento do link call móvel é 180 s. O
+observador ignora o erro intermediário conhecido, mas a exaustão continua no
+tratamento normal de falha. A deduplicação do observador consulta o estado
+mais recente no momento da admissão, inclusive para eventos intercalados.
+
+Para testar sem push, execute `TESTE: serviço ausente → espera → dry-run` no
+grupo de inicialização do hub móvel. Ele usa a normalização, decisão e espera
+reais, terminando no gate seguro com `simulated: true` e `dispatched: false`.
+O replay automatizado está em `test-notification-startup-replay.mjs`.
+
 Os cinco monitores que antes chamavam o subflow legado de infraestrutura
 preservam também seu gate comum: `title`, `message` e `id` precisam estar
 presentes antes de qualquer ramificação. Se um deles faltar, mobile, Alexa,

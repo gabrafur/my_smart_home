@@ -934,4 +934,22 @@ for (const recover of [true, false]) {
   assert.equal(store.get("global_flow_observer_last_dry_run_v1").dispatched, false);
 }
 
+{
+  const store = memory();
+  ensurePolicy(store);
+  const incident = { observer_now: 500000,
+    _global_observer: { flow_id: "synthetic", flow_label: "synthetic" },
+    error: { message: "synthetic failure", source: { id: "test", type: "function" } } };
+  const first = execute(code.normalize, structuredClone(incident), store);
+  const concurrent = execute(code.normalize, structuredClone(incident), store);
+  assert.equal(execute(code.errorMutate, first, store)._observer_event.notification_due, true);
+  assert.equal(execute(code.errorMutate, concurrent, store)._observer_event.notification_due, false,
+    "interleaved admission cannot notify twice");
+  const pending = execute(code.normalize, { ...incident, error: {
+    message: "HomeAssistantError: Service public_bindings.call not found.",
+    source: { id: "notification_hub_mobile_primary_simple", type: "api-call-service" },
+  } }, store);
+  assert.equal(pending._observer_event.expected_pending, true);
+  assert.equal(pending._observer_event.kind, "error", "missing service is not a disconnected HA");
+}
 console.log("Global flow observer: topology and incident lifecycle scenarios passed.");

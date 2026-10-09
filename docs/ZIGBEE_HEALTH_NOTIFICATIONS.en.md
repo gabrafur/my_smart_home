@@ -12,6 +12,13 @@ closes these incidents. The former
 
 ## Shared architecture and notifications
 
+After restart, remote-access failure counting requires a fresh report received
+by this runtime; each `checked_at` contributes at most once. Persisted context
+and evaluations triggered by other events are not new probes. Zigbee recovery
+copies its JSON state without relying on a global `structuredClone`, which is
+unavailable in the Node-RED Function sandbox. Startup replays execute function
+bodies in an isolated sandbox to reproduce this boundary.
+
 The three tabs read left to right: trigger, collection, state/confirmation,
 failure/recovery, notification, and retained MQTT publication. Each monitor
 fans out visibly to the independent

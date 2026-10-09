@@ -34,6 +34,7 @@ const report = {
 const key = msg._internet_test ? "internet_remote_access_report_v1__test" : "internet_remote_access_report_v1";
 if (msg._internet_test) flow.set(key, report);
 else flow.set(key, report, "persistent");
+flow.set(key + "_received", true, "memoryOnly");
 msg.remote_access_report_valid = true;
 msg.remote_access_report = report;
 return msg;
