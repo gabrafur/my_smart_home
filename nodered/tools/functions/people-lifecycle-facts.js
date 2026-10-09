@@ -17,7 +17,8 @@ const near = (item) => item?.ready === true && (
 /* O evento e o snapshot pareado podem carregar a mesma observação externa.
  * Uma segunda mensagem idêntica não confirma que a pessoa realmente saiu. */
 for (const [role, item] of Object.entries(data.people)) {
-    if (item?.ready !== true || !external(item.state)) continue;
+    if (item?.ready !== true || item.observation_advanced === false ||
+        !external(item.state)) continue;
     const observedAt = Number(item.updated_at);
     const previous = Number(data.external_since[role]);
     if (!validObservedAt(previous)) {
@@ -29,26 +30,29 @@ for (const [role, item] of Object.entries(data.people)) {
 }
 
 const source = data.people[data.source];
+const sourceMovement = source?.observation_advanced !== false;
 const sourceObservedAt = Number(source?.updated_at);
 const homeCandidate = data.home_arrival_candidates[data.source];
 if (data.is_location_event && data.trigger_state === "home" &&
     (external(data.trigger_prev_state) || ["unknown", "unavailable"].includes(data.trigger_prev_state)) &&
-    source?.ready === true && source?.current_home === true &&
+    source?.ready === true && sourceMovement && source?.current_home === true &&
     homeCandidate?.observed_at === sourceObservedAt) data.armed[data.source] = true;
 const sourceExternalSince = Number(data.external_since[data.source]);
 if (data.is_location_event && source?.ready === true &&
+    sourceMovement &&
     external(data.trigger_prev_state) && !external(data.trigger_state) &&
     validObservedAt(sourceObservedAt) && validObservedAt(sourceExternalSince) &&
     sourceObservedAt - sourceExternalSince >= confirmMs) {
     data.armed[data.source] = true;
 }
 
-const approach = data.trigger_state === "near_home" &&
+const approach = sourceMovement && data.trigger_state === "near_home" &&
     external(data.trigger_prev_state) && source?.current_home !== true;
-const wakeRingEntry = data.trigger_raw_state === "location_update_ring" &&
+const wakeRingEntry = sourceMovement && data.trigger_raw_state === "location_update_ring" &&
     data.trigger_raw_prev_state !== "location_update_ring" &&
     external(source?.state) && source?.current_home !== true;
-const departure = data.trigger_prev_state === "home" && data.trigger_state !== "home";
+const departure = sourceMovement && data.trigger_prev_state === "home" &&
+    data.trigger_state !== "home";
 const localExcursionStart = departure && data.trigger_state === "near_home" &&
     source?.ready === true && source?.current_home !== true;
 if (localExcursionStart) {
@@ -64,7 +68,7 @@ if (source?.ready === true && external(source.state)) {
 }
 const graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;
 for (const [role, item] of Object.entries(data.people)) {
-    if (item?.ready !== true) continue;
+    if (item?.ready !== true || item.observation_advanced === false) continue;
     if (external(item.state) || (item.current_home === true &&
         typeof item.primary_home_for_ms === "number" && item.primary_home_for_ms > graceMs)) {
         delete data.local_excursions[role];
@@ -83,12 +87,12 @@ data.facts = {
         typeof source.primary_home_for_ms === "number" && source.primary_home_for_ms > graceMs,
     near_home: near(source),
     external_cycle_confirmed: data.armed[data.source] === true,
-    directional_candidate: source?.ready === true &&
+    directional_candidate: source?.ready === true && sourceMovement &&
         data.trigger_state !== data.trigger_prev_state &&
         ["home", "near_home"].includes(data.trigger_state),
     local_excursion_start: localExcursionStart
 };
-if (source?.ready === true && !external(source.state)) {
+if (source?.ready === true && sourceMovement && !external(source.state)) {
     data.external_since[data.source] = null;
 }
 if (departure) data.armed[data.source] = false;

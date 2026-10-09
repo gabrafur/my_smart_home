@@ -51,6 +51,7 @@ function position(selected, primary, fallback) {
         updated_at: observedAt,
         source_updated_at: reportedAt,
         source_stale: !fresh(reportedAt, reportFreshMs),
+        observation_advanced: attrs.canonical_observation_advanced !== false,
         any_source_reporting: sourceReporting,
         stale: !fresh(observedAt, locationFreshMs),
         ready,

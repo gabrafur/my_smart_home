@@ -76,7 +76,17 @@ for (const role of ["resident_primary", "resident_secondary"]) {
     const previousRawState = prior.raw_state ?? String(decision.previous_state ?? "");
     const stateChanged = Boolean(prior.state && selected?.state !== prior.state);
     const rawStateChanged = Boolean(prior.raw_state && selected?.raw_state !== prior.raw_state);
-    if (stateChanged) changedRoles.push(role);
+    const observedAt = Number(selected?.observed_at);
+    const priorObservedAt = Number(prior.observed_at);
+    const observationAdvanced = !Number.isFinite(priorObservedAt) ||
+        Number.isFinite(observedAt) && observedAt > priorObservedAt;
+    /* A canonical state can be recalculated after a source report, policy reload
+     * or zone update while still referring to the exact same GPS observation.
+     * That is context, not physical movement, and must never arm a departure or
+     * synthesize an external -> home return on the next callback. */
+    selected.observation_advanced = observationAdvanced;
+    selected.entity.attributes.canonical_observation_advanced = observationAdvanced;
+    if (stateChanged && observationAdvanced) changedRoles.push(role);
     Object.assign(decision, {
         selected,
         previous_state: previousState,
@@ -98,7 +108,8 @@ for (const role of ["resident_primary", "resident_secondary"]) {
             trigger_raw_state: selected.raw_state,
             trigger_entity: "device_tracker." + role + "_location"
         });
-        if (selected.state === previousState && !rawStateChanged) {
+        if (!observationAdvanced ||
+            selected.state === previousState && !rawStateChanged) {
             msg.payload.event = "context_update";
         }
     }

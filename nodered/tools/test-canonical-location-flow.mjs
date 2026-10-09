@@ -314,6 +314,40 @@ for (const scenario of ["outbound", "missing_coordinates", "bad_accuracy", "stal
     `inner geofence must not authorize ${scenario}: ${JSON.stringify(results.map(x=>x[1]?.payload).filter(Boolean))}`);
 }
 
+// Reclassifying the same GPS observation cannot manufacture a trip home -> away -> home.
+{
+  const state = memory();
+  const globals = runtimeGlobal();
+  const call = (id, message) => run(id, message, state, globals);
+  const sample = (distanceM, ageMs = 0) => input(
+    tracker(primaryId, "home", { distanceM, ageMs }),
+    tracker(fallbackId, "unavailable", { coordinates: false }),
+    "resident_primary",
+  );
+  runPeopleVisualEvents(call, sample(20));
+  clock += 11 * 60_000;
+  const sameObservation = select(sample(2000, 11 * 60_000), state, globals);
+  assert.equal(sameObservation.payload.trigger_prev_state, "home");
+  assert.equal(sameObservation.payload.trigger_state, "not_home");
+  assert.equal(sameObservation.payload.event, "context_update",
+    "a zona recalculada sem GPS novo deve permanecer apenas contexto");
+  assert.equal(sameObservation.payload.resident_primary_selected.attributes
+    .canonical_observation_advanced, false);
+
+  const lifecycleState = memory();
+  const lifecycleCall = (id, message) => run(id, message, lifecycleState, globals);
+  clock -= 11 * 60_000;
+  runPeopleVisualEvents(lifecycleCall, sample(20));
+  clock += 11 * 60_000;
+  const replay = runPeopleVisualEvents(lifecycleCall, sample(2000, 11 * 60_000));
+  assert.ok(replay.every((outputs) => !outputs[1]),
+    "a reclassificacao da mesma observacao nao pode emitir chegada");
+  clock += 61_000;
+  const falseReturn = runPeopleVisualEvents(lifecycleCall, sample(20));
+  assert.ok(falseReturn.every((outputs) => !outputs[1]),
+    "a proxima posicao home nao pode completar uma viagem que nunca foi observada");
+}
+
 // Cross-resident dispatch still requires fresh evidence and a confirmed trip.
 for (const [name, ageMs, elapsed] of [
   ["unconfirmed departure", 0, 1000],
