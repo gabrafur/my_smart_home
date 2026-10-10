@@ -273,6 +273,11 @@ incoerente sem substituir a última política válida.
   de zona. Um deslocamento acumulado de pelo menos 250 m (ou maior que a soma
   das precisões GPS) solicita refresh do contexto, mas nunca autoriza sozinho
   a iluminação ou outra ação física.
+- Reclassificação de zona, relatório da fonte ou reload de política sem avanço
+  de `location_observed_at` pode atualizar a apresentação, mas preserva no
+  cache direcional o último estado associado a uma observação física. Assim,
+  uma reclassificação para `near_home` não consome a borda real
+  `not_home -> near_home` recebida depois com GPS novo.
 
 ## Notificações entre residentes
 

@@ -348,6 +348,36 @@ for (const scenario of ["outbound", "missing_coordinates", "bad_accuracy", "stal
     "a proxima posicao home nao pode completar uma viagem que nunca foi observada");
 }
 
+// A report-only reclassification must not consume the next physical return edge.
+{
+  const state = memory();
+  const globals = runtimeGlobal();
+  const call = (id, message) => run(id, message, state, globals);
+  const sample = (distanceM, ageMs = 0) => input(
+    tracker(primaryId, "location_update_notification_ring", { distanceM, ageMs }),
+    tracker(fallbackId, "unavailable", { coordinates: false }),
+    "resident_primary",
+  );
+  runPeopleVisualEvents(call, sample(2000));
+  clock += 61_000;
+  runPeopleVisualEvents(call, sample(2000));
+  clock += 60_000;
+  const reclassified = runPeopleVisualEvents(call, sample(300, 60_000));
+  assert.ok(reclassified.every((outputs) => !outputs[1]),
+    "a reclassificacao sem GPS novo nao pode publicar chegada");
+  assert.equal(state.get("canonical_near_home_people_v1").resident_primary.state,
+    "not_home", "a reclassificacao nao pode avancar a referencia direcional");
+
+  clock += 60_000;
+  const physicalReturn = runPeopleVisualEvents(call, sample(300));
+  const arrivals = physicalReturn.map((outputs) => outputs[1]).filter(Boolean);
+  assert.equal(arrivals.length, 1,
+    "a observacao fisica seguinte deve preservar not_home -> near_home");
+  assert.equal(arrivals[0].payload.arrival_previous_state, "not_home");
+  assert.equal(arrivals[0].payload.arrival_stage, "approach");
+  assert.equal(arrivals[0].payload.external_cycle_confirmed, true);
+}
+
 // Cross-resident dispatch still requires fresh evidence and a confirmed trip.
 for (const [name, ageMs, elapsed] of [
   ["unconfirmed departure", 0, 1000],

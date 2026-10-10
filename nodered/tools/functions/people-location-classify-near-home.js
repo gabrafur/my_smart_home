@@ -87,19 +87,24 @@ for (const role of ["resident_primary", "resident_secondary"]) {
     selected.observation_advanced = observationAdvanced;
     selected.entity.attributes.canonical_observation_advanced = observationAdvanced;
     if (stateChanged && observationAdvanced) changedRoles.push(role);
+    const physicalStateChanged = stateChanged && observationAdvanced;
     Object.assign(decision, {
         selected,
         previous_state: previousState,
-        canonical_state_changed: stateChanged,
-        raw_state_changed: rawStateChanged
+        canonical_state_changed: physicalStateChanged,
+        raw_state_changed: rawStateChanged && observationAdvanced
     });
     msg.payload[role + "_selected"] = selected?.entity ?? null;
-    next[role] = {
+    /* Keep the directional reference coupled to the GPS observation that
+     * produced it. The selected entity may still expose a recalculated state
+     * for presentation, but a report-only reclassification must not consume
+     * the external -> near_home edge of the next physical observation. */
+    next[role] = observationAdvanced ? {
         state: selected?.state ?? null,
         raw_state: selected?.raw_state ?? null,
         observed_at: selected?.observed_at ?? null,
         updated_at: Date.now()
-    };
+    } : { ...prior, updated_at: Date.now() };
     if (msg.payload?.source === role && selected) {
         Object.assign(msg.payload, {
             trigger_prev_state: previousState,
