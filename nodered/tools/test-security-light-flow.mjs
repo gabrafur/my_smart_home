@@ -373,13 +373,17 @@ scenario("04 entrada no raio near_home de 350 m", () => {
 
 scenario("04a saída e rebote near_home → home não viram chegada", () => {
   const flow = memoryFlow();
+  const nearHomeDepartureAt = new Date().toISOString();
+  const nearHomeBounceAt = new Date(
+    Date.parse(nearHomeDepartureAt) + 1,
+  ).toISOString();
   const departure = run(
     "people_normalize",
     peopleInput({
       previous: "home",
       current: "near_home",
-      resident_primary: entity("near_home", 215, undefined, 37),
-      resident_primaryIcloud: entity("near_home", 215, undefined, 37),
+      resident_primary: entity("near_home", 215, nearHomeDepartureAt, 37),
+      resident_primaryIcloud: entity("near_home", 215, nearHomeDepartureAt, 37),
     }),
     flow,
     geoEnv,
@@ -390,6 +394,11 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
 
   const externalBounceFlow = memoryFlow();
   const duplicatedExternalAt = new Date().toISOString();
+  // Keep the return physically newer but below the 60 s confirmation window.
+  // Relying on another new Date() is flaky when both calls share a millisecond.
+  const immediateExternalReturnAt = new Date(
+    Date.parse(duplicatedExternalAt) + 1,
+  ).toISOString();
   const firstExternalSample = run(
     "people_normalize",
     peopleInput({ previous: "home", current: "not_home", resident_primary: entity("not_home", 1_600, duplicatedExternalAt), resident_primaryIcloud: entity("not_home", 1_600, duplicatedExternalAt) }),
@@ -409,7 +418,7 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
     "snapshot duplicado da mesma observação não confirma saída");
   const immediateExternalBounce = run(
     "people_normalize",
-    peopleInput({ previous: "not_home", current: "home", resident_primary: entity("home", 101), resident_primaryIcloud: entity("home", 101) }),
+    peopleInput({ previous: "not_home", current: "home", resident_primary: entity("home", 101, immediateExternalReturnAt), resident_primaryIcloud: entity("home", 101, immediateExternalReturnAt) }),
     externalBounceFlow,
     geoEnv,
   );
@@ -438,8 +447,8 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
     peopleInput({
       previous: "near_home",
       current: "home",
-      resident_primary: entity("home", 99, undefined, 14),
-      resident_primaryIcloud: entity("home", 99, undefined, 14),
+      resident_primary: entity("home", 99, nearHomeBounceAt, 14),
+      resident_primaryIcloud: entity("home", 99, nearHomeBounceAt, 14),
     }),
     flow,
     geoEnv,
@@ -490,9 +499,13 @@ scenario("04b raio near_home configurável aceita 350 m", () => {
 
 scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
   const flow = memoryFlow();
+  const vehicleDepartureAt = new Date().toISOString();
+  const vehicleBounceAt = new Date(
+    Date.parse(vehicleDepartureAt) + 1,
+  ).toISOString();
   const departure = run(
     "vehicle_primary_normalize",
-    vehicle_primaryInput({ previous: "home", current: "near_home", distance: 215, engine: "on" }),
+    vehicle_primaryInput({ previous: "home", current: "near_home", distance: 215, engine: "on", changed: vehicleDepartureAt }),
     flow,
     geoEnv,
   );
@@ -502,6 +515,9 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
 
   const externalBounceFlow = memoryFlow();
   const duplicatedVehicleExternalAt = new Date().toISOString();
+  const immediateVehicleReturnAt = new Date(
+    Date.parse(duplicatedVehicleExternalAt) + 1,
+  ).toISOString();
   run(
     "vehicle_primary_normalize",
     vehicle_primaryInput({ previous: "home", current: "not_home", distance: 1_600, engine: "on", changed: duplicatedVehicleExternalAt }),
@@ -518,7 +534,7 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
     "snapshot duplicado do veículo não confirma saída");
   const immediateExternalBounce = run(
     "vehicle_primary_normalize",
-    vehicle_primaryInput({ previous: "not_home", current: "home", distance: 101, engine: "on" }),
+    vehicle_primaryInput({ previous: "not_home", current: "home", distance: 101, engine: "on", changed: immediateVehicleReturnAt }),
     externalBounceFlow,
     geoEnv,
   );
@@ -527,7 +543,7 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
 
   const bounce = run(
     "vehicle_primary_normalize",
-    vehicle_primaryInput({ previous: "near_home", current: "home", distance: 99, engine: "on" }),
+    vehicle_primaryInput({ previous: "near_home", current: "home", distance: 99, engine: "on", changed: vehicleBounceAt }),
     flow,
     geoEnv,
   );
