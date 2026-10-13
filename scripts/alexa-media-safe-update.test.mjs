@@ -11,7 +11,50 @@ import {
   repositoryArchiveUrl,
   statusLine,
   validVersion,
+  pollRuntime,
+  runtimeEvidence,
 } from "./alexa-media-safe-update.mjs";
+
+const baseline = { entity_ids: ["sensor.example"], active_entity_ids: ["sensor.example"], recorder_rows: 12 };
+const activeStates = [{ entity_id: "sensor.example", state: "unknown" }];
+
+test("runtime evidence separates availability from missing entities and history loss", () => {
+  assert.deepEqual(runtimeEvidence(activeStates, baseline, baseline), {
+    version_ready: true, missing_active: [], missing_registry: [], recorder_before: 12, recorder_after: 12,
+  });
+  const lost = runtimeEvidence([], baseline, { entity_ids: [], recorder_rows: 0 }, false);
+  assert.deepEqual(lost.missing_active, ["sensor.example"]);
+  assert.deepEqual(lost.missing_registry, ["sensor.example"]);
+  assert.equal(lost.version_ready, false);
+});
+
+test("runtime polling preserves diagnostic failures and recovers after startup", async () => {
+  let time = 0, calls = 0;
+  const evidence = [];
+  const result = await pollRuntime({ before: baseline,
+    readStates: async () => { if (++calls === 1) throw new Error("connection refused"); return activeStates; },
+    readSnapshot: () => baseline, saveEvidence: (e) => evidence.push(e),
+    now: () => time, sleep: async (ms) => { time += ms; }, timeoutMs: 20_000,
+  });
+  assert.equal(evidence[0].reason, "probe_failed");
+  assert.equal(evidence[0].error, "connection refused");
+  assert.deepEqual(result, { registry_entities: 1, recorder_rows: 12 });
+});
+
+for (const [reason, states, snapshot, version] of [
+  ["version_not_ready", activeStates, baseline, false],
+  ["active_entities_missing", [], baseline, true],
+  ["registry_entities_missing", activeStates, { entity_ids: [], recorder_rows: 12 }, true],
+  ["recorder_rows_decreased", activeStates, { ...baseline, recorder_rows: 11 }, true],
+]) {
+  test(`runtime refuses ${reason} and reports the exact failing gate`, async () => {
+    let time = 0;
+    await assert.rejects(pollRuntime({ before: baseline,
+      readStates: async () => states, readSnapshot: () => snapshot, versionReady: () => version,
+      now: () => time, sleep: async (ms) => { time += ms; }, timeoutMs: 10_000,
+    }), new RegExp(reason));
+  });
+}
 
 test("Alexa Media versions and annotated tags are normalized exactly", () => {
   assert.equal(normalizeVersion("5.16.1"), "v5.16.1");

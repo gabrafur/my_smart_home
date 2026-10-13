@@ -345,6 +345,7 @@ function haRequest(method, requestPath, token, body) {
         resolve(data ? JSON.parse(data) : {});
       });
     });
+    request.setTimeout(15_000, () => request.destroy(new Error("Home Assistant API request timed out")));
     request.on("error", reject);
     if (payload) request.write(payload);
     request.end();
@@ -414,49 +415,60 @@ async function waitForInstallation(token, metadata, target, timeoutMs = 300_000)
   throw new Error(`HACS did not confirm Alexa Media ${target}`);
 }
 
-async function waitForRuntime(token, metadata, target, before, timeoutMs = 720_000) {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    try {
-      const states = await haRequest("GET", "/api/states", token);
-      const byId = new Map(states.map((item) => [item.entity_id, item]));
-      const missing = before.active_entity_ids.filter((entityId) => !byId.has(entityId));
-      const updateReady = updateEntityMatches(states, metadata.update_entity_id, target);
-      if (!missing.length && updateReady) {
-        const after = captureRegistryAndRecorder();
-        const registryMissing = before.entity_ids.filter((entityId) => !after.entity_ids.includes(entityId));
-        if (!registryMissing.length && after.recorder_rows >= before.recorder_rows) {
-          return { registry_entities: after.entity_ids.length, recorder_rows: after.recorder_rows };
-        }
-      }
-    } catch {
-      // Home Assistant or Alexa Media may still be starting.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 10_000));
-  }
-  throw new Error("Alexa Media runtime validation timed out");
+export function runtimeEvidence(states, before, after, versionReady = true) {
+  const active = new Set(states.map((item) => item.entity_id));
+  const registered = new Set(after.entity_ids);
+  return {
+    version_ready: versionReady,
+    missing_active: before.active_entity_ids.filter((id) => !active.has(id)),
+    missing_registry: before.entity_ids.filter((id) => !registered.has(id)),
+    recorder_before: before.recorder_rows,
+    recorder_after: after.recorder_rows,
+  };
 }
 
-async function waitForPreservedRuntime(token, before, timeoutMs = 720_000) {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
+export async function pollRuntime({ readStates, readSnapshot, before, versionReady = () => true,
+  saveEvidence = () => {}, timeoutMs = 720_000, now = Date.now,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), label = "runtime" }) {
+  const started = now();
+  let last = { reason: "not_checked" };
+  while (now() - started < timeoutMs) {
     try {
-      const states = await haRequest("GET", "/api/states", token);
-      const byId = new Map(states.map((item) => [item.entity_id, item]));
-      const missing = before.active_entity_ids.filter((entityId) => !byId.has(entityId));
-      if (!missing.length) {
-        const after = captureRegistryAndRecorder();
-        const registryMissing = before.entity_ids.filter((entityId) => !after.entity_ids.includes(entityId));
-        if (!registryMissing.length && after.recorder_rows >= before.recorder_rows) {
-          return { registry_entities: after.entity_ids.length, recorder_rows: after.recorder_rows };
-        }
+      const states = await readStates();
+      const after = await readSnapshot();
+      last = runtimeEvidence(states, before, after, versionReady(states));
+      saveEvidence(last);
+      if (last.version_ready && !last.missing_active.length && !last.missing_registry.length &&
+          last.recorder_after >= last.recorder_before) {
+        return { registry_entities: after.entity_ids.length, recorder_rows: after.recorder_rows };
       }
-    } catch {
-      // Home Assistant or Alexa Media may still be starting after restoration.
+    } catch (error) {
+      last = { reason: "probe_failed", error: String(error.message).slice(0, 500) };
+      saveEvidence(last);
     }
-    await new Promise((resolve) => setTimeout(resolve, 10_000));
+    await sleep(10_000);
   }
-  throw new Error("Alexa Media rollback runtime validation timed out");
+  const reason = last.reason || (!last.version_ready ? "version_not_ready" :
+    last.missing_active.length ? "active_entities_missing" :
+      last.missing_registry.length ? "registry_entities_missing" : "recorder_rows_decreased");
+  throw new Error(`Alexa Media ${label} validation timed out: ${reason}`);
+}
+
+function waitForRuntime(token, metadata, target, before, timeoutMs = 720_000) {
+  return pollRuntime({ before, timeoutMs,
+    readStates: () => haRequest("GET", "/api/states", token),
+    readSnapshot: captureRegistryAndRecorder,
+    versionReady: (states) => updateEntityMatches(states, metadata.update_entity_id, target),
+    saveEvidence: (evidence) => writeJson(path.join(stateRoot, "runtime-validation.json"), evidence),
+  });
+}
+
+function waitForPreservedRuntime(token, before, timeoutMs = 720_000) {
+  return pollRuntime({ before, timeoutMs, label: "rollback runtime",
+    readStates: () => haRequest("GET", "/api/states", token),
+    readSnapshot: captureRegistryAndRecorder,
+    saveEvidence: (evidence) => writeJson(path.join(stateRoot, "rollback-validation.json"), evidence),
+  });
 }
 
 function makeComponentWritable(target) {
@@ -539,6 +551,7 @@ async function apply(target) {
     const stamp = new Date().toISOString().replaceAll(":", "-");
     const backupDir = path.join(backupRoot, stamp);
     fs.mkdirSync(backupDir, { recursive: true });
+    writeJson(path.join(backupDir, "runtime-before.json"), before);
     copyComponent(targetDir, path.join(backupDir, "alexa_media"));
     fs.copyFileSync(metadataPath, path.join(backupDir, "alexa-media-upstream.json"));
     command("docker", ["cp", `homeassistant:${hacsContainerPath}`, path.join(backupDir, "hacs.repositories")]);
