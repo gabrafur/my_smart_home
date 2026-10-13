@@ -403,3 +403,32 @@ O proprio Home Assistant nao consegue enviar alerta se o Raspberry Pi inteiro ca
 Para alerta real de indisponibilidade do Raspberry Pi, use um monitor externo,
 por exemplo roteador, Uptime Kuma, outro Home Assistant ou outro host pingando
 `IP_DO_HOST`.
+
+#### Proposta de monitor externo (não instalado)
+
+Antes de ativar, definir com o responsável um host sempre ligado independente
+do Raspberry, o alcance de sua rede e um canal de notificação que não dependa
+do Home Assistant, Node-RED ou MQTT residenciais. Reutilizar infraestrutura e
+conta existentes. Não abrir portas administrativas, criar credenciais nem
+contratar serviço sem aprovação.
+
+Proposta inicial: observar a cada 60 segundos, timeout de 5 segundos e confirmar
+indisponibilidade após três falhas consecutivas. Emitir um único aviso por
+incidente; confirmar recuperação com duas observações bem-sucedidas e emitir
+um único retorno com duração do incidente. Persistir lifecycle no monitor para
+evitar duplicatas após restart. Manutenção programada deve ter prazo de expiração.
+Falha do próprio monitor/rede é `unknown`, não prova que o Raspberry desligou.
+
+Em rede privada já acessível, usar ICMP ou conexão a um endpoint previamente
+autorizado. De fora da rede, preferir heartbeat de saída autenticado, sem nova
+porta de entrada; instalação do emissor também exige autorização. Ausência de
+heartbeat significa host **ou caminho de rede** indisponível, não distingue
+falta de energia de falha de Internet. Monitor no mesmo local não cobre queda
+da energia ou Internet de toda a casa; registrar essa limitação na escolha.
+
+O canal independente deve manter fila/retry limitado e marcar envio aceito
+separadamente de recebimento humano. Antes de ativar, testar com relógio e
+eventos sintéticos: falha transitória, três falhas, duplicata, recuperação,
+restart, manutenção, `unknown` e falha do canal. Simulação não deve enviar
+notificações reais. Teste de entrega e interrupção real exigem autorização
+separada. A presença desta proposta não comprova monitor externo ativo.

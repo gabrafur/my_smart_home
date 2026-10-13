@@ -224,6 +224,23 @@ O Git cobre configuração, não estado. Faça backup privado e criptografado de
 Não coloque esse arquivo de backup no repositório, mesmo criptografado, sem uma
 política explícita de chaves e retenção.
 
+A preparação externa está declarada em
+`restore/offsite-backup-policy.json` e pode ser inspecionada com
+`make offsite-backup-plan` ou medida, sem copiar dados, com
+`make offsite-backup-measure`. O Home Assistant usa a integração oficial
+OneDrive e sua pasta de aplicativo. Os demais itens usam um conjunto datado
+`private-state-v1` dentro de um backup nativo protegido do Home Assistant,
+reaproveitando o mesmo escopo `Files.ReadWrite.AppFolder`; `rclone` permanece
+somente fallback não configurado. Em 13 de outubro de 2026, o upload protegido
+dos 13 componentes, o download, os checksums e a restauração isolada de arquivos
+foram verificados. O teste estrutural do Home Assistant também validou arquivo,
+registros essenciais e integridade SQLite do Recorder. O banco persistente do
+MQTT ficou limitado a presença, checksum e captura consistente com o broker
+parado, porque a imagem não fornece `mosquitto_db_dump`. O teste não iniciou
+serviços restaurados. Cada grupo que
+contém estado em uso preserva a janela de parada do manifesto. Consulte o
+[contrato de restore](RESTORE_CONTRACT.md#preparação-de-backup-externo-no-onedrive).
+
 ## Atualização e rollback
 
 ```bash
@@ -234,7 +251,9 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
-A aba `atualizacoes_diarias` recebe o sucesso do backup diário e executa quatro
+A árvore preparada da aba `atualizacoes_diarias` recebe o sucesso do backup Git,
+exige em seguida um recibo de backup externo protegido dos 13 componentes e só
+então executa quatro
 subfluxos de host serializados e independentes: `DietPi`, `Home Assistant Core`,
 `demais containers` e `Codex CLI`. O primeiro usa o helper root-owned para
 `apt-get update`,
@@ -243,6 +262,23 @@ resolve somente `ghcr.io/home-assistant/home-assistant:stable` e recria apenas
 o serviço `homeassistant` quando o digest muda. O terceiro reconcilia Portainer,
 MQTT, Matter, AppDaemon, Node-RED e Zigbee2MQTT e conclui com a manutenção segura
 de storage. Não há reboot automático.
+
+Esse novo gate está **implantado e ativo para a próxima execução agendada**.
+Captura consistente exige parar sete serviços; a execução observada levou cerca de 28 segundos até
+os containers voltarem e aproximadamente 53 segundos até a última sonda de
+prontidão. A janela após o backup Git diário das 00:30 BRT foi aprovada, com
+limite de 10 minutos e prioridade para religar os serviços após falha. A
+configuração está `active: true`; a primeira execução diária sob essa configuração
+ainda é futura e não deve ser confundida com o ensaio estrutural já concluído.
+Uma recarga controlada do Node-RED, explicitamente autorizada fora da execução
+do ciclo, concluiu em 32 segundos às 14:15 BRT, sem reiniciar outro serviço nem
+disparar backup ou update na inicialização.
+Exclusão e rotação não foram autorizadas; cada cópia acrescenta
+cerca de 426 MB e, sem espaço, a etapa falha preservando as cópias e bloqueando
+os updates. A proposta desabilitada limita a série Compose a 90 cópias diárias
+ou 90 dias, estimados em 38,4 GB (5,05% do espaço atualmente livre no OneDrive),
+e exige aprovação separada antes de qualquer remoção. `.daily-maintenance.lock`
+impede concorrência entre backup e workers de atualização.
 
 A etapa do Codex CLI roda depois dos containers e antes das dependências npm do
 repositório. A ponte do host consulta a versão publicada de `@openai/codex`,
@@ -305,6 +341,43 @@ no arquivo não comprova que o container foi atualizado. As instalações npm da
 validação e do atualizador usam `umask 022` apenas para pacotes públicos, para
 permitir leitura pelos usuários distintos do host e do container; a máscara
 privada do chamador é preservada fora dessa instalação.
+
+### Prontidão e recuperação após recriação
+
+O adaptador aguarda **todos** os serviços recriados antes do backup Git:
+
+- Mosquitto: CONNACK autenticado a partir do container Node-RED, usando as
+  credenciais existentes sem publicá-las nem enviar mensagens MQTT.
+- Node-RED: HTTP 200 em `/auth/login` no loopback interno e `Started flows`
+  posterior ao último stop, nos logs da execução atual.
+- Zigbee2MQTT: início concluído nos logs da execução atual e assinatura somente
+  leitura de `<base_topic>/bridge/state` com estado `online`.
+- Demais serviços, incluindo Home Assistant: healthcheck Docker obrigatório.
+  Serviço sem cobertura é bloqueado antes de editar Compose ou recriar containers.
+
+`running` sozinho nunca confirma prontidão. As sondas têm timeout e tentativas
+limitadas; não chamam dispositivos. MQTT depende do container Node-RED como
+cliente da sonda. Zigbee usa as bibliotecas da imagem e configuração MQTT local;
+configurações externas de secrets/TLS que a sonda não interpretar falham fechadas.
+Logs rotacionados ou sem marcador também falham fechados. Essas verificações
+comprovam prontidão de inicialização, não funcionamento de cada automação ou
+dispositivo. O healthcheck atual do HA comprova DNS/porta, não toda integração.
+
+Antes de `compose up`, o adaptador grava um registro privado em
+`.local-state/docker-update-recovery.json`, com Compose anterior/candidato e
+imagens desejadas. Falha ou interrupção mantém o registro e bloqueia novas
+reconciliações, inclusive quando o digest já coincide. A falha impede o backup
+Git e a limpeza de imagens; não remove volumes nem faz downgrade automático.
+
+Recuperação requer revisão humana: identificar o serviço que falhou, conferir
+logs privados, imagens e eventual migração de dados; preferir correção compatível
+com a imagem nova. Se for necessário voltar, validar primeiro um snapshot
+consistente anterior com a imagem correspondente, em destino isolado, segundo
+`restore/private-state-manifest.yaml` e [contrato de restore](RESTORE_CONTRACT.md).
+Não aplicar imagem antiga sobre volume possivelmente migrado. Somente após
+autorizar e verificar a recuperação, arquivar privadamente o registro e removê-lo
+para liberar a próxima reconciliação. O registro não é um backup de volumes.
+
 Falhas em `apt`, `dietpi-update`, na ponte ou nos containers chamam `node.error`
 com a etapa sanitizada e são entregues a `resident_primary` pelo fluxo
 `observabilidade_global`, com a mesma deduplicação de seis horas dos demais

@@ -5,6 +5,7 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 node_bin="${DAILY_UPDATE_NODE_BIN:-/usr/bin/node}"
 docker_update_script="${DOCKER_UPDATE_SCRIPT:-$script_dir/docker-auto-update.mjs}"
 codex_cli_update_script="${CODEX_CLI_UPDATE_SCRIPT:-$script_dir/update-codex-cli.sh}"
+offsite_backup_script="${OFFSITE_BACKUP_SCRIPT:-$script_dir/offsite-backup.mjs}"
 sudo_bin="${DAILY_UPDATE_SUDO_BIN:-/usr/bin/sudo}"
 dietpi_helper="${DIETPI_UPDATE_HELPER:-/usr/local/sbin/smart-home-dietpi-daily-upgrade}"
 dietpi_status_file="${DIETPI_UPDATE_STATUS_FILE:-/run/smart-home-dietpi-daily-upgrade.result}"
@@ -15,12 +16,12 @@ stage="all"
 for argument in "$@"; do
   case "$argument" in
     --dry-run) dry_run=true ;;
-    dietpi|home-assistant-core|containers|codex-cli)
+    offsite-backup|dietpi|home-assistant-core|containers|codex-cli)
       [ "$stage" = "all" ] || { echo "Only one update stage may be selected" >&2; exit 64; }
       stage=$argument
       ;;
     all) ;;
-    *) echo "Usage: $0 [dietpi|home-assistant-core|containers|codex-cli|all] [--dry-run]" >&2; exit 64 ;;
+    *) echo "Usage: $0 [offsite-backup|dietpi|home-assistant-core|containers|codex-cli|all] [--dry-run]" >&2; exit 64 ;;
   esac
 done
 
@@ -69,6 +70,25 @@ run_images() {
     "$node_bin" "$docker_update_script" "$image_mode"
   fi
 }
+
+if [ "$stage" = "offsite-backup" ]; then
+  if [ "$dry_run" = true ]; then
+    write_detail "stage=offsite-backup stage_exit=0 components=13 capture_verified=false remote_verified=false protected=false action=dry-run mode=dry-run"
+    echo "dry-run: $node_bin $offsite_backup_script daily-cycle"
+    exit 0
+  fi
+  [ -r "$offsite_backup_script" ] || {
+    write_detail "stage=offsite-backup stage_exit=66 components=0 capture_verified=false remote_verified=false protected=false action=unavailable mode=production"
+    exit 66
+  }
+  set +e
+  offsite_detail=$($node_bin "$offsite_backup_script" daily-cycle)
+  offsite_status=$?
+  set -e
+  offsite_detail=$(printf '%s\n' "$offsite_detail" | sed -n '1p' | tr -cd 'A-Za-z0-9_.:=@ -')
+  write_detail "stage=offsite-backup stage_exit=$offsite_status $offsite_detail mode=production"
+  exit "$offsite_status"
+fi
 
 if [ "$stage" = "dietpi" ]; then
   run_dietpi

@@ -18,17 +18,78 @@ const functionNode = (id, group, name, func, outputs, x, y, wires) => ({
   timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x, y, wires,
 });
 
+const prepareOffsiteBackupRequest = `const TEST_MODE = msg._offsite_backup_test === true || msg.payload?.test_mode === true;
+if (!TEST_MODE && (msg.payload?.event !== "git_backup_completed" || msg.payload?.status !== "success")) {
+    node.warn("offsite_backup_ignored_without_successful_git_backup");
+    return null;
+}
+msg._offsite_backup_test = TEST_MODE;
+msg.payload = {
+    version: 1,
+    event: "offsite_backup_requested",
+    source: TEST_MODE ? "manual_test" : "git_backup",
+    git_backup_finished_at: msg.payload?.finished_at ?? null,
+    test_mode: TEST_MODE
+};
+node.status({ fill: TEST_MODE ? "blue" : "green", shape: "dot", text: TEST_MODE ? "TESTE preparado" : "backup externo solicitado" });
+return msg;`;
+
+const parseOffsiteBackupResult = `const TEST_MODE = msg._offsite_backup_test === true || msg.payload?.test_mode === true;
+const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
+if (!text) return [null, null];
+const status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];
+const requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? "unknown";
+const components = Number(text.match(/\\bcomponents=(\\d+)\\b/)?.[1] ?? NaN);
+const captureVerified = text.match(/\\bcapture_verified=(true|false)\\b/)?.[1] === "true";
+const remoteVerified = text.match(/\\bremote_verified=(true|false)\\b/)?.[1] === "true";
+const protectedBackup = text.match(/\\bprotected=(true|false)\\b/)?.[1] === "true";
+if (!status) {
+    if (!TEST_MODE) node.error("offsite_backup_result_unrecognized", msg);
+    return [null, null];
+}
+const validSuccess = status === "success" && components === 13 && captureVerified && remoteVerified && protectedBackup;
+const normalizedStatus = status === "success" && !validSuccess ? "failed" : status;
+const signature = [requestId, normalizedStatus, components, captureVerified, remoteVerified, protectedBackup].join(":");
+const key = TEST_MODE ? "offsite_backup_last_result_v1__test" : "offsite_backup_last_result_v1";
+const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
+if (!TEST_MODE && previous?.signature === signature) return [null, null];
+const result = {
+    version: 1, signature, status: normalizedStatus, request_id: requestId,
+    components: Number.isFinite(components) ? components : null,
+    capture_verified: captureVerified, remote_verified: remoteVerified,
+    protected: protectedBackup, test_mode: TEST_MODE, observed_at: Date.now()
+};
+if (TEST_MODE) flow.set(key, result); else flow.set(key, result, "persistent");
+msg.payload = result;
+node.status({
+    fill: validSuccess ? "green" : normalizedStatus === "running" ? "blue" : "red",
+    shape: validSuccess || normalizedStatus === "running" ? "dot" : "ring",
+    text: validSuccess ? "backup externo verificado" : normalizedStatus
+});
+if (TEST_MODE) return [msg, null];
+if (validSuccess) {
+    msg.payload = {
+        version: 1, event: "offsite_backup_completed", status: "success",
+        finished_at: new Date().toISOString(), test_mode: false
+    };
+    return [null, msg];
+}
+if (normalizedStatus !== "running") {
+    node.error("offsite_backup_blocked_updates status=" + normalizedStatus + " request_id=" + requestId, msg);
+}
+return [null, null];`;
+
 const prepareRequest = `const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;
-const event = msg.payload?.event ?? "git_backup_completed";
-if (!TEST_MODE && (event !== "git_backup_completed" || msg.payload?.status !== "success")) {
-    node.warn("daily_update_ignored_without_successful_backup");
+const event = msg.payload?.event ?? "offsite_backup_completed";
+if (!TEST_MODE && (event !== "offsite_backup_completed" || msg.payload?.status !== "success")) {
+    node.warn("daily_update_ignored_without_verified_offsite_backup");
     return null;
 }
 msg._daily_update_test = TEST_MODE;
 msg.payload = {
     version: 1,
     event: "daily_update_requested",
-    source: TEST_MODE ? "manual_test" : "git_backup",
+    source: TEST_MODE ? "manual_test" : "offsite_backup",
     backup_finished_at: msg.payload?.finished_at ?? null,
     test_mode: TEST_MODE
 };
@@ -588,6 +649,7 @@ const containersGroup = "daily_update_containers_group";
 const codexCliGroup = "daily_update_codex_cli_group";
 const dependencyGroup = "daily_update_repository_dependency_group";
 const dependencyTestGroup = "daily_update_repository_dependency_test_group";
+const offsiteBackupGroup = "daily_update_offsite_backup_group";
 const testGroup = "daily_update_test_group";
 const inventoryGroup = "daily_update_inventory_group";
 const hacsGroup = "daily_update_hacs_group";
@@ -599,7 +661,7 @@ const kiaCodexGroup = "daily_update_kia_codex_group";
 const nodes = [
   {
     id: TAB, type: "tab", label: "atualizacoes_diarias", disabled: false,
-    info: "Orquestrador canônico de updates. Depois do backup Git, executa serialmente DietPi, Home Assistant Core, demais containers e Codex CLI antes das dependências do repositório. Também inventaria toda entidade update.*; às 03:00, uma autorização efêmera permite atualizar Alexa Media e Kia UVO somente após auditoria de upstream, staging, backup, rollback e validação. Demais HACS versionados, firmware físico e fontes desconhecidas mantêm políticas visuais próprias. O Node-RED não recebe sudo, npm, checkout, credenciais nem socket Docker.",
+    info: "Orquestrador canônico de updates. Depois do backup Git, exige backup externo criptografado e verificável dos estados privados antes de executar serialmente DietPi, Home Assistant Core, demais containers e Codex CLI. Também inventaria toda entidade update.*; às 03:00, uma autorização efêmera permite atualizar Alexa Media e Kia UVO somente após auditoria de upstream, staging, backup, rollback e validação. Demais HACS versionados, firmware físico e fontes desconhecidas mantêm políticas visuais próprias. O Node-RED não recebe sudo, npm, checkout, credenciais nem socket Docker.",
     env: [],
   },
   {
@@ -622,7 +684,7 @@ const nodes = [
   },
   {
     id: "daily_update_after_backup_in", type: "link in", z: TAB, g: productionGroup,
-    name: "Receber backup diário concluído", links: ["git_backup_daily_update_out"],
+    name: "Receber backup externo verificado", links: ["daily_update_offsite_success_out"],
     x: 145, y: 160, wires: [["daily_update_prepare_request"]],
   },
   {
@@ -1141,6 +1203,7 @@ const nodes = [
       "daily_update_kia_codex_result_test_out", "daily_update_kia_promotion_result_test_out",
       "daily_update_dependency_test_out", "daily_update_dependency_blocked_test_out",
       "daily_update_dependency_result_test_out", "daily_update_dependency_summary_test_out",
+      "daily_update_offsite_request_test_out", "daily_update_offsite_result_test_out",
     ],
     x: 715, y: 870, wires: [["daily_update_dry_run_terminal"]],
   },
@@ -2166,6 +2229,118 @@ const nodes = [
   {
     id: "daily_update_dependency_test_result_out", type: "link out", z: TAB, g: dependencyTestGroup,
     name: "Resultado TESTE → parser", mode: "link", links: ["daily_update_dependency_test_result_in"], x: 1150, y: 6390, wires: [],
+  },
+  {
+    id: offsiteBackupGroup, type: "group", z: TAB,
+    name: "0. BACKUP EXTERNO: capturar, proteger, verificar e só então liberar updates",
+    style: { label: true, color: "#7b61a8" },
+    nodes: [
+      "daily_update_offsite_architecture", "daily_update_offsite_git_in", "daily_update_offsite_test_request",
+      "daily_update_offsite_prepare", "daily_update_offsite_route_test", "daily_update_offsite_request_host",
+      "daily_update_offsite_request_ack", "daily_update_offsite_request_error", "daily_update_offsite_request_complete",
+      "daily_update_offsite_request_test_out", "daily_update_offsite_result_startup", "daily_update_offsite_result_poll",
+      "daily_update_offsite_read_result", "daily_update_offsite_read_error", "daily_update_offsite_read_complete",
+      "daily_update_offsite_parse_result", "daily_update_offsite_result_test_out", "daily_update_offsite_success_out",
+      "daily_update_offsite_test_success", "daily_update_offsite_test_failure", "daily_update_offsite_test_deferred",
+    ],
+    x: 104, y: 8520, w: 1392, h: 542,
+  },
+  {
+    id: "daily_update_offsite_architecture", type: "comment", z: TAB, g: offsiteBackupGroup,
+    name: "Backup Git → snapshot consistente → OneDrive protegido → updates",
+    info: "Produção falha fechada. O worker do host deve confirmar 13 componentes, checksums, proteção e presença remota. Falha, adiamento ou ausência de janela bloqueiam todos os updates. Testes terminam no dry-run compartilhado.",
+    x: 690, y: 8560, wires: [],
+  },
+  {
+    id: "daily_update_offsite_git_in", type: "link in", z: TAB, g: offsiteBackupGroup,
+    name: "Receber sucesso do backup Git", links: ["git_backup_daily_update_out"],
+    x: 145, y: 8640, wires: [["daily_update_offsite_prepare"]],
+  },
+  {
+    id: "daily_update_offsite_test_request", type: "inject", z: TAB, g: offsiteBackupGroup,
+    name: "TESTE 0A: solicitar backup", props: [
+      { p: "payload", v: '{"event":"git_backup_completed","status":"success","test_mode":true}', vt: "json" },
+      { p: "_offsite_backup_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 220, y: 8760, wires: [["daily_update_offsite_prepare"]],
+  },
+  functionNode("daily_update_offsite_prepare", offsiteBackupGroup, "Validar backup Git e preparar snapshot", prepareOffsiteBackupRequest, 1, 450, 8670, [["daily_update_offsite_route_test"]]),
+  {
+    id: "daily_update_offsite_route_test", type: "switch", z: TAB, g: offsiteBackupGroup,
+    name: "Backup externo: produção ou TESTE?", property: "_offsite_backup_test", propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
+    x: 750, y: 8670, wires: [["daily_update_offsite_request_test_out"], ["daily_update_offsite_request_host"]],
+  },
+  {
+    id: "daily_update_offsite_request_host", type: "exec", z: TAB, g: offsiteBackupGroup,
+    command: "/opt/request-host-update-stage.sh offsite-backup", addpay: "", append: "", useSpawn: "false",
+    timer: "30", winHide: false, oldrc: false, name: "Solicitar backup ao host",
+    x: 1040, y: 8700,
+    wires: [["daily_update_offsite_request_ack"], ["daily_update_offsite_request_error"], ["daily_update_offsite_request_complete"]],
+  },
+  functionNode("daily_update_offsite_request_ack", offsiteBackupGroup, "Registrar solicitação", recordRequest, 0, 1320, 8620, []),
+  functionNode("daily_update_offsite_request_error", offsiteBackupGroup, "Falha segura da ponte", recordExecError, 0, 1320, 8680, []),
+  functionNode("daily_update_offsite_request_complete", offsiteBackupGroup, "Registrar código", recordCompletion, 0, 1320, 8740, []),
+  {
+    id: "daily_update_offsite_request_test_out", type: "link out", z: TAB, g: offsiteBackupGroup,
+    name: "Pedido TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
+    x: 1035, y: 8620, wires: [],
+  },
+  {
+    id: "daily_update_offsite_result_startup", type: "inject", z: TAB, g: offsiteBackupGroup,
+    name: "Ler resultado ao subir", props: [{ p: "payload" }], repeat: "", crontab: "",
+    once: true, onceDelay: "30", topic: "", payload: "", payloadType: "date",
+    x: 200, y: 8820, wires: [["daily_update_offsite_read_result"]],
+  },
+  {
+    id: "daily_update_offsite_result_poll", type: "inject", z: TAB, g: offsiteBackupGroup,
+    name: "Resultado a cada 1 min", props: [{ p: "payload" }], repeat: "60", crontab: "",
+    once: false, onceDelay: "0.1", topic: "", payload: "", payloadType: "date",
+    x: 210, y: 8880, wires: [["daily_update_offsite_read_result"]],
+  },
+  {
+    id: "daily_update_offsite_read_result", type: "exec", z: TAB, g: offsiteBackupGroup,
+    command: "/opt/read-host-update-stage-result.sh offsite-backup", addpay: "", append: "", useSpawn: "false",
+    timer: "15", winHide: false, oldrc: false, name: "Ler resultado sanitizado",
+    x: 500, y: 8850,
+    wires: [["daily_update_offsite_parse_result"], ["daily_update_offsite_read_error"], ["daily_update_offsite_read_complete"]],
+  },
+  functionNode("daily_update_offsite_read_error", offsiteBackupGroup, "Falha ao ler resultado", recordExecError, 0, 790, 8790, []),
+  functionNode("daily_update_offsite_read_complete", offsiteBackupGroup, "Código da leitura", recordCompletion, 0, 790, 8910, []),
+  functionNode("daily_update_offsite_parse_result", offsiteBackupGroup, "Exigir recibo verificável", parseOffsiteBackupResult, 2, 850, 8850, [["daily_update_offsite_result_test_out"], ["daily_update_offsite_success_out"]]),
+  {
+    id: "daily_update_offsite_result_test_out", type: "link out", z: TAB, g: offsiteBackupGroup,
+    name: "Resultado TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
+    x: 1135, y: 8820, wires: [],
+  },
+  {
+    id: "daily_update_offsite_success_out", type: "link out", z: TAB, g: offsiteBackupGroup,
+    name: "Backup externo verificado → DietPi", mode: "link", links: ["daily_update_after_backup_in"],
+    x: 1165, y: 8880, wires: [],
+  },
+  {
+    id: "daily_update_offsite_test_success", type: "inject", z: TAB, g: offsiteBackupGroup,
+    name: "TESTE 0B: sucesso verificável", props: [
+      { p: "payload", v: "offsite-backup status=success request_id=test-success components=13 capture_verified=true remote_verified=true protected=true", vt: "str" },
+      { p: "_offsite_backup_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 230, y: 8970, wires: [["daily_update_offsite_parse_result"]],
+  },
+  {
+    id: "daily_update_offsite_test_failure", type: "inject", z: TAB, g: offsiteBackupGroup,
+    name: "TESTE 0C: falha bloqueia", props: [
+      { p: "payload", v: "offsite-backup status=failed request_id=test-failed components=13 capture_verified=true remote_verified=false protected=true", vt: "str" },
+      { p: "_offsite_backup_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 500, y: 8970, wires: [["daily_update_offsite_parse_result"]],
+  },
+  {
+    id: "daily_update_offsite_test_deferred", type: "inject", z: TAB, g: offsiteBackupGroup,
+    name: "TESTE 0D: sem janela", props: [
+      { p: "payload", v: "offsite-backup status=deferred request_id=test-deferred components=0 capture_verified=false remote_verified=false protected=false", vt: "str" },
+      { p: "_offsite_backup_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 760, y: 8970, wires: [["daily_update_offsite_parse_result"]],
   },
 ];
 

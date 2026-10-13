@@ -2,11 +2,13 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { probeService, requireReadinessCoverage } from "./container-readiness.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const composePath = path.join(repoRoot, "docker-compose.yml");
 const logPath = path.join(repoRoot, ".docker-auto-update.log");
 const lockPath = path.join(repoRoot, ".docker-auto-update.lock");
+const recoveryPath = path.join(repoRoot, ".local-state", "docker-update-recovery.json");
 
 const imageChannels = [
   { service: "portainer", repo: "portainer/portainer-ce", tag: "latest" },
@@ -50,6 +52,7 @@ function run(command, commandArgs, options = {}) {
     encoding: "utf8",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
     env: { ...process.env, ...(options.env || {}) },
+    timeout: options.timeout,
   });
 }
 
@@ -66,11 +69,12 @@ export async function waitForHealthyService(service, options = {}) {
       "--format",
       "{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
     ],
-    { capture: true },
+    { capture: true, timeout: 10000 },
   ));
   const pause = options.pause ?? delay;
   const attempts = options.attempts ?? 36;
   const intervalMs = options.intervalMs ?? 5000;
+  const probe = options.probe ?? probeService;
   let lastState = "unavailable";
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -80,8 +84,12 @@ export async function waitForHealthyService(service, options = {}) {
       lastState = "unavailable";
     }
 
-    if (lastState === "running|healthy") {
-      return lastState;
+    if (lastState === "running|healthy" || lastState === "running|none") {
+      const ready = await probe(service);
+      if (ready === true || (ready === null && lastState === "running|healthy")) return lastState;
+      if (ready === null) {
+        throw new Error(`Service ${service} has no readiness probe or healthcheck; manual recovery required`);
+      }
     }
     if (/^(exited|dead)\|/.test(lastState) || lastState === "running|unhealthy") {
       throw new Error(`Service ${service} failed while waiting for health: ${lastState}`);
@@ -92,6 +100,26 @@ export async function waitForHealthyService(service, options = {}) {
   }
 
   throw new Error(`Service ${service} did not become healthy: ${lastState}`);
+}
+
+export async function recreateAndVerify(services, { recreate, wait, record, clear, report }) {
+  // Record before the first mutation: interruption must not silently pass on retry.
+  record({ status: "pending", services, automatic_downgrade: false });
+  let failedService = null;
+  try {
+    await recreate();
+    for (const service of services) {
+      failedService = service;
+      report(`readiness service=${service} status=checking`);
+      await wait(service);
+      report(`readiness service=${service} status=ready`);
+    }
+    clear();
+  } catch (error) {
+    record({ status: "failed", services, failed_service: failedService, automatic_downgrade: false });
+    report(`readiness service=${failedService ?? "recreation"} status=failed recovery=manual images_and_volumes=preserved automatic_downgrade=false`);
+    throw error;
+  }
 }
 
 async function withLock(fn) {
@@ -221,15 +249,27 @@ function validateAfterComposeEdit() {
 }
 
 async function reconcileImages(channels, options = {}) {
+  let completed = false;
   try {
+    if (fs.existsSync(recoveryPath)) {
+      throw new Error("Unresolved Docker update recovery record; review persistent data and readiness before clearing it manually");
+    }
     const plan = updateComposeDigests(channels);
+    const previousImages = {};
     // A previous run can have written the digest before recreation failed.
     // Compare actual image IDs even when the Compose digest is unchanged.
     const changedServices = [...new Set([...plan.changedServices, ...servicesNeedingRecreate(
       plan.desiredImages,
       (image) => run("docker", ["image", "inspect", image, "--format", "{{.Id}}"], { capture: true }),
-      (service) => run("docker", ["inspect", service, "--format", "{{.Image}}"], { capture: true }),
+      (service) => {
+        const identity = run("docker", ["inspect", service, "--format", "{{.Image}}"], { capture: true, timeout: 10000 }).trim();
+        previousImages[service] = identity;
+        return identity;
+      },
     )])];
+    requireReadinessCoverage(changedServices, (service) => run("docker", ["inspect", service,
+      "--format", "{{if .Config.Healthcheck}}{{json .Config.Healthcheck.Test}}{{else}}null{{end}}"],
+    { capture: true, timeout: 10000 }).trim().match(/^\["CMD(?:-SHELL)?"/) !== null);
     if (dryRun) validateAfterComposeEdit();
     else validateComposeCandidate(plan, {
       read: () => fs.readFileSync(composePath, "utf8"),
@@ -238,18 +278,29 @@ async function reconcileImages(channels, options = {}) {
     });
 
     if (changedServices.length > 0) {
-      run("docker", ["compose", "up", "-d", "--no-deps", ...changedServices], { mutates: true });
-      if (changedServices.includes("homeassistant")) {
-        log("waiting for Home Assistant runtime health before backup");
-        await waitForHealthyService("homeassistant");
+      if (!dryRun) {
+        await recreateAndVerify(changedServices, {
+          recreate: () => run("docker", ["compose", "up", "-d", "--no-deps", ...changedServices], { mutates: true }),
+          wait: waitForHealthyService,
+          report: log,
+          record: (state) => {
+            fs.mkdirSync(path.dirname(recoveryPath), { recursive: true, mode: 0o700 });
+            const next = `${recoveryPath}.tmp`;
+            fs.writeFileSync(next, JSON.stringify({ ...state, recorded_at: new Date().toISOString(),
+              previous_compose: plan.before, candidate_compose: plan.compose,
+              previous_images: previousImages, desired_images: plan.desiredImages }, null, 2), { mode: 0o600 });
+            fs.renameSync(next, recoveryPath);
+          },
+          clear: () => fs.rmSync(recoveryPath),
+        });
       }
       run("docker", ["compose", "ps"]);
       run("bash", ["scripts/git-backup.sh"], { mutates: true });
     }
+    completed = true;
   } finally {
-    // Cleanup must still run when a pull, parse, validation or recreate step
-    // fails. The helper never removes volumes, containers or tagged images.
-    if (options.cleanup) {
+    // Preserve recovery evidence and old images on failure, including partial up.
+    if (options.cleanup && completed) {
       run(
         "bash",
         ["scripts/storage-maintenance.sh", dryRun ? "--dry-run" : "--apply", "--min-age", "24"],

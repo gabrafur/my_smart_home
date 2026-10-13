@@ -22,7 +22,7 @@ for (const node of next) {
   for (const field of ["nodes", "scope", "links"]) {
     if (Array.isArray(node[field])) node[field] = node[field].filter((id) =>
       !removed.has(id) ||
-      (field === "links" && node.id === "daily_update_after_backup_in" && id === "git_backup_daily_update_out") ||
+      (field === "links" && node.id === "daily_update_offsite_git_in" && id === "git_backup_daily_update_out") ||
       (field === "links" && node.id === "daily_update_dependency_backup_out" && id === "git_backup_request_in") ||
       (field === "links" && node.id === "daily_update_alexa_media_backup_out" && id === "git_backup_request_in")
     );
@@ -123,7 +123,7 @@ sw("git_backup_invalid_gate", groups.decision, "Resposta inválida pertence a TE
 fn("git_backup_invalid_result", groups.decision, "Rejeitar resposta não reconhecida", "git-backup-invalid-result.js", 0, 1610, 380, []);
 linkOut("git_backup_notification_out", groups.decision, "Falha real → notificações", "git_backup_notification_in", 1810, 280);
 linkOut("git_backup_retry_effect_out", groups.decision, "Adiado real → retry", "git_backup_retry_effect_in", 1740, 330);
-linkOut("git_backup_daily_update_out", groups.decision, "Sucesso diário → updates", "daily_update_after_backup_in", 1840, 50);
+linkOut("git_backup_daily_update_out", groups.decision, "Sucesso diário → backup externo", "daily_update_offsite_git_in", 1840, 50);
 linkOut("git_backup_dry_out", groups.decision, "TESTE → terminal dry-run", "git_backup_dry_in", 1840, 420);
 
 linkIn("git_backup_worker_in", groups.effect, "Receber pedido de produção", "git_backup_worker_out", "git_backup_request", 1950, 100);
@@ -197,7 +197,7 @@ linkIn("git_backup_dry_in", groups.test, "Receber efeito TESTE", ["git_backup_dr
 fn("git_backup_dry_run_terminal", groups.test, "TESTE FINAL: nenhum efeito enviado", "git-backup-dry-run.js", 0, 1340, 730, []);
 
 next.push(...nodes);
-const dailyUpdateInput = next.find((node) => node.id === "daily_update_after_backup_in");
+const dailyUpdateInput = next.find((node) => node.id === "daily_update_offsite_git_in");
 if (dailyUpdateInput && Array.isArray(dailyUpdateInput.links) && !dailyUpdateInput.links.includes("git_backup_daily_update_out")) {
   dailyUpdateInput.links.push("git_backup_daily_update_out");
 }

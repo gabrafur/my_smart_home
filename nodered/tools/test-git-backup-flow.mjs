@@ -92,7 +92,7 @@ assert.equal(node("git_backup_retry_delay").timeout, "5");
 assert.equal(node("git_backup_retry_delay").timeoutUnits, "minutes");
 assert.match(node("git_backup_complete").property, /\$exists\(payload\.code\)/);
 assert.deepEqual(node("git_backup_retry_out").links, ["git_backup_retry_in"]);
-assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_after_backup_in"]);
+assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_offsite_git_in"]);
 assert.ok(node("git_backup_mark_daily_success").rules.some((rule) => rule.p === "payload.event" && rule.to === "git_backup_completed"));
 assert.match(node("git_backup_notify_primary").rules.map((rule) => String(rule.to ?? "")).join("\n"), /"recipients":\["resident_primary"\]/);
 assert.deepEqual(node("git_backup_notify_primary__hub_call").links, ["notification_hub_mobile_in"]);

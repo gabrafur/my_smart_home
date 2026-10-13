@@ -222,6 +222,21 @@ Git covers configuration, not runtime state. Privately and securely back up:
 Do not commit that backup, even encrypted, without an explicit key-management
 and retention policy.
 
+External preparation is declared in `restore/offsite-backup-policy.json` and
+can be inspected with `make offsite-backup-plan`, or measured without copying
+data with `make offsite-backup-measure`. Home Assistant uses the official
+OneDrive integration and its app folder. Other items use a dated
+`private-state-v1` set inside a protected native Home Assistant backup, reusing
+the same `Files.ReadWrite.AppFolder` scope; rclone remains an unconfigured
+fallback only. On October 13, 2026, the protected upload of all 13 components,
+download, checksums, and isolated file restore were verified. Restored services
+were not started. The structural Home Assistant drill also validated the archive,
+essential registries, and Recorder SQLite integrity. The persistent MQTT database
+was limited to presence, checksum, and a consistent capture while the broker was
+stopped because the image does not provide `mosquitto_db_dump`. Each in-use state
+group keeps the manifest's stop window. See the
+[restore contract](RESTORE_CONTRACT.en.md#onedrive-off-site-backup-preparation).
+
 ## Updates and rollback
 
 ```bash
@@ -232,7 +247,8 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
-The `atualizacoes_diarias` tab receives the successful daily backup and runs
+The prepared `atualizacoes_diarias` tree receives the successful Git backup,
+then requires a protected external-backup receipt for all 13 components before it runs
 four independent serialized host subflows: `DietPi`, `Home Assistant Core`,
 `other containers`, and `Codex CLI`. The first uses the root-owned helper for
 apt and DietPi.
@@ -240,6 +256,23 @@ The second resolves only the stable Home Assistant image and recreates only
 `homeassistant` when its digest changes. The third reconciles Portainer, MQTT,
 Matter, AppDaemon, Node-RED, and Zigbee2MQTT, then runs safe storage maintenance.
 It never reboots automatically.
+
+This new gate is **deployed and active for the next scheduled run**. A consistent
+capture still requires stopping seven services; the observed run took about 28 seconds for
+containers to return and about 53 seconds for the last readiness probe. The
+window after the daily 00:30 BRT Git backup is approved, with a ten-minute limit
+and service restoration taking priority after a failure. The configuration is
+`active: true`; its first daily execution is still in the future and must not be
+confused with the completed structural drill. An explicitly authorized
+controlled Node-RED reload completed at 14:15 BRT in 32 seconds without
+restarting another service or dispatching a backup or update at startup.
+Deletion and retention
+rotation are not authorized; each copy adds about 426 MB and, when space is
+unavailable, the stage fails while preserving existing copies and blocking
+updates. The disabled proposal is a maximum of 90 daily copies or 90 days,
+estimated at 38.4 GB for the Compose series (5.05% of currently free OneDrive
+space); it requires separate approval before any pruning. `.daily-maintenance.lock`
+prevents backup/update concurrency.
 
 The Codex CLI stage runs after the containers and before the repository npm
 dependencies. Its host bridge resolves the published `@openai/codex` version,
@@ -301,6 +334,22 @@ actual image IDs: a digest already present in the file does not prove that the
 container was updated. Validation and updater npm installations use `umask 022`
 only for public packages so the different host and container users can read
 them; the caller's private mask is preserved outside that installation.
+
+### Readiness and recovery after recreation
+
+The adapter waits for every recreated service before the final Git backup.
+Mosquitto requires an authenticated CONNACK from the Node-RED container without
+publishing; Node-RED requires HTTP 200 on its internal login endpoint and a
+current-run `Started flows` marker; Zigbee2MQTT requires current-run startup and
+a read-only `bridge/state=online` subscription. Other services need a Docker
+healthcheck. A missing probe is blocked before recreation.
+
+Before `compose up`, the adapter writes a private recovery record containing the
+previous/candidate Compose and image identities. Failure or interruption keeps
+that record, blocks later reconciliation, skips Git backup and image cleanup,
+and never automatically downgrades a possibly migrated volume. Recovery requires
+human review and a compatible consistent snapshot; the record itself is not a
+volume backup.
 Failures in `apt`, `dietpi-update`, the bridge, or container reconciliation
 raise `node.error` with a sanitized stage and are delivered to
 `resident_primary` through `observabilidade_global`, using the same six-hour

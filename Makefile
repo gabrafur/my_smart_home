@@ -3,7 +3,7 @@
 	validate-memory validate-node-red validate-bridge validate-local-ai validate-homeassistant validate-scripts \
 	validate-scheduler validate-auto-update validate-modules validate-restore \
 	validate-bootstrap validate-demo validate-git validate-commit-message validate-staged privacy-check \
-	privacy-check-staged bindings-check backup-plan backup-verify restore-plan \
+	privacy-check-staged bindings-check backup-plan backup-verify offsite-backup-plan offsite-backup-measure offsite-backup-verify restore-plan \
 	restore-verify restore-test restore-apply bootstrap bootstrap-test demo demo-test \
 	modules-check context-recovery-check install-git-hooks \
 	benchmark-local-ai-high-potential benchmark-local-ai-high-potential-unit \
@@ -290,6 +290,16 @@ backup-plan:
 backup-verify:
 	@test -n "$(BACKUP_DIR)" || (echo "BACKUP_DIR is required" >&2; exit 2)
 	node scripts/restore.mjs backup-verify --backup-dir "$(BACKUP_DIR)"
+
+offsite-backup-plan:
+	node scripts/offsite-backup.mjs plan
+
+offsite-backup-measure:
+	node scripts/offsite-backup.mjs measure
+
+offsite-backup-verify:
+	@test -n "$(BACKUP_DIR)" || (echo "BACKUP_DIR is required" >&2; exit 2)
+	node scripts/offsite-backup.mjs verify "$(BACKUP_DIR)"
 
 restore-plan:
 	@test -n "$(BACKUP_DIR)" || (echo "BACKUP_DIR is required" >&2; exit 2)

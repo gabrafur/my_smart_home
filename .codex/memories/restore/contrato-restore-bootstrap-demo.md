@@ -25,3 +25,42 @@ estão em `docs/RESTORE_CONTRACT.md`.
 
 Para instalação, módulos e demo, consulte também
 `docs/INSTALACAO_RESTAURACAO_SMART_HOME.md` e `docs/BOOTSTRAP_DEMO.md`.
+
+<!-- memory-record
+id: backup-externo-separado-no-onedrive
+category: ARCHITECTURE
+kind: PROJECT_DECISION
+last_verified: 2026-10-13
+evidence:
+  - restore/offsite-backup-policy.json@sha256:b89d552078f6ea9cb179c92489e180460c3200e1abbc4d3caeae00813826b7d5
+  - scripts/offsite-backup.mjs@sha256:165087d9d1d44f850bb1d5d809aafbabe21258f20387f7c82fd34e386bcd9f1c
+  - docs/RESTORE_CONTRACT.md@sha256:ab9f1436af6a0438cabf04becbfdfc64678c2105f0df0a3203ead2e359f0775c
+-->
+## Backup externo separado e sem exclusão
+
+O Home Assistant usa a integração oficial do OneDrive, limitada à pasta do
+aplicativo, com criptografia habilitada e exclusão permanente desabilitada. O
+estado dos demais serviços forma um bundle canônico datado, capturado somente
+nas janelas de parada aprovadas, validado contra o fechamento de dependências do
+manifesto e incluído em um backup nativo protegido e remoto-only do HA, sem
+ampliar o escopo `Files.ReadWrite.AppFolder`. `rclone` permanece fallback não
+configurado; `sync` e exclusão automática continuam proibidos. Volumes de
+autenticação de agentes e identidade SSH exigem aprovação separada. O HA pode
+validar conexão, disponibilidade, proteção e presença do backup pela API
+WebSocket já autenticada, consumindo a credencial de forma opaca e publicando
+somente resultado sanitizado. O backup deve falhar fechado antes da criação se
+o destino estiver sem proteção e só termina quando o mesmo identificador
+aparecer no OneDrive como `protected: true`. Em 2026-10-13 foram preservados dois
+backups locais e confirmados dois remotos: o completo do HA e o envelope dos 13
+componentes. Ambos foram baixados e descriptografados; o primeiro passou por
+validação de arquivo, registros e integridade SQLite, e o segundo por checksums e
+restore de arquivos isolado. Nenhum serviço restaurado foi iniciado. A rotina
+Node-RED está implantada para bloquear updates sem esse recibo. A janela diária
+após o backup Git das 00:30 BRT foi aprovada com limite de 10 minutos; uma
+recarga controlada do Node-RED ativou a configuração em 32 segundos, sem
+reiniciar outro serviço nem disparar backup ou update na inicialização. A
+primeira execução agendada ainda é futura. Exclusão e rotação de retenção não
+foram autorizadas; a proposta desabilitada limita a série diária Compose a 90
+cópias ou 90 dias e exige aprovação específica antes de qualquer remoção. Quota
+insuficiente deve preservar cópias e bloquear os updates. Kit de emergência e
+senha ficam guardados fora do destino.

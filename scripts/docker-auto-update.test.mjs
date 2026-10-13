@@ -3,6 +3,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import vm from "node:vm";
+import crypto from "node:crypto";
+import { EventEmitter } from "node:events";
 
 import {
   imageChannelsForMode,
@@ -10,7 +13,10 @@ import {
   waitForHealthyService,
   servicesNeedingRecreate,
   validateComposeCandidate,
+  recreateAndVerify,
 } from "./docker-auto-update.mjs";
+import { probeService, startupComplete, requireReadinessCoverage,
+  mqttProbeScript, zigbeeProbeScript, nodeRedProbeScript } from "./container-readiness.mjs";
 import {
   assessKiaRuntimeStates,
   candidateMetadataMatchesTarget,
@@ -147,6 +153,131 @@ test("rejects an unhealthy Home Assistant runtime", async () => {
     }),
     /failed while waiting for health/,
   );
+});
+
+test("running is insufficient, and even Docker healthy requires the service probe", async () => {
+  for (const service of ["mosquitto", "nodered", "zigbee2mqtt"]) {
+    for (const state of ["running|none", "running|healthy"]) {
+      let calls = 0;
+      await waitForHealthyService(service, { inspect: () => state,
+        probe: () => ++calls === 2, pause: async () => {}, attempts: 2 });
+      assert.equal(calls, 2);
+      await assert.rejects(waitForHealthyService(service, { inspect: () => state,
+        probe: () => false, pause: async () => {}, attempts: 2 }), /did not become healthy/);
+    }
+  }
+});
+
+test("readiness rejects missing, exited, restarting and unsupported containers", async () => {
+  for (const state of ["exited|none", "dead|none", "restarting|none", "running|unhealthy"]) {
+    await assert.rejects(waitForHealthyService("mosquitto", { inspect: () => state,
+      probe: () => assert.fail("must not probe an unusable container"), pause: async () => {}, attempts: 2 }));
+  }
+  await assert.rejects(waitForHealthyService("mosquitto", { inspect: () => { throw Error("missing"); },
+    pause: async () => {}, attempts: 2 }), /unavailable/);
+  await assert.rejects(waitForHealthyService("unknown", { inspect: () => "running|none",
+    attempts: 1 }), /no readiness probe/);
+  assert.throws(() => requireReadinessCoverage(["portainer"], () => false), /before recreation/);
+  requireReadinessCoverage(["mosquitto", "nodered", "zigbee2mqtt"], () => assert.fail());
+  requireReadinessCoverage(["homeassistant"], () => true);
+});
+
+test("probes use bounded private subprocesses and current-start logs without publishing", () => {
+  for (const service of ["mosquitto", "nodered", "zigbee2mqtt"]) {
+    const calls = [];
+    const execute = (command, args, options) => {
+      calls.push(args);
+      assert.equal(command, "docker");
+      assert.equal(options.timeout, 10000);
+      assert.deepEqual(options.stdio, ["ignore", "pipe", "pipe"]);
+      if (args[0] === "inspect") return "2026-10-13T00:00:00Z\n";
+      if (args[0] === "logs") {
+        assert.equal(args[2], "2026-10-13T00:00:00Z");
+        return service === "nodered" ? "Started flows" : "Zigbee2MQTT started!";
+      }
+      assert.equal(args[0], "exec");
+      assert.doesNotMatch(args.at(-1), /\.publish\(/);
+      return "";
+    };
+    assert.equal(probeService(service, { execute }), true);
+    assert.equal(calls.at(-1)[1], service === "mosquitto" ? "nodered" : service);
+    assert.equal(probeService(service, { execute: () => { throw Error("private details"); } }), false);
+  }
+  assert.equal(startupComplete("nodered", "Started flows\nStopped flows"), false);
+  assert.equal(startupComplete("nodered", "Stopped flows\nStarted flows"), true);
+  assert.equal(startupComplete("zigbee2mqtt", "Zigbee2MQTT started!\nStopping Zigbee2MQTT"), false);
+  assert.equal(startupComplete("zigbee2mqtt", "HTTP listening"), false);
+});
+
+test("all updated services must pass before clearing recovery; failures preserve the gate", async () => {
+  for (const failure of [null, "recreate", "mosquitto", "nodered", "zigbee2mqtt"]) {
+    const events = [];
+    const task = recreateAndVerify(["mosquitto", "nodered", "zigbee2mqtt"], {
+      record: state => { events.push(state.status); assert.equal(state.automatic_downgrade, false); },
+      recreate: () => { events.push("up"); if (failure === "recreate") throw Error("partial up"); },
+      wait: service => { events.push(service); if (failure === service) throw Error("not ready"); },
+      clear: () => events.push("clear"), report: () => {},
+    });
+    if (failure) {
+      await assert.rejects(task);
+      assert.equal(events.at(-1), "failed");
+      assert.equal(events.includes("clear"), false);
+    } else {
+      await task;
+      assert.deepEqual(events, ["pending", "up", "mosquitto", "nodered", "zigbee2mqtt", "clear"]);
+    }
+    assert.deepEqual(events.slice(0, 2), ["pending", "up"]);
+  }
+});
+
+test("MQTT probe authenticates to the local broker without publishing or exposing credentials", () => {
+  const secret = crypto.randomBytes(16).toString("hex");
+  const cipher = crypto.createCipheriv("aes-256-ctr", crypto.createHash("sha256").update(secret).digest(), Buffer.alloc(16));
+  const encrypted = Buffer.concat([cipher.update(JSON.stringify({local: {user: "fixture", password: "synthetic"}})), cipher.final()]);
+  const exits = [], client = new EventEmitter();
+  client.end = (_force, _options, done) => done();
+  vm.runInNewContext(mqttProbeScript, { Buffer, setTimeout: () => 1, clearTimeout: () => {},
+    process: { env: {NODE_RED_CREDENTIAL_SECRET: secret}, exit: code => exits.push(code) },
+    require: name => ({ crypto, fs: {readFileSync: file => file.includes("flows_cred")
+      ? JSON.stringify({$: "00".repeat(16) + encrypted.toString("base64")})
+      : JSON.stringify([{id: "local", type: "mqtt-broker", broker: "mosquitto", port: 1883}])},
+    mqtt: {connect: options => { assert.equal(options.host, "mosquitto"); assert.equal(options.password, "synthetic"); return client; }} }[name]),
+  });
+  assert.deepEqual(exits, []);
+  client.emit("connect");
+  assert.deepEqual(exits, [0]);
+});
+
+test("Zigbee probe rejects offline and unrelated retained state, then accepts online", () => {
+  const exits = [], client = new EventEmitter();
+  let topic;
+  client.subscribe = (value, _options, done) => { topic = value; done(null, [{qos: 0}]); };
+  client.end = (_force, _options, done) => done();
+  vm.runInNewContext(zigbeeProbeScript, { setTimeout: () => 1, clearTimeout: () => {},
+    process: {env: {}, exit: code => exits.push(code)},
+    require: name => ({ fs: {readFileSync: () => "fixture"},
+      "js-yaml": {load: () => ({mqtt: {server: "mqtt://fixture", base_topic: "fixture"}})},
+      mqtt: {connect: () => client} }[name]),
+  });
+  client.emit("connect");
+  assert.equal(topic, "fixture/bridge/state");
+  client.emit("message", "other/bridge/state", Buffer.from('"online"'));
+  client.emit("message", topic, Buffer.from('{"state":"offline"}'));
+  assert.deepEqual(exits, []);
+  client.emit("message", topic, Buffer.from('{"state":"online"}'));
+  assert.deepEqual(exits, [0]);
+});
+
+test("Node-RED probe rejects authentication errors and unavailable HTTP runtime", () => {
+  for (const status of [200, 401, 503]) {
+    const exits = [], response = new EventEmitter(), request = new EventEmitter();
+    response.statusCode = status; response.resume = () => {};
+    request.setTimeout = () => {};
+    vm.runInNewContext(nodeRedProbeScript, { process: {exit: code => exits.push(code)},
+      require: () => ({get: (url, done) => { assert.equal(url, "http://127.0.0.1:1880/auth/login"); done(response); return request; }}) });
+    response.emit("end");
+    assert.deepEqual(exits, [status === 200 ? 0 : 1]);
+  }
 });
 
 test("recognizes an already installed Kia UVO target", () => {

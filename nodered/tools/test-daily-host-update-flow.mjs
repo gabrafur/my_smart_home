@@ -54,14 +54,20 @@ try {
   fs.rmSync(generatedDirectory, { recursive: true, force: true });
 }
 assert.equal(node("git_backup_tab").label, "backup_git");
-assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_after_backup_in"]);
-assert.deepEqual(node("daily_update_after_backup_in").links, ["git_backup_daily_update_out"]);
+assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_offsite_git_in"]);
+assert.deepEqual(node("daily_update_offsite_git_in").links, ["git_backup_daily_update_out"]);
+assert.deepEqual(node("daily_update_offsite_success_out").links, ["daily_update_after_backup_in"]);
+assert.deepEqual(node("daily_update_after_backup_in").links, ["daily_update_offsite_success_out"]);
 assert.equal(node("global_observer_coverage__daily_host_updates_tab__catch").type, "catch");
 assert.deepEqual(node("global_observer_coverage__daily_host_updates_tab__out").links, ["global_observer_events_in"]);
 assert.equal(node("daily_update_request_host").command, "/opt/request-host-update-stage.sh dietpi");
 assert.equal(node("daily_update_read_result").command, "/opt/read-host-update-stage-result.sh dietpi");
 assert.equal(node("daily_update_result_poll").repeat, "300");
 assert.equal(node("daily_update_result_startup").once, true);
+assert.equal(node("daily_update_offsite_request_host").command, "/opt/request-host-update-stage.sh offsite-backup");
+assert.equal(node("daily_update_offsite_read_result").command, "/opt/read-host-update-stage-result.sh offsite-backup");
+assert.equal(node("daily_update_offsite_result_poll").repeat, "60");
+assert.equal(node("daily_update_offsite_result_startup").once, true);
 assert.deepEqual(
   flows.filter((entry) => entry.z === "daily_host_updates_tab" && entry.crontab).map((entry) => entry.id),
   ["daily_update_inventory_apply_schedule"],
@@ -81,7 +87,7 @@ assert.equal(node("daily_update_kia_schedule").type, "link in");
 assert.deepEqual(node("daily_update_kia_schedule").links, ["daily_update_inventory_kia_out"]);
 assert.equal(node("daily_update_kia_request_host").command, "/opt/request-host-kia-uvo-update-check.sh");
 assert.equal(node("daily_update_kia_request_host").addpay, "payload");
-assert.ok(node("git_backup_daily_update_out").links.includes("daily_update_after_backup_in"));
+assert.ok(node("git_backup_daily_update_out").links.includes("daily_update_offsite_git_in"));
 assert.equal(node("daily_update_kia_read_result").command, "/opt/read-host-kia-uvo-update-result.sh");
 assert.equal(node("daily_update_kia_result_poll").repeat, "60");
 assert.equal(node("daily_update_kia_parse_result").outputs, 2);
@@ -222,25 +228,54 @@ const runtimeNode = {
 };
 const prepare = new Function("msg", "node", "flow", node("daily_update_prepare_request").func);
 assert.equal(prepare(
-  { payload: { event: "git_backup_completed", status: "failed" } },
+  { payload: { event: "offsite_backup_completed", status: "failed" } },
   runtimeNode,
   flow,
 ), null);
 const prepared = prepare(
-  { payload: { event: "git_backup_completed", status: "success", finished_at: "synthetic" } },
+  { payload: { event: "offsite_backup_completed", status: "success", finished_at: "synthetic" } },
   runtimeNode,
   flow,
 );
 assert.equal(prepared.payload.event, "daily_update_requested");
-assert.equal(prepared.payload.source, "git_backup");
+assert.equal(prepared.payload.source, "offsite_backup");
 assert.equal(prepared._daily_update_test, false);
 
 const preparedTest = prepare(
-  { _daily_update_test: true, payload: { event: "git_backup_completed", status: "success", test_mode: true } },
+  { _daily_update_test: true, payload: { event: "offsite_backup_completed", status: "success", test_mode: true } },
   runtimeNode,
   flow,
 );
 assert.equal(preparedTest.payload.test_mode, true);
+
+const prepareOffsite = new Function("msg", "node", "flow", node("daily_update_offsite_prepare").func);
+const offsiteErrors = [];
+const offsiteRuntimeNode = { ...runtimeNode, error(value) { offsiteErrors.push(value); } };
+assert.equal(prepareOffsite(
+  { payload: { event: "git_backup_completed", status: "failed" } }, offsiteRuntimeNode, flow,
+), null);
+const offsiteRequest = prepareOffsite(
+  { payload: { event: "git_backup_completed", status: "success", finished_at: "synthetic" } }, offsiteRuntimeNode, flow,
+);
+assert.equal(offsiteRequest.payload.event, "offsite_backup_requested");
+assert.equal(offsiteRequest.payload.source, "git_backup");
+const parseOffsite = new Function("msg", "node", "flow", node("daily_update_offsite_parse_result").func);
+const offsiteSuccess = parseOffsite({
+  payload: "offsite-backup status=success request_id=prod-ok components=13 capture_verified=true remote_verified=true protected=true",
+}, offsiteRuntimeNode, flow);
+assert.equal(offsiteSuccess[0], null);
+assert.equal(offsiteSuccess[1].payload.event, "offsite_backup_completed");
+const offsiteFailureCount = offsiteErrors.length;
+assert.deepEqual(parseOffsite({
+  payload: "offsite-backup status=failed request_id=prod-fail components=13 capture_verified=true remote_verified=false protected=true",
+}, offsiteRuntimeNode, flow), [null, null]);
+assert.equal(offsiteErrors.length, offsiteFailureCount + 1);
+const offsiteSynthetic = parseOffsite({
+  _offsite_backup_test: true,
+  payload: "offsite-backup status=success request_id=test-ok components=13 capture_verified=true remote_verified=true protected=true",
+}, offsiteRuntimeNode, flow);
+assert.equal(offsiteSynthetic[0].payload.test_mode, true);
+assert.equal(offsiteSynthetic[1], null);
 
 const parse = new Function("msg", "node", "flow", node("daily_update_parse_result").func);
 const testFailure = parse(

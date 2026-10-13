@@ -6,21 +6,23 @@ repo_root=$(dirname "$script_dir")
 trigger_dir="${DAILY_UPDATE_TRIGGER_DIR:-$repo_root/homeassistant/.daily-update-trigger}"
 begin="# BEGIN Smart home Node-RED daily update bridge"
 end="# END Smart home Node-RED daily update bridge"
-dietpi_job="* * * * * /usr/bin/flock -n $repo_root/.dietpi-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh dietpi >> $repo_root/.dietpi-update-request.cron.log 2>&1"
-core_job="* * * * * /usr/bin/flock -n $repo_root/.home-assistant-core-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh home-assistant-core >> $repo_root/.home-assistant-core-update-request.cron.log 2>&1"
-containers_job="* * * * * /usr/bin/flock -n $repo_root/.container-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh containers >> $repo_root/.container-update-request.cron.log 2>&1"
-codex_cli_job="* * * * * /usr/bin/flock -n $repo_root/.codex-cli-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh codex-cli >> $repo_root/.codex-cli-update-request.cron.log 2>&1"
-dependency_job="* * * * * /usr/bin/flock -n $repo_root/.repository-dependency-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-repository-dependency-update-request.sh >> $repo_root/.repository-dependency-update-request.cron.log 2>&1"
+maintenance_lock="$repo_root/.daily-maintenance.lock"
+offsite_backup_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -n $repo_root/.offsite-backup-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh offsite-backup >> $repo_root/.offsite-backup-request.cron.log 2>&1"
+dietpi_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -n $repo_root/.dietpi-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh dietpi >> $repo_root/.dietpi-update-request.cron.log 2>&1"
+core_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -n $repo_root/.home-assistant-core-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh home-assistant-core >> $repo_root/.home-assistant-core-update-request.cron.log 2>&1"
+containers_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -n $repo_root/.container-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh containers >> $repo_root/.container-update-request.cron.log 2>&1"
+codex_cli_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -n $repo_root/.codex-cli-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh codex-cli >> $repo_root/.codex-cli-update-request.cron.log 2>&1"
+dependency_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -n $repo_root/.repository-dependency-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-repository-dependency-update-request.sh >> $repo_root/.repository-dependency-update-request.cron.log 2>&1"
 hacs_integration_lock="$repo_root/.hacs-integration-update-worker.lock"
 # Os três consumidores compartilham a ponte privilegiada. Uma espera limitada
 # evita que o vencedor do mesmo minuto faça os demais perderem a execução; um
 # trabalho longo continua sendo retomado pelo cron seguinte sem acumular filas.
-kia_update_job="* * * * * /usr/bin/flock -w 55 $hacs_integration_lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-kia-uvo-update-request.sh >> $repo_root/.kia-uvo-update-check.cron.log 2>&1"
-alexa_media_update_job="* * * * * /usr/bin/flock -w 55 $hacs_integration_lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-alexa-media-update-request.sh >> $repo_root/.alexa-media-update.cron.log 2>&1"
-kia_promotion_job="* * * * * /usr/bin/flock -w 55 $hacs_integration_lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 /usr/bin/node $repo_root/scripts/promote-kia-uvo-candidate.mjs >> $repo_root/.kia-uvo-promotion.cron.log 2>&1"
+kia_update_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -w 55 $hacs_integration_lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-kia-uvo-update-request.sh >> $repo_root/.kia-uvo-update-check.cron.log 2>&1"
+alexa_media_update_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -w 55 $hacs_integration_lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-alexa-media-update-request.sh >> $repo_root/.alexa-media-update.cron.log 2>&1"
+kia_promotion_job="* * * * * /usr/bin/flock -w 55 $maintenance_lock /usr/bin/flock -w 55 $hacs_integration_lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 /usr/bin/node $repo_root/scripts/promote-kia-uvo-candidate.mjs >> $repo_root/.kia-uvo-promotion.cron.log 2>&1"
 
 if [ "${1:-}" = "--dry-run" ]; then
-  printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n' "$begin" "$dietpi_job" "$core_job" "$containers_job" "$codex_cli_job" "$dependency_job" "$kia_update_job" "$alexa_media_update_job" "$kia_promotion_job" "$end"
+  printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n' "$begin" "$offsite_backup_job" "$dietpi_job" "$core_job" "$containers_job" "$codex_cli_job" "$dependency_job" "$kia_update_job" "$alexa_media_update_job" "$kia_promotion_job" "$end"
   exit 0
 fi
 [ "$#" -eq 0 ] || { echo "Usage: $0 [--dry-run]" >&2; exit 64; }
@@ -43,6 +45,7 @@ awk -v begin="$begin" -v end="$end" '
 ' "$current" > "$updated"
 {
   printf '%s\n' "$begin"
+  printf '%s\n' "$offsite_backup_job"
   printf '%s\n' "$dietpi_job"
   printf '%s\n' "$core_job"
   printf '%s\n' "$containers_job"

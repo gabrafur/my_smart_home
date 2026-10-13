@@ -147,13 +147,16 @@ function assertManifestSemantics(manifest) {
   }
 }
 
-export function loadManifest(file = defaultManifestFile) {
-  const manifest = readJson(file, "manifest (JSON-compatible YAML)");
+export function validateManifest(manifest) {
   const schema = readJson(manifestSchemaFile, "manifest schema");
   const errors = validateJsonSchema(manifest, schema);
   if (errors.length) fail(`manifest schema validation failed: ${errors[0]}`);
   assertManifestSemantics(manifest);
   return manifest;
+}
+
+export function loadManifest(file = defaultManifestFile) {
+  return validateManifest(readJson(file, "manifest (JSON-compatible YAML)"));
 }
 
 function sha256File(file) {
@@ -223,7 +226,11 @@ function requiredComponents(manifest, enabledModules) {
     .map((item) => item.logical_name));
 }
 
-export function verifyBundle(backupDir, { canonicalManifestFile = defaultManifestFile } = {}) {
+export function verifyBundle(backupDir, {
+  canonicalManifestFile = defaultManifestFile,
+  canonicalManifest = null,
+  requiredComponentNames = null,
+} = {}) {
   const root = path.resolve(backupDir);
   if (!fs.existsSync(root) || fs.lstatSync(root).isSymbolicLink() || !fs.lstatSync(root).isDirectory()) fail("backup directory is missing or unsafe");
   const metadataFile = path.join(root, "bundle.json");
@@ -242,16 +249,22 @@ export function verifyBundle(backupDir, { canonicalManifestFile = defaultManifes
   const bundleManifestFile = path.join(root, "manifest.yaml");
   assertRegularFileNoSymlink(bundleManifestFile, "bundle manifest");
   const bundleManifest = loadManifest(bundleManifestFile);
-  const canonicalManifest = loadManifest(canonicalManifestFile);
+  const expectedManifest = canonicalManifest
+    ? validateManifest(canonicalManifest)
+    : loadManifest(canonicalManifestFile);
   for (const item of bundleManifest.items) if (!knownModules.has(item.module)) fail(`manifest declares unknown module: ${item.module}`);
   if (sha256File(bundleManifestFile) !== metadata.manifest_sha256) fail("bundle manifest checksum mismatch");
-  assertCanonicalManifest(bundleManifest, canonicalManifest);
+  assertCanonicalManifest(bundleManifest, expectedManifest);
   const checksumsFile = path.join(root, metadata.checksums);
   assertRegularFileNoSymlink(checksumsFile, "checksums metadata");
   const checksums = readJson(checksumsFile, "checksums metadata");
   validateChecksumsDocument(checksums);
 
   const itemByName = new Map(bundleManifest.items.map((item) => [item.logical_name, item]));
+  const required = requiredComponentNames
+    ? new Set(requiredComponentNames)
+    : requiredComponents(bundleManifest, metadata.enabled_modules);
+  for (const name of required) if (!itemByName.has(name)) fail(`required component is outside the bundle manifest: ${name}`);
   const componentNames = new Set();
   let totalBytes = 0;
   for (const component of metadata.components) {
@@ -271,8 +284,8 @@ export function verifyBundle(backupDir, { canonicalManifestFile = defaultManifes
     if (bytes !== component.bytes) fail(`bundle byte count mismatch for ${component.logical_name}`);
     totalBytes += bytes;
   }
-  for (const required of requiredComponents(bundleManifest, metadata.enabled_modules)) {
-    if (!componentNames.has(required)) fail(`required bundle component missing: ${required}`);
+  for (const name of required) {
+    if (!componentNames.has(name)) fail(`required bundle component missing: ${name}`);
   }
 
   const expectedFiles = new Map();
@@ -301,7 +314,7 @@ export function verifyBundle(backupDir, { canonicalManifestFile = defaultManifes
     valid: true,
     schema_version: metadata.schema_version,
     components: metadata.components.length,
-    required_components: requiredComponents(bundleManifest, metadata.enabled_modules).size,
+    required_components: required.size,
     files: checksums.files.length,
     bytes: totalBytes,
     repository_commit: metadata.repository_commit,
@@ -378,8 +391,17 @@ export function backupPlan({ manifestFile = defaultManifestFile } = {}) {
   };
 }
 
-export function restorePlan(backupDir, { destination = null, canonicalManifestFile = defaultManifestFile } = {}) {
-  const verification = verifyBundle(backupDir, { canonicalManifestFile });
+export function restorePlan(backupDir, {
+  destination = null,
+  canonicalManifestFile = defaultManifestFile,
+  canonicalManifest = null,
+  requiredComponentNames = null,
+} = {}) {
+  const verification = verifyBundle(backupDir, {
+    canonicalManifestFile,
+    canonicalManifest,
+    requiredComponentNames,
+  });
   const included = new Set(verification.metadata.components.map((component) => component.logical_name));
   const localDigests = composeDigests();
   const digestMismatches = Object.entries(verification.metadata.container_image_digests)
@@ -474,13 +496,24 @@ export function applyRestore(backupDir, destination, {
   confirm,
   allowNonCanary = null,
   canonicalManifestFile = defaultManifestFile,
+  canonicalManifest = null,
+  requiredComponentNames = null,
   faultAfter = null,
   repositoryRoot = repoRoot,
 } = {}) {
   if (confirm !== APPLY_CONFIRMATION) fail("explicit restore confirmation is required");
   const targetRoot = assertSafeDestination(destination, { allowNonCanary, repositoryRoot });
-  const verification = verifyBundle(backupDir, { canonicalManifestFile });
-  const plan = restorePlan(backupDir, { destination: targetRoot, canonicalManifestFile });
+  const verification = verifyBundle(backupDir, {
+    canonicalManifestFile,
+    canonicalManifest,
+    requiredComponentNames,
+  });
+  const plan = restorePlan(backupDir, {
+    destination: targetRoot,
+    canonicalManifestFile,
+    canonicalManifest,
+    requiredComponentNames,
+  });
   if (plan.capacity.sufficient === false) fail("insufficient destination space");
   if (plan.compatibility.repository_commit === "different-review-required" || plan.compatibility.architecture === "different-review-required" || plan.compatibility.image_digest_mismatches.length) {
     fail("restore compatibility requires operator review");

@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "active": true,
+  "homeassistant": {
+    "method": "official-onedrive-integration",
+    "account_type": "personal",
+    "local_backup_source": "homeassistant/backups",
+    "coverage": [
+      "homeassistant_secrets",
+      "homeassistant_state",
+      "homeassistant_database"
+    ],
+    "requested_permissions": [
+      "Files.ReadWrite.AppFolder",
+      "offline_access",
+      "openid"
+    ],
+    "app_folder_only": true,
+    "encryption_enabled": true,
+    "delete_files_permanently": false,
+    "oauth_status": "verified-connected",
+    "runtime_verification": {
+      "checked_at": "2026-10-13T12:12:32-03:00",
+      "method": "authenticated-home-assistant-websocket-api",
+      "integration_connected": true,
+      "backup_location_available": true,
+      "selected_for_automatic_backups": false,
+      "completed_external_upload": true,
+      "encryption_enabled": true,
+      "delete_files_permanently": "unknown",
+      "limitation": "isolated-structural-restore-verified-functional-services-not-tested"
+    },
+    "last_verified_external_backup": {
+      "backup_timestamp": "2026-10-13T12:15:16-03:00",
+      "destination": "personal-onedrive-app-folder",
+      "size_bytes": 549232640,
+      "protected": true,
+      "homeassistant_included": true,
+      "database_included": true,
+      "additional_folders": [],
+      "local_backups_preserved": 2,
+      "restore_tested": true,
+      "restore_scope": "isolated-archive-registries-and-sqlite-integrity",
+      "downloaded_decrypted_size_bytes": 549222400,
+      "functional_services_tested": false
+    },
+    "retention_status": "pending-user-approval",
+    "emergency_kit_storage": "separate-from-host-onedrive-and-bundle-keys"
+  },
+  "compose_bundle": {
+    "method": "dated-private-state-v1-subset",
+    "coverage": [
+      "environment_config",
+      "private_bindings",
+      "nodered_credentials",
+      "nodered_context",
+      "mosquitto_credentials",
+      "mosquitto_persistence",
+      "zigbee_configuration",
+      "zigbee_database",
+      "zigbee_coordinator_backup",
+      "zigbee_runtime_state",
+      "matter_fabric",
+      "portainer_state",
+      "appdaemon_secrets"
+    ],
+    "snapshot_mode": "approved-per-service-stop-window",
+    "transport": "homeassistant-encrypted-backup-wrapper",
+    "destination_root": "personal-onedrive-app-folder",
+    "homeassistant_wrapper": {
+      "requested_permissions": [
+        "Files.ReadWrite.AppFolder",
+        "offline_access",
+        "openid"
+      ],
+      "protected_required": true,
+      "remote_only": true,
+      "include_database": false,
+      "schedule_unchanged": true,
+      "retention_unchanged": true,
+      "generic_upload_action_rejected": "no-supported-download-for-roundtrip-verification"
+    },
+    "rclone_fallback": {
+      "configured": false,
+      "requires_separate_authorization": true,
+      "proposed_scopes": [
+        "Files.ReadWrite",
+        "offline_access"
+      ],
+      "rejected_default_scopes": [
+        "Files.ReadWrite.All",
+        "Sites.Read.All"
+      ]
+    },
+    "sync_allowed": false,
+    "automatic_delete": false,
+    "retention_status": "pending-user-approval",
+    "retention_proposal": {
+      "status": "proposed-pending-specific-confirmation",
+      "measured_at": "2026-10-13T14:30:32-03:00",
+      "metadata_only": true,
+      "remote_backup_count": 2,
+      "protected_backup_count": 2,
+      "current_remote_backup_bytes": 975380480,
+      "quota_total_bytes": 1104880336896,
+      "quota_used_bytes": 335222197453,
+      "quota_remaining_bytes": 769658139443,
+      "maximum_daily_compose_backups": 90,
+      "maximum_age_days": 90,
+      "estimated_daily_compose_backup_bytes": 426147840,
+      "estimated_retained_compose_bytes": 38353305600,
+      "estimated_total_with_one_full_homeassistant_backup_bytes": 38902538240,
+      "estimated_percent_of_current_free_space": 5.05,
+      "deletion_enabled": false,
+      "scope": "exact-daily-offsite-compose-backups-only",
+      "preserve_latest_verified_backup": true,
+      "prune_only_after_new_verified_backup": true
+    },
+    "restic_fallback": {
+      "enabled": false,
+      "consider_only_if_bundle-size-quota-or-bandwidth-is-infeasible": true,
+      "repository_backend": "rclone",
+      "restore_requires-restic-and-rclone": true
+    },
+    "last_verified_external_backup": {
+      "backup_timestamp": "2026-10-13T13:14:48-03:00",
+      "destination": "personal-onedrive-app-folder",
+      "size_bytes": 426147840,
+      "downloaded_decrypted_size_bytes": 426137600,
+      "protected": true,
+      "homeassistant_included": true,
+      "database_included": false,
+      "components": 13,
+      "files": 218,
+      "payload_bytes": 3199322,
+      "checksums_verified": true,
+      "restore_tested": true,
+      "restore_scope": "isolated-file-restore",
+      "functional_services_tested": false,
+      "local_backups_preserved": 2,
+      "remote_backups_present": 2
+    }
+  },
+  "daily_orchestration": {
+    "status": "active",
+    "trigger": "after-successful-git-backup-before-any-update",
+    "failure_blocks_updates": true,
+    "mutual_exclusion_lock": ".daily-maintenance.lock",
+    "service_stop_required": true,
+    "approved_recurring_window": "after-daily-git-backup-at-00:30-America/Sao_Paulo",
+    "maximum_service_outage_seconds": 600,
+    "expected_service_outage_seconds": 90,
+    "remote_retention_rotation_approved": false,
+    "manual_backup_deletion_allowed": false,
+    "quota_failure_behavior": "fail-closed-block-updates-and-preserve-existing-backups",
+    "estimated_remote_growth_bytes_per_daily_cycle": 426147840,
+    "estimated_remote_growth_bytes_per_30_days": 12784435200,
+    "deployed": true,
+    "activation_evidence": {
+      "node_red_reloaded_at": "2026-10-13T14:15:49-03:00",
+      "node_red_reload_seconds": 32,
+      "node_red_health": "healthy",
+      "loaded_flow_sha256": "22249bd2407c669d157a74b5cc6b29e1867352732808802078881d57a642d989",
+      "other_services_restarted": false,
+      "startup_cycle_dispatched": false,
+      "first_scheduled_run_status": "pending"
+    }
+  },
+  "separate_approval": {
+    "coverage": [
+      "claude_bridge_auth",
+      "codex_bridge_auth",
+      "weekly_review_ssh_identity"
+    ],
+    "reason": "agent-authentication-and-ssh-identities-require-separate-export-and-restore-approval"
+  },
+  "required_confirmations": [
+    "content-and-coverage",
+    "personal-onedrive-account-and-destination-folder",
+    "rclone-microsoft-oauth-consent-and-scopes",
+    "service-stop-window-for-consistent-snapshots",
+    "retention-before-any-deletion",
+    "independent-key-storage"
+  ],
+  "completed_confirmations": [
+    "homeassistant-microsoft-oauth-and-destination-connection-verified",
+    "homeassistant-encrypted-external-backup-verified",
+    "homeassistant-isolated-structural-restore-verified",
+    "compose-encrypted-external-backup-verified",
+    "compose-isolated-file-restore-verified",
+    "daily-service-stop-window-approved"
+  ]
+}

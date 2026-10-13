@@ -157,9 +157,160 @@ antes de documentar uma invocação de uma linha. Nunca passe secrets em argv.
 
 ## Limitações
 
-- Criação de backup real não foi automatizada nesta etapa.
-- Snapshot de volume externo, parada de serviços e pós-restore residencial
-  continuam operações deliberadamente separadas e autorizadas.
+- O backup externo real e a restauração estrutural isolada foram executados;
+  serviços restaurados não foram iniciados e dispositivos não foram testados.
+- A rotina diária está implantada e ativa para a próxima execução: a janela após o backup Git
+  das 00:30 BRT foi aprovada com limite de 10 minutos, sem autorizar exclusão ou
+  rotação de retenção. A recarga controlada e explicitamente autorizada do
+  Node-RED ocorreu às 14:15 BRT em 32 segundos; nenhum outro serviço reiniciou e
+  nenhum ciclo foi disparado na inicialização. A primeira execução diária ainda
+  é futura. A decisão separada de retenção não
+  é pré-requisito para implantar o modo sem exclusão.
+- Volumes de autenticação dos agentes e identidade SSH continuam fora do bundle
+  padrão e exigem procedimento separado.
 - Compatibilidade marcada como diferente exige revisão; não há migração
   automática de banco, registry, fabric ou rede Zigbee.
-- O teste sintético prova a engine, não a consistência de um bundle privado real.
+
+## Evidência necessária para recuperação real
+
+Um backup Git ou arquivo local do Home Assistant não comprova backup privado
+fora do host. Verificar separadamente localização independente, data UTC da
+cópia concluída, criptografia autenticada, disponibilidade da chave por canal
+separado, cobertura de cada item do manifesto e recibo do último restore.
+Metadados `protected`/senha configurada não provam decriptação bem-sucedida nem
+integridade da cópia externa. Arquivo `.tar` do HA não é automaticamente bundle
+`private-state-v1` e não cobre volumes dos demais containers.
+
+Plano para ensaio real, sujeito a autorização antes de transferir dados:
+
+1. Identificar backup externo e chave sem imprimi-los; mapear lacunas contra o
+   manifesto, incluindo Recorder, credenciais/contexto Node-RED, MQTT, conjunto
+   Zigbee, Matter e volumes externos. Não produzir snapshot inconsistente dos
+   bancos em uso; qualquer parada exige janela aprovada.
+2. Aprovar destino descartável fora da produção, com espaço e permissões
+   restritas, sem rede residencial/Internet, USB, serial, Bluetooth, host network
+   ou socket Docker da produção. Isolar antes de decriptar/copiar. Não ligar
+   controladores restaurados a dispositivos reais.
+3. Verificar decriptação e integridade no destino. Se o formato for nativo HA,
+   validar por seu procedimento compatível e preparar, separadamente, a cobertura
+   dos demais itens; não renomear o arquivo para fingir compatibilidade.
+4. Para bundle compatível, executar `backup-verify`, `restore-plan` e
+   `restore-verify`; revisar commit, digests, cobertura, espaço e conflitos.
+   Executar `restore-apply` somente com autorização explícita para esse destino.
+5. Validar bancos/registries e pares de credenciais offline. Inicialização de
+   serviços, se necessária, somente no isolamento aprovado; não executar Compose
+   residencial sem remover capacidades, rede e dispositivos físicos.
+6. Registrar privadamente data, cobertura, checksums, resultado e limitações;
+   publicar somente conclusão sanitizada. Definir descarte seguro das cópias de
+   ensaio. Sucesso sintético e existência do arquivo nunca substituem esse recibo.
+
+## Preparação de backup externo no OneDrive
+
+O contrato público de preparação fica em
+`restore/offsite-backup-policy.json`. Ele está com `active: true` e classifica
+todos os 19 itens do manifesto em três superfícies. Os comandos `plan` e
+`measure` não copiam conteúdo privado; somente o ciclo agendado realiza a captura
+aprovada:
+
+- Home Assistant: integração oficial **OneDrive** para `secrets.yaml`,
+  `.storage` e Recorder. Ela pede `Files.ReadWrite.AppFolder`, `offline_access`
+  e `openid`, grava somente na pasta de aplicativo e mantém criptografia de
+  backup habilitada. A opção **Delete files permanently** deve continuar
+  desligada; a proposta de retenção permanece inativa até aprovação específica.
+- Demais serviços Compose: conjunto datado derivado dos nomes lógicos do
+  `private-state-v1`, capturado por grupos consistentes. Cada grupo com
+  `service_must_be_stopped` exige janela aprovada; a janela diária descrita
+  abaixo fornece essa autorização, com teto de 10 minutos. Depois da captura e
+  verificação, o conjunto é incluído em um
+  backup nativo protegido do Home Assistant, remoto apenas, sem banco, usando o
+  mesmo agente OneDrive e sem ampliar escopos.
+- Volumes de autenticação dos agentes e identidade SSH: exportação e restore
+  separados, com aprovação específica; não entram no bundle padrão.
+
+Os comandos abaixo são somente leitura. `measure` percorre metadados de tamanho,
+não imprime caminhos privados e marca componentes ausentes ou ilegíveis:
+
+```bash
+make offsite-backup-plan
+make offsite-backup-measure
+make offsite-backup-verify BACKUP_DIR=/caminho/do/bundle-compose
+```
+
+O verificador exige que o bundle contenha exatamente todo o subconjunto Compose
+aprovado. O manifesto embarcado inclui também o fechamento de dependências que
+será satisfeito pela superfície HA separada, e cada item conserva byte a byte o
+contrato canônico; um manifesto parcial autocriado pelo backup não pode autorizar
+a si próprio.
+
+O transporte principal não instala `rclone`, não cria outro OAuth e permanece no
+escopo `Files.ReadWrite.AppFolder` já concedido ao Home Assistant. A action
+genérica `onedrive.upload` foi rejeitada porque não oferece download suportado
+para o roundtrip. `rclone` permanece fallback não configurado e só pode ser
+considerado com autorização separada; `sync`, exclusão automática e escopos
+`Files.ReadWrite.All`/`Sites.Read.All` continuam proibidos.
+
+`restic` sobre backend rclone permanece apenas alternativa se quota, tamanho ou
+janela de upload tornarem bundles datados inviáveis. Ele reduz repetição entre
+snapshots, mas acrescenta um repositório próprio: restore passa a exigir restic,
+rclone, senha do repositório e configuração de acesso compatíveis. Não habilitar
+essa dependência enquanto bundles simples forem pequenos e verificáveis.
+
+O kit de emergência e a senha do backup do HA precisam permanecer fora do host
+e do OneDrive protegido por eles. Perder a chave impede decriptar backups
+compatíveis antigos. Nunca guardar esse material dentro do próprio bundle.
+
+### Ponto exato de ação do responsável
+
+Antes de qualquer transferência, confirmar cobertura, conta Microsoft pessoal,
+pasta dedicada do bundle, quota e janela de parada. Em 13 de outubro de 2026,
+às 12:12 BRT, uma consulta autenticada à API WebSocket do HA, sem exibir tokens,
+chaves ou identificadores da conta, confirmou uma única integração pessoal
+OneDrive carregada, sem reparo pendente, e seu agente de backup alcançável. O
+destino não estava selecionado no agendamento e estava inicialmente como **não
+protegido**. A API suportada alterou apenas `protected` para `true`; comparação
+antes/depois confirmou que agenda, seleção automática e retenção não mudaram.
+
+Às 12:15 BRT, uma cópia manual exclusiva para esse destino terminou e foi
+relistada pelo próprio agente OneDrive com 549.232.640 bytes, `protected: true`,
+configuração do Home Assistant e banco de dados incluídos. Os dois backups
+locais anteriores permaneceram presentes.
+
+Às 13:14 BRT, um segundo backup remoto protegido incorporou o bundle consistente
+dos 13 componentes Compose. O agente registrou 426.147.840 bytes, sem banco de
+dados e sem nova cópia local. O roundtrip baixou 426.137.600 bytes descriptografados,
+validou 218 arquivos/3.199.322 bytes por checksum e restaurou os 13 componentes
+somente em diretório temporário. O backup completo anterior também foi baixado:
+549.222.400 bytes descriptografados, arquivo interno seguro, registros essenciais
+válidos e `PRAGMA integrity_check = ok` no Recorder restaurado. Produção não foi
+alterada e nenhum serviço restaurado foi iniciado; portanto o recibo prova
+recuperação estrutural/de arquivos, não funcionamento residencial.
+
+O banco persistente do MQTT ficou limitado a presença, checksum e captura
+consistente com o broker parado, porque a imagem em execução não fornece
+`mosquitto_db_dump`; ele não recebeu uma validação semântica independente.
+
+Os dois backups locais e os dois remotos foram preservados; agenda, seleção
+automática e retenção não mudaram. O próximo limite seguro é guardar o kit de
+emergência fora do host/OneDrive. A árvore do Node-RED bloqueia updates até
+receber recibo completo e está implantada com `active: true` para a próxima
+execução agendada. Foi aprovada a mesma janela que começa após o
+backup Git diário das 00:30 BRT, com interrupção esperada de aproximadamente 90 s,
+limite de 10 minutos e prioridade absoluta para religar os serviços em caso de
+falha. Nenhuma exclusão foi autorizada: cada ciclo acrescenta aproximadamente
+426.147.840 bytes (cerca de 12,8 GB a cada 30 dias), e falta de quota deve falhar
+fechada, preservar as cópias existentes e bloquear os updates seguintes. A
+recarga controlada do Node-RED, concluída em 32 segundos às 14:15 BRT, ativou
+a configuração sem reiniciar outro serviço nem disparar o ciclo; a
+primeira execução diária ainda é futura. A definição futura de retenção não
+bloqueia essa operação sem exclusão.
+
+A revisão somente de metadados das 14:30 BRT encontrou 769.658.139.443 bytes
+livres de 1.104.880.336.896 bytes, com dois backups protegidos ocupando
+975.380.480 bytes. A proposta é manter no máximo 90 backups Compose diários ou
+90 dias, o que ocorrer primeiro, limitada exclusivamente à série diária Compose.
+Com 426.147.840 bytes medidos por ciclo, 90 cópias ocupam 38.353.305.600 bytes;
+somadas a um backup completo de referência do Home Assistant, a estimativa é
+38.902.538.240 bytes, cerca de 5,05% do espaço livre atual. A remoção só poderia
+ocorrer depois de uma nova cópia totalmente verificada e sempre preservaria a
+última cópia verificada. Isso é apenas uma proposta: exclusão continua
+desabilitada até aprovação explícita separada.
