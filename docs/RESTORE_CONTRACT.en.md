@@ -156,12 +156,12 @@ documenting a one-line invocation. Never put secrets in argv.
 - The real external backup and isolated structural restore were completed;
   restored services were not started and devices were not tested.
 - The daily routine is deployed and active for the next run: the window after the 00:30 BRT
-  Git backup is approved with a ten-minute limit, without authorizing deletion
-  or retention rotation. The explicitly authorized controlled Node-RED reload
+  Git backup is approved with a ten-minute limit. Retention for the Compose
+  series was subsequently approved, capped at 90 copies/90 days and only after
+  a new verified external copy. The controlled Node-RED reload
   completed at 14:15 BRT in 32 seconds; no other service restarted and no cycle
   was dispatched at startup. The first daily execution is still in the future.
-  The separate retention decision is not a
-  prerequisite for deployment in no-deletion mode.
+  The integrated retention path therefore remains unobserved.
 - Agent authentication volumes and the SSH identity remain outside the default
   bundle and require a separate procedure.
 - A compatibility difference requires review; databases, registries, Matter
@@ -193,7 +193,7 @@ copy their content; only the scheduled cycle performs the approved capture:
   `.storage`, and Recorder. It requests `Files.ReadWrite.AppFolder`,
   `offline_access`, and `openid`, writes only to its application folder, and
   keeps backup encryption enabled. **Delete files permanently** stays disabled;
-  the retention proposal remains disabled pending specific approval.
+  full Home Assistant backups are outside Compose retention.
 - Other Compose services use a dated component set derived from the logical
   names in `private-state-v1`. Capture occurs in consistency groups. Every group
   with `service_must_be_stopped` requires an approved window; the daily window
@@ -211,6 +211,7 @@ paths, and reports missing or unreadable components:
 ```bash
 make offsite-backup-plan
 make offsite-backup-measure
+node scripts/offsite-backup.mjs retention-dry-run
 make offsite-backup-verify BACKUP_DIR=/path/to/compose-bundle
 ```
 
@@ -223,8 +224,9 @@ The primary transport installs no rclone, creates no second OAuth grant, and
 stays within the existing Home Assistant `Files.ReadWrite.AppFolder` scope. The
 generic `onedrive.upload` action was rejected because it offers no supported
 download for roundtrip verification. Rclone remains an unconfigured fallback
-that needs separate approval; `sync`, automatic deletion, and
-`Files.ReadWrite.All`/`Sites.Read.All` remain prohibited.
+that needs separate approval; `sync`, generic deletion, and
+`Files.ReadWrite.All`/`Sites.Read.All` remain prohibited. The strict Compose
+retention described below is the only permitted automatic removal.
 
 Restic through the rclone backend remains a fallback only when quota, size, or
 upload windows make dated bundles impractical. It reduces repeated data but
@@ -266,27 +268,37 @@ The persistent MQTT database was limited to presence, checksum, and a consistent
 capture while the broker was stopped because the running image does not provide
 `mosquitto_db_dump`; it did not receive an independent semantic validation.
 
-Both local backups and both remote backups remain present; schedule, automatic
-selection, and retention did not change. The next safe boundary is keeping the
+Both local backups and both remote drill backups remain present; schedule and
+automatic selection did not change. The next safe boundary is keeping the
 emergency kit away from the host/OneDrive. The Node-RED tree blocks updates until
 a complete receipt arrives and is deployed with `active: true` for the next
 scheduled run. The existing window after the daily
 00:30 BRT Git backup is approved, with an expected interruption of about 90
 seconds, a hard ten-minute limit, and immediate service restoration taking
-priority after any failure. No deletion is authorized: each cycle adds about
-426,147,840 bytes (roughly 12.8 GB per 30 days), and quota exhaustion must fail
-closed, preserve existing copies, and block following updates. The controlled
+priority after any failure. Quota exhaustion must fail closed, preserve
+existing copies, and block following updates. The controlled
 Node-RED reload completed at 14:15 BRT in 32 seconds and activated the
 configuration without restarting another service or dispatching the cycle; its
-first daily execution is still in the future. The future retention definition
-does not block no-deletion operation.
+first daily execution is still in the future.
 
 The metadata-only quota review at 14:30 BRT found 769,658,139,443 bytes free out
-of 1,104,880,336,896 bytes, with two protected backups using 975,380,480 bytes.
-The proposed policy is at most 90 daily Compose backups or 90 days, whichever
+of 1,104,880,336,896 bytes, with two protected backups using 975,380,480 bytes
+and a `deleted` quota of zero. At 14:43 BRT the approved policy became at most
+90 daily Compose backups or 90 days, whichever
 comes first, scoped only to the exact daily Compose series. At the measured
 426,147,840 bytes per cycle, 90 copies use 38,353,305,600 bytes; together with
 one full Home Assistant reference backup, the estimate is 38,902,538,240 bytes,
-about 5.05% of currently free space. Pruning would occur only after a new backup
-is fully verified and would always preserve the latest verified copy. This is a
-proposal only: deletion remains disabled until a separate explicit approval.
+about 5.05% of currently free space. That active total excludes the recycle bin:
+30 days of removed copies can temporarily add 12,784,435,200 bytes, taking the
+combined estimate to 51,686,973,440 bytes, or 6.72% of measured free space.
+
+The routine registers only IDs it creates after verifying the name, timestamp,
+structure, sole OneDrive agent, protection, and size. Pruning requires that
+private registry and a newly fully verified external copy; a missing or
+mismatched registry fails closed. Earlier HA backups, merely similar names, and
+all unrelated files are never adopted. The newest verified copy is always
+preserved. The HA API moves eligible candidates only to the OneDrive recycle
+bin; permanent deletion and emptying the recycle bin are prohibited, and the
+runtime option is checked before every cycle. The activation dry-run found zero
+eligible candidates and performed zero removals; no copy was deleted during
+activation.

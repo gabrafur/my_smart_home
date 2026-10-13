@@ -160,12 +160,12 @@ antes de documentar uma invocação de uma linha. Nunca passe secrets em argv.
 - O backup externo real e a restauração estrutural isolada foram executados;
   serviços restaurados não foram iniciados e dispositivos não foram testados.
 - A rotina diária está implantada e ativa para a próxima execução: a janela após o backup Git
-  das 00:30 BRT foi aprovada com limite de 10 minutos, sem autorizar exclusão ou
-  rotação de retenção. A recarga controlada e explicitamente autorizada do
+  das 00:30 BRT foi aprovada com limite de 10 minutos. A retenção da série
+  Compose foi posteriormente aprovada, limitada a 90 cópias/90 dias e somente
+  depois de uma nova cópia externa verificada. A recarga controlada do
   Node-RED ocorreu às 14:15 BRT em 32 segundos; nenhum outro serviço reiniciou e
   nenhum ciclo foi disparado na inicialização. A primeira execução diária ainda
-  é futura. A decisão separada de retenção não
-  é pré-requisito para implantar o modo sem exclusão.
+  é futura; por isso, a execução integrada da retenção ainda não foi observada.
 - Volumes de autenticação dos agentes e identidade SSH continuam fora do bundle
   padrão e exigem procedimento separado.
 - Compatibilidade marcada como diferente exige revisão; não há migração
@@ -216,7 +216,7 @@ aprovada:
   `.storage` e Recorder. Ela pede `Files.ReadWrite.AppFolder`, `offline_access`
   e `openid`, grava somente na pasta de aplicativo e mantém criptografia de
   backup habilitada. A opção **Delete files permanently** deve continuar
-  desligada; a proposta de retenção permanece inativa até aprovação específica.
+  desligada. Backups completos do HA não pertencem à retenção Compose.
 - Demais serviços Compose: conjunto datado derivado dos nomes lógicos do
   `private-state-v1`, capturado por grupos consistentes. Cada grupo com
   `service_must_be_stopped` exige janela aprovada; a janela diária descrita
@@ -233,6 +233,7 @@ não imprime caminhos privados e marca componentes ausentes ou ilegíveis:
 ```bash
 make offsite-backup-plan
 make offsite-backup-measure
+node scripts/offsite-backup.mjs retention-dry-run
 make offsite-backup-verify BACKUP_DIR=/caminho/do/bundle-compose
 ```
 
@@ -246,8 +247,9 @@ O transporte principal não instala `rclone`, não cria outro OAuth e permanece 
 escopo `Files.ReadWrite.AppFolder` já concedido ao Home Assistant. A action
 genérica `onedrive.upload` foi rejeitada porque não oferece download suportado
 para o roundtrip. `rclone` permanece fallback não configurado e só pode ser
-considerado com autorização separada; `sync`, exclusão automática e escopos
-`Files.ReadWrite.All`/`Sites.Read.All` continuam proibidos.
+considerado com autorização separada; `sync`, exclusão genérica e escopos
+`Files.ReadWrite.All`/`Sites.Read.All` continuam proibidos. A única remoção
+automática permitida é a retenção estrita da série Compose descrita abaixo.
 
 `restic` sobre backend rclone permanece apenas alternativa se quota, tamanho ou
 janela de upload tornarem bundles datados inviáveis. Ele reduz repetição entre
@@ -289,28 +291,38 @@ O banco persistente do MQTT ficou limitado a presença, checksum e captura
 consistente com o broker parado, porque a imagem em execução não fornece
 `mosquitto_db_dump`; ele não recebeu uma validação semântica independente.
 
-Os dois backups locais e os dois remotos foram preservados; agenda, seleção
-automática e retenção não mudaram. O próximo limite seguro é guardar o kit de
+Os dois backups locais e os dois remotos do ensaio foram preservados; agenda e seleção
+automática não mudaram. O próximo limite seguro é guardar o kit de
 emergência fora do host/OneDrive. A árvore do Node-RED bloqueia updates até
 receber recibo completo e está implantada com `active: true` para a próxima
 execução agendada. Foi aprovada a mesma janela que começa após o
 backup Git diário das 00:30 BRT, com interrupção esperada de aproximadamente 90 s,
 limite de 10 minutos e prioridade absoluta para religar os serviços em caso de
-falha. Nenhuma exclusão foi autorizada: cada ciclo acrescenta aproximadamente
-426.147.840 bytes (cerca de 12,8 GB a cada 30 dias), e falta de quota deve falhar
-fechada, preservar as cópias existentes e bloquear os updates seguintes. A
+falha. Falta de quota deve falhar fechada, preservar as cópias existentes e
+bloquear os updates seguintes. A
 recarga controlada do Node-RED, concluída em 32 segundos às 14:15 BRT, ativou
 a configuração sem reiniciar outro serviço nem disparar o ciclo; a
-primeira execução diária ainda é futura. A definição futura de retenção não
-bloqueia essa operação sem exclusão.
+primeira execução diária ainda é futura.
 
 A revisão somente de metadados das 14:30 BRT encontrou 769.658.139.443 bytes
 livres de 1.104.880.336.896 bytes, com dois backups protegidos ocupando
-975.380.480 bytes. A proposta é manter no máximo 90 backups Compose diários ou
+975.380.480 bytes e quota `deleted` igual a zero. Às 14:43 BRT foi aprovada a
+política de manter no máximo 90 backups Compose diários ou
 90 dias, o que ocorrer primeiro, limitada exclusivamente à série diária Compose.
 Com 426.147.840 bytes medidos por ciclo, 90 cópias ocupam 38.353.305.600 bytes;
 somadas a um backup completo de referência do Home Assistant, a estimativa é
-38.902.538.240 bytes, cerca de 5,05% do espaço livre atual. A remoção só poderia
-ocorrer depois de uma nova cópia totalmente verificada e sempre preservaria a
-última cópia verificada. Isso é apenas uma proposta: exclusão continua
-desabilitada até aprovação explícita separada.
+38.902.538.240 bytes, cerca de 5,05% do espaço livre atual. Esse total ativo não
+inclui a lixeira: até 30 dias de remoções podem acrescentar temporariamente
+12.784.435.200 bytes, levando o cenário combinado a 51.686.973.440 bytes, ou
+6,72% do espaço livre medido.
+
+A rotina só registra IDs criados por ela após verificar nome, data, estrutura,
+agente único OneDrive, proteção e tamanho. A poda exige esse registro privado e
+uma nova cópia externa totalmente verificada; se o registro faltar ou divergir,
+falha fechada. Backups anteriores do HA, nomes apenas parecidos e quaisquer
+outros arquivos nunca são adotados. A cópia verificada mais nova é sempre
+preservada. A API do HA move somente candidatos elegíveis para a lixeira do
+OneDrive; exclusão permanente e esvaziamento da lixeira são proibidos e a opção
+de runtime é conferida antes de cada ciclo. A simulação de ativação encontrou
+zero candidatos e executou zero remoções; nenhuma cópia foi apagada nessa
+ativação.

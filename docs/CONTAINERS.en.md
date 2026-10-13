@@ -266,13 +266,16 @@ and service restoration taking priority after a failure. The configuration is
 confused with the completed structural drill. An explicitly authorized
 controlled Node-RED reload completed at 14:15 BRT in 32 seconds without
 restarting another service or dispatching a backup or update at startup.
-Deletion and retention
-rotation are not authorized; each copy adds about 426 MB and, when space is
-unavailable, the stage fails while preserving existing copies and blocking
-updates. The disabled proposal is a maximum of 90 daily copies or 90 days,
-estimated at 38.4 GB for the Compose series (5.05% of currently free OneDrive
-space); it requires separate approval before any pruning. `.daily-maintenance.lock`
-prevents backup/update concurrency.
+The approved retention applies only to the Compose series created by this
+routine and caps it at 90 copies or 90 days. Pruning runs only after a newly
+verified external copy, preserves the newest one, and requires an exact match
+against the private ID registry; earlier HA backups and other files are never
+adopted. The active series is estimated at 38.4 GB, excluding the recycle bin.
+Removal uses only the OneDrive recycle bin, never permanent deletion or bin
+emptying; 30 days can temporarily add about 12.8 GB. At activation, both the
+`deleted` quota and dry-run were zero, and no copy was removed. When space is
+unavailable or any check differs, the stage fails while preserving copies and
+blocking updates. `.daily-maintenance.lock` prevents backup/update concurrency.
 
 The Codex CLI stage runs after the containers and before the repository npm
 dependencies. Its host bridge resolves the published `@openai/codex` version,

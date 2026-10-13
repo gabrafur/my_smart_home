@@ -6,11 +6,15 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  applyComposeRetention,
   buildOffsitePlan,
   captureOffsiteBundle,
+  COMPOSE_BACKUP_NAME_PREFIX,
+  COMPOSE_RETENTION_SERIES,
   composeBundleManifest,
   dailyCycleReadiness,
   defaultPolicyFile,
+  planComposeRetention,
   restoreOffsiteBundle,
   verifyOffsiteBundle,
 } from "./offsite-backup.mjs";
@@ -51,10 +55,11 @@ test("off-site plan classifies every private component and is explicitly active"
       "compose-encrypted-external-backup-verified",
       "compose-isolated-file-restore-verified",
       "daily-service-stop-window-approved",
+      "compose-retention-recycle-bin-approved",
     ]);
 });
 
-test("daily cycle is ready only after the approved no-deletion deployment", () => {
+test("daily cycle is ready after the approved deployment and scoped retention", () => {
   const readiness = dailyCycleReadiness();
   assert.deepEqual(readiness, {
     ready: true,
@@ -105,24 +110,34 @@ test("Compose bundle reuses the protected Home Assistant OneDrive surface", () =
   assert.equal(plan.surfaces.compose_bundle.homeassistant_wrapper.protected_required, true);
   assert.equal(plan.surfaces.compose_bundle.homeassistant_wrapper.remote_only, true);
   assert.equal(plan.surfaces.compose_bundle.rclone_fallback.configured, false);
-  assert.deepEqual(plan.surfaces.compose_bundle.retention_proposal, {
-    status: "proposed-pending-specific-confirmation",
+  assert.deepEqual(plan.surfaces.compose_bundle.retention_policy, {
+    status: "approved-active",
+    approved_at: "2026-10-13T14:43:35-03:00",
     measured_at: "2026-10-13T14:30:32-03:00",
-    metadata_only: true,
+    quota_measurement_metadata_only: true,
     remote_backup_count: 2,
     protected_backup_count: 2,
     current_remote_backup_bytes: 975380480,
     quota_total_bytes: 1104880336896,
     quota_used_bytes: 335222197453,
     quota_remaining_bytes: 769658139443,
+    quota_deleted_bytes_at_measurement: 0,
     maximum_daily_compose_backups: 90,
     maximum_age_days: 90,
     estimated_daily_compose_backup_bytes: 426147840,
     estimated_retained_compose_bytes: 38353305600,
     estimated_total_with_one_full_homeassistant_backup_bytes: 38902538240,
+    estimated_recycle_bin_bytes_for_30_days: 12784435200,
+    estimated_total_with_recycle_bin_and_one_full_backup_bytes: 51686973440,
     estimated_percent_of_current_free_space: 5.05,
-    deletion_enabled: false,
+    estimated_percent_with_recycle_bin_of_current_free_space: 6.72,
+    deletion_enabled: true,
+    delete_permanently: false,
+    move_to_onedrive_recycle_bin: true,
+    empty_recycle_bin: false,
     scope: "exact-daily-offsite-compose-backups-only",
+    series: "daily-offsite-compose-v1",
+    strict_registry_required: true,
     preserve_latest_verified_backup: true,
     prune_only_after_new_verified_backup: true,
   });
@@ -148,10 +163,14 @@ test("Compose bundle reuses the protected Home Assistant OneDrive surface", () =
   });
 });
 
-test("Compose transport never deletes and exposes every stop window", () => {
+test("Compose retention is recycle-bin-only and exposes every stop window", () => {
   const plan = buildOffsitePlan({ envPath: "" });
   assert.equal(plan.surfaces.compose_bundle.sync_allowed, false);
-  assert.equal(plan.surfaces.compose_bundle.automatic_delete, false);
+  assert.equal(plan.surfaces.compose_bundle.automatic_delete, true);
+  assert.equal(plan.surfaces.compose_bundle.retention_status, "active-compose-only");
+  assert.equal(plan.surfaces.compose_bundle.retention_policy.delete_permanently, false);
+  assert.equal(plan.surfaces.compose_bundle.retention_policy.empty_recycle_bin, false);
+  assert.equal(plan.surfaces.compose_bundle.retention_policy.strict_registry_required, true);
   const groups = plan.surfaces.compose_bundle.capture_groups;
   assert(groups.some((group) => group.services_to_stop.includes("zigbee2mqtt")));
   assert(groups.some((group) => group.services_to_stop.includes("mosquitto")));
@@ -225,8 +244,11 @@ test("policy rejects deactivation, sync and permanent deletion", () => {
   const variants = [
     (candidate) => { candidate.active = false; },
     (candidate) => { candidate.compose_bundle.sync_allowed = true; },
-    (candidate) => { candidate.compose_bundle.automatic_delete = true; },
+    (candidate) => { candidate.compose_bundle.automatic_delete = false; },
     (candidate) => { candidate.homeassistant.delete_files_permanently = true; },
+    (candidate) => { candidate.compose_bundle.retention_policy.delete_permanently = true; },
+    (candidate) => { candidate.compose_bundle.retention_policy.empty_recycle_bin = true; },
+    (candidate) => { candidate.compose_bundle.retention_policy.strict_registry_required = false; },
   ];
   for (const mutate of variants) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "offsite-policy-test-"));
@@ -235,11 +257,164 @@ test("policy rejects deactivation, sync and permanent deletion", () => {
       mutate(candidate);
       const policyFile = path.join(root, "policy.json");
       fs.writeFileSync(policyFile, `${JSON.stringify(candidate)}\n`);
-      assert.throws(() => buildOffsitePlan({ policyFile, envPath: "" }), /explicitly activated|fail-closed|protected Home Assistant wrapper/);
+      assert.throws(() => buildOffsitePlan({ policyFile, envPath: "" }), /explicitly activated|fail-closed|protected Home Assistant wrapper|strict, recycle-bin-only/);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
   }
+});
+
+function retentionFixture(index, hoursAgo, overrides = {}) {
+  const now = new Date("2026-10-13T18:00:00.000Z");
+  const date = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000).toISOString();
+  const name = `${COMPOSE_BACKUP_NAME_PREFIX}${date.slice(0, 10)}`;
+  const backupId = `compose-${String(index).padStart(3, "0")}`;
+  const backup = {
+    backup_id: backupId,
+    name,
+    date,
+    homeassistant_included: true,
+    database_included: false,
+    addons: [],
+    folders: [],
+    agents: { "onedrive.test": { protected: true, size: 426147840 } },
+    failed_agent_ids: [],
+    failed_folders: [],
+    failed_addons: [],
+    ...overrides,
+  };
+  const entry = {
+    series: COMPOSE_RETENTION_SERIES,
+    backup_id: backupId,
+    name,
+    backup_timestamp: date,
+    size_bytes: 426147840,
+    protected: true,
+  };
+  return { backup, entry };
+}
+
+function retentionRegistry(fixtures) {
+  return {
+    schema_version: 1,
+    series: COMPOSE_RETENTION_SERIES,
+    entries: fixtures.map(({ entry }) => entry),
+  };
+}
+
+test("retention keeps the newest 90 recent registered Compose backups", () => {
+  const fixtures = Array.from({ length: 95 }, (_, index) => retentionFixture(index, index * 12));
+  const plan = planComposeRetention({
+    backups: fixtures.map(({ backup }) => backup),
+    agentId: "onedrive.test",
+    registry: retentionRegistry(fixtures),
+    now: new Date("2026-10-13T18:00:00.000Z"),
+    newVerifiedBackupId: fixtures[0].backup.backup_id,
+    requireNewVerifiedBackup: true,
+  });
+  assert.equal(plan.matched, 95);
+  assert.equal(plan.eligible_backup_ids.length, 5);
+  assert.deepEqual(plan.eligible_backup_ids, fixtures.slice(90).map(({ backup }) => backup.backup_id));
+  assert.equal(plan.retained_after_prune, 90);
+  assert(!plan.eligible_backup_ids.includes(fixtures[0].backup.backup_id));
+});
+
+test("retention does not remove recent registered backups below the cap", () => {
+  const fixtures = Array.from({ length: 12 }, (_, index) => retentionFixture(index, index * 24));
+  const plan = planComposeRetention({
+    backups: fixtures.map(({ backup }) => backup),
+    agentId: "onedrive.test",
+    registry: retentionRegistry(fixtures),
+    now: new Date("2026-10-13T18:00:00.000Z"),
+  });
+  assert.deepEqual(plan.eligible_backup_ids, []);
+  assert.equal(plan.retained_after_prune, 12);
+});
+
+test("retention ages out only registered Compose backups and preserves the newest", () => {
+  const fixtures = [retentionFixture(0, 0), retentionFixture(1, 89 * 24), retentionFixture(2, 91 * 24)];
+  const plan = planComposeRetention({
+    backups: fixtures.map(({ backup }) => backup),
+    agentId: "onedrive.test",
+    registry: retentionRegistry(fixtures),
+    now: new Date("2026-10-13T18:00:00.000Z"),
+    newVerifiedBackupId: fixtures[0].backup.backup_id,
+    requireNewVerifiedBackup: true,
+  });
+  assert.deepEqual(plan.eligible_backup_ids, [fixtures[2].backup.backup_id]);
+  assert.equal(plan.preserved_latest_verified, true);
+});
+
+test("retention excludes prior HA, unregistered, mismatched, and unprotected backups", () => {
+  const valid = retentionFixture(0, 0);
+  const wrongAgent = retentionFixture(1, 24, { agents: { "onedrive.other": { protected: true, size: 426147840 } } });
+  const unprotected = retentionFixture(2, 48, { agents: { "onedrive.test": { protected: false, size: 426147840 } } });
+  const fullHomeAssistant = retentionFixture(3, 72, { database_included: true });
+  const wrongName = retentionFixture(4, 96, { name: "Daily off-site Compose state 2026-10-09" });
+  const unregistered = retentionFixture(5, 120);
+  const registered = [valid, wrongAgent, unprotected, fullHomeAssistant, wrongName];
+  const plan = planComposeRetention({
+    backups: [...registered, unregistered].map(({ backup }) => backup),
+    agentId: "onedrive.test",
+    registry: retentionRegistry(registered),
+    now: new Date("2026-10-13T18:00:00.000Z"),
+  });
+  assert.equal(plan.registered, 5);
+  assert.equal(plan.matched, 1);
+  assert.equal(plan.excluded, 5);
+  assert.deepEqual(plan.eligible_backup_ids, []);
+});
+
+test("retention refuses pruning without the newly verified registry entry", () => {
+  const fixture = retentionFixture(0, 0);
+  assert.throws(() => planComposeRetention({
+    backups: [fixture.backup],
+    agentId: "onedrive.test",
+    registry: retentionRegistry([fixture]),
+    now: new Date("2026-10-13T18:00:00.000Z"),
+    newVerifiedBackupId: "not-registered",
+    requireNewVerifiedBackup: true,
+  }), /newly verified Compose backup/);
+});
+
+test("retention moves only eligible registered IDs and updates its private registry", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "offsite-retention-test-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const stateFile = path.join(root, "state/registry.json");
+  const fixtures = Array.from({ length: 92 }, (_, index) => retentionFixture(index, index * 12));
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+  fs.writeFileSync(stateFile, `${JSON.stringify(retentionRegistry(fixtures.slice(1)), null, 2)}\n`, { mode: 0o600 });
+  let liveBackups = fixtures.map(({ backup }) => backup);
+  const deleted = [];
+  const request = async (_token, message) => {
+    if (message.type === "backup/delete") {
+      deleted.push(message.backup_id);
+      liveBackups = liveBackups.filter((backup) => backup.backup_id !== message.backup_id);
+      return { agent_errors: {} };
+    }
+    assert.equal(message.type, "backup/info");
+    return { backups: liveBackups, agent_errors: {} };
+  };
+  const result = await applyComposeRetention({
+    token: undefined,
+    agentId: "onedrive.test",
+    backups: liveBackups,
+    newVerifiedBackup: fixtures[0].backup,
+    policy: { compose_bundle: { retention_policy: {
+      maximum_daily_compose_backups: 90,
+      maximum_age_days: 90,
+    } } },
+    stateFile,
+    now: new Date("2026-10-13T18:00:00.000Z"),
+    request,
+  });
+  assert.deepEqual(result, { eligible: 2, pruned: 2 });
+  assert.deepEqual(deleted, fixtures.slice(90).map(({ backup }) => backup.backup_id));
+  const stored = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  assert.equal(stored.entries.length, 90);
+  assert.equal(fs.statSync(stateFile).mode & 0o777, 0o600);
+  assert(stored.entries.some((entry) => entry.backup_id === fixtures[0].backup.backup_id));
+  assert(stored.entries.every((entry) => !deleted.includes(entry.backup_id)));
 });
 
 test("dated Compose bundle is verified against the canonical manifest subset", (t) => {

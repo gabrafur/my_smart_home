@@ -44,7 +44,7 @@
       "downloaded_decrypted_size_bytes": 549222400,
       "functional_services_tested": false
     },
-    "retention_status": "pending-user-approval",
+    "retention_status": "not-covered-compose-only",
     "emergency_kit_storage": "separate-from-host-onedrive-and-bundle-keys"
   },
   "compose_bundle": {
@@ -93,26 +93,36 @@
       ]
     },
     "sync_allowed": false,
-    "automatic_delete": false,
-    "retention_status": "pending-user-approval",
-    "retention_proposal": {
-      "status": "proposed-pending-specific-confirmation",
+    "automatic_delete": true,
+    "retention_status": "active-compose-only",
+    "retention_policy": {
+      "status": "approved-active",
+      "approved_at": "2026-10-13T14:43:35-03:00",
       "measured_at": "2026-10-13T14:30:32-03:00",
-      "metadata_only": true,
+      "quota_measurement_metadata_only": true,
       "remote_backup_count": 2,
       "protected_backup_count": 2,
       "current_remote_backup_bytes": 975380480,
       "quota_total_bytes": 1104880336896,
       "quota_used_bytes": 335222197453,
       "quota_remaining_bytes": 769658139443,
+      "quota_deleted_bytes_at_measurement": 0,
       "maximum_daily_compose_backups": 90,
       "maximum_age_days": 90,
       "estimated_daily_compose_backup_bytes": 426147840,
       "estimated_retained_compose_bytes": 38353305600,
       "estimated_total_with_one_full_homeassistant_backup_bytes": 38902538240,
+      "estimated_recycle_bin_bytes_for_30_days": 12784435200,
+      "estimated_total_with_recycle_bin_and_one_full_backup_bytes": 51686973440,
       "estimated_percent_of_current_free_space": 5.05,
-      "deletion_enabled": false,
+      "estimated_percent_with_recycle_bin_of_current_free_space": 6.72,
+      "deletion_enabled": true,
+      "delete_permanently": false,
+      "move_to_onedrive_recycle_bin": true,
+      "empty_recycle_bin": false,
       "scope": "exact-daily-offsite-compose-backups-only",
+      "series": "daily-offsite-compose-v1",
+      "strict_registry_required": true,
       "preserve_latest_verified_backup": true,
       "prune_only_after_new_verified_backup": true
     },
@@ -150,7 +160,7 @@
     "approved_recurring_window": "after-daily-git-backup-at-00:30-America/Sao_Paulo",
     "maximum_service_outage_seconds": 600,
     "expected_service_outage_seconds": 90,
-    "remote_retention_rotation_approved": false,
+    "remote_retention_rotation_approved": true,
     "manual_backup_deletion_allowed": false,
     "quota_failure_behavior": "fail-closed-block-updates-and-preserve-existing-backups",
     "estimated_remote_growth_bytes_per_daily_cycle": 426147840,
@@ -188,6 +198,7 @@
     "homeassistant-isolated-structural-restore-verified",
     "compose-encrypted-external-backup-verified",
     "compose-isolated-file-restore-verified",
-    "daily-service-stop-window-approved"
+    "daily-service-stop-window-approved",
+    "compose-retention-recycle-bin-approved"
   ]
 }

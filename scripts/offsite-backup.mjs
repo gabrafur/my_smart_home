@@ -15,6 +15,10 @@ export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 export const defaultPolicyFile = path.join(repoRoot, "restore/offsite-backup-policy.json");
 const require = createRequire(import.meta.url);
 const WebSocket = require("../nodered/node_modules/ws");
+export const COMPOSE_RETENTION_SERIES = "daily-offsite-compose-v1";
+export const COMPOSE_BACKUP_NAME_PREFIX = "Daily off-site Compose v1 ";
+const retentionStateFile = path.join(repoRoot, ".local-state", "offsite-backup-retention.json");
+const composeBackupNamePattern = /^Daily off-site Compose v1 \d{4}-\d{2}-\d{2}$/;
 
 function fail(message) {
   throw new Error(message);
@@ -53,6 +57,9 @@ function readHomeAssistantBackupCredentials() {
     "c=json.load(open('/config/.storage/backup'))['data']['config']",
     "agents=[a for a,v in c['agents'].items() if a.startswith('onedrive.') and v.get('protected') is True]",
     "assert len(agents)==1",
+    "entries=json.load(open('/config/.storage/core.config_entries'))['data']['entries']",
+    "matching=[e for e in entries if e.get('domain')=='onedrive' and e.get('disabled_by') is None]",
+    "assert len(matching)==1 and matching[0].get('options',{}).get('delete_permanently',False) is False",
     "p=c['create_backup'].get('password')",
     "assert isinstance(p,str) and p",
     "print(json.dumps({'agent_id':agents[0],'password':p}))",
@@ -243,6 +250,220 @@ function readPolicy(file = defaultPolicyFile) {
   return policy;
 }
 
+function emptyRetentionState() {
+  return { schema_version: 1, series: COMPOSE_RETENTION_SERIES, entries: [] };
+}
+
+function validateRetentionState(state) {
+  if (!state || state.schema_version !== 1 || state.series !== COMPOSE_RETENTION_SERIES
+      || !Array.isArray(state.entries)) fail("off-site retention registry is invalid");
+  const ids = new Set();
+  for (const entry of state.entries) {
+    if (entry?.series !== COMPOSE_RETENTION_SERIES
+        || typeof entry.backup_id !== "string" || !entry.backup_id
+        || typeof entry.name !== "string" || !composeBackupNamePattern.test(entry.name)
+        || typeof entry.backup_timestamp !== "string"
+        || !Number.isSafeInteger(entry.size_bytes) || entry.size_bytes <= 0
+        || entry.protected !== true || ids.has(entry.backup_id)) {
+      fail("off-site retention registry entry is invalid");
+    }
+    ids.add(entry.backup_id);
+  }
+  return state;
+}
+
+function readRetentionState(file = retentionStateFile) {
+  if (!fs.existsSync(file)) return emptyRetentionState();
+  const stat = fs.lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o077) !== 0) {
+    fail("off-site retention registry path is unsafe");
+  }
+  try {
+    return validateRetentionState(JSON.parse(fs.readFileSync(file, "utf8")));
+  } catch (error) {
+    if (error?.message?.startsWith("off-site retention")) throw error;
+    fail("off-site retention registry is unreadable");
+  }
+}
+
+function writeRetentionState(state, file = retentionStateFile) {
+  validateRetentionState(state);
+  const directory = path.dirname(file);
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const directoryStat = fs.lstatSync(directory);
+  if (!directoryStat.isDirectory() || directoryStat.isSymbolicLink()) {
+    fail("off-site retention registry directory is unsafe");
+  }
+  const temporary = `${file}.${process.pid}.${crypto.randomBytes(8).toString("hex")}.tmp`;
+  try {
+    fs.writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+    fs.chmodSync(temporary, 0o600);
+    fs.renameSync(temporary, file);
+  } catch (error) {
+    fs.rmSync(temporary, { force: true });
+    throw error;
+  }
+}
+
+function backupMatchesRegistryEntry(backup, entry, agentId) {
+  const agents = backup?.agents && typeof backup.agents === "object"
+    ? Object.keys(backup.agents) : [];
+  const agent = backup?.agents?.[agentId];
+  return backup?.backup_id === entry.backup_id
+    && backup.name === entry.name
+    && composeBackupNamePattern.test(backup.name)
+    && backup.date === entry.backup_timestamp
+    && backup.homeassistant_included === true
+    && backup.database_included === false
+    && Array.isArray(backup.addons) && backup.addons.length === 0
+    && Array.isArray(backup.folders) && backup.folders.length === 0
+    && agents.length === 1 && agents[0] === agentId
+    && agent?.protected === true
+    && agent.size === entry.size_bytes
+    && !backup.failed_agent_ids?.length
+    && !backup.failed_folders?.length
+    && !backup.failed_addons?.length;
+}
+
+function retentionRegistryEntry(backup, agentId) {
+  const agent = backup?.agents?.[agentId];
+  const entry = {
+    series: COMPOSE_RETENTION_SERIES,
+    backup_id: backup?.backup_id,
+    name: backup?.name,
+    backup_timestamp: backup?.date,
+    size_bytes: agent?.size,
+    protected: agent?.protected,
+  };
+  validateRetentionState({ schema_version: 1, series: COMPOSE_RETENTION_SERIES, entries: [entry] });
+  if (!backupMatchesRegistryEntry(backup, entry, agentId)) {
+    fail("new Compose backup does not satisfy the strict retention signature");
+  }
+  return entry;
+}
+
+export function planComposeRetention({
+  backups,
+  agentId,
+  registry,
+  now = new Date(),
+  maximumBackups = 90,
+  maximumAgeDays = 90,
+  newVerifiedBackupId = null,
+  requireNewVerifiedBackup = false,
+}) {
+  if (!Array.isArray(backups) || typeof agentId !== "string" || !agentId
+      || !Number.isInteger(maximumBackups) || maximumBackups < 1
+      || !Number.isInteger(maximumAgeDays) || maximumAgeDays < 1) {
+    fail("off-site retention inputs are invalid");
+  }
+  const state = validateRetentionState(structuredClone(registry));
+  const byId = new Map(backups.map((backup) => [backup.backup_id, backup]));
+  const matched = state.entries
+    .filter((entry) => backupMatchesRegistryEntry(byId.get(entry.backup_id), entry, agentId))
+    .map((entry) => ({ entry, backup: byId.get(entry.backup_id), timestamp: Date.parse(entry.backup_timestamp) }))
+    .filter((candidate) => Number.isFinite(candidate.timestamp) && candidate.timestamp <= now.getTime())
+    .sort((left, right) => right.timestamp - left.timestamp || left.entry.backup_id.localeCompare(right.entry.backup_id));
+  if (requireNewVerifiedBackup && !matched.some((candidate) => candidate.entry.backup_id === newVerifiedBackupId)) {
+    fail("retention requires the newly verified Compose backup in the strict registry");
+  }
+  const preservedId = newVerifiedBackupId ?? matched[0]?.entry.backup_id ?? null;
+  const cutoff = now.getTime() - maximumAgeDays * 24 * 60 * 60 * 1000;
+  const eligible = matched.filter((candidate, index) => candidate.entry.backup_id !== preservedId
+    && (index >= maximumBackups || candidate.timestamp < cutoff));
+  return {
+    registered: state.entries.length,
+    matched: matched.length,
+    excluded: backups.length - matched.length,
+    preserved_latest_verified: preservedId !== null,
+    eligible_backup_ids: eligible.map((candidate) => candidate.entry.backup_id),
+    retained_after_prune: matched.length - eligible.length,
+  };
+}
+
+export async function applyComposeRetention({
+  token,
+  agentId,
+  backups,
+  newVerifiedBackup,
+  policy,
+  stateFile = retentionStateFile,
+  now = new Date(),
+  request = homeAssistantWebSocketRequest,
+}) {
+  const entry = retentionRegistryEntry(newVerifiedBackup, agentId);
+  const registry = readRetentionState(stateFile);
+  registry.entries = [
+    ...registry.entries.filter((candidate) => candidate.backup_id !== entry.backup_id),
+    entry,
+  ];
+  writeRetentionState(registry, stateFile);
+
+  const retention = policy.compose_bundle.retention_policy;
+  const plan = planComposeRetention({
+    backups,
+    agentId,
+    registry,
+    now,
+    maximumBackups: retention.maximum_daily_compose_backups,
+    maximumAgeDays: retention.maximum_age_days,
+    newVerifiedBackupId: entry.backup_id,
+    requireNewVerifiedBackup: true,
+  });
+  const pruned = [];
+  for (const backupId of plan.eligible_backup_ids) {
+    const result = await request(token, { type: "backup/delete", backup_id: backupId });
+    if (!result?.agent_errors || Object.keys(result.agent_errors).length > 0) {
+      fail("Home Assistant could not move an eligible Compose backup to the recycle bin");
+    }
+    pruned.push(backupId);
+  }
+  if (pruned.length) {
+    const refreshed = await request(token, { type: "backup/info" });
+    if (!Array.isArray(refreshed?.backups)
+        || pruned.some((backupId) => refreshed.backups.some((backup) => backup.backup_id === backupId))) {
+      fail("Home Assistant did not confirm retention removal");
+    }
+    registry.entries = registry.entries.filter((candidate) => !pruned.includes(candidate.backup_id));
+    writeRetentionState(registry, stateFile);
+  }
+  return { eligible: plan.eligible_backup_ids.length, pruned: pruned.length };
+}
+
+export async function retentionDryRun({
+  policyFile = defaultPolicyFile,
+  stateFile = retentionStateFile,
+  now = new Date(),
+} = {}) {
+  const manifest = loadManifest(path.join(repoRoot, "restore/private-state-manifest.yaml"));
+  const policy = validateOffsitePolicy(readPolicy(policyFile), manifest);
+  const token = readHomeAssistantToken();
+  const credentials = readHomeAssistantBackupCredentials();
+  const info = await homeAssistantWebSocketRequest(token, { type: "backup/info" });
+  if (!Array.isArray(info?.backups) || Object.keys(info.agent_errors ?? {}).length > 0) {
+    fail("Home Assistant backup inventory is incomplete");
+  }
+  const retention = policy.compose_bundle.retention_policy;
+  const plan = planComposeRetention({
+    backups: info.backups,
+    agentId: credentials.agent_id,
+    registry: readRetentionState(stateFile),
+    now,
+    maximumBackups: retention.maximum_daily_compose_backups,
+    maximumAgeDays: retention.maximum_age_days,
+  });
+  return {
+    operation: "offsite-retention-dry-run",
+    series: COMPOSE_RETENTION_SERIES,
+    registered: plan.registered,
+    matched: plan.matched,
+    excluded: plan.excluded,
+    eligible: plan.eligible_backup_ids.length,
+    retained_after_prune: plan.retained_after_prune,
+    deletes_performed: 0,
+  };
+}
+
 function assertStringArray(value, label) {
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || !entry)) {
     fail(`${label} must be a non-empty string array`);
@@ -260,6 +481,7 @@ export function validateOffsitePolicy(policy, manifest) {
       || policy.homeassistant.app_folder_only !== true
       || policy.homeassistant.encryption_enabled !== true
       || policy.homeassistant.delete_files_permanently !== false
+      || policy.homeassistant.retention_status !== "not-covered-compose-only"
       || policy.homeassistant.oauth_status !== "verified-connected") {
     fail("Home Assistant OneDrive policy is not fail-closed");
   }
@@ -298,7 +520,7 @@ export function validateOffsitePolicy(policy, manifest) {
   }
   if (policy.compose_bundle?.transport !== "homeassistant-encrypted-backup-wrapper"
       || policy.compose_bundle.sync_allowed !== false
-      || policy.compose_bundle.automatic_delete !== false
+      || policy.compose_bundle.automatic_delete !== true
       || policy.compose_bundle.homeassistant_wrapper?.protected_required !== true
       || policy.compose_bundle.homeassistant_wrapper?.remote_only !== true
       || policy.compose_bundle.homeassistant_wrapper?.include_database !== false
@@ -306,29 +528,39 @@ export function validateOffsitePolicy(policy, manifest) {
       || policy.compose_bundle.homeassistant_wrapper?.retention_unchanged !== true
       || policy.compose_bundle.homeassistant_wrapper?.generic_upload_action_rejected
         !== "no-supported-download-for-roundtrip-verification") {
-    fail("Compose off-site transport must use a protected Home Assistant wrapper without deletion");
+    fail("Compose off-site transport must use the protected Home Assistant wrapper");
   }
-  const retention = policy.compose_bundle.retention_proposal;
-  if (policy.compose_bundle.retention_status !== "pending-user-approval"
-      || retention?.status !== "proposed-pending-specific-confirmation"
-      || retention.metadata_only !== true
+  const retention = policy.compose_bundle.retention_policy;
+  if (policy.compose_bundle.retention_status !== "active-compose-only"
+      || retention?.status !== "approved-active"
+      || typeof retention.approved_at !== "string"
+      || retention.quota_measurement_metadata_only !== true
       || retention.remote_backup_count !== 2
       || retention.protected_backup_count !== 2
       || retention.current_remote_backup_bytes !== 975380480
       || retention.quota_total_bytes !== 1104880336896
       || retention.quota_used_bytes !== 335222197453
       || retention.quota_remaining_bytes !== 769658139443
+      || retention.quota_deleted_bytes_at_measurement !== 0
       || retention.maximum_daily_compose_backups !== 90
       || retention.maximum_age_days !== 90
       || retention.estimated_daily_compose_backup_bytes !== 426147840
       || retention.estimated_retained_compose_bytes !== 38353305600
       || retention.estimated_total_with_one_full_homeassistant_backup_bytes !== 38902538240
+      || retention.estimated_recycle_bin_bytes_for_30_days !== 12784435200
+      || retention.estimated_total_with_recycle_bin_and_one_full_backup_bytes !== 51686973440
       || retention.estimated_percent_of_current_free_space !== 5.05
-      || retention.deletion_enabled !== false
+      || retention.estimated_percent_with_recycle_bin_of_current_free_space !== 6.72
+      || retention.deletion_enabled !== true
+      || retention.delete_permanently !== false
+      || retention.move_to_onedrive_recycle_bin !== true
+      || retention.empty_recycle_bin !== false
       || retention.scope !== "exact-daily-offsite-compose-backups-only"
+      || retention.series !== COMPOSE_RETENTION_SERIES
+      || retention.strict_registry_required !== true
       || retention.preserve_latest_verified_backup !== true
       || retention.prune_only_after_new_verified_backup !== true) {
-    fail("retention proposal must remain metadata-only and disabled pending specific approval");
+    fail("Compose retention must remain strict, recycle-bin-only, and fail-closed");
   }
   if (policy.daily_orchestration?.status !== "active"
       || policy.daily_orchestration.trigger !== "after-successful-git-backup-before-any-update"
@@ -339,7 +571,7 @@ export function validateOffsitePolicy(policy, manifest) {
         !== "after-daily-git-backup-at-00:30-America/Sao_Paulo"
       || policy.daily_orchestration.maximum_service_outage_seconds !== 600
       || policy.daily_orchestration.expected_service_outage_seconds !== 90
-      || policy.daily_orchestration.remote_retention_rotation_approved !== false
+      || policy.daily_orchestration.remote_retention_rotation_approved !== true
       || policy.daily_orchestration.manual_backup_deletion_allowed !== false
       || policy.daily_orchestration.quota_failure_behavior
         !== "fail-closed-block-updates-and-preserve-existing-backups"
@@ -353,7 +585,7 @@ export function validateOffsitePolicy(policy, manifest) {
       || policy.daily_orchestration.activation_evidence.other_services_restarted !== false
       || policy.daily_orchestration.activation_evidence.startup_cycle_dispatched !== false
       || policy.daily_orchestration.activation_evidence.first_scheduled_run_status !== "pending") {
-    fail("daily off-site orchestration must preserve the approved no-deletion window");
+    fail("daily off-site orchestration must preserve the approved retention boundary");
   }
   if (JSON.stringify(policy.compose_bundle.homeassistant_wrapper.requested_permissions)
       !== JSON.stringify(policy.homeassistant.requested_permissions)) {
@@ -700,9 +932,9 @@ export function buildOffsitePlan({
         homeassistant_wrapper: policy.compose_bundle.homeassistant_wrapper,
         rclone_fallback: policy.compose_bundle.rclone_fallback,
         sync_allowed: false,
-        automatic_delete: false,
+        automatic_delete: policy.compose_bundle.automatic_delete,
         retention_status: policy.compose_bundle.retention_status,
-        retention_proposal: policy.compose_bundle.retention_proposal,
+        retention_policy: policy.compose_bundle.retention_policy,
         restic_fallback: policy.compose_bundle.restic_fallback,
         last_verified_external_backup: policy.compose_bundle.last_verified_external_backup,
       },
@@ -723,7 +955,7 @@ export function buildOffsitePlan({
     } : null,
     required_confirmations: policy.required_confirmations,
     completed_confirmations: policy.completed_confirmations,
-    next_user_action: "observe the first scheduled daily execution; keep deletion disabled until a separate retention decision",
+    next_user_action: "observe the first scheduled daily execution and its fail-closed retention receipt",
   };
 }
 
@@ -820,6 +1052,9 @@ export async function runDailyCycle({
   }
 
   let remoteBackup;
+  let token;
+  let credentials;
+  let remoteInventory;
   try {
     const stagingCheck = spawnSync("docker", ["exec", "homeassistant", "test", "-e", containerStagingDir], {
       cwd: repoRoot, stdio: "ignore", timeout: 10_000,
@@ -827,8 +1062,8 @@ export async function runDailyCycle({
     if (stagingCheck.status === 0) fail("Home Assistant off-site staging already exists");
     runChecked("docker", ["cp", bundleDir, `homeassistant:${containerStagingDir}`]);
     runChecked("docker", ["exec", "homeassistant", "chmod", "-R", "go-rwx", containerStagingDir]);
-    const token = readHomeAssistantToken();
-    const credentials = readHomeAssistantBackupCredentials();
+    token = readHomeAssistantToken();
+    credentials = readHomeAssistantBackupCredentials();
     const generated = await homeAssistantWebSocketRequest(token, {
       type: "backup/generate",
       agent_ids: [credentials.agent_id],
@@ -836,7 +1071,7 @@ export async function runDailyCycle({
       include_database: false,
       include_homeassistant: true,
       include_folders: [],
-      name: `Daily off-site Compose state ${now.toISOString().slice(0, 10)}`,
+      name: `${COMPOSE_BACKUP_NAME_PREFIX}${now.toISOString().slice(0, 10)}`,
       password: credentials.password,
     });
     const backupId = generated?.backup_job_id;
@@ -844,6 +1079,9 @@ export async function runDailyCycle({
     const uploadDeadline = Date.now() + 45 * 60 * 1000;
     while (Date.now() < uploadDeadline) {
       const info = await homeAssistantWebSocketRequest(token, { type: "backup/info" });
+      if (Object.keys(info?.agent_errors ?? {}).length > 0) {
+        fail("Home Assistant backup inventory is incomplete");
+      }
       const backup = info?.backups?.find((candidate) => candidate.backup_id === backupId);
       const agent = backup?.agents?.[credentials.agent_id];
       if (backup && agent) {
@@ -855,6 +1093,7 @@ export async function runDailyCycle({
           fail("Home Assistant external backup receipt is invalid");
         }
         remoteBackup = backup;
+        remoteInventory = info.backups;
         break;
       }
       if (info?.state === "idle" && backup) fail("Home Assistant external upload did not complete");
@@ -876,6 +1115,19 @@ export async function runDailyCycle({
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
 
+  const retentionCredentials = readHomeAssistantBackupCredentials();
+  if (retentionCredentials.agent_id !== credentials.agent_id) {
+    fail("OneDrive backup agent changed before retention");
+  }
+  const retention = await applyComposeRetention({
+    token,
+    agentId: retentionCredentials.agent_id,
+    backups: remoteInventory,
+    newVerifiedBackup: remoteBackup,
+    policy,
+    now,
+  });
+
   return {
     ready: true,
     reason: "completed",
@@ -885,6 +1137,8 @@ export async function runDailyCycle({
     protected: true,
     outage_seconds: outageSeconds,
     backup_timestamp: remoteBackup.date,
+    retention_eligible: retention.eligible,
+    retention_pruned: retention.pruned,
   };
 }
 
@@ -908,11 +1162,15 @@ async function main() {
   }
   if (command === "daily-cycle" && process.argv.length === 3) {
     const result = await runDailyCycle();
-    process.stdout.write(`components=${result.components} capture_verified=${result.capture_verified} remote_verified=${result.remote_verified} protected=${result.protected} reason=${result.reason} outage_seconds=${result.outage_seconds ?? 0} backup_timestamp=${result.backup_timestamp ?? "none"}\n`);
+    process.stdout.write(`components=${result.components} capture_verified=${result.capture_verified} remote_verified=${result.remote_verified} protected=${result.protected} reason=${result.reason} outage_seconds=${result.outage_seconds ?? 0} backup_timestamp=${result.backup_timestamp ?? "none"} retention_eligible=${result.retention_eligible ?? 0} retention_pruned=${result.retention_pruned ?? 0}\n`);
     if (!result.ready) process.exitCode = 75;
     return;
   }
-  fail("usage: offsite-backup.mjs <plan|measure|daily-cycle|verify BUNDLE_DIR|capture OUTPUT_DIR|restore-test BUNDLE_DIR DESTINATION>");
+  if (command === "retention-dry-run" && process.argv.length === 3) {
+    process.stdout.write(`${JSON.stringify(await retentionDryRun(), null, 2)}\n`);
+    return;
+  }
+  fail("usage: offsite-backup.mjs <plan|measure|daily-cycle|retention-dry-run|verify BUNDLE_DIR|capture OUTPUT_DIR|restore-test BUNDLE_DIR DESTINATION>");
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

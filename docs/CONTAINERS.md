@@ -273,12 +273,16 @@ ainda é futura e não deve ser confundida com o ensaio estrutural já concluíd
 Uma recarga controlada do Node-RED, explicitamente autorizada fora da execução
 do ciclo, concluiu em 32 segundos às 14:15 BRT, sem reiniciar outro serviço nem
 disparar backup ou update na inicialização.
-Exclusão e rotação não foram autorizadas; cada cópia acrescenta
-cerca de 426 MB e, sem espaço, a etapa falha preservando as cópias e bloqueando
-os updates. A proposta desabilitada limita a série Compose a 90 cópias diárias
-ou 90 dias, estimados em 38,4 GB (5,05% do espaço atualmente livre no OneDrive),
-e exige aprovação separada antes de qualquer remoção. `.daily-maintenance.lock`
-impede concorrência entre backup e workers de atualização.
+A retenção aprovada limita somente a série Compose criada pela rotina a 90
+cópias ou 90 dias. A poda ocorre exclusivamente após uma nova cópia externa
+verificada, preserva a mais nova e exige correspondência exata com o registro
+privado de IDs; backups anteriores do HA e outros arquivos nunca são adotados.
+A série ativa é estimada em 38,4 GB, sem contar a lixeira. Remoções usam somente
+a lixeira do OneDrive, nunca exclusão permanente ou esvaziamento; 30 dias podem
+acrescentar temporariamente cerca de 12,8 GB. Na ativação, a quota `deleted` e o
+dry-run indicaram zero, e nenhuma cópia foi removida. Sem espaço ou com qualquer
+divergência, a etapa falha preservando as cópias e bloqueando os updates.
+`.daily-maintenance.lock` impede concorrência entre backup e workers de atualização.
 
 A etapa do Codex CLI roda depois dos containers e antes das dependências npm do
 repositório. A ponte do host consulta a versão publicada de `@openai/codex`,

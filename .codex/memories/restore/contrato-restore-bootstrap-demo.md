@@ -32,11 +32,11 @@ category: ARCHITECTURE
 kind: PROJECT_DECISION
 last_verified: 2026-10-13
 evidence:
-  - restore/offsite-backup-policy.json@sha256:b89d552078f6ea9cb179c92489e180460c3200e1abbc4d3caeae00813826b7d5
-  - scripts/offsite-backup.mjs@sha256:165087d9d1d44f850bb1d5d809aafbabe21258f20387f7c82fd34e386bcd9f1c
-  - docs/RESTORE_CONTRACT.md@sha256:ab9f1436af6a0438cabf04becbfdfc64678c2105f0df0a3203ead2e359f0775c
+  - restore/offsite-backup-policy.json@sha256:68ee679d783a24fef1bbe4ee398d0c41546ce29ae502287425c51d21dc691535
+  - scripts/offsite-backup.mjs@sha256:05cee03f3ffed027846d4204184f5c03289699f0939733c6c3212e7997cc1f79
+  - docs/RESTORE_CONTRACT.md@sha256:80179cd3d147011853e2b58b620bdf4dd5c93c08d5394d3613a673d69448ecdc
 -->
-## Backup externo separado e sem exclusão
+## Backup externo separado com retenção Compose estrita
 
 O Home Assistant usa a integração oficial do OneDrive, limitada à pasta do
 aplicativo, com criptografia habilitada e exclusão permanente desabilitada. O
@@ -44,7 +44,8 @@ estado dos demais serviços forma um bundle canônico datado, capturado somente
 nas janelas de parada aprovadas, validado contra o fechamento de dependências do
 manifesto e incluído em um backup nativo protegido e remoto-only do HA, sem
 ampliar o escopo `Files.ReadWrite.AppFolder`. `rclone` permanece fallback não
-configurado; `sync` e exclusão automática continuam proibidos. Volumes de
+configurado; `sync` e exclusão genérica continuam proibidos. A única remoção
+automática permitida é a retenção da série Compose criada pela rotina. Volumes de
 autenticação de agentes e identidade SSH exigem aprovação separada. O HA pode
 validar conexão, disponibilidade, proteção e presença do backup pela API
 WebSocket já autenticada, consumindo a credencial de forma opaca e publicando
@@ -59,8 +60,13 @@ Node-RED está implantada para bloquear updates sem esse recibo. A janela diári
 após o backup Git das 00:30 BRT foi aprovada com limite de 10 minutos; uma
 recarga controlada do Node-RED ativou a configuração em 32 segundos, sem
 reiniciar outro serviço nem disparar backup ou update na inicialização. A
-primeira execução agendada ainda é futura. Exclusão e rotação de retenção não
-foram autorizadas; a proposta desabilitada limita a série diária Compose a 90
-cópias ou 90 dias e exige aprovação específica antes de qualquer remoção. Quota
-insuficiente deve preservar cópias e bloquear os updates. Kit de emergência e
+primeira execução agendada ainda é futura. A retenção aprovada limita a série
+diária Compose a 90 cópias ou 90 dias, só depois de uma nova cópia externa
+verificada. Apenas IDs criados pela rotina e presentes no registro privado podem
+ser candidatos; backups anteriores do HA e outros arquivos ficam fora. A cópia
+mais nova é preservada, e remoções vão somente para a lixeira do OneDrive, com
+exclusão permanente e esvaziamento proibidos. A ativação teve dry-run com zero
+candidatos e zero remoções. A série ativa é estimada em 38,4 GB, sem lixeira;
+30 dias nela podem acrescentar temporariamente 12,8 GB. Quota insuficiente ou
+divergência deve preservar cópias e bloquear os updates. Kit de emergência e
 senha ficam guardados fora do destino.
