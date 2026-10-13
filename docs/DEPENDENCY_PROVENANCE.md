@@ -21,6 +21,15 @@ revalidação estão abaixo.
 
 ## Componentes próprios e serviços externos
 
+`icloud` é uma adaptação local que delega as plataformas ao Home Assistant Core
+instalado e restringe o envio de OTP à ação manual. Seu código Python é próprio;
+os recursos de interface derivados do Core preservam Apache-2.0 em
+`homeassistant/custom_components/icloud/LICENSE.upstream`. `upstream.json` no
+mesmo diretório registra tag, commit, digest da imagem e hashes dos recursos
+originais. Os deltas nos recursos são o texto da etapa de verificação e exemplos de conta
+substituídos pelo domínio reservado `example.invalid`.
+Compatibilidade e testes: [reautenticação manual](ICLOUD_MANUAL_AUTH.md).
+
 `claude_code_chat` e `public_bindings` são implementações deste
 repositório, não cópias dos projetos citados em seus manifests. Links para
 Anthropic e a documentação do próprio repositório identificam APIs ou

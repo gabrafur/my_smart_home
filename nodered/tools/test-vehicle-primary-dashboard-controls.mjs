@@ -602,7 +602,7 @@ assert.deepEqual(lockIntent.entities.entity, [
   "input_button.vehicle_primary_lock_now",
 ]);
 assert.match(lockIntent.outputProperties[0].value, /"command":"lock"/);
-assert.equal(lockIntent.ignorePrevStateNull, false);
+assert.equal(lockIntent.ignorePrevStateNull, true);
 assert.equal(lockIntent.ignorePrevStateUnknown, false);
 const unlockIntent = flows.find(
   (node) => node.id === "vehicle_primary_unlock_intent_v1",
@@ -611,7 +611,7 @@ assert.deepEqual(unlockIntent.entities.entity, [
   "input_button.vehicle_primary_unlock_now",
 ]);
 assert.match(unlockIntent.outputProperties[0].value, /"command":"unlock"/);
-assert.equal(unlockIntent.ignorePrevStateNull, false);
+assert.equal(unlockIntent.ignorePrevStateNull, true);
 assert.equal(unlockIntent.ignorePrevStateUnknown, false);
 const availabilityGate = flows.find(
   (node) => node.id === "vehicle_primary_remote_target_available_v1",

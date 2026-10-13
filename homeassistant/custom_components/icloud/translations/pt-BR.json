@@ -1,0 +1,104 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "A conta já está configurada",
+      "reauth_successful": "A reautenticação foi bem-sucedida"
+    },
+    "error": {
+      "invalid_auth": "Autenticação inválida",
+      "send_verification_code": "Falha ao enviar código de verificação",
+      "validate_verification_code": "Falha ao verificar seu código de verificação, tente novamente"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Sua senha inserida anteriormente para {username} não está mais funcionando. Atualize sua senha para continuar usando esta integração.",
+        "title": "Autenticação expirada para {name}"
+      },
+      "trusted_device": {
+        "data": {
+          "trusted_device": "Dispositivo confiável"
+        },
+        "description": "Selecione seu dispositivo confiável",
+        "title": "Dispositivo confiável do iCloud"
+      },
+      "user": {
+        "data": {
+          "username": "E-mail",
+          "with_family": "Com a família"
+        },
+        "description": "Insira suas credenciais",
+        "title": "credenciais do iCloud"
+      },
+      "verification_code": {
+        "data": {
+          "verification_code": "Código de verificação"
+        },
+        "description": "Nenhum código é enviado automaticamente. Quando estiver pronto, marque \"Solicitar um novo código de verificação\" e envie o formulário. Depois, informe o código recebido da Apple. Abrir este reparo ou informar um código inválido não solicita outro código."
+      }
+    }
+  },
+  "services": {
+    "display_message": {
+      "description": "Exibe uma mensagem em um dispositivo Apple.",
+      "fields": {
+        "account": {
+          "description": "O nome de usuário/e-mail da sua conta Apple.",
+          "name": "Conta"
+        },
+        "device_name": {
+          "description": "O nome do dispositivo Apple para exibir a mensagem.",
+          "name": "Nome do dispositivo"
+        },
+        "message": {
+          "description": "O conteúdo da sua mensagem.",
+          "name": "Mensagem"
+        },
+        "sound": {
+          "description": "Para fazer um som ao exibir a mensagem.",
+          "name": "Som"
+        }
+      },
+      "name": "Exibir mensagem"
+    },
+    "lost_device": {
+      "fields": {
+        "account": {
+          "description": "O nome de usuário/e-mail da sua conta Apple.",
+          "name": "Conta"
+        },
+        "device_name": {
+          "description": "O nome do dispositivo Apple a ser definido como perdido.",
+          "name": "Nome do dispositivo"
+        },
+        "message": {
+          "description": "A mensagem a ser exibida no modo perdido.",
+          "name": "Mensagem"
+        },
+        "number": {
+          "name": "Número"
+        }
+      },
+      "name": "Dispositivo perdido"
+    },
+    "play_sound": {
+      "fields": {
+        "account": {
+          "description": "O nome de usuário/e-mail da sua conta Apple.",
+          "name": "Conta"
+        },
+        "device_name": {
+          "name": "Nome do dispositivo"
+        }
+      },
+      "name": "Reproduzir som"
+    },
+    "update": {
+      "fields": {
+        "account": {
+          "name": "Conta"
+        }
+      },
+      "name": "Atualizar"
+    }
+  }
+}

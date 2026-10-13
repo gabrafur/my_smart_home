@@ -366,7 +366,7 @@ const nodes = [
     for: "0",
     forType: "num",
     forUnits: "minutes",
-    ignorePrevStateNull: false,
+    ignorePrevStateNull: true,
     ignorePrevStateUnknown: false,
     ignorePrevStateUnavailable: false,
     ignoreCurrentStateUnknown: true,

@@ -1,0 +1,153 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Conta já configurada",
+      "no_device": "Nenhum dos seus dispositivos tem a opção \"Find My\" ativada",
+      "reauth_successful": "Reautenticação bem sucedida"
+    },
+    "error": {
+      "invalid_auth": "Autenticação inválida",
+      "send_verification_code": "Falha ao enviar o código de verificação",
+      "validate_verification_code": "Falha ao verificar o seu código de verificação, tente novamente"
+    },
+    "step": {
+      "reauth_confirm": {
+        "data": {
+          "password": "Palavra-passe principal (MFA)",
+          "username": "Email"
+        },
+        "description": "Sua senha inserida anteriormente para {username} não está mais funcionando. Atualize sua senha para continuar usando esta integração.",
+        "title": "A autenticação expirou para {name}"
+      },
+      "trusted_device": {
+        "data": {
+          "trusted_device": "Dispositivo confiável"
+        },
+        "description": "Selecione o seu dispositivo de confiança",
+        "title": "Dispositivo de confiança iCloud"
+      },
+      "user": {
+        "data": {
+          "password": "Palavra-passe principal (MFA)",
+          "username": "Email",
+          "with_family": "Com a família"
+        },
+        "description": "Introduza as suas credenciais.",
+        "title": "Credenciais do iCloud"
+      },
+      "verification_code": {
+        "data": {
+          "request_new_code": "Solicitar um novo código de verificação",
+          "verification_code": "Código de verificação"
+        },
+        "description": "Nenhum código é enviado automaticamente. Quando estiver pronto, marque \"Solicitar um novo código de verificação\" e envie o formulário. Depois, informe o código recebido da Apple. Abrir este reparo ou informar um código inválido não solicita outro código.",
+        "title": "Código da conta Apple"
+      }
+    }
+  },
+  "exceptions": {
+    "account_not_initialized": {
+      "message": "Conta não inicializada: {entry}"
+    },
+    "album_not_found": {
+      "message": "Álbum não encontrado"
+    },
+    "album_type_not_specified": {
+      "message": "Tipo de álbum não especificado"
+    },
+    "config_entry_not_found": {
+      "message": "Não foi encontrada nenhuma entrada de configuração para a conta: {entry}"
+    },
+    "config_entry_not_loaded": {
+      "message": "Entrada de configuração não carregada"
+    },
+    "incomplete_media_source_identifier": {
+      "message": "Identificador da fonte de media incompleto"
+    },
+    "invalid_media_source": {
+      "message": "Fonte multimédia inválida"
+    },
+    "invalid_view_type": {
+      "message": "Tipo de visualização do álbum inválido"
+    },
+    "photo_not_found": {
+      "message": "Fotografia não encontrada"
+    },
+    "unknown_media_item": {
+      "message": "Elemento multimédia desconhecido"
+    },
+    "unsupported_media_type": {
+      "message": "Tipo de ficheiro não suportado"
+    }
+  },
+  "services": {
+    "display_message": {
+      "description": "Apresenta uma mensagem num dispositivo Apple.",
+      "fields": {
+        "account": {
+          "description": "O nome de utilizador/endereço de e-mail da sua conta Apple.",
+          "name": "Conta"
+        },
+        "device_name": {
+          "description": "O nome do dispositivo Apple a apresentar a mensagem.",
+          "name": "Nome do dispositivo"
+        },
+        "message": {
+          "description": "O conteúdo da sua mensagem.",
+          "name": "Mensagem"
+        },
+        "sound": {
+          "description": "Para emitir um som durante a apresentação da mensagem.",
+          "name": "Som"
+        }
+      },
+      "name": "Exibir mensagem"
+    },
+    "lost_device": {
+      "description": "Coloca um dispositivo Apple no estado perdido.",
+      "fields": {
+        "account": {
+          "description": "O nome de utilizador/endereço de e-mail da sua conta Apple.",
+          "name": "Conta"
+        },
+        "device_name": {
+          "description": "O nome do dispositivo Apple a definir como perdido.",
+          "name": "Nome do dispositivo"
+        },
+        "message": {
+          "description": "A mensagem a apresentar em modo perdido.",
+          "name": "Mensagem"
+        },
+        "number": {
+          "description": "O número de telefone para ligar no modo de perda. Deve incluir o código do país.",
+          "name": "Número"
+        }
+      },
+      "name": "Dispositivo perdido"
+    },
+    "play_sound": {
+      "description": "Reproduz o som de dispositivo Perdido num dispositivo Apple.",
+      "fields": {
+        "account": {
+          "description": "O nome de utilizador/endereço de e-mail da sua conta Apple.",
+          "name": "Conta"
+        },
+        "device_name": {
+          "description": "O nome do dispositivo Apple para reproduzir o som.",
+          "name": "Nome do dispositivo"
+        }
+      },
+      "name": "Reproduzir som"
+    },
+    "update": {
+      "description": "Solicita uma atualização do estado de todos os dispositivos associados a uma conta Apple.",
+      "fields": {
+        "account": {
+          "description": "O nome de utilizador/endereço de e-mail da sua conta Apple.",
+          "name": "Conta"
+        }
+      },
+      "name": "Atualizar"
+    }
+  }
+}

@@ -83,7 +83,7 @@ grouped(groups.input, { id: "vehicle_primary_manual_refresh_button_v1", type: "s
   name: "Forçar atualização pelo dashboard", server: "4126427d5e161a03", version: 6, outputs: 1,
   entities: { entity: ["input_button.vehicle_primary_force_refresh_now"], substring: [], regex: [] }, outputInitially: false,
   stateType: "str", ifState: "", ifStateType: "str", ifStateOperator: "is", outputOnlyOnStateChange: true,
-  for: "0", forType: "num", forUnits: "minutes", ignorePrevStateNull: false, ignorePrevStateUnknown: false,
+  for: "0", forType: "num", forUnits: "minutes", ignorePrevStateNull: true, ignorePrevStateUnknown: false,
   ignorePrevStateUnavailable: false, ignoreCurrentStateUnknown: false, ignoreCurrentStateUnavailable: false,
   outputProperties: [{ property: "payload", propertyType: "msg", value: "event", valueType: "eventData" }], x: 240, y: 460, wires: [["arrival_context_manual_event_gate"]] });
 sw("arrival_context_manual_event_gate", groups.input, "Evento do dashboard é produção?", "payload.event_type", "msg", [{ t: "neq", v: "test", vt: "str" }, { t: "else" }], 520, 460, [["arrival_context_manual_request"], ["arrival_context_manual_test_ignore"]]);

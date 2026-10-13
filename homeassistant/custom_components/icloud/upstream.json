@@ -1,0 +1,23 @@
+{
+  "repository": "home-assistant/core",
+  "tag": "2026.10.1",
+  "commit": "abe1fdd7cd6b4de1715c87b6fd87d92699514ef9",
+  "container_digest": "sha256:130241f28d01fa80dfa3b44f7d89781c188d8642ecab9024f079f19f9f82baa0",
+  "license_file": "LICENSE.md",
+  "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "resource_sha256_before_local_edits": {
+    "icons.json": "56f7998798a2d2814c692309adb65cba1bb28aa5df19659b3dbad463d0467a38",
+    "services.yaml": "ac9455453252f04049abaebc329384424f898bbbb9d65803b1ecc5afb3a51b59",
+    "strings.json": "3f31ade5cd4d21a821356201992e9ba4c6e43d3d4be47d6ed1804891137c6186",
+    "translations/en.json": "d499b98c1005e1a428a7cbb46a36b70696ef9813f11771ef19ac2c096b804af4",
+    "translations/pt.json": "7ba0812855dd4db0cc109918e0582470b661f20ccb48bd49c98d8969186bb4ed",
+    "translations/pt-BR.json": "3c5706019ea1a0c977d572eda855c3d7c6d28fec49187bf2020e6b4d84bc8aa2"
+  },
+  "local_resource_edits": [
+    "strings.json:config.step.verification_code.description",
+    "translations/en.json:config.step.verification_code.description",
+    "translations/pt.json:config.step.verification_code.description",
+    "translations/pt-BR.json:config.step.verification_code.description",
+    "services.yaml:replace upstream example account with account@example.invalid"
+  ]
+}

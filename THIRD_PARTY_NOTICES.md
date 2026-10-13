@@ -23,6 +23,16 @@ Full origins, comparison method, modifications, update policy, package-managed
 dependencies, and attribution duties are documented in
 [dependency provenance](docs/DEPENDENCY_PROVENANCE.en.md).
 
+## Home Assistant Core UI resources
+
+The local `icloud` adapter includes UI resources from Home Assistant Core
+2026.10.1 (`abe1fdd7cd6b4de1715c87b6fd87d92699514ef9`), under Apache-2.0.
+Verification-step descriptions and service account examples are modified.
+Source resource hashes and
+the official image digest are recorded in its `upstream.json`; the original
+license is preserved in `homeassistant/custom_components/icloud/LICENSE.upstream`.
+The adapter's Python code delegates to the installed Core integration.
+
 ## External Local AI runtime
 
 The optional [`local-ai-rtx`](https://github.com/gabrafur/local-ai-rtx)

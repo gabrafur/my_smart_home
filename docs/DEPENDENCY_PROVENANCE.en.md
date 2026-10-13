@@ -19,6 +19,15 @@ directory contains the verified upstream license as `LICENSE.upstream`.
 
 ## Project-owned components and external services
 
+`icloud` is a local adapter that delegates platforms to the installed Home
+Assistant Core and restricts OTP delivery to an explicit manual action. Its
+Python code is original; Core-derived UI resources retain Apache-2.0 in
+`homeassistant/custom_components/icloud/LICENSE.upstream`. The adjacent
+`upstream.json` records the source tag, commit, image digest and original
+resource hashes. Resource changes cover verification-step text and account
+examples sanitized to the reserved `example.invalid` domain.
+Compatibility and tests: [manual reauthentication](ICLOUD_MANUAL_AUTH.md).
+
 `claude_code_chat` and `public_bindings` are implementations
 owned by this repository, not copies of the projects or services named by
 their manifests. Their links identify an API, service, or local guide; they do

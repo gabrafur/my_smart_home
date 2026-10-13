@@ -337,3 +337,10 @@ Funções de recuperação Zigbee copiam somente estado JSON sem depender de str
 O auxiliar de segurança resolve a imagem Node-RED diretamente do serviço canônico no Compose, exigindo o repositório esperado e digest SHA-256. Não deve manter uma segunda cópia literal do digest: uma atualização automática do Compose deixaria o auxiliar obsoleto e bloquearia a validação do backup. A regressão cobre o digest atual, mudança para outro digest, ausência, duplicação e referências não fixadas. Não é necessário executar o auxiliar nem alterar credenciais para validar esse contrato.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"input-button-restauracao-sem-intencao","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-10-13","evidence":[{"file":"nodered/tools/install-input-button-restoration-guards.mjs","sha256":"6d6ebe60ef8b512d3935dbb85b528e8eded2b4a828ffc77a721b44312dfa486d"},{"file":"nodered/tools/test-input-button-restoration.mjs","sha256":"328cdc426e1d1b85ada8d771eed7bd62a57a0d089787eaa4563201bde550ccf8"},{"file":"docs/ICLOUD_MANUAL_AUTH.md","sha256":"9020831f4971a6a291811534eba2a295a386d2942c13ce28a52ffe91a1a1a0e4"}]} -->
+## Restauração de input_button não representa intenção
+
+Gatilhos server-state-changed de input_button precisam ignorar old_state nulo e emissão inicial. A criação/restauração da entidade após reinício pode republicar um timestamp antigo; isso não é clique e não autoriza efeitos. Manter ignorePrevStateUnknown=false permite o primeiro clique real de um helper já existente em unknown. O gerador install-input-button-restoration-guards preserva a geometria; o teste test-input-button-restoration usa o controlador nativo e cobre restauração, primeiro clique, duplicata, entidade alheia e desconexão sem serviços reais.
+
+<!-- /memory-record -->

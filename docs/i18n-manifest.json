@@ -38,6 +38,7 @@
     ]
   },
   "documents": [
+    { "id": "icloud-manual-auth", "area": "operations", "strategy": "full pair", "pt": "docs/ICLOUD_MANUAL_AUTH.md", "en": "docs/ICLOUD_MANUAL_AUTH.en.md" },
     { "id": "root-readme", "area": "overview", "strategy": "full pair", "pt": "README.pt-BR.md", "en": "README.md" },
     { "id": "docs-index", "area": "overview", "strategy": "full pair", "pt": "docs/README.md", "en": "docs/README.en.md" },
     { "id": "engineering-tour", "area": "portfolio", "strategy": "full pair", "pt": "docs/ENGINEERING_TOUR.pt-BR.md", "en": "docs/ENGINEERING_TOUR.md" },

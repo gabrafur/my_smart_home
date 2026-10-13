@@ -139,3 +139,10 @@ Confirme qualquer ampliação de privilégio, acesso ao host ou ação física.
 Instalações de pacotes públicos precisam manter leitura entre os usuários distintos do host e do Node-RED. Os alvos de validação e o instalador de dependências fixam umask 022 durante npm ci; o instalador restaura a máscara privada do chamador mesmo se falhar. Uma validação de imagens que falha antes de recriar o serviço deve restaurar somente a candidata Compose que escreveu, preservando edições concorrentes. Na retomada, compare o ID da imagem realmente usada pelo container com o ID desejado, mesmo quando o digest do Compose já coincide com o canal: arquivo atualizado não comprova deploy.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"icloud-otp-somente-manual","category":"LONG_LIVED_DECISION","kind":"PROJECT_DECISION","last_verified":"2026-10-13","evidence":[{"file":"homeassistant/custom_components/icloud/manual_auth.py","sha256":"c5469affcb15d096411f951739bacf7110a0b19c99b9f1c0bd966a6dab5662c5"},{"file":"homeassistant/custom_components/icloud/config_flow.py","sha256":"b3c6ebc9c13d8ae9b8efadb73acb3db1e1e338cf14151377f9f5821498f61d8e"},{"file":"homeassistant/tests/test_icloud_manual_auth.py","sha256":"92c6626561e92e1b82deb0e85bcbacfbe64b3a7e7371db3c176ca0c07aeee948"},{"file":"docs/ICLOUD_MANUAL_AUTH.md","sha256":"9020831f4971a6a291811534eba2a295a386d2942c13ce28a52ffe91a1a1a0e4"}]} -->
+## iCloud com OTP somente por ação manual
+
+A adaptação local custom_components/icloud delega plataformas ao Core e preserva domínio, config entry e armazenamento da sessão. Inicialização e autenticação de fundo usam pause_2fa=True; o fallback automático request_2fa_code também é bloqueado, porque pyicloud 2.7.0 pode chamá-lo mesmo com pausa. Somente a opção explícita de solicitar código no fluxo de configuração chama request_manual_2fa_code. Abrir reparo, restaurar o runtime ou informar OTP inválido não gera outro código. Revalidar compatibilidade dentro do container após atualizar Core/pyicloud; não remover .storage para renovar autenticação.
+
+<!-- /memory-record -->

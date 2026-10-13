@@ -1,0 +1,13 @@
+{
+  "domain": "icloud",
+  "name": "Apple iCloud",
+  "version": "1.0.0",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/gabrafur/my_smart_home/blob/main/docs/ICLOUD_MANUAL_AUTH.md",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "loggers": ["keyrings.alt", "pyicloud"],
+  "requirements": ["pyicloud==2.7.0"]
+}
