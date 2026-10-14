@@ -4,15 +4,16 @@
 
 Este repositório distribui código-fonte de terceiros junto com configuração e
 ferramentas próprias. Os avisos abaixo valem somente para o código upstream
-identificado; eles não concedem licença para o trabalho original do repositório.
+identificado. O trabalho original do repositório está sob
+[GPL-3.0-only](LICENSE).
 
 ## Integrações vendorizadas do Home Assistant
 
 | Componente | Revisão upstream | Licença | Caminho coberto | Estado local |
 | --- | --- | --- | --- | --- |
-| Alexa Media Player | `v5.16.0` / `3838e40d86e8438fd16477e76380b490382b64e5` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | um guard local do coordenador em `__init__.py`; demais arquivos comparados coincidem com a tag |
+| Alexa Media Player | `v5.16.2` / `cd600c6aee2f028f0ccc9d3a836e7cf780215993` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | guard local do coordenador; consulte a origem imobilizada |
 | HACS | `2.0.5` / `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `homeassistant/custom_components/hacs/**` | metadata de versão e HA mínimo alterada localmente |
-| Kia Uvo / Hyundai Bluelink | `v3.10.1` / `2c602560746318fd001db8fe52347e9398f181ed` | MIT | `homeassistant/custom_components/kia_uvo/**` | modificado; consulte a proveniência |
+| Kia Uvo / Hyundai Bluelink | `v3.17.1` / `417f6ac5fe65521e7948015a278c82ee5a584a71` | MIT | `homeassistant/custom_components/kia_uvo/**` | modificado; consulte a origem imobilizada |
 
 O texto de cada licença foi preservado como `LICENSE.upstream` no diretório do
 componente. Copyright continua com os autores upstream. Nomes e marcas são
@@ -44,14 +45,8 @@ a release upstream.
 
 ## Estado da licença do repositório
 
-Não existe `LICENSE` na raiz por decisão intencional. Um repositório público no
-GitHub não se torna automaticamente open source, e o proprietário ainda não
-selecionou licença para configuração, documentação, scripts, flows e
-integrações originais. Até essa decisão, essas partes seguem as restrições
-padrão de copyright. Partes de terceiros continuam sob as licenças acima.
-
-A escolha exige decisão explícita do proprietário e, se necessário, revisão
-jurídica—especialmente porque a distribuição contém componentes upstream
-modificados. Este aviso é inventário, não aconselhamento jurídico. As opções e
-o template atualmente habilitado no GitHub estão no
-[memorando de decisão](docs/LICENSING_DECISION.pt-BR.md).
+A [LICENSE](LICENSE) raiz aplica `GPL-3.0-only` ao trabalho original do projeto.
+Ela não substitui copyright nem licenças Apache-2.0 e MIT específicas dos
+arquivos vendorizados. Modificações locais nesses componentes devem preservar
+avisos upstream e cumprir os respectivos termos. Este aviso é um inventário,
+não uma declaração de titularidade sobre código de terceiros.

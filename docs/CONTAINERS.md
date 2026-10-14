@@ -224,8 +224,11 @@ O Git cobre configuração, não estado. Faça backup privado e criptografado de
 Não coloque esse arquivo de backup no repositório, mesmo criptografado, sem uma
 política explícita de chaves e retenção.
 
-A preparação externa está declarada em
-`restore/offsite-backup-policy.json` e pode ser inspecionada com
+A estrutura pública da preparação externa está em
+`restore/offsite-backup-policy.example.json`, desativada. A política ativa de
+cada instalação fica em `.local-secrets/offsite-backup-policy.json`, ignorada
+pelo Git e com permissão 0600. Após configurar e verificar essa política, ela
+pode ser inspecionada com
 `make offsite-backup-plan` ou medida, sem copiar dados, com
 `make offsite-backup-measure`. O Home Assistant usa a integração oficial
 OneDrive e sua pasta de aplicativo. Os demais itens usam um conjunto datado

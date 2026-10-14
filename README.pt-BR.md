@@ -95,19 +95,16 @@ arquivos e reporta lacunas. Antes de iniciar containers, leia
 [instalação/restauração](docs/INSTALACAO_RESTAURACAO_SMART_HOME.md) e configure
 secrets, bindings e hardware próprios.
 
-### Referência ou contribuição?
+### Licença e contribuições
 
-Este repositório é hoje uma **implementação de referência e projeto de
-portfólio**, não um template inicial licenciado. O trabalho original não possui
-licença raiz; visibilidade pública e o controle de template do GitHub não devem
-ser interpretados como permissão geral de reutilização. Um fork é apropriado
-para propor contribuição de volta por pull request; veja
-[CONTRIBUTING](CONTRIBUTING.md).
-
-O GitHub atualmente exibe **Use this template**. A configuração foi mantida
-sem alteração até a decisão explícita do proprietário sobre licença/template;
-veja o [memorando de decisão](docs/LICENSING_DECISION.pt-BR.md) e a
-[auditoria das configurações](docs/GITHUB_REPOSITORY_SETTINGS.md).
+O código, a configuração, os fluxos e a documentação originais do projeto
+estão sob [GNU GPL v3.0 somente](LICENSE) (`GPL-3.0-only`). Incentivamos forks
+e contribuições por pull request; veja [CONTRIBUTING](CONTRIBUTING.md).
+Uso privado não obriga publicação. Ao distribuir versão modificada coberta,
+forneça aos destinatários o código-fonte correspondente e os avisos exigidos
+pela GPL. A licença não exige fork público no GitHub nem publicação para toda
+a comunidade. Componentes vendorizados preservam licenças e autoria próprias;
+veja os [avisos de terceiros](THIRD_PARTY_NOTICES.pt-BR.md).
 
 ## Limites de execução
 
@@ -157,9 +154,8 @@ make privacy-check-staged
 ```
 
 O scanner não ecoa achados. Vulnerabilidades seguem [SECURITY](SECURITY.md),
-nunca uma issue pública. Dependências vendorizadas preservam licenças próprias;
-não há licença raiz porque a decisão sobre o trabalho original continua
-[intencionalmente pendente](docs/LICENSING_DECISION.pt-BR.md).
+nunca uma issue pública. Dependências vendorizadas preservam licenças e avisos
+próprios.
 
 ## Mapa do repositório
 

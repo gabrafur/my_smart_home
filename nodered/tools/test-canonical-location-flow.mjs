@@ -566,6 +566,24 @@ for (const [name, ageMs, elapsed] of [
   assert.equal(selected._canonical_locations.resident_primary.reason, "reliable_coordinates");
 }
 
+// A source can move backward in observation time when the newer GPS becomes
+// unreliable. Keep this visible: accepting the newer raw HOME state here would
+// weaken the physical arrival gate, while consumers reject the older snapshot.
+{
+  const state = memory();
+  select(input(
+    tracker(primaryId, "not_home", { accuracy: 10, distanceM: 2000 }),
+    tracker(fallbackId, "home", { ageMs: 90_000, accuracy: 10, distanceM: 20 }),
+  ), state);
+  const switched = select(input(
+    tracker(primaryId, "home", { accuracy: 999, distanceM: 20 }),
+    tracker(fallbackId, "home", { ageMs: 90_000, accuracy: 10, distanceM: 20 }),
+  ), state);
+  assert.equal(switched._canonical_locations.resident_primary.selected.entity.entity_id, fallbackId);
+  assert.equal(switched._canonical_locations.resident_primary.selected.observed_at, clock - 90_000);
+  assert.equal(switched.payload.resident_primary_selected.attributes.canonical_observation_advanced, false);
+}
+
 {
   const selected = select(input(
     tracker(primaryId, "not_home", { accuracy: 50 }),

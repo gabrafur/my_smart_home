@@ -193,10 +193,41 @@ synthetic success or an existing file never replaces that receipt.
 
 ## OneDrive off-site backup preparation
 
-The public preparation contract is
-`restore/offsite-backup-policy.json`. It is `active: true` and classifies all 19
-private-state items into three surfaces. The `plan` and `measure` commands do not
+The disabled public example is
+`restore/offsite-backup-policy.example.json`; it classifies all 19 private-state
+items into three surfaces. Each installation's effective policy belongs in the
+Git-ignored `.local-secrets/offsite-backup-policy.json` with mode 0600. Without
+explicit activation and verified receipts, the cycle fails closed. The `plan`
+and `measure` commands do not
 copy their content; only the scheduled cycle performs the approved capture:
+
+Before `git pull` or `make bootstrap` on an installation that still uses the
+old tracked policy, copy it **from the old checkout** without replacing an
+existing private file:
+
+```bash
+set -eu
+test -f restore/offsite-backup-policy.json
+test ! -L restore/offsite-backup-policy.json
+install -d -m 700 .local-secrets
+test ! -L .local-secrets
+if test -e .local-secrets/offsite-backup-policy.json; then
+  cmp restore/offsite-backup-policy.json .local-secrets/offsite-backup-policy.json
+else
+  install -m 600 restore/offsite-backup-policy.json .local-secrets/offsite-backup-policy.json
+fi
+test ! -L .local-secrets/offsite-backup-policy.json
+test "$(stat -c %a .local-secrets/offsite-backup-policy.json)" = 600
+cmp restore/offsite-backup-policy.json .local-secrets/offsite-backup-policy.json
+```
+
+This procedure is idempotent and will not replace a differing private policy.
+Confirm the copy before updating; afterwards,
+`node scripts/migrate-offsite-policy.mjs` checks the destination without
+changing it. Bootstrap gives a fresh clone the
+disabled example, with no upload authorization. Removing the tracked file does
+not erase its older Git history; review that history before a new public
+distribution.
 
 - Home Assistant uses the official **OneDrive** integration for `secrets.yaml`,
   `.storage`, and Recorder. It requests `Files.ReadWrite.AppFolder`,

@@ -22,7 +22,7 @@ const preservedVisualRouteIds = new Set([
   "notification_hub_wire_out_e8b646d9c5f3",
   "notification_hub_wire_in_e8b646d9c5f3",
 ]);
-const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
+const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").replace(/\r\n/g, "\n").trimEnd();
 const generatedNotificationRoute = (node) => node.z === TAB &&
   /^notification_hub_wire_(?:out|in)_[a-f0-9]{12}$/.test(node.id);
 const coreOwned = (node) => node.id === TAB || node.id.startsWith("git_backup_");
@@ -83,10 +83,10 @@ const linkIn = (id, g, name, origins, destination, x, y) => grouped(g, {
 add({ id: TAB, type: "tab", label: "backup_git", disabled: false, info: "Node-RED agenda e decide; o helper allowlisted executa Git/SSH no host. Testes percorrem as mesmas decisões e terminam antes de qualquer efeito.", env: [] });
 grouped(groups.input, {
   id: "git_backup_architecture", type: "comment", z: TAB, g: groups.input,
-  name: "01:00 America/Sao_Paulo (04:00 UTC). Worker e credenciais ficam fora do Node-RED.",
+  name: "01:00 no fuso TZ do Node-RED. Worker e credenciais ficam fora do Node-RED.",
   info: "O retry de cinco minutos apenas observa a solicitação pendente. Backup manual não inicia atualizações diárias.", x: 350, y: 60, wires: [],
 });
-inject("git_backup_schedule", groups.input, "Agenda: diariamente 01:00 (04:00 UTC)", [
+inject("git_backup_schedule", groups.input, "Agenda: diariamente 01:00 (TZ do Node-RED)", [
   { p: "payload" }, { p: "topic", v: "scheduled", vt: "str" },
 ], 250, 130, [["notification_hub_wire_out_14efb6fdc717"]], { crontab: "0 1 * * *" });
 inject("git_backup_manual", groups.input, "Pedido manual: executar backup agora", [
@@ -239,7 +239,7 @@ desiredById.get("git_backup_schedule").wires = [["notification_hub_wire_out_14ef
 desiredById.get("git_backup_deferred_gate").wires[0] = ["notification_hub_wire_out_7b0d29c68a9f"];
 desiredById.get("git_backup_invalid_gate").wires[0] = ["notification_hub_wire_out_e8b646d9c5f3"];
 desiredById.get("notification_hub_wire_out_14efb6fdc717").name =
-  "Encurtar: Agenda: diariamente 01:00 (04:00 UTC)";
+  "Encurtar: Agenda: diariamente 01:00 (TZ do Node-RED)";
 const linkedConsumers = new Set([
   "daily_update_offsite_git_in",
   "daily_update_dependency_backup_out",

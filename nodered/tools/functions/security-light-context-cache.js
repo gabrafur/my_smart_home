@@ -18,6 +18,8 @@ if (testMode && msg._location_test_reset === true) {
         "security_light_last_dry_run_v1", "security_light_turn_on_notification_latch_v1",
         "security_light_engine_bypass_enabled", "security_light_engine_bypass_automatic",
         "security_light_engine_communication_failed"]) set(name, null, "persistent");
+    for (const name of ["people_context_v1_rejected_snapshot_episode_v1",
+        "vehicle_primary_context_v1_rejected_snapshot_episode_v1"]) set(name, null);
 }
 const kind = msg.payload?.kind;
 const now = Date.now();
@@ -27,17 +29,33 @@ let accepted = true;
 const updateCache = (name) => {
     const old = get(name);
     const oldAt = Number(old?.updated_at ?? 0);
-    if (incomingAt > now + futureMs || (old && incomingAt && oldAt && incomingAt < oldAt)) {
-        node.warn(`iluminacao_seguranca: snapshot${testMode ? " [TESTE]" : ""} fora de ordem ou no futuro; descartado`);
+    const episodeKey = `${name}_rejected_snapshot_episode_v1`;
+    const previousEpisode = get(episodeKey);
+    const expired = previousEpisode && (now < previousEpisode.started_at ||
+        now - previousEpisode.started_at >= 6 * 60 * 60 * 1000);
+    const endEpisode = () => {
+        if (!previousEpisode) return;
+        node.log?.(`iluminacao_seguranca: episodio de snapshot ${name} ${expired ? "expirado" : "encerrado"} (${previousEpisode.reason}; ${previousEpisode.repeats} repeticoes)`);
+        set(episodeKey, null);
+    };
+    const reject = (reason) => {
+        const signature = `${reason}:${incomingAt}:${oldAt}`;
+        if (previousEpisode?.signature === signature && !expired) {
+            set(episodeKey, { ...previousEpisode, repeats: Math.min(previousEpisode.repeats + 1, Number.MAX_SAFE_INTEGER) });
+        } else {
+            endEpisode();
+            set(episodeKey, { signature, reason, repeats: 0, started_at: now });
+            node.warn(`iluminacao_seguranca: snapshot${testMode ? " [TESTE]" : ""} ${name} rejeitado: ${reason}; incoming_at=${incomingAt}; cached_at=${oldAt}`);
+        }
         return false;
-    }
+    };
+    if (incomingAt > now + futureMs) return reject("future_timestamp");
+    if (old && incomingAt && oldAt && incomingAt < oldAt) return reject("out_of_order");
+    if (old && !incomingAt) return reject("missing_timestamp");
+    endEpisode();
     if (!old || (incomingAt && (!oldAt || incomingAt > oldAt))) {
         set(name, msg.payload.context);
         return true;
-    }
-    if (!incomingAt) {
-        node.warn("iluminacao_seguranca: snapshot sem timestamp; cache atual preservado");
-        return false;
     }
     if (incomingAt === oldAt && JSON.stringify(old) !== JSON.stringify(msg.payload.context)) {
         set(name, msg.payload.context);

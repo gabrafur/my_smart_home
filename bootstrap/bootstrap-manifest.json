@@ -23,6 +23,13 @@
       "generators": []
     },
     {
+      "module": "core",
+      "source": "restore/offsite-backup-policy.example.json",
+      "destination": ".local-secrets/offsite-backup-policy.json",
+      "mode": "0600",
+      "generators": []
+    },
+    {
       "module": "zigbee",
       "source": "zigbee2mqtt/configuration.example.yaml",
       "destination": "zigbee2mqtt/configuration.yaml",
@@ -52,6 +59,11 @@
       "module": "core",
       "logical_name": "installation_specific_placeholders",
       "reason": "host address, IDs and optional coordinates cannot be inferred from a public clone"
+    },
+    {
+      "module": "core",
+      "logical_name": "offsite_backup_activation",
+      "reason": "external backup evidence, retention approval and credentials must be verified for this installation"
     },
     {
       "module": "agent-bridge",

@@ -94,18 +94,16 @@ files, and reports gaps. Before starting containers, read
 [installation/restore](docs/INSTALLATION_RESTORE.en.md) and configure your own
 secrets, bindings, and hardware.
 
-### Reference or contribution?
+### License and contributions
 
-This is currently a **reference implementation and portfolio project**, not a
-licensed starter template. The original work has no root license, so public
-visibility and GitHub's template control must not be read as general permission
-to reuse it. A fork is appropriate for proposing a contribution back through a
-pull request; see [CONTRIBUTING](CONTRIBUTING.md).
-
-GitHub currently exposes **Use this template**. That setting is intentionally
-left unchanged pending the owner's explicit licensing/template decision; see
-the [decision memo](docs/LICENSING_DECISION.md) and
-[repository-settings audit](docs/GITHUB_REPOSITORY_SETTINGS.en.md).
+Original project code, configuration, flows, and documentation are licensed
+under [GNU GPL v3.0 only](LICENSE) (`GPL-3.0-only`). We encourage forks and
+contributions back through pull requests; see [CONTRIBUTING](CONTRIBUTING.md).
+Private use does not require publication. If you distribute a covered modified
+version, provide its corresponding source and required notices to recipients
+under the GPL. The license does not require a public GitHub fork or publication
+to everyone. Vendored components retain their own licenses and authorship;
+see [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Execution boundaries
 
@@ -155,8 +153,7 @@ make privacy-check-staged
 
 Scanners never echo a finding's value. Report vulnerabilities through
 [SECURITY](SECURITY.md), never a public issue. Vendored dependencies retain
-their licenses; there is no root license because licensing original work is an
-[intentional open decision](docs/LICENSING_DECISION.md).
+their own licenses and notices.
 
 ## Repository map
 

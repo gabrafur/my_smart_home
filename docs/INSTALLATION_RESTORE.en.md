@@ -336,6 +336,15 @@ the Raspberry Pi. Git, even private Git, is not the right storage for this data.
 
 ## 15. Updates
 
+These host bridges are optional operational features. Review the local time
+zone, backup window, Git remote, private-state destination, retention policy,
+and the host's update mechanism before installing them. The reference profile
+uses DietPi and schedules `backup_git` at 01:00 in the Node-RED container's
+`TZ`. Bootstrap copies the disabled public example to the private, Git-ignored
+`.local-secrets/offsite-backup-policy.json` with mode 0600. Configure and verify
+that installation-specific policy before enabling the off-site cycle. A fresh
+clone can run the synthetic tests without enabling these jobs.
+
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
 sudo scripts/install-dietpi-daily-upgrade-helper.sh

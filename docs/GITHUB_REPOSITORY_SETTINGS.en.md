@@ -10,7 +10,7 @@ it in the UI before applying recommendations.
 
 | Area | Observed | Recommended | Why |
 | --- | --- | --- | --- |
-| Template repository | **on**, with no detected root license | disable while licensing is undecided, or retain only after explicitly licensing reusable work | the current control implies reuse that the repository terms do not grant |
+| Template repository | **on** in the previous audit | review after publishing GPL-3.0-only | this patch has not changed remote settings |
 | `main` protection/ruleset | no protection or ruleset | create an active ruleset for `main` | blocks accidental force-push and deletion |
 | Required pull request | not required | require for contributors; preserve an explicit owner bypass only if the direct personal workflow remains | external work is reviewed without silently changing owner practice |
 | Required check | none | require **Canonical public validation** after confirming its displayed PR name | aligns merges with `make validate-public` |
@@ -49,17 +49,14 @@ branch protection. CI still runs on every push.
 
 ## Template versus fork
 
-The current **Use this template** control conflicts with the missing root
-license. Until the owner completes the
-[licensing decision](LICENSING_DECISION.md), the coherent public position is a
-reference implementation/portfolio project, and the setting should not remain
-enabled merely because bootstrap is technically safe. No remote setting was
-changed during this audit.
+The owner selected [GPL-3.0-only](LICENSING_DECISION.md) for original project
+work. **Use this template** was previously observed as enabled; this patch
+has not verified or changed the remote setting.
 
 A **fork** is appropriate for changes proposed back to this repository. Keep
 examples synthetic, work on a branch, and follow
-[CONTRIBUTING](../CONTRIBUTING.md). If the owner later licenses reuse and keeps
-the template setting, validate the template path with no real data:
+[CONTRIBUTING](../CONTRIBUTING.md). If using the template, validate the path
+with no real data:
 
 ```bash
 git clone NEW_REPOSITORY_URL smart-home
@@ -75,8 +72,7 @@ templates only and cannot reproduce the original household.
 
 ## Manual UI checklist
 
-- [ ] Decide the root license and template policy; while undecided, disable
-  **Template repository** so the interface matches the published terms.
+- [ ] Review the **Template repository** setting after publishing the license.
 - [ ] Settings → Rules → create and activate the ruleset above.
 - [ ] Settings → General → adjust merge methods and automatic branch deletion.
 - [ ] Settings → Security → keep private vulnerability reporting, Dependabot

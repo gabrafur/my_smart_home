@@ -14,7 +14,7 @@ const source = (name) => {
   const helpers = ["security-light-off-decision.js", "security-light-turn-off-if-active.js"].includes(name)
     ? ["security-light-off-evidence.js"] : ["security-light-arrival-facts.js", "security-light-mark-active.js"].includes(name)
       ? ["security-light-approach-evidence.js"] : [];
-  return [...helpers, name].map((file) => fs.readFileSync(path.join(functionsDir, file), "utf8").trimEnd()).join("\n");
+  return [...helpers, name].map((file) => fs.readFileSync(path.join(functionsDir, file), "utf8").replace(/\r\n/g, "\n").trimEnd()).join("\n");
 };
 let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 const originalFlows = structuredClone(flows);

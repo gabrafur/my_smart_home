@@ -4,16 +4,16 @@
 
 This repository distributes third-party source code in addition to project-
 specific configuration and tooling. The notices below apply only to the
-identified upstream code; they do not grant a license for the repository's
-original work.
+identified upstream code. The repository's original work is licensed under
+[GPL-3.0-only](LICENSE).
 
 ## Vendored Home Assistant integrations
 
 | Component | Upstream revision | License | Covered path | Local status |
 | --- | --- | --- | --- | --- |
-| Alexa Media Player | `v5.16.0` / `3838e40d86e8438fd16477e76380b490382b64e5` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | one local coordinator guard in `__init__.py`; all other compared files match the tag |
+| Alexa Media Player | `v5.16.2` / `cd600c6aee2f028f0ccc9d3a836e7cf780215993` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | locally maintained coordinator guard; see the pinned origin |
 | HACS | `2.0.5` / `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `homeassistant/custom_components/hacs/**` | version and minimum-HA metadata changed locally |
-| Kia Uvo / Hyundai Bluelink | `v3.10.1` / `2c602560746318fd001db8fe52347e9398f181ed` | MIT | `homeassistant/custom_components/kia_uvo/**` | locally modified; see the provenance guide |
+| Kia Uvo / Hyundai Bluelink | `v3.17.1` / `417f6ac5fe65521e7948015a278c82ee5a584a71` | MIT | `homeassistant/custom_components/kia_uvo/**` | locally modified; see the pinned origin |
 
 The corresponding license text is preserved as `LICENSE.upstream` inside
 each component directory. Copyright remains with the upstream authors.
@@ -44,15 +44,8 @@ upstream release.
 
 ## Repository-level license status
 
-There is intentionally no root `LICENSE` file. A public GitHub repository is
-not automatically open source, and the owner has not selected a license for
-the original configuration, documentation, scripts, flows, or integrations.
-Until that decision is made, those original portions remain under default
-copyright restrictions. Third-party portions remain governed by their own
-licenses above.
-
-Selecting a root license requires an explicit owner decision and, if needed,
-legal review—especially because this distribution includes locally modified
-upstream components. This notice is an inventory, not legal advice. The options
-and the currently enabled GitHub template setting are
-recorded in the [licensing decision memo](docs/LICENSING_DECISION.md).
+The root [LICENSE](LICENSE) applies to original project work under
+`GPL-3.0-only`. It does not replace upstream copyright or path-specific
+Apache-2.0 and MIT licenses for vendored files. Local changes to vendored
+components must retain their upstream notices and follow the applicable terms.
+This notice is an inventory, not a claim of ownership over third-party code.

@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "active": false,
+  "homeassistant": {
+    "method": "official-onedrive-integration",
+    "account_type": "personal",
+    "local_backup_source": "homeassistant/backups",
+    "coverage": [
+      "homeassistant_secrets",
+      "homeassistant_state",
+      "homeassistant_database"
+    ],
+    "requested_permissions": [
+      "Files.ReadWrite.AppFolder",
+      "offline_access",
+      "openid"
+    ],
+    "app_folder_only": true,
+    "encryption_enabled": true,
+    "delete_files_permanently": false,
+    "oauth_status": "not-configured",
+    "runtime_verification": null,
+    "last_verified_external_backup": null,
+    "retention_status": "not-covered-compose-only",
+    "emergency_kit_storage": "separate-from-host-onedrive-and-bundle-keys"
+  },
+  "compose_bundle": {
+    "method": "dated-private-state-v1-subset",
+    "coverage": [
+      "environment_config",
+      "private_bindings",
+      "nodered_credentials",
+      "nodered_context",
+      "mosquitto_credentials",
+      "mosquitto_persistence",
+      "zigbee_configuration",
+      "zigbee_database",
+      "zigbee_coordinator_backup",
+      "zigbee_runtime_state",
+      "matter_fabric",
+      "portainer_state",
+      "appdaemon_secrets"
+    ],
+    "snapshot_mode": "approved-per-service-stop-window",
+    "transport": "homeassistant-encrypted-backup-wrapper",
+    "destination_root": "personal-onedrive-app-folder",
+    "homeassistant_wrapper": {
+      "requested_permissions": [
+        "Files.ReadWrite.AppFolder",
+        "offline_access",
+        "openid"
+      ],
+      "protected_required": true,
+      "remote_only": true,
+      "include_database": false,
+      "schedule_unchanged": true,
+      "retention_unchanged": true,
+      "generic_upload_action_rejected": "no-supported-download-for-roundtrip-verification"
+    },
+    "rclone_fallback": {
+      "configured": false,
+      "requires_separate_authorization": true,
+      "proposed_scopes": [
+        "Files.ReadWrite",
+        "offline_access"
+      ],
+      "rejected_default_scopes": [
+        "Files.ReadWrite.All",
+        "Sites.Read.All"
+      ]
+    },
+    "sync_allowed": false,
+    "automatic_delete": false,
+    "retention_status": "not-configured",
+    "retention_policy": {
+      "status": "not-configured",
+      "maximum_daily_compose_backups": 90,
+      "maximum_age_days": 90,
+      "deletion_enabled": false,
+      "delete_permanently": false,
+      "move_to_onedrive_recycle_bin": false,
+      "empty_recycle_bin": false,
+      "scope": "exact-daily-offsite-compose-backups-only",
+      "series": "daily-offsite-compose-v1",
+      "strict_registry_required": true,
+      "preserve_latest_verified_backup": true,
+      "prune_only_after_new_verified_backup": true
+    },
+    "restic_fallback": {
+      "enabled": false,
+      "consider_only_if_bundle-size-quota-or-bandwidth-is-infeasible": true,
+      "repository_backend": "rclone",
+      "restore_requires-restic-and-rclone": true
+    },
+    "last_verified_external_backup": null
+  },
+  "daily_orchestration": {
+    "status": "disabled",
+    "trigger": "after-successful-git-backup-before-any-update",
+    "failure_blocks_updates": true,
+    "mutual_exclusion_lock": ".daily-maintenance.lock",
+    "service_stop_required": true,
+    "approved_recurring_window": null,
+    "maximum_service_outage_seconds": 600,
+    "expected_service_outage_seconds": 90,
+    "maximum_backup_manager_ready_wait_seconds": 180,
+    "remote_retention_rotation_approved": false,
+    "manual_backup_deletion_allowed": false,
+    "quota_failure_behavior": "fail-closed-block-updates-and-preserve-existing-backups",
+    "deployed": false,
+    "activation_evidence": null
+  },
+  "separate_approval": {
+    "coverage": [
+      "claude_bridge_auth",
+      "codex_bridge_auth",
+      "weekly_review_ssh_identity"
+    ],
+    "reason": "agent-authentication-and-ssh-identities-require-separate-export-and-restore-approval"
+  },
+  "required_confirmations": [
+    "content-and-coverage",
+    "personal-onedrive-account-and-destination-folder",
+    "rclone-microsoft-oauth-consent-and-scopes",
+    "service-stop-window-for-consistent-snapshots",
+    "retention-before-any-deletion",
+    "independent-key-storage"
+  ],
+  "completed_confirmations": []
+}

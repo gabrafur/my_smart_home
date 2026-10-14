@@ -222,8 +222,11 @@ Git covers configuration, not runtime state. Privately and securely back up:
 Do not commit that backup, even encrypted, without an explicit key-management
 and retention policy.
 
-External preparation is declared in `restore/offsite-backup-policy.json` and
-can be inspected with `make offsite-backup-plan`, or measured without copying
+The public external-backup structure is in the disabled
+`restore/offsite-backup-policy.example.json`. Each installation's active policy
+belongs in the Git-ignored `.local-secrets/offsite-backup-policy.json` with mode
+0600. Once configured and verified, it can be inspected with
+`make offsite-backup-plan`, or measured without copying
 data with `make offsite-backup-measure`. Home Assistant uses the official
 OneDrive integration and its app folder. Other items use a dated
 `private-state-v1` set inside a protected native Home Assistant backup, reusing

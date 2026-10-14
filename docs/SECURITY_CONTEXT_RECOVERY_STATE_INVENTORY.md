@@ -18,6 +18,32 @@ memória usa flush de 30 s. O diretório é criado pelo Node-RED com o usuário 
 container; `/data` foi verificado como gravável. Recriar o container não remove
 o store, mas uma queda abrupta ainda pode perder a janela não descarregada.
 
+Os consumidores `contexto_chegadas` e `iluminacao_seguranca` rejeitam snapshots
+com `updated_at` anterior ao respectivo cache ou além da tolerância futura.
+Cada consumidor e domínio mantém em memória no máximo um episódio de aviso,
+identificado por motivo, timestamp recebido e timestamp do cache: repetições
+da mesma observação geram um aviso inicial e um registro de encerramento,
+com contagem de repetições, quando outro snapshot chega. Após seis horas,
+uma nova entrega do mesmo snapshot expira o episódio e inicia outro aviso;
+expiração não é registrada como recuperação. O registro inclui apenas esses
+timestamps e o domínio, sem coordenadas. Essa limitação afeta somente os logs:
+as mensagens continuam percorrendo os gates de chegada, expiração e estado
+derivado; a política de aceite e os efeitos físicos não mudam. Como o episódio
+é transitório, um reinício pode registrar novamente o primeiro aviso. O cache
+também é transitório e é reconstruído após o reinício, conforme as regras
+abaixo; a deduplicação de logs não garante que observações antigas deixem de
+ser produzidas ou que uma transição ausente seja recuperada.
+
+Um caso reproduzido por `test-canonical-location-flow.mjs`: a fonte primária
+tem observação mais nova, mas perde precisão de GPS; a fonte alternativa ainda
+está fresca e tem coordenadas confiáveis, porém sua observação é 90 segundos
+mais antiga. A seleção atual escolhe a alternativa confiável, enquanto os
+consumidores preservam seus caches mais novos. Essa escolha pode repetir um
+aviso até chegar observação confiável nova. Não substituir a observação por um
+estado bruto `home` com GPS impreciso nem avançar artificialmente seu timestamp:
+isso poderia autorizar uma transição física sem evidência nova. A correção da
+seleção exige prova adicional para todas as decisões de chegada e iluminação.
+
 ## Classificação completa
 
 | Estado | Flow / produtor | Consumidores | Armazenamento atual | Significado e classe | Derivável / transitório / físico / intenção / temporal | Sobrevive? / destino | Risco se perdido | Recovery, TTL e invalidação |

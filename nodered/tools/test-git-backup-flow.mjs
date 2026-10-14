@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..", "..");
 const functionDir = path.join(here, "functions");
-const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8");
+const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8").replace(/\r\n/g, "\n");
 const flows = JSON.parse(fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"));
 const byId = new Map(flows.map((entry) => [entry.id, entry]));
 assert.equal(byId.size, flows.length, "o gerador não pode deixar IDs duplicados");
@@ -52,7 +52,7 @@ function execute(body, msg, flow) {
 
 assert.equal(node("git_backup_tab").label, "backup_git");
 assert.equal(node("git_backup_schedule").crontab, "0 1 * * *");
-assert.equal(node("git_backup_schedule").name, "Agenda: diariamente 01:00 (04:00 UTC)");
+assert.equal(node("git_backup_schedule").name, "Agenda: diariamente 01:00 (TZ do Node-RED)");
 assert.deepEqual(logicalWireTargets("git_backup_schedule"), ["startup_caller_git_backup_schedule"]);
 assert.deepEqual(logicalWireTargets("startup_caller_git_backup_schedule"), ["git_backup_request_out"]);
 assert.equal(node("git_backup_request_gate").type, "switch");

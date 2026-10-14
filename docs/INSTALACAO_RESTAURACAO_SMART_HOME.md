@@ -360,6 +360,12 @@ Criptografe antes de enviar para armazenamento externo, teste a restauração e
 guarde a chave fora do Raspberry Pi. Git, mesmo privado, não é local adequado
 para esses arquivos.
 
+A política de backup externo segue o mesmo limite: bootstrap cria
+`.local-secrets/offsite-backup-policy.json` a partir de um exemplo desativado,
+com permissão 0600. Configure e verifique a política desta instalação antes de
+ativar o ciclo. Para migrar uma instalação anterior, copie a antiga política
+versionada antes da atualização, conforme o [contrato de restore](RESTORE_CONTRACT.md).
+
 ## 15. Atualização
 
 Faça um dry-run:

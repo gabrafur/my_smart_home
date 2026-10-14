@@ -215,11 +215,42 @@ Plano para ensaio real, sujeito a autorização antes de transferir dados:
 
 ## Preparação de backup externo no OneDrive
 
-O contrato público de preparação fica em
-`restore/offsite-backup-policy.json`. Ele está com `active: true` e classifica
-todos os 19 itens do manifesto em três superfícies. Os comandos `plan` e
+O exemplo público desativado fica em
+`restore/offsite-backup-policy.example.json` e classifica os 19 itens do
+manifesto em três superfícies. A política efetiva de cada instalação fica em
+`.local-secrets/offsite-backup-policy.json`, ignorada pelo Git e com modo 0600.
+Sem ativação explícita e comprovantes de verificação, o ciclo falha fechado.
+Os comandos `plan` e
 `measure` não copiam conteúdo privado; somente o ciclo agendado realiza a captura
 aprovada:
+
+Antes de `git pull` ou `make bootstrap` numa instalação que ainda usa o antigo
+arquivo versionado, copie sua política **no checkout antigo**, sem sobrescrever
+um destino existente:
+
+```bash
+set -eu
+test -f restore/offsite-backup-policy.json
+test ! -L restore/offsite-backup-policy.json
+install -d -m 700 .local-secrets
+test ! -L .local-secrets
+if test -e .local-secrets/offsite-backup-policy.json; then
+  cmp restore/offsite-backup-policy.json .local-secrets/offsite-backup-policy.json
+else
+  install -m 600 restore/offsite-backup-policy.json .local-secrets/offsite-backup-policy.json
+fi
+test ! -L .local-secrets/offsite-backup-policy.json
+test "$(stat -c %a .local-secrets/offsite-backup-policy.json)" = 600
+cmp restore/offsite-backup-policy.json .local-secrets/offsite-backup-policy.json
+```
+
+O procedimento é idempotente e não substitui uma política privada divergente.
+Confirme a cópia antes de aplicar a atualização; após ela,
+`node scripts/migrate-offsite-policy.mjs` verifica o destino sem alterá-lo.
+Um clone novo recebe
+o exemplo desativado no bootstrap e não tem autorização de upload. A remoção
+do arquivo versionado não apaga suas versões antigas do histórico Git; avalie
+o histórico antes de publicar uma distribuição nova.
 
 - Home Assistant: integração oficial **OneDrive** para `secrets.yaml`,
   `.storage` e Recorder. Ela pede `Files.ReadWrite.AppFolder`, `offline_access`

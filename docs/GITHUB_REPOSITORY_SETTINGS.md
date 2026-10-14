@@ -10,7 +10,7 @@ Confirme novamente na interface antes de aplicar recomendações.
 
 | Área | Estado observado | Estado recomendado | Motivo |
 | --- | --- | --- | --- |
-| Template repository | **habilitado**, sem licença raiz detectada | desabilitar enquanto a licença estiver indecidida, ou manter somente após licenciar explicitamente o trabalho reutilizável | o controle atual sugere reutilização que os termos não concedem |
+| Template repository | **habilitado** na auditoria anterior | revisar após publicar GPL-3.0-only | este patch não alterou a configuração remota |
 | Proteção/ruleset da `main` | sem proteção e sem ruleset | criar ruleset ativo para `main` | impede force-push e deleção acidentais |
 | Pull request obrigatório | não exigido | exigir para colaboradores; manter bypass explícito do proprietário se o workflow pessoal direto continuar | contribuições externas passam por revisão sem alterar o fluxo autorizado do dono |
 | Check obrigatório | nenhum | exigir **Canonical public validation** após confirmar o nome exibido num PR | alinha merge com `make validate-public` |
@@ -49,17 +49,14 @@ está integralmente protegida. O CI continua rodando em todo push.
 
 ## Template versus fork
 
-O controle atual **Use this template** contradiz a ausência de licença raiz.
-Até o proprietário concluir a
-[decisão de licenciamento](LICENSING_DECISION.pt-BR.md), a posição pública
-coerente é implementação de referência/projeto de portfólio, e a configuração
-não deve permanecer ativa apenas porque o bootstrap é tecnicamente seguro.
-Nenhuma configuração remota foi alterada nesta auditoria.
+O proprietário escolheu [GPL-3.0-only](LICENSING_DECISION.pt-BR.md) para o
+trabalho original. O controle **Use this template** foi observado habilitado;
+este patch não verificou nem alterou a configuração remota.
 
 Um **fork** é apropriado para propor mudanças de volta ao repositório. Preserve
 exemplos sintéticos, trabalhe em branch e abra PR conforme
-[CONTRIBUTING](../CONTRIBUTING.md). Se o proprietário licenciar a reutilização
-e mantiver o template, valide o caminho sem inserir dados reais:
+[CONTRIBUTING](../CONTRIBUTING.md). Se usar o template, valide o caminho sem
+inserir dados reais:
 
 ```bash
 git clone URL_DO_NOVO_REPOSITORIO smart-home
@@ -75,8 +72,7 @@ ausentes e nunca torna o clone uma réplica da residência original.
 
 ## Checklist manual na interface
 
-- [ ] Decidir licença raiz e política de template; enquanto estiver indecidida,
-  desabilitar **Template repository** para alinhar a interface aos termos.
+- [ ] Revisar a configuração de **Template repository** após publicar a licença.
 - [ ] Settings → Rules → criar e ativar o ruleset acima.
 - [ ] Settings → General → ajustar merge e **Automatically delete head branches**.
 - [ ] Settings → Security → manter private vulnerability reporting, Dependabot

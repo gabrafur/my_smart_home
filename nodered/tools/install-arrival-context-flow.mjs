@@ -13,7 +13,7 @@ const TAB = "62bb822e033d1623";
 const PRESERVED = new Set(["3514854bb1279cbb", "45cb8ce559f5a522", "9f9a1fe3c4afc387", "1ba5ecf650ac79b8", "6473697c19342f07", "9f109b7076619124"]);
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const originalFlows = structuredClone(flows);
-const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
+const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").replace(/\r\n/g, "\n").trimEnd();
 const isObserverCoverage = (id) => typeof id === "string" && id.startsWith("global_observer_coverage__");
 const owned = (node) => node.id === TAB || (node.z === TAB && !isObserverCoverage(node.id));
 const removed = new Set(flows.filter(owned).map((node) => node.id));

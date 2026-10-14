@@ -10,9 +10,9 @@ pelo Git; caches e runtime ignorados não fazem parte da distribuição pública
 
 | Nome | Projeto e origem | Versão imobilizada | Licença | Modificações locais | Atualização e atribuição | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
-| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | origem exata em `scripts/alexa-media-upstream.json` (`v5.16.0` nesta revisão) | Apache-2.0 | `__init__.py` contém um guard local permitido; o aplicador exige o marcador ou prova que o alvo o absorveu | resolver tag/commit/objeto de tag, comparar byte a byte, aceitar apenas deltas permitidos, validar manifest/compilação, manter `LICENSE.upstream` e preservar notices Apache | verificado, atualização protegida |
+| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | origem exata em `scripts/alexa-media-upstream.json` (`v5.16.2` nesta revisão) | Apache-2.0 | `__init__.py` contém um guard local permitido; o aplicador exige o marcador ou prova que o alvo o absorveu | resolver tag/commit/objeto de tag, comparar byte a byte, aceitar apenas deltas permitidos, validar manifest/compilação, manter `LICENSE.upstream` e preservar notices Apache | pin local; atualização protegida |
 | HACS | [`hacs/integration`](https://github.com/hacs/integration) | tag `2.0.5`, commit `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `const.py` fixa HA mínimo `2024.4.1`; `manifest.json` registra `2.0.5` | reaplicar e revisar somente esses dois deltas após atualização; manter copyright e licença MIT | verificado, modificado |
-| Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | origem exata em `scripts/kia-uvo-upstream.json` (`v3.12.0`, commit `97f5d61b92209a0476762f625f5053e414063eba` nesta revisão) | MIT | proteção de rate limit, refresh tolerante a falha, histórico/eficiência de viagens, status de comandos e entidades relacionadas | reconciliar por staging/Codex, preservar copyright/licença MIT e promover somente após testes, backup, rollback e validação do runtime | verificado, modificado substancialmente |
+| Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | origem exata em `scripts/kia-uvo-upstream.json` (`v3.17.1`, commit `417f6ac5fe65521e7948015a278c82ee5a584a71` nesta revisão) | MIT | proteção de rate limit, refresh tolerante a falha, histórico/eficiência de viagens, status de comandos e entidades relacionadas | reconciliar por staging/Codex, preservar copyright/licença MIT e promover somente após testes, backup, rollback e validação do runtime | pin local, modificado substancialmente |
 
 Os caminhos cobertos são, respectivamente,
 `homeassistant/custom_components/<domínio>/**`. Cada diretório contém uma cópia
@@ -35,8 +35,8 @@ repositório, não cópias dos projetos citados em seus manifests. Links para
 Anthropic e a documentação do próprio repositório identificam APIs ou
 serviços integrados; não transferem licença sobre o código local.
 
-Nenhum desses componentes próprios possui hoje declaração de licença. Eles
-seguem o bloqueio da [licença raiz](../THIRD_PARTY_NOTICES.md#repository-level-license-status).
+Esses componentes próprios seguem a [licença GPL-3.0-only](../LICENSE) do
+trabalho original, sem substituir os termos de dependências externas.
 
 `moni_mobile` foi extraído para
 [`gabrafur/moni_mobile_home_assistant`](https://github.com/gabrafur/moni_mobile_home_assistant),
@@ -93,9 +93,7 @@ validada. Por fim, rode `make validate-public`.
 
 ## Limite jurídico
 
-Não existe `LICENSE` na raiz por decisão intencional: o proprietário ainda
-precisa escolher a licença do trabalho original e avaliar a distribuição
-mista. As licenças dos componentes vendorizados continuam válidas somente nos
-respectivos diretórios cobertos e não autorizam presumir uma licença para
-arquivos independentes. Este documento é evidência técnica de proveniência,
-não aconselhamento jurídico.
+O trabalho original segue [GPL-3.0-only](../LICENSE). Licenças e copyright
+upstream continuam válidos para os arquivos vendorizados. Este documento é
+evidência técnica de proveniência, não uma declaração de titularidade sobre
+código de terceiros.

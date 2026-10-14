@@ -23,6 +23,7 @@ function fixture(t) {
     ".env.example",
     "homeassistant/secrets.yaml.example",
     "bindings/private-bindings.example.json",
+    "restore/offsite-backup-policy.example.json",
     "zigbee2mqtt/configuration.example.yaml",
     "templates/appdaemon/secrets.yaml.example",
     "modules/features.json",
@@ -40,13 +41,18 @@ test("bootstrap creates only selected private templates and safe random values",
   const result = bootstrapClone(root, { selectedModules: ["core"], checkTools: false });
   assert.equal(result.overwritten, false);
   assert.equal(result.containers_started, false);
-  assert.deepEqual(new Set(result.created), new Set([".env", "homeassistant/secrets.yaml", "bindings/private/private-bindings.json"]));
+  assert.deepEqual(new Set(result.created), new Set([".env", "homeassistant/secrets.yaml", "bindings/private/private-bindings.json", ".local-secrets/offsite-backup-policy.json"]));
   assert.equal(fs.existsSync(path.join(root, "zigbee2mqtt/configuration.yaml")), false);
   const env = fs.readFileSync(path.join(root, ".env"), "utf8");
   assert.match(env, /^NODE_RED_CREDENTIAL_SECRET=[0-9a-f]{64}$/m);
   assert.match(env, /^AI_BRIDGE_TOKEN=[0-9a-f]{64}$/m);
   assert.equal(fs.statSync(path.join(root, ".env")).mode & 0o777, 0o600);
   assert.ok(result.gaps.some((gap) => gap.logical_name === "mosquitto_credentials"));
+  assert.ok(result.gaps.some((gap) => gap.logical_name === "offsite_backup_activation"));
+  const offsitePolicy = JSON.parse(fs.readFileSync(path.join(root, ".local-secrets/offsite-backup-policy.json"), "utf8"));
+  assert.equal(offsitePolicy.active, false);
+  assert.equal(offsitePolicy.homeassistant.runtime_verification, null);
+  assert.deepEqual(offsitePolicy.completed_confirmations, []);
 });
 
 test("bootstrap is idempotent and never overwrites existing private files", (t) => {

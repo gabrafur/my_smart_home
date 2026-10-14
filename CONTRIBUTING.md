@@ -8,17 +8,15 @@ are welcome when they preserve that boundary.
 
 ## Antes de começar / Before you start
 
-- Este é atualmente um projeto de referência/portfólio sem licença raiz. Não
-  trate o controle **Use this template** do GitHub como permissão geral de
-  reutilização; a decisão está documentada em
-  [LICENSING_DECISION](docs/LICENSING_DECISION.pt-BR.md).
+- O trabalho original do projeto está sob [GPL-3.0-only](LICENSE). Preserve
+  avisos e licenças de terceiros; não atribua a si ou ao projeto direitos sobre
+  código upstream.
 - Para contribuir aqui, faça um **fork**, crie uma branch curta e envie um
   pull request. O mantenedor pode continuar fazendo alterações próprias
   diretamente na `main`; isso não muda o fluxo externo.
-- This is currently a reference/portfolio project without a root license. Do
-  not treat GitHub's **Use this template** control as general reuse permission;
-  see [LICENSING_DECISION](docs/LICENSING_DECISION.md). To contribute back,
-  fork this repository, create a focused branch, and open a pull request.
+- Original project work is under [GPL-3.0-only](LICENSE). Preserve third-party
+  licenses, notices, and authorship. Fork this repository, create a focused
+  branch, and open a pull request to contribute back.
 - Nunca envie credenciais, IPs privados, coordenadas, MACs, nomes de moradores,
   identificadores físicos, logs ou estado real de dispositivos. / Never submit
   credentials, private addresses, coordinates, MACs, resident names, physical

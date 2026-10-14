@@ -12,7 +12,7 @@ import { probeService } from "./container-readiness.mjs";
 import { applyRestore, loadManifest, verifyBundle } from "./restore.mjs";
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-export const defaultPolicyFile = path.join(repoRoot, "restore/offsite-backup-policy.json");
+export const defaultPolicyFile = path.join(repoRoot, ".local-secrets/offsite-backup-policy.json");
 const require = createRequire(import.meta.url);
 const WebSocket = require("../nodered/node_modules/ws");
 export const COMPOSE_RETENTION_SERIES = "daily-offsite-compose-v1";
@@ -328,6 +328,11 @@ function defaultRunningServices() {
 function readPolicy(file = defaultPolicyFile) {
   let policy;
   try {
+    const stat = fs.lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink()
+        || process.platform !== "win32" && path.resolve(file) === defaultPolicyFile && (stat.mode & 0o077) !== 0) {
+      fail("off-site backup policy path is unsafe");
+    }
     policy = JSON.parse(fs.readFileSync(file, "utf8"));
   } catch {
     fail("off-site backup policy is missing or invalid");
@@ -557,6 +562,10 @@ function assertStringArray(value, label) {
 }
 
 export function validateOffsitePolicy(policy, manifest) {
+  const positive = (value) => Number.isSafeInteger(value) && value > 0;
+  const nonnegative = (value) => Number.isSafeInteger(value) && value >= 0;
+  const timestamp = (value) => typeof value === "string" && /^\d{4}-\d\d-\d\dT/.test(value)
+    && Number.isFinite(Date.parse(value));
   if (!policy || policy.schema_version !== 1 || policy.active !== true) {
     fail("off-site backup policy must be explicitly activated");
   }
@@ -572,7 +581,7 @@ export function validateOffsitePolicy(policy, manifest) {
   }
   const runtimeVerification = policy.homeassistant.runtime_verification;
   if (runtimeVerification?.method !== "authenticated-home-assistant-websocket-api"
-      || typeof runtimeVerification.checked_at !== "string"
+      || !timestamp(runtimeVerification.checked_at)
       || runtimeVerification.integration_connected !== true
       || runtimeVerification.backup_location_available !== true
       || runtimeVerification.selected_for_automatic_backups !== false
@@ -585,17 +594,17 @@ export function validateOffsitePolicy(policy, manifest) {
   }
   const verifiedBackup = policy.homeassistant.last_verified_external_backup;
   if (verifiedBackup?.destination !== "personal-onedrive-app-folder"
-      || typeof verifiedBackup.backup_timestamp !== "string"
-      || !Number.isSafeInteger(verifiedBackup.size_bytes)
-      || verifiedBackup.size_bytes <= 0
+      || !timestamp(verifiedBackup.backup_timestamp)
+      || !positive(verifiedBackup.size_bytes)
       || verifiedBackup.protected !== true
       || verifiedBackup.homeassistant_included !== true
       || verifiedBackup.database_included !== true
       || !Array.isArray(verifiedBackup.additional_folders)
-      || verifiedBackup.local_backups_preserved !== 2
+      || !positive(verifiedBackup.local_backups_preserved)
       || verifiedBackup.restore_tested !== true
       || verifiedBackup.restore_scope !== "isolated-archive-registries-and-sqlite-integrity"
-      || verifiedBackup.downloaded_decrypted_size_bytes !== 549222400
+      || !positive(verifiedBackup.downloaded_decrypted_size_bytes)
+      || verifiedBackup.downloaded_decrypted_size_bytes > verifiedBackup.size_bytes
       || verifiedBackup.functional_services_tested !== false) {
     fail("Home Assistant external backup receipt is incomplete");
   }
@@ -618,24 +627,30 @@ export function validateOffsitePolicy(policy, manifest) {
   const retention = policy.compose_bundle.retention_policy;
   if (policy.compose_bundle.retention_status !== "active-compose-only"
       || retention?.status !== "approved-active"
-      || typeof retention.approved_at !== "string"
+      || !timestamp(retention.approved_at)
       || retention.quota_measurement_metadata_only !== true
-      || retention.remote_backup_count !== 2
-      || retention.protected_backup_count !== 2
-      || retention.current_remote_backup_bytes !== 975380480
-      || retention.quota_total_bytes !== 1104880336896
-      || retention.quota_used_bytes !== 335222197453
-      || retention.quota_remaining_bytes !== 769658139443
+      || !timestamp(retention.measured_at)
+      || !positive(retention.remote_backup_count)
+      || retention.protected_backup_count !== retention.remote_backup_count
+      || !positive(retention.current_remote_backup_bytes)
+      || !positive(retention.quota_total_bytes)
+      || !nonnegative(retention.quota_used_bytes)
+      || !positive(retention.quota_remaining_bytes)
+      || retention.quota_used_bytes + retention.quota_remaining_bytes !== retention.quota_total_bytes
+      || retention.current_remote_backup_bytes > retention.quota_used_bytes
       || retention.quota_deleted_bytes_at_measurement !== 0
-      || retention.maximum_daily_compose_backups !== 90
-      || retention.maximum_age_days !== 90
-      || retention.estimated_daily_compose_backup_bytes !== 426147840
-      || retention.estimated_retained_compose_bytes !== 38353305600
-      || retention.estimated_total_with_one_full_homeassistant_backup_bytes !== 38902538240
-      || retention.estimated_recycle_bin_bytes_for_30_days !== 12784435200
-      || retention.estimated_total_with_recycle_bin_and_one_full_backup_bytes !== 51686973440
-      || retention.estimated_percent_of_current_free_space !== 5.05
-      || retention.estimated_percent_with_recycle_bin_of_current_free_space !== 6.72
+      || !positive(retention.maximum_daily_compose_backups) || retention.maximum_daily_compose_backups > 90
+      || !positive(retention.maximum_age_days) || retention.maximum_age_days > 90
+      || !positive(retention.estimated_daily_compose_backup_bytes)
+      || retention.estimated_retained_compose_bytes !== retention.estimated_daily_compose_backup_bytes * retention.maximum_daily_compose_backups
+      || retention.estimated_total_with_one_full_homeassistant_backup_bytes !== retention.estimated_retained_compose_bytes + verifiedBackup.size_bytes
+      || retention.estimated_recycle_bin_bytes_for_30_days !== retention.estimated_daily_compose_backup_bytes * 30
+      || retention.estimated_total_with_recycle_bin_and_one_full_backup_bytes !== retention.estimated_total_with_one_full_homeassistant_backup_bytes + retention.estimated_recycle_bin_bytes_for_30_days
+      || retention.estimated_total_with_recycle_bin_and_one_full_backup_bytes > retention.quota_remaining_bytes
+      || !Number.isFinite(retention.estimated_percent_of_current_free_space)
+      || Math.abs(retention.estimated_percent_of_current_free_space - retention.estimated_total_with_one_full_homeassistant_backup_bytes * 100 / retention.quota_remaining_bytes) > 0.1
+      || !Number.isFinite(retention.estimated_percent_with_recycle_bin_of_current_free_space)
+      || Math.abs(retention.estimated_percent_with_recycle_bin_of_current_free_space - retention.estimated_total_with_recycle_bin_and_one_full_backup_bytes * 100 / retention.quota_remaining_bytes) > 0.1
       || retention.deletion_enabled !== true
       || retention.delete_permanently !== false
       || retention.move_to_onedrive_recycle_bin !== true
@@ -652,37 +667,30 @@ export function validateOffsitePolicy(policy, manifest) {
       || policy.daily_orchestration.failure_blocks_updates !== true
       || policy.daily_orchestration.mutual_exclusion_lock !== ".daily-maintenance.lock"
       || policy.daily_orchestration.service_stop_required !== true
-      || policy.daily_orchestration.approved_recurring_window
-        !== "after-daily-git-backup-at-01:00-America/Sao_Paulo"
-      || policy.daily_orchestration.maximum_service_outage_seconds !== 600
-      || policy.daily_orchestration.expected_service_outage_seconds !== 90
-      || policy.daily_orchestration.maximum_backup_manager_ready_wait_seconds !== 180
+      || typeof policy.daily_orchestration.approved_recurring_window !== "string"
+      || !policy.daily_orchestration.approved_recurring_window.trim()
+      || !positive(policy.daily_orchestration.maximum_service_outage_seconds)
+      || policy.daily_orchestration.maximum_service_outage_seconds > 600
+      || !positive(policy.daily_orchestration.expected_service_outage_seconds)
+      || policy.daily_orchestration.expected_service_outage_seconds > policy.daily_orchestration.maximum_service_outage_seconds
+      || !positive(policy.daily_orchestration.maximum_backup_manager_ready_wait_seconds)
+      || policy.daily_orchestration.maximum_backup_manager_ready_wait_seconds > 180
       || policy.daily_orchestration.remote_retention_rotation_approved !== true
       || policy.daily_orchestration.manual_backup_deletion_allowed !== false
       || policy.daily_orchestration.quota_failure_behavior
         !== "fail-closed-block-updates-and-preserve-existing-backups"
-      || policy.daily_orchestration.estimated_remote_growth_bytes_per_daily_cycle !== 426147840
-      || policy.daily_orchestration.estimated_remote_growth_bytes_per_30_days !== 12784435200
+      || policy.daily_orchestration.estimated_remote_growth_bytes_per_daily_cycle !== retention.estimated_daily_compose_backup_bytes
+      || policy.daily_orchestration.estimated_remote_growth_bytes_per_30_days !== retention.estimated_recycle_bin_bytes_for_30_days
       || policy.daily_orchestration.deployed !== true
-      || typeof policy.daily_orchestration.activation_evidence?.node_red_reloaded_at !== "string"
-      || policy.daily_orchestration.activation_evidence.node_red_reload_seconds !== 32
+      || !timestamp(policy.daily_orchestration.activation_evidence?.node_red_reloaded_at)
+      || !positive(policy.daily_orchestration.activation_evidence.node_red_reload_seconds)
+      || policy.daily_orchestration.activation_evidence.node_red_reload_seconds > policy.daily_orchestration.maximum_service_outage_seconds
       || policy.daily_orchestration.activation_evidence.node_red_health !== "healthy"
       || !/^[a-f0-9]{64}$/.test(policy.daily_orchestration.activation_evidence.loaded_flow_sha256)
       || policy.daily_orchestration.activation_evidence.other_services_restarted !== false
       || policy.daily_orchestration.activation_evidence.startup_cycle_dispatched !== false
-      || policy.daily_orchestration.activation_evidence.first_scheduled_run_status
-        !== "failed-before-remote-backup"
-      || policy.daily_orchestration.activation_evidence.first_scheduled_run_at
-        !== "2026-10-14T00:31:01-03:00"
-      || policy.daily_orchestration.activation_evidence.first_scheduled_run_failure
-        !== "homeassistant-backup-manager-startup-blocked"
-      || policy.daily_orchestration.activation_evidence.first_scheduled_run_new_compose_backup !== false
-      || policy.daily_orchestration.activation_evidence.first_scheduled_run_retention_pruned !== false
-      || policy.daily_orchestration.activation_evidence.first_scheduled_run_updates_dispatched !== false
-      || policy.daily_orchestration.activation_evidence.replacement_schedule
-        !== "01:00-America/Sao_Paulo"
-      || policy.daily_orchestration.activation_evidence.replacement_schedule_activation
-        !== "pending-node-red-reload") {
+      || (policy.daily_orchestration.activation_evidence.first_scheduled_run_retention_pruned === true
+        && policy.daily_orchestration.activation_evidence.first_scheduled_run_new_compose_backup !== true)) {
     fail("daily off-site orchestration must preserve the approved retention boundary");
   }
   if (JSON.stringify(policy.compose_bundle.homeassistant_wrapper.requested_permissions)
@@ -691,21 +699,23 @@ export function validateOffsitePolicy(policy, manifest) {
   }
   const composeBackup = policy.compose_bundle.last_verified_external_backup;
   if (composeBackup?.destination !== "personal-onedrive-app-folder"
-      || typeof composeBackup.backup_timestamp !== "string"
-      || composeBackup.size_bytes !== 426147840
-      || composeBackup.downloaded_decrypted_size_bytes !== 426137600
+      || !timestamp(composeBackup.backup_timestamp)
+      || composeBackup.size_bytes !== retention.estimated_daily_compose_backup_bytes
+      || !positive(composeBackup.downloaded_decrypted_size_bytes)
+      || composeBackup.downloaded_decrypted_size_bytes > composeBackup.size_bytes
       || composeBackup.protected !== true
       || composeBackup.homeassistant_included !== true
       || composeBackup.database_included !== false
-      || composeBackup.components !== 13
-      || composeBackup.files !== 218
-      || composeBackup.payload_bytes !== 3199322
+      || !Array.isArray(policy.compose_bundle.coverage)
+      || composeBackup.components !== policy.compose_bundle.coverage.length
+      || !positive(composeBackup.files) || composeBackup.files < composeBackup.components
+      || !positive(composeBackup.payload_bytes)
       || composeBackup.checksums_verified !== true
       || composeBackup.restore_tested !== true
       || composeBackup.restore_scope !== "isolated-file-restore"
       || composeBackup.functional_services_tested !== false
-      || composeBackup.local_backups_preserved !== 2
-      || composeBackup.remote_backups_present !== 2) {
+      || !positive(composeBackup.local_backups_preserved)
+      || !positive(composeBackup.remote_backups_present)) {
     fail("Compose external backup receipt is incomplete");
   }
   for (const scope of ["Files.ReadWrite.All", "Sites.Read.All"]) {

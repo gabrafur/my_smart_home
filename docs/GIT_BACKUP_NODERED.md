@@ -1,14 +1,23 @@
 # Backup Git no Node-RED
 
-O backup diário do repositório é agendado na aba `backup_git` do Node-RED. A
-configuração versionada move o gatilho para **01:00 em `America/Sao_Paulo`**
-(04:00 UTC) e mantém um único disparo para toda a cadeia Git -> backup externo
-verificado -> updates. A escolha evita as rotinas das 03:00, a janela de backup
-automático do Home Assistant de aproximadamente 04:45 a 05:45 e a manutenção de
-storage das 06:23. A ativação depende de recarga controlada do Node-RED; até essa
-autorização, o runtime continua com o horário anterior das 00:30. Se a recarga
-for autorizada e concluída antes da janela, o primeiro gatilho pretendido será
-em **15 de outubro de 2026, à 01:00 BRT**.
+O backup diário do repositório é agendado na aba `backup_git` do Node-RED às
+**01:00 no fuso `TZ` configurado para o container**. Na instalação residencial
+atual, `TZ=America/Sao_Paulo`, portanto o horário corresponde a 04:00 UTC.
+Essa janela foi escolhida para evitar outras rotinas desta casa; quem instalar
+o projeto deve conferir os horários de seus próprios backups e updates antes
+de habilitar a ponte do host. A alteração versionada ainda depende de recarga
+controlada do Node-RED na instalação atual; até lá, o runtime continua no
+horário anterior das 00:30. Clonar o repositório não instala a ponte nem
+autoriza o Git a publicar mudanças automaticamente.
+
+Antes de publicar uma nova `main` deste projeto, coordene a atualização do
+checkout residencial. O helper Git faz `fetch`, mas não faz `pull`: quando o
+remoto avança, ele recusa o backup por divergência até o checkout ser
+atualizado. Para esta migração, copie e confira a política antiga em
+`.local-secrets/` **antes da publicação**, seguindo o
+[contrato de restore](RESTORE_CONTRACT.md); então publique e atualize o
+checkout antes do próximo backup agendado. Se não houver janela para concluir
+as duas etapas, adie a publicação.
 
 O canvas separa visualmente entradas, decisões, efeitos e replay. A resposta
 textual do helper é somente normalizada por um adaptador pequeno; nós `switch`
