@@ -1,8 +1,14 @@
 # Backup Git no Node-RED
 
-O backup diário do repositório é agendado na aba `backup_git` do Node-RED. O
-gatilho ocorre às **00:30 em `America/Sao_Paulo`**, preservando o instante do
-cron anterior, que executava às 03:30 UTC.
+O backup diário do repositório é agendado na aba `backup_git` do Node-RED. A
+configuração versionada move o gatilho para **01:00 em `America/Sao_Paulo`**
+(04:00 UTC) e mantém um único disparo para toda a cadeia Git -> backup externo
+verificado -> updates. A escolha evita as rotinas das 03:00, a janela de backup
+automático do Home Assistant de aproximadamente 04:45 a 05:45 e a manutenção de
+storage das 06:23. A ativação depende de recarga controlada do Node-RED; até essa
+autorização, o runtime continua com o horário anterior das 00:30. Se a recarga
+for autorizada e concluída antes da janela, o primeiro gatilho pretendido será
+em **15 de outubro de 2026, à 01:00 BRT**.
 
 O canvas separa visualmente entradas, decisões, efeitos e replay. A resposta
 textual do helper é somente normalizada por um adaptador pequeno; nós `switch`

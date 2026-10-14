@@ -9273,7 +9273,7 @@
     "git_backup_tab": {
       "label": "backup_git",
       "compact_groups": true,
-      "apply_nodes": false,
+      "apply_nodes": true,
       "group_positions": {
         "git_backup_input_group": {
           "x": 64,

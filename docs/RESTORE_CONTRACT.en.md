@@ -155,13 +155,22 @@ documenting a one-line invocation. Never put secrets in argv.
 
 - The real external backup and isolated structural restore were completed;
   restored services were not started and devices were not tested.
-- The daily routine is deployed and active for the next run: the window after the 00:30 BRT
-  Git backup is approved with a ten-minute limit. Retention for the Compose
-  series was subsequently approved, capped at 90 copies/90 days and only after
-  a new verified external copy. The controlled Node-RED reload
-  completed at 14:15 BRT in 32 seconds; no other service restarted and no cycle
-  was dispatched at startup. The first daily execution is still in the future.
-  The integrated retention path therefore remains unobserved.
+- The first scheduled execution, on October 14, 2026, failed before creating a
+  new external copy: the consistent capture restarted Home Assistant, and the
+  `backup/generate` request made 15 seconds later found Backup Manager still
+  `blocked` during startup. No new Compose copy was created, retention did not
+  run, and updates remained blocked. The worker now queries `backup/info` and
+  waits up to 180 seconds for `idle`, failing closed with a specific diagnosis
+  if startup does not finish, another backup remains active, the query fails,
+  or an agent reports an error. It sends exactly one generation request after
+  readiness.
+- The versioned configuration moves the Git -> verified external backup ->
+  updates chain to 01:00 BRT while preserving the ten-minute capture limit. The
+  window precedes the 03:00 jobs and HA automatic-backup activity between roughly
+  04:45 and 05:45, and storage maintenance at 06:23. Runtime activation requires
+  another controlled Node-RED reload; until then, the loaded trigger remains at
+  00:30. No manual cycle was run to validate the fix, and integrated retention
+  remains unobserved in production.
 - Agent authentication volumes and the SSH identity remain outside the default
   bundle and require a separate procedure.
 - A compatibility difference requires review; databases, registries, Matter
@@ -268,18 +277,20 @@ The persistent MQTT database was limited to presence, checksum, and a consistent
 capture while the broker was stopped because the running image does not provide
 `mosquitto_db_dump`; it did not receive an independent semantic validation.
 
-Both local backups and both remote drill backups remain present; schedule and
-automatic selection did not change. The next safe boundary is keeping the
-emergency kit away from the host/OneDrive. The Node-RED tree blocks updates until
-a complete receipt arrives and is deployed with `active: true` for the next
-scheduled run. The existing window after the daily
-00:30 BRT Git backup is approved, with an expected interruption of about 90
-seconds, a hard ten-minute limit, and immediate service restoration taking
-priority after any failure. Quota exhaustion must fail closed, preserve
-existing copies, and block following updates. The controlled
-Node-RED reload completed at 14:15 BRT in 32 seconds and activated the
-configuration without restarting another service or dispatching the cycle; its
-first daily execution is still in the future.
+Both local backups and both remote drill backups remain present. The next safe
+boundary is keeping the emergency kit away from the host/OneDrive. The Node-RED
+tree blocks updates until a complete receipt arrives. The scheduled attempt on
+October 14, 2026 failed before the external backup because Backup Manager
+remained `blocked` while HA was starting; it created no new copy, ran no
+retention, and released no updates. The worker now waits up to 180 seconds for
+`backup/info` to report `idle` before sending exactly one `backup/generate`.
+The versioned configuration moves the chain to 01:00 BRT, with an expected
+interruption of about 90 seconds, a hard ten-minute limit, and immediate service
+restoration taking priority after any failure. This precedes the 03:00 jobs, HA's
+roughly 04:45-05:45 automatic-backup window, and storage maintenance at 06:23.
+Runtime activation requires a controlled Node-RED reload; until that is
+authorized, the loaded trigger remains at 00:30. Quota or readiness failures
+must fail closed, preserve existing copies, and block following updates.
 
 The metadata-only quota review at 14:30 BRT found 769,658,139,443 bytes free out
 of 1,104,880,336,896 bytes, with two protected backups using 975,380,480 bytes

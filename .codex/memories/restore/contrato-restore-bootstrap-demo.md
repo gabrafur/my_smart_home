@@ -30,11 +30,11 @@ Para instalação, módulos e demo, consulte também
 id: backup-externo-separado-no-onedrive
 category: ARCHITECTURE
 kind: PROJECT_DECISION
-last_verified: 2026-10-13
+last_verified: 2026-10-14
 evidence:
-  - restore/offsite-backup-policy.json@sha256:68ee679d783a24fef1bbe4ee398d0c41546ce29ae502287425c51d21dc691535
-  - scripts/offsite-backup.mjs@sha256:05cee03f3ffed027846d4204184f5c03289699f0939733c6c3212e7997cc1f79
-  - docs/RESTORE_CONTRACT.md@sha256:80179cd3d147011853e2b58b620bdf4dd5c93c08d5394d3613a673d69448ecdc
+  - restore/offsite-backup-policy.json@sha256:987b046edffaef4b312865e9a8da5166704a432d2fcb92aea80d1a5951c629aa
+  - scripts/offsite-backup.mjs@sha256:53d171b5cf0307d85b73b4905445564dcd3f598cb26f1faff542779252348017
+  - docs/RESTORE_CONTRACT.md@sha256:a51cd15e8d104af774adac19e4454113bcc0ca31f4022379183df16678b4b4d8
 -->
 ## Backup externo separado com retenção Compose estrita
 
@@ -56,11 +56,15 @@ backups locais e confirmados dois remotos: o completo do HA e o envelope dos 13
 componentes. Ambos foram baixados e descriptografados; o primeiro passou por
 validação de arquivo, registros e integridade SQLite, e o segundo por checksums e
 restore de arquivos isolado. Nenhum serviço restaurado foi iniciado. A rotina
-Node-RED está implantada para bloquear updates sem esse recibo. A janela diária
-após o backup Git das 00:30 BRT foi aprovada com limite de 10 minutos; uma
-recarga controlada do Node-RED ativou a configuração em 32 segundos, sem
-reiniciar outro serviço nem disparar backup ou update na inicialização. A
-primeira execução agendada ainda é futura. A retenção aprovada limita a série
+Node-RED bloqueia updates sem esse recibo. A primeira execução agendada, em 14
+de outubro de 2026, falhou antes da cópia externa porque o Backup Manager do HA
+ainda estava `blocked` após a captura consistente; não houve nova cópia,
+retenção ou updates. O worker agora espera `backup/info` informar `idle` por até
+180 segundos antes de um único `backup/generate`. A configuração versionada
+move a cadeia para 01:00 BRT, antes das rotinas das 03:00, da janela automática
+do HA de aproximadamente 04:45 a 05:45 e da manutenção de storage das 06:23,
+mantendo o limite de 10 minutos. O runtime permanece às 00:30 até uma recarga
+controlada do Node-RED ser autorizada. A retenção aprovada limita a série
 diária Compose a 90 cópias ou 90 dias, só depois de uma nova cópia externa
 verificada. Apenas IDs criados pela rotina e presentes no registro privado podem
 ser candidatos; backups anteriores do HA e outros arquivos ficam fora. A cópia

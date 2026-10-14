@@ -263,16 +263,24 @@ o serviço `homeassistant` quando o digest muda. O terceiro reconcilia Portainer
 MQTT, Matter, AppDaemon, Node-RED e Zigbee2MQTT e conclui com a manutenção segura
 de storage. Não há reboot automático.
 
-Esse novo gate está **implantado e ativo para a próxima execução agendada**.
-Captura consistente exige parar sete serviços; a execução observada levou cerca de 28 segundos até
-os containers voltarem e aproximadamente 53 segundos até a última sonda de
-prontidão. A janela após o backup Git diário das 00:30 BRT foi aprovada, com
-limite de 10 minutos e prioridade para religar os serviços após falha. A
-configuração está `active: true`; a primeira execução diária sob essa configuração
-ainda é futura e não deve ser confundida com o ensaio estrutural já concluído.
-Uma recarga controlada do Node-RED, explicitamente autorizada fora da execução
-do ciclo, concluiu em 32 segundos às 14:15 BRT, sem reiniciar outro serviço nem
-disparar backup ou update na inicialização.
+Na primeira execução agendada, em 14 de outubro de 2026, a captura consistente
+reiniciou o Home Assistant e o Backup Manager ainda estava `blocked` quando o
+worker pediu a geração 15 segundos depois. Nenhuma cópia Compose nova foi
+criada, nenhuma retenção ocorreu e nenhum update foi liberado. O worker agora
+consulta `backup/info`, aguarda `idle` por até 180 segundos e só então envia um
+único `backup/generate`; inicialização persistente, outro backup ativo, falha de
+consulta ou erro de agente encerram o estágio com diagnóstico específico e
+mantêm os updates bloqueados.
+
+Captura consistente exige parar sete serviços; a execução observada levou cerca
+de 28 segundos até os containers voltarem e aproximadamente 53 segundos até a
+última sonda de prontidão. A configuração versionada move toda a cadeia para
+01:00 BRT, antes das rotinas das 03:00, da janela automática do HA de
+aproximadamente 04:45 a 05:45 e a manutenção de storage das 06:23. O limite de
+10 minutos e a prioridade para religar os serviços após falha permanecem. O
+novo horário ainda não está ativo: depende de recarga controlada do Node-RED e,
+até essa autorização, o runtime continua com o gatilho das 00:30. Nenhum ciclo
+manual foi disparado para validar a correção.
 A retenção aprovada limita somente a série Compose criada pela rotina a 90
 cópias ou 90 dias. A poda ocorre exclusivamente após uma nova cópia externa
 verificada, preserva a mais nova e exige correspondência exata com o registro

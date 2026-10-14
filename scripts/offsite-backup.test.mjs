@@ -15,6 +15,7 @@ import {
   dailyCycleReadiness,
   defaultPolicyFile,
   planComposeRetention,
+  requestBackupGenerationWhenIdle,
   restoreOffsiteBundle,
   verifyOffsiteBundle,
 } from "./offsite-backup.mjs";
@@ -38,6 +39,9 @@ test("off-site plan classifies every private component and is explicitly active"
   assert.equal(plan.status, "encrypted-copies-and-isolated-structural-restores-verified");
   assert.equal(plan.surfaces.homeassistant.oauth_status, "verified-connected");
   const policy = JSON.parse(fs.readFileSync(defaultPolicyFile, "utf8"));
+  assert.equal(policy.daily_orchestration.approved_recurring_window,
+    "after-daily-git-backup-at-01:00-America/Sao_Paulo");
+  assert.equal(policy.daily_orchestration.maximum_backup_manager_ready_wait_seconds, 180);
   assert.deepEqual(policy.daily_orchestration.activation_evidence, {
     node_red_reloaded_at: "2026-10-13T14:15:49-03:00",
     node_red_reload_seconds: 32,
@@ -45,7 +49,14 @@ test("off-site plan classifies every private component and is explicitly active"
     loaded_flow_sha256: "22249bd2407c669d157a74b5cc6b29e1867352732808802078881d57a642d989",
     other_services_restarted: false,
     startup_cycle_dispatched: false,
-    first_scheduled_run_status: "pending",
+    first_scheduled_run_status: "failed-before-remote-backup",
+    first_scheduled_run_at: "2026-10-14T00:31:01-03:00",
+    first_scheduled_run_failure: "homeassistant-backup-manager-startup-blocked",
+    first_scheduled_run_new_compose_backup: false,
+    first_scheduled_run_retention_pruned: false,
+    first_scheduled_run_updates_dispatched: false,
+    replacement_schedule: "01:00-America/Sao_Paulo",
+    replacement_schedule_activation: "pending-node-red-reload",
   });
   assert.deepEqual(plan.completed_confirmations,
     [
@@ -57,6 +68,119 @@ test("off-site plan classifies every private component and is explicitly active"
       "daily-service-stop-window-approved",
       "compose-retention-recycle-bin-approved",
     ]);
+});
+
+function backupManagerInfo(state, agentErrors = {}) {
+  return { state, backups: [], agent_errors: agentErrors };
+}
+
+function syntheticClock() {
+  let now = 0;
+  return {
+    clock: () => now,
+    wait: async (milliseconds) => { now += milliseconds; },
+  };
+}
+
+test("backup generation waits for blocked startup and sends exactly one generate request", async () => {
+  const calls = [];
+  const states = ["blocked", "idle"];
+  const time = syntheticClock();
+  const request = async (_token, message) => {
+    calls.push(message.type);
+    if (message.type === "backup/info") return backupManagerInfo(states.shift());
+    return { backup_job_id: "synthetic-job" };
+  };
+  const result = await requestBackupGenerationWhenIdle({
+    token: undefined,
+    generationRequest: { type: "backup/generate", name: "synthetic" },
+    timeoutMs: 5000,
+    pollIntervalMs: 1000,
+    request,
+    ...time,
+  });
+  assert.equal(result.backup_job_id, "synthetic-job");
+  assert.deepEqual(calls, ["backup/info", "backup/info", "backup/generate"]);
+});
+
+test("backup generation fails closed when startup remains blocked until timeout", async () => {
+  const calls = [];
+  const time = syntheticClock();
+  await assert.rejects(() => requestBackupGenerationWhenIdle({
+    token: undefined,
+    generationRequest: { type: "backup/generate" },
+    timeoutMs: 2500,
+    pollIntervalMs: 1000,
+    request: async (_token, message) => {
+      calls.push(message.type);
+      return backupManagerInfo("blocked");
+    },
+    ...time,
+  }), /startup is still blocked/);
+  assert(!calls.includes("backup/generate"));
+});
+
+test("backup generation never overlaps an already active backup", async () => {
+  const calls = [];
+  const time = syntheticClock();
+  await assert.rejects(() => requestBackupGenerationWhenIdle({
+    token: undefined,
+    generationRequest: { type: "backup/generate" },
+    timeoutMs: 2000,
+    pollIntervalMs: 1000,
+    request: async (_token, message) => {
+      calls.push(message.type);
+      return backupManagerInfo("create_backup");
+    },
+    ...time,
+  }), /another backup is already active/);
+  assert(!calls.includes("backup/generate"));
+});
+
+test("backup generation reports readiness query failures without retrying generation", async () => {
+  const calls = [];
+  await assert.rejects(() => requestBackupGenerationWhenIdle({
+    token: undefined,
+    generationRequest: { type: "backup/generate" },
+    timeoutMs: 2000,
+    request: async (_token, message) => {
+      calls.push(message.type);
+      throw new Error("synthetic private detail");
+    },
+  }), /readiness query failed/);
+  assert.deepEqual(calls, ["backup/info"]);
+});
+
+test("backup generation enforces the readiness deadline across a slow query", async () => {
+  const calls = [];
+  let now = 0;
+  await assert.rejects(() => requestBackupGenerationWhenIdle({
+    token: undefined,
+    generationRequest: { type: "backup/generate" },
+    timeoutMs: 2000,
+    clock: () => now,
+    wait: async (milliseconds) => { now += milliseconds; },
+    request: async (_token, message, requestTimeoutMs) => {
+      calls.push([message.type, requestTimeoutMs]);
+      now += 2500;
+      return backupManagerInfo("idle");
+    },
+  }), /readiness timed out/);
+  assert.deepEqual(calls, [["backup/info", 2000]]);
+});
+
+test("backup generation blocks on agent errors before any generate request", async () => {
+  const calls = [];
+  await assert.rejects(() => requestBackupGenerationWhenIdle({
+    token: undefined,
+    generationRequest: { type: "backup/generate" },
+    timeoutMs: 2000,
+    request: async (_token, message) => {
+      calls.push(message.type);
+      return backupManagerInfo("idle", { synthetic_agent: "unavailable" });
+    },
+  }), /reported agent errors/);
+  assert.deepEqual(calls, ["backup/info"]);
 });
 
 test("daily cycle is ready after the approved deployment and scoped retention", () => {

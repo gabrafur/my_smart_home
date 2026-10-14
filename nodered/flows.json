@@ -3480,7 +3480,7 @@
         ],
         "x": 1659,
         "y": 589,
-        "w": 2101,
+        "w": 2097,
         "h": 422
     },
     {
@@ -3587,7 +3587,7 @@
         "type": "comment",
         "z": "git_backup_tab",
         "g": "git_backup_input_group",
-        "name": "00:30 America/Sao_Paulo (03:30 UTC). Worker e credenciais ficam fora do Node-RED.",
+        "name": "01:00 America/Sao_Paulo (04:00 UTC). Worker e credenciais ficam fora do Node-RED.",
         "info": "O retry de cinco minutos apenas observa a solicitação pendente. Backup manual não inicia atualizações diárias.",
         "x": 390,
         "y": 93,
@@ -3598,7 +3598,7 @@
         "type": "inject",
         "z": "git_backup_tab",
         "g": "git_backup_input_group",
-        "name": "Agenda: diariamente 00:30 (03:30 UTC)",
+        "name": "Agenda: diariamente 01:00 (04:00 UTC)",
         "props": [
             {
                 "p": "payload"
@@ -3610,7 +3610,7 @@
             }
         ],
         "repeat": "",
-        "crontab": "30 00 * * *",
+        "crontab": "0 1 * * *",
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
@@ -4125,7 +4125,7 @@
         "type": "link out",
         "z": "git_backup_tab",
         "g": "git_backup_decision_group",
-        "name": "Sucesso diário → updates",
+        "name": "Sucesso diário → backup externo",
         "mode": "link",
         "links": [
             "daily_update_offsite_git_in"
@@ -4874,7 +4874,7 @@
         "type": "link out",
         "z": "git_backup_tab",
         "g": "git_backup_input_group",
-        "name": "Encurtar: Agenda: diariamente 00:30 (03:30 UTC)",
+        "name": "Encurtar: Agenda: diariamente 01:00 (04:00 UTC)",
         "mode": "link",
         "links": [
             "notification_hub_wire_in_14efb6fdc717"

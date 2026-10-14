@@ -111,6 +111,91 @@ function homeAssistantWebSocketRequest(token, request, timeout = 30_000) {
   });
 }
 
+const knownBackupManagerBusyStates = new Set([
+  "blocked",
+  "create_backup",
+  "receive_backup",
+  "restore_backup",
+]);
+
+function backupManagerTimeoutReason(state) {
+  if (state === "blocked") return "Home Assistant startup is still blocked";
+  if (state === "create_backup") return "another backup is already active";
+  if (state === "receive_backup") return "a backup receive operation is already active";
+  if (state === "restore_backup") return "a backup restore operation is already active";
+  return "the backup manager did not become idle";
+}
+
+export async function waitForBackupManagerIdle({
+  token,
+  timeoutMs,
+  pollIntervalMs = 3000,
+  request = homeAssistantWebSocketRequest,
+  clock = () => Date.now(),
+  wait = delay,
+}) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1
+      || !Number.isSafeInteger(pollIntervalMs) || pollIntervalMs < 1
+      || typeof request !== "function" || typeof clock !== "function" || typeof wait !== "function") {
+    fail("Home Assistant backup manager readiness inputs are invalid");
+  }
+  const deadline = clock() + timeoutMs;
+  let lastState = "unknown";
+  while (true) {
+    const queryBudget = deadline - clock();
+    if (queryBudget <= 0) break;
+    let info;
+    try {
+      info = await request(token, { type: "backup/info" }, Math.min(30_000, queryBudget));
+    } catch {
+      fail("Home Assistant backup manager readiness query failed");
+    }
+    if (!info || typeof info.state !== "string" || !Array.isArray(info.backups)
+        || !info.agent_errors || typeof info.agent_errors !== "object"
+        || Array.isArray(info.agent_errors)) {
+      fail("Home Assistant backup manager readiness response is invalid");
+    }
+    if (Object.keys(info.agent_errors).length > 0) {
+      fail("Home Assistant backup manager readiness reported agent errors");
+    }
+    if (info.state === "idle") {
+      if (clock() <= deadline) return info;
+      break;
+    }
+    if (!knownBackupManagerBusyStates.has(info.state)) {
+      fail("Home Assistant backup manager returned an unsupported state");
+    }
+    lastState = info.state;
+    const remaining = deadline - clock();
+    if (remaining <= 0) break;
+    await wait(Math.min(pollIntervalMs, remaining));
+  }
+  fail(`Home Assistant backup manager readiness timed out: ${backupManagerTimeoutReason(lastState)}`);
+}
+
+export async function requestBackupGenerationWhenIdle({
+  token,
+  generationRequest,
+  timeoutMs,
+  pollIntervalMs = 3000,
+  request = homeAssistantWebSocketRequest,
+  clock = () => Date.now(),
+  wait = delay,
+}) {
+  if (generationRequest?.type !== "backup/generate") {
+    fail("Home Assistant backup generation request is invalid");
+  }
+  await waitForBackupManagerIdle({
+    token,
+    timeoutMs,
+    pollIntervalMs,
+    request,
+    clock,
+    wait,
+  });
+  return request(token, generationRequest);
+}
+
 function inspectContainer(service) {
   const output = runChecked("docker", ["inspect", service, "--format", "{{json .State}}"]).trim();
   return JSON.parse(output);
@@ -568,9 +653,10 @@ export function validateOffsitePolicy(policy, manifest) {
       || policy.daily_orchestration.mutual_exclusion_lock !== ".daily-maintenance.lock"
       || policy.daily_orchestration.service_stop_required !== true
       || policy.daily_orchestration.approved_recurring_window
-        !== "after-daily-git-backup-at-00:30-America/Sao_Paulo"
+        !== "after-daily-git-backup-at-01:00-America/Sao_Paulo"
       || policy.daily_orchestration.maximum_service_outage_seconds !== 600
       || policy.daily_orchestration.expected_service_outage_seconds !== 90
+      || policy.daily_orchestration.maximum_backup_manager_ready_wait_seconds !== 180
       || policy.daily_orchestration.remote_retention_rotation_approved !== true
       || policy.daily_orchestration.manual_backup_deletion_allowed !== false
       || policy.daily_orchestration.quota_failure_behavior
@@ -584,7 +670,19 @@ export function validateOffsitePolicy(policy, manifest) {
       || !/^[a-f0-9]{64}$/.test(policy.daily_orchestration.activation_evidence.loaded_flow_sha256)
       || policy.daily_orchestration.activation_evidence.other_services_restarted !== false
       || policy.daily_orchestration.activation_evidence.startup_cycle_dispatched !== false
-      || policy.daily_orchestration.activation_evidence.first_scheduled_run_status !== "pending") {
+      || policy.daily_orchestration.activation_evidence.first_scheduled_run_status
+        !== "failed-before-remote-backup"
+      || policy.daily_orchestration.activation_evidence.first_scheduled_run_at
+        !== "2026-10-14T00:31:01-03:00"
+      || policy.daily_orchestration.activation_evidence.first_scheduled_run_failure
+        !== "homeassistant-backup-manager-startup-blocked"
+      || policy.daily_orchestration.activation_evidence.first_scheduled_run_new_compose_backup !== false
+      || policy.daily_orchestration.activation_evidence.first_scheduled_run_retention_pruned !== false
+      || policy.daily_orchestration.activation_evidence.first_scheduled_run_updates_dispatched !== false
+      || policy.daily_orchestration.activation_evidence.replacement_schedule
+        !== "01:00-America/Sao_Paulo"
+      || policy.daily_orchestration.activation_evidence.replacement_schedule_activation
+        !== "pending-node-red-reload") {
     fail("daily off-site orchestration must preserve the approved retention boundary");
   }
   if (JSON.stringify(policy.compose_bundle.homeassistant_wrapper.requested_permissions)
@@ -1064,15 +1162,19 @@ export async function runDailyCycle({
     runChecked("docker", ["exec", "homeassistant", "chmod", "-R", "go-rwx", containerStagingDir]);
     token = readHomeAssistantToken();
     credentials = readHomeAssistantBackupCredentials();
-    const generated = await homeAssistantWebSocketRequest(token, {
-      type: "backup/generate",
-      agent_ids: [credentials.agent_id],
-      include_all_addons: false,
-      include_database: false,
-      include_homeassistant: true,
-      include_folders: [],
-      name: `${COMPOSE_BACKUP_NAME_PREFIX}${now.toISOString().slice(0, 10)}`,
-      password: credentials.password,
+    const generated = await requestBackupGenerationWhenIdle({
+      token,
+      timeoutMs: policy.daily_orchestration.maximum_backup_manager_ready_wait_seconds * 1000,
+      generationRequest: {
+        type: "backup/generate",
+        agent_ids: [credentials.agent_id],
+        include_all_addons: false,
+        include_database: false,
+        include_homeassistant: true,
+        include_folders: [],
+        name: `${COMPOSE_BACKUP_NAME_PREFIX}${now.toISOString().slice(0, 10)}`,
+        password: credentials.password,
+      },
     });
     const backupId = generated?.backup_job_id;
     if (typeof backupId !== "string" || !backupId) fail("Home Assistant did not return a backup job");

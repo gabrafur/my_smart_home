@@ -51,7 +51,10 @@ function execute(body, msg, flow) {
 }
 
 assert.equal(node("git_backup_tab").label, "backup_git");
-assert.equal(node("git_backup_schedule").crontab, "30 00 * * *");
+assert.equal(node("git_backup_schedule").crontab, "0 1 * * *");
+assert.equal(node("git_backup_schedule").name, "Agenda: diariamente 01:00 (04:00 UTC)");
+assert.deepEqual(logicalWireTargets("git_backup_schedule"), ["startup_caller_git_backup_schedule"]);
+assert.deepEqual(logicalWireTargets("startup_caller_git_backup_schedule"), ["git_backup_request_out"]);
 assert.equal(node("git_backup_request_gate").type, "switch");
 assert.deepEqual(node("git_backup_request_gate").wires.map((_, output) => logicalWireTargets("git_backup_request_gate", output)), [
   ["git_backup_request_dry_out"],

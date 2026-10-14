@@ -3,22 +3,34 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
 const outputPath = path.resolve(process.argv[3] ?? sourcePath);
 const functionsDir = path.join(here, "functions");
-const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+const originalFlows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const TAB = "git_backup_tab";
 const SERVER = "4126427d5e161a03";
+const preservedVisualRouteIds = new Set([
+  "notification_hub_wire_out_14efb6fdc717",
+  "notification_hub_wire_in_14efb6fdc717",
+  "notification_hub_wire_out_7bea3bdee049",
+  "notification_hub_wire_in_7bea3bdee049",
+  "notification_hub_wire_out_7b0d29c68a9f",
+  "notification_hub_wire_in_7b0d29c68a9f",
+  "notification_hub_wire_out_e8b646d9c5f3",
+  "notification_hub_wire_in_e8b646d9c5f3",
+]);
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const generatedNotificationRoute = (node) => node.z === TAB &&
   /^notification_hub_wire_(?:out|in)_[a-f0-9]{12}$/.test(node.id);
-const owned = (node) => node.id === TAB || node.id.startsWith("git_backup_") ||
-  generatedNotificationRoute(node);
-const removed = new Set(flows.filter(owned).map((node) => node.id));
-const next = flows.filter((node) => !owned(node));
+const coreOwned = (node) => node.id === TAB || node.id.startsWith("git_backup_");
+const owned = (node) => coreOwned(node) || generatedNotificationRoute(node);
+const removed = new Set(originalFlows.filter(coreOwned).map((node) => node.id));
+const next = structuredClone(originalFlows.filter((node) => !coreOwned(node)));
 for (const node of next) {
+  if (generatedNotificationRoute(node)) continue;
   for (const field of ["nodes", "scope", "links"]) {
     if (Array.isArray(node[field])) node[field] = node[field].filter((id) =>
       !removed.has(id) ||
@@ -71,12 +83,12 @@ const linkIn = (id, g, name, origins, destination, x, y) => grouped(g, {
 add({ id: TAB, type: "tab", label: "backup_git", disabled: false, info: "Node-RED agenda e decide; o helper allowlisted executa Git/SSH no host. Testes percorrem as mesmas decisões e terminam antes de qualquer efeito.", env: [] });
 grouped(groups.input, {
   id: "git_backup_architecture", type: "comment", z: TAB, g: groups.input,
-  name: "00:30 America/Sao_Paulo (03:30 UTC). Worker e credenciais ficam fora do Node-RED.",
+  name: "01:00 America/Sao_Paulo (04:00 UTC). Worker e credenciais ficam fora do Node-RED.",
   info: "O retry de cinco minutos apenas observa a solicitação pendente. Backup manual não inicia atualizações diárias.", x: 350, y: 60, wires: [],
 });
-inject("git_backup_schedule", groups.input, "Agenda: diariamente 00:30 (03:30 UTC)", [
+inject("git_backup_schedule", groups.input, "Agenda: diariamente 01:00 (04:00 UTC)", [
   { p: "payload" }, { p: "topic", v: "scheduled", vt: "str" },
-], 250, 130, [["git_backup_request_out"]], { crontab: "30 00 * * *" });
+], 250, 130, [["notification_hub_wire_out_14efb6fdc717"]], { crontab: "0 1 * * *" });
 inject("git_backup_manual", groups.input, "Pedido manual: executar backup agora", [
   { p: "payload" }, { p: "topic", v: "manual", vt: "str" },
 ], 250, 200, [["git_backup_request_out"]]);
@@ -94,7 +106,7 @@ fn("git_backup_result", groups.decision, "Normalizar resposta textual", "git-bac
 sw("git_backup_status_switch", groups.decision, "Resultado: sucesso, falha ou adiado?", "git_backup_status", "msg", [
   { t: "eq", v: "success", vt: "str" }, { t: "eq", v: "failed", vt: "str" },
   { t: "eq", v: "deferred", vt: "str" }, { t: "else" },
-], 1230, 220, [["git_backup_success_origin"], ["git_backup_alert_build"], ["git_backup_deferred_gate"], ["git_backup_invalid_gate"]]);
+], 1350, 280, [["git_backup_success_origin"], ["git_backup_alert_build"], ["git_backup_deferred_gate"], ["git_backup_invalid_gate"]]);
 sw("git_backup_success_origin", groups.decision, "Sucesso veio da agenda diária?", "topic", "msg", [
   { t: "eq", v: "scheduled", vt: "str" }, { t: "else" },
 ], 1430, 140, [["git_backup_success_gate"], ["git_backup_manual_success"]]);
@@ -110,21 +122,21 @@ grouped(groups.decision, {
   wires: [["git_backup_daily_update_out"]],
 });
 terminal("git_backup_manual_success", groups.decision, "Sucesso manual — encerrar sem updates", { fill: "green", shape: "dot", text: "backup manual concluído" }, 1730, 170);
-fn("git_backup_alert_build", groups.decision, "Montar alerta de falha", "git-backup-alert-build.js", 1, 1280, 290, [["git_backup_failure_gate"]]);
+fn("git_backup_alert_build", groups.decision, "Montar alerta de falha", "git-backup-alert-build.js", 1, 1695, 303, [["git_backup_failure_gate"]]);
 sw("git_backup_failure_gate", groups.decision, "Notificação de falha é TESTE?", "_git_backup_test", "msg", [
   { t: "true" }, { t: "else" },
-], 1650, 280, [["git_backup_dry_out"], ["git_backup_notification_out"]]);
+], 1946, 280, [["git_backup_dry_out"], ["git_backup_notification_out"]]);
 sw("git_backup_deferred_gate", groups.decision, "Retry adiado é TESTE?", "_git_backup_test", "msg", [
   { t: "true" }, { t: "else" },
-], 1500, 350, [["git_backup_dry_out"], ["git_backup_retry_effect_out"]]);
+], 1733, 373, [["notification_hub_wire_out_7b0d29c68a9f"], ["git_backup_retry_effect_out"]]);
 sw("git_backup_invalid_gate", groups.decision, "Resposta inválida pertence a TESTE?", "_git_backup_test", "msg", [
   { t: "true" }, { t: "else" },
-], 1350, 390, [["git_backup_dry_out"], ["git_backup_invalid_result"]]);
-fn("git_backup_invalid_result", groups.decision, "Rejeitar resposta não reconhecida", "git-backup-invalid-result.js", 0, 1610, 380, []);
-linkOut("git_backup_notification_out", groups.decision, "Falha real → notificações", "git_backup_notification_in", 1810, 280);
+], 1705, 503, [["notification_hub_wire_out_e8b646d9c5f3"], ["git_backup_invalid_result"]]);
+fn("git_backup_invalid_result", groups.decision, "Rejeitar resposta não reconhecida", "git-backup-invalid-result.js", 0, 2085, 503, []);
+linkOut("git_backup_notification_out", groups.decision, "Falha real → notificações", "git_backup_notification_in", 2110, 303);
 linkOut("git_backup_retry_effect_out", groups.decision, "Adiado real → retry", "git_backup_retry_effect_in", 1740, 330);
 linkOut("git_backup_daily_update_out", groups.decision, "Sucesso diário → backup externo", "daily_update_offsite_git_in", 1840, 50);
-linkOut("git_backup_dry_out", groups.decision, "TESTE → terminal dry-run", "git_backup_dry_in", 1840, 420);
+linkOut("git_backup_dry_out", groups.decision, "TESTE → terminal dry-run", "git_backup_dry_in", 2280, 323);
 
 linkIn("git_backup_worker_in", groups.effect, "Receber pedido de produção", "git_backup_worker_out", "git_backup_request", 1950, 100);
 grouped(groups.effect, {
@@ -209,5 +221,34 @@ const alexaMediaBackupOutput = next.find((node) => node.id === "daily_update_ale
 if (alexaMediaBackupOutput && Array.isArray(alexaMediaBackupOutput.links) && !alexaMediaBackupOutput.links.includes("git_backup_request_in")) {
   alexaMediaBackupOutput.links.push("git_backup_request_in");
 }
-fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
+const desired = installNotificationHubs(next);
+const desiredById = new Map(desired.map((node) => [node.id, node]));
+for (const id of preservedVisualRouteIds) {
+  if (!desiredById.has(id)) {
+    const current = originalFlows.find((node) => node.id === id);
+    if (!current) throw new Error(`Rota visual obrigatória ausente: ${id}`);
+    const preserved = structuredClone(current);
+    desired.push(preserved);
+    desiredById.set(id, preserved);
+  }
+  const route = desiredById.get(id);
+  const group = desiredById.get(route.g);
+  if (group?.type === "group" && !group.nodes.includes(id)) group.nodes.push(id);
+}
+desiredById.get("git_backup_schedule").wires = [["notification_hub_wire_out_14efb6fdc717"]];
+desiredById.get("git_backup_deferred_gate").wires[0] = ["notification_hub_wire_out_7b0d29c68a9f"];
+desiredById.get("git_backup_invalid_gate").wires[0] = ["notification_hub_wire_out_e8b646d9c5f3"];
+desiredById.get("notification_hub_wire_out_14efb6fdc717").name =
+  "Encurtar: Agenda: diariamente 01:00 (04:00 UTC)";
+const linkedConsumers = new Set([
+  "daily_update_offsite_git_in",
+  "daily_update_dependency_backup_out",
+  "daily_update_alexa_media_backup_out",
+]);
+const reconciled = reconcileGeneratedFlows(originalFlows, desired, {
+  isOwned: owned,
+  shouldUpdate: (node) => owned(node) || generatedNotificationRoute(node)
+    || linkedConsumers.has(node.id),
+});
+fs.writeFileSync(outputPath, `${JSON.stringify(reconciled, null, 4)}\n`);
 console.log(`Fluxo visual de backup Git instalado em ${outputPath}`);

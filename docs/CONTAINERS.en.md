@@ -257,15 +257,23 @@ The second resolves only the stable Home Assistant image and recreates only
 Matter, AppDaemon, Node-RED, and Zigbee2MQTT, then runs safe storage maintenance.
 It never reboots automatically.
 
-This new gate is **deployed and active for the next scheduled run**. A consistent
-capture still requires stopping seven services; the observed run took about 28 seconds for
-containers to return and about 53 seconds for the last readiness probe. The
-window after the daily 00:30 BRT Git backup is approved, with a ten-minute limit
-and service restoration taking priority after a failure. The configuration is
-`active: true`; its first daily execution is still in the future and must not be
-confused with the completed structural drill. An explicitly authorized
-controlled Node-RED reload completed at 14:15 BRT in 32 seconds without
-restarting another service or dispatching a backup or update at startup.
+On the first scheduled execution, on October 14, 2026, the consistent capture
+restarted Home Assistant and Backup Manager was still `blocked` when the worker
+requested generation 15 seconds later. No new Compose copy was created,
+retention did not run, and updates remained blocked. The worker now queries
+`backup/info`, waits up to 180 seconds for `idle`, and only then sends exactly
+one `backup/generate`; persistent startup, another active backup, a query
+failure, or an agent error ends the stage with a specific diagnosis and keeps
+updates blocked.
+
+A consistent capture still requires stopping seven services; the observed run
+took about 28 seconds for containers to return and about 53 seconds for the last
+readiness probe. The versioned configuration moves the whole chain to 01:00 BRT,
+before the 03:00 jobs, HA's roughly 04:45-05:45 automatic-backup window, and
+storage maintenance at 06:23. The ten-minute limit and restoration priority
+remain unchanged. The new time is not active yet: it requires a controlled
+Node-RED reload, and until that is authorized the loaded trigger remains at
+00:30. No manual cycle was dispatched to validate the fix.
 The approved retention applies only to the Compose series created by this
 routine and caps it at 90 copies or 90 days. Pruning runs only after a newly
 verified external copy, preserves the newest one, and requires an exact match

@@ -157,9 +157,10 @@
     "failure_blocks_updates": true,
     "mutual_exclusion_lock": ".daily-maintenance.lock",
     "service_stop_required": true,
-    "approved_recurring_window": "after-daily-git-backup-at-00:30-America/Sao_Paulo",
+    "approved_recurring_window": "after-daily-git-backup-at-01:00-America/Sao_Paulo",
     "maximum_service_outage_seconds": 600,
     "expected_service_outage_seconds": 90,
+    "maximum_backup_manager_ready_wait_seconds": 180,
     "remote_retention_rotation_approved": true,
     "manual_backup_deletion_allowed": false,
     "quota_failure_behavior": "fail-closed-block-updates-and-preserve-existing-backups",
@@ -173,7 +174,14 @@
       "loaded_flow_sha256": "22249bd2407c669d157a74b5cc6b29e1867352732808802078881d57a642d989",
       "other_services_restarted": false,
       "startup_cycle_dispatched": false,
-      "first_scheduled_run_status": "pending"
+      "first_scheduled_run_status": "failed-before-remote-backup",
+      "first_scheduled_run_at": "2026-10-14T00:31:01-03:00",
+      "first_scheduled_run_failure": "homeassistant-backup-manager-startup-blocked",
+      "first_scheduled_run_new_compose_backup": false,
+      "first_scheduled_run_retention_pruned": false,
+      "first_scheduled_run_updates_dispatched": false,
+      "replacement_schedule": "01:00-America/Sao_Paulo",
+      "replacement_schedule_activation": "pending-node-red-reload"
     }
   },
   "separate_approval": {

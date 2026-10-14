@@ -159,13 +159,22 @@ antes de documentar uma invocação de uma linha. Nunca passe secrets em argv.
 
 - O backup externo real e a restauração estrutural isolada foram executados;
   serviços restaurados não foram iniciados e dispositivos não foram testados.
-- A rotina diária está implantada e ativa para a próxima execução: a janela após o backup Git
-  das 00:30 BRT foi aprovada com limite de 10 minutos. A retenção da série
-  Compose foi posteriormente aprovada, limitada a 90 cópias/90 dias e somente
-  depois de uma nova cópia externa verificada. A recarga controlada do
-  Node-RED ocorreu às 14:15 BRT em 32 segundos; nenhum outro serviço reiniciou e
-  nenhum ciclo foi disparado na inicialização. A primeira execução diária ainda
-  é futura; por isso, a execução integrada da retenção ainda não foi observada.
+- A primeira execução agendada, em 14 de outubro de 2026, falhou antes de criar
+  uma nova cópia externa: a captura consistente reiniciou o Home Assistant e o
+  pedido `backup/generate`, feito 15 segundos depois, encontrou o Backup Manager
+  ainda em `blocked` durante a inicialização. Nenhuma cópia Compose nova foi
+  criada, nenhuma retenção ocorreu e nenhum update foi liberado. O worker agora
+  consulta `backup/info` e aguarda `idle` por até 180 segundos, falhando fechado
+  com diagnóstico específico se a inicialização não terminar, se outro backup
+  continuar ativo, se a consulta falhar ou se houver erro de agente. Há somente
+  um pedido de geração depois da prontidão.
+- A configuração versionada transfere a cadeia Git -> backup externo verificado
+  -> updates para 01:00 BRT, mantendo o limite de 10 minutos da captura. A janela
+  antecede as rotinas das 03:00 e o backup automático do HA entre aproximadamente
+  04:45 e 05:45 e a manutenção de storage das 06:23. A ativação do horário no
+  runtime depende de uma nova recarga controlada do Node-RED; até lá, o runtime
+  continua com o gatilho das 00:30. Não foi executado ciclo manual para validar
+  a correção, e a retenção integrada continua sem observação em produção.
 - Volumes de autenticação dos agentes e identidade SSH continuam fora do bundle
   padrão e exigem procedimento separado.
 - Compatibilidade marcada como diferente exige revisão; não há migração
@@ -291,18 +300,21 @@ O banco persistente do MQTT ficou limitado a presença, checksum e captura
 consistente com o broker parado, porque a imagem em execução não fornece
 `mosquitto_db_dump`; ele não recebeu uma validação semântica independente.
 
-Os dois backups locais e os dois remotos do ensaio foram preservados; agenda e seleção
-automática não mudaram. O próximo limite seguro é guardar o kit de
-emergência fora do host/OneDrive. A árvore do Node-RED bloqueia updates até
-receber recibo completo e está implantada com `active: true` para a próxima
-execução agendada. Foi aprovada a mesma janela que começa após o
-backup Git diário das 00:30 BRT, com interrupção esperada de aproximadamente 90 s,
-limite de 10 minutos e prioridade absoluta para religar os serviços em caso de
-falha. Falta de quota deve falhar fechada, preservar as cópias existentes e
-bloquear os updates seguintes. A
-recarga controlada do Node-RED, concluída em 32 segundos às 14:15 BRT, ativou
-a configuração sem reiniciar outro serviço nem disparar o ciclo; a
-primeira execução diária ainda é futura.
+Os dois backups locais e os dois remotos do ensaio foram preservados. O próximo
+limite seguro é guardar o kit de emergência fora do host/OneDrive. A árvore do
+Node-RED bloqueia updates até receber recibo completo. A tentativa agendada de
+14 de outubro de 2026 falhou antes do backup externo porque o Backup Manager
+permaneceu `blocked` durante a inicialização do HA; não houve nova cópia,
+retenção nem updates. O worker agora espera `backup/info` informar `idle` por
+até 180 segundos antes de emitir um único `backup/generate`. A configuração
+versionada move a cadeia para 01:00 BRT, com interrupção esperada de
+aproximadamente 90 s, limite de 10 minutos e prioridade absoluta para religar
+os serviços em caso de falha. O horário antecede as rotinas das 03:00, a janela
+automática do HA de aproximadamente 04:45 a 05:45 e a manutenção de storage das
+06:23. Sua ativação no runtime depende de recarga controlada do Node-RED; até
+essa autorização, o gatilho carregado continua às 00:30. Falta de quota ou de
+prontidão deve falhar fechada, preservar as cópias existentes e bloquear os
+updates seguintes.
 
 A revisão somente de metadados das 14:30 BRT encontrou 769.658.139.443 bytes
 livres de 1.104.880.336.896 bytes, com dois backups protegidos ocupando
