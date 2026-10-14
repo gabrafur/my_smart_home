@@ -278,12 +278,13 @@ mantêm os updates bloqueados.
 Captura consistente exige parar sete serviços; a execução observada levou cerca
 de 28 segundos até os containers voltarem e aproximadamente 53 segundos até a
 última sonda de prontidão. A configuração versionada move toda a cadeia para
-01:00 BRT, antes das rotinas das 03:00, da janela automática do HA de
+01:00 no `TZ` do Node-RED (BRT nesta instalação), antes das rotinas das 03:00,
+da janela automática do HA de
 aproximadamente 04:45 a 05:45 e a manutenção de storage das 06:23. O limite de
 10 minutos e a prioridade para religar os serviços após falha permanecem. O
-novo horário ainda não está ativo: depende de recarga controlada do Node-RED e,
-até essa autorização, o runtime continua com o gatilho das 00:30. Nenhum ciclo
-manual foi disparado para validar a correção.
+fluxo das 01:00 no `TZ` do Node-RED foi carregado em 14/10/2026. O primeiro
+ciclo automático nessa janela ainda não foi observado; nenhum ciclo manual foi
+disparado para validar a correção.
 A retenção aprovada limita somente a série Compose criada pela rotina a 90
 cópias ou 90 dias. A poda ocorre exclusivamente após uma nova cópia externa
 verificada, preserva a mais nova e exige correspondência exata com o registro

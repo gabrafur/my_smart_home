@@ -93,6 +93,14 @@ make demo-test
 files, and reports gaps. Before starting containers, read
 [installation/restore](docs/INSTALLATION_RESTORE.en.md) and configure your own
 secrets, bindings, and hardware.
+The public off-site policy is a disabled example; an installation's active
+policy belongs in the Git-ignored `.local-secrets/` directory. When updating an
+older installation, copy and verify its former tracked policy **before** pulling
+the version that removes it; follow the [migration procedure](docs/RESTORE_CONTRACT.en.md).
+The optional daily chain is Git backup -> verified protected off-site backup ->
+updates, scheduled at 01:00 in the Node-RED container's configurable `TZ`.
+Failures block later stages. Retention covers only the managed Compose backup
+series, up to 90 copies or 90 days; a fresh clone does not enable this chain.
 
 ### License and contributions
 
@@ -141,6 +149,9 @@ The repository is the public layer; installation recovery state belongs in an
 encrypted private bundle. Use `backup-plan`, `backup-verify`, `restore-plan`,
 and `restore-verify`; `restore-apply` requires a confirmation token. Full
 contract: [RESTORE_CONTRACT](docs/RESTORE_CONTRACT.en.md).
+The recorded restore drills checked archive structure, checksums, and selected
+database integrity; they did not start restored services. An independent
+outside-host availability monitor is proposed, not deployed.
 
 ## Security and privacy
 

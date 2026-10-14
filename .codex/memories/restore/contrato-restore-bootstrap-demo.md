@@ -61,10 +61,11 @@ de outubro de 2026, falhou antes da cópia externa porque o Backup Manager do HA
 ainda estava `blocked` após a captura consistente; não houve nova cópia,
 retenção ou updates. O worker agora espera `backup/info` informar `idle` por até
 180 segundos antes de um único `backup/generate`. A configuração versionada
-move a cadeia para 01:00 BRT, antes das rotinas das 03:00, da janela automática
+move a cadeia para 01:00 no `TZ` do Node-RED (BRT nesta instalação), antes das
+rotinas das 03:00, da janela automática
 do HA de aproximadamente 04:45 a 05:45 e da manutenção de storage das 06:23,
-mantendo o limite de 10 minutos. O runtime permanece às 00:30 até uma recarga
-controlada do Node-RED ser autorizada. A retenção aprovada limita a série
+mantendo o limite de 10 minutos. O fluxo foi carregado em 14/10/2026; o primeiro
+ciclo automático nessa janela ainda não foi observado. A retenção aprovada limita a série
 diária Compose a 90 cópias ou 90 dias, só depois de uma nova cópia externa
 verificada. Apenas IDs criados pela rotina e presentes no registro privado podem
 ser candidatos; backups anteriores do HA e outros arquivos ficam fora. A cópia

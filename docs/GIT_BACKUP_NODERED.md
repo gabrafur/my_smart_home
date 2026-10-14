@@ -5,9 +5,9 @@ O backup diário do repositório é agendado na aba `backup_git` do Node-RED às
 atual, `TZ=America/Sao_Paulo`, portanto o horário corresponde a 04:00 UTC.
 Essa janela foi escolhida para evitar outras rotinas desta casa; quem instalar
 o projeto deve conferir os horários de seus próprios backups e updates antes
-de habilitar a ponte do host. A alteração versionada ainda depende de recarga
-controlada do Node-RED na instalação atual; até lá, o runtime continua no
-horário anterior das 00:30. Clonar o repositório não instala a ponte nem
+de habilitar a ponte do host. A instalação residencial carregou esse fluxo em
+14/10/2026; a primeira execução automática nessa nova janela ainda precisa ser
+observada. Clonar o repositório não instala a ponte nem
 autoriza o Git a publicar mudanças automaticamente.
 
 Antes de publicar uma nova `main` deste projeto, coordene a atualização do
@@ -49,7 +49,12 @@ updates chama um novo backup ao final para registrar o Compose reconciliado.
 - Falha definitiva ou timeout sem pedido recuperável envia push para
   `resident_primary`, pelo binding lógico `mobile_primary`, e cria ou atualiza
   o aviso persistente `git_backup_failure` na aba de notificações do Home
-  Assistant. Se a validação
+  Assistant. O aviso persistente, o aceite da chamada ao serviço móvel e a
+  exibição no iPhone são etapas distintas: os dois primeiros não comprovam a
+  última. Se o aviso não aparecer, procure recibos de aceite no histórico
+  privado sem divulgar seu texto; a ausência de recibo também precisa ser
+  investigada. Confira as permissões/canais do app no próprio telefone antes de
+  atribuir a falha ao fluxo. Se a validação
   segura estiver sem recursos, a ponte publica `deferred`, mantém o mesmo
   pedido no host e o flow volta a observar o retry após cinco minutos, sem
   alerta falso. Os controles `TESTE` exercitam o pedido ao worker, sucesso,

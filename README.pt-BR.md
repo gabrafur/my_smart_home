@@ -94,6 +94,14 @@ make demo-test
 arquivos e reporta lacunas. Antes de iniciar containers, leia
 [instalação/restauração](docs/INSTALACAO_RESTAURACAO_SMART_HOME.md) e configure
 secrets, bindings e hardware próprios.
+O exemplo público da política off-site vem desativado; a política ativa de cada
+instalação fica em `.local-secrets/`, ignorada pelo Git. Ao atualizar uma
+instalação antiga, copie e confira a política antes do `git pull` que remove o
+arquivo versionado; siga o [procedimento de migração](docs/RESTORE_CONTRACT.md).
+A cadeia diária opcional é backup Git -> backup externo protegido e verificado ->
+updates, agendada às 01:00 no `TZ` configurável do container Node-RED. Falhas
+bloqueiam as etapas seguintes. A retenção cobre apenas a série Compose gerida
+pela rotina, até 90 cópias ou 90 dias; um clone novo não ativa essa cadeia.
 
 ### Licença e contribuições
 
@@ -143,6 +151,9 @@ O repositório é a camada pública; o estado necessário para recuperar uma
 instalação vive num bundle privado criptografado. Use os alvos `backup-plan`,
 `backup-verify`, `restore-plan` e `restore-verify`; `restore-apply` exige token
 de confirmação. Contrato completo: [RESTORE_CONTRACT](docs/RESTORE_CONTRACT.md).
+Os ensaios registrados verificaram estrutura do arquivo, checksums e parte da
+integridade do banco; não iniciaram serviços restaurados. Um monitor de
+disponibilidade independente e externo ao host foi proposto, mas não instalado.
 
 ## Segurança e privacidade
 

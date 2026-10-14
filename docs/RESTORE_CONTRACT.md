@@ -169,12 +169,13 @@ antes de documentar uma invocação de uma linha. Nunca passe secrets em argv.
   continuar ativo, se a consulta falhar ou se houver erro de agente. Há somente
   um pedido de geração depois da prontidão.
 - A configuração versionada transfere a cadeia Git -> backup externo verificado
-  -> updates para 01:00 BRT, mantendo o limite de 10 minutos da captura. A janela
+  -> updates para 01:00 no `TZ` do Node-RED (BRT nesta instalação), mantendo o
+  limite de 10 minutos da captura. A janela
   antecede as rotinas das 03:00 e o backup automático do HA entre aproximadamente
-  04:45 e 05:45 e a manutenção de storage das 06:23. A ativação do horário no
-  runtime depende de uma nova recarga controlada do Node-RED; até lá, o runtime
-  continua com o gatilho das 00:30. Não foi executado ciclo manual para validar
-  a correção, e a retenção integrada continua sem observação em produção.
+  04:45 e 05:45 e a manutenção de storage das 06:23. O fluxo foi carregado no
+  Node-RED em 14/10/2026. Não foi executado ciclo manual para validar a correção;
+  o primeiro ciclo automático nessa janela e a retenção integrada ainda não
+  foram observados em produção.
 - Volumes de autenticação dos agentes e identidade SSH continuam fora do bundle
   padrão e exigem procedimento separado.
 - Compatibilidade marcada como diferente exige revisão; não há migração
@@ -338,12 +339,13 @@ Node-RED bloqueia updates até receber recibo completo. A tentativa agendada de
 permaneceu `blocked` durante a inicialização do HA; não houve nova cópia,
 retenção nem updates. O worker agora espera `backup/info` informar `idle` por
 até 180 segundos antes de emitir um único `backup/generate`. A configuração
-versionada move a cadeia para 01:00 BRT, com interrupção esperada de
+versionada move a cadeia para 01:00 no `TZ` do Node-RED (BRT nesta instalação),
+com interrupção esperada de
 aproximadamente 90 s, limite de 10 minutos e prioridade absoluta para religar
 os serviços em caso de falha. O horário antecede as rotinas das 03:00, a janela
 automática do HA de aproximadamente 04:45 a 05:45 e a manutenção de storage das
-06:23. Sua ativação no runtime depende de recarga controlada do Node-RED; até
-essa autorização, o gatilho carregado continua às 00:30. Falta de quota ou de
+06:23. O gatilho das 01:00 no `TZ` do Node-RED foi carregado em 14/10/2026;
+o primeiro ciclo automático nessa janela ainda não foi observado. Falta de quota ou de
 prontidão deve falhar fechada, preservar as cópias existentes e bloquear os
 updates seguintes.
 

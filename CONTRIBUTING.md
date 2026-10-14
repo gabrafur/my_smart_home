@@ -12,11 +12,13 @@ are welcome when they preserve that boundary.
   avisos e licenças de terceiros; não atribua a si ou ao projeto direitos sobre
   código upstream.
 - Para contribuir aqui, faça um **fork**, crie uma branch curta e envie um
-  pull request. O mantenedor pode continuar fazendo alterações próprias
-  diretamente na `main`; isso não muda o fluxo externo.
+  pull request. Esse é o fluxo de contribuição ao projeto, não uma condição da
+  licença. O mantenedor pode continuar fazendo alterações próprias diretamente
+  na `main`; isso não muda o fluxo externo.
 - Original project work is under [GPL-3.0-only](LICENSE). Preserve third-party
   licenses, notices, and authorship. Fork this repository, create a focused
-  branch, and open a pull request to contribute back.
+  branch, and open a pull request to contribute back. This is the contribution
+  workflow, not a license requirement.
 - Nunca envie credenciais, IPs privados, coordenadas, MACs, nomes de moradores,
   identificadores físicos, logs ou estado real de dispositivos. / Never submit
   credentials, private addresses, coordinates, MACs, resident names, physical

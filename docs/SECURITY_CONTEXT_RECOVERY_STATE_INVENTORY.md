@@ -98,6 +98,13 @@ chegadas individuais e simultâneas, callbacks repetidos, a confirmação `home`
 usada pelo refresh de 90 s e o aviso ao destinatário oposto até o terminal
 dry-run. Nenhum push ou equipamento real é acionado por esse teste.
 
+Snapshots de pessoas fora de ordem são descartados antes de atualizar os caches.
+A deduplicação dos avisos reduz o ruído, mas não identifica qual entrada produziu
+o snapshot atrasado. Para apurar a origem, correlacione em uma janela curta o
+`source` lógico, o tipo de gatilho, o ciclo de refresh e a diferença entre
+`incoming_at` e `cached_at`, sem registrar entidade física, coordenada ou payload
+completo. Só altere o produtor após reproduzir essa ordem em teste isolado.
+
 | Ordem | Comportamento |
 | --- | --- |
 | HA operacional, Node-RED reinicia | restaura intenção, lê o switch após 1 s, pede snapshots após 2 s, revalida e retoma deadlines |

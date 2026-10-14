@@ -165,12 +165,13 @@ documenting a one-line invocation. Never put secrets in argv.
   or an agent reports an error. It sends exactly one generation request after
   readiness.
 - The versioned configuration moves the Git -> verified external backup ->
-  updates chain to 01:00 BRT while preserving the ten-minute capture limit. The
+  updates chain to 01:00 in Node-RED's `TZ` (BRT in this installation) while
+  preserving the ten-minute capture limit. The
   window precedes the 03:00 jobs and HA automatic-backup activity between roughly
-  04:45 and 05:45, and storage maintenance at 06:23. Runtime activation requires
-  another controlled Node-RED reload; until then, the loaded trigger remains at
-  00:30. No manual cycle was run to validate the fix, and integrated retention
-  remains unobserved in production.
+  04:45 and 05:45, and storage maintenance at 06:23. Node-RED loaded the flow
+  on October 14, 2026. No manual cycle was run to validate the fix; the first
+  automatic cycle in this window and integrated retention remain unobserved in
+  production.
 - Agent authentication volumes and the SSH identity remain outside the default
   bundle and require a separate procedure.
 - A compatibility difference requires review; databases, registries, Matter
@@ -315,12 +316,13 @@ October 14, 2026 failed before the external backup because Backup Manager
 remained `blocked` while HA was starting; it created no new copy, ran no
 retention, and released no updates. The worker now waits up to 180 seconds for
 `backup/info` to report `idle` before sending exactly one `backup/generate`.
-The versioned configuration moves the chain to 01:00 BRT, with an expected
+The versioned configuration moves the chain to 01:00 in Node-RED's `TZ` (BRT
+in this installation), with an expected
 interruption of about 90 seconds, a hard ten-minute limit, and immediate service
 restoration taking priority after any failure. This precedes the 03:00 jobs, HA's
 roughly 04:45-05:45 automatic-backup window, and storage maintenance at 06:23.
-Runtime activation requires a controlled Node-RED reload; until that is
-authorized, the loaded trigger remains at 00:30. Quota or readiness failures
+Node-RED loaded the 01:00 trigger in its `TZ` on October 14, 2026; the first
+automatic cycle in that window remains unobserved. Quota or readiness failures
 must fail closed, preserve existing copies, and block following updates.
 
 The metadata-only quota review at 14:30 BRT found 769,658,139,443 bytes free out

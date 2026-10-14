@@ -354,7 +354,9 @@ scripts/install-storage-maintenance-cron.sh
 ```
 
 The `backup_git` tab schedules the daily backup and starts the separate
-`atualizacoes_diarias` tab only after success. Its host bridge updates the
+`atualizacoes_diarias` tab only after success. Before any update, that tab
+requires a verified protected off-site copy; a failure blocks later stages.
+Its host bridge updates the
 DietPi package index and packages, runs `dietpi-update 1` to apply a new DietPi
 version when available without an automatic reboot, then uses the
 script to resolve channel tags to digests, update Compose, validate, and

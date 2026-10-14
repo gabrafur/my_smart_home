@@ -271,12 +271,13 @@ updates blocked.
 
 A consistent capture still requires stopping seven services; the observed run
 took about 28 seconds for containers to return and about 53 seconds for the last
-readiness probe. The versioned configuration moves the whole chain to 01:00 BRT,
+readiness probe. The versioned configuration moves the whole chain to 01:00 in
+Node-RED's `TZ` (BRT in this installation),
 before the 03:00 jobs, HA's roughly 04:45-05:45 automatic-backup window, and
 storage maintenance at 06:23. The ten-minute limit and restoration priority
-remain unchanged. The new time is not active yet: it requires a controlled
-Node-RED reload, and until that is authorized the loaded trigger remains at
-00:30. No manual cycle was dispatched to validate the fix.
+remain unchanged. The 01:00 schedule in Node-RED's `TZ` was loaded on October
+14, 2026. The first automatic cycle in that window has not yet been observed;
+no manual cycle was dispatched to validate the fix.
 The approved retention applies only to the Compose series created by this
 routine and caps it at 90 copies or 90 days. Pruning runs only after a newly
 verified external copy, preserves the newest one, and requires an exact match

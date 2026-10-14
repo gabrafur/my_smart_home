@@ -384,7 +384,9 @@ scripts/install-storage-maintenance-cron.sh
 ```
 
 A aba `backup_git` agenda o backup diário e, somente após sucesso, aciona a aba
-separada `atualizacoes_diarias`. A ponte atualiza o índice e os pacotes do
+separada `atualizacoes_diarias`. Antes de qualquer update, essa aba exige o
+recibo de uma cópia externa protegida e verificada; falha bloqueia o restante.
+A ponte atualiza o índice e os pacotes do
 DietPi, chama `dietpi-update 1` para aplicar uma versão nova do próprio DietPi
 quando disponível, sem reboot automático, e depois usa o script para resolver tags de canal
 para digests, atualizar o Compose, validar e recriar. O Node-RED não recebe
