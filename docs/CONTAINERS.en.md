@@ -276,8 +276,13 @@ Node-RED's `TZ` (BRT in this installation),
 before the 03:00 jobs, HA's roughly 04:45-05:45 automatic-backup window, and
 storage maintenance at 06:23. The ten-minute limit and restoration priority
 remain unchanged. The 01:00 schedule in Node-RED's `TZ` was loaded on October
-14, 2026. The first automatic cycle in that window has not yet been observed;
-no manual cycle was dispatched to validate the fix.
+14, 2026. The first automatic cycle ran on October 15: Git succeeded with no
+changes, but the off-site stage failed at its final retention-registry write
+because `.local-state` is root-owned. The remote backup had passed the worker's
+checks; no final receipt, pruning, or following update stage completed. The
+registry path now uses private, writable `.local-secrets`, with a safe read
+fallback for an existing legacy registry. The next scheduled cycle remains to
+be observed; no manual cycle was dispatched.
 The approved retention applies only to the Compose series created by this
 routine and caps it at 90 copies or 90 days. Pruning runs only after a newly
 verified external copy, preserves the newest one, and requires an exact match

@@ -17,7 +17,10 @@ const require = createRequire(import.meta.url);
 const WebSocket = require("../nodered/node_modules/ws");
 export const COMPOSE_RETENTION_SERIES = "daily-offsite-compose-v1";
 export const COMPOSE_BACKUP_NAME_PREFIX = "Daily off-site Compose v1 ";
-const retentionStateFile = path.join(repoRoot, ".local-state", "offsite-backup-retention.json");
+// The daily worker runs as the repository owner. .local-state may be root-owned
+// by host maintenance, while .local-secrets is already private and writable.
+const retentionStateFile = path.join(repoRoot, ".local-secrets", "offsite-backup-retention.json");
+const legacyRetentionStateFile = path.join(repoRoot, ".local-state", "offsite-backup-retention.json");
 const composeBackupNamePattern = /^Daily off-site Compose v1 \d{4}-\d{2}-\d{2}$/;
 
 function fail(message) {
@@ -362,14 +365,28 @@ function validateRetentionState(state) {
   return state;
 }
 
-function readRetentionState(file = retentionStateFile) {
-  if (!fs.existsSync(file)) return emptyRetentionState();
-  const stat = fs.lstatSync(file);
+function readRetentionState(file = retentionStateFile, legacyFile = null) {
+  // Preserve an existing registry when upgrading an installation that used
+  // .local-state. Never fall back if the new registry exists but is invalid.
+  const fileStat = (candidate) => {
+    try { return fs.lstatSync(candidate); }
+    catch (error) {
+      if (error?.code === "ENOENT") return null;
+      fail("off-site retention registry path is unreadable");
+    }
+  };
+  let source = file;
+  let stat = fileStat(source);
+  if (!stat && legacyFile) {
+    source = legacyFile;
+    stat = fileStat(source);
+  }
+  if (!stat) return emptyRetentionState();
   if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o077) !== 0) {
     fail("off-site retention registry path is unsafe");
   }
   try {
-    return validateRetentionState(JSON.parse(fs.readFileSync(file, "utf8")));
+    return validateRetentionState(JSON.parse(fs.readFileSync(source, "utf8")));
   } catch (error) {
     if (error?.message?.startsWith("off-site retention")) throw error;
     fail("off-site retention registry is unreadable");
@@ -478,11 +495,12 @@ export async function applyComposeRetention({
   newVerifiedBackup,
   policy,
   stateFile = retentionStateFile,
+  legacyStateFile = stateFile === retentionStateFile ? legacyRetentionStateFile : null,
   now = new Date(),
   request = homeAssistantWebSocketRequest,
 }) {
   const entry = retentionRegistryEntry(newVerifiedBackup, agentId);
-  const registry = readRetentionState(stateFile);
+  const registry = readRetentionState(stateFile, legacyStateFile);
   registry.entries = [
     ...registry.entries.filter((candidate) => candidate.backup_id !== entry.backup_id),
     entry,
@@ -523,6 +541,7 @@ export async function applyComposeRetention({
 export async function retentionDryRun({
   policyFile = defaultPolicyFile,
   stateFile = retentionStateFile,
+  legacyStateFile = stateFile === retentionStateFile ? legacyRetentionStateFile : null,
   now = new Date(),
 } = {}) {
   const manifest = loadManifest(path.join(repoRoot, "restore/private-state-manifest.yaml"));
@@ -537,7 +556,7 @@ export async function retentionDryRun({
   const plan = planComposeRetention({
     backups: info.backups,
     agentId: credentials.agent_id,
-    registry: readRetentionState(stateFile),
+    registry: readRetentionState(stateFile, legacyStateFile),
     now,
     maximumBackups: retention.maximum_daily_compose_backups,
     maximumAgeDays: retention.maximum_age_days,

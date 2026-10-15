@@ -321,9 +321,17 @@ in this installation), with an expected
 interruption of about 90 seconds, a hard ten-minute limit, and immediate service
 restoration taking priority after any failure. This precedes the 03:00 jobs, HA's
 roughly 04:45-05:45 automatic-backup window, and storage maintenance at 06:23.
-Node-RED loaded the 01:00 trigger in its `TZ` on October 14, 2026; the first
-automatic cycle in that window remains unobserved. Quota or readiness failures
-must fail closed, preserve existing copies, and block following updates.
+Node-RED loaded the 01:00 trigger in its `TZ` on October 14, 2026. The first
+automatic cycle in that window ran on October 15: Git finished with no changes
+at 04:00:03 UTC. The off-site worker ran from 04:01:01 to 04:08:13 UTC and
+failed when the repository owner could not write the retention registry under
+the root-owned `.local-state` directory. The code had already validated the
+protected external backup, but no final success receipt or retention registry
+was written, no pruning ran, and updates remained blocked. The registry now
+uses the repository-owner-writable, Git-ignored `.local-secrets` directory;
+an existing valid legacy registry is read before the first write to the new
+path. The next scheduled cycle still needs observation. Quota or readiness
+failures must fail closed, preserve existing copies, and block following updates.
 
 The metadata-only quota review at 14:30 BRT found 769,658,139,443 bytes free out
 of 1,104,880,336,896 bytes, with two protected backups using 975,380,480 bytes
@@ -337,8 +345,9 @@ about 5.05% of currently free space. That active total excludes the recycle bin:
 combined estimate to 51,686,973,440 bytes, or 6.72% of measured free space.
 
 The routine registers only IDs it creates after verifying the name, timestamp,
-structure, sole OneDrive agent, protection, and size. Pruning requires that
-private registry and a newly fully verified external copy; a missing or
+structure, sole OneDrive agent, protection, and size. Pruning requires the
+private registry, stored as mode 0600 under `.local-secrets`, and a newly fully
+verified external copy; a missing or
 mismatched registry fails closed. Earlier HA backups, merely similar names, and
 all unrelated files are never adopted. The newest verified copy is always
 preserved. The HA API moves eligible candidates only to the OneDrive recycle

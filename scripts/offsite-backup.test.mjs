@@ -478,6 +478,97 @@ test("retention moves only eligible registered IDs and updates its private regis
   assert(stored.entries.every((entry) => !deleted.includes(entry.backup_id)));
 });
 
+test("retention migrates a valid legacy registry before any deletion", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "offsite-retention-migration-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const stateFile = path.join(root, "private", "registry.json");
+  const legacyStateFile = path.join(root, "legacy", "registry.json");
+  fs.mkdirSync(path.dirname(stateFile), { mode: 0o700 });
+  fs.mkdirSync(path.dirname(legacyStateFile), { mode: 0o700 });
+  const older = retentionFixture(1, 24);
+  const current = retentionFixture(0, 0);
+  const legacy = `${JSON.stringify(retentionRegistry([older]), null, 2)}\n`;
+  fs.writeFileSync(legacyStateFile, legacy, { mode: 0o600 });
+  const calls = [];
+  const result = await applyComposeRetention({
+    token: undefined,
+    agentId: "onedrive.test",
+    backups: [current.backup, older.backup],
+    newVerifiedBackup: current.backup,
+    policy: { compose_bundle: { retention_policy: {
+      maximum_daily_compose_backups: 90,
+      maximum_age_days: 90,
+    } } },
+    stateFile,
+    legacyStateFile,
+    now: new Date("2026-01-01T18:00:00.000Z"),
+    request: async (_token, message) => { calls.push(message.type); throw new Error("unexpected request"); },
+  });
+  assert.deepEqual(result, { eligible: 0, pruned: 0 });
+  assert.deepEqual(calls, []);
+  assert.equal(fs.readFileSync(legacyStateFile, "utf8"), legacy);
+  const stored = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  assert.deepEqual(stored.entries.map((entry) => entry.backup_id).sort(),
+    [current.backup.backup_id, older.backup.backup_id].sort());
+  assert.equal(fs.statSync(stateFile).mode & 0o777, 0o600);
+});
+
+test("retention never falls back to legacy when the private registry is invalid", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "offsite-retention-invalid-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const stateFile = path.join(root, "private", "registry.json");
+  const legacyStateFile = path.join(root, "legacy", "registry.json");
+  fs.mkdirSync(path.dirname(stateFile), { mode: 0o700 });
+  fs.mkdirSync(path.dirname(legacyStateFile), { mode: 0o700 });
+  const current = retentionFixture(0, 0);
+  fs.writeFileSync(stateFile, "not-json\n", { mode: 0o600 });
+  fs.writeFileSync(legacyStateFile,
+    `${JSON.stringify(retentionRegistry([current]), null, 2)}\n`, { mode: 0o600 });
+  let requested = false;
+  await assert.rejects(() => applyComposeRetention({
+    token: undefined,
+    agentId: "onedrive.test",
+    backups: [current.backup],
+    newVerifiedBackup: current.backup,
+    policy: { compose_bundle: { retention_policy: {
+      maximum_daily_compose_backups: 90,
+      maximum_age_days: 90,
+    } } },
+    stateFile,
+    legacyStateFile,
+    request: async () => { requested = true; throw new Error("unexpected request"); },
+  }), /registry is unreadable/);
+  assert.equal(requested, false);
+  assert.equal(fs.readFileSync(stateFile, "utf8"), "not-json\n");
+});
+
+test("retention fails closed when the new registry path is inaccessible", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "offsite-retention-path-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const blockedParent = path.join(root, "blocked");
+  const stateFile = path.join(blockedParent, "registry.json");
+  const legacyStateFile = path.join(root, "legacy.json");
+  const current = retentionFixture(0, 0);
+  fs.writeFileSync(blockedParent, "not a directory\n");
+  fs.writeFileSync(legacyStateFile,
+    `${JSON.stringify(retentionRegistry([current]), null, 2)}\n`, { mode: 0o600 });
+  let requested = false;
+  await assert.rejects(() => applyComposeRetention({
+    token: undefined,
+    agentId: "onedrive.test",
+    backups: [current.backup],
+    newVerifiedBackup: current.backup,
+    policy: { compose_bundle: { retention_policy: {
+      maximum_daily_compose_backups: 90,
+      maximum_age_days: 90,
+    } } },
+    stateFile,
+    legacyStateFile,
+    request: async () => { requested = true; throw new Error("unexpected request"); },
+  }), /registry path is unreadable/);
+  assert.equal(requested, false);
+});
+
 test("dated Compose bundle is verified against the canonical manifest subset", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "offsite-bundle-test-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
