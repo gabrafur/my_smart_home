@@ -82,6 +82,10 @@ ordinary model routing.
 
 Do not impose an initial confirmation gate. Treat `continue` as ordinary user input unless confirmation is independently needed for a risky action.
 
+## Conclusao
+
+Siga docs/ESTRATEGIA_DE_TESTES.md.
+
 ## Branch
 
 Em tarefas interativas, trabalhe e publique sempre na `main`.

@@ -45,6 +45,35 @@ clean worktree and runs that same canonical target before allowing `HEAD` to be
 pushed. The locally validated state therefore matches the commit being sent,
 and any failure blocks the push before it reaches GitHub Actions.
 
+## Completion criteria and handoff
+
+Each task needs one objective and a stated completion criterion. When
+continuing work from another executor, confirm the project, host, branch and
+commit SHA when there is a repository, authorized scope, pre-existing state to preserve, last validated
+result, and next step. A summary from another task does not transfer its
+authorization.
+
+Report only the applicable evidence layers, with the source, environment,
+observation time, and limitation:
+
+| Layer | Completion evidence | If not verified |
+| --- | --- | --- |
+| Configuration/API | Read back the applied state from configuration or API | Say that the change was only written or prepared |
+| Code | Targeted tests and public validation/CI as appropriate | List pending checks; CI does not prove production |
+| UI | Visually check the affected appearance and interaction | State that only configuration/API was read back |
+| Operation | Health and outcome of a real cycle after the change | Leave pending until the scheduled cycle; do not trigger it to close the task |
+
+Not every layer applies to every task. Do not claim that a routine is working
+in production based only on configuration or tests. State pending checks,
+including those dependent on access, authorization, or a future event.
+
+Minimum handoff: **objective; project/host; branch/SHA if any; pre-existing state;
+change made; evidence for applicable layers; pending checks and authorizations;
+verifiable next step**. Cite public files, test/CI results, API readback, or
+summarized operational state. Do not include credentials, events, private
+calendars, personal identifiers, or private runtime content in handoffs or
+public memory.
+
 ## Deliberate boundaries
 
 Automation never tests against the real household: it does not read secrets,
