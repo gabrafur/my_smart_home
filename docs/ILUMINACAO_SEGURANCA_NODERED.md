@@ -247,6 +247,21 @@ incoerente sem substituir a última política válida.
   ser tratada como chegada e sem acender o refletor. O fluxo primeiro confirma
   o `on` da saída; somente um `off` posterior e outro `on`, com a localização
   atual do morador ainda em `near_home` ou já em `home`, autorizam a iluminação.
+- Quando a parada não aparece na telemetria, a iluminação aceita como alternativa
+  uma ida/volta GPS dentro do mesmo ciclo local. Exige observações distintas de
+  saída, afastamento e retorno; pico de distância de HOME de pelo menos
+  `movement_threshold_m` (250 m); progresso de ida e volta de pelo menos
+  `local_return_progress_m` (50 m, ajustável entre 30 e 250 m no grupo 7),
+  também superior ou igual à soma das precisões de cada par; e duração de pelo
+  menos `external_cycle_confirm_seconds` (60 s). Não é preciso sair do raio
+  de 350 m. O motor precisa ter sido observado ON antes do pico e continuar ON,
+  fresco e sem falha de comunicação. Noite, distância ao portão, disponibilidade,
+  cooldown e fronteira final continuam obrigatórios. O contrato permanece
+  `local_return`, sem fabricar ciclo externo nem desarmar o alarme.
+  A prova radial persiste com o ciclo e é consumida somente ao autorizar a luz;
+  snapshots repetidos, inválidos ou antigos não constroem um trajeto.
+  O campo `local_return_evidence` distingue `gps_round_trip` de
+  `engine_stop_restart`.
 - O estado persistente do passeio local sobrevive ao startup parcial: a ausência
   inicial do contexto de pessoas não encerra o ciclo. A evidência é limitada pela
   validade configurada e precisa reencontrar o mesmo ciclo canônico e posição
@@ -996,3 +1011,16 @@ indisponível ou o OFF é anterior à chegada. Somente OFF atual do provedor
 chegada e sem falha de comunicação dispensa a consulta. Atualização do envelope
 de contexto não renova essa prova. O replay com telemetria histórica não pode
 inventar o ON que uma consulta adicional poderia ter obtido.
+
+### Replay seguro de retorno local por GPS
+
+No grupo **12. TESTE GPS local**, execute **1: reset GPS**, **2: saída 140 m**,
+**3: afastar 320 m**, **4: voltar 240 m**. Para o negativo, repita reset, saída
+ e afastamento, terminando em **NEGATIVO: oscilar 310 m**. Todos os dados ficam
+em chaves `__test`; o motor sintético permanece ON sem parada intermediária.
+Os gates reais de noite e disponibilidade continuam aplicáveis; quando prontos,
+o positivo termina em `light_full_dry_run_terminal_v1`, com `simulated: true`
+e `dispatched: false`. O negativo não gera chegada. O teste automatizado
+`test-security-light-flow.mjs` cobre ambos os moradores, persistência serializada,
+saída, duplicata, GPS vencido/impreciso, motor OFF, ausência de afastamento,
+consumo único e os controles manuais até o terminal, sem efeitos residenciais.

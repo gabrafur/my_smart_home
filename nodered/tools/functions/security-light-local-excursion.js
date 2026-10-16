@@ -109,6 +109,13 @@ const engineOnAfterStop = data.engine_allowed === true &&
     engineObservedAt <= data.now + data.future_ms &&
     data.now - engineObservedAt <= signalFreshMs;
 
+// Record the outward leg even before the engine/provider becomes ready.
+const gpsReturns = {};
+for (const [source, cycle] of Object.entries(state.residents)) {
+    gpsReturns[source] = known && validCycle(configured[source]) &&
+        localGpsReturn(cycle, data.people?.[source], data);
+}
+
 if (!data.engine_on_arrival && engineOnAfterStop) {
     const candidates = ["resident_primary", "resident_secondary"]
         .map((source) => ({
@@ -120,10 +127,10 @@ if (!data.engine_on_arrival && engineOnAfterStop) {
             known && validCycle(configured[source]) &&
             excursion && !timestampDefined(excursion.consumed_at) &&
             timestampDefined(excursion.departure_engine_on_seen_at) &&
-            timestampDefined(excursion.engine_off_seen_at) &&
-            Number(excursion.engine_off_seen_at) > Number(excursion.departure_engine_on_seen_at) &&
-            Number(excursion.engine_off_seen_at) >= Number(excursion.started_at) &&
-            engineObservedAt > Number(excursion.engine_off_seen_at) &&
+            ((timestampDefined(excursion.engine_off_seen_at) &&
+              Number(excursion.engine_off_seen_at) > Number(excursion.departure_engine_on_seen_at) &&
+              Number(excursion.engine_off_seen_at) >= Number(excursion.started_at) &&
+              engineObservedAt > Number(excursion.engine_off_seen_at)) || gpsReturns[source]) &&
             current(resident) && ["home", "near_home"].includes(resident?.state))
         .sort((left, right) =>
             Number(left.excursion.started_at) - Number(right.excursion.started_at));
@@ -141,6 +148,7 @@ if (!data.engine_on_arrival && engineOnAfterStop) {
                 arrival_direction: "returning_local_excursion",
                 external_cycle_confirmed: false,
                 local_excursion_return: true,
+                local_return_evidence: gpsReturns[candidate.source] ? "gps_round_trip" : "engine_stop_restart",
                 local_excursion_started_at: candidate.excursion.started_at,
                 notification_cycle_id: candidate.source + ":" + candidate.excursion.started_at,
                 arrival_resident_snapshot: { ...candidate.resident },

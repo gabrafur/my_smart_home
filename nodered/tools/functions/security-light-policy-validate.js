@@ -1,4 +1,5 @@
 const DEFAULTS = {
+    local_return_progress_m: 50,
     approach_radius_m: 350,
     physical_fresh_seconds: 120,
     recovery_request_throttle_seconds: 30,
@@ -11,6 +12,7 @@ const DEFAULTS = {
     cooldown_max_minutes: 30
 };
 const LIMITS = {
+    local_return_progress_m: [30, 250],
     approach_radius_m: [30, 350],
     physical_fresh_seconds: [30, 600],
     recovery_request_throttle_seconds: [5, 300],

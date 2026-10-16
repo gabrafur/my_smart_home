@@ -13,7 +13,8 @@ const TAB = "6b7552efb85343f4";
 const source = (name) => {
   const helpers = ["security-light-off-decision.js", "security-light-turn-off-if-active.js"].includes(name)
     ? ["security-light-off-evidence.js"] : ["security-light-arrival-facts.js", "security-light-mark-active.js"].includes(name)
-      ? ["security-light-approach-evidence.js"] : [];
+      ? ["security-light-approach-evidence.js"] : name === "security-light-local-excursion.js"
+        ? ["security-light-local-gps-evidence.js"] : [];
   return [...helpers, name].map((file) => fs.readFileSync(path.join(functionsDir, file), "utf8").replace(/\r\n/g, "\n").trimEnd()).join("\n");
 };
 let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
@@ -180,7 +181,8 @@ const specs = [
   ["deadline_slack_minutes", "Folga deadline — 1 min [0..10]", 1],
   ["unavailable_dedupe_seconds", "Dedupe indisponível — 10 s [1..120]", 10],
   ["cooldown_max_minutes", "Cooldown máximo — 30 min [5..120]", 30],
-  ["approach_radius_m", "Acender na aproximação — 350 m [30..350]", 350]
+  ["approach_radius_m", "Acender na aproximação — 350 m [30..350]", 350],
+  ["local_return_progress_m", "Progresso ida/volta — 50 m [30..250]", 50]
 ];
 for (let index = 0; index < specs.length; index += 1) {
   const [topic, name, value] = specs[index];
@@ -227,7 +229,7 @@ linkIn("security_visual_arrival_route_in", decision.id, "Receber chegada canôni
 fn("security_visual_context_cache", decision.id, "Normalizar e atualizar cache monotônico",
   "security-light-context-cache.js", 1, 390, 1660, [["security_visual_local_excursion"]]);
 fn("security_visual_local_excursion", decision.id,
-  "Retorno local: OFF → novo ON",
+  "Retorno local: motor ou GPS",
   "security-light-local-excursion.js", 1, 650, 1660,
   [["security_visual_engine_on_near_home"]]);
 fn("security_visual_engine_on_near_home", decision.id,
@@ -553,7 +555,20 @@ for (const [id, x, y] of [
   linkOut(out, required(id).g, "Decisão de bypass → publicação", "security_visual_bypass_result_in", x, y);
   required("security_visual_bypass_result_in").links.push(out);
 }
-required(TAB).info = "Decisões de contexto, replay, direção, recovery e políticas de tempo são visíveis. A confirmação HOME de 90 s e o refresh extraordinário pertencem a contexto_chegadas; este tab apenas usa o contexto atualizado para decidir o desligamento. JavaScript remanescente adapta estruturas e aplica transações de estado; produção e teste divergem somente na fronteira final de efeitos.";
+const gpsTest = group("security_visual_gps_tests_group", "12. TESTE GPS local — somente dry-run", 64, 3860, 1250, 380, "#64748b", "#e2e8f0");
+grouped(gpsTest.id, { id: "security_visual_gps_help", type: "comment", z: TAB, g: gpsTest.id,
+  name: "Reset → saída → afastar → voltar; negativo: reset → saída → afastar → oscilação",
+  info: "Somente contexto __test. Os gates reais de noite, disponibilidade e cooldown continuam válidos. Retorno exige pico >= movement_threshold_m, progresso >= local_return_progress_m e soma das precisões, duração >= external_cycle_confirm_seconds e motor ON fresco anterior ao pico. Nenhum dispositivo ou push é enviado.",
+  x: 660, y: 3900, wires: [] });
+for (const [index, topic, label] of [[0, "reset", "1: reset GPS"], [1, "start", "2: saída 140 m"],
+  [2, "outward", "3: afastar 320 m"], [3, "return", "4: voltar 240 m"], [4, "jitter", "NEGATIVO: oscilar 310 m"]]) {
+  inject(`security_visual_gps_${topic}`, gpsTest.id, `TESTE ${label}`, topic, 0, 290, 3960 + index * 50, "security_visual_gps_fixture");
+  required(`security_visual_gps_${topic}`).once = false;
+}
+fn("security_visual_gps_fixture", gpsTest.id, "Posições sintéticas cumulativas", "security-light-local-gps-manual-test.js", 1, 710, 4060, [["security_visual_gps_out"]]);
+linkOut("security_visual_gps_out", gpsTest.id, "TESTE GPS → contexto canônico", "security_visual_context_route_in", 1150, 4060);
+required("security_visual_context_route_in").links.push("security_visual_gps_out");
+required(TAB).info = "Decisões de contexto, replay, direção, recovery e políticas de tempo são visíveis. Retorno local: sequência ON/OFF/ON ou ida/volta GPS significativa com ON fresco; parâmetros e teste seguro nos grupos 7 e 12. A confirmação HOME de 90 s e o refresh extraordinário pertencem a contexto_chegadas; este tab apenas usa o contexto atualizado para decidir o desligamento. JavaScript remanescente adapta estruturas e aplica transações de estado; produção e teste divergem somente na fronteira final de efeitos.";
 flows = reconcileGeneratedFlows(originalFlows, flows, {
   isOwned: (node) => node.id.startsWith("security_visual_") || generated.has(node.id) || node.id === "82539910c43d6cf5",
 });

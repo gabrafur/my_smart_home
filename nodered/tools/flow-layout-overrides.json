@@ -5132,6 +5132,10 @@
         "security_visual_policy_approach_radius_m": {
           "x": 3320,
           "y": 2610
+        },
+        "security_visual_policy_local_return_progress_m": {
+          "x": 3740,
+          "y": 2610
         }
       },
       "nodes": {
@@ -5867,6 +5871,10 @@
         },
         "security_visual_policy_approach_radius_m": {
           "x": 3320,
+          "y": 2610
+        },
+        "security_visual_policy_local_return_progress_m": {
+          "x": 3740,
           "y": 2610
         }
       },

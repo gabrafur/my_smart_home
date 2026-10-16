@@ -72,6 +72,7 @@ const LOCATION_POLICY = {
   vehicle_recovery_hours: 24,
 };
 const SECURITY_LIGHT_POLICY = {
+  local_return_progress_m: 50,
   version: 1, owner: "node_red", complete: true,
   approach_radius_m: 150, physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
   off_grace_seconds: 90, backstop_minutes: 15, post_off_cooldown_minutes: 5,
@@ -2726,7 +2727,90 @@ scenario("53 gate final rejeita fallback antigo e perda da prova ON", () => {
   const stale = readyLightFlow(); stale.get("vehicle_primary_context_v1").engine_stale = true;
   assert.equal(run("light_prepare_arrival", arrival("resident_primary"), stale, geoEnv)[0], null);
 });
-assert.equal(passed.length, 87);
+scenario("88 retorno GPS local sem OFF amostrado mantém gates e dedupe", () => {
+  const priorRadius = SECURITY_LIGHT_POLICY.approach_radius_m;
+  SECURITY_LIGHT_POLICY.approach_radius_m = 350;
+  const originalNow = Date.now;
+  const base = originalNow() - 240_000;
+  let clock = base;
+  Date.now = () => clock;
+  try {
+    for (const role of ["resident_primary", "resident_secondary"]) {
+      for (const variant of ["valid", "departure", "duplicate", "stale", "inaccurate", "no_engine", "no_outbound"]) {
+        const vehicle = { ready: true, engine_state_valid: true, engine_on: true,
+          in_use: true, engine_stale: false, telemetry_updated_at: base, updated_at: base };
+        const flow = readyLightFlow({ people_context_v1: {}, vehicle_primary_context_v1: vehicle });
+        const cycle = { started_at: base, expires_at: base + 90 * 60_000 };
+        function sample(distance, offset, extra = {}) {
+          clock = base + offset;
+          flow.set("security_light_physical_observed_at", clock);
+          const resident = { ready: true, stale: false, location_reliable: true,
+            state: "near_home", current_home: false, distance_m: distance,
+            gate_distance_m: distance, gps_accuracy: 5, updated_at: clock, ...extra };
+          return run("light_merge_context", { payload: { kind: "people_context", source: role,
+            updated_at: clock, context: { ready: true, updated_at: clock,
+              local_excursions: { [role]: cycle }, [role]: resident } } }, flow, geoEnv)[2];
+        }
+        assert.equal(sample(140, 0), null);
+        if (variant !== "no_outbound") assert.equal(sample(320, 30_000), null);
+        // A restart preserves only serializable evidence, not hidden closures.
+        const persisted = flow.get("security_light_local_excursion_v1");
+        flow.set("security_light_local_excursion_v1", JSON.parse(JSON.stringify(persisted)));
+        if (variant === "no_engine") flow.set("vehicle_primary_context_v1", { ...vehicle, engine_on: false, in_use: false });
+        const extra = variant === "stale" ? { stale: true } : variant === "inaccurate"
+          ? { gps_accuracy: 150 } : variant === "duplicate" ? { updated_at: base + 30_000 } : {};
+        const event = sample(variant === "departure" ? 340 : 240, 180_000, extra);
+        if (variant !== "valid") { assert.equal(event, null, variant); continue; }
+        assert.equal(event.payload.local_return_evidence, "gps_round_trip");
+        assert.equal(event.payload.external_cycle_confirmed, false);
+        const prepared = run("light_prepare_arrival", event, flow, geoEnv)[0];
+        assert(prepared, "GPS return must reach normal lighting gates");
+        assert(run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv));
+        const gpsProof = flow.get("security_light_local_excursion_v1").residents[role].gps_return_evidence;
+        gpsProof.returning = false;
+        assert.equal(run("light_mark_active", prepared, flow, geoEnv), null,
+          "revoked GPS evidence must block the final gate");
+        gpsProof.returning = true;
+        const active = run("light_mark_active", prepared, flow, geoEnv);
+        assert(active, "final lifecycle must accept the proven return");
+        assert.equal(sample(230, 190_000), null, "consumed trip cannot replay");
+      }
+    }
+  } finally { Date.now = originalNow; SECURITY_LIGHT_POLICY.approach_radius_m = priorRadius; }
+});
+scenario("89 controles GPS atravessam o terminal dry-run sem mutar produção", () => {
+  const priorRadius = SECURITY_LIGHT_POLICY.approach_radius_m;
+  SECURITY_LIGHT_POLICY.approach_radius_m = 350;
+  try {
+    for (const terminal of ["return", "jitter"]) {
+      const flow = readyLightFlow();
+      const production = JSON.stringify([...flow.values]);
+      let replay;
+      for (const topic of ["reset", "start", "outward", terminal]) {
+        const message = runDirect("security_visual_gps_fixture", { topic }, flow, geoEnv);
+        if (message) replay = run("light_merge_context", message, flow, geoEnv)[2];
+      }
+      if (terminal === "return") {
+        assert(replay);
+        const prepared = run("light_prepare_arrival", replay, flow, geoEnv)[0];
+        assert(prepared);
+        const allowed = run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv);
+        assert(allowed);
+        const [real, simulated] = run("light_mark_active", allowed, flow, geoEnv);
+        assert.equal(real, null);
+        assert(simulated);
+        runDirect("light_full_dry_run_terminal_v1", simulated, flow, geoEnv);
+        const result = flow.get("security_light_last_dry_run_v1__test");
+        assert.equal(result.simulated, true);
+        assert.equal(result.dispatched, false);
+      } else assert.equal(replay, null);
+      assert.equal(JSON.stringify([...flow.values].filter(([key]) => !key.endsWith("__test"))), production);
+    }
+  } finally { SECURITY_LIGHT_POLICY.approach_radius_m = priorRadius; }
+});
+assert.equal(passed.length, 89);
+
+
 
 
 

@@ -57,7 +57,11 @@ const localExcursionReturn = msg.payload?.local_excursion_return === true &&
     localCycle?.started_at === msg.payload.local_excursion_started_at &&
     canonicalCycle?.started_at === msg.payload.local_excursion_started_at &&
     Number.isFinite(localCycle?.expires_at) && now <= localCycle.expires_at &&
-    localCycle.consumed_at == null;
+    localCycle.consumed_at == null &&
+    (msg.payload.local_return_evidence !== "gps_round_trip" ||
+        (localCycle.gps_return_evidence?.returning === true &&
+         localCycle.gps_return_evidence.last_at === resident?.updated_at &&
+         localCycle.gps_return_evidence.last_distance === resident?.distance_m));
 /* O iPhone pode atualizar em not_home fora do raio near_home e somente voltar a
  * publicar depois de já cruzar os 100 m. O produtor canônico confirma esse
  * ciclo externo e carrega um snapshot atual no próprio evento. Aceitar esse

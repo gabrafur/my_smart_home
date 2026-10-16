@@ -98,7 +98,11 @@ const localCurrent = msg.payload?.local_excursion_return !== true || (
     localCycle?.started_at === msg.payload.local_excursion_started_at &&
     people.local_excursions?.[arrivalSource]?.started_at === localCycle?.started_at &&
     Number.isFinite(localCycle?.expires_at) && now <= localCycle.expires_at &&
-    localCycle.consumed_at == null);
+    localCycle.consumed_at == null &&
+    (msg.payload.local_return_evidence !== "gps_round_trip" ||
+        (localCycle.gps_return_evidence?.returning === true &&
+         localCycle.gps_return_evidence.last_at === sourcePeopleContext?.updated_at &&
+         localCycle.gps_return_evidence.last_distance === sourcePeopleContext?.distance_m)));
 const ready =
     localCurrent &&
     peopleReadyForArrival &&

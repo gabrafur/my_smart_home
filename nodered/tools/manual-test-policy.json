@@ -369,7 +369,11 @@
                 "security_visual_off_test_reset",
                 "security_visual_off_test_old_off",
                 "security_visual_off_test_new_off",
-                "security_visual_off_test_gate"
+                "security_visual_off_test_gate",
+                "security_visual_gps_tests_group",
+                "security_visual_gps_reset",
+                "security_visual_gps_return",
+                "security_visual_gps_jitter"
             ],
             "dry_run_terminal_ids": [
                 "light_full_dry_run_terminal_v1",
