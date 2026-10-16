@@ -27268,7 +27268,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_codex_group",
         "name": "Codex isolado publica candidata; host valida runtime antes de promover main",
-        "info": "A candidata do Codex não equivale a uma atualização concluída. O host revalida a candidata, instala pelo HACS, confirma a integração ativa e só então envia main e remove a branch. O Codex não recebe Docker nem token HA. O teste sintético nunca alcança este grupo.",
+        "info": "A candidata do Codex não equivale a uma atualização concluída. O host revalida a candidata, instala pelo HACS, confirma a integração ativa e só então envia main e remove a branch. O Codex não recebe Docker nem token HA. TESTES: reset → Git ocupado → falha → concluído. Eles atravessam o mesmo parser e lifecycle até o dry-run; nunca solicitam instalação. Após runtime validado, worktree ocupada ou main atrasada aguardam reconciliação sem reinstalar nem apagar alterações alheias.",
         "x": 755,
         "y": 5841,
         "wires": []
@@ -27699,7 +27699,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_codex_group",
         "name": "Confirmar promoção segura",
-        "func": "const TEST_MODE = msg._kia_promotion_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nif (!text) return null;\nconst state = text.match(/\\bstate=(deferred|applying|runtime_applied|applied_pending_git|main_published|completed|failed|unknown)\\b/)?.[1];\nconst target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? \"unknown\";\nconst updatedAt = text.match(/\\bupdated_at=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nif (!state || state === \"unknown\") {\n    if (!TEST_MODE) node.error(\"kia_uvo_promotion_result_unrecognized\", msg);\n    return null;\n}\nconst result = {\n    version: 1,\n    state,\n    target,\n    updated_at: updatedAt,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\n// Poll timestamps are observations, not new promotion incidents.\nconst signature = [result.state, result.target].join(\":\");\nconst key = TEST_MODE ? \"kia_uvo_promotion_last_result_v1__test\" : \"kia_uvo_promotion_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nconst duplicate = previous?.state === state && previous?.target === target;\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = state === \"failed\";\nconst completed = state === \"completed\";\nnode.status({\n    fill: failed ? \"red\" : state === \"deferred\" ? \"yellow\" : completed ? \"green\" : \"blue\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: completed ? \"runtime e main confirmados: \" + target\n        : state === \"applying\" ? \"validando runtime: \" + target\n        : state + \": \" + target\n});\nif (TEST_MODE) {\n    result.would_notify = failed && !duplicate;\n    msg.payload = result;\n    return msg;\n}\nif (failed && !duplicate) {\n    msg.observer_diagnostic = { reason: \"promotion_failed\", status: state };\n    node.error(\"kia_uvo_promotion_failed state=\" + state + \" target=\" + target, msg);\n}\nreturn null;",
+        "func": "const TEST_MODE = msg._kia_promotion_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nif (!text) return null;\nconst state = text.match(/\\bstate=(deferred|applying|runtime_applied|applied_pending_git|main_published|completed|failed|unknown)\\b/)?.[1];\nconst target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? \"unknown\";\nconst updatedAt = text.match(/\\bupdated_at=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nif (!state || state === \"unknown\") {\n    if (!TEST_MODE) node.error(\"kia_uvo_promotion_result_unrecognized\", msg);\n    return null;\n}\nconst reasonCode = text.match(/\\breason_code=(working_tree_changed|main_behind_remote|host_update_in_progress|git_publication_failed)\\b/)?.[1] ?? \"none\";\nconst result = {\n    version: 1,\n    state,\n    target,\n    reason_code: reasonCode,\n    updated_at: updatedAt,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\n// Poll timestamps are observations, not new promotion incidents.\nconst signature = [result.state, result.target, result.reason_code].join(\":\");\nconst key = TEST_MODE ? \"kia_uvo_promotion_last_result_v1__test\" : \"kia_uvo_promotion_last_result_v1\";\nif (TEST_MODE && msg._kia_promotion_reset === true) {\n    flow.set(key, undefined);\n    msg.payload = { ...result, state: \"reset\", would_notify: false };\n    node.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE promoção resetado\" });\n    return msg;\n}\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nconst duplicate = previous?.state === state && previous?.target === target && (previous?.reason_code ?? \"none\") === reasonCode;\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = state === \"failed\" || (state === \"applied_pending_git\" && reasonCode === \"git_publication_failed\");\nconst completed = state === \"completed\";\nconst waiting = state === \"deferred\" || state === \"applied_pending_git\";\nconst waitingLabels = {\n    working_tree_changed: \"worktree ocupada\",\n    main_behind_remote: \"main local atrasada\",\n    host_update_in_progress: \"outra atualização em andamento\"\n};\nnode.status({\n    fill: failed ? \"red\" : waiting ? \"yellow\" : completed ? \"green\" : \"blue\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: failed && state === \"applied_pending_git\" ? \"falha Git; runtime ativo: \" + target\n        : completed ? \"runtime e main confirmados: \" + target\n        : waiting ? (state === \"applied_pending_git\" ? \"runtime ativo; Git pendente: \" : \"aguardando: \") + (waitingLabels[reasonCode] ?? target)\n        : state === \"applying\" ? \"validando runtime: \" + target\n        : state + \": \" + target\n});\nif (TEST_MODE) {\n    result.would_notify = failed && !duplicate;\n    msg.payload = result;\n    return msg;\n}\nif (failed && !duplicate) {\n    msg.observer_diagnostic = { reason: \"promotion_failed\", status: state };\n    node.error(\"kia_uvo_promotion_failed state=\" + state + \" target=\" + target, msg);\n}\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -27780,9 +27780,12 @@
         "type": "link in",
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_codex_group",
-        "name": "Receber falha promoção TESTE",
+        "name": "Receber lifecycle promoção TESTE",
         "links": [
-            "daily_update_kia_promotion_test_result_out"
+            "daily_update_kia_promotion_test_result_out",
+            "daily_update_kia_promotion_test_reset_out",
+            "daily_update_kia_promotion_test_pending_out",
+            "daily_update_kia_promotion_test_completed_out"
         ],
         "x": 705,
         "y": 6531,
@@ -83964,5 +83967,177 @@
                 "internet_remote_request_done"
             ]
         ]
+    },
+    {
+        "id": "daily_update_kia_promotion_test_pending",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_promotion_tests_group",
+        "name": "TESTE: Git ocupado (runtime ativo)",
+        "props": [
+            {
+                "p": "payload",
+                "v": "kia-uvo-promotion state=applied_pending_git target=v3.12.0 updated_at=synthetic reason_code=working_tree_changed",
+                "vt": "str"
+            },
+            {
+                "p": "_kia_promotion_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_kia_promotion_reset",
+                "v": "false",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1600,
+        "y": 5920,
+        "wires": [
+            [
+                "daily_update_kia_promotion_test_pending_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_promotion_test_pending_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_promotion_tests_group",
+        "name": "Promoção TESTE pending → lifecycle",
+        "mode": "link",
+        "links": [
+            "daily_update_kia_promotion_test_result_in"
+        ],
+        "x": 1980,
+        "y": 5920,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_promotion_test_reset",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_promotion_tests_group",
+        "name": "TESTE: reset promoção",
+        "props": [
+            {
+                "p": "payload",
+                "v": "kia-uvo-promotion state=completed target=v3.12.0 updated_at=synthetic reason_code=none",
+                "vt": "str"
+            },
+            {
+                "p": "_kia_promotion_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_kia_promotion_reset",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1600,
+        "y": 5860,
+        "wires": [
+            [
+                "daily_update_kia_promotion_test_reset_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_promotion_test_reset_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_promotion_tests_group",
+        "name": "Promoção TESTE reset → lifecycle",
+        "mode": "link",
+        "links": [
+            "daily_update_kia_promotion_test_result_in"
+        ],
+        "x": 1980,
+        "y": 5860,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_promotion_test_completed",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_promotion_tests_group",
+        "name": "TESTE: promoção concluída",
+        "props": [
+            {
+                "p": "payload",
+                "v": "kia-uvo-promotion state=completed target=v3.12.0 updated_at=synthetic reason_code=none",
+                "vt": "str"
+            },
+            {
+                "p": "_kia_promotion_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_kia_promotion_reset",
+                "v": "false",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1600,
+        "y": 5980,
+        "wires": [
+            [
+                "daily_update_kia_promotion_test_completed_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_promotion_test_completed_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_promotion_tests_group",
+        "name": "Promoção TESTE completed → lifecycle",
+        "mode": "link",
+        "links": [
+            "daily_update_kia_promotion_test_result_in"
+        ],
+        "x": 1980,
+        "y": 5980,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_promotion_tests_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "13A. TESTE: reset → Git ocupado → falha → concluído (dry-run)",
+        "style": {
+            "label": true,
+            "color": "#8f6bb3"
+        },
+        "nodes": [
+            "daily_update_kia_promotion_test_pending",
+            "daily_update_kia_promotion_test_pending_out",
+            "daily_update_kia_promotion_test_reset",
+            "daily_update_kia_promotion_test_reset_out",
+            "daily_update_kia_promotion_test_completed",
+            "daily_update_kia_promotion_test_completed_out"
+        ],
+        "x": 1380,
+        "y": 5800,
+        "w": 680,
+        "h": 230
     }
 ]

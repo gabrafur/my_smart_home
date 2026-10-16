@@ -80,7 +80,8 @@ dessas confirmações. Nunca use force push.
 Se o runtime já foi validado e a publicação falhar antes do commit, a retomada
 aceita somente os caminhos exatos da candidata e compara todos os bytes antes
 de continuar. Remoções upstream exigem ausência do arquivo local; symlinks,
-arquivos remanescentes e alterações extras são rejeitados. A comparação inclui
+arquivos remanescentes e alterações no conteúdo da candidata são rejeitados.
+Alterações extras de outros trabalhos pausam a publicação sem descartá-las. A comparação inclui
 mudanças staged e não staged. A retomada mantém a verificação de alterações
 protegidas desde a base e não reinstala nem reinicia a integração já validada.
 
@@ -98,13 +99,25 @@ pré-requisito, como checkout limpo ou término de outra atualização. Esse est
 fica amarelo e não emite erro nem push. O polling pode atualizar `updated_at`
 a cada leitura; esse horário não identifica um incidente novo.
 
-Uma falha real (`failed`) continua chegando ao observador global. O consumidor
-deduplica por estado e versão candidata em contexto persistente, inclusive após
+Depois de validar o runtime, `applied_pending_git` preserva esse checkpoint:
+`working_tree_changed` informa arquivos de outro trabalho; `main_behind_remote`
+informa main local atrasada; `host_update_in_progress` informa outra etapa do
+host. A espera fica amarela e não reinstala o componente. A retomada só publica
+quando a worktree foi reconciliada; não executa reset, stash nem merge automático.
+Os códigos são enumerados na ponte; detalhes privados ficam no host.
+
+Uma falha real (`failed` ou `applied_pending_git` com
+`reason_code=git_publication_failed`) continua chegando ao observador global. O consumidor
+deduplica por estado, código de motivo e versão candidata em contexto persistente, inclusive após
 restart; uma transição de estado ou outra versão permite nova avaliação. O
 horário permanece no resultado diagnóstico, fora da assinatura do erro.
 
 O replay `flows:test-daily-host-updates` cobre adiamento repetido, falha real,
 mudança de horário, recuperação, nova candidata e isolamento do dry-run.
+Use **reset promoção → Git ocupado → falha da promoção segura → promoção
+concluída** no canvas. O teste do promotor usa repositórios temporários e comprova
+retomada após concorrência, pausa por outro update e main atrasada, sem chamar
+updater, Home Assistant ou dispositivos. Bytes adulterados continuam bloqueados.
 
 A promoção retoma automaticamente quando os pré-requisitos voltam a estar
 disponíveis. Uma publicação de imagem rejeitada pode deixar o checkout alterado

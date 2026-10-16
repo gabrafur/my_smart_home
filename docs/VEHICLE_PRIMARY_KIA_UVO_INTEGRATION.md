@@ -911,6 +911,25 @@ revalidar a candidata. O antigo modo e cron direto `ha-updates` foram
 aposentados. O estado fica em `/config/.storage/kia_uvo_safe_update` e aparece
 como `sensor.integracao_vehicle_primary`.
 
+### Promoção pausada por concorrência Git
+
+O host distingue instalação de publicação. Se arquivos alheios mudarem durante a
+validação, mantém `applied_pending_git` com `reason_code=working_tree_changed`;
+se a main remota avançar, usa `main_behind_remote`. Outra atualização do host
+preserva o mesmo checkpoint com `host_update_in_progress`. Essas condições
+aguardam reconciliação, sem reinstalar, descartar arquivos ou produzir erro de nó.
+A retomada confirma novamente os bytes da candidata e os commits dos caminhos
+protegidos antes de publicar. Divergência real, bytes diferentes ou falha de push
+permanecem falhas observáveis; `git_publication_failed` não é um adiamento normal.
+O status público só expõe códigos enumerados, nunca o motivo privado do host.
+
+No canvas `atualizacoes_diarias`, siga **reset promoção → Git ocupado → falha da
+promoção segura → promoção concluída**. Os controles usam memória de teste
+separada, o mesmo parser/lifecycle e o terminal dry-run. Não instalam updates,
+não executam Git nem enviam notificações. O teste automatizado reproduz também
+edição concorrente, main atrasada, pausa por outro update, bytes adulterados e
+retomada até commit/push em repositórios temporários, sem Home Assistant real.
+
 O estado do motor no recorder continua sendo telemetria amostrada, nao um log
 de ignicao garantido. Para saber quando o carro rodou, o `/tripinfo` permanece
 a fonte autoritativa compartilhada com o app Bluelink.

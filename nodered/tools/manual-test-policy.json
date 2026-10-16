@@ -106,7 +106,10 @@
                 "daily_update_dependency_test_blocked",
                 "daily_update_dependency_test_result",
                 "operations_daily_group",
-                "operations_daily_test_reset"
+                "operations_daily_test_reset",
+                "daily_update_kia_promotion_test_reset",
+                "daily_update_kia_promotion_test_pending",
+                "daily_update_kia_promotion_test_completed"
             ],
             "automated_test": "test-daily-host-update-flow.mjs",
             "dry_run_terminal_ids": [

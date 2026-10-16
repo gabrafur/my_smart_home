@@ -572,6 +572,29 @@ assert.doesNotMatch(errors.at(-1), /updated_at=/, "observer signature excludes p
 parseKiaPromotion({ payload: "kia-uvo-promotion state=completed target=v3.12.0 updated_at=recovered" }, runtimeNode, flow);
 parseKiaPromotion({ payload: "kia-uvo-promotion state=failed target=v3.13.0 updated_at=next-target" }, runtimeNode, flow);
 assert.equal(errors.length, promotionErrors + 2, "another target can open a new incident");
+const pendingErrors = errors.length;
+for (const reason of ["working_tree_changed", "main_behind_remote", "host_update_in_progress"]) {
+  for (let tick = 0; tick < 3; tick++) {
+    parseKiaPromotion({ payload: `kia-uvo-promotion state=applied_pending_git target=v3.13.0 reason_code=${reason} updated_at=poll-${tick}` }, runtimeNode, flow);
+  }
+}
+assert.equal(errors.length, pendingErrors, "expected Git waits never become node failures");
+for (const state of ["reset", "pending", "completed"]) {
+  const inject = node(`daily_update_kia_promotion_test_${state}`);
+  const message = Object.fromEntries(inject.props.map(p => [p.p, p.vt === "bool" ? p.v === "true" : p.v]));
+  const output = parseKiaPromotion(message, runtimeNode, flow);
+  assert.equal(output.payload.test_mode, true);
+  assert.equal(output.payload.would_notify, false);
+  if (state === "pending") assert.equal(output.payload.reason_code, "working_tree_changed");
+  const terminal = new Function("msg", "node", "flow", node("daily_update_dry_run_terminal").func);
+  terminal(output, runtimeNode, flow);
+  // The terminal records its result and never dispatches a real update.
+  assert.equal(flow.get("daily_update_last_dry_run_v1").dispatched, false);
+}
+parseKiaPromotion({ payload: "kia-uvo-promotion state=applied_pending_git target=v3.13.0 reason_code=git_publication_failed updated_at=synthetic" }, runtimeNode, flow);
+assert.equal(errors.length, pendingErrors + 1, "real publication failures remain observable after an expected wait");
+// Restore the previous production lifecycle for the independent test below.
+parseKiaPromotion({ payload: "kia-uvo-promotion state=completed target=v3.13.0 updated_at=synthetic" }, runtimeNode, flow);
 const syntheticDeferred = parseKiaPromotion({ _kia_promotion_test: true,
   payload: "kia-uvo-promotion state=deferred target=v3.13.0 updated_at=synthetic" }, runtimeNode, flow);
 assert.equal(syntheticDeferred.payload.would_notify, false);
@@ -581,7 +604,7 @@ assert.equal(syntheticFailure.payload.would_notify, true);
 const syntheticDuplicate = parseKiaPromotion({ _kia_promotion_test: true,
   payload: "kia-uvo-promotion state=failed target=v3.13.0 updated_at=synthetic-next" }, runtimeNode, flow);
 assert.equal(syntheticDuplicate.payload.would_notify, false);
-assert.equal(errors.length, promotionErrors + 2, "dry-run evaluates the same lifecycle without production alerts");
+assert.equal(errors.length, promotionErrors + 3, "dry-run evaluates the same lifecycle without production alerts");
 
 const compose = fs.readFileSync(path.resolve(here, "..", "..", "docker-compose.yml"), "utf8");
 assert.match(compose, /\.\/homeassistant\/\.daily-update-trigger:\/run\/daily-update-trigger/);

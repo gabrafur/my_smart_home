@@ -309,6 +309,7 @@ test("the Kia promotion reader exposes only the safe host lifecycle", () => {
     state: "completed",
     target: "v3.12.0",
     reason: "host runtime detail must not reach Node-RED",
+    reason_code: "host runtime detail must not reach Node-RED",
     updated_at: "2026-09-09T12:01:19.820Z",
   }));
   const result = spawnSync(readKiaPromotion, [], {
@@ -319,6 +320,14 @@ test("the Kia promotion reader exposes only the safe host lifecycle", () => {
   assert.match(result.stdout, /state=completed target=v3\.12\.0/);
   assert.match(result.stdout, /updated_at=2026-09-09T12:01:19.820Z/);
   assert.doesNotMatch(result.stdout, /host runtime|reason=/);
+  assert.match(result.stdout, /reason_code=none/);
+  fs.writeFileSync(statusPath, JSON.stringify({ state: "applied_pending_git", target: "v3.12.0", reason_code: "working_tree_changed", reason: "private host detail" }));
+  const pending = spawnSync(readKiaPromotion, [], {
+    encoding: "utf8", env: { ...process.env, KIA_UVO_PROMOTION_PUBLIC_STATUS_PATH: statusPath },
+  });
+  assert.equal(pending.status, 0);
+  assert.match(pending.stdout, /reason_code=working_tree_changed/);
+  assert.doesNotMatch(pending.stdout, /private host detail/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

@@ -25,14 +25,16 @@ try {
   const state = String(parsed?.state ?? "unknown");
   const target = String(parsed?.target ?? "unknown");
   const updatedAt = String(parsed?.updated_at ?? parsed?.finished_at ?? "unknown");
+  const reasonCode = String(parsed?.reason_code ?? "none");
   result = {
     state: /^(deferred|applying|runtime_applied|applied_pending_git|main_published|completed|failed)$/.test(state) ? state : "unknown",
     target: /^v?\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.]+)?$/.test(target) ? target : "unknown",
     updated_at: /^[0-9T:.+-]+Z?$/.test(updatedAt) ? updatedAt : "unknown",
+    reason_code: /^(working_tree_changed|main_behind_remote|host_update_in_progress|git_publication_failed)$/.test(reasonCode) ? reasonCode : "none",
   };
 } catch {
   // The consumer routes state=unknown through the global observer without
   // exposing parser or filesystem detail from the host.
 }
-console.log(`kia-uvo-promotion state=${result.state} target=${result.target} updated_at=${result.updated_at}`);
+console.log(`kia-uvo-promotion state=${result.state} target=${result.target} updated_at=${result.updated_at} reason_code=${result.reason_code ?? "none"}`);
 NODE

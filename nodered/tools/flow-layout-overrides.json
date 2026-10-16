@@ -5931,6 +5931,10 @@
         "daily_update_codex_cli_group": {
           "x": 64,
           "y": 1539
+        },
+        "daily_update_kia_promotion_tests_group": {
+          "x": 1380,
+          "y": 5800
         }
       },
       "node_positions": {
@@ -6029,6 +6033,30 @@
         "daily_update_inventory_schedule_loop_out": {
           "x": 1875,
           "y": 3140
+        },
+        "daily_update_kia_promotion_test_pending": {
+          "x": 1600,
+          "y": 5920
+        },
+        "daily_update_kia_promotion_test_pending_out": {
+          "x": 1980,
+          "y": 5920
+        },
+        "daily_update_kia_promotion_test_reset": {
+          "x": 1600,
+          "y": 5860
+        },
+        "daily_update_kia_promotion_test_reset_out": {
+          "x": 1980,
+          "y": 5860
+        },
+        "daily_update_kia_promotion_test_completed": {
+          "x": 1600,
+          "y": 5980
+        },
+        "daily_update_kia_promotion_test_completed_out": {
+          "x": 1980,
+          "y": 5980
         }
       },
       "nodes": {
@@ -7343,6 +7371,36 @@
         "daily_update_codex_cli_result_test_out": {
           "x": 1300,
           "y": 1960
+        },
+        "daily_update_kia_promotion_tests_group": {
+          "x": 1380,
+          "y": 5800,
+          "w": 680,
+          "h": 230
+        },
+        "daily_update_kia_promotion_test_pending": {
+          "x": 1600,
+          "y": 5920
+        },
+        "daily_update_kia_promotion_test_pending_out": {
+          "x": 1980,
+          "y": 5920
+        },
+        "daily_update_kia_promotion_test_reset": {
+          "x": 1600,
+          "y": 5860
+        },
+        "daily_update_kia_promotion_test_reset_out": {
+          "x": 1980,
+          "y": 5860
+        },
+        "daily_update_kia_promotion_test_completed": {
+          "x": 1600,
+          "y": 5980
+        },
+        "daily_update_kia_promotion_test_completed_out": {
+          "x": 1980,
+          "y": 5980
         }
       },
       "geometry_final": true

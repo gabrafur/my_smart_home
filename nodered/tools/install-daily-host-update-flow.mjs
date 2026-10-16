@@ -403,28 +403,44 @@ if (!state || state === "unknown") {
     if (!TEST_MODE) node.error("kia_uvo_promotion_result_unrecognized", msg);
     return null;
 }
+const reasonCode = text.match(/\\breason_code=(working_tree_changed|main_behind_remote|host_update_in_progress|git_publication_failed)\\b/)?.[1] ?? "none";
 const result = {
     version: 1,
     state,
     target,
+    reason_code: reasonCode,
     updated_at: updatedAt,
     test_mode: TEST_MODE,
     observed_at: Date.now()
 };
 // Poll timestamps are observations, not new promotion incidents.
-const signature = [result.state, result.target].join(":");
+const signature = [result.state, result.target, result.reason_code].join(":");
 const key = TEST_MODE ? "kia_uvo_promotion_last_result_v1__test" : "kia_uvo_promotion_last_result_v1";
+if (TEST_MODE && msg._kia_promotion_reset === true) {
+    flow.set(key, undefined);
+    msg.payload = { ...result, state: "reset", would_notify: false };
+    node.status({ fill: "blue", shape: "dot", text: "TESTE promoção resetado" });
+    return msg;
+}
 const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
-const duplicate = previous?.state === state && previous?.target === target;
+const duplicate = previous?.state === state && previous?.target === target && (previous?.reason_code ?? "none") === reasonCode;
 result.signature = signature;
 if (TEST_MODE) flow.set(key, result);
 else flow.set(key, result, "persistent");
-const failed = state === "failed";
+const failed = state === "failed" || (state === "applied_pending_git" && reasonCode === "git_publication_failed");
 const completed = state === "completed";
+const waiting = state === "deferred" || state === "applied_pending_git";
+const waitingLabels = {
+    working_tree_changed: "worktree ocupada",
+    main_behind_remote: "main local atrasada",
+    host_update_in_progress: "outra atualização em andamento"
+};
 node.status({
-    fill: failed ? "red" : state === "deferred" ? "yellow" : completed ? "green" : "blue",
+    fill: failed ? "red" : waiting ? "yellow" : completed ? "green" : "blue",
     shape: failed ? "ring" : "dot",
-    text: completed ? "runtime e main confirmados: " + target
+    text: failed && state === "applied_pending_git" ? "falha Git; runtime ativo: " + target
+        : completed ? "runtime e main confirmados: " + target
+        : waiting ? (state === "applied_pending_git" ? "runtime ativo; Git pendente: " : "aguardando: ") + (waitingLabels[reasonCode] ?? target)
         : state === "applying" ? "validando runtime: " + target
         : state + ": " + target
 });
@@ -1842,7 +1858,7 @@ const nodes = [
   {
     id: "daily_update_kia_codex_architecture", type: "comment", z: TAB, g: kiaCodexGroup,
     name: "Codex isolado publica candidata; host valida runtime antes de promover main",
-    info: "A candidata do Codex não equivale a uma atualização concluída. O host revalida a candidata, instala pelo HACS, confirma a integração ativa e só então envia main e remove a branch. O Codex não recebe Docker nem token HA. O teste sintético nunca alcança este grupo.",
+    info: "A candidata do Codex não equivale a uma atualização concluída. O host revalida a candidata, instala pelo HACS, confirma a integração ativa e só então envia main e remove a branch. O Codex não recebe Docker nem token HA. TESTES: reset → Git ocupado → falha → concluído. Eles atravessam o mesmo parser e lifecycle até o dry-run; nunca solicitam instalação. Após runtime validado, worktree ocupada ou main atrasada aguardam reconciliação sem reinstalar nem apagar alterações alheias.",
     x: 660, y: 1720, wires: [],
   },
   {
@@ -1947,9 +1963,35 @@ const nodes = [
   },
   {
     id: "daily_update_kia_promotion_test_result_in", type: "link in", z: TAB, g: kiaCodexGroup,
-    name: "Receber falha promoção TESTE", links: ["daily_update_kia_promotion_test_result_out"],
+    name: "Receber lifecycle promoção TESTE", links: ["daily_update_kia_promotion_test_result_out", ...["reset", "pending", "completed"].map((state) => `daily_update_kia_promotion_test_${state}_out`)],
     x: 610, y: 2410, wires: [["daily_update_kia_promotion_parse_result"]],
   },
+  {
+    id: "daily_update_kia_promotion_tests_group", type: "group", z: TAB,
+    name: "13A. TESTE: reset → Git ocupado → falha → concluído (dry-run)",
+    style: { label: true, color: "#8f6bb3" },
+    nodes: ["reset", "pending", "completed"].flatMap((state) => [`daily_update_kia_promotion_test_${state}`, `daily_update_kia_promotion_test_${state}_out`]),
+    x: 1380, y: 5800, w: 680, h: 230,
+  },
+  ...["reset", "pending", "completed"].flatMap((state, index) => {
+    const y = 5860 + index * 60;
+    const status = state === "pending" ? "applied_pending_git" : "completed";
+    const id = `daily_update_kia_promotion_test_${state}`;
+    return [{
+      id, type: "inject", z: TAB, g: "daily_update_kia_promotion_tests_group",
+      name: { pending: "TESTE: Git ocupado (runtime ativo)", reset: "TESTE: reset promoção", completed: "TESTE: promoção concluída" }[state],
+      props: [
+        { p: "payload", v: `kia-uvo-promotion state=${status} target=v3.12.0 updated_at=synthetic reason_code=${state === "pending" ? "working_tree_changed" : "none"}`, vt: "str" },
+        { p: "_kia_promotion_test", v: "true", vt: "bool" },
+        { p: "_kia_promotion_reset", v: String(state === "reset"), vt: "bool" },
+      ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "",
+      x: 1600, y, wires: [[`${id}_out`]],
+    }, {
+      id: `${id}_out`, type: "link out", z: TAB, g: "daily_update_kia_promotion_tests_group",
+      name: `Promoção TESTE ${state} → lifecycle`, mode: "link",
+      links: ["daily_update_kia_promotion_test_result_in"], x: 1980, y, wires: [],
+    }];
+  }),
   {
     id: dependencyGroup, type: "group", z: TAB,
     name: "14. SUBFLUXO dependências do repositório: audit, política e atualização segura",

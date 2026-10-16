@@ -71,10 +71,28 @@ function writePublicStatus(status) {
     state: status?.state,
     target: status?.target,
     updated_at: status?.updated_at ?? status?.finished_at,
+    reason_code: publicPromotionReason(status?.reason_code),
   };
   const temporary = `${promotionPublicStatusPath}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, `${JSON.stringify(publicStatus)}\n`, { mode: 0o640 });
   fs.renameSync(temporary, promotionPublicStatusPath);
+}
+
+export function publicPromotionReason(value) {
+  return ["working_tree_changed", "main_behind_remote", "host_update_in_progress", "git_publication_failed"].includes(value) ? value : null;
+}
+
+export class PromotionDeferred extends Error {
+  constructor(code) {
+    super(code);
+    this.code = code;
+  }
+}
+
+export function assertPromotionWorkspace(actualPaths, expectedPaths) {
+  if (actualPaths.some((file) => !expectedPaths.includes(file))) {
+    throw new PromotionDeferred("working_tree_changed");
+  }
 }
 
 export function nextPromotionStatus(previous, patch, updatedAt = new Date().toISOString()) {
@@ -84,6 +102,7 @@ export function nextPromotionStatus(previous, patch, updatedAt = new Date().toIS
     schema_version: 1,
     ...(sourceChanged ? {} : previous),
     ...patch,
+    reason_code: publicPromotionReason(patch?.reason_code),
     updated_at: updatedAt,
   };
 }
@@ -195,7 +214,11 @@ function fetchAndValidate(candidate, { resumeGit = false } = {}) {
   const currentHead = git(["rev-parse", "HEAD"]);
   if (git(["branch", "--show-current"]) !== "main") throw new Error("active checkout is not on main");
   const ancestor = spawnSync("git", ["merge-base", "--is-ancestor", remoteMain, currentHead], { cwd: repoRoot });
-  if (ancestor.status !== 0) throw new Error("local main does not contain origin/main");
+  if (ancestor.status !== 0) {
+    const behind = spawnSync("git", ["merge-base", "--is-ancestor", currentHead, remoteMain], { cwd: repoRoot });
+    if (behind.status === 0) throw new PromotionDeferred("main_behind_remote");
+    throw new Error("local main has diverged from origin/main");
+  }
   const parent = git(["rev-parse", `${candidate.commit}^`]);
   const basedOnCurrent = spawnSync("git", ["merge-base", "--is-ancestor", parent, currentHead], { cwd: repoRoot });
   if (basedOnCurrent.status !== 0) throw new Error("candidate is stale relative to main");
@@ -203,6 +226,7 @@ function fetchAndValidate(candidate, { resumeGit = false } = {}) {
   if (!paths.length || paths.some((file) => !isAllowedCandidatePath(file))) {
     throw new Error(`candidate paths rejected: ${paths.join(", ") || "none"}`);
   }
+  if (resumeGit) assertPromotionWorkspace(workingTreePaths(), paths);
   const appliedCommit = resumeGit ? findPromotionCommit(candidate, paths) : null;
   let verifiedUncommittedCandidate = false;
   if (resumeGit && !appliedCommit && samePaths(workingTreePaths(), paths)) {
@@ -284,6 +308,7 @@ export function assertCandidateContent(candidate, paths, root = repoRoot) {
 
 function commitAndPush(candidate, expectedPaths) {
   const actualPaths = workingTreePaths();
+  assertPromotionWorkspace(actualPaths, expectedPaths);
   if (actualPaths.length && !samePaths(actualPaths, expectedPaths)) {
     throw new Error(`runtime result differs from candidate paths: ${actualPaths.join(", ") || "none"}`);
   }
@@ -362,27 +387,28 @@ export async function promote({ checkOnly = false } = {}) {
     writePublicStatus(promotion);
     return false;
   }
+  const resumeGit = promotion.source_commit === candidate.commit &&
+    ["runtime_applied", "applied_pending_git"].includes(promotion.state);
   const busyStage = findActiveHostUpdateStage(dailyUpdateTriggerDir);
   if (busyStage) {
     if (promotion.source_commit !== candidate.commit ||
-        promotion.state !== "deferred" ||
+        promotion.state !== (resumeGit ? "applied_pending_git" : "deferred") ||
         promotion.reason !== `host_update_in_progress:${busyStage}`) {
       writeStatus({
-        state: "deferred",
+        state: resumeGit ? "applied_pending_git" : "deferred",
         source_commit: candidate.commit,
         target: candidate.target,
         reason: `host_update_in_progress:${busyStage}`,
+        reason_code: "host_update_in_progress",
       });
     }
     return false;
   }
-  const resumeGit = promotion.source_commit === candidate.commit &&
-    ["runtime_applied", "applied_pending_git"].includes(promotion.state);
   let expectedPaths;
   let candidateRoot;
   try {
     if (!checkOnly && !resumeGit && workingTreePaths().length) {
-      writeStatus({ state: "deferred", source_commit: candidate.commit, target: candidate.target, reason: "working_tree_not_clean" });
+      writeStatus({ state: "deferred", source_commit: candidate.commit, target: candidate.target, reason: "working_tree_not_clean", reason_code: "working_tree_changed" });
       return false;
     }
     expectedPaths = fetchAndValidate(candidate, { resumeGit });
@@ -418,12 +444,21 @@ export async function promote({ checkOnly = false } = {}) {
     return true;
   } catch (error) {
     const current = (() => { try { return readJson(promotionStatusPath); } catch { return {}; } })();
+    if (error instanceof PromotionDeferred) {
+      writeStatus({
+        state: resumeGit || current.state === "runtime_applied" ? "applied_pending_git" : "deferred",
+        source_commit: candidate.commit, target: candidate.target, branch: candidate.branch,
+        reason: error.code, reason_code: error.code, finished_at: null,
+      });
+      log(`Kia UVO promotion waiting target=${candidate.target} reason=${error.code}`);
+      return false;
+    }
     const state = current.state === "main_published"
       ? "main_published"
       : ["runtime_applied", "applied_pending_git"].includes(current.state)
         ? "applied_pending_git"
         : "failed";
-    writeStatus({ state, source_commit: candidate.commit, target: candidate.target, reason: String(error.message).slice(0, 800), finished_at: new Date().toISOString() });
+    writeStatus({ state, source_commit: candidate.commit, target: candidate.target, reason: String(error.message).slice(0, 800), reason_code: state === "applied_pending_git" ? "git_publication_failed" : null, finished_at: new Date().toISOString() });
     log(`Kia UVO candidate promotion failed target=${candidate.target}: ${error.message}`);
     throw error;
   } finally {
