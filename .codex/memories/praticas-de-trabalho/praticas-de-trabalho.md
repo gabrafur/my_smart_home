@@ -48,3 +48,10 @@
 - Se apenas `docs-review-scheduler` reteve resolvers obsoletos, recrie somente
   esse serviço e confirme DNS, leitura remota e `next_run`; não reinicie a
   stack residencial.
+
+<!-- memory-record {"id":"serializar-worktree-com-promotor-residencial","category":"LONG_LIVED_DECISION","kind":"PROJECT_DECISION","last_verified":"2026-10-16","evidence":[{"file":"scripts/install-daily-update-nodered-bridge.sh","sha256":"46e4d56b01da66f65c5dc137500ce4998bf0a81f518baf35a73c361d210defdf"},{"file":"scripts/promote-kia-uvo-candidate.mjs","sha256":"a1c4cbd3ed51d058613a2784c7c840d5e078d5db8fb4a000763a02d614be6c43"}]} -->
+## Serializar manutenção Git com o promotor residencial
+
+As pontes de atualização e o promotor Kia compartilham .daily-maintenance.lock. Operações interativas que tornem a worktree temporariamente limpa devem respeitar esse mesmo lock: o cron pode interpretar a limpeza como autorização para iniciar uma promoção já aprovada. Restaurar alterações alheias durante a validação do runtime impede o commit da candidata. Se o runtime já foi aplicado, confira os bytes contra a candidata e retome apenas a etapa Git; não reinstale por causa de falha de publicação. Reconcilie alterações já publicadas com origin/main antes de retomar, preservando trabalho concorrente.
+
+<!-- /memory-record -->
