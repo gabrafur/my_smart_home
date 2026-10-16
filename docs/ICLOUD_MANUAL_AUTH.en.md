@@ -7,6 +7,11 @@ integration. It preserves the domain, config entry, services, platforms and
 `/config/.storage/icloud` session storage. It does not create another account
 or replace user data. Platforms and the original flow come from installed Core.
 
+Transport failures during startup (including DNS, connection and timeout errors
+wrapped by pyicloud) become `ConfigEntryNotReady`, allowing Home Assistant to
+retry setup with its native backoff. Authentication failures without a transport
+cause and programming errors keep their original behavior; retries never request OTPs.
+
 Startup, session renewal and background authentication use `pause_2fa=True`.
 Because pyicloud 2.7.0 may still request an OTP when paused-token login fails,
 `ManualOtpService.request_2fa_code()` also suppresses automatic delivery. This
@@ -27,8 +32,8 @@ sessions and tokens; Apple can invalidate them later.
 ## Compatibility and maintenance
 
 Verified with Home Assistant Core 2026.10.1 and pyicloud 2.7.0. The adapter
-replaces only the native `account` and `config_flow` client factories before
-setup, and registers a flow subclass. It does not modify container files or
+replaces the native `account` and `config_flow` client factories, registers
+a flow subclass and wraps native setup to classify transient transport failures. It does not modify container files or
 patch other pyicloud consumers. After Core or pyicloud updates, run the native
 compatibility tests inside the container before declaring runtime validation
 complete. The manifest pins the pyicloud dependency.

@@ -7,6 +7,11 @@ nativa. Preserva domínio, config entry, serviços, plataformas e armazenamento
 `/config/.storage/icloud`; não cria outra conta nem substitui os dados do usuário.
 As plataformas e o fluxo original vêm do Home Assistant Core instalado.
 
+Falhas de transporte na inicialização (incluindo DNS, conexão e timeout encapsulados
+pelo pyicloud) viram `ConfigEntryNotReady`, para o Home Assistant repetir o setup
+com seu backoff nativo. Erros de autenticação sem causa de transporte e erros de
+programação continuam no caminho original; nenhum OTP é solicitado pelo retry.
+
 Inicialização, renovação de sessão e falha de polling usam `pause_2fa=True`.
 Como o fallback do pyicloud 2.7.0 ainda pode pedir um OTP quando o login com
 token pausado falha, `ManualOtpService.request_2fa_code()` também bloqueia esse
@@ -28,8 +33,9 @@ continuam persistidos pela biblioteca; a Apple pode invalidá-los futuramente.
 ## Compatibilidade e manutenção
 
 Compatibilidade verificada com Home Assistant Core 2026.10.1 e pyicloud 2.7.0.
-A adaptação troca apenas as fábricas de cliente nos módulos nativos `account`
-e `config_flow`, antes do setup, e registra uma subclasse do fluxo. Não modifica
+A adaptação troca as fábricas de cliente nos módulos nativos `account`
+e `config_flow`, registra uma subclasse do fluxo e envolve o setup nativo
+para classificar falhas transitórias de transporte. Não modifica
 arquivos do container nem aplica um patch global a outros consumidores pyicloud.
 Após atualizar Core ou pyicloud, execute os testes dentro do container antes de
 considerar o runtime validado. A dependência pyicloud permanece fixada no manifest.

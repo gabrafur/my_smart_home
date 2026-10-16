@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "icloud"
@@ -119,6 +119,43 @@ class NativeFlowTest(unittest.IsolatedAsyncioTestCase):
         self.assertIs(account.PyiCloudService, ManualOtpService)
         self.assertIs(config_flow.PyiCloudService, ManualOtpService)
         self.assertIs(HANDLERS["icloud"], ManualOtpFlowHandler)
+
+
+class SetupRetryTest(unittest.IsolatedAsyncioTestCase):
+    async def test_wrapped_dns_failure_retries_then_native_setup_recovers(self):
+        import ast
+        from socket import gaierror
+        spec = importlib.util.spec_from_file_location("icloud_setup_retry", ROOT / "setup_retry.py")
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        tree = ast.parse((ROOT / "__init__.py").read_text())
+        adapter = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef)
+                       and n.name == "async_setup_entry")
+
+        class NotReady(Exception):
+            pass
+
+        dns = gaierror(-3, "synthetic DNS unavailable")
+        wrapped = RuntimeError("Request failed to iCloud")
+        wrapped.__cause__ = dns
+        native = AsyncMock(side_effect=[wrapped, True])
+        namespace = {"core_async_setup_entry": native, "ConfigEntryNotReady": NotReady,
+                     "is_transport_failure": helper.is_transport_failure}
+        exec(compile(ast.Module(body=[adapter], type_ignores=[]), "setup", "exec"), namespace)
+        hass, entry = object(), object()
+        with self.assertRaises(NotReady):
+            await namespace[adapter.name](hass, entry)
+        self.assertTrue(await namespace[adapter.name](hass, entry))
+        self.assertEqual(native.await_args.args, (hass, entry))
+
+        for error in (ValueError("bad config"), RuntimeError("401 authentication required")):
+            native.side_effect = error
+            with self.assertRaises(type(error)) as caught:
+                await namespace[adapter.name](hass, entry)
+            self.assertIs(caught.exception, error)
+        cycle = RuntimeError("cycle")
+        cycle.__context__ = cycle
+        self.assertFalse(helper.is_transport_failure(cycle))
 
 
 if __name__ == "__main__":

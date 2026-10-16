@@ -142,9 +142,16 @@ Após recriação, todos os serviços alterados precisam confirmar prontidão an
 
 <!-- /memory-record -->
 
-<!-- memory-record {"id":"icloud-otp-somente-manual","category":"LONG_LIVED_DECISION","kind":"PROJECT_DECISION","last_verified":"2026-10-13","evidence":[{"file":"homeassistant/custom_components/icloud/manual_auth.py","sha256":"c5469affcb15d096411f951739bacf7110a0b19c99b9f1c0bd966a6dab5662c5"},{"file":"homeassistant/custom_components/icloud/config_flow.py","sha256":"b3c6ebc9c13d8ae9b8efadb73acb3db1e1e338cf14151377f9f5821498f61d8e"},{"file":"homeassistant/tests/test_icloud_manual_auth.py","sha256":"92c6626561e92e1b82deb0e85bcbacfbe64b3a7e7371db3c176ca0c07aeee948"},{"file":"docs/ICLOUD_MANUAL_AUTH.md","sha256":"9020831f4971a6a291811534eba2a295a386d2942c13ce28a52ffe91a1a1a0e4"}]} -->
+<!-- memory-record {"id":"icloud-otp-somente-manual","category":"LONG_LIVED_DECISION","kind":"PROJECT_DECISION","last_verified":"2026-10-16","evidence":[{"file":"homeassistant/custom_components/icloud/manual_auth.py","sha256":"c5469affcb15d096411f951739bacf7110a0b19c99b9f1c0bd966a6dab5662c5"},{"file":"homeassistant/custom_components/icloud/config_flow.py","sha256":"b3c6ebc9c13d8ae9b8efadb73acb3db1e1e338cf14151377f9f5821498f61d8e"},{"file":"homeassistant/tests/test_icloud_manual_auth.py","sha256":"c632f7f6a5385f59fe3fa2497b5ad79647b99c5e8a8a14f6f6c861b740e261c3"},{"file":"docs/ICLOUD_MANUAL_AUTH.md","sha256":"747e8f087761f98af2863a5f09b80e979e49e3502b61e94a679ad66d17e8662d"}]} -->
 ## iCloud com OTP somente por ação manual
 
 A adaptação local custom_components/icloud delega plataformas ao Core e preserva domínio, config entry e armazenamento da sessão. Inicialização e autenticação de fundo usam pause_2fa=True; o fallback automático request_2fa_code também é bloqueado, porque pyicloud 2.7.0 pode chamá-lo mesmo com pausa. Somente a opção explícita de solicitar código no fluxo de configuração chama request_manual_2fa_code. Abrir reparo, restaurar o runtime ou informar OTP inválido não gera outro código. Revalidar compatibilidade dentro do container após atualizar Core/pyicloud; não remover .storage para renovar autenticação.
+
+<!-- /memory-record -->
+
+<!-- memory-record {"id":"icloud-retry-de-transporte-no-setup","category":"LONG_LIVED_DECISION","kind":"PROJECT_DECISION","last_verified":"2026-10-16","evidence":[{"file":"homeassistant/custom_components/icloud/__init__.py","sha256":"0d4935930a4a744d50d2b7f8c8168c813ac84043de67c8ee01aeb61ab1117a08"},{"file":"homeassistant/custom_components/icloud/setup_retry.py","sha256":"5611e06df27d1477983f49e579fd163955eb0a4adde4fb0c7e750058f9e58270"},{"file":"homeassistant/tests/test_icloud_manual_auth.py","sha256":"c632f7f6a5385f59fe3fa2497b5ad79647b99c5e8a8a14f6f6c861b740e261c3"},{"file":"docs/ICLOUD_MANUAL_AUTH.md","sha256":"747e8f087761f98af2863a5f09b80e979e49e3502b61e94a679ad66d17e8662d"}]} -->
+## Retry de transporte no setup do iCloud
+
+O adaptador local envolve o setup nativo: causas tipadas de DNS, conexão e timeout, mesmo encapsuladas pelo pyicloud, viram ConfigEntryNotReady para usar o backoff do Home Assistant. Sem essa classificação, uma falha transitória pode deixar a entrada em setup_error e impedir a recuperação do provedor de localização. Não inferir falha de transporte pelo texto genérico da biblioteca; autenticação sem causa de transporte e erros de programação mantêm o comportamento original. O retry preserva a política de OTP somente manual.
 
 <!-- /memory-record -->

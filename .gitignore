@@ -79,6 +79,7 @@ tuya-raw.json
 # addresses, per-device unique_ids, HomeKit pairing ids and resident names.
 # Do NOT re-add per-file `!` exceptions here.
 homeassistant/secrets.yaml
+homeassistant/google_calendars.yaml
 !homeassistant/secrets.yaml.example
 homeassistant/.storage/
 homeassistant/.ha_ws_token
