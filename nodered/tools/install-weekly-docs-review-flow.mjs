@@ -6,6 +6,21 @@ import path from "node:path";
 const sourcePath = path.resolve(process.argv[2] ?? new URL("../flows.json", import.meta.url).pathname);
 const outputPath = path.resolve(process.argv[3] ?? `${sourcePath}.new`);
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+const scheduleLabel = "Segunda 20:00 (23:00 UTC)";
+const scheduleCron = "00 20 * * 1";
+const architectureLabel = "Segunda 20:00 America/Sao_Paulo (23:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado";
+// A schedule edit must preserve topology installed by the startup/observer layers.
+if (process.argv.includes("--schedule-only")) {
+  const schedule = flows.find(node => node.id === "weekly_docs_review_schedule");
+  const comment = flows.find(node => node.id === "weekly_docs_review_architecture");
+  if (!schedule || !comment) throw new Error("weekly review must be installed before updating its schedule");
+  Object.assign(schedule, { name: scheduleLabel, crontab: scheduleCron });
+  comment.name = architectureLabel;
+  fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
+  console.log(`Updated weekly schedule only in ${outputPath}`);
+  process.exit(0);
+}
+
 
 const TAB = "weekly_docs_review_tab";
 const PRODUCTION_GROUP = "weekly_docs_review_production_group";
@@ -296,7 +311,7 @@ const nodes = [
     type: "comment",
     z: TAB,
     g: PRODUCTION_GROUP,
-    name: "Segunda 03:00 America/Sao_Paulo (06:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado",
+    name: architectureLabel,
     info: "O container Node-RED recebe apenas o diretório de gatilho e um helper allowlisted. Checkout, autenticação Codex, chave SSH e socket Docker não são expostos.",
     x: 780,
     y: 80,
@@ -307,13 +322,13 @@ const nodes = [
     type: "inject",
     z: TAB,
     g: PRODUCTION_GROUP,
-    name: "Segunda 03:00 (06:00 UTC)",
+    name: scheduleLabel,
     props: [
       { p: "payload" },
       { p: "_weekly_docs_source", v: "scheduled", vt: "str" },
     ],
     repeat: "",
-    crontab: "00 03 * * 1",
+    crontab: scheduleCron,
     once: false,
     onceDelay: "0.1",
     topic: "",

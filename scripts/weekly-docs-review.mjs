@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const promptPath = path.join(repoRoot, "scripts", "weekly-docs-review.prompt.md");
 const lockPath = path.join(repoRoot, ".git-backup.lock");
+const maintenanceLockPath = path.join(repoRoot, ".daily-maintenance.lock");
 const reviewReceiptName = ".weekly-docs-review-receipt.json";
 const reviewReceiptStatuses = new Set([
   "completed",
@@ -22,7 +23,7 @@ const triggerPath = process.env.WEEKLY_DOCS_REVIEW_TRIGGER_PATH || "";
 const maxRuntimeMs = integerEnv("WEEKLY_DOCS_REVIEW_TIMEOUT_MS", 3 * 60 * 60 * 1000, 60_000, 24 * 60 * 60 * 1000);
 const schedule = {
   day: integerEnv("WEEKLY_DOCS_REVIEW_DAY_UTC", 1, 0, 6),
-  hour: integerEnv("WEEKLY_DOCS_REVIEW_HOUR_UTC", 6, 0, 23),
+  hour: integerEnv("WEEKLY_DOCS_REVIEW_HOUR_UTC", 23, 0, 23),
   minute: integerEnv("WEEKLY_DOCS_REVIEW_MINUTE_UTC", 0, 0, 59),
 };
 const scheduleOwner = process.env.WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER || "internal";
@@ -268,6 +269,28 @@ function failReview(reason, error) {
 }
 
 export async function runReview() {
+  const descriptor = fs.openSync(maintenanceLockPath, "a", 0o660);
+  try {
+    // flock uses the same open-file description as the parent. Keeping this
+    // descriptor open holds the kernel lock through agent, validation and push.
+    const acquired = spawnSync("flock", ["-n", "-E", "75", "3"], {
+      stdio: ["ignore", "ignore", "pipe", descriptor],
+    });
+    if (acquired.status === 75) {
+      if (status.last_reason !== "maintenance_busy") {
+        log("weekly review waiting for residential maintenance");
+        updateStatus({ state: "waiting", last_reason: "maintenance_busy" });
+      }
+      return false;
+    }
+    if (acquired.status !== 0) throw new Error("cannot acquire residential maintenance lock");
+    return await runLockedReview();
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
+async function runLockedReview() {
   let initial;
   try {
     initial = preflight();
@@ -455,6 +478,11 @@ function startManualTriggerWatcher() {
     }
     try {
       await runManagedReview(source);
+      if (status.last_reason === "maintenance_busy" && !fs.existsSync(triggerPath)) {
+        // Retain the coalesced request; the existing watcher retries it after
+        // the shared maintenance slot is released, without running Codex now.
+        fs.writeFileSync(triggerPath, `${source}\n`, { mode: 0o660 });
+      }
     } catch (error) {
       log(`${source} review failed unexpectedly: ${error.message}`);
       updateStatus({
@@ -480,15 +508,15 @@ function startHeartbeat() {
 function selfTest() {
   assert.equal(
     nextWeeklyRun(new Date("2026-08-10T05:59:00Z"), schedule).toISOString(),
-    "2026-08-10T06:00:00.000Z",
+    "2026-08-10T23:00:00.000Z",
   );
   assert.equal(
-    nextWeeklyRun(new Date("2026-08-10T06:00:00Z"), schedule).toISOString(),
-    "2026-08-17T06:00:00.000Z",
+    nextWeeklyRun(new Date("2026-08-10T23:00:00Z"), schedule).toISOString(),
+    "2026-08-17T23:00:00.000Z",
   );
   assert.equal(
     nextWeeklyRun(new Date("2026-08-12T12:00:00Z"), schedule).toISOString(),
-    "2026-08-17T06:00:00.000Z",
+    "2026-08-17T23:00:00.000Z",
   );
   assert.ok(fs.readFileSync(promptPath, "utf8").includes("Português do Brasil"));
   assert.equal(isAllowedReviewPath("README.md"), true);
@@ -527,7 +555,7 @@ if (process.argv.includes("--self-test")) {
     process.exitCode = 1;
   }
 } else if (process.argv.includes("--run-now")) {
-  process.exitCode = (await runReview()) ? 0 : 1;
+  process.exitCode = (await runReview()) ? 0 : status.last_reason === "maintenance_busy" ? 75 : 1;
 } else {
   if (scheduleOwner === "node-red") startNodeRedManagedSchedule();
   else scheduleNext();

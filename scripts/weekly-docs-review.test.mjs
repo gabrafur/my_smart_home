@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
+import { once } from "node:events";
 
 const schedulerSource = fs.readFileSync(new URL("./weekly-docs-review.mjs", import.meta.url), "utf8");
 
@@ -43,6 +44,7 @@ function fixture(t, { branch = "main" } = {}) {
   write(path.join(repo, "scripts", "weekly-docs-review.mjs"), schedulerSource);
   write(path.join(repo, "scripts", "weekly-docs-review.prompt.md"), "Português do Brasil\n");
   write(path.join(repo, "Makefile"), "validate-public:\n\t@true\nvalidate-staged:\n\t@true\n");
+  write(path.join(repo, ".gitignore"), ".daily-maintenance.lock\n");
   git(repo, ["add", "."]);
   git(repo, ["commit", "-qm", "synthetic baseline"]);
   const baseline = git(repo, ["rev-parse", "HEAD"]);
@@ -59,6 +61,7 @@ function fixture(t, { branch = "main" } = {}) {
 
   write(path.join(bin, "flock"), [
     "#!/bin/sh",
+    '[ "$2" != "-E" ] || exec /usr/bin/flock "$@"',
     "shift 2",
     "exec \"$@\"",
     "",
@@ -95,6 +98,7 @@ function fixture(t, { branch = "main" } = {}) {
   ].join("\n"), 0o755);
   write(path.join(bin, "make"), [
     "#!/bin/sh",
+    '/usr/bin/flock -n "$SCHEDULER_MAIN_REPO/.daily-maintenance.lock" true && exit 90',
     "target=${1:-}",
     "case \"${SCHEDULER_SCENARIO:-}\" in",
     "  validation_failure|no_change_validation_failure) [ \"$target\" = validate-public ] && echo synthetic-validation-failure >&2 && exit 1 ;;",
@@ -110,6 +114,7 @@ function fixture(t, { branch = "main" } = {}) {
     return command(repo, process.execPath, ["scripts/weekly-docs-review.mjs", "--run-now"], {
       PATH: `${bin}:${process.env.PATH}`,
       SCHEDULER_SCENARIO: scenario,
+      SCHEDULER_MAIN_REPO: repo,
       SCHEDULER_ARGS_PATH: argsPath,
       SCHEDULER_CONTROL: control,
       SCHEDULER_REMOTE: remote,
@@ -264,4 +269,66 @@ test("Node-RED owns the continuous schedule without starting the internal timer"
   });
   assert.match(result.stdout, /weekly documentation schedule managed by Node-RED/);
   assert.doesNotMatch(result.stdout, /next weekly documentation review:/);
+});
+
+
+test("shared maintenance contention defers review before Codex and releases cleanly", async (t) => {
+  const item = fixture(t);
+  const lock = path.join(item.repo, ".daily-maintenance.lock");
+  const holder = spawn("/usr/bin/flock", ["-n", lock, "sh", "-c", "printf ready; cat"], { stdio: ["pipe", "pipe", "pipe"] });
+  try {
+    await once(holder.stdout, "data");
+    const result = item.run("no_changes");
+    assert.equal(result.status, 75, result.stderr);
+    const status = JSON.parse(fs.readFileSync(path.join(item.temporaryRoot, "status.json")));
+    assert.equal(status.state, "waiting");
+    assert.equal(status.last_reason, "maintenance_busy");
+    assert.equal(fs.existsSync(item.argsPath), false, "Codex must not run while maintenance owns the slot");
+    assert.equal(git(item.repo, ["rev-parse", "HEAD"]), item.baseline);
+  } finally {
+    const closed = once(holder, "close"); holder.stdin.end(); await closed;
+  }
+  assert.equal(item.run("no_changes").status, 0, "the same request can run after maintenance releases the slot");
+  assert.equal(command(item.repo, "/usr/bin/flock", ["-n", lock, "true"]).status, 0,
+    "review must release its lock after completion");
+});
+
+test("Node-RED review request survives maintenance contention and executes after release", { timeout: 15000 }, async (t) => {
+  const item = fixture(t);
+  const trigger = path.join(item.temporaryRoot, "requested");
+  const statusFile = path.join(item.temporaryRoot, "queued-status.json");
+  const holder = spawn("/usr/bin/flock", ["-n", path.join(item.repo, ".daily-maintenance.lock"), "sh", "-c", "printf ready; cat"], { stdio: ["pipe", "pipe", "pipe"] });
+  const holderDone = once(holder, "close");
+  await once(holder.stdout, "data");
+  write(trigger, "scheduled\n");
+  const worker = spawn(process.execPath, ["scripts/weekly-docs-review.mjs"], {
+    cwd: item.repo, stdio: ["ignore", "ignore", "pipe"], env: {
+      ...process.env, PATH: path.join(item.temporaryRoot, "bin") + path.delimiter + process.env.PATH,
+      SCHEDULER_SCENARIO: "no_changes", SCHEDULER_MAIN_REPO: item.repo,
+      SCHEDULER_REMOTE: item.remote, SCHEDULER_ARGS_PATH: item.argsPath,
+      WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER: "node-red", WEEKLY_DOCS_REVIEW_STATUS_PATH: statusFile,
+      WEEKLY_DOCS_REVIEW_TRIGGER_PATH: trigger,
+    },
+  });
+  const workerDone = once(worker, "close");
+  const waitFor = async (predicate) => {
+    const deadline = Date.now() + 7000;
+    while (!predicate()) {
+      assert.ok(Date.now() < deadline, "worker did not reach expected state");
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  };
+  const status = () => { try { return JSON.parse(fs.readFileSync(statusFile)); } catch { return {}; } };
+  try {
+    await waitFor(() => status().last_reason === "maintenance_busy" && fs.existsSync(trigger));
+    assert.equal(fs.existsSync(item.argsPath), false);
+    holder.stdin.end(); await holderDone;
+    await waitFor(() => status().last_result === "no_changes");
+    assert.equal(fs.existsSync(trigger), false, "the retained request is consumed once after release");
+    assert.equal(fs.existsSync(item.argsPath), true);
+    assert.equal(item.remoteCount(), 1, "no-change review must not create a commit");
+  } finally {
+    holder.stdin.end(); await holderDone;
+    worker.kill("SIGTERM"); await workerDone;
+  }
 });

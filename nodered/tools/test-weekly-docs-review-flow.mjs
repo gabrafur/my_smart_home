@@ -19,7 +19,21 @@ const node = (id) => {
 };
 
 assert.equal(node("weekly_docs_review_tab").label, "revisao_documental_semanal");
-assert.equal(node("weekly_docs_review_schedule").crontab, "00 03 * * 1");
+assert.equal(node("weekly_docs_review_schedule").crontab, "00 20 * * 1");
+assert.equal(node("daily_update_inventory_apply_schedule").crontab, "00 03 * * *", "integration maintenance retains its separate overnight window");
+assert.equal(node("git_backup_schedule").crontab, "0 1 * * *");
+// Schedule regeneration must leave startup gates and generated link routes intact.
+const scheduleFixture = fs.mkdtempSync(path.join(os.tmpdir(), "weekly-schedule-only-"));
+try {
+  const file = path.join(scheduleFixture, "flows.json");
+  const original = JSON.parse(fs.readFileSync(path.join(repoRoot, "nodered", "flows.json")));
+  const old = structuredClone(original);
+  old.find(n => n.id === "weekly_docs_review_schedule").crontab = "00 03 * * 1";
+  fs.writeFileSync(file, JSON.stringify(old));
+  const generated = spawnSync(process.execPath, [path.join(here, "install-weekly-docs-review-flow.mjs"), file, file, "--schedule-only"], { encoding: "utf8" });
+  assert.equal(generated.status, 0, generated.stderr);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file)), original);
+} finally { fs.rmSync(scheduleFixture, { recursive: true, force: true }); }
 assert.deepEqual(node("weekly_docs_review_schedule").wires, [["startup_caller_weekly_docs_review_schedule"]]);
 assert.deepEqual(node("weekly_docs_review_schedule_out").links, ["weekly_docs_review_schedule_in"]);
 assert.deepEqual(node("weekly_docs_review_schedule_in").links, ["weekly_docs_review_schedule_out"]);

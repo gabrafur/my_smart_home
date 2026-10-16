@@ -8694,7 +8694,7 @@
         "type": "comment",
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_production_group",
-        "name": "Segunda 03:00 America/Sao_Paulo (06:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado",
+        "name": "Segunda 20:00 America/Sao_Paulo (23:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado",
         "info": "O container Node-RED recebe apenas o diretório de gatilho e um helper allowlisted. Checkout, autenticação Codex, chave SSH e socket Docker não são expostos.",
         "x": 780,
         "y": 80,
@@ -8705,7 +8705,7 @@
         "type": "inject",
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_production_group",
-        "name": "Segunda 03:00 (06:00 UTC)",
+        "name": "Segunda 20:00 (23:00 UTC)",
         "props": [
             {
                 "p": "payload"
@@ -8717,7 +8717,7 @@
             }
         ],
         "repeat": "",
-        "crontab": "00 03 * * 1",
+        "crontab": "00 20 * * 1",
         "once": false,
         "onceDelay": "0.1",
         "topic": "",
@@ -82537,7 +82537,7 @@
         "type": "link out",
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_production_group",
-        "name": "Encurtar: Segunda 03:00 (06:00 UTC)",
+        "name": "Encurtar: Segunda 20:00 (23:00 UTC)",
         "mode": "link",
         "links": [
             "notification_hub_wire_in_45608f6df4c2"

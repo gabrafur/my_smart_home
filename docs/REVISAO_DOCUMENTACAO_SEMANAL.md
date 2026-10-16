@@ -4,7 +4,7 @@
 
 A aba `revisao_documental_semanal` do Node-RED é a fonte única do agendamento
 e do acionamento manual da revisão profunda do repositório. O cron roda toda
-segunda-feira às **03:00 em `America/Sao_Paulo`** (06:00 UTC na configuração
+segunda-feira às **20:00 em `America/Sao_Paulo`** (23:00 UTC na configuração
 canônica). O worker Compose `docs-review-scheduler` não possui timer próprio:
 ele mantém o heartbeat/status, consome solicitações do Node-RED e executa o
 Codex isolado com as credenciais Git fora do container de automação.
@@ -20,6 +20,17 @@ resposta como solicitada/agrupada/inválida, o tratamento de falha e o código d
 saída são decisões visuais nomeadas. JavaScript permanece apenas para
 normalizar a linha textual do helper, persistir o estado sanitizado e adaptar
 status do worker.
+
+
+A revisão foi separada da janela residencial: backup Git às 01:00, com a cadeia
+de updates do host após seu sucesso; integrações elegíveis às 03:00; revisão
+documental na segunda às 20:00 (todos em `America/Sao_Paulo`). O limite normal
+do agente é de três horas, deixando margem antes do próximo backup da 01:00.
+Horários reduzem sobreposição, mas a exclusão mútua é garantida pelo lock
+`.daily-maintenance.lock`, compartilhado com updates e promoção Bluelink.
+Backup Git e revisão conservam esse lock até terminar a validação/publicação.
+Se estiver ocupado, o backup publica `deferred`/`maintenance_busy` e preserva o
+pedido; a revisão permanece aguardando e preserva seu gatilho, sem iniciar Codex.
 
 ## Entidade no Home Assistant
 
@@ -155,7 +166,7 @@ docker compose --profile automation logs --tail=50 docs-review-scheduler
 ```
 
 O log deve mostrar `schedule managed by Node-RED` e a próxima solicitação
-esperada em ISO. Confirme também que a aba contém o cron `00 03 * * 1`. Teste o
+esperada em ISO. Confirme também que a aba contém o cron `00 20 * * 1`. Teste o
 checkout, a branch e a autenticação Git sem executar uma revisão:
 
 ```bash

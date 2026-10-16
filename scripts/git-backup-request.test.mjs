@@ -4,9 +4,14 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import test, { after } from "node:test";
+import { once } from "node:events";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+
+const testMaintenanceLock = path.join(os.tmpdir(), `git-backup-maintenance-${process.pid}.lock`);
+process.env.GIT_BACKUP_MAINTENANCE_LOCK_PATH = testMaintenanceLock;
+after(() => fs.rmSync(testMaintenanceLock, { force: true }));
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const requestScript = path.join(scriptsDir, "request-host-git-backup.sh");
@@ -316,4 +321,32 @@ test("cron installer replaces the direct schedule with one managed bridge", () =
   assert.match(installed, /15 4 \* \* \* keep-this-job/);
   assert.match(installed, /process-git-backup-request\.sh/);
   fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+
+test("Git backup bridge preserves its request until residential maintenance releases the checkout", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "backup-maintenance-slot-"));
+  const trigger = path.join(root, "trigger"); fs.mkdirSync(trigger);
+  fs.writeFileSync(path.join(trigger, "requested"), "20261016T010000Z-41\n");
+  const calls = path.join(root, "git-called");
+  const backup = path.join(root, "backup.sh");
+  fs.writeFileSync(backup, `#!/bin/sh\nprintf called >> '${calls}'\n`, { mode: 0o755 });
+  const lock = path.join(root, ".daily-maintenance.lock");
+  const env = { ...process.env, GIT_BACKUP_TRIGGER_DIR: trigger, GIT_BACKUP_SCRIPT: backup, GIT_BACKUP_MAINTENANCE_LOCK_PATH: lock };
+  const holder = spawn("/usr/bin/flock", ["-n", lock, "sh", "-c", "printf ready; cat"], { stdio: ["pipe", "pipe", "pipe"] });
+  try {
+    await once(holder.stdout, "data");
+    const result = spawnSync(processScript, [], { encoding: "utf8", env });
+    assert.equal(result.status, 75, result.stderr);
+    assert.match(fs.readFileSync(path.join(trigger, "result"), "utf8"), /reason=maintenance_busy/);
+    assert.equal(fs.existsSync(path.join(trigger, "processing")), true);
+    assert.equal(fs.existsSync(calls), false, "a deferred backup must not invoke Git");
+  } finally {
+    const closed = once(holder, "close"); holder.stdin.end(); await closed;
+  }
+  try {
+    assert.equal(spawnSync(processScript, [], { encoding: "utf8", env }).status, 0);
+    assert.equal(fs.readFileSync(calls, "utf8"), "called");
+    assert.equal(fs.existsSync(path.join(trigger, "processing")), false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

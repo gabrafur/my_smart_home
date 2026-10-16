@@ -34,7 +34,18 @@ backup_output=""
 # serialization. Do not leak that private lock into git push: the pre-push
 # hook starts the canonical validation through run-resource-safe.sh and must
 # use the independent public-validation lock.
-if backup_output=$(unset RESOURCE_SAFE_LOCK_FILE; "$backup_script" 2>&1); then
+run_serialized_backup() {
+  # Only this entrypoint acquires the shared lock: container-update workers
+  # already hold it when they invoke git-backup.sh as part of their transaction.
+  exec 8>"${GIT_BACKUP_MAINTENANCE_LOCK_PATH:-$repo_root/.daily-maintenance.lock}"
+  if ! flock -n 8; then
+    printf 'git-backup-reason=maintenance_busy\n'
+    return 75
+  fi
+  unset RESOURCE_SAFE_LOCK_FILE
+  "$backup_script"
+}
+if backup_output=$(run_serialized_backup 2>&1); then
   :
 else
   exit_code=$?
