@@ -5,7 +5,8 @@
 Implementação stdio sem dependências em `scripts/raspberry-mcp/`, testes em
 `scripts/raspberry-mcp.test.mjs`. Não instala serviço, não abre listener, não cria
 credenciais, não instala túnel nem altera Compose, Node-RED ou Home Assistant.
-A conexão com ChatGPT continua pendente de aprovação e validação na conta.
+A ativação remota exige configuração autenticada na conta e validação pelo
+ChatGPT. Aprovação operacional não substitui login, chave ou acesso administrativo.
 
 A inspeção dos serviços existentes encontrou o bridge de IA, o monitor remoto
 Codex, produtores de saúde do Raspberry e workers de backup. Nenhum deles foi
@@ -39,7 +40,8 @@ no Raspberry → HTTPS de saída para OpenAI → plugin privado na conta ChatGPT
   ProtectSystem=strict, limite de 64 MiB/32 tarefas e RuntimeMaxSec=120.
   Sem checkout, diretórios pessoais, socket Docker ou credenciais.
 - Tunnel-client: unidade `raspberry-mcp-tunnel.service`, usuário próprio;
-  stdio por comando fixo `socat STDIO UNIX-CONNECT:/run/raspberry-mcp/mcp.sock`.
+  stdio pelo relay fixo `relay.py`, que conecta somente ao socket Unix acima.
+  O relay usa Python padrão; não exige instalar socat nem aceita argumentos.
   Socket 0660 acessível somente ao grupo privado do túnel. O MCP não é filho do
   cliente e não herda sua chave. Somente o cliente tem saída HTTPS para OpenAI.
   Nenhum dos dois recebe acesso a Docker. Após aprovação, validar dependências
@@ -55,12 +57,12 @@ no Raspberry → HTTPS de saída para OpenAI → plugin privado na conta ChatGPT
   nunca argumentos, chat, repositório ou logs. Credencial disponível somente ao
   processo tunnel-client, não herdada pelo MCP. Nenhuma chave foi criada.
 - Auditoria: JSON em stderr, apenas horário, ferramenta conhecida e resultado.
-  No deploy, encaminhar a arquivo privado com rotação (2 MiB, três arquivos,
-  retenção de 7 dias), sem payload, ID da requisição, saída ou erro bruto.
+  O instalador usa namespace journald exclusivo, teto de 6 MiB, arquivos de
+  até 2 MiB e retenção de 7 dias, sem payload, ID da requisição, saída ou erro bruto.
   Falha de escrita encerra o atendimento. O snapshot não é arquivado.
 
-As unidades ainda não foram instaladas. Esta é a arquitetura proposta para
-aprovação; o código preparado não representa isolamento já instalado.
+O instalador local está preparado; sua presença no Git não comprova que as
+unidades tenham sido instaladas ou que o isolamento tenha sido validado no host.
 
 ## Contrato disponível
 
@@ -127,6 +129,46 @@ expor qualquer serviço; não migrar a assistente sem autorização própria.
 Não há comprovação de acesso desta conversa à conta da assistente.
 
 ## Ativação após aprovação
+
+### Instalação administrativa local
+
+O instalador `scripts/raspberry-mcp/install-local.py` precisa ser executado pelo
+operador em terminal próprio, onde sudo solicita sua senha sem passar pelo chat:
+
+```bash
+cd /mnt/data/docker
+sudo python3 scripts/raspberry-mcp/install-local.py
+```
+
+Ele cria somente os dois usuários de serviço, a raiz mínima do MCP, um socket
+Unix e o coletor com timer. Não muda grupos do operador, sudo, firewall ou
+serviços residenciais. Não baixa pacotes nem configura túnel/chave. Usa as
+permissões Docker já existentes do usuário que invoca sudo para o coletor;
+a identidade MCP não recebe essas permissões. Antes de habilitar serviços,
+confere cinco ferramentas dentro do chroot e valida as unidades systemd.
+Instalação existente causa recusa, sem sobrescrever configuração. Falha de
+pré-validação pode deixar arquivos/usuários preparados, mas nenhum serviço
+habilitado; nesse caso revisar a falha antes de repetir ou limpar os artefatos.
+
+O cliente oficial pode ser preparado em diretório privado do operador a partir
+da release oficial, validando o ZIP ARM64 contra SHA256SUMS da mesma release.
+Não versionar binário, perfil, chave ou configuração da conta. Não usar o
+cloudflared incluído no pacote: o caminho aprovado é o polling OpenAI.
+
+Depois da instalação local, verificar socket, permissões, uma chamada de leitura
+com horário e a saúde dos serviços existentes. Somente então configurar o
+cliente com o tunnel_id real e chave restrita, inserida por entrada oculta local.
+O comando filho deve limpar o ambiente antes do relay; o servidor MCP é iniciado
+pelo systemd e não herda a chave do cliente. A unidade persistente do túnel deve
+ser configurada depois da verificação da conta; não foi gerada pelo instalador.
+
+Testes adicionais do instalador (sintéticos, sem root):
+
+```bash
+./scripts/run-resource-safe.sh python3 -m unittest discover -s scripts/raspberry-mcp -p 'test_*.py'
+```
+
+### Conexão na conta
 
 1. Confirmar modalidade da assistente e presença de Add custom MCP server/Tunnel
    em [ChatGPT Plugins](https://chatgpt.com/plugins). Se indisponível, parar;
