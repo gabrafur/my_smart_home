@@ -499,6 +499,17 @@ const alexaTestResult = parseAlexaMedia({
 }, runtimeNode, flow);
 assert.equal(alexaTestResult[0].payload.status, "success");
 assert.equal(alexaTestResult[1], null);
+const errorsBeforeBlockedAlexa = errors.length;
+assert.deepEqual(parseAlexaMedia({
+  payload: "alexa-media-update status=blocked target=v5.16.1 request_id=blocked reason=public_memory_invalid",
+}, runtimeNode, flow), [null, null]);
+assert.equal(errors.length, errorsBeforeBlockedAlexa);
+const blockedDryRun = parseAlexaMedia({
+  _alexa_media_update_test: true,
+  payload: "alexa-media-update status=blocked target=v5.16.1 request_id=synthetic",
+}, runtimeNode, flow);
+assert.equal(blockedDryRun[0].payload.status, "blocked");
+assert.equal(blockedDryRun[1], null);
 const alexaSuccess = parseAlexaMedia({
   payload: "alexa-media-update status=success target=v5.16.1 request_id=production",
 }, runtimeNode, flow);

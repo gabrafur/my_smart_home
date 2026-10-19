@@ -7,6 +7,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkPublicMemory } from "./public-memory-check.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
@@ -84,6 +85,7 @@ export function statusLine(status) {
     `target=${safeStatusValue(status.target)}`,
     `patch_state=${safeStatusValue(status.patch_state)}`,
     `checked_at=${safeStatusValue(status.checked_at)}`,
+    ...(status.reason === "public_memory_invalid" ? ["reason=public_memory_invalid"] : []),
   ].join(" ");
 }
 
@@ -259,6 +261,33 @@ function validateMerged(root, metadata, target, expectedLicenseHash) {
     compileall: "passed",
     required_markers: `${metadata.required_markers.length}/${metadata.required_markers.length}`,
     license_sha256: actualLicenseHash,
+  };
+}
+
+// Validate the proposed public tree, before HACS or any runtime mutation.
+// Memory fingerprints are never refreshed automatically: changed facts need review.
+export function checkCandidateMemory(mergedRoot, metadata, root = repoRoot) {
+  const trackedFiles = execFileSync("git", ["ls-files", "-z"], {
+    cwd: root, encoding: "utf8", maxBuffer: 8 * 1024 * 1024,
+  }).split("\0").filter(Boolean);
+  const prefix = "homeassistant/custom_components/alexa_media/";
+  const contentsOverrides = new Map([
+    ["scripts/alexa-media-upstream.json", `${JSON.stringify(metadata, null, 2)}\n`],
+  ]);
+  for (const file of trackedFiles.filter((file) => file.startsWith(prefix))) {
+    const candidate = path.join(mergedRoot, file.slice(prefix.length));
+    contentsOverrides.set(file, fs.existsSync(candidate) ? fs.readFileSync(candidate, "utf8") : "");
+  }
+  return checkPublicMemory({ repoRoot: root, trackedFiles, contentsOverrides });
+}
+
+function candidateMetadata(prepared) {
+  return {
+    ...prepared.metadata,
+    base_version: prepared.targetRef.version,
+    base_commit: prepared.targetRef.commit,
+    base_tag_object: prepared.targetRef.tag_object,
+    license_sha256: prepared.targetLicenseHash,
   };
 }
 
@@ -519,6 +548,12 @@ async function apply(target) {
   try {
     if (prepared.patch.state === "conflict") {
       const status = statusFor(prepared, "conflict");
+      writeJson(statusPath, status);
+      return status;
+    }
+    const memory = checkCandidateMemory(prepared.mergedRoot, candidateMetadata(prepared));
+    if (memory.errors.length) {
+      const status = statusFor(prepared, "blocked", { reason: "public_memory_invalid" });
       writeJson(statusPath, status);
       return status;
     }

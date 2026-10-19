@@ -2,8 +2,12 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import {
+  checkCandidateMemory,
   canAcceptAbsorbedDelta,
   changedFilesFromDelta,
   normalizeVersion,
@@ -108,4 +112,25 @@ test("Alexa Media status output excludes private failure details", () => {
   });
   assert.match(line, /status=rollback target=v5\.16\.1 patch_state=absorbed/);
   assert.doesNotMatch(line, /private|token|reason/);
+});
+
+
+test("candidate memory permits version metadata and refuses changed evidence before installation", () => {
+  const root = path.resolve(import.meta.dirname, "..");
+  const source = path.join(root, "homeassistant/custom_components/alexa_media");
+  const metadata = JSON.parse(fs.readFileSync(path.join(root, "scripts/alexa-media-upstream.json")));
+  const next = { ...metadata, base_version: "v99.0.0", base_commit: "a".repeat(40) };
+  assert.deepEqual(checkCandidateMemory(source, next).errors, []);
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "alexa-memory-test-"));
+  try {
+    fs.cpSync(source, temporary, { recursive: true, filter: (p) => !p.includes("__pycache__") });
+    fs.appendFileSync(path.join(temporary, "amazon_kids.py"), "\n# synthetic changed contract\n");
+    assert.ok(checkCandidateMemory(temporary, next).errors.some(e => e.includes("evidence_changed")));
+    fs.rmSync(path.join(temporary, "amazon_kids.py"));
+    assert.ok(checkCandidateMemory(temporary, next).errors.some(e => e.includes("evidence_changed")));
+  } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
+  const code = fs.readFileSync(new URL("./alexa-media-safe-update.mjs", import.meta.url), "utf8");
+  const apply = code.slice(code.indexOf("async function apply(target)"));
+  assert.ok(apply.indexOf("checkCandidateMemory(") < apply.indexOf("const token = readHaToken()"));
+  assert.match(statusLine({ state: "blocked", reason: "public_memory_invalid" }), /reason=public_memory_invalid/);
 });

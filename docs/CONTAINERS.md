@@ -266,6 +266,17 @@ o serviço `homeassistant` quando o digest muda. O terceiro reconcilia Portainer
 MQTT, Matter, AppDaemon, Node-RED e Zigbee2MQTT e conclui com a manutenção segura
 de storage. Não há reboot automático.
 
+O subfluxo Alexa Media verifica também a memória pública contra os arquivos
+candidatos e os metadados da próxima versão, antes de chamar HACS ou parar o
+Home Assistant. Uma evidência incompatível retorna `blocked` com motivo
+`public_memory_invalid`: o canvas mostra “revisar memória pública” e não pede
+backup de uma instalação que não ocorreu. O worker nunca atualiza fingerprints
+para ocultar divergências. Notas sobre contratos duráveis devem referenciar o
+código e suas regressões, sem fixar a versão corrente em metadados que mudam a
+cada atualização. Após sucesso de instalação, o fluxo solicita o backup Git;
+a publicação continua sujeita à validação canônica do backup.
+
+
 Na primeira execução agendada, em 14 de outubro de 2026, a captura consistente
 reiniciou o Home Assistant e o Backup Manager ainda estava `blocked` quando o
 worker pediu a geração 15 segundos depois. Nenhuma cópia Compose nova foi

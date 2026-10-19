@@ -313,7 +313,7 @@ return null;`;
 const parseAlexaMediaResult = `const TEST_MODE = msg._alexa_media_update_test === true || msg.payload?.test_mode === true;
 const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
 if (!text) return [null, null];
-const status = text.match(/\\bstatus=(running|success|current|failed|deferred|rollback|conflict)\\b/)?.[1];
+const status = text.match(/\\bstatus=(running|success|current|failed|deferred|rollback|conflict|blocked)\\b/)?.[1];
 const target = text.match(/\\btarget=(v[0-9][A-Za-z0-9.+-]*)\\b/)?.[1] ?? "unknown";
 const requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? "unknown";
 if (!status) {
@@ -331,7 +331,7 @@ const failed = ["failed", "rollback", "conflict"].includes(status);
 node.status({
     fill: failed ? "red" : ["success", "current"].includes(status) ? "green" : "yellow",
     shape: failed ? "ring" : "dot",
-    text: target + ": " + status
+    text: target + ": " + (status === "blocked" ? "revisar memória pública" : status)
 });
 msg.payload = result;
 if (TEST_MODE) return [msg, null];
@@ -1482,8 +1482,8 @@ const nodes = [
   },
   {
     id: "daily_update_alexa_media_architecture", type: "comment", z: TAB, g: alexaGroup,
-    name: "Só instala na janela autorizada: resolve tag/commit, preserva licença e delta, valida staging e runtime",
-    info: "A varredura comum apenas registra a pendência. Às 03:00 ou pelo botão PRODUÇÃO, o host compara a base oficial byte a byte, aceita somente deltas allowlisted, cria backup, instala a versão exata via HACS, reaplica o staging e confirma registros, Recorder e entidades. Qualquer falha restaura a versão anterior.",
+    name: "Só instala na janela autorizada: resolve tag/commit, preserva licença e delta, valida staging, memória e runtime",
+    info: "A varredura comum apenas registra a pendência. Às 03:00 ou pelo botão PRODUÇÃO, o host compara a base oficial byte a byte, aceita somente deltas allowlisted, valida a memória pública contra o staging e os novos metadados antes de qualquer instalação, cria backup, instala a versão exata via HACS, reaplica o staging e confirma registros, Recorder e entidades. Uma evidência pública incompatível bloqueia antes de alterar a integração e exige revisão, sem atualizar hashes automaticamente. Falhas após instalação restauram a versão anterior. Sucesso de instalação solicita backup Git; publicação só é confirmada pelo fluxo de backup.",
     x: 800, y: 3420, wires: [],
   },
   {
