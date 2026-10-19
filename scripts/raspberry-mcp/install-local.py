@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import pwd
 import re
+import resource
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,8 @@ BASE = Path('/usr/local/lib/raspberry-mcp')
 ROOT = Path('/var/lib/raspberry-mcp/root')
 SOURCE = Path(__file__).resolve().parent
 UNIT_DIR = Path('/etc/systemd/system')
+CODE_FILES = ['core.mjs', 'server.mjs', 'collect.mjs', 'publish.mjs', 'relay.py']
+BUILTINS = ['acorn', 'acorn-walk', 'cjs-module-lexer', 'undici', 'busboy', 'streamsearch', 'minimatch']
 
 
 def run(*args, **kwargs):
@@ -25,7 +28,53 @@ def write(path, text, mode=0o644):
     path.chmod(mode)
 
 
-def main():
+
+def validate_partial(names):
+    """Resume only this installer's pre-activation footprint; never adopt a service."""
+    if any((UNIT_DIR / n).exists() or (UNIT_DIR / n).is_symlink() for n in names):
+        sys.exit('Service units already exist; partial resume refused.')
+    for path in [BASE, ROOT.parent, ROOT]:
+        if not path.is_dir() or path.is_symlink():
+            sys.exit('Unexpected partial installation path; nothing changed.')
+    for parent in [BASE, ROOT.parent]:
+        for path in [parent, *parent.rglob('*')]:
+            info = path.lstat()
+            if path.is_symlink() or info.st_uid != 0 or info.st_mode & 0o022:
+                sys.exit('Partial installation ownership or permissions are unsafe; nothing changed.')
+    if {p.name for p in BASE.iterdir()} != set(CODE_FILES):
+        sys.exit('Unexpected installed code; partial resume refused.')
+    for name in CODE_FILES:
+        if (BASE / name).read_bytes() != (SOURCE / name).read_bytes():
+            sys.exit('Installed code differs from source; partial resume refused.')
+    group = grp.getgrnam('raspberry-mcp')
+    for name in ['raspberry-mcp', 'raspberry-mcp-tunnel']:
+        account = pwd.getpwnam(name)
+        if (account.pw_uid == 0 or account.pw_gid != group.gr_gid
+                or account.pw_dir != '/nonexistent' or account.pw_shell != '/usr/sbin/nologin'
+                or set(os.getgrouplist(name, account.pw_gid)) != {group.gr_gid}):
+            sys.exit('Unexpected service identity; partial resume refused.')
+
+
+def no_core_dump():
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+
+
+def isolation_probe():
+    try:
+        probe = run('chroot', f'--userspec={pwd.getpwnam("raspberry-mcp").pw_uid}:{grp.getgrnam("raspberry-mcp").gr_gid}', str(ROOT),
+                    '/usr/bin/node', '/app/server.mjs', input='{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n',
+                    capture_output=True, timeout=15, preexec_fn=no_core_dump)
+    except subprocess.CalledProcessError as error:
+        # This probe has no credentials or residential data. Keep diagnostic bounded.
+        sys.exit(f'Isolation probe failed ({error.returncode}); no services enabled.\n{(error.stderr or "")[:2000]}')
+    except subprocess.TimeoutExpired:
+        sys.exit('Isolation probe timed out; no services enabled.')
+    import json
+    if len(json.loads(probe.stdout)['result']['tools']) != 5:
+        sys.exit('Isolation probe failed. No services enabled.')
+
+
+def main(resume=False):
     if os.geteuid() != 0:
         sys.exit('Run this installer with sudo in your own Raspberry terminal.')
     operator = os.environ.get('SUDO_USER', '')
@@ -37,24 +86,28 @@ def main():
         sys.exit('Collector operator must already have Docker access; no groups will be expanded.')
     names = ['raspberry-mcp.socket', 'raspberry-mcp@.service',
              'raspberry-mcp-collect.service', 'raspberry-mcp-collect.timer']
-    if BASE.exists() or ROOT.parent.exists() or any((UNIT_DIR / n).exists() for n in names):
-        sys.exit('Existing installation found; inspect before updating. Nothing changed.')
-    for name in ['raspberry-mcp', 'raspberry-mcp-tunnel']:
-        try:
-            pwd.getpwnam(name)
-        except KeyError:
-            pass
-        else:
-            sys.exit('Existing service identity found; inspect before updating. Nothing changed.')
+    if resume:
+        validate_partial(names)
+    else:
+        if BASE.exists() or ROOT.parent.exists() or any((UNIT_DIR / n).exists() for n in names):
+            sys.exit('Existing installation found; inspect before updating. Nothing changed.')
+        for name in ['raspberry-mcp', 'raspberry-mcp-tunnel']:
+            try:
+                pwd.getpwnam(name)
+            except KeyError:
+                pass
+            else:
+                sys.exit('Existing service identity found; inspect before updating. Nothing changed.')
     if not Path('/usr/bin/node').is_file():
         sys.exit('System Node is required.')
     # No network downloads or package installation in this privileged installer.
-    run('groupadd', '--system', 'raspberry-mcp')
-    for name in ['raspberry-mcp', 'raspberry-mcp-tunnel']:
-        run('useradd', '--system', '--no-create-home', '--gid', 'raspberry-mcp',
-            '--home-dir', '/nonexistent', '--shell', '/usr/sbin/nologin', name)
-    BASE.mkdir(parents=True)
-    for name in ['core.mjs', 'server.mjs', 'collect.mjs', 'publish.mjs', 'relay.py']:
+    if not resume:
+        run('groupadd', '--system', 'raspberry-mcp')
+        for name in ['raspberry-mcp', 'raspberry-mcp-tunnel']:
+            run('useradd', '--system', '--no-create-home', '--gid', 'raspberry-mcp',
+                '--home-dir', '/nonexistent', '--shell', '/usr/sbin/nologin', name)
+    BASE.mkdir(parents=True, exist_ok=resume)
+    for name in CODE_FILES:
         shutil.copyfile(SOURCE / name, BASE / name)
         (BASE / name).chmod(0o644)
     # Copy only the executable, linked libraries and Node's externalized JS builtins.
@@ -66,22 +119,16 @@ def main():
             target = ROOT / name.lstrip('/')
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
-    for name in ['acorn', 'acorn-walk', 'cjs-module-lexer', 'undici', 'busboy', 'streamsearch']:
+    for name in BUILTINS:
         source = Path('/usr/share/nodejs') / name
         if source.is_dir():
-            shutil.copytree(source, ROOT / 'usr/share/nodejs' / name, symlinks=False)
+            shutil.copytree(source, ROOT / 'usr/share/nodejs' / name, symlinks=False, dirs_exist_ok=resume)
     for name in ['core.mjs', 'server.mjs']:
         target = ROOT / 'app' / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(BASE / name, target)
-    (ROOT / 'run/raspberry-mcp').mkdir(parents=True)
-    # Safe chroot probe: ping/list only, no residential source or socket.
-    probe = run('chroot', f'--userspec={pwd.getpwnam("raspberry-mcp").pw_uid}:{grp.getgrnam("raspberry-mcp").gr_gid}', str(ROOT),
-                '/usr/bin/node', '/app/server.mjs', input='{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n',
-                capture_output=True)
-    import json
-    if len(json.loads(probe.stdout)['result']['tools']) != 5:
-        sys.exit('Isolation probe failed. No services enabled.')
+    (ROOT / 'run/raspberry-mcp').mkdir(parents=True, exist_ok=resume)
+    isolation_probe()
     write(Path('/etc/tmpfiles.d/raspberry-mcp.conf'),
           f'd /run/raspberry-mcp 0750 {operator} raspberry-mcp -\n')
     write(UNIT_DIR / names[0], '''[Unit]
@@ -173,4 +220,6 @@ MaxRetentionSec=7day
 
 
 if __name__ == '__main__':
-    main()
+    if sys.argv[1:] not in ([], ['--resume-partial']):
+        sys.exit('Usage: install-local.py [--resume-partial]')
+    main(resume=sys.argv[1:] == ['--resume-partial'])

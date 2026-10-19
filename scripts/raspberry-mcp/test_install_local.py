@@ -2,6 +2,8 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+import subprocess
+import tempfile
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('installer', Path(__file__).with_name('install-local.py'))
@@ -21,6 +23,32 @@ class InstallerTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 installer.main()
             run.assert_not_called()
+
+    def test_debian_minimatch_is_copied(self):
+        self.assertIn('minimatch', installer.BUILTINS)
+
+    def test_failed_probe_reports_bounded_diagnostic(self):
+        error = subprocess.CalledProcessError(-6, ['chroot'], stderr='missing builtin ' + 'x' * 3000)
+        with patch.object(installer.pwd, 'getpwnam', return_value=SimpleNamespace(pw_uid=1234)), \
+             patch.object(installer.grp, 'getgrnam', return_value=SimpleNamespace(gr_gid=1234)), \
+             patch.object(installer, 'run', side_effect=error) as run:
+            with self.assertRaises(SystemExit) as failure:
+                installer.isolation_probe()
+            self.assertIn('missing builtin', str(failure.exception))
+            self.assertLess(len(str(failure.exception)), 2100)
+            self.assertEqual(run.call_args.kwargs['timeout'], 15)
+
+    def test_resume_rejects_existing_unit_and_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            units = Path(directory)
+            (units / 'test.service').write_text('synthetic')
+            with patch.object(installer, 'UNIT_DIR', units):
+                with self.assertRaisesRegex(SystemExit, 'units already exist'):
+                    installer.validate_partial(['test.service'])
+            (units / 'link').symlink_to(units, target_is_directory=True)
+            with patch.object(installer, 'UNIT_DIR', units), patch.object(installer, 'BASE', units / 'link'):
+                with self.assertRaisesRegex(SystemExit, 'Unexpected partial'):
+                    installer.validate_partial([])
 
     def test_manifest_and_activation_keep_tunnel_and_household_untouched(self):
         created = set()

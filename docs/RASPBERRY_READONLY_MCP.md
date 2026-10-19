@@ -140,6 +140,20 @@ cd /mnt/data/docker
 sudo python3 scripts/raspberry-mcp/install-local.py
 ```
 
+Se a primeira instalação parou na sonda `chroot` com `SIGABRT`, o Node do
+Debian pode precisar do builtin externo `minimatch`, agora incluído no
+isolamento. Retome a instalação parcial com:
+
+```sh
+sudo python3 scripts/raspberry-mcp/install-local.py --resume-partial
+```
+
+A retomada exige código instalado idêntico ao atual, arquivos de propriedade
+root sem escrita por grupo/outros, identidades restritas e ausência das
+unidades systemd. Não adota uma instalação já ativa. A sonda tem limite de
+15 segundos e apresenta diagnóstico limitado antes de habilitar serviços.
+
+
 Ele cria somente os dois usuários de serviço, a raiz mínima do MCP, um socket
 Unix e o coletor com timer. Não muda grupos do operador, sudo, firewall ou
 serviços residenciais. Não baixa pacotes nem configura túnel/chave. Usa as
