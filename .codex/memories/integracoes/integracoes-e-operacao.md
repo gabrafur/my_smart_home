@@ -155,3 +155,10 @@ A adaptação local custom_components/icloud delega plataformas ao Core e preser
 O adaptador local envolve o setup nativo: causas tipadas de DNS, conexão e timeout, mesmo encapsuladas pelo pyicloud, viram ConfigEntryNotReady para usar o backoff do Home Assistant. Sem essa classificação, uma falha transitória pode deixar a entrada em setup_error e impedir a recuperação do provedor de localização. Não inferir falha de transporte pelo texto genérico da biblioteca; autenticação sem causa de transporte e erros de programação mantêm o comportamento original. O retry preserva a política de OTP somente manual.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"alexa-kids-polling-compartilhado","category":"ARCHITECTURE","kind":"VERIFIED_FACT","last_verified":"2026-10-19","evidence":[{"file":"scripts/alexa-media-upstream.json","sha256":"f9397e7c930865ff227d18d75ff6a6fcefc7717f3ca9a20ccb0ea6284c8a229f"},{"file":"homeassistant/tests/test_alexa_media_amazon_kids.py","sha256":"30732702da14c2780ffd4c6538723d3cf1da22177d7d08667b8bb5ac6d536bfa"},{"file":"homeassistant/custom_components/alexa_media/amazon_kids.py","sha256":"b656a93af6773b5676828e85a4ea0bcf734730a38443f338d3f3e35f2e79321c"}]} -->
+## Amazon Kids e o coordenador Alexa
+
+Na base vendorizada v5.17.0, AmazonKidsState centraliza polling por conta a cada cinco minutos e notifica sensor, switch e select. O sensor não faz polling individual e não expõe alexa_entity_id; a seleção do coordenador continua por capacidade e estado enabled. O guard já foi incorporado pelo upstream, sem delta local de código. A licença upstream é preservada separadamente como LICENSE.upstream e scripts/alexa-media-upstream.json fixa tag, objeto de tag e commit. As regressões exercitam seleção, inscrição/desinscrição e início idempotente do polling sem rede residencial.
+
+<!-- /memory-record -->

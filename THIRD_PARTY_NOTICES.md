@@ -11,7 +11,7 @@ identified upstream code. The repository's original work is licensed under
 
 | Component | Upstream revision | License | Covered path | Local status |
 | --- | --- | --- | --- | --- |
-| Alexa Media Player | `v5.16.2` / `cd600c6aee2f028f0ccc9d3a836e7cf780215993` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | locally maintained coordinator guard; see the pinned origin |
+| Alexa Media Player | `v5.17.0` / `8a9c03ed7c84be90fe4bf76a8eafcd496f4d048f` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | coordinator guard absorbed upstream; no local code delta |
 | HACS | `2.0.5` / `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `homeassistant/custom_components/hacs/**` | version and minimum-HA metadata changed locally |
 | Kia Uvo / Hyundai Bluelink | `v3.17.1` / `417f6ac5fe65521e7948015a278c82ee5a584a71` | MIT | `homeassistant/custom_components/kia_uvo/**` | locally modified; see the pinned origin |
 
