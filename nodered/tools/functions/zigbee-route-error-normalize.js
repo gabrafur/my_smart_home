@@ -5,7 +5,8 @@ if (typeof payload === "string") {
 const message = String(payload?.message || "");
 const level = String(payload?.level || "").toLowerCase();
 msg.zigbee_route_valid = false;
-if (msg.retain === true || !message.includes("NWK_NO_ROUTE") || !["warning", "error"].includes(level)) return msg;
+const error = message.match(/\b(NWK_NO_ROUTE|MAC_NO_ACK)\b/)?.[1];
+if (msg.retain === true || !error || !["warning", "error"].includes(level)) return msg;
 const quoted = message.match(/(?:to|ping|of|configure)\s+'([^']+)'/i);
 const ieeeMatch = message.match(/0x[0-9a-f]{16}/i);
 const ieee = ieeeMatch ? ieeeMatch[0].toLowerCase() : null;
@@ -20,7 +21,7 @@ msg.zigbee_route_valid = true;
 msg.zigbee_route_device = device;
 msg.zigbee_route_ieee = ieee;
 msg.zigbee_route_key = `${slug || "device"}_${hash.toString(16).padStart(8, "0")}`;
-msg.zigbee_route_error = "NWK_NO_ROUTE";
+msg.zigbee_route_error = error;
 msg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();
 msg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();
 return msg;

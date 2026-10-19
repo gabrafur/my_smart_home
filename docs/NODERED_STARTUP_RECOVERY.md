@@ -76,6 +76,18 @@ precisa da WAN ou VPN para funcionar. Disponibilidade de componente agora exige
 outra mensagem para completar a confirmação. Incidentes persistidos sem uma
 observação atual não produzem lembretes.
 
+A saída do ciclo de rede alimenta observação, alertas e publicação MQTT.
+As três publicações (conexão, atributos e estado) atravessam a mesma saída
+Function como uma lista de mensagens; o replay cobre as três até o dry-run.
+
+A entrada `bridge/logging` reconhece `NWK_NO_ROUTE` e `MAC_NO_ACK` em
+mensagens `warning`/`error` não retidas, com nome ou IEEE identificável.
+Ambos entram no mesmo lifecycle; o erro original é preservado no buffer de
+startup, nas tentativas e no alerta. Erros genéricos, mensagens informativas
+e retained não autorizam recuperação. Não há comando de ligar/desligar,
+reset de fábrica, troca de canal ou restart automático. Alcance insuficiente
+ou interferência persistente podem impedir a recuperação por software.
+
 Um `configure` com `status: ok` inicia verificação; não encerra o incidente.
 Falhas tardias com a mesma transação continuam válidas. A recuperação exige
 300 s sem nova falha e uma publicação de dados do próprio dispositivo após essa
@@ -111,8 +123,10 @@ observações em +120 s, offline e unknown. Confira o terminal dry-run. Os teste
 reproduzem as decisões reais, incluindo retenção, frescor, reinício, coalescência,
 expiração e consumo único, sem publicar prontidão de produção.
 
-No Zigbee: reset, ponte online, testes de rota 13 a 19; depois 20 (ainda sem
-prova), 21 (dados novos) e 20 novamente. O erro começa após a carência inicial.
+No Zigbee: reset, ponte online, testes de comunicação 13 a 19 (13 simula `MAC_NO_ACK`); depois 20 (ainda sem
+prova), 21 (dados novos) e 20 novamente. O erro começa após a carência inicial. O botão 13 atravessa o mesmo
+normalizador dos logs reais; os botões 15/18 incluem o tópico oficial de
+resposta do mapa para exercitar a correlação completa.
 Os botões de availability agora também precisam da agenda com o instante de
 confirmação. O replay automatizado cobre os limites exatos e oscilações.
 

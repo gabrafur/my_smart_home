@@ -4,7 +4,7 @@ const id = `zigbee_route_${msg.zigbee_route_key}`;
 const when = new Date(msg.zigbee_route_now).toLocaleString("pt-BR");
 if (msg.zigbee_route_event === "route_failure") msg.notification = {
     id, title: "Falha de rota Zigbee",
-    message: `O dispositivo Zigbee “${device}” apresentou NWK_NO_ROUTE em ${when}. A recuperação automática foi iniciada (tentativa 1 de ${msg.policy.route_recovery_max_attempts}).`
+    message: `O dispositivo Zigbee “${device}” apresentou ${current.last_error || "falha de comunicação"} em ${when}. A recuperação automática foi iniciada (tentativa 1 de ${msg.policy.route_recovery_max_attempts}).`
 };
 else if (msg.zigbee_route_event === "route_recovery_failed") {
     const exhausted = current.attempts >= msg.policy.route_recovery_max_attempts;

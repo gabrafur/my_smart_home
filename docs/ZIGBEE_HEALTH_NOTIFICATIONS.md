@@ -212,7 +212,7 @@ slug, como `andar1-cozinha/sensor`.
 
 A carência inicial é de 180 s e a ponte deve estar online por 60 s antes de
 avaliar componentes. O tick reavalia os estados observados; uma oscilação reinicia
-a confirmação sem encerrar o incidente. A recuperação de `NWK_NO_ROUTE` exige
+a confirmação sem encerrar o incidente. A recuperação de `NWK_NO_ROUTE` e `MAC_NO_ACK` exige
 comunicação nova após 300 s de estabilidade; o aceite isolado de configure não
 é suficiente. Veja o
 [contrato de retomada e recuperação de rotas](NODERED_STARTUP_RECOVERY.md).

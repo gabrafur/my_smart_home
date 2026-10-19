@@ -82,3 +82,81 @@ await stalled.run('zigbee_route_telemetry',{_zigbee_test:true,monitor_now:t+4300
 await stalled.run('zigbee_settle_tick_in',{_zigbee_test:true,monitor_now:t+4300001});
 assert.equal(Object.values(sf.get('zigbee_route_incidents_v1__test'))[0].incident_open,false,'natural recovery remains observable after exhaustion');
 assert.equal(stalled.dry.filter(x=>x.msg.topic==='zigbee2mqtt/bridge/request/networkmap').length,3,'natural recovery does not reset the attempt budget');
+
+// Real bridge error shapes must enter the same bounded, persistent lifecycle.
+for (const message of [
+ "Publish 'set' 'state' to 'test_device' failed: NWK_NO_ROUTE",
+ "Failed to ping 'test_device' (attempt 1/2): MAC_NO_ACK",
+ 'Read response to 0x00124b0000000001 failed: MAC_NO_ACK',
+]) {
+ const replay=harness(),ctx=replay.flowFor(tab);
+ await replay.run('zigbee_policy_default',{});ctx.set('zigbee_boot_at__test',t);
+ ctx.set('zigbee_device_name_by_ieee_v1',{'0x00124b0000000001':'test_device'});
+ const send=(id,msg,delta)=>replay.run(id,{...msg,_zigbee_test:true,monitor_now:t+delta});
+ await send('zigbee_network_observation_normalize',{payload:'online'},0);
+ const raw={payload:{level:'error',message}};
+ await send('zigbee_route_error_source',raw,1000);
+ await send('zigbee_settle_tick_in',{},180000);
+ const current=()=>Object.values(ctx.get('zigbee_route_incidents_v1__test'))[0];
+ const code=message.includes('MAC_NO_ACK')?'MAC_NO_ACK':'NWK_NO_ROUTE';
+ assert.equal(current().last_error,code,'startup buffering preserves actual error');
+ assert.equal(current().device,'test_device');assert.equal(current().attempts,1);
+ assert.ok(replay.dry.some(x=>x.msg.notification?.message.includes(code)));
+ for(let i=0;i<20;i++)await send('zigbee_route_error_source',raw,180001+i);
+ assert.equal(current().attempts,1,'error burst cannot flood recovery');
+ const transaction=current().pending_transaction;
+ await send('zigbee_route_scan_policy_load',{topic:'zigbee2mqtt/bridge/response/networkmap',payload:{status:'ok',transaction}},181000);
+ assert.equal(replay.dry.filter(x=>x.msg.zigbee_route_effect==='configure').length,1);
+ await send('zigbee_route_response_policy_load',{payload:{status:'ok',transaction}},182000);
+ assert.equal(current().incident_open,true,'successful configure is not recovery');
+ await send('zigbee_route_error_source',raw,400000);
+ await send('zigbee_route_telemetry',{topic:'zigbee2mqtt/test_device',payload:{state:'OFF'}},401000);
+ await send('zigbee_settle_tick_in',{},701000);
+ assert.equal(current().incident_open,true,'silence after one report is not recovery');
+ await send('zigbee_route_telemetry',{topic:'zigbee2mqtt/test_device',payload:{state:'OFF'}},701001);
+ await send('zigbee_settle_tick_in',{},701001);
+ assert.equal(current().incident_open,false);
+ assert.equal(ctx.get('zigbee_route_incidents_v1','persistent'),undefined);
+ assert.ok(!replay.seen.includes('zigbee_route_recovery_mqtt'));
+ assert.ok(!replay.seen.includes('zigbee_route_configure_mqtt'));
+}
+// Unrelated, retained, informational and anonymous errors cannot authorize effects.
+for (const raw of [
+ {payload:{level:'error',message:"Failed to ping 'test_device': unrelated failure"}},
+ {payload:{level:'info',message:"Failed to ping 'test_device': MAC_NO_ACK"}},
+ {payload:{level:'error',message:'MAC_NO_ACK'}},
+ {retain:true,payload:{level:'error',message:"Failed to ping 'test_device': MAC_NO_ACK"}},
+]) {
+ const replay=harness(),ctx=replay.flowFor(tab);
+ await replay.run('zigbee_policy_default',{});ctx.set('zigbee_boot_at__test',t);
+ await replay.run('zigbee_network_observation_normalize',{_zigbee_test:true,monitor_now:t,payload:'online'});
+ await replay.run('zigbee_route_error_source',{...raw,_zigbee_test:true,monitor_now:t+180000});
+ assert.equal(ctx.get('zigbee_route_incidents_v1__test'),undefined);
+ assert.equal(replay.dry.filter(x=>x.msg.zigbee_route_effect||x.msg.notification).length,0);
+}
+// Manual button must traverse the production parser, not bypass device identity.
+const manual=harness(),mf=manual.flowFor(tab);
+await manual.run('zigbee_policy_default',{});
+await manual.run('zigbee_test_reset',{});
+await manual.run('zigbee_test_net_online',{});
+await manual.run('zigbee_test_route_failure',{});
+assert.ok(manual.seen.includes('zigbee_route_error_normalize'));
+assert.equal(Object.values(mf.get('zigbee_route_incidents_v1__test'))[0].last_error,'MAC_NO_ACK');
+await manual.run('zigbee_test_route_scan_response',{});
+assert.equal(manual.dry.filter(x=>x.msg.zigbee_route_effect==='configure').length,1);
+console.log('Zigbee MAC_NO_ACK: live log parsing, IEEE mapping, startup buffering, burst dedupe, configure, stability, negative inputs and manual dry-run passed.');
+
+// Full network path must publish every canonical MQTT message and network alert.
+const network=harness(),nf=network.flowFor(tab);
+await network.run('zigbee_policy_default',{});nf.set('zigbee_boot_at__test',t);
+const net=(payload,delta)=>network.run('zigbee_network_observation_normalize',{_zigbee_test:true,monitor_now:t+delta,payload});
+await net('online',180000);
+const topics=network.dry.map(x=>x.msg.topic);
+assert.deepEqual(topics.sort(),['connection','attributes','state'].map(k=>'nodered/infrastructure/zigbee/'+k).sort());
+await net('offline',190000);
+await network.run('zigbee_network_cycle_in',{_zigbee_test:true,monitor_now:t+220000});
+assert.equal(network.dry.filter(x=>x.msg.notification).length,1,'confirmed network loss reaches notification boundary');
+assert.ok(network.dry.some(x=>x.msg.topic==='nodered/infrastructure/zigbee/state'&&x.msg.payload==='offline'));
+assert.ok(!network.seen.includes('zigbee_mqtt_publish'));
+assert.ok(!network.seen.includes('zigbee_notify_effect'));
+console.log('Zigbee full graph: all three MQTT publications and confirmed network alert reach dry-run.');

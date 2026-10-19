@@ -142,7 +142,7 @@ assert.equal(networkCycle(flow, now + 109000 + 86400000).zigbee_state.phase, "re
 result = networkCycle(flow, now + 110000 + 86400000);
 assert.equal(result.zigbee_event, "network_recovery", "limite exato de 60 s confirma retorno");
 assert.equal(networkNotification(result, flow, nodeMock, globalMock).notification.dismiss_id, "zigbee_network_failure");
-assert.equal(expandPublications(result, flow, nodeMock, globalMock).length, 3);
+assert.equal(expandPublications(result, flow, nodeMock, globalMock)[0].length, 3);
 
 observe(flow, "offline", now + 120000 + 86400000);
 result = networkCycle(flow, now + 150000 + 86400000);

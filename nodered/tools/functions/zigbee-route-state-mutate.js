@@ -12,13 +12,13 @@ if (["open", "retry"].includes(msg.zigbee_route_action)) {
     updated = { ...current, incident_open: true, phase: "scanning", attempts,
         device: msg.zigbee_route_device, ieee: msg.zigbee_route_ieee || current.ieee || null,
         first_failure_at: msg.zigbee_route_action === "open" ? msg.zigbee_route_now_iso : current.first_failure_at,
-        last_failure_at: msg.zigbee_route_now_iso, last_error: "NWK_NO_ROUTE",
+        last_failure_at: msg.zigbee_route_now_iso, last_error: msg.zigbee_route_error || current.last_error || "NWK_NO_ROUTE",
         pending_transaction: transaction, next_retry_at: retryAt, verification_started_at: null,
         exhaustion_notified: false };
     msg.zigbee_route_transaction = transaction;
 } else if (msg.zigbee_route_action === "touch") {
     if (msg.zigbee_route_tick === true) return null;
-    updated = { ...current, last_failure_at: msg.zigbee_route_now_iso, last_error: "NWK_NO_ROUTE",
+    updated = { ...current, last_failure_at: msg.zigbee_route_now_iso, last_error: msg.zigbee_route_error || current.last_error || "NWK_NO_ROUTE",
         verification_started_at: null, phase: current.phase === "verifying" ? "failed" : current.phase };
 }
 else if (msg.zigbee_route_action === "verify") updated = {
