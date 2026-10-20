@@ -72,6 +72,11 @@ snapshot.json
 tinytuya.json
 tuya-raw.json
 
+# Local iCloud deployment recovery slots and runtime proof; keep source versionable.
+/homeassistant/custom_components/icloud/**/.mcp-*-[cr]-[0-9]*
+/homeassistant/.mcp-icloud-activation.json
+/homeassistant/.mcp-icloud-proof.json
+
 # Home Assistant secrets and volatile state
 #
 # .storage/ is ignored WHOLESALE and deliberately: even the "boring" registries

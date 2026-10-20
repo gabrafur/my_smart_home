@@ -3,12 +3,33 @@
     "abort": {
       "already_configured": "Conta já configurada",
       "no_device": "Nenhum dos seus dispositivos tem a opção \"Find My\" ativada",
-      "reauth_successful": "Reautenticação bem sucedida"
+      "reauth_successful": "Reautenticação bem sucedida",
+      "maintenance_required": "iCloud temporariamente indisponível para manutenção."
     },
     "error": {
       "invalid_auth": "Autenticação inválida",
       "send_verification_code": "Falha ao enviar o código de verificação",
-      "validate_verification_code": "Falha ao verificar o seu código de verificação, tente novamente"
+      "validate_verification_code": "Falha ao verificar o seu código de verificação, tente novamente",
+      "state_unavailable": "Ação não concluída (state_unavailable). Nenhuma nova tentativa automática.",
+      "primary_authentication_required": "Ação não concluída (primary_authentication_required). Nenhuma nova tentativa automática.",
+      "delivery_unavailable": "Ação não concluída (delivery_unavailable). Nenhuma nova tentativa automática.",
+      "invalid_code": "Ação não concluída (invalid_code). Nenhuma nova tentativa automática.",
+      "provider_rate_limited": "Ação não concluída (provider_rate_limited). Nenhuma nova tentativa automática.",
+      "transport_unavailable": "Ação não concluída (transport_unavailable). Nenhuma nova tentativa automática.",
+      "unclassified_failure": "Ação não concluída (unclassified_failure). Nenhuma nova tentativa automática.",
+      "empty_code": "Ação não concluída (empty_code). Nenhuma nova tentativa automática.",
+      "no_active_challenge": "Ação não concluída (no_active_challenge). Nenhuma nova tentativa automática.",
+      "invalid_selection": "Ação não concluída (invalid_selection). Nenhuma nova tentativa automática.",
+      "operation_in_progress": "Ação não concluída (operation_in_progress). Nenhuma nova tentativa automática.",
+      "waiting_for_user": "Ação não concluída (waiting_for_user). Nenhuma nova tentativa automática.",
+      "session_expired": "Ação não concluída (session_expired). Nenhuma nova tentativa automática.",
+      "challenge_required": "Ação não concluída (challenge_required). Nenhuma nova tentativa automática.",
+      "delivery_context_unavailable": "A Apple não forneceu opções completas de entrega. Nenhum código foi solicitado.",
+      "security_key_required": "A Apple exige uma chave física de segurança neste desafio. Nenhum código foi solicitado.",
+      "delivery_unknown": "O resultado da ação anterior é desconhecido. Reconcilie o estado antes de tentar novamente.",
+      "challenge_already_prepared": "Um desafio já está preparado. Continue no formulário atual.",
+      "challenge_already_sent": "A entrega já foi aceita. Informe o código deste desafio.",
+      "challenge_not_sent": "Solicite o envio antes de informar um código."
     },
     "step": {
       "reauth_confirm": {
@@ -40,8 +61,15 @@
           "request_new_code": "Solicitar um novo código de verificação",
           "verification_code": "Código de verificação"
         },
-        "description": "Nenhum código é enviado automaticamente. Quando estiver pronto, marque \"Solicitar um novo código de verificação\" e envie o formulário. Depois, informe o código recebido da Apple. Abrir este reparo ou informar um código inválido não solicita outro código.",
+        "description": "Solicite o envio quando essa opção aparecer. Após a Apple aceitar a entrega, o formulário mostrará somente o campo para o código. Abrir o formulário ou informar um código inválido não solicita outro.",
         "title": "Código da conta Apple"
+      },
+      "manual_reauth": {
+        "title": "Autenticação manual do iCloud",
+        "description": "O iCloud aguarda sua ação. Enviar este formulário inicia uma tentativa de autenticação. Pedir um código é uma ação separada. Altere a senha somente se necessário.",
+        "data": {
+          "password": "Nova senha (opcional)"
+        }
       }
     }
   },

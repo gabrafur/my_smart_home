@@ -2,57 +2,76 @@
 
 [Português (primary)](ICLOUD_MANUAL_AUTH.md) · [English](ICLOUD_MANUAL_AUTH.en.md)
 
-`homeassistant/custom_components/icloud/` is a small adapter around the native
-integration. It preserves the domain, config entry, services, platforms and
-`/config/.storage/icloud` session storage. It does not create another account
-or replace user data. Platforms and the original flow come from installed Core.
+`homeassistant/custom_components/icloud/` adapts the native integration while
+preserving its domain, config entry, services, platforms and session storage in
+`/config/.storage/icloud`. It does not create another account or replace user data.
 
-Transport failures during startup (including DNS, connection and timeout errors
-wrapped by pyicloud) become `ConfigEntryNotReady`, allowing Home Assistant to
-retry setup with its native backoff. Authentication failures without a transport
-cause and programming errors keep their original behavior; retries never request OTPs.
+Startup and polling can only reuse the saved session. Credential login, renewal
+requiring authentication and code delivery require an explicit submission. The
+client uses `pause_2fa=True` and blocks automatic `request_2fa_code()`, including
+the library's fallback. Opening a form, restoring an entry or entering an invalid
+code never requests another OTP.
 
-Startup, session renewal and background authentication use `pause_2fa=True`.
-Because pyicloud 2.7.0 may still request an OTP when paused-token login fails,
-`ManualOtpService.request_2fa_code()` also suppresses automatic delivery. This
-does not validate codes, bypass authentication or mark an unverified session trusted.
+Typed transport failures reaching setup, including wrapped DNS, connection and
+timeout errors, become `ConfigEntryNotReady` for Home Assistant's backoff. Errors
+without a transport cause are not classified by message text. Retry does not
+authorize login or delivery. Failure to load the persisted guard stops setup
+before creating a client.
 
-When Apple requires reauthentication, the repair remains pending. Opening it or
-entering an invalid code never sends another code. When ready:
+When reauthentication is needed:
 
-1. Open **Settings → Devices & services → Apple iCloud → Reauthenticate**, or
-   the corresponding repair.
-2. Select **Request a new verification code** and submit the form.
-3. Enter the code from Apple with the request-new-code option unchecked.
+1. Open **Settings → Devices & services → Apple iCloud → Reauthenticate**.
+   Opening the repair only displays its form.
+2. Submit the reauthentication form to prepare the session. This loads challenge
+   context without automatically sending a code.
+3. When a challenge is available, select **Request a new verification code** and
+   submit once. For legacy 2SA, explicitly select the trusted device shown by
+   the flow.
+4. Only after confirmed delivery, enter the code in the corresponding form.
+   That form no longer offers another request during this challenge.
 
-Only that explicit submission calls `request_manual_2fa_code()`. Legacy 2SA
-retains its explicit device selection. The library continues to persist trusted
-sessions and tokens; Apple can invalidate them later.
+An empty or invalid code does not trigger another delivery. After a timeout or
+unknown delivery result, persisted state prevents repetition, including after
+restart: reconcile the outcome before another attempt. Stale forms cannot act
+on an entry that has been reloaded. A security-key requirement or unsupported
+provider route does not guarantee an OTP option.
+
+Reauthentication finishes only after reload reaches `entry_ready`. This proves
+local readiness, not recent synchronization with Apple. Sessions and tokens
+remain managed by the library's storage.
 
 ## Compatibility and maintenance
 
-Verified with Home Assistant Core 2026.10.1 and pyicloud 2.7.0. The adapter
-replaces the native `account` and `config_flow` client factories, registers
-a flow subclass and wraps native setup to classify transient transport failures. It does not modify container files or
-patch other pyicloud consumers. After Core or pyicloud updates, run the native
-compatibility tests inside the container before declaring runtime validation
-complete. The manifest pins the pyicloud dependency.
+Compatibility is pinned to Home Assistant Core 2026.10.1 and pyicloud 2.7.0.
+`manual_auth.ManualOtpService` is a compatibility name for `GuardedService`;
+`config_flow.py` registers `ManualIcloudFlow`, implemented in `manual_flow.py`.
+The adapter replaces the client factory in `account` and uses a guarded local
+flow. It does not replace the native flow's global client factory. `auth_gate.py`
+maintains persisted policy and `native_bridge.py` adapts native interfaces.
 
-UI resources were extracted from the official image recorded in `upstream.json`.
-Hashes identify their original bytes. Verification-step instructions were
-changed in English and Portuguese, and service account examples use the reserved
-`example.invalid` domain. `LICENSE.upstream` preserves Core's Apache-2.0 license.
+Platforms load only when the session is ready. An entry awaiting manual action
+can unload without trying to unload platforms that were never loaded. Local
+guards do not modify image files or other pyicloud consumers.
 
 ```sh
-scripts/run-resource-safe.sh python3 -m unittest homeassistant.tests.test_icloud_manual_auth
-scripts/run-resource-safe.sh docker exec -w /config homeassistant python tests/test_icloud_manual_auth.py
+scripts/run-resource-safe.sh python3 -m unittest discover -s homeassistant/tests -p 'test_icloud*.py'
 ```
 
-Tests simulate failures, retries, manual requests and invalid codes without
-contacting Apple or generating OTPs. For initial deployment, validate configuration
-and restart only Home Assistant. Verify entities, Recorder preservation and
-unexpected repairs afterwards. Roll back by removing only this local adapter and
-restarting Home Assistant, preserving `.storage` and entity registries.
+Tests load the real local package with simulated HA/pyicloud boundaries and
+block external sockets. They cover persisted state, display-only forms,
+preparation without delivery, single delivery, invalid codes, uncertain outcomes,
+wiring and transport retry. They run on the host without installing Home Assistant
+or pyicloud and do not replace native compatibility checks: after version updates,
+also validate in the pinned image, isolated, without network or private mounts.
+`NativeRuntimeContractTest` retains real compatibility cases; it is skipped only
+when the native runtime is unavailable and must run in the isolated image in
+addition to the simulated host cases.
+
+UI resources and licensing retain provenance in `upstream.json` and
+`LICENSE.upstream`. Deployment requires hash checks and recoverable copies;
+restart only Home Assistant when needed to load approved code. Rollback must use
+the operation's verified package and preserve `.storage`; do not remove the
+integration as an authentication repair attempt.
 
 ## Safe restarts and manual buttons
 

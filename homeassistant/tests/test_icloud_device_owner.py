@@ -35,23 +35,12 @@ class AdapterTests(unittest.TestCase):
   cls=adapter.prepare_device_class(self.core,'2026.10.1');self.core.IcloudDevice=cls
   self.assertIs(adapter.prepare_device_class(self.core,'2026.10.1'),cls)
  def test_wrapper_wires_adapter_and_preserves_manual_auth(self):
-  modules={}
-  for name in ['homeassistant','homeassistant.components','homeassistant.components.icloud','homeassistant.const','homeassistant.exceptions','candidate','candidate.manual_auth','candidate.setup_retry']:
-   modules[name]=types.ModuleType(name)
-  pkg=modules['homeassistant.components.icloud'];pkg.account=self.core;pkg.config_flow=types.SimpleNamespace()
-  pkg.CONFIG_SCHEMA=object();pkg.async_setup=object();pkg.async_unload_entry=object()
-  async def fake_setup(hass,entry):return 'synthetic_setup'
-  pkg.async_setup_entry=fake_setup
-  modules['homeassistant.const'].__version__='2026.10.1'
-  modules['homeassistant.exceptions'].ConfigEntryNotReady=type('ConfigEntryNotReady',(Exception,),{})
-  class ManualOtpService:
-   def __init__(self,*args,**kwargs):raise AssertionError('account_access_forbidden')
-  modules['candidate.manual_auth'].ManualOtpService=ManualOtpService
-  modules['candidate.setup_retry'].is_transport_failure=lambda exc:False
-  modules['candidate.device_owner']=adapter
-  namespace={'__name__':'candidate','__package__':'candidate'}
-  with patch.dict(sys.modules,modules):exec(compile((ROOT.parent/'custom_components/icloud/__init__.py').read_text(),'<candidate_wrapper>','exec'),namespace)
-  self.assertTrue(issubclass(self.core.IcloudDevice,native.IcloudDevice))
-  self.assertIs(self.core.PyiCloudService,ManualOtpService);self.assertIs(pkg.config_flow.PyiCloudService,ManualOtpService)
-  self.assertIs(namespace['async_unload_entry'],pkg.async_unload_entry)
+  from test_icloud_manual_auth import loaded_adapter
+  with loaded_adapter() as env:
+   self.assertTrue(issubclass(env.account.IcloudDevice,native.IcloudDevice))
+   self.assertIs(env.account.PyiCloudService,env.sut.GuardedService)
+   self.assertIs(env.alias.ManualOtpService,env.sut.GuardedService)
+   self.assertIs(env.handlers['icloud'],env.flow)
+   # Unload is now guarded: a waiting entry has no platforms to unload.
+   self.assertIsNot(env.sut.async_unload_entry,env.core.async_unload_entry)
 if __name__=='__main__':unittest.main()

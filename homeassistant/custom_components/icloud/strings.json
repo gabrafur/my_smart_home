@@ -3,12 +3,33 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_account%]",
       "no_device": "None of your devices have \"Find My\" activated",
-      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "maintenance_required": "iCloud temporarily unavailable for maintenance."
     },
     "error": {
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
       "send_verification_code": "Failed to send verification code",
-      "validate_verification_code": "Failed to verify your verification code, try again"
+      "validate_verification_code": "Failed to verify your verification code, try again",
+      "state_unavailable": "Action not completed (state_unavailable). No automatic retry.",
+      "primary_authentication_required": "Action not completed (primary_authentication_required). No automatic retry.",
+      "delivery_unavailable": "Action not completed (delivery_unavailable). No automatic retry.",
+      "invalid_code": "Action not completed (invalid_code). No automatic retry.",
+      "provider_rate_limited": "Action not completed (provider_rate_limited). No automatic retry.",
+      "transport_unavailable": "Action not completed (transport_unavailable). No automatic retry.",
+      "unclassified_failure": "Action not completed (unclassified_failure). No automatic retry.",
+      "empty_code": "Action not completed (empty_code). No automatic retry.",
+      "no_active_challenge": "Action not completed (no_active_challenge). No automatic retry.",
+      "invalid_selection": "Action not completed (invalid_selection). No automatic retry.",
+      "operation_in_progress": "Action not completed (operation_in_progress). No automatic retry.",
+      "waiting_for_user": "Action not completed (waiting_for_user). No automatic retry.",
+      "session_expired": "Action not completed (session_expired). No automatic retry.",
+      "challenge_required": "Action not completed (challenge_required). No automatic retry.",
+      "delivery_context_unavailable": "Apple did not provide complete delivery options. No code was requested.",
+      "security_key_required": "Apple requires a physical security key for this challenge. No code was requested.",
+      "delivery_unknown": "The previous action has an unknown result. Reconcile its status before trying again.",
+      "challenge_already_prepared": "A challenge is already prepared. Continue with its current form.",
+      "challenge_already_sent": "Delivery was already accepted. Enter the code for this challenge.",
+      "challenge_not_sent": "Request delivery before entering a code."
     },
     "step": {
       "reauth_confirm": {
@@ -40,8 +61,15 @@
           "request_new_code": "Request a new verification code",
           "verification_code": "Verification code"
         },
-        "description": "No code is sent automatically. When you are ready, select \"Request a new verification code\" and submit. Then enter the code received from Apple. Opening this repair or entering an invalid code does not request another code.",
+        "description": "Request delivery when that option is shown. After Apple accepts delivery, only the code field is shown. Opening this form or entering an invalid code does not request another.",
         "title": "Apple Account code"
+      },
+      "manual_reauth": {
+        "title": "Manual iCloud authentication",
+        "description": "iCloud is waiting for your action. Submitting starts one authentication attempt. Requesting a code is a separate action. Change the password only if needed.",
+        "data": {
+          "password": "New password (optional)"
+        }
       }
     }
   },
