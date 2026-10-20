@@ -97,3 +97,15 @@ cronologia residencial, nomes, rotas ou identificadores privados.
   reservados para documentação; nunca valores reais da residência.
 - Links, pares bilíngues, memória pública e privacidade mecanicamente
   verificável fazem parte de `make validate-public`.
+
+
+<!-- mcp-maintenance-docs-index-v1 -->
+
+## Manutenção do MCP Raspberry
+
+Diagnósticos, evidências e limites das operações:
+
+- [RASPBERRY_MCP_EVIDENCE_STAGE2](RASPBERRY_MCP_EVIDENCE_STAGE2.md)
+- [RASPBERRY_MCP_MAINTENANCE_MATRIX](RASPBERRY_MCP_MAINTENANCE_MATRIX.md)
+- [RASPBERRY_MCP_MAINTENANCE_STAGE1](RASPBERRY_MCP_MAINTENANCE_STAGE1.md)
+- [RASPBERRY_MCP_OPERATIONS_PROPOSAL](RASPBERRY_MCP_OPERATIONS_PROPOSAL.md)

@@ -38,6 +38,11 @@
     ]
   },
   "documents": [
+    {"path": "docs/RASPBERRY_MCP_EVIDENCE_STAGE2.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
+    {"path": "docs/RASPBERRY_MCP_MAINTENANCE_MATRIX.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
+    {"path": "docs/RASPBERRY_MCP_MAINTENANCE_STAGE1.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
+    {"path": "docs/RASPBERRY_MCP_OPERATIONS_PROPOSAL.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
+
     { "path": "docs/RASPBERRY_READONLY_MCP.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "id": "icloud-manual-auth", "area": "operations", "strategy": "full pair", "pt": "docs/ICLOUD_MANUAL_AUTH.md", "en": "docs/ICLOUD_MANUAL_AUTH.en.md" },
     { "id": "root-readme", "area": "overview", "strategy": "full pair", "pt": "README.pt-BR.md", "en": "README.md" },

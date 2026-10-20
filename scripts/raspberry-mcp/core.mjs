@@ -27,7 +27,9 @@ export function project(source) {
   };
 }
 export function validateCall(params) {
-  if (!object(params) || Object.keys(params).some(k => !['name', 'arguments'].includes(k)) || !TOOLS.includes(params.name)) throw Error('invalid_parameters');
+  if (!object(params) || Object.keys(params).some(k => !['name', 'arguments', '_meta'].includes(k)) || !TOOLS.includes(params.name)) throw Error('invalid_parameters');
+  // MCP request metadata is protocol context, never tool arguments or output.
+  if ('_meta' in params && !object(params._meta)) throw Error('invalid_parameters');
   const args = params.arguments;
   if (!object(args) || Object.keys(args).some(k => !['host', ...(params.name === 'log_summary' ? ['service'] : [])].includes(k)) || args.host !== 'raspberry') throw Error('invalid_parameters');
   if (params.name === 'log_summary' && !SERVICES.includes(args.service)) throw Error('invalid_parameters');

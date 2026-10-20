@@ -19,5 +19,20 @@
     "translations/pt.json:config.step.verification_code.description",
     "translations/pt-BR.json:config.step.verification_code.description",
     "services.yaml:replace upstream example account with account@example.invalid"
+  ],
+  "local_code_edits": [
+    {
+      "file": "device_owner.py",
+      "derived_from": "homeassistant/components/icloud/account.py:IcloudDevice.__init__",
+      "core_version": "2026.10.1",
+      "core_account_sha256": "bf670a14deb0815900ec0ca76dae45ae67ec4dfb48a2f77daedbc6e57d3c6537",
+      "reviewed_constructor_sha256": "69eacf8342e90c7c3f46b775fb60ef324c70835d5a353850be335f2ceed3ed17",
+      "change": "omit owner when member lookup is absent; preserve explicit no-person fallback",
+      "license": "LICENSE.upstream"
+    },
+    {
+      "file": "__init__.py",
+      "change": "bind reviewed device subclass while preserving manual OTP factories and setup retry"
+    }
   ]
 }

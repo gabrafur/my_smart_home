@@ -1,0 +1,129 @@
+{
+  "release": "1.2.0",
+  "status": "prepared_not_installed",
+  "new_read_only_files": [
+    {
+      "file_id": "ef42d1b3e09b2f7ef40a8f801bdda197",
+      "path": "scripts/process-git-backup-request.sh",
+      "sha256": "53774bcfbbcc6fddd91a279f3767929bb3b68689db4228cc647072ed31aa6e7a",
+      "bytes": 3098,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "91197b7910b6e2ee4fd66ca835355658",
+      "path": "scripts/git-backup.sh",
+      "sha256": "b2d91628aaa1b35ed63878af393959d3f355bb9217f86448f0d058790b446dea",
+      "bytes": 5206,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "62c4e00d5a746e79b7a6c784673931d7",
+      "path": "scripts/run-resource-safe.sh",
+      "sha256": "1a5025246478a5e75a19ceefa0594d73bdbc92c1780b054ba13fc4aeedbea0b1",
+      "bytes": 1591,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "02965db4a8b1e8d455b9d36537ce1172",
+      "path": "scripts/install-git-backup-nodered-bridge.sh",
+      "sha256": "8882afc7847daa257f2de1114cad152e3f957267db8e2d903b5e1c7acc4a58eb",
+      "bytes": 1374,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "20b1dd5023dc1128a11a4c3241c4190b",
+      "path": "homeassistant/custom_components/icloud/__init__.py",
+      "sha256": "0d4935930a4a744d50d2b7f8c8168c813ac84043de67c8ee01aeb61ab1117a08",
+      "bytes": 1224,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "05e2c7ee046bc821667598b75bf9b393",
+      "path": "homeassistant/custom_components/icloud/manual_auth.py",
+      "sha256": "c5469affcb15d096411f951739bacf7110a0b19c99b9f1c0bd966a6dab5662c5",
+      "bytes": 1367,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "ed4d9eb6b43e28b06522c8d850dbde0e",
+      "path": "homeassistant/custom_components/icloud/setup_retry.py",
+      "sha256": "5611e06df27d1477983f49e579fd163955eb0a4adde4fb0c7e750058f9e58270",
+      "bytes": 874,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "dcf8db4e3750a67022e81590910e3783",
+      "path": "homeassistant/custom_components/icloud/device_tracker.py",
+      "sha256": "ec393965518251e4568a085d2bef07cd964395a8e820fee4ebd1136f880c8dc0",
+      "bytes": 185,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "a5a21c380be5b24e2a73bb849a770e6c",
+      "path": "homeassistant/custom_components/icloud/config_flow.py",
+      "sha256": "b3c6ebc9c13d8ae9b8efadb73acb3db1e1e338cf14151377f9f5821498f61d8e",
+      "bytes": 1792,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "d675cea6d5325c6d5e30e41c7ab93474",
+      "path": "homeassistant/custom_components/icloud/upstream.json",
+      "sha256": "05dc47a109da4c7f731728a71ef70122eade753c75e763b1931d1568623cff7d",
+      "bytes": 1327,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "5cb6646a3690a6185a9453d8e8828fba",
+      "path": "homeassistant/custom_components/icloud/LICENSE.upstream",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357,
+      "access": "read_only",
+      "tracked_clean": true
+    },
+    {
+      "file_id": "c0e321ec2b9d55a780f804d8fe656b00",
+      "path": "homeassistant/tests/test_icloud_manual_auth.py",
+      "sha256": "c632f7f6a5385f59fe3fa2497b5ad79647b99c5e8a8a14f6f6c861b740e261c3",
+      "bytes": 7227,
+      "access": "read_only",
+      "tracked_clean": true
+    }
+  ],
+  "existing_catalog_entries": 454,
+  "total_catalog_entries": 466,
+  "tools": [
+    "service_health",
+    "service_versions",
+    "disk_space",
+    "backup_results",
+    "log_summary",
+    "project_files",
+    "project_read",
+    "project_prepare_edit",
+    "service_prepare_restart",
+    "change_apply",
+    "change_revert",
+    "maintenance_capabilities",
+    "host_diagnostics",
+    "service_diagnostics",
+    "operation_status",
+    "change_validate"
+  ],
+  "changed_runtime_files": {
+    "operations.py": "4ba9456aaba561e407794ad3a7d8b9f7e0bd06944666f43ca331dfa9b59a9f7a",
+    "expanded-server.mjs": "671e4745d5f32351d19fa79d3fdfd171586d1c444712a705bfe684abf7eeb0fa",
+    "evidence-broker.py": "a4d244cc1885ad10234c0ac3e9eb0bab0534d82964af9917c236c115c2a22336",
+    "project-catalog.json": "6c965958fe69192af203ed99f492455678420ed7176d2057880459516dba0bb9"
+  },
+  "installer_sha256": "d08f6e72a94e77b3372c6ba9a35e945b9f07188c81caff20c22344dd7d71d3b4"
+}

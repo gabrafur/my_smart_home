@@ -56,3 +56,23 @@ test('stdio lifecycle, invalid JSON, size and rate limits with no residential da
   const oversized=run('x'.repeat(16385)+'\n');assert.equal(oversized.stdout,'');assert.match(oversized.stderr,/oversize/);
   const limited=run(('{"jsonrpc":"2.0","id":1,"method":"ping"}\n').repeat(61));assert.equal(limited.stdout.trim().split('\n').length,60);assert.match(limited.stderr,/rate_limited/);
 });
+
+test('standard MCP request metadata is accepted but never exposed or used as arguments', () => {
+  const r = request('disk_space');
+  r.params._meta = {progressToken: 'synthetic-progress', 'example.test/private': 'SYNTHETIC_PRIVATE'};
+  const rows = [];
+  const response = dispatch(r, () => fixture, row => rows.push(row));
+  assert.deepEqual(response.result.structuredContent.data, fixture.disk);
+  assert.equal(response.result.structuredContent.observed_at, fixture.observed_at);
+  assert.ok(!JSON.stringify([response, rows]).includes('SYNTHETIC_PRIVATE'));
+  for (const meta of [null, [], 'bad']) {
+    const invalid = request('disk_space'); invalid.params._meta = meta;
+    assert.equal(dispatch(invalid, () => { throw Error('must not read'); }, () => {}).error.message, 'invalid_parameters');
+  }
+  for (const extra of [{task:{}}, {command:'synthetic'}]) {
+    const invalid = request('disk_space'); Object.assign(invalid.params, extra);
+    assert.equal(dispatch(invalid, () => { throw Error('must not read'); }, () => {}).error.message, 'invalid_parameters');
+  }
+  const forbidden = request('disk_space', {host:'other_pc'}); forbidden.params._meta = {};
+  assert.equal(dispatch(forbidden, () => { throw Error('must not read'); }, () => {}).error.message, 'invalid_parameters');
+});

@@ -1,4 +1,32 @@
-# MCP de leitura do Raspberry — preparado, não ativado
+# MCP de leitura do Raspberry
+
+## Validação da conexão e reparo
+
+Em 2026-10-19, a conexão privada foi instalada usando o túnel existente e
+autenticação MCP `None`. A autenticação do transporte permanece no cliente do
+túnel. Foram listadas as cinco ferramentas e executada `disk_space` com
+`host: raspberry` tanto no Codex quanto na conversa do dot destinatário.
+O resultado incluiu `observed_at`; trata-se do horário do snapshot.
+
+O reparo aceita `_meta` como objeto de contexto do protocolo, sem incorporá-lo
+aos argumentos, respostas ou auditoria. Argumentos extras continuam proibidos.
+A sessão stdio é persistente: o relay aguarda dados sem encerrar por inatividade,
+e a unidade MCP usa `RuntimeMaxSec=infinity`. Permanecem os limites de memória,
+tarefas, tamanho de mensagens, taxa e isolamento de rede. O timeout de conexão
+e I/O do socket não foi removido. A sessão sobreviveu ao antigo limite de 120 s.
+
+O aplicador de reparo `apply-protocol-session-repair.py` exige root, confere
+hashes e destinos fixos, conserva cópias dos arquivos substituídos e reinicia
+somente o túnel. Não reinstalar o conjunto nem reaplicar esse reparo sobre uma
+instalação diferente. Os testes direcionados passaram: sete Node e oito Python.
+
+Inicialmente o plugin foi configurado para permitir leituras e pedir confirmação
+antes de alterações (`ask_before_writes`). Isso é uma política do cliente ChatGPT:
+não acrescenta ferramentas ao servidor nem comprova aprovação na auditoria
+local. O contrato original de cinco leituras foi preservado. A ampliação instalada
+abaixo acrescenta seis ferramentas com operações e alvos limitados. A preferência
+posterior do usuário passou a `Allow all tools`; o catálogo e as restrições do
+servidor continuam independentes dessa preferência.
 
 ## Estado e limite
 
@@ -14,7 +42,7 @@ convertido em terminal remoto ou reconfigurado. O novo adaptador lê o resultado
 do worker de backup existente; não dispara backup. O acesso remoto do Codex não
 significa que um plugin esteja disponível numa conversa ChatGPT.
 
-## Arquitetura proposta para aprovação
+## Arquitetura e procedimento de instalação
 
 Fluxo: coletor local → snapshot sanitizado → MCP stdio isolado → tunnel-client
 no Raspberry → HTTPS de saída para OpenAI → plugin privado na conta ChatGPT.
@@ -37,7 +65,7 @@ no Raspberry → HTTPS de saída para OpenAI → plugin privado na conta ChatGPT
   `/var/lib/raspberry-mcp/root`, com Node e bibliotecas indispensáveis, código e
   snapshot montados somente para leitura. Usuário próprio sem privilégios,
   PrivateNetwork=yes, NoNewPrivileges=yes, capabilities vazias,
-  ProtectSystem=strict, limite de 64 MiB/32 tarefas e RuntimeMaxSec=120.
+  ProtectSystem=strict, limite de 64 MiB/32 tarefas e RuntimeMaxSec=infinity.
   Sem checkout, diretórios pessoais, socket Docker ou credenciais.
 - Tunnel-client: unidade `raspberry-mcp-tunnel.service`, usuário próprio;
   stdio pelo relay fixo `relay.py`, que conecta somente ao socket Unix acima.
@@ -89,13 +117,13 @@ com timeout de 1,5 segundo e buffer de 64 KiB por chamada. Nenhuma chamada MCP
 executa coleta, subprocesso ou rede. O protocolo mínimo implementa initialize,
 ping, tools/list, tools/call e notifications/initialized; não oferece recursos,
 prompts, escrita ou paginação. Auditoria não contém argumentos, erros brutos ou
-identidade do usuário. Testes de conformidade com o tunnel-client ainda pendentes.
+identidade do usuário. Leitura ponta a ponta validada com o tunnel-client; isso não cobre todas as condições de reconexão.
 
 ## Lista de hosts e expansão
 
 | Host lógico | Operações | Situação |
 | --- | --- | --- |
-| raspberry | As cinco leituras acima | Código preparado; acesso remoto pendente |
+| raspberry | As cinco leituras acima | Leitura remota validada em 2026-10-19 |
 | workstation_primary | Eventual saúde, versão e disco | Não autorizado; nenhuma implementação/acesso |
 
 Não há descoberta de rede. Cada computador futuro exige identificação explícita,
@@ -126,7 +154,7 @@ plugin nessa superfície. Se for um GPT personalizado legado, não presumir que
 adicionar MCP à conta o altera: a documentação de migração Enterprise orienta
 migrar para plugin e reconstruir ações. Confirmar modalidade e conta antes de
 expor qualquer serviço; não migrar a assistente sem autorização própria.
-Não há comprovação de acesso desta conversa à conta da assistente.
+A validação em 2026-10-19 incluiu a conversa do dot, além da chamada no Codex.
 
 ## Ativação após aprovação
 
@@ -202,8 +230,8 @@ Testes adicionais do instalador (sintéticos, sem root):
    horário e números com snapshot. Testar host não permitido sem acesso real.
 8. Registrar conexão concluída somente após consulta efetiva pela assistente.
 
-Não existe link de autorização gerado nesta etapa. Os links acima são páginas
-oficiais de configuração, não URLs de uma integração já criada.
+Os links acima são páginas oficiais genéricas. O link privado da instalação
+foi entregue na conversa; identificadores da conta não são versionados aqui.
 
 ## Testes e reversão
 
@@ -223,3 +251,92 @@ Commit deve conter somente código/testes/documentação sanitizados desta taref
 O hook pre-push exige árvore limpa; alterações concorrentes impedem publicação
 até sua resolução pelo responsável. Não fazer stash, commit ou revert delas,
 não usar force push nem ignorar o hook. CI só poderá ser observado após push.
+
+## Ampliação operacional instalada
+
+`install-operations.py` acrescenta um frontend stdio e um broker privado por
+socket Unix. O frontend permanece no chroot sem acesso ao checkout ou Docker;
+o broker usa a identidade já existente do coletor, código instalado pertencente
+a root e comandos operacionais fixos. Não há listener TCP, downloads, novas
+credenciais, host adicional, terminal, comandos ou caminhos livres.
+
+As cinco leituras originais permanecem. Seis ferramentas adicionais:
+
+- `project_files`: lista IDs de arquivos por categoria e paginação.
+- `project_read`: lê trechos de fontes admitidas e seu SHA256.
+- `project_prepare_edit`: prepara uma substituição textual única com prévia.
+- `service_prepare_restart`: prepara reinício de um único container permitido.
+- `change_apply`: aplica o identificador preparado, com prazo de uma hora.
+- `change_revert`: restaura uma edição se o arquivo ainda corresponder ao resultado.
+
+O catálogo é congelado na instalação a partir de arquivos rastreados, idênticos
+ao HEAD público e sem conteúdo reconhecido como credencial. Inclui apenas
+Markdown diretamente em `docs/`, JavaScript em `nodered/tools/functions/` e
+YAML diretamente em `homeassistant/dashboards/`. Arquivos modificados localmente,
+não rastreados, links simbólicos, hardlinks e arquivos fora dessas categorias
+não são admitidos. IDs não são caminhos. A edição não aceita criação de arquivo,
+remoção, comandos, URLs nem troca de host. A checagem de conteúdo é conservadora,
+não uma garantia universal de detecção de segredos: o catálogo público e a
+verificação de hash são a fronteira principal.
+
+Aplicar fontes NÃO regenera flows, executa testes, recarrega automações, faz
+deploy, commit ou push. Esses passos continuam exigindo os validadores e gates
+do projeto; não existe uma ferramenta genérica de execução para contorná-los.
+O escopo não inclui custom_components, configurações privadas, instruções,
+código do próprio MCP, scripts privilegiados ou dispositivos físicos.
+
+Reinícios afetam exclusivamente `homeassistant`, `nodered` ou `mosquitto`, um por
+proposta, via chamada Docker fixa. Há interrupção breve do serviço escolhido.
+O instalador e os testes não executam esses reinícios. Não existe reinício global,
+exec dentro de container, criação/remoção de container ou operação de volumes.
+Resultado incerto de reinício é marcado `outcome_unknown` e não é repetido
+automaticamente. O snapshot posterior precisa confirmar a saúde.
+
+Propostas e backups ficam em diretório local 0700 fora do Git, com limite de
+64 registros e arquivo de até 256 KiB. Ao atingir o limite, novas propostas são
+recusadas: não há limpeza automática de backups. Edições conferem hashes antes
+da troca atômica; mudanças concorrentes detectadas são preservadas. A reversão
+também exige correspondência do hash. Uma falha após a escrita e antes da
+gravação do estado exige inspeção local, sem repetição cega.
+
+O modo de aprovação é controlado pelo ChatGPT. `Allow all tools` dispensa a
+confirmação da plataforma, mas não amplia este catálogo nem autoriza operações
+fora do pedido. Preparação e aplicação continuam separadas para mostrar a prévia.
+A auditoria local registra apenas ferramenta, resultado e horário; não recebe
+prova criptográfica de aprovação individual ou identidade do usuário final.
+
+Ativação administrativa, após revisar o código e executar `--check`:
+
+```sh
+sudo python3 -B /mnt/data/docker/scripts/raspberry-mcp/install-operations.py
+```
+
+O instalador confere hashes do código testado e recusa instalação já existente.
+Valida a lista de onze ferramentas no chroot, cria unidades privadas, realiza
+uma leitura real do catálogo usando a identidade MCP e reinicia somente o túnel.
+Em falha remove os arquivos criados e tenta restaurar o túnel original. Se
+houver estado de propostas, conserva-o para inspeção. Não reinstalar às cegas.
+
+Depois de instalar, atualizar as ferramentas no plugin e validar `project_files`,
+`project_read` e `disk_space` na conversa destinatária. Não testar uma mutação
+residencial real apenas para provar que a ferramenta existe. A ativação não
+está comprovada enquanto esses passos não forem concluídos.
+
+### Evidência de ativação em 2026-10-19
+
+Após a execução administrativa local do instalador, o túnel e o socket de
+operações foram observados ativos. A lista do plugin foi atualizada para onze
+ferramentas (sete leituras, quatro de preparação/escrita). Nome e descrição foram
+atualizados para refletir projetos e serviços, conservando o túnel existente.
+
+A conversa destinatária do dot confirmou sucesso real em `project_files`,
+`project_read` e `disk_space`. A categoria docs retornou 69 arquivos; a leitura
+de `docs/CONVENCAO_COMMITS.md` retornou SHA256 e paginação, sem reproduzir seu
+conteúdo na confirmação. O disco retornou `observed_at`. A validação remota
+não executou preparação, aplicação, reversão ou reinício residencial.
+
+As mutações foram validadas com fontes e serviços sintéticos: conflito de hash,
+links, conteúdo sensível, alvos fora do catálogo, expiração, replay e resultado
+incerto de reinício. Foram aprovados 19 testes Python e 11 testes Node.
+Não confundir esses testes com execução de mutações na residência. A suíte
+pública completa e CI não foram executadas nesta etapa; não houve commit/push.

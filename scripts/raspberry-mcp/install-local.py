@@ -168,7 +168,8 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 MemoryMax=64M
 TasksMax=32
-RuntimeMaxSec=120
+# Lifetime belongs to the stdio session, not to an individual request.
+RuntimeMaxSec=infinity
 UMask=0077
 ''')
     write(UNIT_DIR / names[2], f'''[Unit]

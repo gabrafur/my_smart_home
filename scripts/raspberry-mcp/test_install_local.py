@@ -74,7 +74,7 @@ class InstallerTests(unittest.TestCase):
              patch.object(installer, 'write', side_effect=lambda p,t: writes.update({str(p):t})):
             installer.main()
         service = writes['/etc/systemd/system/raspberry-mcp@.service']
-        for setting in ['PrivateNetwork=yes','NoNewPrivileges=yes','CapabilityBoundingSet=','ProtectSystem=strict','RootDirectory=', 'MemoryMax=64M']:
+        for setting in ['PrivateNetwork=yes','NoNewPrivileges=yes','CapabilityBoundingSet=','ProtectSystem=strict','RootDirectory=', 'MemoryMax=64M', 'RuntimeMaxSec=infinity']:
             self.assertIn(setting, service)
         socket = writes['/etc/systemd/system/raspberry-mcp.socket']
         self.assertIn('SocketMode=0660', socket)

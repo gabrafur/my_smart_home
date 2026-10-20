@@ -104,3 +104,15 @@ names, routes, or private identifiers.
   household values.
 - `make validate-public` verifies links, required bilingual pairs, public agent
   memory, and mechanically detectable privacy rules.
+
+
+<!-- mcp-maintenance-docs-index-v1 -->
+
+## Raspberry MCP maintenance
+
+The Portuguese documents describe diagnostics, sanitized evidence, capability coverage and maintenance boundaries. Listed tools do not establish deployment or permission to modify household services.
+
+- [RASPBERRY_MCP_EVIDENCE_STAGE2](RASPBERRY_MCP_EVIDENCE_STAGE2.md)
+- [RASPBERRY_MCP_MAINTENANCE_MATRIX](RASPBERRY_MCP_MAINTENANCE_MATRIX.md)
+- [RASPBERRY_MCP_MAINTENANCE_STAGE1](RASPBERRY_MCP_MAINTENANCE_STAGE1.md)
+- [RASPBERRY_MCP_OPERATIONS_PROPOSAL](RASPBERRY_MCP_OPERATIONS_PROPOSAL.md)

@@ -17,9 +17,9 @@ def main():
             ready.register(sys.stdin.buffer, selectors.EVENT_READ)
             ready.register(connection, selectors.EVENT_READ)
             while True:
-                events = ready.select(timeout=120)
-                if not events:
-                    return
+                # A stdio session is long-lived, including idle periods.
+                # Socket I/O remains bounded; no new target or reconnect is allowed.
+                events = ready.select()
                 for key, _ in events:
                     if key.fileobj is connection:
                         data = connection.recv(16384)

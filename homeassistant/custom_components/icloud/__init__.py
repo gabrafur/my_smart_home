@@ -17,6 +17,11 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from .manual_auth import ManualOtpService
 from .setup_retry import is_transport_failure
 
+from homeassistant.const import __version__ as core_version
+from .device_owner import prepare_device_class
+
+core_account.IcloudDevice = prepare_device_class(core_account, core_version)
+
 core_account.PyiCloudService = ManualOtpService
 core_config_flow.PyiCloudService = ManualOtpService
 
