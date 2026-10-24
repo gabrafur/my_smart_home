@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 import jsonata from "jsonata";
+import { installRtxSafeAvailability } from "./install-rtx-safe-availability.mjs";
 
 import {
   NOTIFICATION_HUBS,
@@ -183,6 +184,34 @@ const rejectedInfrastructure = executeFunction("notification-hub-infrastructure-
 assert.equal(rejectedInfrastructure.result, null);
 assert.match(rejectedInfrastructure.warnings[0], /título, mensagem ou id ausente/);
 
+function assertRestrictedComposition(candidate) {
+  const effects = candidate.filter((entry) => entry.type === "api-call-service" &&
+    (String(entry.action ?? "").startsWith("persistent_notification.") ||
+      (entry.action === "public_bindings.call" && /"action":"notify/.test(String(entry.data ?? "")))));
+  assert.deepEqual(effects.map(({ id }) => id).sort(), [...expectedEffects.keys()].sort(),
+    "composição restrita não pode acrescentar ou remover efeitos de notificação");
+  for (const effect of effects) {
+    const [tab, action, queue, dataPattern] = expectedEffects.get(effect.id);
+    assert.equal(effect.z, tab);
+    assert.equal(effect.action, action);
+    assert.equal(effect.queue, queue);
+    assert.match(effect.data, dataPattern);
+  }
+  const logicalGraph = (flows) => restoreGeneratedWireRoutes(structuredClone(flows))
+    .map((entry) => {
+      if (entry.type === "group" && entry.nodes) entry.nodes.sort();
+      return entry;
+    }).sort((a, b) => a.id.localeCompare(b.id));
+  assert.deepEqual(logicalGraph(candidate), logicalGraph(installNotificationHubs(structuredClone(candidate))),
+    "reaplicar os hubs não pode alterar funções, gates, destinos ou ordem dos fios");
+}
+
+const restrictedComposition = installRtxSafeAvailability(structuredClone(migrated));
+assertRestrictedComposition(restrictedComposition);
+assert.throws(() => assertRestrictedComposition([...restrictedComposition, {
+  id: "synthetic_direct_notice", type: "api-call-service", action: "persistent_notification.create",
+}]), assert.AssertionError, "uma saída direta adicional precisa continuar recusada");
+
 for (const filename of [
   "configure-garage-gate-flow.mjs",
   "fix-actionable-notification-bindings.mjs",
@@ -213,7 +242,9 @@ for (const filename of [
     /reconcileGeneratedFlows\(originalFlows, desired,/.test(generator);
   const finalizesIsolatedTab = /const installed = installNotificationHubs\(/.test(generator) &&
     /structuredClone\(next\.filter/.test(generator);
-  assert.ok(finalizesInline || finalizesBeforeReconciliation || finalizesIsolatedTab,
+  const preservesRestrictedComposition = filename === "install-local-ai-rtx-recovery-flow.mjs" &&
+    /JSON\.stringify\(installRtxSafeAvailability\(installNotificationHubs\(next\)\), null, 4\)/.test(generator);
+  assert.ok(finalizesInline || finalizesBeforeReconciliation || finalizesIsolatedTab || preservesRestrictedComposition,
     `${filename}: gerador pode reintroduzir saída direta sem o finalizador canônico`);
 }
 
