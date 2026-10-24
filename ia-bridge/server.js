@@ -1,3 +1,4 @@
+const { repairProxy } = require('./local-ai-proxy-repair');
 const http = require('http');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -407,6 +408,7 @@ const server = http.createServer((req, res) => {
   const supportedRoute = (
     (req.method === 'POST' && requestUrl.pathname === '/chat')
     || (req.method === 'POST' && requestUrl.pathname === '/local-ai/recover')
+    || (req.method === 'POST' && requestUrl.pathname === '/local-ai/repair-proxy')
     || (req.method === 'DELETE' && requestUrl.pathname === '/history')
     || (req.method === 'GET' && requestUrl.pathname === '/history')
     || (req.method === 'GET' && requestUrl.pathname === '/history/conversations')
@@ -421,6 +423,24 @@ const server = http.createServer((req, res) => {
   if (auth !== `Bearer ${BRIDGE_TOKEN}`) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'unauthorized' }));
+    return;
+  }
+
+  if (req.method === 'POST' && requestUrl.pathname === '/local-ai/repair-proxy') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; if (body.length > 1024) req.destroy(); });
+    req.on('end', async () => {
+      try {
+        const input = JSON.parse(body);
+        if (!input || Object.keys(input).some(key => key !== 'operation_id')) throw new Error('invalid');
+        const result = await repairProxy(input.operation_id);
+        res.writeHead(result.outcome === 'rejected' ? 400 : 200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify(result));
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ outcome: 'rejected', reason: 'invalid_request' }));
+      }
+    });
     return;
   }
 

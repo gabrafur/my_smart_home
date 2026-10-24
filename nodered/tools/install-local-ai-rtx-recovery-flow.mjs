@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { installRtxSafeAvailability } from './install-rtx-safe-availability.mjs';
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -87,8 +88,8 @@ add({
 
 grouped(groups.policy, {
   id: "local_ai_rtx_architecture", type: "comment", z: TAB, g: groups.policy,
-  name: "Leitura é passiva. Recovery nunca é automático.",
-  info: "O Node-RED não executa WSL, Ollama, netsh, iphlpsvc nem SSH. A fonte sensor.codex_rtx_host_reachability_raw apenas confirma se o computador está ligado. Computador desligado silencia alertas; ligado com endpoint indisponível precisa permanecer assim durante a confirmação visual antes de alertar uma vez por incidente.",
+  name: "Leitura passiva; proxy restrito tem recuperação limitada.",
+  info: "O Node-RED orquestra o reparo restrito do proxy pelo bridge; o executor não reinicia VPN, IP Helper ou WSL. A fonte sensor.codex_rtx_host_reachability_raw apenas confirma se o computador está ligado. Computador desligado silencia alertas; ligado com endpoint indisponível precisa permanecer assim durante a confirmação visual antes de alertar uma vez por incidente.",
   x: 410, y: 60, wires: [],
 });
 inject("local_ai_rtx_tick", groups.policy, "Agenda visível — verificar a cada 60 s", [{ p: "payload" }], 240, 130, [["local_ai_rtx_health_tick_out"]], { repeat: "60", once: true, onceDelay: "15" });
@@ -271,5 +272,5 @@ linkIn("local_ai_rtx_dry_in", groups.test, "Receber efeito TESTE", "local_ai_rtx
 fn("local_ai_rtx_dry_run_terminal", groups.test, "TESTE FINAL: MCP não chamado", "local-ai-rtx-dry-run.js", 0, 1910, 1210, []);
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installRtxSafeAvailability(installNotificationHubs(next)), null, 4)}\n`);
 console.log(`Fluxo visual de recovery RTX instalado em ${outputPath}`);

@@ -385,108 +385,31 @@ assert.deepEqual(getNode("ext_commit_recovery_confirmation").wires, [[]]);
 assert.deepEqual(getNode("external_visual_alexa_in").links, ["external_visual_alexa_out"]);
 
 const buildMessage = compileFunction(getNode("ext_build_alexa_message"));
-const success = buildMessage(
-  {
-    expected_state: "on",
-    notify_success: "ok",
-    payload: {
-      lampada_varanda: "on",
-      lampadas_garagem: "on",
-      refletores_jardim: "on",
-    },
-  },
-  {},
-  {},
-  zigbeeFlow,
-  {},
-  {},
-  setTimeout,
-  clearTimeout,
-);
-assert.equal(success.notify_text, "ok");
-
-const silentSunriseSuccess = buildMessage(
-  {
-    source: "sunrise",
-    expected_state: "off",
-    notify_success: "não anunciar",
-    payload: {
-      lampada_varanda: "off",
-      lampadas_garagem: "off",
-      refletores_jardim: "off",
-    },
-  },
-  { status: () => {} },
-  {},
-  zigbeeFlow,
-  {},
-  {},
-  setTimeout,
-  clearTimeout,
-);
-assert.equal(silentSunriseSuccess, null, "amanhecer bem-sucedido não deve anunciar na Alexa");
-
-const failure = buildMessage(
-  {
-    expected_state: "off",
-    payload: {
-      lampada_varanda: "off",
-      lampadas_garagem: "on",
-      refletores_jardim: "off",
-    },
-  },
-  {},
-  {},
-  zigbeeFlow,
-  {},
-  {},
-  setTimeout,
-  clearTimeout,
-);
-assert.match(failure.notify_text, /garagem on/);
-assert.match(failure.notify_text, /não será repetido/);
-
-const sunriseFailure = buildMessage(
-  {
-    source: "sunrise",
-    expected_state: "off",
-    payload: {
-      lampada_varanda: "off",
-      lampadas_garagem: "on",
-      refletores_jardim: "off",
-    },
-  },
-  {},
-  {},
-  zigbeeFlow,
-  {},
-  {},
-  setTimeout,
-  clearTimeout,
-);
-assert.match(sunriseFailure.notify_text, /garagem on/);
-
-const networkFailure = buildMessage(
-  {
-    expected_state: "off",
-    payload: {
-      lampada_varanda: "off",
-      lampadas_garagem: "unknown",
-      refletores_jardim: "unavailable",
-    },
-  },
-  {},
-  {},
-  zigbeeFlow,
-  {},
-  {},
-  setTimeout,
-  clearTimeout,
-);
-assert.equal(networkFailure.zigbee_error, true);
-assert.match(networkFailure.notify_text, /Erro na rede Zigbee/);
-assert.match(networkFailure.notify_text, /garagem, jardim/);
-assert.match(networkFailure.notify_text, /não será repetido/);
+function confirmationCase(expected, states, source) {
+  const store = new Map();
+  const context = { get: key => store.get(key), set: (key, value) => store.set(key, value) };
+  const observed = new Date().toISOString();
+  return buildMessage({ expected_state: expected, external_issued_at: Date.now() - 1000,
+    notify_success: "ok", source, payload: { observations: Object.fromEntries(
+      ["lampada_varanda", "lampadas_garagem", "refletores_jardim", "abajour_sala_de_estar"]
+        .map((id, i) => [id, { state: states[i], observed_at: observed }])) }
+  }, { error: message => { throw new Error(message); }, status: () => {} }, {}, context, {}, {}, setTimeout, clearTimeout);
+}
+const success = confirmationCase("on", ["on", "on", "on", "on"]);
+assert.equal(success[0].notify_text, "ok");
+assert.equal(success[1], null);
+const sunriseConfirmed = confirmationCase("off", ["off", "off", "off", "off"], "sunrise");
+assert.deepEqual(sunriseConfirmed, [null, null], "amanhecer confirmado permanece silencioso");
+for (const source of ["manual", "sunrise"]) {
+  const failure = confirmationCase("off", ["off", "on", "off", "off"], source);
+  assert.equal(failure[0], null);
+  assert.match(failure[1].alert.message, /garagem: esperado off, encontrado on/);
+  assert.match(failure[1].alert.message, /não foi repetido/);
+}
+const unavailable = confirmationCase("off", ["off", "unknown", "unavailable", "off"]);
+assert.match(unavailable[1].alert.message, /garagem.*unknown/);
+assert.match(unavailable[1].alert.message, /jardim.*unavailable/);
+assert.equal(unavailable[1].payload.observer_kind, "external_lighting_confirmation");
 
 const policyValues = new Map();
 const policyContext = {

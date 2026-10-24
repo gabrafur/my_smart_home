@@ -9,6 +9,12 @@ request_file="$trigger_dir/requested"
 processing_file="$trigger_dir/processing"
 result_file="$trigger_dir/result"
 
+# Fixed MCP recovery uses a private trigger and existing cron; never re-enter it.
+if [ "$trigger_dir" = "$repo_root/homeassistant/.git-backup-trigger" ] &&
+   [ -r /usr/local/lib/raspberry-mcp/git_recovery.py ]; then
+  /usr/bin/python3 -I -S -B /usr/local/lib/raspberry-mcp/git_recovery.py --poll >/dev/null 2>&1 || :
+fi
+
 case "$trigger_dir" in
   /*) ;;
   *) echo "GIT_BACKUP_TRIGGER_DIR must be absolute" >&2; exit 64 ;;

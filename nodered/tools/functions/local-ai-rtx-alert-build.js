@@ -11,7 +11,7 @@ msg.payload = {
 };
 msg.alert = {
     title: "RTX indisponível",
-    message: "A conexão da RTX está indisponível. A recuperação é manual para não interromper sua VPN: abra a aba recuperacao_rtx e clique em Recuperar endpoint via MCP.",
+    message: "A conexão da RTX está indisponível. O Node-RED verifica o computador e pode reparar somente o proxy, com tentativas limitadas. Veja a aba recuperacao_rtx para o resultado; VPN, WSL e serviços compartilhados não são reiniciados automaticamente.",
 };
 delete msg.error;
 delete msg.observer_alert;

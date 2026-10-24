@@ -958,7 +958,14 @@
             "external_visual_sunrise",
             "external_visual_sunrise_out",
             "external_visual_sunrise_in",
-            "external_visual_sunrise_command"
+            "external_visual_sunrise_command",
+            "external_confirmation_test_observation",
+            "external_confirmation_incident_out",
+            "external_confirmation_state_events",
+            "external_confirmation_pending",
+            "external_confirmation_read_states",
+            "external_confirmation_observed_out",
+            "external_confirmation_observed_in"
         ],
         "x": 64,
         "y": -1,
@@ -11763,7 +11770,7 @@
             {
                 "property": "payload",
                 "propertyType": "msg",
-                "value": "{\"expected_state\": expected_state, \"notify_success\": notify_success, \"lampada_varanda\": $entities(\"switch.lampada_varanda\").state, \"lampadas_garagem\": $entities(\"switch.lampadas_garagem\").state, \"refletores_jardim\": $entities(\"switch.refletores_jardim\").state}",
+                "value": "{\"expected_state\":expected_state,\"observations\":{\"lampada_varanda\":{\"state\":$entities(\"switch.lampada_varanda\").state,\"observed_at\":$entities(\"switch.lampada_varanda\").last_reported ? $entities(\"switch.lampada_varanda\").last_reported : $entities(\"switch.lampada_varanda\").last_updated},\"lampadas_garagem\":{\"state\":$entities(\"switch.lampadas_garagem\").state,\"observed_at\":$entities(\"switch.lampadas_garagem\").last_reported ? $entities(\"switch.lampadas_garagem\").last_reported : $entities(\"switch.lampadas_garagem\").last_updated},\"refletores_jardim\":{\"state\":$entities(\"switch.refletores_jardim\").state,\"observed_at\":$entities(\"switch.refletores_jardim\").last_reported ? $entities(\"switch.refletores_jardim\").last_reported : $entities(\"switch.refletores_jardim\").last_updated},\"abajour_sala_de_estar\":{\"state\":$entities(\"switch.abajour_sala_de_estar\").state,\"observed_at\":$entities(\"switch.abajour_sala_de_estar\").last_reported ? $entities(\"switch.abajour_sala_de_estar\").last_reported : $entities(\"switch.abajour_sala_de_estar\").last_updated}}}",
                 "valueType": "jsonata"
             }
         ],
@@ -11789,8 +11796,8 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "Montar aviso confirmado",
-        "func": "const expected = msg.expected_state || msg.payload?.expected_state;\nconst labels = {\n    lampada_varanda: 'varanda',\n    lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim'\n};\nconst states = {\n    lampada_varanda: msg.payload?.lampada_varanda,\n    lampadas_garagem: msg.payload?.lampadas_garagem,\n    refletores_jardim: msg.payload?.refletores_jardim\n};\nconst networkFailureStates = new Set([undefined, null, '', 'unknown', 'unavailable']);\nconst unavailable = Object.entries(states)\n    .filter(([, state]) => networkFailureStates.has(state))\n    .map(([entity]) => labels[entity]);\n\nif (flow.get('external_lighting_zigbee_state') === 'offline' || unavailable.length > 0) {\n    msg.zigbee_error = true;\n    const affected = unavailable.length > 0 ? ` Sem comunicação com: ${unavailable.join(', ')}.` : '';\n    msg.notify_text = `Erro na rede Zigbee.${affected} O comando da iluminação externa não será repetido.`;\n    return msg;\n}\n\nconst failed = Object.entries(states)\n    .filter(([, state]) => state !== expected)\n    .map(([entity, state]) => `${labels[entity]} ${state}`);\n\nif (failed.length === 0) {\n    if (msg.source === 'sunrise') {\n        node.status({ fill: 'green', shape: 'dot', text: 'amanhecer confirmado; aviso silencioso' });\n        return null;\n    }\n    msg.notify_text = msg.notify_success || msg.notify_text;\n    return msg;\n}\n\nconst expectedText = expected === 'on' ? 'ligada' : 'desligada';\nmsg.notify_text = `Erro ao acionar a iluminação externa. Esperado: ${expectedText}. Estado atual: ${failed.join(', ')}. O comando não será repetido.`;\nreturn msg;",
-        "outputs": 1,
+        "func": "// A cached matching state is not a fresh command confirmation.\nconst testMode = msg._external_command?.test_mode === true || msg._external_lighting_test === true;\nconst expected = msg.expected_state || msg.payload?.expected_state;\nconst issuedAt = Number(msg.external_issued_at);\nconst now = Date.now();\nconst labels = { lampada_varanda: 'varanda', lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim', abajour_sala_de_estar: 'abajur' };\nconst observations = msg.payload?.observations ?? {};\nif (!['on', 'off'].includes(expected) || !Number.isFinite(issuedAt) || issuedAt <= 0 || issuedAt > now) {\n    node.error('external_lighting_confirmation_invalid_context', { _msgid: msg._msgid, _global_observer_test: testMode, payload: { test_mode: testMode } });\n    return [null, null];\n}\nconst devices = Object.entries(labels).map(([id, label]) => {\n    const report = observations[id];\n    const state = ['on', 'off', 'unknown', 'unavailable'].includes(report?.state) ? report.state : 'unknown';\n    const at = Date.parse(report?.observed_at);\n    const reason = !report ? 'missing' : state === 'unavailable' ? 'unavailable' :\n        state === 'unknown' ? 'unknown' : !Number.isFinite(at) || at < issuedAt || at > now ? 'stale' :\n        state !== expected ? 'mismatch' : 'confirmed';\n    return { id, label, expected, state, observed_at: Number.isFinite(at) ? at : null, reason };\n});\nconst failed = devices.filter(d => d.reason !== 'confirmed');\nmsg.external_confirmation = { issued_at: issuedAt, observed_at: now, devices,\n    status: failed.length ? 'unconfirmed' : 'confirmed',\n    coverage: ['ha_entity_report_after_command', 'not_physical_light_or_human_ack'] };\nconst key = testMode ? 'external_confirmation_incident_v1__test' : 'external_confirmation_incident_v1';\nconst previous = testMode ? flow.get(key) : flow.get(key, 'persistent');\nif (previous?.issued_at > issuedAt) return [null, null];\nif (!failed.length) {\n    if (testMode) flow.set('external_pending_v1__test', null);\n    else flow.set('external_pending_v1', null, 'persistent');\n}\nconst signature = failed.map(d => `${d.id}:${d.reason}:${d.state}`).join('|');\nconst current = { issued_at: issuedAt, expected, failed: failed.length > 0, signature,\n    observed_at: now, version: 1 };\nif (testMode) flow.set(key, current); else flow.set(key, current, 'persistent');\n// Persistent lifecycle: startup alone never emits a recovery. A change of intention\n// supersedes the old incident instead of claiming its original command succeeded.\nconst recovered = !failed.length && previous?.failed === true && previous.expected === expected;\nconst duplicate = previous?.expected === expected && previous?.signature === signature && previous?.failed === current.failed;\nif (failed.length && !duplicate || recovered) {\n    const intention = expected === 'on' ? 'ligar' : 'desligar';\n    const detail = failed.map(d => `${d.label}: esperado ${expected}, encontrado ${d.state} (${d.reason})`).join('; ');\n    const message = failed.length\n        ? `Iluminação externa: não foi possível confirmar ${intention}. ${detail}. Confira alimentação e disponibilidade do dispositivo; o comando não foi repetido.`\n        : `Iluminação externa: novos estados de todos os destinos confirmam ${intention}. Isso confirma o estado informado pelos dispositivos, não a emissão de luz.`;\n    const alertMsg = { ...msg, _global_observer_test: testMode,\n        payload: { test_mode: testMode, observer_kind: 'external_lighting_confirmation',\n            incident_key: 'exterior_light', recovery: recovered, mobile_notification: true },\n        alert: { title: recovered ? 'Iluminação externa confirmada' : 'Falha na confirmação da iluminação externa', message } };\n    return [null, alertMsg];\n}\nif (failed.length || duplicate || msg.source === 'sunrise') return [null, null];\nif (testMode) return [null, { ...msg, _global_observer_test: true, payload: { test_mode: true, observer_kind: 'external_lighting_confirmation', simulated: true, dispatched: false } }];\nmsg.notify_text = msg.notify_success || 'O estado informado da iluminação externa foi confirmado';\nreturn [msg, null];",
+        "outputs": 2,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -11801,6 +11808,9 @@
         "wires": [
             [
                 "9d81b75a18d482f1"
+            ],
+            [
+                "external_confirmation_incident_out"
             ]
         ]
     },
@@ -12209,7 +12219,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "Preparar confirmação pelo tempo visual",
-        "func": "const data = msg._external_command;\nmsg.delay = Number(data.policy.confirmation_settle_seconds) * 1000;\ndelete msg.reset;\nreturn msg;",
+        "func": "const data = msg._external_command;\nmsg.delay = Number(data.policy.confirmation_settle_seconds) * 1000;\nmsg.external_issued_at = Date.now();\nmsg.external_operation_id = String(msg._msgid);\nconst pending = { expected: msg.expected_state, issued_at: msg.external_issued_at,\n    verify_after: msg.external_issued_at + msg.delay, operation_id: msg.external_operation_id };\nif (data.test_mode) flow.set('external_pending_v1__test', pending);\nelse flow.set('external_pending_v1', pending, 'persistent');\ndelete msg.reset;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -12330,7 +12340,7 @@
         "y": 160,
         "wires": [
             [
-                "external_visual_command_dry_out"
+                "external_confirmation_test_observation"
             ],
             [
                 "ext_check_states"
@@ -42656,6 +42666,7 @@
             "global_observer_uncorroborated_recovery_out",
             "global_observer_transient_recovery_out",
             "global_observer_integration_alert_out",
+            "external_confirmation_incident_out",
             "local_ai_rtx_alert_out",
             "people_visual_refresh_alert_out",
             "internet_remote_access_alert_out",
@@ -73647,7 +73658,8 @@
             "local_ai_rtx_status_terminal",
             "local_ai_rtx_alert_build",
             "local_ai_rtx_recovery_out",
-            "local_ai_rtx_alert_out"
+            "local_ai_rtx_alert_out",
+            "rtx_auto_observation_out"
         ],
         "x": 109,
         "y": 789,
@@ -73750,7 +73762,7 @@
         "type": "tab",
         "label": "recuperacao_rtx",
         "disabled": false,
-        "info": "Observação passiva e decisão visual. Recovery MCP exige clique explícito; cooldown e confirmação de indisponibilidade vêm da política validada e TESTE termina antes do HTTP autenticado.",
+        "info": "Observação passiva e decisão visual. Recovery MCP exige clique explícito; cooldown e confirmação de indisponibilidade vêm da política validada e TESTE termina antes do HTTP autenticado.\nRecuperação restrita orquestrada no Node-RED: fontes até 120 s, confirmação 90 s, máximo duas tentativas separadas por 300 s. Não inicia/reinicia WSL ou serviços, não altera firewall. Resultado incerto bloqueia novas tentativas. TESTE: reset, eligible, repetição (cooldown), exhausted, unknown, offline, healthy. Todos terminam antes do HTTP.",
         "env": []
     },
     {
@@ -73758,8 +73770,8 @@
         "type": "comment",
         "z": "local_ai_rtx_recovery_tab",
         "g": "local_ai_rtx_policy_group",
-        "name": "Leitura é passiva. Recovery nunca é automático.",
-        "info": "O Node-RED não executa WSL, Ollama, netsh, iphlpsvc nem SSH. A fonte sensor.codex_rtx_host_reachability_raw apenas confirma se o computador está ligado. Computador desligado silencia alertas; ligado com endpoint indisponível precisa permanecer assim durante a confirmação visual antes de alertar uma vez por incidente.",
+        "name": "Leitura passiva; proxy restrito tem recuperação limitada.",
+        "info": "O Node-RED orquestra o reparo restrito do proxy pelo bridge; o executor não reinicia VPN, IP Helper ou WSL. A fonte sensor.codex_rtx_host_reachability_raw apenas confirma se o computador está ligado. Computador desligado silencia alertas; ligado com endpoint indisponível precisa permanecer assim durante a confirmação visual antes de alertar uma vez por incidente.",
         "x": 500,
         "y": 120,
         "wires": []
@@ -73988,7 +74000,8 @@
         "y": 910,
         "wires": [
             [
-                "local_ai_rtx_available_switch"
+                "local_ai_rtx_available_switch",
+                "rtx_auto_observation_out"
             ]
         ]
     },
@@ -75165,7 +75178,7 @@
         "z": "local_ai_rtx_recovery_tab",
         "g": "local_ai_rtx_health_group",
         "name": "Adaptar condição para alerta de domínio",
-        "func": "const reason = String(msg.rtx_status?.reason || \"unknown\");\nconst testMode = msg.test_mode === true;\nif (!testMode) flow.set(\"local_ai_rtx_alert_incident_open_v1\", true, \"persistent\");\nmsg._global_observer_test = testMode;\nmsg.payload = {\n    test_mode: testMode,\n    observer_kind: \"domain_alert\",\n    incident_key: \"local_ai_rtx_unavailable\",\n    mobile_notification: false,\n    reason,\n};\nmsg.alert = {\n    title: \"RTX indisponível\",\n    message: \"A conexão da RTX está indisponível. A recuperação é manual para não interromper sua VPN: abra a aba recuperacao_rtx e clique em Recuperar endpoint via MCP.\",\n};\ndelete msg.error;\ndelete msg.observer_alert;\nreturn msg;",
+        "func": "const reason = String(msg.rtx_status?.reason || \"unknown\");\nconst testMode = msg.test_mode === true;\nif (!testMode) flow.set(\"local_ai_rtx_alert_incident_open_v1\", true, \"persistent\");\nmsg._global_observer_test = testMode;\nmsg.payload = {\n    test_mode: testMode,\n    observer_kind: \"domain_alert\",\n    incident_key: \"local_ai_rtx_unavailable\",\n    mobile_notification: false,\n    reason,\n};\nmsg.alert = {\n    title: \"RTX indisponível\",\n    message: \"A conexão da RTX está indisponível. O Node-RED verifica o computador e pode reparar somente o proxy, com tentativas limitadas. Veja a aba recuperacao_rtx para o resultado; VPN, WSL e serviços compartilhados não são reiniciados automaticamente.\",\n};\ndelete msg.error;\ndelete msg.observer_alert;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -84423,6 +84436,2270 @@
         "wires": [
             [
                 "zigbee_route_state_mutate"
+            ]
+        ]
+    },
+    {
+        "id": "external_confirmation_test_observation",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "TESTE: observações sem consultar dispositivos",
+        "func": "if (msg._external_command?.test_mode !== true) return null;\nconst expected = msg.expected_state;\nconst observedAt = new Date().toISOString();\nconst ids = ['lampada_varanda', 'lampadas_garagem', 'refletores_jardim', 'abajour_sala_de_estar'];\nmsg.payload = { test_mode: true, observations: Object.fromEntries(ids.map(id => [id,\n    msg._external_test_observations?.[id] ?? { state: expected, observed_at: observedAt }])) };\nmsg._external_lighting_test = true;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3230,
+        "y": 220,
+        "wires": [
+            [
+                "ext_build_alexa_message"
+            ]
+        ]
+    },
+    {
+        "id": "external_confirmation_incident_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Confirmação → canal central",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 3760,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "external_confirmation_state_events",
+        "type": "server-state-changed",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Reobservar destinos após evento de estado",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "switch.lampada_varanda",
+                "switch.lampadas_garagem",
+                "switch.refletores_jardim",
+                "switch.abajour_sala_de_estar"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [],
+        "x": 2900,
+        "y": 520,
+        "wires": [
+            [
+                "external_confirmation_pending"
+            ]
+        ]
+    },
+    {
+        "id": "external_confirmation_pending",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Reconciliar somente intenção pendente",
+        "func": "// State events can reconcile a pending intention; this function never sends a command.\nconst pending = flow.get('external_pending_v1', 'persistent');\nif (!pending || Date.now() < pending.verify_after || !['on', 'off'].includes(pending.expected)) return null;\nmsg.expected_state = pending.expected;\nmsg.external_issued_at = pending.issued_at;\nmsg.external_operation_id = pending.operation_id;\nmsg.source = 'state_reconciliation';\nmsg._external_command = { test_mode: false };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3300,
+        "y": 520,
+        "wires": [
+            [
+                "external_confirmation_read_states"
+            ]
+        ]
+    },
+    {
+        "id": "external_confirmation_read_states",
+        "type": "api-current-state",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Reler estados sem repetir comando",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.lampada_varanda",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"expected_state\":expected_state,\"observations\":{\"lampada_varanda\":{\"state\":$entities(\"switch.lampada_varanda\").state,\"observed_at\":$entities(\"switch.lampada_varanda\").last_reported ? $entities(\"switch.lampada_varanda\").last_reported : $entities(\"switch.lampada_varanda\").last_updated},\"lampadas_garagem\":{\"state\":$entities(\"switch.lampadas_garagem\").state,\"observed_at\":$entities(\"switch.lampadas_garagem\").last_reported ? $entities(\"switch.lampadas_garagem\").last_reported : $entities(\"switch.lampadas_garagem\").last_updated},\"refletores_jardim\":{\"state\":$entities(\"switch.refletores_jardim\").state,\"observed_at\":$entities(\"switch.refletores_jardim\").last_reported ? $entities(\"switch.refletores_jardim\").last_reported : $entities(\"switch.refletores_jardim\").last_updated},\"abajour_sala_de_estar\":{\"state\":$entities(\"switch.abajour_sala_de_estar\").state,\"observed_at\":$entities(\"switch.abajour_sala_de_estar\").last_reported ? $entities(\"switch.abajour_sala_de_estar\").last_reported : $entities(\"switch.abajour_sala_de_estar\").last_updated}}}",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 3700,
+        "y": 520,
+        "wires": [
+            [
+                "external_confirmation_observed_out"
+            ]
+        ]
+    },
+    {
+        "id": "external_confirmation_observed_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Observações → confirmação",
+        "mode": "link",
+        "links": [
+            "external_confirmation_observed_in"
+        ],
+        "x": 3970,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "external_confirmation_observed_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Receber reconciliação",
+        "links": [
+            "external_confirmation_observed_out"
+        ],
+        "x": 3340,
+        "y": 100,
+        "wires": [
+            [
+                "ext_build_alexa_message"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_b8cf10d04947",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Fonte: TESTE ou sensor real?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_b8cf10d04947"
+        ],
+        "x": 1410,
+        "y": 2060,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_b8cf10d04947",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Ler fatos e ciclo persistido",
+        "links": [
+            "notification_hub_wire_out_b8cf10d04947"
+        ],
+        "x": 1800,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_facts"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_58c1b3570deb",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Encurtar: TESTE: eligible",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_58c1b3570deb"
+        ],
+        "x": 3450,
+        "y": 2770,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_58c1b3570deb",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Continuar: Montar somente cenário sintético",
+        "links": [
+            "notification_hub_wire_out_58c1b3570deb"
+        ],
+        "x": 4470,
+        "y": 2820,
+        "wires": [
+            [
+                "rtx_auto_fixture"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_875c02de12d1",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Encurtar: TESTE: offline",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_875c02de12d1"
+        ],
+        "x": 3880,
+        "y": 2770,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_875c02de12d1",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Continuar: Montar somente cenário sintético",
+        "links": [
+            "notification_hub_wire_out_875c02de12d1"
+        ],
+        "x": 4470,
+        "y": 2920,
+        "wires": [
+            [
+                "rtx_auto_fixture"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_f4bc34740958",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Encurtar: TESTE: exhausted",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_f4bc34740958"
+        ],
+        "x": 4310,
+        "y": 2770,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_f4bc34740958",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Continuar: Montar somente cenário sintético",
+        "links": [
+            "notification_hub_wire_out_f4bc34740958"
+        ],
+        "x": 4390,
+        "y": 2820,
+        "wires": [
+            [
+                "rtx_auto_fixture"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_626da45ebf56",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Encurtar: TESTE: unknown",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_626da45ebf56"
+        ],
+        "x": 3450,
+        "y": 2870,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_626da45ebf56",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Continuar: Montar somente cenário sintético",
+        "links": [
+            "notification_hub_wire_out_626da45ebf56"
+        ],
+        "x": 4390,
+        "y": 2920,
+        "wires": [
+            [
+                "rtx_auto_fixture"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_82193f05635a",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Encurtar: TESTE: healthy",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_82193f05635a"
+        ],
+        "x": 3880,
+        "y": 2870,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_82193f05635a",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Continuar: Montar somente cenário sintético",
+        "links": [
+            "notification_hub_wire_out_82193f05635a"
+        ],
+        "x": 4550,
+        "y": 2920,
+        "wires": [
+            [
+                "rtx_auto_fixture"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_6dc82ec8cab3",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Encurtar: TESTE: reset",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_6dc82ec8cab3"
+        ],
+        "x": 4310,
+        "y": 2870,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_6dc82ec8cab3",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Continuar: Montar somente cenário sintético",
+        "links": [
+            "notification_hub_wire_out_6dc82ec8cab3"
+        ],
+        "x": 4590,
+        "y": 3020,
+        "wires": [
+            [
+                "rtx_auto_fixture"
+            ]
+        ]
+    },
+    {
+        "id": "rtx_auto_policy_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "5. Recuperação automática restrita — parâmetros",
+        "nodes": [
+            "rtx_auto_policy_confirmation_seconds",
+            "rtx_auto_policy_retry_seconds",
+            "rtx_auto_policy_max_attempts",
+            "rtx_auto_policy_freshness_seconds",
+            "rtx_auto_policy_validate"
+        ],
+        "x": 64,
+        "y": 2000,
+        "w": 800,
+        "h": 430,
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.25"
+        }
+    },
+    {
+        "id": "rtx_auto_gates_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "6. Node-RED decide: observação recente, confirmação e orçamento",
+        "nodes": [
+            "rtx_auto_observation_in",
+            "rtx_auto_test_switch",
+            "rtx_auto_host_source",
+            "rtx_auto_facts",
+            "rtx_auto_policy_valid",
+            "rtx_auto_health_fresh",
+            "rtx_auto_host_fresh",
+            "rtx_auto_online",
+            "rtx_auto_available",
+            "rtx_auto_after_attempt",
+            "rtx_auto_reset_out",
+            "rtx_auto_known_failure",
+            "rtx_auto_row2_out",
+            "rtx_auto_row2_in",
+            "rtx_auto_pending",
+            "rtx_auto_blocked",
+            "rtx_auto_confirmed",
+            "rtx_auto_budget",
+            "rtx_auto_interval",
+            "rtx_auto_reserve",
+            "rtx_auto_effect_out",
+            "rtx_auto_hold_out",
+            "rtx_auto_hold_in",
+            "rtx_auto_hold",
+            "rtx_auto_pause_out",
+            "rtx_auto_pause_in",
+            "rtx_auto_pause",
+            "rtx_auto_reset_in",
+            "rtx_auto_reset",
+            "rtx_auto_fixture_in",
+            "notification_hub_wire_out_b8cf10d04947",
+            "notification_hub_wire_in_b8cf10d04947",
+            "notification_hub_wire_out_e7dd5ea201a7",
+            "notification_hub_wire_in_e7dd5ea201a7",
+            "notification_hub_wire_out_4f3f61743058",
+            "notification_hub_wire_in_4f3f61743058",
+            "notification_hub_wire_out_1eb917274375",
+            "notification_hub_wire_in_1eb917274375",
+            "notification_hub_wire_out_a67740f424fc",
+            "notification_hub_wire_in_a67740f424fc",
+            "notification_hub_wire_out_9333c38934f7",
+            "notification_hub_wire_in_9333c38934f7",
+            "notification_hub_wire_out_2b6b839417c6",
+            "notification_hub_wire_in_2b6b839417c6",
+            "notification_hub_wire_out_4c6f7a2aac12",
+            "notification_hub_wire_in_4c6f7a2aac12",
+            "notification_hub_wire_out_1d300fb3b9aa",
+            "notification_hub_wire_in_1d300fb3b9aa",
+            "notification_hub_wire_out_18aa3d2f2dd5",
+            "notification_hub_wire_in_18aa3d2f2dd5",
+            "notification_hub_wire_out_989f80929121",
+            "notification_hub_wire_in_989f80929121",
+            "notification_hub_wire_out_c65cf6f98f3f",
+            "notification_hub_wire_in_c65cf6f98f3f"
+        ],
+        "x": 920,
+        "y": 2000,
+        "w": 4800,
+        "h": 650,
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.25"
+        }
+    },
+    {
+        "id": "rtx_auto_effect_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "7. Efeito único: restaurar somente o proxy; preservar VPN",
+        "nodes": [
+            "rtx_auto_effect_in",
+            "rtx_auto_final_guard",
+            "rtx_auto_request",
+            "rtx_auto_http",
+            "rtx_auto_result",
+            "rtx_auto_result_in_out",
+            "rtx_auto_result_in",
+            "rtx_auto_dry_out",
+            "rtx_auto_catch",
+            "rtx_auto_transport_failure",
+            "rtx_auto_error_out",
+            "rtx_auto_error_in",
+            "rtx_auto_terminal_out"
+        ],
+        "x": 64,
+        "y": 2690,
+        "w": 2900,
+        "h": 400,
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.25"
+        }
+    },
+    {
+        "id": "rtx_auto_tests_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "8. Teste integral — sem SSH, rede ou notificações",
+        "nodes": [
+            "rtx_auto_test_eligible",
+            "rtx_auto_test_offline",
+            "rtx_auto_test_exhausted",
+            "rtx_auto_test_unknown",
+            "rtx_auto_test_healthy",
+            "rtx_auto_test_reset",
+            "rtx_auto_fixture",
+            "rtx_auto_fixture_out",
+            "rtx_auto_dry_in",
+            "rtx_auto_dry",
+            "rtx_auto_test_result_out",
+            "rtx_auto_terminal_in",
+            "rtx_auto_dry_terminal",
+            "notification_hub_wire_out_58c1b3570deb",
+            "notification_hub_wire_in_58c1b3570deb",
+            "notification_hub_wire_out_875c02de12d1",
+            "notification_hub_wire_in_875c02de12d1",
+            "notification_hub_wire_out_f4bc34740958",
+            "notification_hub_wire_in_f4bc34740958",
+            "notification_hub_wire_out_626da45ebf56",
+            "notification_hub_wire_in_626da45ebf56",
+            "notification_hub_wire_out_82193f05635a",
+            "notification_hub_wire_in_82193f05635a",
+            "notification_hub_wire_out_6dc82ec8cab3",
+            "notification_hub_wire_in_6dc82ec8cab3"
+        ],
+        "x": 3020,
+        "y": 2690,
+        "w": 2700,
+        "h": 400,
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.25"
+        }
+    },
+    {
+        "id": "rtx_auto_observation_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Saúde → recuperação restrita",
+        "x": 1015,
+        "y": 1010,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_observation_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_observation_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Receber observação",
+        "x": 980,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_test_switch"
+            ]
+        ],
+        "links": [
+            "rtx_auto_observation_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_test_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Fonte: TESTE ou sensor real?",
+        "x": 1230,
+        "y": 2060,
+        "wires": [
+            [
+                "notification_hub_wire_out_b8cf10d04947"
+            ],
+            [
+                "rtx_auto_host_source"
+            ]
+        ],
+        "property": "test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_host_source",
+        "type": "api-current-state",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "FONTE: estado e horário do computador",
+        "x": 1600,
+        "y": 2130,
+        "wires": [
+            [
+                "rtx_auto_facts"
+            ]
+        ],
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.codex_rtx_host_reachability_raw",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "rtx_host_entity",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false
+    },
+    {
+        "id": "rtx_auto_facts",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Ler fatos e ciclo persistido",
+        "x": 1980,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_policy_valid"
+            ]
+        ],
+        "func": "// Adapt observations and persisted lifecycle; visual switches own all thresholds.\nconst test = msg.test_mode === true || msg._rtx_test === true;\nconst key = test ? 'rtx_auto_lifecycle_test' : 'rtx_auto_lifecycle_v1';\nconst store = test ? undefined : 'persistent';\nconst now = Number(msg.rtx_now) || Date.now();\nlet state = flow.get(key,store) || {attempts:0,first_failure_at:now,pending:false,blocked:false,last_attempt_at:0};\nconst status = msg.rtx_status || {};\nconst healthAt = Date.parse(status.checked_at);\nconst host = msg.rtx_host_entity || {};\nconst hostAt = Date.parse(host.attributes?.collected_at || host.last_updated);\nconst policy = flow.get('rtx_auto_policy_v1','persistent') || {};\nmsg.auto = {\n    ...state, now, policy,\n    endpoint_available: status.available === true,\n    known_failure: status.state === 'LOCAL_AI_UNAVAILABLE',\n    host_online: host.state === 'online',\n    health_age_seconds: Number.isFinite(healthAt) ? Math.max(0,(now-healthAt)/1000) : 1e9,\n    host_age_seconds: Number.isFinite(hostAt) ? Math.max(0,(now-hostAt)/1000) : 1e9,\n    observed_after_attempt: healthAt > state.last_attempt_at,\n    failure_seconds: Math.max(0,(now-state.first_failure_at)/1000),\n    since_attempt_seconds: (now-state.last_attempt_at)/1000,\n};\nflow.set(key,state,store);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_policy_valid",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Política completa?",
+        "x": 2340,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_health_fresh"
+            ],
+            [
+                "notification_hub_wire_out_e7dd5ea201a7"
+            ]
+        ],
+        "property": "auto.policy.complete",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_health_fresh",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Saúde recente?",
+        "x": 2700,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_host_fresh"
+            ],
+            [
+                "notification_hub_wire_out_4f3f61743058"
+            ]
+        ],
+        "property": "auto.health_age_seconds",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lte",
+                "v": "auto.policy.freshness_seconds",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_host_fresh",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Estado do host recente?",
+        "x": 3060,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_online"
+            ],
+            [
+                "notification_hub_wire_out_1eb917274375"
+            ]
+        ],
+        "property": "auto.host_age_seconds",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lte",
+                "v": "auto.policy.freshness_seconds",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_online",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Computador online?",
+        "x": 3420,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_available"
+            ],
+            [
+                "notification_hub_wire_out_a67740f424fc"
+            ]
+        ],
+        "property": "auto.host_online",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_available",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Endpoint responde?",
+        "x": 3780,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_after_attempt"
+            ],
+            [
+                "rtx_auto_known_failure"
+            ]
+        ],
+        "property": "auto.endpoint_available",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_after_attempt",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Observação posterior à tentativa?",
+        "x": 4140,
+        "y": 2060,
+        "wires": [
+            [
+                "rtx_auto_reset_out"
+            ],
+            [
+                "notification_hub_wire_out_9333c38934f7"
+            ]
+        ],
+        "property": "auto.observed_after_attempt",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_reset_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Recuperou → encerrar ciclo",
+        "x": 4410,
+        "y": 2060,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_reset_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_known_failure",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Falha confirmada pela fonte?",
+        "x": 3780,
+        "y": 2180,
+        "wires": [
+            [
+                "rtx_auto_row2_out"
+            ],
+            [
+                "notification_hub_wire_out_2b6b839417c6"
+            ]
+        ],
+        "property": "auto.known_failure",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_row2_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Falha → gates de execução",
+        "x": 4020,
+        "y": 2180,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_row2_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_row2_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Receber falha",
+        "x": 980,
+        "y": 2310,
+        "wires": [
+            [
+                "rtx_auto_pending"
+            ]
+        ],
+        "links": [
+            "rtx_auto_row2_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_pending",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Sem operação pendente?",
+        "x": 1230,
+        "y": 2310,
+        "wires": [
+            [
+                "rtx_auto_blocked"
+            ],
+            [
+                "notification_hub_wire_out_4c6f7a2aac12"
+            ]
+        ],
+        "property": "auto.pending",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "false"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_blocked",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Resultado anterior conhecido?",
+        "x": 1590,
+        "y": 2310,
+        "wires": [
+            [
+                "rtx_auto_confirmed"
+            ],
+            [
+                "notification_hub_wire_out_1d300fb3b9aa"
+            ]
+        ],
+        "property": "auto.blocked",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "false"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_confirmed",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Persistiu pela confirmação?",
+        "x": 1950,
+        "y": 2310,
+        "wires": [
+            [
+                "rtx_auto_budget"
+            ],
+            [
+                "notification_hub_wire_out_18aa3d2f2dd5"
+            ]
+        ],
+        "property": "auto.failure_seconds",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "auto.policy.confirmation_seconds",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_budget",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Ainda há tentativas?",
+        "x": 2310,
+        "y": 2310,
+        "wires": [
+            [
+                "rtx_auto_interval"
+            ],
+            [
+                "notification_hub_wire_out_989f80929121"
+            ]
+        ],
+        "property": "auto.attempts",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lt",
+                "v": "auto.policy.max_attempts",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_interval",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Intervalo mínimo cumprido?",
+        "x": 2670,
+        "y": 2310,
+        "wires": [
+            [
+                "rtx_auto_reserve"
+            ],
+            [
+                "notification_hub_wire_out_c65cf6f98f3f"
+            ]
+        ],
+        "property": "auto.since_attempt_seconds",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "auto.policy.retry_seconds",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "rtx_auto_reserve",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Reservar operação antes do efeito",
+        "x": 3070,
+        "y": 2310,
+        "wires": [
+            [
+                "rtx_auto_effect_out"
+            ]
+        ],
+        "func": "const test = msg.test_mode === true || msg._rtx_test === true;\nconst key = test ? 'rtx_auto_lifecycle_test' : 'rtx_auto_lifecycle_v1';\nconst store = test ? undefined : 'persistent';\nconst previous = flow.get(key,store) || {};\n// Recheck reservation at the effect boundary to reject queued duplicates.\nif (previous.pending || previous.blocked) return null;\nconst now = Number(msg.rtx_now) || Date.now();\nconst state = {...previous,attempts:(previous.attempts || 0)+1,pending:true,last_attempt_at:now};\nstate.operation_id = `rtx_${now}_${state.attempts}`;\nflow.set(key,state,store);\nmsg.operation_id = state.operation_id;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_effect_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Operação reservada → gate final",
+        "x": 3360,
+        "y": 2310,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_effect_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_hold_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Aguardar ou reconciliar",
+        "x": 3600,
+        "y": 2450,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_hold_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_hold_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Receber espera",
+        "x": 3820,
+        "y": 2450,
+        "wires": [
+            [
+                "rtx_auto_hold"
+            ]
+        ],
+        "links": [
+            "rtx_auto_hold_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_hold",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Estado: orçamento, cooldown ou bloqueio",
+        "x": 4150,
+        "y": 2450,
+        "wires": [],
+        "func": "node.status({fill:'yellow',shape:'ring',text:'Aguardando gate visual; nenhuma ação enviada'});return null;",
+        "outputs": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_pause_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Fonte incerta/offline → nova confirmação",
+        "x": 4800,
+        "y": 2180,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_pause_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_pause_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Receber interrupção",
+        "x": 4800,
+        "y": 2400,
+        "wires": [
+            [
+                "rtx_auto_pause"
+            ]
+        ],
+        "links": [
+            "rtx_auto_pause_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_pause",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Reiniciar só janela de confirmação",
+        "x": 5220,
+        "y": 2400,
+        "wires": [],
+        "func": "const test=msg.test_mode===true||msg._rtx_test===true;const key=test?'rtx_auto_lifecycle_test':'rtx_auto_lifecycle_v1';const store=test?undefined:'persistent';const old=flow.get(key,store)||{};flow.set(key,{...old,first_failure_at:Number(msg.rtx_now)||Date.now()},store);return null;",
+        "outputs": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_reset_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Receber recuperação",
+        "x": 4800,
+        "y": 2520,
+        "wires": [
+            [
+                "rtx_auto_reset"
+            ]
+        ],
+        "links": [
+            "rtx_auto_reset_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_reset",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encerrar incidente recuperado",
+        "x": 5200,
+        "y": 2520,
+        "wires": [],
+        "func": "const test = msg.test_mode === true || msg._rtx_test === true;\nflow.set(test ? 'rtx_auto_lifecycle_test' : 'rtx_auto_lifecycle_v1', {\n    attempts:0,first_failure_at:Number(msg.rtx_now)||Date.now(),pending:false,blocked:false,last_attempt_at:0,\n}, test ? undefined : 'persistent');\nnode.status({fill:'green',shape:'dot',text:'Endpoint confirmado; orçamento de reparo restaurado'});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_policy_confirmation_seconds",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_policy_group",
+        "name": "Confirmar falha — 90 s",
+        "x": 310,
+        "y": 2070,
+        "wires": [
+            [
+                "rtx_auto_policy_validate"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "topic": "confirmation_seconds",
+        "payload": "90",
+        "payloadType": "num",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 1
+    },
+    {
+        "id": "rtx_auto_policy_retry_seconds",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_policy_group",
+        "name": "Intervalo entre tentativas — 300 s",
+        "x": 310,
+        "y": 2155,
+        "wires": [
+            [
+                "rtx_auto_policy_validate"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "topic": "retry_seconds",
+        "payload": "300",
+        "payloadType": "num",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 1.1
+    },
+    {
+        "id": "rtx_auto_policy_max_attempts",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_policy_group",
+        "name": "Limite por incidente — 2",
+        "x": 310,
+        "y": 2240,
+        "wires": [
+            [
+                "rtx_auto_policy_validate"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "topic": "max_attempts",
+        "payload": "2",
+        "payloadType": "num",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 1.2
+    },
+    {
+        "id": "rtx_auto_policy_freshness_seconds",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_policy_group",
+        "name": "Idade máxima das fontes — 120 s",
+        "x": 310,
+        "y": 2325,
+        "wires": [
+            [
+                "rtx_auto_policy_validate"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "topic": "freshness_seconds",
+        "payload": "120",
+        "payloadType": "num",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 1.3
+    },
+    {
+        "id": "rtx_auto_policy_validate",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_policy_group",
+        "name": "Validar e preservar último valor",
+        "x": 650,
+        "y": 2210,
+        "wires": [],
+        "func": "const limits = { confirmation_seconds: [60,600], retry_seconds: [120,1800], max_attempts: [1,3], freshness_seconds: [60,120] };\nconst rule = limits[msg.topic];\nconst value = Number(msg.payload);\nif (!rule || !Number.isInteger(value) || value < rule[0] || value > rule[1]) {\n    node.status({fill:'red',shape:'ring',text:'Parâmetro rejeitado; último válido preservado'});\n    return null;\n}\nconst policy = flow.get('rtx_auto_policy_v1','persistent') || {};\npolicy[msg.topic] = value;\npolicy.complete = Object.keys(limits).every(k => Number.isFinite(policy[k]));\nflow.set('rtx_auto_policy_v1',policy,'persistent');\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_effect_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Receber reserva",
+        "x": 120,
+        "y": 2760,
+        "wires": [
+            [
+                "rtx_auto_final_guard"
+            ]
+        ],
+        "links": [
+            "rtx_auto_effect_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_final_guard",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Gate final: produção ou dry-run",
+        "x": 390,
+        "y": 2760,
+        "wires": [
+            [
+                "rtx_auto_request"
+            ],
+            [
+                "rtx_auto_dry_out"
+            ]
+        ],
+        "func": "if (msg.test_mode === true || msg._rtx_test === true) {\n    msg.payload = { ...(msg.payload || {}), simulated: true, dispatched: false, side_effect: \"mcp_recovery\" };\n    return [null, msg];\n}\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_request",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Adaptar operação autenticada",
+        "x": 790,
+        "y": 2760,
+        "wires": [
+            [
+                "rtx_auto_http"
+            ],
+            [
+                "rtx_auto_result_in_out"
+            ]
+        ],
+        "func": "const token = env.get('BRIDGE_TOKEN');\nif (!token) { msg.payload={outcome:'unknown',reason:'bridge_token_missing'}; return [null,msg]; }\nmsg.method='POST';\nmsg.url='http://ai-bridge:8099/local-ai/repair-proxy';\nmsg.headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json'};\nmsg.payload={operation_id:msg.operation_id};\nreturn [msg,null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_http",
+        "type": "http request",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "EFEITO: somente proxy restrito",
+        "x": 1180,
+        "y": 2760,
+        "wires": [
+            [
+                "rtx_auto_result"
+            ]
+        ],
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "requestTimeout": "35000"
+    },
+    {
+        "id": "rtx_auto_result",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Registrar resultado; não presumir saúde",
+        "x": 1610,
+        "y": 2760,
+        "wires": [
+            [
+                "rtx_auto_terminal_out"
+            ]
+        ],
+        "func": "const test = msg.test_mode === true || msg._rtx_test === true;\nconst key = test ? 'rtx_auto_lifecycle_test' : 'rtx_auto_lifecycle_v1';\nconst store = test ? undefined : 'persistent';\nconst previous = flow.get(key,store) || {};\nlet result = msg.payload;\nif (typeof result === 'string') { try { result=JSON.parse(result); } catch { result={}; } }\nconst correlated = result?.operation_id === previous.operation_id || test;\nconst known = correlated && ['ready','failed'].includes(result?.outcome);\nflow.set(key,{...previous,pending:false,blocked:!known,last_outcome:known ? result.outcome : 'unknown'},store);\n// Never reset on command acceptance: only the subsequent fresh health observation does that.\nmsg.payload={operation_id:previous.operation_id,outcome:known?result.outcome:'unknown',reason:known?result.reason:'result_requires_reconciliation'};\nnode.status({fill:known&&result.outcome==='ready'?'green':'yellow',shape:'ring',text:msg.payload.reason});\nnode.log('RTX_SAFE_PROXY_RESULT '+JSON.stringify(msg.payload));\nreturn test ? msg : null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_result_in_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Falha local → resultado",
+        "x": 790,
+        "y": 2890,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_result_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_result_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Receber falha ou dry-run",
+        "x": 1400,
+        "y": 2890,
+        "wires": [
+            [
+                "rtx_auto_result"
+            ]
+        ],
+        "links": [
+            "rtx_auto_result_in_out",
+            "rtx_auto_test_result_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_dry_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "TESTE → sem efeito",
+        "x": 390,
+        "y": 2950,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_dry_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_catch",
+        "type": "catch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Capturar falha HTTP deste reparo",
+        "x": 2100,
+        "y": 2760,
+        "wires": [
+            [
+                "rtx_auto_transport_failure"
+            ]
+        ],
+        "scope": [
+            "rtx_auto_http"
+        ],
+        "uncaught": false
+    },
+    {
+        "id": "rtx_auto_transport_failure",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Resultado desconhecido: bloquear repetição",
+        "x": 2480,
+        "y": 2760,
+        "wires": [
+            [
+                "rtx_auto_error_out"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"outcome\":\"unknown\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "rtx_auto_error_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Erro → registrar bloqueio",
+        "x": 2700,
+        "y": 2890,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_error_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_error_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Receber erro",
+        "x": 1630,
+        "y": 2990,
+        "wires": [
+            [
+                "rtx_auto_result"
+            ]
+        ],
+        "links": [
+            "rtx_auto_error_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_test_eligible",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE: eligible",
+        "x": 3270,
+        "y": 2770,
+        "wires": [
+            [
+                "notification_hub_wire_out_58c1b3570deb"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "eligible",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1
+    },
+    {
+        "id": "rtx_auto_test_offline",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE: offline",
+        "x": 3700,
+        "y": 2770,
+        "wires": [
+            [
+                "notification_hub_wire_out_875c02de12d1"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "offline",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1
+    },
+    {
+        "id": "rtx_auto_test_exhausted",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE: exhausted",
+        "x": 4130,
+        "y": 2770,
+        "wires": [
+            [
+                "notification_hub_wire_out_f4bc34740958"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "exhausted",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1
+    },
+    {
+        "id": "rtx_auto_test_unknown",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE: unknown",
+        "x": 3270,
+        "y": 2870,
+        "wires": [
+            [
+                "notification_hub_wire_out_626da45ebf56"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "unknown",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1
+    },
+    {
+        "id": "rtx_auto_test_healthy",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE: healthy",
+        "x": 3700,
+        "y": 2870,
+        "wires": [
+            [
+                "notification_hub_wire_out_82193f05635a"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "healthy",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1
+    },
+    {
+        "id": "rtx_auto_test_reset",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE: reset",
+        "x": 4130,
+        "y": 2870,
+        "wires": [
+            [
+                "notification_hub_wire_out_6dc82ec8cab3"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "payload": "reset",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1
+    },
+    {
+        "id": "rtx_auto_fixture",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Montar somente cenário sintético",
+        "x": 4650,
+        "y": 2820,
+        "wires": [
+            [
+                "rtx_auto_fixture_out"
+            ]
+        ],
+        "func": "msg.test_mode=true;\nmsg._rtx_test=true;\nmsg.rtx_now=Date.now();\nmsg.rtx_status={available:msg.payload==='healthy',state:msg.payload==='healthy'?'LOCAL_AI_AVAILABLE':'LOCAL_AI_UNAVAILABLE',checked_at:new Date(msg.rtx_now).toISOString()};\nmsg.rtx_host_entity={state:msg.payload==='offline'?'offline':'online',last_updated:new Date(msg.rtx_now).toISOString()};\nif(msg.payload==='reset') { flow.set('rtx_auto_lifecycle_test',undefined);return null; }\n// Advance only the isolated synthetic lifecycle to exercise the real visual gates.\nif(msg.payload==='eligible') flow.set('rtx_auto_lifecycle_test',{attempts:0,pending:false,blocked:false,first_failure_at:msg.rtx_now-700000,last_attempt_at:0});\nif(msg.payload==='exhausted') flow.set('rtx_auto_lifecycle_test',{attempts:3,pending:false,blocked:false,first_failure_at:msg.rtx_now-700000,last_attempt_at:0});\nif(msg.payload==='unknown') flow.set('rtx_auto_lifecycle_test',{attempts:1,pending:false,blocked:true,first_failure_at:msg.rtx_now-700000,last_attempt_at:0});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_fixture_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE → mesmo caminho decisório",
+        "x": 4940,
+        "y": 2820,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_fixture_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_fixture_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Receber cenário sintético",
+        "x": 980,
+        "y": 2180,
+        "wires": [
+            [
+                "rtx_auto_test_switch"
+            ]
+        ],
+        "links": [
+            "rtx_auto_fixture_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_dry_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Receber efeito simulado",
+        "x": 3120,
+        "y": 3000,
+        "wires": [
+            [
+                "rtx_auto_dry"
+            ]
+        ],
+        "links": [
+            "rtx_auto_dry_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_dry",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE FINAL: proxy não acionado",
+        "x": 3460,
+        "y": 3000,
+        "wires": [
+            [
+                "rtx_auto_test_result_out"
+            ]
+        ],
+        "func": "msg.payload={operation_id:msg.operation_id,outcome:'failed',reason:'dry_run',simulated:true,dispatched:false};\nnode.log('RTX_SAFE_PROXY_DRY_RUN '+JSON.stringify(msg.payload));\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "rtx_auto_test_result_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Simulação → resultado real",
+        "x": 3760,
+        "y": 3000,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_result_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_terminal_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_effect_group",
+        "name": "Resultado TESTE → terminal",
+        "x": 1870,
+        "y": 2760,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "rtx_auto_terminal_in"
+        ]
+    },
+    {
+        "id": "rtx_auto_terminal_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "Receber resultado TESTE",
+        "x": 4020,
+        "y": 3000,
+        "wires": [
+            [
+                "rtx_auto_dry_terminal"
+            ]
+        ],
+        "links": [
+            "rtx_auto_terminal_out"
+        ]
+    },
+    {
+        "id": "rtx_auto_dry_terminal",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_tests_group",
+        "name": "TESTE FINAL: nenhum efeito enviado",
+        "x": 4400,
+        "y": 3000,
+        "wires": [],
+        "func": "msg.payload={...msg.payload,simulated:true,dispatched:false};node.log('RTX_AUTO_DRY_TERMINAL '+JSON.stringify(msg.payload));return null;",
+        "outputs": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "notification_hub_wire_out_e7dd5ea201a7",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Política completa?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_e7dd5ea201a7"
+        ],
+        "x": 2520,
+        "y": 2060,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_e7dd5ea201a7",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Fonte incerta/offline → nova confirmação",
+        "links": [
+            "notification_hub_wire_out_e7dd5ea201a7"
+        ],
+        "x": 4620,
+        "y": 2180,
+        "wires": [
+            [
+                "rtx_auto_pause_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_4f3f61743058",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Saúde recente?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_4f3f61743058"
+        ],
+        "x": 2880,
+        "y": 2060,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_4f3f61743058",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Fonte incerta/offline → nova confirmação",
+        "links": [
+            "notification_hub_wire_out_4f3f61743058"
+        ],
+        "x": 4620,
+        "y": 2280,
+        "wires": [
+            [
+                "rtx_auto_pause_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_1eb917274375",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Estado do host recente?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_1eb917274375"
+        ],
+        "x": 3240,
+        "y": 2060,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_1eb917274375",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Fonte incerta/offline → nova confirmação",
+        "links": [
+            "notification_hub_wire_out_1eb917274375"
+        ],
+        "x": 4620,
+        "y": 2080,
+        "wires": [
+            [
+                "rtx_auto_pause_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_a67740f424fc",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Computador online?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_a67740f424fc"
+        ],
+        "x": 3600,
+        "y": 2060,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_a67740f424fc",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Fonte incerta/offline → nova confirmação",
+        "links": [
+            "notification_hub_wire_out_a67740f424fc"
+        ],
+        "x": 4620,
+        "y": 2380,
+        "wires": [
+            [
+                "rtx_auto_pause_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_9333c38934f7",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Observação posterior à tentativa?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_9333c38934f7"
+        ],
+        "x": 4320,
+        "y": 2060,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_9333c38934f7",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Fonte incerta/offline → nova confirmação",
+        "links": [
+            "notification_hub_wire_out_9333c38934f7"
+        ],
+        "x": 4620,
+        "y": 2480,
+        "wires": [
+            [
+                "rtx_auto_pause_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_2b6b839417c6",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Falha confirmada pela fonte?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_2b6b839417c6"
+        ],
+        "x": 3960,
+        "y": 2180,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_2b6b839417c6",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Fonte incerta/offline → nova confirmação",
+        "links": [
+            "notification_hub_wire_out_2b6b839417c6"
+        ],
+        "x": 4540,
+        "y": 2180,
+        "wires": [
+            [
+                "rtx_auto_pause_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_4c6f7a2aac12",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Sem operação pendente?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_4c6f7a2aac12"
+        ],
+        "x": 1410,
+        "y": 2310,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_4c6f7a2aac12",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Aguardar ou reconciliar",
+        "links": [
+            "notification_hub_wire_out_4c6f7a2aac12"
+        ],
+        "x": 3420,
+        "y": 2450,
+        "wires": [
+            [
+                "rtx_auto_hold_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_1d300fb3b9aa",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Resultado anterior conhecido?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_1d300fb3b9aa"
+        ],
+        "x": 1770,
+        "y": 2310,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_1d300fb3b9aa",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Aguardar ou reconciliar",
+        "links": [
+            "notification_hub_wire_out_1d300fb3b9aa"
+        ],
+        "x": 3420,
+        "y": 2550,
+        "wires": [
+            [
+                "rtx_auto_hold_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_18aa3d2f2dd5",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Persistiu pela confirmação?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_18aa3d2f2dd5"
+        ],
+        "x": 2130,
+        "y": 2310,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_18aa3d2f2dd5",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Aguardar ou reconciliar",
+        "links": [
+            "notification_hub_wire_out_18aa3d2f2dd5"
+        ],
+        "x": 3420,
+        "y": 2350,
+        "wires": [
+            [
+                "rtx_auto_hold_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_989f80929121",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Ainda há tentativas?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_989f80929121"
+        ],
+        "x": 2490,
+        "y": 2310,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_989f80929121",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Aguardar ou reconciliar",
+        "links": [
+            "notification_hub_wire_out_989f80929121"
+        ],
+        "x": 3420,
+        "y": 2250,
+        "wires": [
+            [
+                "rtx_auto_hold_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_c65cf6f98f3f",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Encurtar: Intervalo mínimo cumprido?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_c65cf6f98f3f"
+        ],
+        "x": 2850,
+        "y": 2310,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_c65cf6f98f3f",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "rtx_auto_gates_group",
+        "name": "Continuar: Aguardar ou reconciliar",
+        "links": [
+            "notification_hub_wire_out_c65cf6f98f3f"
+        ],
+        "x": 3420,
+        "y": 2150,
+        "wires": [
+            [
+                "rtx_auto_hold_out"
             ]
         ]
     }

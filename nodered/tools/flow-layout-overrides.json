@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Geometria canônica baseada nas edições visuais concluídas em 2026-09-12. Grupos são compactados com margem uniforme; lógica e ligações permanecem nos geradores canônicos.",
+  "description": "Geometria can\u00f4nica baseada nas edi\u00e7\u00f5es visuais conclu\u00eddas em 2026-09-12. Grupos s\u00e3o compactados com margem uniforme; l\u00f3gica e liga\u00e7\u00f5es permanecem nos geradores can\u00f4nicos.",
   "canvases": {
     "recorder_retention_tab": {
       "label": "recorder_retention",
@@ -8314,28 +8314,94 @@
           "w": 1580,
           "h": 650
         },
-        "operations_memory_pressure_accepted_in": { "x": 150, "y": 1950 },
-        "operations_memory_failure_in": { "x": 150, "y": 2020 },
-        "operations_memory_recovered_in": { "x": 150, "y": 2130 },
-        "operations_memory_pressure_decision_in": { "x": 150, "y": 2260 },
-        "operations_memory_pressure": { "x": 430, "y": 1950 },
-        "operations_memory_failure": { "x": 430, "y": 2020 },
-        "operations_memory_resolved": { "x": 430, "y": 2090 },
-        "operations_memory_failure_resolved": { "x": 430, "y": 2160 },
-        "operations_memory_adapt": { "x": 790, "y": 2055 },
-        "operations_memory_lifecycle": { "x": 1130, "y": 2055 },
-        "operations_memory_alert_out": { "x": 1500, "y": 2055 },
-        "operations_memory_pressure_gate": { "x": 430, "y": 2260 },
-        "operations_memory_pressure_accepted_out": { "x": 700, "y": 2260 },
-        "operations_memory_test_reset": { "x": 790, "y": 2330 },
-        "operations_memory_reset": { "x": 1130, "y": 2330 },
-        "operations_memory_test_pressure": { "x": 430, "y": 2400 },
-        "operations_memory_instructions": { "x": 950, "y": 2470 },
-        "operations_memory_failure_out": { "x": 3000, "y": 1450 },
-        "operations_memory_recovered_out": { "x": 3100, "y": 1800 },
-        "operations_memory_pressure_decision_out": { "x": 2900, "y": 1800 }
-        ,"notification_hub_wire_out_f80d2f3e5783": { "x": 700, "y": 2400 }
-        ,"notification_hub_wire_in_f80d2f3e5783": { "x": 110, "y": 1780 }
+        "operations_memory_pressure_accepted_in": {
+          "x": 150,
+          "y": 1950
+        },
+        "operations_memory_failure_in": {
+          "x": 150,
+          "y": 2020
+        },
+        "operations_memory_recovered_in": {
+          "x": 150,
+          "y": 2130
+        },
+        "operations_memory_pressure_decision_in": {
+          "x": 150,
+          "y": 2260
+        },
+        "operations_memory_pressure": {
+          "x": 430,
+          "y": 1950
+        },
+        "operations_memory_failure": {
+          "x": 430,
+          "y": 2020
+        },
+        "operations_memory_resolved": {
+          "x": 430,
+          "y": 2090
+        },
+        "operations_memory_failure_resolved": {
+          "x": 430,
+          "y": 2160
+        },
+        "operations_memory_adapt": {
+          "x": 790,
+          "y": 2055
+        },
+        "operations_memory_lifecycle": {
+          "x": 1130,
+          "y": 2055
+        },
+        "operations_memory_alert_out": {
+          "x": 1500,
+          "y": 2055
+        },
+        "operations_memory_pressure_gate": {
+          "x": 430,
+          "y": 2260
+        },
+        "operations_memory_pressure_accepted_out": {
+          "x": 700,
+          "y": 2260
+        },
+        "operations_memory_test_reset": {
+          "x": 790,
+          "y": 2330
+        },
+        "operations_memory_reset": {
+          "x": 1130,
+          "y": 2330
+        },
+        "operations_memory_test_pressure": {
+          "x": 430,
+          "y": 2400
+        },
+        "operations_memory_instructions": {
+          "x": 950,
+          "y": 2470
+        },
+        "operations_memory_failure_out": {
+          "x": 3000,
+          "y": 1450
+        },
+        "operations_memory_recovered_out": {
+          "x": 3100,
+          "y": 1800
+        },
+        "operations_memory_pressure_decision_out": {
+          "x": 2900,
+          "y": 1800
+        },
+        "notification_hub_wire_out_f80d2f3e5783": {
+          "x": 700,
+          "y": 2400
+        },
+        "notification_hub_wire_in_f80d2f3e5783": {
+          "x": 110,
+          "y": 1780
+        }
       },
       "geometry_final": true
     },
@@ -10322,12 +10388,30 @@
           "x": 840,
           "y": 1820
         },
-        "notification_hub_wire_out_347481401649": {"x":3965,"y":1710},
-        "notification_hub_wire_in_347481401649": {"x":4010,"y":1740},
-        "notification_hub_wire_out_a3cbc62f0aa2": {"x":3965,"y":1770},
-        "notification_hub_wire_in_a3cbc62f0aa2": {"x":4010,"y":1780},
-        "notification_hub_wire_out_ed9f1d372540": {"x":3965,"y":1830},
-        "notification_hub_wire_in_ed9f1d372540": {"x":4010,"y":1820},
+        "notification_hub_wire_out_347481401649": {
+          "x": 3965,
+          "y": 1710
+        },
+        "notification_hub_wire_in_347481401649": {
+          "x": 4010,
+          "y": 1740
+        },
+        "notification_hub_wire_out_a3cbc62f0aa2": {
+          "x": 3965,
+          "y": 1770
+        },
+        "notification_hub_wire_in_a3cbc62f0aa2": {
+          "x": 4010,
+          "y": 1780
+        },
+        "notification_hub_wire_out_ed9f1d372540": {
+          "x": 3965,
+          "y": 1830
+        },
+        "notification_hub_wire_in_ed9f1d372540": {
+          "x": 4010,
+          "y": 1820
+        },
         "internet_remote_facts_read": {
           "x": 850,
           "y": 1700
@@ -13241,6 +13325,10 @@
         "notification_hub_wire_in_c2a9b8b76be3": {
           "x": 590,
           "y": 190
+        },
+        "rtx_auto_observation_out": {
+          "x": 1015,
+          "y": 1010
         }
       },
       "geometry_final": true

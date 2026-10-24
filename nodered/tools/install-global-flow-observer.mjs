@@ -16,6 +16,7 @@ const outputPath = path.resolve(process.argv[3] ?? sourcePath);
 const functionDir = path.join(here, "functions");
 const OBSERVER_TAB = "global_flow_observer_tab";
 const externalEventOutIds = [
+  "external_confirmation_incident_out",
   "local_ai_rtx_alert_out",
   "people_visual_refresh_alert_out",
   "internet_remote_access_alert_out",

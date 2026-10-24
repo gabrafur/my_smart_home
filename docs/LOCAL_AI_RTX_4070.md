@@ -153,6 +153,39 @@ dependentes de VPN.
 Referências: [portproxy do Windows](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/netsh-interface)
 e [atraso de gatilho por evento](https://learn.microsoft.com/en-us/windows/win32/taskschd/taskschedulerschema-delay-eventtriggertype-element).
 
+### Reparo restrito orquestrado pelo Node-RED
+
+A aba `recuperacao_rtx` também possui um caminho automático separado do recovery
+MCP. Os grupos 5 a 8 mostram parâmetros, fontes, gates, efeito e testes. A agenda
+existente consulta a cada 60 segundos; o padrão confirma falha por 90 segundos,
+aceita observações com até 120 segundos e limita a duas tentativas por incidente,
+separadas por 300 segundos. Computador offline, fonte desconhecida/antiga,
+operação pendente e resultado incerto impedem o efeito. O ciclo fica no contexto
+persistente; testes usam contexto separado e terminam sem HTTP ou SSH.
+
+`POST /local-ai/repair-proxy` do bridge é um executor autenticado, não um
+agendador. Exige um identificador de operação, configuração privada fixa, backend
+loopback funcionando e a regra restrita já existente. Pode remover/recriar
+somente essa mesma regra, mantendo endereço e destino. Compara a tabela de
+proxies e os processos de IP Helper/Tailscale antes/depois e verifica `/api/tags`
+pelo bridge. Não inicia ou reinicia WSL, Ollama, VPN ou serviços; não muda firewall,
+credenciais ou políticas de energia. Uma operação duplicada retorna o recibo;
+um resultado desconhecido mantém bloqueio durável para reconciliação, inclusive
+após reinício. Não remova o bloqueio para forçar novas tentativas.
+
+O Node-RED só encerra o ciclo após nova observação de saúde. O reparo não garante
+disponibilidade com computador desligado ou backend ausente; após esgotar o
+orçamento, exige diagnóstico específico. O recovery MCP mais amplo permanece
+manual e não é chamado por esse caminho. Não acrescente agendas paralelas de
+reparo no Windows: decisões e retry pertencem ao Node-RED.
+
+Fontes e regressões: `nodered/tools/install-rtx-safe-availability.mjs`,
+`nodered/tools/test-rtx-safe-availability.mjs` e
+`ia-bridge/local-ai-proxy-repair{,.test}.js`. O gerador principal de recuperação
+inclui esse caminho; após regenerar, aplique os gates de observabilidade, margem,
+layout e testes manuais. Execute os cenários do grupo 8 para reproduzir os gates
+sem efeitos. Um ciclo simulado não comprova recuperação depois de boot/suspensão.
+
 ## Configuração do cliente Codex
 
 Cada máquina mantém sua configuração fora do Git, por exemplo em

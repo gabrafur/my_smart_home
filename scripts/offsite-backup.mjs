@@ -489,7 +489,6 @@ export function planComposeRetention({
 }
 
 export async function applyComposeRetention({
-  token,
   agentId,
   backups,
   newVerifiedBackup,
@@ -497,7 +496,6 @@ export async function applyComposeRetention({
   stateFile = retentionStateFile,
   legacyStateFile = stateFile === retentionStateFile ? legacyRetentionStateFile : null,
   now = new Date(),
-  request = homeAssistantWebSocketRequest,
 }) {
   const entry = retentionRegistryEntry(newVerifiedBackup, agentId);
   const registry = readRetentionState(stateFile, legacyStateFile);
@@ -518,24 +516,9 @@ export async function applyComposeRetention({
     newVerifiedBackupId: entry.backup_id,
     requireNewVerifiedBackup: true,
   });
-  const pruned = [];
-  for (const backupId of plan.eligible_backup_ids) {
-    const result = await request(token, { type: "backup/delete", backup_id: backupId });
-    if (!result?.agent_errors || Object.keys(result.agent_errors).length > 0) {
-      fail("Home Assistant could not move an eligible Compose backup to the recycle bin");
-    }
-    pruned.push(backupId);
-  }
-  if (pruned.length) {
-    const refreshed = await request(token, { type: "backup/info" });
-    if (!Array.isArray(refreshed?.backups)
-        || pruned.some((backupId) => refreshed.backups.some((backup) => backup.backup_id === backupId))) {
-      fail("Home Assistant did not confirm retention removal");
-    }
-    registry.entries = registry.entries.filter((candidate) => !pruned.includes(candidate.backup_id));
-    writeRetentionState(registry, stateFile);
-  }
-  return { eligible: plan.eligible_backup_ids.length, pruned: pruned.length };
+  // Observation only: preserve every registered copy. Re-enabling deletion
+  // requires a separately reviewed code change; no CLI/policy flag bypasses this.
+  return { eligible: plan.eligible_backup_ids.length, pruned: 0, mode: "observe_only" };
 }
 
 export async function retentionDryRun({
@@ -1108,6 +1091,26 @@ export function dailyCycleReadiness({
   };
 }
 
+// The host stage records stdout in its durable receipt. Keep failure reasons
+// there too, without copying exception messages or claiming unobserved progress.
+export async function runDailyCycleCommand({
+  cycle = runDailyCycle,
+  write = (text) => process.stdout.write(text),
+} = {}) {
+  let result;
+  try {
+    result = await cycle();
+  } catch (error) {
+    const reason = ["EACCES", "EPERM"].includes(error?.code)
+      ? "authentication_or_access"
+      : "unknown_failure";
+    write(`reason=${reason}\n`);
+    return 1;
+  }
+  write(`components=${result.components} capture_verified=${result.capture_verified} remote_verified=${result.remote_verified} protected=${result.protected} reason=${result.reason} outage_seconds=${result.outage_seconds ?? 0} backup_timestamp=${result.backup_timestamp ?? "none"} retention_eligible=${result.retention_eligible ?? 0} retention_pruned=${result.retention_pruned ?? 0} retention_mode=${result.retention_mode ?? "not_run"}\n`);
+  return result.ready ? 0 : 75;
+}
+
 export async function runDailyCycle({
   manifestFile = path.join(repoRoot, "restore/private-state-manifest.yaml"),
   policyFile = defaultPolicyFile,
@@ -1251,12 +1254,12 @@ export async function runDailyCycle({
     fail("OneDrive backup agent changed before retention");
   }
   const retention = await applyComposeRetention({
-    token,
     agentId: retentionCredentials.agent_id,
     backups: remoteInventory,
     newVerifiedBackup: remoteBackup,
     policy,
-    now,
+    // The new backup is created after cycle start; assess retention at this point.
+    now: new Date(),
   });
 
   return {
@@ -1270,6 +1273,7 @@ export async function runDailyCycle({
     backup_timestamp: remoteBackup.date,
     retention_eligible: retention.eligible,
     retention_pruned: retention.pruned,
+    retention_mode: retention.mode,
   };
 }
 
@@ -1292,9 +1296,7 @@ async function main() {
     return;
   }
   if (command === "daily-cycle" && process.argv.length === 3) {
-    const result = await runDailyCycle();
-    process.stdout.write(`components=${result.components} capture_verified=${result.capture_verified} remote_verified=${result.remote_verified} protected=${result.protected} reason=${result.reason} outage_seconds=${result.outage_seconds ?? 0} backup_timestamp=${result.backup_timestamp ?? "none"} retention_eligible=${result.retention_eligible ?? 0} retention_pruned=${result.retention_pruned ?? 0}\n`);
-    if (!result.ready) process.exitCode = 75;
+    process.exitCode = await runDailyCycleCommand();
     return;
   }
   if (command === "retention-dry-run" && process.argv.length === 3) {

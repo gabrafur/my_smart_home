@@ -438,7 +438,7 @@ test("retention refuses pruning without the newly verified registry entry", () =
   }), /newly verified Compose backup/);
 });
 
-test("retention moves only eligible registered IDs and updates its private registry", async (t) => {
+test("retention observes eligible IDs and preserves every registered copy", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "offsite-retention-test-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const stateFile = path.join(root, "state/registry.json");
@@ -469,10 +469,10 @@ test("retention moves only eligible registered IDs and updates its private regis
     now: new Date("2026-01-01T18:00:00.000Z"),
     request,
   });
-  assert.deepEqual(result, { eligible: 2, pruned: 2 });
-  assert.deepEqual(deleted, fixtures.slice(90).map(({ backup }) => backup.backup_id));
+  assert.deepEqual(result, { eligible: 2, pruned: 0, mode: "observe_only" });
+  assert.deepEqual(deleted, []);
   const stored = JSON.parse(fs.readFileSync(stateFile, "utf8"));
-  assert.equal(stored.entries.length, 90);
+  assert.equal(stored.entries.length, 92);
   assert.equal(fs.statSync(stateFile).mode & 0o777, 0o600);
   assert(stored.entries.some((entry) => entry.backup_id === fixtures[0].backup.backup_id));
   assert(stored.entries.every((entry) => !deleted.includes(entry.backup_id)));
@@ -504,7 +504,7 @@ test("retention migrates a valid legacy registry before any deletion", async (t)
     now: new Date("2026-01-01T18:00:00.000Z"),
     request: async (_token, message) => { calls.push(message.type); throw new Error("unexpected request"); },
   });
-  assert.deepEqual(result, { eligible: 0, pruned: 0 });
+  assert.deepEqual(result, { eligible: 0, pruned: 0, mode: "observe_only" });
   assert.deepEqual(calls, []);
   assert.equal(fs.readFileSync(legacyStateFile, "utf8"), legacy);
   const stored = JSON.parse(fs.readFileSync(stateFile, "utf8"));

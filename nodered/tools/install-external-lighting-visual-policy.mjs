@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,7 +12,8 @@ const functionDir = path.join(here, "functions");
 const TAB = "ce258dec9814b96b";
 const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8").trimEnd();
 let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
-const generated = new Set(flows.filter((node) => node.id.startsWith("external_visual_")).map((node) => node.id));
+const originalFlows = structuredClone(flows);
+const generated = new Set(flows.filter((node) => (node.id.startsWith("external_visual_") || node.id.startsWith("external_confirmation_"))).map((node) => node.id));
 flows = flows.filter((node) => !generated.has(node.id));
 for (const node of flows) {
   for (const field of ["nodes", "scope", "links"]) {
@@ -95,12 +97,39 @@ Object.assign(confirmation, {
 for (const field of ["func", "timeout", "noerr", "initialize", "finalize", "libs"]) delete confirmation[field];
 sw("external_visual_confirmation_mode", main.id, "Confirmar em produção ou TESTE?",
   "_external_command.test_mode", 2880, 160,
-  [["external_visual_command_dry_out"], ["ext_check_states"]]);
-Object.assign(required("ext_check_states"), { x: 3230, y: 280 });
+  [["external_confirmation_test_observation"], ["ext_check_states"]]);
+fn("external_confirmation_test_observation", main.id, "TESTE: observações sem consultar dispositivos",
+  "external-lighting-test-observation.js", 1, 3230, 220, [["ext_build_alexa_message"]]);
+const confirmedEntities = ['lampada_varanda', 'lampadas_garagem', 'refletores_jardim', 'abajour_sala_de_estar'];
+const observationExpression = '{"expected_state":expected_state,"observations":{' + confirmedEntities.map(id =>
+  '"' + id + '":{"state":$entities("switch.' + id + '").state,"observed_at":$entities("switch.' + id + '").last_reported ? $entities("switch.' + id + '").last_reported : $entities("switch.' + id + '").last_updated}'
+).join(',') + '}}';
+Object.assign(required("ext_check_states"), { x: 3230, y: 280,
+  outputProperties: [{ property: "payload", propertyType: "msg", value: observationExpression, valueType: "jsonata" }] });
 Object.assign(required("ext_build_alexa_message"), {
-  func: source("external-lighting-confirmation-message.js"), x: 3510, y: 280,
+  func: source("external-lighting-confirmation-message.js"), x: 3510, y: 280, outputs: 2,
+  wires: [["9d81b75a18d482f1"], ["external_confirmation_incident_out"]],
 });
 Object.assign(required("9d81b75a18d482f1"), { x: 3780, y: 280 });
+linkOut("external_confirmation_incident_out", main.id, "Confirmação → canal central",
+  "global_observer_alert_to_dispatch_in", 3760, 220);
+grouped(main.id, { id: "external_confirmation_state_events", type: "server-state-changed", z: TAB, g: main.id,
+  name: "Reobservar destinos após evento de estado", server: required("24743bc9f254d1c1").server,
+  version: 6, outputs: 1, exposeAsEntityConfig: "", entities: { entity: confirmedEntities.map(id => "switch." + id), substring: [], regex: [] },
+  outputInitially: false, stateType: "str", ifState: "", ifStateType: "str", ifStateOperator: "is",
+  outputOnlyOnStateChange: false, for: "0", forType: "num", forUnits: "minutes",
+  ignorePrevStateNull: false, ignorePrevStateUnknown: false, ignorePrevStateUnavailable: false,
+  ignoreCurrentStateUnknown: false, ignoreCurrentStateUnavailable: false, outputProperties: [],
+  x: 2900, y: 520, wires: [["external_confirmation_pending"]] });
+fn("external_confirmation_pending", main.id, "Reconciliar somente intenção pendente", "external-lighting-pending-observation.js", 1,
+  3300, 520, [["external_confirmation_read_states"]]);
+grouped(main.id, { ...structuredClone(required("ext_check_states")), id: "external_confirmation_read_states",
+  name: "Reler estados sem repetir comando", x: 3700, y: 520, wires: [["external_confirmation_observed_out"]] });
+linkOut("external_confirmation_observed_out", main.id, "Observações → confirmação", "external_confirmation_observed_in", 3970, 520);
+linkIn("external_confirmation_observed_in", main.id, "Receber reconciliação", ["external_confirmation_observed_out"],
+  "ext_build_alexa_message", 3340, 100);
+const incidentInput = required("global_observer_alert_to_dispatch_in");
+incidentInput.links = [...new Set([...(incidentInput.links ?? []), "external_confirmation_incident_out"])];
 linkOut("external_visual_alexa_out", main.id, "Avisos → Alexa",
   "external_visual_alexa_in", 2180, 300);
 linkIn("external_visual_alexa_in", main.id, "Receber aviso confirmado",
@@ -229,5 +258,11 @@ fn("external_visual_dry_terminal", tests.id, "TESTE FINAL: nenhum efeito enviado
   "external-lighting-dry-run.js", 0, 2730, 840, []);
 
 required(TAB).info = "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa.";
+const originalBlocked = originalFlows.find(n => n.id === "external_visual_command_blocked");
+if (originalBlocked) required("external_visual_command_blocked").wires = structuredClone(originalBlocked.wires);
+flows = reconcileGeneratedFlows(originalFlows, flows, {
+  isOwned: node => node.z === TAB || node.id.startsWith("external_visual_") || node.id.startsWith("external_confirmation_"),
+  shouldUpdate: node => node.z === TAB || node.id === TAB || node.id === "global_observer_alert_to_dispatch_in"
+});
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`External lighting visual policy installed in ${outputPath}`);

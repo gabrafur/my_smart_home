@@ -61,6 +61,7 @@ fi
 {
   flock -n 9 || {
     log "backup skipped: another git backup is already running"
+    if [[ -n "${GIT_BACKUP_RECOVERY_JOB:-}" ]]; then emit_reason "maintenance_busy"; exit 75; fi
     exit 0
   }
 
@@ -79,6 +80,9 @@ fi
     exit 1
   fi
 
+  if [[ -n "${GIT_BACKUP_RECOVERY_JOB:-}" ]]; then
+    /usr/bin/python3 -I -S -B /usr/local/lib/raspberry-mcp/git_recovery.py --guard stage || { emit_reason "unapproved_tree"; exit 1; }
+  fi
   starting_head="$(git rev-parse HEAD)"
   created_commit=0
   git add -A
@@ -89,11 +93,14 @@ fi
   if ! security_scan="$(bash scripts/security-scan.sh --staged 2>&1)"; then
     log "backup aborted: staged security scan failed"
     printf '%s\n' "$security_scan" >> "$LOG_FILE"
-    git reset --quiet
+    if [[ -z "${GIT_BACKUP_RECOVERY_JOB:-}" ]]; then git reset --quiet; fi
     emit_reason "security_scan_failed"
     exit 1
   fi
 
+  if [[ -n "${GIT_BACKUP_RECOVERY_JOB:-}" ]]; then
+    /usr/bin/python3 -I -S -B /usr/local/lib/raspberry-mcp/git_recovery.py --guard index || { emit_reason "unapproved_tree"; exit 1; }
+  fi
   if git diff --cached --quiet; then
     :
   else
@@ -112,7 +119,13 @@ fi
   # interativa. Preserve o commit local e sinalize indisponibilidade
   # temporária para que a ponte tente novamente, em vez de esquecer um HEAD
   # já criado e depois falhar como "behind" quando o remoto avançar.
-  if ! push_output=$(git push "$REMOTE" "$BRANCH" --quiet 2>&1); then
+  push_ref="$BRANCH"
+  if [[ -n "${GIT_BACKUP_RECOVERY_JOB:-}" ]]; then
+    approved_head=$(/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-mcp/git_recovery.py --guard push) || { emit_reason "unapproved_tree"; exit 1; }
+    [[ "$approved_head" =~ ^[a-f0-9]{40}$ ]] || exit 1
+    push_ref="$approved_head:refs/heads/$BRANCH"
+  fi
+  if ! push_output=$(env -u GIT_BACKUP_RECOVERY_JOB git push "$REMOTE" "$push_ref" --quiet 2>&1); then
     # Keep the actual failed check in this private operational log; a generic
     # validation_failed code alone cannot diagnose or prevent recurrence.
     printf '%s\n' "$push_output" | tail -n 160 >> "$LOG_FILE"
@@ -125,7 +138,7 @@ fi
         ;;
       *)
         failure_reason=$(classify_remote_error "$push_output")
-        if [[ "$created_commit" -eq 1 &&
+        if [[ -z "${GIT_BACKUP_RECOVERY_JOB:-}" && "$created_commit" -eq 1 &&
               ("$failure_reason" == "validation_node_red_layout" || "$failure_reason" == "validation_failed") ]]; then
           git reset --mixed --quiet "$starting_head"
           log "backup restored worktree after validation rejected the new commit"

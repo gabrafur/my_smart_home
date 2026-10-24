@@ -140,3 +140,20 @@ test("tracked mode ignores untracked content and staged mode inspects the index"
   assert.equal(staged.status, 1);
   assert.match(staged.stdout, /file=untracked\.txt/);
 });
+
+test("proxy repair fixture passes the scanner and private address injection stays blocked", () => {
+  const item = fixture();
+  const file = "ia-bridge/local-ai-proxy-repair.test.js";
+  const source = fs.readFileSync(path.join(repositoryRoot, file), "utf8");
+  write(item.root, file, source);
+  git(item.root, ["add", file]);
+  assert.equal(item.scan(["--staged"]).status, 0);
+
+  const address = ["10", "44", "55", "66"].join(".");
+  write(item.root, file, `${source}\nconst unapprovedEndpoint = "${address}";\n`);
+  git(item.root, ["add", file]);
+  const result = item.scan(["--staged"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /rule=ipv4-privado file=ia-bridge\/local-ai-proxy-repair\.test\.js/);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(address), false);
+});
