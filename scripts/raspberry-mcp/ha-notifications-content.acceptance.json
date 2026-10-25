@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "source": "actual_standard_Unix_MCP_and_connected_native_MCP",
+  "observed_at": "2026-10-25T13:19:16+00:00",
+  "standard_tool_count": 38,
+  "native_existing_page_read": true,
+  "standard_actual_ID_reads": 3,
+  "native_cached_ID_argument_forwarded": false,
+  "native_cached_ID_call_observed_query_kind": "page",
+  "native_ID_discovery_refresh_pending": true,
+  "safe_titles_and_messages_read": 3,
+  "associated_errors_read": 2,
+  "associated_exception_type": "HomeAssistantError",
+  "associated_reason": "service_unavailable",
+  "associated_stack_frames_each": 1,
+  "associated_context_flow": "localizacao_pessoas",
+  "third_current_notification": "home_assistant_startup_notice",
+  "historical_screenshot_third_notice_not_assumed_current": true,
+  "IDs_and_revisions_unchanged": true,
+  "pagination_digest_mismatch_tested": true,
+  "unknown_ID_unavailable_tested": true,
+  "synthetic_removed_and_collection_failure_tested": true,
+  "source_data_readonly": true,
+  "new_notifications": 0,
+  "new_credentials": 0,
+  "new_MCP_events_subscriptions": 0,
+  "services_restarted": [
+    "raspberry-ha-notices.service"
+  ],
+  "observer_code_revisions": 2,
+  "source_result_acceptance_is_not_recovery": true,
+  "PC_used": false,
+  "full_goal_acceptance": false,
+  "manifests": [
+    "73a9916f361dab743edf2bbe717fc0eebadad5ece35515979ec65d0accfd8718",
+    "815433c5e189d520c2e76632ca92eed2d6b9be320eac6e78d48ea57a902bf6d0",
+    "2c7d11a900fd0667376a2778efb19852233302516ffa608eb4e954047601384a"
+  ],
+  "tests": {
+    "node_sanitizer_and_route": 11,
+    "python_reader": 17,
+    "NodeRED_ingress_and_private_history_regression": true
+  },
+  "natural_sanitized_index_write_observed": false,
+  "existing_morning_associations_safely_seeded": 2,
+  "observer_restart_count": 2
+}

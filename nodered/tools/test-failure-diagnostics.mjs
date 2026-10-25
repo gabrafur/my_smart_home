@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {diagnosticFunctionSource} from "./install-global-diagnostics.mjs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -11,7 +12,7 @@ const targets = id => by.get(id).wires[0].flatMap(target => {
   const n=by.get(target);
   return /^notification_hub_wire_out_/.test(target) ? by.get(n.links[0]).wires[0] : [target];
 });
-const body = await fs.readFile(new URL("functions/global-flow-observer-diagnostic-build.js",import.meta.url),"utf8");
+const body = diagnosticFunctionSource((await fs.readFile(new URL("functions/global-flow-observer-diagnostic-build.js",import.meta.url),"utf8")).trimEnd());
 assert.equal(by.get("global_observer_diagnostic_build").func,body.trimEnd());
 assert.match(by.get("global_observer_diagnostic_build").initialize,/mode:0o700/);
 const build = msg => new Function("msg",body)(msg);

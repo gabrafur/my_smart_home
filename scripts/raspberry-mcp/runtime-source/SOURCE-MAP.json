@@ -312,6 +312,60 @@
       "normalizations": [
         "operator_manifest_binding_marker"
       ]
+    },
+    "ha-notices/diagnostic_templates.json": {
+      "source": "/usr/local/lib/raspberry-ha-notices/diagnostic_templates.json",
+      "source_sha256": "86fd8f3f1ded07b01217a7bdcc5cda0ed19fd08c9116da00297ce003f548a380",
+      "export_sha256": "86fd8f3f1ded07b01217a7bdcc5cda0ed19fd08c9116da00297ce003f548a380",
+      "normalizations": []
+    },
+    "ha-notices/content_sanitizer.cjs": {
+      "source": "/usr/local/lib/raspberry-ha-notices/content_sanitizer.cjs",
+      "source_sha256": "e9cd563639916e442dc8ba430f79bb5ce1835a40927936ac38389f46b1c3820a",
+      "export_sha256": "e9cd563639916e442dc8ba430f79bb5ce1835a40927936ac38389f46b1c3820a",
+      "normalizations": []
+    },
+    "ha-notices/content_reader.py": {
+      "source": "/usr/local/lib/raspberry-ha-notices/content_reader.py",
+      "source_sha256": "5e3a072bdfa98b8d027aeb4e33d9dbe729fa3968a74448fb5da260d9dcb21b8f",
+      "export_sha256": "5e3a072bdfa98b8d027aeb4e33d9dbe729fa3968a74448fb5da260d9dcb21b8f",
+      "normalizations": []
+    },
+    "ha-notices/notification_view.cjs": {
+      "source": "/usr/local/lib/raspberry-ha-notices/notification_view.cjs",
+      "source_sha256": "4a72c271ecd5fbeff3c9729213a4f7ed25167f237b3eba0232a63cc6de7f0490",
+      "export_sha256": "4a72c271ecd5fbeff3c9729213a4f7ed25167f237b3eba0232a63cc6de7f0490",
+      "normalizations": []
+    },
+    "ha-notices/notification_state.cjs": {
+      "source": "/usr/local/lib/raspberry-ha-notices/notification_state.cjs",
+      "source_sha256": "b2edc3604c7929b28e2f087174b77992d68ac4fec38fce47b36d6899c6908874",
+      "export_sha256": "b2edc3604c7929b28e2f087174b77992d68ac4fec38fce47b36d6899c6908874",
+      "normalizations": []
+    },
+    "ha-notices/notification_reader.py": {
+      "source": "/usr/local/lib/raspberry-ha-notices/notification_reader.py",
+      "source_sha256": "4cd5dd21a76e17c902aa3c1a6d7bcb97a764aa348628db9f36c2e102ef8dc147",
+      "export_sha256": "4cd5dd21a76e17c902aa3c1a6d7bcb97a764aa348628db9f36c2e102ef8dc147",
+      "normalizations": []
+    },
+    "ha-notices/notification_collector.cjs": {
+      "source": "/usr/local/lib/raspberry-ha-notices/notification_collector.cjs",
+      "source_sha256": "262190860786034b573e3b9fcb840b3726f7291cb5bb120ce0fbe1c5efaddc54",
+      "export_sha256": "262190860786034b573e3b9fcb840b3726f7291cb5bb120ce0fbe1c5efaddc54",
+      "normalizations": []
+    },
+    "ha-notices/notices-broker.py": {
+      "source": "/usr/local/lib/raspberry-ha-notices/notices-broker.py",
+      "source_sha256": "a77f3018db25e800b88aa6df08aeb195fed301623609638e6c7049d362640717",
+      "export_sha256": "a77f3018db25e800b88aa6df08aeb195fed301623609638e6c7049d362640717",
+      "normalizations": []
+    },
+    "ha-notices/notices-server.mjs": {
+      "source": "/var/lib/raspberry-mcp/root/app/notices-server.mjs",
+      "source_sha256": "8bbf18e343b80e8e095cdad09f3fca25d1a0a64c7091589f9df67329ad1cf9de",
+      "export_sha256": "8bbf18e343b80e8e095cdad09f3fca25d1a0a64c7091589f9df67329ad1cf9de",
+      "normalizations": []
     }
   }
 }

@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {spawnSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
+test('isolated notification sanitizer and MCP route regressions',()=>{const r=spawnSync(process.execPath,['--test','--test-concurrency=1',fileURLToPath(new URL('test_content.cjs',import.meta.url)),fileURLToPath(new URL('test_frontend.mjs',import.meta.url))],{encoding:'utf8',timeout:15000,maxBuffer:32768});assert.equal(r.status,0,r.stdout+r.stderr);assert.equal(r.error,undefined);});
+
+import fs from 'node:fs';test('Node-RED embeds the exact reviewed public sanitizer and catalog',()=>{for(const name of ['content_sanitizer.cjs','diagnostic_templates.json'])assert.equal(fs.readFileSync(new URL(name,import.meta.url),'utf8'),fs.readFileSync(new URL('../../../../nodered/tools/lib/'+name,import.meta.url),'utf8'));});

@@ -216,8 +216,8 @@ O acesso à propriedade api.devices pode executar HTTP antes de retornar o geren
 
 <!-- /memory-record -->
 
-<!-- memory-record {"id":"historico-detalhado-falhas-node-red","category":"ARCHITECTURE","kind":"VERIFIED_FACT","last_verified":"2026-10-06","evidence":[{"file":"docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md","sha256":"ecc2d7eb45de3faaf0481a540094d9d0b88c1f0becdd15caf680b834d5293377"},{"file":"nodered/tools/functions/global-flow-observer-diagnostic-build.js","sha256":"e9a6af71efe7c4e17a72f7c7b5bcbbec7a0bfaf7b6fe3eaca74b4296611b378c"},{"file":"nodered/tools/test-failure-diagnostics.mjs","sha256":"a83adefabe68521338b38755d14dfbaa329582860a31199693292270e7d57951"}]} -->
-## Causas detalhadas fora do resumo de notificação
+<!-- memory-record {"id":"historico-detalhado-falhas-node-red","category":"ARCHITECTURE","kind":"VERIFIED_FACT","last_verified":"2026-10-25","evidence":[{"file":"docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md","sha256":"ecc2d7eb45de3faaf0481a540094d9d0b88c1f0becdd15caf680b834d5293377"},{"file":"nodered/tools/functions/global-flow-observer-diagnostic-build.js","sha256":"7f98b5c56e2fc0c6806d7b169d11b78e656057f23c7ccabbb13ea07a2449e579"},{"file":"nodered/tools/test-failure-diagnostics.mjs","sha256":"809739055a8173c363c09eb6814c7e816b5498e397f439cee7500a5ee78a835d"}]} -->
+## Histórico detalhado de falhas Node-RED
 
 O observador global grava diagnóstico privado por ocorrência antes dos gates de notificação, inclusive erros repetidos ou suprimidos. Alertas de domínio e status confirmados entram pelo dispatch. Mensagem, stack, causas encadeadas e campos operacionais explícitos ficam em JSONL fora do Git, com remoção de padrões de credenciais, truncamento declarado e retenção pela política error_retention_days. O resumo de push e o estado de dedupe não substituem esse histórico. Testes usam terminal em memória; falha do escritor segue somente ao log do runtime para evitar recursão. Detalhes nunca recebidos ou já descartados por versões antigas não são reconstruídos.
 

@@ -54,6 +54,48 @@ const record = {
     })),
     truncated_fields: clipped, test_mode: test
 };
+// Public sibling uses only reviewed tokens and exactly the same notification ID.
+// Private history remains unchanged; neither branch notifies or repairs anything.
+const publicError = noticeSanitizer.errorDTO(record.error,record.error?.message ?? "");
+msg._observer_public_diagnostic = {schema_version:1,source:"nodered.sanitized_notification_diagnostics",
+    observed_at:now,error:publicError,simulated:test,dispatched:false};
+if (!test && error && record.flow_id && record.source_id &&
+    typeof fs !== "undefined" && typeof crypto !== "undefined" && typeof context !== "undefined") {
+    let temporary;
+    try {
+        const rawId=`nodered_observabilidade_global_node_error_${record.flow_id}_${record.source_id}`
+            .replace(/[^a-zA-Z0-9_-]+/g,"_").slice(0,255);
+        const id=crypto.createHash("sha256").update(rawId).digest("hex");
+        const target="/data/.notification-diagnostics.json";
+        const entries=context.get("notification_diagnostics_v1","memoryOnly") ?? {};
+        const fingerprint=crypto.createHash("sha256").update(JSON.stringify(publicError)).digest("hex");
+        const previous=entries[id];
+        const publish=!previous || previous.fingerprint!==fingerprint || Date.parse(now)-Date.parse(previous.observed_at)>=5000;
+        if(publish){
+            entries[id]={notification_id:id,observed_at:now,error:publicError,context:noticeSanitizer.contextDTO(record.flow_id,record.source_id),fingerprint};
+            const selected=Object.values(entries).sort((a,b)=>b.observed_at.localeCompare(a.observed_at)).slice(0,32);
+            let value={schema_version:1,source:"nodered.sanitized_notification_diagnostics",observed_at:now,
+                records:selected.map(({fingerprint,...row})=>row),coverage:["latest_exact_notification_ID_only","no_raw_messages_or_private_history","bounded_32_records_64KiB"]};
+            while(Buffer.byteLength(JSON.stringify(value))>65536 && value.records.length)value.records.pop();
+            if(fs.existsSync(target)){
+                const info=fs.lstatSync(target);
+                if(!info.isFile()||info.nlink!==1||info.uid!==1000||(info.mode&0o777)!==0o644)throw Error("public_index_shape_refused");
+            }
+            temporary=target+".tmp."+crypto.randomBytes(8).toString("hex");
+            const fd=fs.openSync(temporary,"wx",0o644);
+            try{fs.fchmodSync(fd,0o644);fs.writeFileSync(fd,JSON.stringify(value)+"\n");fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
+            fs.renameSync(temporary,target);temporary=null;
+            const parent=fs.openSync("/data","r");try{fs.fsyncSync(parent);}finally{fs.closeSync(parent);}
+            context.set("notification_diagnostics_v1",Object.fromEntries(selected.map(row=>[row.notification_id,row])),"memoryOnly");
+            msg._observer_public_diagnostic.dispatched=true;
+        }
+    } catch {
+        msg._observer_public_diagnostic.collection_error="sanitized_index_write_unconfirmed";
+    } finally {
+        if(temporary){try{fs.unlinkSync(temporary);}catch{}}
+    }
+}
+
 msg._observer_diagnostic_record = record;
 msg._observer_diagnostic_test = test;
 msg.payload = JSON.stringify(record);

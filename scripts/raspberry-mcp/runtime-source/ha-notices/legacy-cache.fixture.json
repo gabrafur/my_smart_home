@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "source": "HA WebSocket persistent_notification/subscribe",
+  "observed_at": "2026-10-25T10:00:00.000Z",
+  "collection_error": null,
+  "connection_state": "subscribed",
+  "last_transport_confirmation_at": "2026-10-25T10:00:00.000Z",
+  "last_source_event_received_at": "2026-10-25T10:00:00.000Z",
+  "last_processing_latency_ms": 0,
+  "coverage": [
+    "persistent_notifications_only",
+    "no_raw_title_or_body",
+    "not_phone_delivery",
+    "removal_is_not_recovery",
+    "processing_latency_not_end_to_end_latency"
+  ],
+  "notifications": [
+    {
+      "id": "76ff40137e54a24223ea8927fef04915a939066e7916901f95afa3efd2f65aa6",
+      "source": "homeassistant.persistent_notification",
+      "observed_at": "2026-10-25T10:00:00.000Z",
+      "created_or_updated_at": "2026-10-25T10:00:00.000Z",
+      "origin": "not_provided_by_HA",
+      "category": "backup",
+      "summary": "Backup",
+      "category_basis": "identifier_prefix",
+      "content_withheld": true,
+      "destination_delivery": "not_applicable",
+      "collection_error": null,
+      "revision": "695b5e51216341cb8621b717a5ec46fa4485b0aab48d37dc8884f9d80804eb8e"
+    }
+  ],
+  "events": [],
+  "sequence": 0,
+  "dropped": 0
+}

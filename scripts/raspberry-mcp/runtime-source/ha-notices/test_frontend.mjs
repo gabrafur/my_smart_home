@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {makeRoute,descriptor} from './notices-server.mjs';
+const invoke=async q=>({seen:q.arguments});
+const route=makeRoute(async()=>({result:{tools:[]}}),async(request,read,audit,broker)=>({result:await broker()}),invoke);
+test('ID descriptor and real route pass the existing authenticated gate',async()=>{assert(descriptor.inputSchema.properties.notification_id);const args={host:'raspberry',notification_id:'a'.repeat(64)};const r=await route({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'ha_notifications',arguments:args}});assert.deepEqual(r.result.seen,args);});
+test('free paths, foreign hosts, raw IDs and ID with offset fail closed',async()=>{for(const args of [{host:'other'},{host:'raspberry',path:'/private'},{host:'raspberry',notification_id:'private@example.invalid'},{host:'raspberry',notification_id:'a'.repeat(64),offset:1}]){const r=await route({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'ha_notifications',arguments:args}});assert.equal(r.result.isError,true);}});

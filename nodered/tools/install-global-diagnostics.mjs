@@ -1,9 +1,15 @@
 import fs from "node:fs";
 
+export function diagnosticFunctionSource(body) {
+  const library=fs.readFileSync(new URL('lib/content_sanitizer.cjs',import.meta.url),'utf8');
+  const catalog=JSON.parse(fs.readFileSync(new URL('lib/diagnostic_templates.json',import.meta.url),'utf8'));
+  return `const noticeSanitizer=(()=>{const module={exports:{}};const require=name=>{if(name!=='./diagnostic_templates.json')throw Error('unapproved_import');return ${JSON.stringify(catalog)};};\n${library}\nreturn module.exports;})();\n${body}`;
+}
+
 // Append independent diagnostics branches; notification and safety gates stay canonical.
 export function installGlobalDiagnostics(nodes, existing = []) {
   const tab = "global_flow_observer_tab", group = "global_observer_diagnostic_group";
-  const source = name => fs.readFileSync(new URL(`functions/${name}.js`, import.meta.url), "utf8").trimEnd();
+  const source = name => { const body=fs.readFileSync(new URL(`functions/${name}.js`, import.meta.url), "utf8").trimEnd(); return name==="global-flow-observer-diagnostic-build"?diagnosticFunctionSource(body):body; };
   const add = node => { nodes.push({z:tab,g:group,...node}); nodes.find(n=>n.id===group).nodes.push(node.id); };
   const fn = (id,name,file,x,y,wires,outputs=1) => add({id,type:"function",name,func:source(file),outputs,timeout:0,noerr:0,initialize:"",finalize:"",libs:[],x,y,wires});
   nodes.push({id:group,type:"group",z:tab,name:"Diagnóstico detalhado — registrar antes do dedupe; TESTE somente em memória",style:{label:true,color:"#0891b2"},nodes:[],x:64,y:1700,w:2820,h:440});
@@ -25,7 +31,7 @@ export function installGlobalDiagnostics(nodes, existing = []) {
   }
   fn("global_observer_diagnostic_build","Preservar causa, stack e retorno; remover credenciais","global-flow-observer-diagnostic-build",650,1810,[["global_observer_diagnostic_test_gate"]]);
   Object.assign(nodes.find(n=>n.id==="global_observer_diagnostic_build"), {
-    libs:[{var:"fs",module:"fs"}],
+    libs:[{var:"fs",module:"fs"},{var:"crypto",module:"crypto"}],
     initialize:'fs.mkdirSync("/data/failure-history", {recursive:true,mode:0o700});\nfs.chmodSync("/data/failure-history", 0o700);'
   });
   add({id:"global_observer_diagnostic_test_gate",type:"switch",name:"Diagnóstico de TESTE?",property:"_observer_diagnostic_test",propertyType:"msg",rules:[{t:"true"},{t:"else"}],checkall:"true",repair:false,outputs:2,x:1000,y:1810,wires:[["global_observer_diagnostic_dry"],["global_observer_diagnostic_file"]]});
