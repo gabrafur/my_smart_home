@@ -80,8 +80,9 @@ Resultado incerto exige somente reconciliação; não repetir o envio.
 A rota final reutiliza o hub de notificações e notices HA já sanitizados.
 A assinatura Events e seu orçamento permanecem iguais. `budget_held` continua
 impedindo entrega adicional nessa janela; um alerta criado não comprova webhook
-aceito ou execução da Eva. O relatório novo ainda precisa de exposição própria
-pelo MCP e os gates de latência completa, PC desligado e 24h continuam separados.
+aceito ou execução da Eva. O relatório novo é exposto por
+`maintenance_capabilities.evidence.data.host_observation`, com projeção fechada e
+aceite no cliente real. Os gates de latência completa, PC desligado e 24h continuam separados.
 
 Para desativar decisões novas, desabilitar somente o tab por revisão autenticada,
 preservando contexto/incidentes/recibos; o produtor passivo pode permanecer.

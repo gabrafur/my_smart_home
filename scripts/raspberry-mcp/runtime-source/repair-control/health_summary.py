@@ -307,3 +307,199 @@ def backups():
     result = correct_backups(base, log, time.time(), projection, error, history)
     result['data']['git']['historical_baseline_collection_error'] = history_error
     return result
+
+
+HOST_CONTAINERS = ('homeassistant', 'nodered', 'mosquitto', 'portainer', 'appdaemon',
+    'matter_server', 'zigbee2mqtt', 'ai-bridge', 'docs-review-scheduler', 'kia-uvo-codex-merge')
+HOST_UNITS = ('docker', 'procmon', 'mcp_collection', 'external_heartbeat', 'events',
+    'ha_notices', 'host_observation')
+HOST_METRICS = ('memory_available_bytes', 'memory_total_bytes', 'disk_used_percent',
+    'inodes_used_percent', 'temperature_celsius', 'oom_kill_count', 'cpu_busy_percent')
+HOST_POLICY_BOUNDS = {'max_report_age_ms': (10000, 60000), 'max_resource_age_ms': (20000, 60000),
+    'event_confirm_ms': (1000, 60000), 'resource_confirm_ms': (20000, 120000),
+    'observation_confirm_ms': (10000, 120000), 'cpu_busy_percent': (50, 100),
+    'memory_available_mib': (128, 2048), 'disk_used_percent': (70, 95),
+    'inodes_used_percent': (70, 95), 'temperature_celsius': (60, 90)}
+
+
+def _observer_json(directory, filename, owner):
+    """Internal bounded reader; caller uses two fixed directories, never RPC input."""
+    import json
+    import os
+    import stat
+    parent = fd = None
+    try:
+        parent = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        info = os.fstat(parent)
+        if info.st_uid != owner or info.st_gid != owner or stat.S_IMODE(info.st_mode) != 0o755:
+            raise ValueError('unsafe_directory')
+        fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        info = os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != owner or info.st_gid != owner
+                or stat.S_IMODE(info.st_mode) != 0o644 or info.st_nlink != 1 or info.st_size > 65536):
+            raise ValueError('unsafe_file')
+        raw = os.read(fd, 65537)
+        after = os.fstat(fd)
+        if len(raw) > 65536 or (info.st_size, info.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
+            raise ValueError('changed_or_oversized')
+        value = json.loads(raw)
+        if not isinstance(value, dict):
+            raise ValueError('invalid_json_object')
+        return value, None
+    except FileNotFoundError:
+        return None, 'source_missing'
+    except (OSError, ValueError, UnicodeError):
+        return None, 'source_invalid_or_unavailable'
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if parent is not None:
+            os.close(parent)
+
+
+def project_host_observation(report, context, now, report_error=None, context_error=None):
+    """Metadata observation only. Never derive administrative authority or whole-host health."""
+    import math
+    def number(value, minimum=0, maximum=10**18):
+        return type(value) in (int, float) and math.isfinite(value) and minimum <= value <= maximum
+    def count(value):
+        return type(value) is int and 0 <= value <= 10**12
+    def hashed(value):
+        return isinstance(value, str) and re.fullmatch('[a-f0-9]{64}', value) is not None
+    def source_error(value):
+        return value if value in ('source_missing', 'source_invalid_or_unavailable') else 'source_invalid_or_unavailable'
+    result = {'source': 'fixed_protected_host_report_and_nodered_context',
+        'observed_at': dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(timespec='seconds'),
+        'state': 'unknown', 'collection_error': None, 'producer': None, 'NodeRED': None,
+        'operational_health': 'unknown', 'all_event_resource_latency_proven': False,
+        'PC_off_proven': False, 'full24h_proven': False, 'Eva_execution_proven': False,
+        'coverage': ['fixed_root_owned_report_and_application_owned_context_only',
+            'allowlisted_roles_metrics_and_policy_metadata', 'partial_stream_reconnect_and_ring_history',
+            'no_initial_inventory_or_universal_application_readiness',
+            'intention_not_notification_delivery_or_assistant_execution', 'no_private_messages_prompts_logs_or_credentials']}
+    errors = []
+    if report_error:
+        errors.append('producer_' + source_error(report_error))
+    if context_error:
+        errors.append('context_' + source_error(context_error))
+    policy = context.get('host_observer_policy_v1') if isinstance(context, dict) else None
+    policy_valid = isinstance(policy, dict) and set(policy) == set(HOST_POLICY_BOUNDS) and all(
+        number(policy.get(key), *bounds) for key, bounds in HOST_POLICY_BOUNDS.items())
+    if not policy_valid:
+        errors.append('visual_policy_unavailable_or_invalid')
+    if isinstance(report, dict):
+        observed = stamp(report.get('observed_at'))
+        resource = report.get('resources')
+        resource = resource if isinstance(resource, dict) else {}
+        sampled = stamp(resource.get('observed_at'))
+        valid = (report.get('schema_version') == 1 and report.get('source') == 'fixed_readonly_host_observer'
+            and hashed(report.get('instance_id')) and hashed(report.get('boot_id_sha256'))
+            and count(report.get('sequence')) and count(report.get('evicted_event_records'))
+            and report['evicted_event_records'] <= report['sequence']
+            and observed is not None and observed <= now+1 and sampled is not None and sampled <= observed+1)
+        if valid:
+            channels = {}
+            sources = report.get('sources') if isinstance(report.get('sources'), dict) else {}
+            for name in ('docker', 'systemd'):
+                row = sources.get(name) if isinstance(sources.get(name), dict) else {}
+                good = row.get('state') in ('connected', 'unknown') and row.get('collection_error') in (None, 'starting', 'stream_unavailable_or_invalid')
+                if not good or row.get('state') == 'connected' and row.get('collection_error') is not None:
+                    errors.append('stream_metadata_invalid')
+                    channels[name] = {'state': 'unknown', 'collection_error': 'source_invalid_or_unavailable'}
+                else:
+                    channels[name] = {'state': row['state'], 'collection_error': row.get('collection_error')}
+            metrics = resource.get('data') if isinstance(resource.get('data'), dict) else {}
+            data = {}
+            for key in HOST_METRICS:
+                value = metrics.get(key)
+                maximum = 100 if key.endswith('_percent') else 150 if key == 'temperature_celsius' else 10**18
+                data[key] = value if number(value, 0, maximum) else None
+                if value is not None and data[key] is None:
+                    errors.append('metric_invalid')
+            raw_errors = resource.get('collection_errors')
+            valid_errors = isinstance(raw_errors, list) and len(raw_errors) <= 8 and all(x in (*HOST_METRICS, 'cpu_ticks') for x in raw_errors)
+            if not valid_errors:
+                errors.append('metric_collection_metadata_invalid')
+            cost = report.get('producer_cost') if isinstance(report.get('producer_cost'), dict) else {}
+            result['producer'] = {'observed_at': report['observed_at'], 'age_seconds': round(max(0, now-observed), 3),
+                'sequence': report['sequence'], 'evicted_event_records': report['evicted_event_records'], 'streams': channels,
+                'within_visual_report_validity': policy_valid and (now-observed)*1000 <= policy['max_report_age_ms'],
+                'resources': {'observed_at': resource['observed_at'], 'age_seconds': round(max(0, now-sampled), 3), 'data': data,
+                    'within_visual_resource_validity': policy_valid and (now-sampled)*1000 <= policy['max_resource_age_ms'],
+                    'collection_errors': raw_errors if valid_errors else ['source_invalid_or_unavailable']},
+                'producer_cost': {'self_cpu_seconds': cost.get('self_cpu_seconds') if number(cost.get('self_cpu_seconds')) else None,
+                    'self_peak_rss_bytes': cost.get('self_peak_rss_bytes') if count(cost.get('self_peak_rss_bytes')) else None,
+                    'scope': 'producer_self_only_not_journal_child_or_24h'}}
+            if not result['producer']['within_visual_report_validity']:
+                errors.append('producer_outside_visual_validity_or_policy_unknown')
+        else:
+            errors.append('producer_schema_or_dates_invalid')
+    elif not report_error:
+        errors.append('producer_source_missing')
+    cursor = context.get('host_observer_cursor_v1') if isinstance(context, dict) else None
+    if isinstance(cursor, dict):
+        last = cursor.get('last_report_at')
+        valid = (number(last) and last/1000 <= now+1 and hashed(cursor.get('instance')) and count(cursor.get('sequence')))
+        if valid:
+            native = cursor.get('states') if isinstance(cursor.get('states'), dict) else {}
+            rows = []
+            for source, roles, actions in [('docker', HOST_CONTAINERS, ('start', 'die', 'restart', 'destroy', 'health_status: healthy', 'health_status: unhealthy', 'health_status: starting', 'unknown')),
+                                          ('systemd', HOST_UNITS, ('started', 'stopped', 'failed', 'unknown'))]:
+                for role in roles:
+                    value = native.get(source+':'+role)
+                    if not isinstance(value, dict):
+                        continue
+                    occurred = stamp(value.get('occurred_at'))
+                    if (value.get('kind') == 'native' and value.get('source') == source and value.get('name') == role
+                            and value.get('action') in actions and occurred is not None and occurred <= last/1000+1):
+                        rows.append({'source': source, 'role': role, 'action': value['action'], 'occurred_at': value['occurred_at']})
+                    else:
+                        errors.append('native_role_metadata_invalid')
+            known = {'resource_host_'+x for x in ('cpu', 'memory', 'disk', 'inodes', 'temperature')}
+            known.update('observation_host_'+x for x in ('report', 'docker', 'systemd', 'resources'))
+            known.update('native_docker_'+x for x in HOST_CONTAINERS)
+            known.update('native_systemd_'+x for x in HOST_UNITS)
+            known.add('native_kernel_counter_host_oom')
+            state = context.get('host_observer_incidents_v1')
+            state = state.get('incidents') if isinstance(state, dict) and state.get('version') == 1 else None
+            incidents = []
+            if not isinstance(state, dict) or len(state) > len(known):
+                errors.append('incident_metadata_unavailable_or_invalid')
+            else:
+                for key, row in state.items():
+                    if key not in known or not isinstance(row, dict):
+                        errors.append('incident_metadata_unavailable_or_invalid')
+                        continue
+                    first, seen, notified = row.get('first_seen_at'), row.get('last_seen_at'), row.get('notified_at')
+                    if (not number(first) or not number(seen) or first > seen or seen/1000 > now+1
+                            or notified is not None and (not number(notified) or not first <= notified <= seen)
+                            or row.get('current_evidence') not in ('failed', 'unknown')):
+                        errors.append('incident_dates_or_state_invalid')
+                        continue
+                    incidents.append({'role': key, 'evidence': row['current_evidence'],
+                        'notification_intent_recorded': notified is not None,
+                        'clock_conflict': row.get('clock_conflict') is True})
+            result['NodeRED'] = {'last_report_at': dt.datetime.fromtimestamp(last/1000, dt.timezone.utc).isoformat(timespec='milliseconds'),
+                'age_seconds': round(max(0, now-last/1000), 3), 'sequence': cursor['sequence'],
+                'native_role_observations': sorted(rows, key=lambda x: stamp(x['occurred_at']), reverse=True),
+                'incident_observations': incidents, 'visual_policy': dict(policy) if policy_valid else None,
+                'application_context_persistence_flush_allowance_seconds': 30}
+            if now-last/1000 > 60:
+                errors.append('NodeRED_observation_stale')
+            if result['producer'] is not None and (cursor['instance'] != report['instance_id'] or cursor['sequence'] > report['sequence']):
+                errors.append('producer_context_identity_or_sequence_conflict')
+        else:
+            errors.append('NodeRED_schema_or_dates_invalid')
+    elif not context_error:
+        errors.append('NodeRED_cursor_missing')
+    result['collection_error'] = ';'.join(dict.fromkeys(errors)) if errors else None
+    if not errors and result['producer'] is not None and result['NodeRED'] is not None:
+        result['state'] = 'observed'
+    return result
+
+
+def host_observation():
+    import time
+    report, report_error = _observer_json('/mnt/data/docker/nodered/.host-health-observer', 'report.json', 0)
+    context, context_error = _observer_json('/mnt/data/docker/nodered/context/host_observer_tab', 'flow.json', 1000)
+    return project_host_observation(report, context, time.time(), report_error, context_error)

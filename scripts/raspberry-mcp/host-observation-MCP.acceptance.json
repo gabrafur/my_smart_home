@@ -1,0 +1,44 @@
+{
+  "observed_at": "2026-10-25T09:27:42Z",
+  "source": "actual remote MCP events_status and maintenance_capabilities;no PC client",
+  "installation": "root_owned_source_pins_updated_with_no_authority_extension",
+  "host": {
+    "state": "observed",
+    "collection_error": null,
+    "native_role_count": 4,
+    "operational_health": "unknown",
+    "response_has_private_messages": false
+  },
+  "events": {
+    "retained_event_records": 44,
+    "eligible_pending_event_records": 35,
+    "collection_error": null,
+    "attempts_last_24h": 6,
+    "maximum_attempts_per_day": 6,
+    "minimum_attempt_spacing_seconds": 600,
+    "delivery_state": "budget_held",
+    "subscription_metadata_preserved": true,
+    "existing_dispatch_intents_preserved": true
+  },
+  "tests": {
+    "preserved_extended_python": 42,
+    "preserved_extended_node": 19,
+    "event_count_regressions": 6,
+    "native_worker_regressions": 15
+  },
+  "infrastructure_activation": [
+    "events_service",
+    "MCP_tunnel"
+  ],
+  "household_services_restarted": 0,
+  "Codex_daemon_restarted": false,
+  "new_events_generated": 0,
+  "new_inference_requested_by_package": false,
+  "dispatch_subscribe_enqueue_prune_unchanged": true,
+  "limits_and_administrative_expiry_unchanged": true,
+  "PC_off_proven": false,
+  "full24h_proven": false,
+  "all_event_resource_latency_proven": false,
+  "Eva_execution_proven": false,
+  "whole_goal_complete": false
+}

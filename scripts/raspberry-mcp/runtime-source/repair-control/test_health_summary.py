@@ -212,5 +212,116 @@ class AcceptanceReportTests(unittest.TestCase):
             value=self.fixture();value[field].update(change)
             self.assertFalse(project_acceptance_report(value,1792960400)['cadence_and_emitted_runtime_window_proven'])
 
+
+class HostObservationTests(unittest.TestCase):
+    def fixture(self):
+        now = 1000000
+        at = '1970-01-12T13:46:40Z'
+        policy = {'max_report_age_ms':30000, 'max_resource_age_ms':45000,
+            'event_confirm_ms':5000, 'resource_confirm_ms':20000, 'observation_confirm_ms':20000,
+            'cpu_busy_percent':90, 'memory_available_mib':512, 'disk_used_percent':85,
+            'inodes_used_percent':85, 'temperature_celsius':80}
+        report = {'schema_version':1, 'source':'fixed_readonly_host_observer', 'observed_at':at,
+            'instance_id':'a'*64, 'boot_id_sha256':'b'*64, 'sequence':5, 'evicted_event_records':1,
+            'sources':{x:{'state':'connected','collection_error':None} for x in ['docker','systemd']},
+            'resources':{'observed_at':at,'collection_errors':[], 'data':{x:10 for x in _active.HOST_METRICS}},
+            'producer_cost':{'self_cpu_seconds':1,'self_peak_rss_bytes':1024}}
+        native = {'systemd:procmon':{'kind':'native','source':'systemd','name':'procmon','action':'started','occurred_at':at}}
+        context = {'host_observer_policy_v1':policy,
+            'host_observer_cursor_v1':{'instance':'a'*64,'sequence':5,'last_report_at':now*1000,'states':native},
+            'host_observer_incidents_v1':{'version':1,'incidents':{}}}
+        return report, context, now
+
+    def project(self, report, context, now, *errors):
+        return _active.project_host_observation(report,context,now,*errors)
+
+    def test_current_metadata_is_not_operational_or_complete_goal_acceptance(self):
+        report,context,now=self.fixture();out=self.project(report,context,now)
+        self.assertEqual(out['state'],'observed')
+        self.assertIsNone(out['collection_error'])
+        self.assertEqual(out['operational_health'],'unknown')
+        self.assertTrue(out['producer']['within_visual_report_validity'])
+        self.assertFalse(out['Eva_execution_proven'])
+        self.assertFalse(out['full24h_proven'])
+        self.assertFalse(out['PC_off_proven'])
+        self.assertEqual(out['NodeRED']['native_role_observations'][0]['role'],'procmon')
+
+    def test_missing_conflicting_or_stale_dates_preserve_unknown(self):
+        for change in [lambda r,c:r.update(observed_at=None),
+                lambda r,c:r.update(observed_at='1970-01-12T13:46:50Z'),
+                lambda r,c:r['resources'].update(observed_at='1970-01-12T13:46:50Z'),
+                lambda r,c:c['host_observer_cursor_v1'].update(last_report_at=(1000010)*1000)]:
+            report,context,now=self.fixture();change(report,context)
+            self.assertEqual(self.project(report,context,now)['state'],'unknown')
+        report,context,now=self.fixture()
+        out=self.project(report,context,now+61)
+        self.assertEqual(out['state'],'unknown')
+        self.assertFalse(out['producer']['within_visual_report_validity'])
+
+    def test_failed_collection_missing_policy_or_instance_sequence_conflict(self):
+        report,context,now=self.fixture()
+        for errors in [('source_missing',None),(None,'source_invalid_or_unavailable')]:
+            self.assertEqual(self.project(report,context,now,*errors)['state'],'unknown')
+        for change in [lambda c:c.pop('host_observer_policy_v1'),
+                lambda c:c['host_observer_cursor_v1'].update(instance='c'*64),
+                lambda c:c['host_observer_cursor_v1'].update(sequence=6),
+                lambda c:c['host_observer_policy_v1'].update(cpu_busy_percent=True)]:
+            candidate=copy.deepcopy(context);change(candidate)
+            self.assertEqual(self.project(report,candidate,now)['state'],'unknown')
+
+    def test_private_extra_fields_are_never_exported(self):
+        report,context,now=self.fixture();report['private']='PRIVATE_SENTINEL'
+        report['resources']['private']='PRIVATE_SENTINEL';context['private']='PRIVATE_SENTINEL'
+        context['host_observer_cursor_v1']['states']['private']={'message':'PRIVATE_SENTINEL'}
+        self.assertNotIn('PRIVATE_SENTINEL',str(self.project(report,context,now)))
+        report['resources']['collection_errors']=['PRIVATE_SENTINEL']
+        out=self.project(report,context,now)
+        self.assertEqual(out['state'],'unknown');self.assertNotIn('PRIVATE_SENTINEL',str(out))
+
+    def test_missing_resource_metric_is_null_not_zero_or_recovery(self):
+        report,context,now=self.fixture();report['resources']['data']['cpu_busy_percent']=None
+        out=self.project(report,context,now)
+        self.assertIsNone(out['producer']['resources']['data']['cpu_busy_percent'])
+        self.assertEqual(out['operational_health'],'unknown')
+        report['resources']['data']['cpu_busy_percent']=float('nan')
+        self.assertEqual(self.project(report,context,now)['state'],'unknown')
+
+    def test_incident_intent_is_not_delivery_and_unknown_is_preserved(self):
+        report,context,now=self.fixture()
+        context['host_observer_incidents_v1']['incidents']['native_systemd_procmon']={
+            'first_seen_at':(now-20)*1000,'last_seen_at':now*1000,'notified_at':(now-10)*1000,
+            'current_evidence':'unknown','private':'PRIVATE_SENTINEL'}
+        out=self.project(report,context,now);incident=out['NodeRED']['incident_observations'][0]
+        self.assertEqual(incident['evidence'],'unknown');self.assertTrue(incident['notification_intent_recorded'])
+        self.assertNotIn('PRIVATE_SENTINEL',str(out));self.assertFalse(out['Eva_execution_proven'])
+        context['host_observer_incidents_v1']['incidents']['native_systemd_procmon']['notified_at']=(now+5)*1000
+        self.assertEqual(self.project(report,context,now)['state'],'unknown')
+
+    def test_fixed_entry_calls_only_two_reviewed_paths(self):
+        from unittest.mock import patch
+        with patch.dict(_active.host_observation.__globals__,{'_observer_json':lambda *args:(None,'source_missing')}), patch('time.time',return_value=1000000):
+            self.assertEqual(_active.host_observation()['state'],'unknown')
+        from unittest.mock import Mock
+        reader=Mock(side_effect=[(None,'source_missing'),(None,'source_missing')])
+        with patch.dict(_active.host_observation.__globals__,{'_observer_json':reader}),patch('time.time',return_value=1000000):
+            _active.host_observation()
+        self.assertEqual(reader.call_args_list[0].args,('/mnt/data/docker/nodered/.host-health-observer','report.json',0))
+        self.assertEqual(reader.call_args_list[1].args,('/mnt/data/docker/nodered/context/host_observer_tab','flow.json',1000))
+
+    def test_reader_rejects_links_wrong_modes_bad_json_and_oversize(self):
+        import os
+        import tempfile
+        import json
+        with tempfile.TemporaryDirectory()as name:
+            path=Path(name);path.chmod(0o755);file=path/'report.json';file.write_text('{}');file.chmod(0o644)
+            self.assertEqual(_active._observer_json(name,'report.json',os.getuid()),({},None))
+            file.chmod(0o666);self.assertIsNone(_active._observer_json(name,'report.json',os.getuid())[0]);file.chmod(0o644)
+            os.link(file,path/'hardlink');self.assertIsNone(_active._observer_json(name,'report.json',os.getuid())[0]);(path/'hardlink').unlink()
+            file.unlink();file.symlink_to('absent');self.assertIsNone(_active._observer_json(name,'report.json',os.getuid())[0]);file.unlink()
+            for data in ['[1]','{','x'*65537]:
+                file.write_text(data);file.chmod(0o644)
+                self.assertIsNone(_active._observer_json(name,'report.json',os.getuid())[0])
+            path.chmod(0o777);self.assertIsNone(_active._observer_json(name,'report.json',os.getuid())[0])
+
 if __name__ == '__main__':
     unittest.main()

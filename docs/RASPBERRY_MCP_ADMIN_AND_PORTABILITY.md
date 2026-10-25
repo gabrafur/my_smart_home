@@ -547,7 +547,8 @@ O [produtor de fatos do host](../scripts/host-observation/README.md) foi instala
 como serviço root isolado: eventos de containers/unidades e recursos sanitizados,
 sem comandos remotos ou efeitos de reparo. A integração a políticas
 [Node-RED](../nodered/tools/HOST_OBSERVER.md) foi implantada e tem aceite separado;
-a exposição do novo relatório pelo MCP ainda está pendente. O cliente não deve inferir essa cobertura
+a exposição do novo relatório pelo MCP foi validada no cliente real, conforme
+a seção seguinte. O cliente não deve inferir essa cobertura
 apenas porque o serviço está ativo. Reconexões, anel limitado e falta de inventário
 inicial impedem afirmar histórico completo.
 
@@ -556,3 +557,66 @@ registra a recuperação real de uma falha persistente da coleta, mantendo o
 coletor original e os gates. Os ciclos naturais voltaram; a lacuna de 10.623
 segundos permanece na evidência. Isso invalida o aceite de continuidade de 24h
 nessa janela. Falhas antigas continuam históricas, mesmo após sucesso posterior.
+
+## Monitor do host e contagens de Events pelo MCP
+
+As ferramentas existentes aceitam `{"host":"raspberry"}` e continuam somente
+leitura. Não foram acrescentados parâmetros de comandos, caminhos, prompts,
+identidade ou permissões. A evidência real fica em
+[host-observation-MCP.acceptance.json](../scripts/raspberry-mcp/host-observation-MCP.acceptance.json).
+
+`maintenance_capabilities.evidence.data.host_observation` projeta dois arquivos
+fixos: relatório do produtor root e contexto de aplicação do tab Node-RED.
+O leitor abre diretório/arquivo sem seguir symlinks, exige owner/grupo/modo,
+rejeita hardlinks, limita cada leitura a 64KiB e rejeita arquivo alterado durante
+a leitura. Não executa conteúdo desses arquivos. O contexto pertence ao usuário
+da aplicação; não é uma aprovação administrativa nem uma identidade de chatbot.
+
+| Campo | Tipo / significado |
+| --- | --- |
+| `state`, `collection_error`, `observed_at` | observação disponível ou `unknown`, erro sanitizado/null e UTC |
+| `producer` | horário/idade, sequência, perdas do anel, conexão dos streams e métricas allowlisted |
+| `producer.resources` | horário/idade, valores numéricos ou null, erros e validade da política visual |
+| `producer.producer_cost` | custo do próprio produtor; exclui journal filho e janela de 24h |
+| `NodeRED` | horário/idade do último frame, sequência, papéis observados e incidentes sanitizados |
+| `NodeRED.visual_policy` | política validada, lida do canvas; não redefine thresholds no MCP |
+| `notification_intent_recorded` | intenção persistida; não prova entrega da notificação |
+| `operational_health` | permanece `unknown`: cobertura parcial não prova saúde global |
+| `*_proven` | continuam false para Eva, PC desligado, 24h e latência completa |
+
+O contexto pode levar até 30s para persistir. Sua idade é apresentada e contexto
+com mais de 60s fica desconhecido. Divergência de instância/sequência, datas
+faltantes/futuras, política inválida e falha de coleta conservam `unknown`.
+A API não exporta mensagens, logs, prompts ou credenciais. Um valor ausente não
+vira zero ou recuperação. O monitor [Node-RED](../nodered/tools/HOST_OBSERVER.md)
+continua sendo o local de decisões, confirmação, lifecycle e limites visuais.
+
+`events_status` e `maintenance_capabilities.evidence.data.events.current_observation.delivery`
+separam:
+
+- `retained_event_records`: todos os registros de eventos ainda retidos;
+- `eligible_pending_event_records`: eventos selecionáveis pela regra atual do
+  dispatcher: assinatura ativa do mesmo principal, tópico autorizado, janela
+  de 24h/início da assinatura e ausência de qualquer intent de envio;
+- `queued_event_records`: alias compatível da contagem elegível, acompanhado
+  de `queued_event_records_semantics`;
+- `event_count_collection_error`: null ou erro sanitizado; erro/falta de evidência
+  deixa pendência desconhecida, sem inferir ausência de trabalho.
+
+Nas versões anteriores, `queued_event_records` era o total de linhas retidas,
+inclusive eventos enviados. Não interprete recibos antigos como backlog real.
+A projeção reconhece a resposta antiga como total retido e mantém pendência
+`null`. Contagem nova inconsistente também fica desconhecida. A consulta usa
+snapshot somente leitura e não modifica IDs, intents, assinatura ou orçamento.
+Intent incerto/recusado/aceito exclui o evento da pendência; não vira retry.
+Pendente não significa orçamento disponível, callback aceito ou execução da Eva.
+
+Para usar: consultar saúde e erros, verificar a origem/idade e diagnosticar
+somente o papel afetado pelas ferramentas existentes. Seguir o catálogo
+administrativo autorizado com identidade, idempotência, resultado e reconciliação;
+não repetir efeitos incertos. `budget_held` deve ser preservado. A ativação
+recarregou apenas Events e o túnel MCP, com recibos por etapa; manteve a mesma
+assinatura e os intents existentes. Nenhum serviço residencial ou daemon Codex
+foi reiniciado. As fontes auditadas e testes estão no snapshot público; manifestos,
+políticas locais e credenciais continuam privados. Esses snapshots não podem
+sobrescrever políticas de outro servidor sem revisão dos bindings pelo operador.

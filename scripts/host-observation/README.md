@@ -52,7 +52,8 @@ O produtor instalado em 25/10/2026 observou falhas reais do procmon e conclusõe
 naturais posteriores à recuperação, com latência apenas origem→observador.
 A integração de decisões e alertas no
 [canvas Node-RED](../../nodered/tools/HOST_OBSERVER.md) recebeu implantação própria;
-a exposição deste novo relatório pelo MCP ainda está pendente. Não há comprovação de entrega
+a exposição pelo MCP foi validada em
+[host-observation-MCP.acceptance.json](../raspberry-mcp/host-observation-MCP.acceptance.json). Não há comprovação de entrega
 à Eva, execução do assistente, PC desligado ou da meta completa.
 
 ## Testes e aceite

@@ -31,6 +31,7 @@ class Broker(legacy.Broker):
             result = health.static_capabilities(result)
             data = result['evidence']['data']
             data['procmon_acceptance_observation'] = health.procmon_acceptance_observation()
+            data['host_observation'] = health.host_observation()
             data['tool_names'] = list(dict.fromkeys([*data['tool_names'], *repairs.TOOLS]))
             data['listed_tool_count'] = len(data['tool_names'])
             data['fixed_repair_catalogue'] = repairs.handle('codex_repair_capabilities',

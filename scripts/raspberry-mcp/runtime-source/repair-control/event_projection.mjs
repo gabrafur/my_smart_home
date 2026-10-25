@@ -4,7 +4,15 @@ function projectDelivery(status, active, sourceFresh) {
  const attempts=integer(status.attempts_last_24h);
  const maximum=integer(status.maximum_attempts_per_day,1);
  const spacing=integer(status.minimum_attempt_spacing_seconds,0,86400);
- const queued=integer(status.queued_event_records,0,10000);
+ const legacy=integer(status.queued_event_records,0,10000);
+ const semantics=status.queued_event_records_semantics;
+ const declared=semantics==='eligible_pending_current_active_principal';
+ const retained=integer(status.retained_event_records,0,10000)??(!declared?legacy:null);
+ const reportedPending=integer(status.eligible_pending_event_records,0,10000);
+ const countsReady=declared&&status.event_count_collection_error===null&&retained!==null&&
+  reportedPending!==null&&legacy===reportedPending&&reportedPending<=retained;
+ const pending=countsReady?reportedPending:null;
+ const countError=countsReady?null:declared?'event_count_scope_or_collection_unconfirmed':'legacy_total_only_pending_unknown';
  const allowed=new Set(['budget_held','idle','webhook_accepted','delivery_refused','uncertain','reconciliation_required','not_attempted']);
  const last=allowed.has(status.last_dispatch?.state)?status.last_dispatch.state:null;
  let state='unknown',reason='delivery_not_confirmed';
@@ -18,7 +26,12 @@ function projectDelivery(status, active, sourceFresh) {
  }else if(!sourceFresh)reason='source_evidence_unavailable';
  return {state,reason,last_dispatch_state:last,attempts_last_24h:attempts,
   maximum_attempts_per_day:maximum,minimum_attempt_spacing_seconds:spacing,
-  queued_event_records:queued,assistant_execution:'unknown',automatic_retry:false};
+  queued_event_records:pending,queued_event_records_semantics:'eligible_pending_current_active_principal',
+  retained_event_records:retained,eligible_pending_event_records:pending,
+  event_count_collection_error:countError,
+  event_count_coverage:['pending_active_same_principal_topic_last24h_and_subscription_start',
+   'existing_intents_excluded_including_uncertain','count_not_delivery_or_assistant_execution'],
+  assistant_execution:'unknown',automatic_retry:false};
 }
 
 // Closed projection: server status is not proof of assistant execution.

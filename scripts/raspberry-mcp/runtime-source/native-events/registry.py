@@ -233,6 +233,42 @@ class Registry:
         self.db.execute("DELETE FROM dispatch WHERE state IN ('webhook_accepted','delivery_refused') AND at<?",(now-7*86400,))
         self.db.execute("DELETE FROM events WHERE created<? AND NOT EXISTS(SELECT 1 FROM dispatch WHERE dispatch.event=events.id)",(now-86400,))
 
+    def event_counts(self, now):
+        """Read-only snapshot of retained rows and the dispatcher's eligible work."""
+        retained = pending = None
+        error = None
+        self.db.execute('SAVEPOINT event_count_observation')
+        try:
+            retained = self.db.execute('SELECT count(*) FROM events').fetchone()[0]
+            active = self.db.execute('SELECT id,args,started FROM subscriptions WHERE active=1 AND expires>? AND owner=?',
+                                     (now, self.principal)).fetchall()
+            if len(active) > 1:
+                raise ValueError('subscription_scope_unconfirmed')
+            pending = 0
+            for sub in active:
+                allowed = filters(json.loads(sub['args']))['topics']
+                started = sub['started']
+                if type(started) not in (int, float) or not 0 <= started <= now:
+                    raise ValueError('subscription_time_unconfirmed')
+                placeholders = ','.join('?' for _ in allowed)
+                pending = self.db.execute(
+                    'SELECT count(*) FROM events e WHERE e.created>=? AND e.topic IN (' + placeholders +
+                    ') AND NOT EXISTS (SELECT 1 FROM dispatch d WHERE d.subscription=? AND d.event=e.id)',
+                    (max(now-86400, started), *allowed, sub['id'])).fetchone()[0]
+        except (ValueError, TypeError, KeyError, sqlite3.Error):
+            pending = None
+            error = 'event_count_scope_or_collection_unconfirmed'
+        finally:
+            self.db.execute('RELEASE event_count_observation')
+        return {'retained_event_records': retained, 'eligible_pending_event_records': pending,
+                'queued_event_records': pending,
+                'queued_event_records_semantics': 'eligible_pending_current_active_principal',
+                'event_count_collection_error': error,
+                'event_count_coverage': ['retained_all_event_rows',
+                    'pending_active_same_principal_topic_last24h_and_subscription_start',
+                    'existing_dispatch_intents_excluded_regardless_of_outcome',
+                    'budget_and_assistant_execution_are_separate']}
+
     def status(self):
         try:
             diagnostics = self.subscription_diagnostics()
@@ -251,7 +287,7 @@ class Registry:
         return {'source':'persistent_mcp_event_delivery','observed_at':iso(now),
                 'subscription_lease':lease_metadata,
                 'active_subscriptions':self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>?',(now,)).fetchone()[0],
-                'queued_event_records':self.db.execute('SELECT count(*) FROM events').fetchone()[0],
+                **self.event_counts(now),
                 'dispatch_states':states,'attempts_last_24h':self.db.execute('SELECT count(*) FROM dispatch WHERE at>?',(now-86400,)).fetchone()[0],
                 'maximum_attempts_per_day':6,'minimum_attempt_spacing_seconds':600,
                 'assistant_run_confirmed':False,'automatic_retry':False,
