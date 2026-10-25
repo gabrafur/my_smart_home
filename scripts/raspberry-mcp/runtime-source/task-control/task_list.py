@@ -171,7 +171,7 @@ def page(rows,args,registry_hash,errors,truncated,now):
       'latest_executed_thread':summary(executed[0] if executed else None),
       'mutation_performed':False,'assistant_dispatches':0}
 
-def collect(args,tasks,invoke,now=None):
+def collect(args,tasks,invoke,now=None,admission_closed=False):
     validate(args);now=time.time() if now is None else now
     raw,errors,truncated=registry(tasks,now)
     registry_hash=digest(raw)
@@ -188,5 +188,12 @@ def collect(args,tasks,invoke,now=None):
             by_id.update({r['thread_id']:r for r in values})
         except (OSError,ValueError,KeyError,TypeError,TimeoutError,subprocess.SubprocessError):
             errors.append('daemon_metadata_collection_failed')
+    need(type(admission_closed) is bool,'invalid_internal_admission_state')
     projected=[project(r,by_id.get(r['thread_id']),now) for r in raw]
-    return page(projected,args,registry_hash,errors,truncated,now)
+    if admission_closed:
+        for row in projected:
+            row['adapter_send_admission']='closed'
+            row['can_accept_input']=False
+    result=page(projected,args,registry_hash,errors,truncated,now)
+    result['administrative_admission_closed']=admission_closed
+    return result

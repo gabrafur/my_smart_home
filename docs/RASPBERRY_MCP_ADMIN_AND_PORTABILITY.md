@@ -29,6 +29,17 @@ Operações dentro da meta não exigem novas aprovações. Extensão temporal ex
 autorização específica. Não armazenar senha, exportar credenciais ou executar
 novos efeitos residenciais. Preservar custo adicional zero e trabalhos existentes.
 
+A expiração fecha novas criações,envios,preflights e mudanças de perfil.
+Consultas das identidades já registradas e reconhecimento de hashes terminais
+continuam disponíveis. Essas leituras ainda validam código e políticas root;
+uma consulta ao daemon exige o mesmo boot e a identidade de peer aprovada.
+Se o peer não puder ser confirmado,um envio em andamento mantém o estado
+armazenado com erro de coleta explícito. Isso não o transforma em concluído.
+Uma reconciliação de criação que ainda dependa de `resume` permanece bloqueada.
+Na listagem,o daemon pode continuar ocioso e capaz de receber entrada enquanto
+`adapter_send_admission=closed` e `can_accept_input=false` indicam o bloqueio
+real do adaptador. O cursor considera essa mudança de admissão.
+
 ## Componentes instalados
 
 As [fontes ativas exportadas](../scripts/raspberry-mcp/runtime-source/SOURCE-MAP.json)
@@ -392,6 +403,11 @@ python3 -B -m unittest discover -s scripts/raspberry-mcp/portable-http -p 'test_
 
 O teste isolado cobre autenticação,Origin,inicialização,notificação,listagem,
 expiração,limites,versão,framing inválido,JSON ambíguo e timeout sem repetição.
+Os testes de expiração administrativa adicionais executam o código capturado
+com bindings sintéticos e recusam criação/envio/resume após o gate temporal.
+No código instalado,uma simulação da falha temporal preservou o hash do banco
+e o resultado terminal sem contatar o daemon;isso não é uma observação do
+prazo real já transcorrido nem uma alteração do relógio de produção.
 O aceite temporário contra o servidor real comprovou descoberta e capacidade
 administrativa configurada. O aceite administrativo independente comprovou
 UID0 no executor e deduplicação de criação/envio. Nenhum desses resultados

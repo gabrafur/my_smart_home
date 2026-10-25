@@ -58,8 +58,31 @@ def read(path, uid, mode, limit=1048576):
         os.close(directory)
 
 
-def policy(old):
-    legacy = old.plan()  # Existing boot, wall-clock and monotonic lease gates.
+def observation_legacy(old):
+    """Retain observation without extending admission or fabricating a clock.
+
+    The root policy and both legacy source digests remain mandatory. Only a
+    temporal/boot lease failure permits this fallback; every effect still uses
+    old.plan() immediately before dispatch.
+    """
+    try:
+        return old.plan()
+    except ValueError as error:
+        need(str(error) == 'control_lease_expired', 'control_observation_refused')
+    legacy = json.loads(read(LEGACY_POLICY, 0, 0o644))
+    need(legacy.get('enabled') is True and legacy.get('threads') == list(old.THREADS)
+         and legacy.get('project') == '/mnt/data/docker' and
+         legacy.get('max_sends') == 6, 'control_observation_scope_changed')
+    need(set(legacy.get('source_hashes', {})) ==
+         {'codex_control.py', 'codex_control_rpc.cjs'}, 'control_observation_code_scope')
+    for name, digest in legacy['source_hashes'].items():
+        need(hashlib.sha256(read(old.ROOT/name, 0, 0o644)).hexdigest() == digest,
+             'control_observation_code_changed')
+    return {**legacy, '_observation_only': True}
+
+
+def policy(old, observation=False):
+    legacy = observation_legacy(old) if observation else old.plan()
     p = json.loads(read(POLICY, 0, 0o644))
     need(isinstance(p.get('enabled'), bool) and
          p.get('legacy_policy_sha256') == hashlib.sha256(read(LEGACY_POLICY, 0, 0o644)).hexdigest()
@@ -163,7 +186,11 @@ def admission(count, latest, p):
 
 
 def rpc(q, legacy, old):
-    if q['mode'] in ('create', 'send'):
+    if legacy.get('_observation_only'):
+        need(q['mode'] in ('metadata_batch', 'observe'), 'expired_observation_only')
+        need(legacy['boot_id'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+             'observation_peer_boot_unconfirmed')
+    if q['mode'] in ('create_preflight', 'create', 'creation_probe', 'send_preflight', 'send'):
         fresh = old.plan()
         need(fresh['expires_at'] == legacy['expires_at'] and
              time.time() < fresh['expires_at'], 'task_admission_expired')
@@ -248,12 +275,16 @@ def bind_profile(q, db, p, payload=None):
 def handle(name, args, old):
     need(os.geteuid() == UID, 'task_identity_refused')
     validate(name, args)
-    p, legacy = policy(old)
+    p, legacy = policy(old, observation=name in ('codex_task_status', 'codex_task_list',
+                                                'codex_task_reconcile', 'codex_task_revoke'))
+    admission_closed = bool(legacy.get('_observation_only') or not p['enabled'] or
+                            (STATE / 'revoked').exists())
     with locked(read_only=name == 'codex_task_list'):
         if name == 'codex_task_list':
             import task_list
             # No Store constructor, DDL, receipt writes, resume or inference.
-            return task_list.collect(args, __import__(__name__), lambda q: rpc(q, legacy, old))
+            return task_list.collect(args, __import__(__name__), lambda q: rpc(q, legacy, old),
+                                     admission_closed=admission_closed)
         db = store(p)
         try:
             invoke = lambda q: rpc(bind_profile(q, db, p, args), legacy, old)
@@ -275,7 +306,13 @@ def handle(name, args, old):
                 return {'revoked': True, 'receipts_preserved': True}
             if name == 'codex_task_status':
                 if args['kind'] == 'creation':
-                    row = response(db.observe_creation(args['operation_id'], invoke))
+                    if admission_closed:
+                        cached = db.row('tasks', args['operation_id'])
+                        need(cached is not None, 'task_not_found')
+                        previous = db.creation_result(args['operation_id'])
+                        row = response({**cached, **({'result': json.dumps(previous)} if previous else {})})
+                    else:
+                        row = response(db.observe_creation(args['operation_id'], invoke))
                     thread = row.get('thread')
                     if thread:
                         try:
@@ -288,10 +325,19 @@ def handle(name, args, old):
                     counts = db.db.execute("SELECT count(*),sum(state!='not_dispatched'),sum(turn IS NOT NULL) FROM sends WHERE task=?", (args['operation_id'],)).fetchone()
                     row['dispatch_evidence'] = {'attempt_receipts': counts[0],
                         'dispatch_intent_rows': counts[1] or 0, 'recorded_turns': counts[2] or 0}
-                    row['send_admission'] = 'closed' if row.get('state') in ('cancelled_before_first_send','creation_lost_before_send') else 'fresh_preflight_required'
+                    row['send_admission'] = 'closed' if admission_closed or row.get('state') in ('cancelled_before_first_send','creation_lost_before_send') else 'fresh_preflight_required'
                     row['notLoaded_is_terminal'] = False
+                    row['observation_without_admission'] = admission_closed
                     return row
-                return response(db.observe(args['operation_id'], invoke))
+                try:
+                    row = response(db.observe(args['operation_id'], invoke))
+                except Exception:
+                    if not admission_closed:
+                        raise
+                    row = response(db.row('sends', args['operation_id']))
+                    row['collection_error'] = 'live_observation_unavailable_cached_state_only'
+                row['observation_without_admission'] = admission_closed
+                return row
             if name == 'codex_task_reconcile':
                 if not db.row('sends', args['operation_id']):
                     return db.reconcile_creation(args['operation_id'], args['result_hash'], invoke)

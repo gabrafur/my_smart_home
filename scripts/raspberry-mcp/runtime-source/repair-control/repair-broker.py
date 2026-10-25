@@ -34,10 +34,13 @@ class Broker(legacy.Broker):
             data['listed_tool_count'] = len(data['tool_names'])
             data['fixed_repair_catalogue'] = repairs.handle('codex_repair_capabilities',
                                                          {'host': 'raspberry'}, old, tasks)
-            task_policy, _ = tasks.policy(old)
+            task_policy, temporal = tasks.policy(old, observation=True)
             delegation = task_policy.get('admin_delegation')
             data['administrative_delegation'] = {
                 'configured': delegation == tasks.ADMIN_DELEGATION,
+                'admission_active': delegation == tasks.ADMIN_DELEGATION and task_policy['enabled']
+                    and not temporal.get('_observation_only') and not (tasks.STATE/'revoked').exists(),
+                'observation_preserved_after_expiry': True,
                 'task_key_prefix': 'eva-admin-',
                 'create_tool': 'codex_task_create', 'send_tool': 'codex_task_send',
                 'status_tool': 'codex_task_status', 'ack_tool': 'codex_task_reconcile',

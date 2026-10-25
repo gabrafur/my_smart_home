@@ -35,5 +35,17 @@
     "sanitized host fault proactive event ingress",
     "natural offsite backup and service recovery evidence",
     "full24h continuity and PC-off proof"
-  ]
+  ],
+  "post_expiry_observation": {
+    "installed": true,
+    "targeted_python_regressions": 79,
+    "new_public_expiry_regressions": 11,
+    "installed_temporal_failure_simulation_passed": true,
+    "real_clock_or_policy_changed_by_simulation": false,
+    "receipt_hash_and_database_hash_preserved": true,
+    "new_creation_refused_before_effects": true,
+    "real_future_expiry_observation_claimed": false,
+    "services_restarted": 0,
+    "assistant_dispatches": 0
+  }
 }
