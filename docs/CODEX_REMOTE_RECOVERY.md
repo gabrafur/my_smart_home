@@ -29,6 +29,21 @@ explícito. Comparar somente o alias ou aceitar prefixos pode declarar ausente
 um servidor saudável. O recovery não remove o alias; o argumento `--listen`
 usa o caminho configurado, também quando há um override de socket.
 
+O restart explícito e a atualização agendada usam `--preflight-restart` para
+consultar a [API de metadados do App Server](https://learn.chatgpt.com/docs/app-server).
+São usadas somente `thread/loaded/list`, `thread/read` sem histórico e
+`thread/goal/get`. Turno ou meta ativa adia a atualização antes da instalação;
+o mesmo gate é conferido antes de encerrar o processo. Estado desconhecido,
+paginação incompleta e `notLoaded` também adiam, sem serem interpretados como
+conclusão. A saída contém apenas estado e razão enumerados, sem objetivos,
+títulos, histórico ou credenciais.
+
+Código 75 significa adiamento. O worker preserva o identificador do pedido e
+um marcador de restart já criado; não reinstala uma versão já confirmada só
+porque seu restart aguarda. A observação é instantânea e não cria um bloqueio
+atômico para novos clientes. Nenhuma consulta inicia inferência, retoma uma
+thread ou altera a meta.
+
 Produção e teste percorrem as mesmas decisões até o gate final. Os controles
 `TESTE 7` e `TESTE 8` simulam, respectivamente, App Server ausente e recuperado;
 em teste o pedido termina no dry-run e não executa nada no host.

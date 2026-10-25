@@ -315,7 +315,13 @@ restaurar a versão anterior. Após uma atualização confirmada, a etapa valida
 dono do socket Unix do App Server, encerra somente esse processo, inicia a nova
 versão e confirma que o listener voltou. Um marcador privado mantém o reinício
 pendente para a próxima execução caso o handoff falhe; execuções sem versão nova
-não interrompem uma sessão saudável. O caminho `test_mode` atravessa preparação,
+não interrompem uma sessão saudável. Antes de instalar o binário e novamente
+antes de encerrá-lo, a ponte consulta somente metadados de threads carregadas
+e o estado de suas metas. Turno ou meta ativa, thread não carregada, paginação
+incompleta ou coleta incerta adiam a operação com código 75. O pedido original
+fica para retomada; um marcador já existente é preservado. Meta ativa também
+protege o intervalo entre turnos. A leitura é um snapshot, não uma operação
+atômica de drenagem do daemon. O caminho `test_mode` atravessa preparação,
 roteamento e parser, mas termina no dry-run antes de consultar, instalar ou
 reiniciar o pacote.
 

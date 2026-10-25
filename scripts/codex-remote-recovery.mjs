@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { readActivity } from "./codex-remote-activity.mjs";
 
 const sleep = (milliseconds) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 
@@ -73,9 +74,12 @@ export function restartCodexRemote({
   wait = sleep,
   readFile = fs.readFileSync,
   terminate = process.kill,
+  activity = readActivity,
 } = {}) {
   const version = run(codexBin, ["--version"], { encoding: "utf8", timeout: 10_000 });
   if (version?.status !== 0) return { status: "failed", action: "restart", reason: "binary_unavailable" };
+  const gate = preflightCodexRestart({ controlSocket, activity });
+  if (gate.status === "deferred") return { ...gate, action: "restart" };
 
   if (listenerReady(controlSocket, run)) {
     const pids = listenerPids(controlSocket, run);
@@ -98,13 +102,27 @@ export function restartCodexRemote({
   return { status: "recovered", action: "restart", reason: "app_server_restarted" };
 }
 
+export function preflightCodexRestart({
+  controlSocket = process.env.CODEX_REMOTE_CONTROL_SOCKET || "/home/gabriel/.codex/app-server-control/app-server-control.sock",
+  activity = readActivity,
+} = {}) {
+  let state;
+  try { state = activity(controlSocket); } catch { state = null; }
+  if (state?.state === "idle" && state.no_effects === true)
+    return { status: "healthy", action: "none", reason: "restart_preflight_idle" };
+  return { status: "deferred", action: "none",
+    reason: state?.state === "busy" ? "active_work" : "activity_unconfirmed" };
+}
+
 export function main(argv = process.argv.slice(2)) {
-  if (argv.length !== 1 || !new Set(["--recover", "--restart"]).has(argv[0])) {
-    throw new Error("Use --recover ou --restart");
+  if (argv.length !== 1 || !new Set(["--recover", "--restart", "--preflight-restart"]).has(argv[0])) {
+    throw new Error("Use --recover, --restart ou --preflight-restart");
   }
-  const result = argv[0] === "--restart" ? restartCodexRemote() : recoverCodexRemote();
+  const result = argv[0] === "--preflight-restart" ? preflightCodexRestart()
+    : argv[0] === "--restart" ? restartCodexRemote() : recoverCodexRemote();
   process.stdout.write(`codex-remote-recovery status=${result.status} action=${result.action} reason=${result.reason}\n`);
   if (result.status === "failed") process.exitCode = 1;
+  if (result.status === "deferred") process.exitCode = 75;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

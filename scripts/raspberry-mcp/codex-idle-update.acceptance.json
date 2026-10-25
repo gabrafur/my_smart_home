@@ -1,0 +1,13 @@
+{
+  "observed_utc_date": "2026-10-25",
+  "source": "actual existing daemon read-only preflight",
+  "activity_state": "busy",
+  "activity_reason": "active_turn",
+  "update_preflight_exit_code": 75,
+  "targeted_tests_passed": 28,
+  "binary_installation_performed": false,
+  "daemon_restart_performed": false,
+  "inference_started": false,
+  "raw_thread_metadata_exported": false,
+  "scope": "active-work deferral proof;not idle upgrade or atomic admission proof"
+}

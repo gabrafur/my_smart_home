@@ -50,6 +50,26 @@ restart_remote() {
   "$remote_restart_bin" --restart >&2
 }
 
+preflight_restart() {
+  [ -x "$remote_restart_bin" ] || return 66
+  "$remote_restart_bin" --preflight-restart >&2
+}
+
+require_idle_restart() {
+  set +e
+  preflight_restart
+  preflight_status=$?
+  set -e
+  if [ "$preflight_status" -eq 75 ]; then
+    echo "codex-cli-update status=deferred failure_stage=active-work"
+    exit 75
+  fi
+  if [ "$preflight_status" -ne 0 ]; then
+    echo "codex-cli-update status=failed failure_stage=restart-preflight"
+    exit "$preflight_status"
+  fi
+}
+
 codex_bin="${CODEX_CLI_BIN:-$codex_prefix/bin/codex}"
 case "$codex_bin" in
   /*) ;;
@@ -85,10 +105,15 @@ fi
 
 if [ "$current_version" = "$latest_version" ]; then
   if [ -f "$restart_marker" ]; then
+    require_idle_restart
     set +e
     restart_remote
     restart_status=$?
     set -e
+    if [ "$restart_status" -eq 75 ]; then
+      echo "codex-cli-update status=deferred failure_stage=active-work"
+      exit 75
+    fi
     if [ "$restart_status" -ne 0 ]; then
       echo "codex-cli-update status=failed failure_stage=remote-restart from=$current_version target=$latest_version"
       exit 71
@@ -101,6 +126,7 @@ if [ "$current_version" = "$latest_version" ]; then
   exit 0
 fi
 
+require_idle_restart
 mkdir -p -- "$codex_prefix"
 umask 077
 : > "$restart_marker"
@@ -134,6 +160,10 @@ set +e
 restart_remote
 restart_status=$?
 set -e
+if [ "$restart_status" -eq 75 ]; then
+  echo "codex-cli-update status=deferred failure_stage=active-work"
+  exit 75
+fi
 if [ "$restart_status" -ne 0 ]; then
   echo "codex-cli-update status=failed failure_stage=remote-restart from=${current_version:-missing} target=$latest_version"
   exit 71

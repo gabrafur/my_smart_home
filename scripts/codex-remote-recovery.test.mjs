@@ -43,6 +43,7 @@ assert.deepEqual(alreadyHealthy, { status: "healthy", action: "none", reason: "a
 let running = true;
 let restarted = false;
 const restart = restartCodexRemote({
+  activity: () => ({ state: "idle", no_effects: true }),
   codexBin: "/opt/codex",
   controlSocket: socket,
   run(command, args) {
@@ -73,6 +74,7 @@ const restart = restartCodexRemote({
 assert.deepEqual(restart, { status: "recovered", action: "restart", reason: "app_server_restarted" });
 
 const unverified = restartCodexRemote({
+  activity: () => ({ state: "idle", no_effects: true }),
   codexBin: "/opt/codex",
   controlSocket: socket,
   run(command, args) {

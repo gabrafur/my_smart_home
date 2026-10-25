@@ -476,7 +476,7 @@ chmod 0755 "${codex}"
   assert.match(updated.stdout, /status=success action=updated from=0\.151\.0 to=0\.155\.1/);
   assert.match(updated.stdout, /remote_restart=completed/);
   assert.match(fs.readFileSync(calls, "utf8"), /install --global --prefix .* @openai\/codex@0\.155\.1/);
-  assert.equal(fs.readFileSync(restartCalls, "utf8").trim(), "--restart");
+  assert.deepEqual(fs.readFileSync(restartCalls, "utf8").trim().split("\n"), ["--preflight-restart", "--restart"]);
   assert.equal(fs.existsSync(restartMarker), false);
 
   fs.writeFileSync(calls, "");
@@ -512,6 +512,7 @@ chmod 0755 "${codex}"
   fs.writeFileSync(
     restart,
     `#!/bin/sh
+if [ "$1" = "--preflight-restart" ]; then exit 0; fi
 count=$(wc -l < "${restartCalls}" 2>/dev/null || printf 0)
 printf '%s\n' "$*" >> "${restartCalls}"
 [ "$count" -ge 1 ]
@@ -547,6 +548,7 @@ test("Codex CLI updater rolls back when the installed binary does not verify", (
   const bin = path.join(prefix, "bin");
   const codex = path.join(bin, "codex");
   const npm = path.join(fixture, "npm");
+  const restart = path.join(fixture, "restart-codex-remote");
   const calls = path.join(fixture, "calls");
   fs.mkdirSync(bin, { recursive: true });
   fs.writeFileSync(codex, "#!/bin/sh\necho 'codex-cli 0.151.0'\n");
@@ -571,6 +573,8 @@ chmod 0755 "${codex}"
   );
   fs.chmodSync(codex, 0o755);
   fs.chmodSync(npm, 0o755);
+  fs.writeFileSync(restart, "#!/bin/sh\nexit 0\n");
+  fs.chmodSync(restart, 0o755);
 
   const result = spawnSync(updateCodexCli, [], {
     encoding: "utf8",
@@ -579,6 +583,7 @@ chmod 0755 "${codex}"
       CODEX_CLI_NPM_BIN: npm,
       CODEX_CLI_PREFIX: prefix,
       CODEX_CLI_BIN: codex,
+      CODEX_CLI_REMOTE_RESTART_BIN: restart,
     },
   });
   assert.equal(result.status, 70, result.stderr);
