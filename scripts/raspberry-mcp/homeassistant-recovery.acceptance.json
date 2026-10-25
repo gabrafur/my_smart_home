@@ -1,0 +1,29 @@
+{
+  "observed_utc_date": "2026-10-25",
+  "original_failure": {
+    "reason": "EACCES writing recovery checkpoint before first container recreation",
+    "preserved": true
+  },
+  "recovery": {
+    "submissions": 1,
+    "native_worker_result": "success",
+    "started_at": "2026-10-25T06:01:02Z",
+    "finished_at": "2026-10-25T06:05:14Z",
+    "version": "2026.10.4",
+    "image": "sha256:23f4dfbb69ce76315dbc4de7915504f1c2dcecd7ca2648113a493a385972e133",
+    "health": "healthy",
+    "durable_completion_archive": true,
+    "GitHub_commit": "6612d52cbc24696a33b4e6f4ec5943854ea328c9",
+    "remote_main_verified": true
+  },
+  "following_native_containers_stage": {
+    "result": "blocked_before_recreation",
+    "reason": "portainer_has_no_readiness_coverage",
+    "gate_preserved": true
+  },
+  "not_proven": [
+    "all_integration_health",
+    "disaster_restore",
+    "full_goal_acceptance"
+  ]
+}

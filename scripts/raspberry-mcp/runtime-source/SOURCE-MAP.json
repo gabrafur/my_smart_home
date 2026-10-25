@@ -74,8 +74,8 @@
     },
     "repair-control/event_projection.mjs": {
       "source": "/usr/local/lib/raspberry-repair-control/event_projection.mjs",
-      "source_sha256": "6085921c32071f4341fc9f13041b9946e61214add8a687f6a814ee7307a0cd67",
-      "export_sha256": "6085921c32071f4341fc9f13041b9946e61214add8a687f6a814ee7307a0cd67",
+      "source_sha256": "a9f023d6525008c3116d34b1932d4d644dd9b6f358be72337a57aa08f42a7349",
+      "export_sha256": "a9f023d6525008c3116d34b1932d4d644dd9b6f358be72337a57aa08f42a7349",
       "normalizations": []
     },
     "repair-control/repair-broker.py": {
@@ -106,8 +106,8 @@
     },
     "frontend/event_projection.mjs": {
       "source": "/var/lib/raspberry-mcp/root/app/event_projection.mjs",
-      "source_sha256": "6085921c32071f4341fc9f13041b9946e61214add8a687f6a814ee7307a0cd67",
-      "export_sha256": "6085921c32071f4341fc9f13041b9946e61214add8a687f6a814ee7307a0cd67",
+      "source_sha256": "a9f023d6525008c3116d34b1932d4d644dd9b6f358be72337a57aa08f42a7349",
+      "export_sha256": "a9f023d6525008c3116d34b1932d4d644dd9b6f358be72337a57aa08f42a7349",
       "normalizations": []
     },
     "procmon-observability/observed_collector.py": {
@@ -173,6 +173,33 @@
       "export_sha256": "846fbb9e00f6df40e6de07e9c3e39dcec804630374711f366340ee8b01486d71",
       "normalizations": [
         "private_node_red_host_marker"
+      ]
+    },
+    "administrative-recovery/queue_homeassistant_recovery.py": {
+      "source": "/run/raspberry-ha-stage-recovery-20261025/queue.py",
+      "source_sha256": "f763e349d2f972673e23aa66e82581a3c4298ad3c313fb7b7d97e2a2e77f992b",
+      "export_sha256": "4fd9fbd59a0593b967e300829b6d72d05af1b7df031b3fceb4deb02274da908b",
+      "normalizations": [
+        "operator_manifest_binding_marker_when_present",
+        "same_numeric_deadline_written_as_integer_plus_fraction"
+      ]
+    },
+    "administrative-recovery/apply_event_delivery_health.py": {
+      "source": "/run/raspberry-event-delivery-health-20261025/apply.py",
+      "source_sha256": "2f24f8a71e7fba0ecf15cc2fd626f84e54e66fe674e0bdbb111877d1c54d957a",
+      "export_sha256": "d922a83eb9ef4781ded3ef7c73ada949fc5383a173319f679fd8fbba7e9cf7bc",
+      "normalizations": [
+        "operator_manifest_binding_marker_when_present",
+        "same_numeric_deadline_written_as_integer_plus_fraction"
+      ]
+    },
+    "administrative-recovery/activate_event_delivery_health.py": {
+      "source": "/run/raspberry-event-delivery-health-20261025/activate.py",
+      "source_sha256": "a36f59fb4aa3118ae11ea2d023c452af2a7d3b87dc632b21afa0e7d9d777e090",
+      "export_sha256": "80ebea24cbfffb68576bac8b5019d06af52bb3e3a393024a26ccd7581ccf81ca",
+      "normalizations": [
+        "operator_manifest_binding_marker_when_present",
+        "same_numeric_deadline_written_as_integer_plus_fraction"
       ]
     }
   }

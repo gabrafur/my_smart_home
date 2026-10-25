@@ -512,3 +512,30 @@ Assistant foi preservada fora do checkout para revisão. O Compose voltou
 à imagem que permanece em execução, sem reiniciar serviços nessa contenção.
 Antes de editar ou validar o projeto, confira a atividade de todas as etapas
 diárias; o fluxo existente pode avançar após o resultado offsite.
+
+## Entrega de eventos e atualização recuperada
+
+Em `maintenance_capabilities`, `events.current_observation.state` descreve a
+assinatura. Consulte também `events.current_observation.delivery`: uma
+assinatura `active` pode ter entrega `budget_held`, `reconciliation_required`
+ou `unknown`. O resumo expõe somente contadores limitados, estado sanitizado
+do último envio e razão enumerada. Não inclui conteúdo de avisos, callback
+ou chave. Seis tentativas na janela móvel bloqueiam novos envios; uma espera
+por espaçamento não recebe um horário de retry inventado. O resumo não muda
+o limite, não renova a assinatura e não repete entregas incertas.
+
+`webhook_accepted` não comprova execução da assistente nem prontidão de uma
+entrega futura. Datas ausentes, conflito de relógio e falha de coleta mantêm
+`unknown`. O aceite foi conferido por cliente MCP padrão no Raspberry e
+pelo conector remoto real após recarregar a ponte. Uma conexão persistente
+pode continuar usando o módulo anterior até ser renovada. A ativação teve
+recibo próprio e não reiniciou o daemon Codex nem serviços residenciais.
+Veja [event-delivery-health.acceptance.json](../scripts/raspberry-mcp/event-delivery-health.acceptance.json)
+e [os testes de entrega](../scripts/raspberry-mcp/event-delivery-health.test.mjs).
+
+A recuperação do Home Assistant concluiu no worker existente, confirmou
+versão e prontidão e publicou o Compose no GitHub. A falha anterior foi
+preservada. A etapa posterior dos containers parou antes de recriar serviços
+porque faltava cobertura de prontidão do Portainer; esse gate permanece
+ativo. Consulte [homeassistant-recovery.acceptance.json](../scripts/raspberry-mcp/homeassistant-recovery.acceptance.json).
+Isso não comprova todas as integrações nem restauração de desastre.

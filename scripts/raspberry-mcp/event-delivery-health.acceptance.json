@@ -1,0 +1,35 @@
+{
+  "observed_utc_date": "2026-10-25",
+  "installation": "applied_root_owned",
+  "tests": {
+    "python": 34,
+    "node": 17,
+    "delivery_regressions": 6
+  },
+  "MCP_acceptance": {
+    "source": "actual standard MCP Unix client on Raspberry;no PC",
+    "protocol": "2025-06-18",
+    "tool_count": 38,
+    "subscription_state": "active",
+    "delivery_state": "budget_held",
+    "daily_attempts": 6,
+    "maximum_attempts": 6,
+    "minimum_spacing_seconds": 600,
+    "external_connector_acceptance": "passed_actual_remote_MCP",
+    "external_observed_at": "2026-10-25T06:26:17Z"
+  },
+  "authority_and_expiry_unchanged": true,
+  "subscription_replaced": false,
+  "limits_raised": false,
+  "new_events": 0,
+  "new_inference": false,
+  "household_services_restarted": 0,
+  "assistant_execution": "unknown",
+  "whole_goal_complete": false,
+  "transport_activation": {
+    "fixed_MCP_tunnel_restarted": true,
+    "first_read_response_unconfirmed": true,
+    "subsequent_read_confirmed": true,
+    "uncertain_write_retried": false
+  }
+}
