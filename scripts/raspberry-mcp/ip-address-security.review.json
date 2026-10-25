@@ -1,0 +1,23 @@
+{
+  "reviewed_utc_date": "2026-10-25",
+  "advisory": "GHSA-rxp7-6hxx-x8q5",
+  "primary_advisory_url": "https://github.com/advisories/GHSA-rxp7-6hxx-x8q5",
+  "previous_version": "10.7.2",
+  "declared_fixed_version": "10.7.4",
+  "upstream_commit": "651c1dd35e55593b337d21c8e2a990b3743d1b3a",
+  "official_archive_integrity_verified": true,
+  "installed_baseline_files_compared": 30,
+  "installed_baseline_deltas": 0,
+  "license_unchanged": true,
+  "other_lock_packages_changed": 0,
+  "regression": {
+    "vulnerable_baseline": "bounded_child_timed_out_as_expected",
+    "verified_candidate": "2_tests_passed",
+    "isolated_child_heap_MiB": 32,
+    "maximum_child_wall_ms": 1500
+  },
+  "lifecycle_scripts_executed": false,
+  "long_running_NodeRED_patch_load_proven": false,
+  "service_restart_performed": false,
+  "coverage": "review and isolated candidate proof before canonical npm ci;not all dependency security or exploit reachability"
+}

@@ -16,7 +16,7 @@ import {
   recreateAndVerify,
 } from "./docker-auto-update.mjs";
 import { probeService, startupComplete, requireReadinessCoverage,
-  mqttProbeScript, zigbeeProbeScript, nodeRedProbeScript } from "./container-readiness.mjs";
+  mqttProbeScript, zigbeeProbeScript, nodeRedProbeScript, portainerProbeScript } from "./container-readiness.mjs";
 import {
   assessKiaRuntimeStates,
   candidateMetadataMatchesTarget,
@@ -156,7 +156,7 @@ test("rejects an unhealthy Home Assistant runtime", async () => {
 });
 
 test("running is insufficient, and even Docker healthy requires the service probe", async () => {
-  for (const service of ["mosquitto", "nodered", "zigbee2mqtt"]) {
+  for (const service of ["mosquitto", "nodered", "zigbee2mqtt", "portainer"]) {
     for (const state of ["running|none", "running|healthy"]) {
       let calls = 0;
       await waitForHealthyService(service, { inspect: () => state,
@@ -177,8 +177,8 @@ test("readiness rejects missing, exited, restarting and unsupported containers",
     pause: async () => {}, attempts: 2 }), /unavailable/);
   await assert.rejects(waitForHealthyService("unknown", { inspect: () => "running|none",
     attempts: 1 }), /no readiness probe/);
-  assert.throws(() => requireReadinessCoverage(["portainer"], () => false), /before recreation/);
-  requireReadinessCoverage(["mosquitto", "nodered", "zigbee2mqtt"], () => assert.fail());
+  assert.throws(() => requireReadinessCoverage(["appdaemon", "matter_server"], () => false), /before recreation/);
+  requireReadinessCoverage(["mosquitto", "nodered", "zigbee2mqtt", "portainer"], () => assert.fail());
   requireReadinessCoverage(["homeassistant"], () => true);
 });
 

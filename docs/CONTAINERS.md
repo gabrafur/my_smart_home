@@ -379,6 +379,11 @@ O adaptador aguarda **todos** os serviços recriados antes do backup Git:
   posterior ao último stop, nos logs da execução atual.
 - Zigbee2MQTT: início concluído nos logs da execução atual e assinatura somente
   leitura de `<base_topic>/bridge/state` com estado `online`.
+- Portainer: `GET /api/system/status` na rede Compose existente, com HTTP 200
+  e versão válida na resposta JSON. A sonda usa o Node-RED como cliente,
+  não autentica nem segue redirects, limita o corpo a 8 KiB e a duração a
+  sete segundos. Erro, interrupção, timeout ou resposta inválida bloqueiam
+  prontidão. Isso não comprova todos os ambientes gerenciados pelo Portainer.
 - Demais serviços, incluindo Home Assistant: healthcheck Docker obrigatório.
   Serviço sem cobertura é bloqueado antes de editar Compose ou recriar containers.
 
@@ -386,9 +391,19 @@ O adaptador aguarda **todos** os serviços recriados antes do backup Git:
 limitadas; não chamam dispositivos. MQTT depende do container Node-RED como
 cliente da sonda. Zigbee usa as bibliotecas da imagem e configuração MQTT local;
 configurações externas de secrets/TLS que a sonda não interpretar falham fechadas.
-Logs rotacionados ou sem marcador também falham fechados. Essas verificações
+Portainer também depende do container Node-RED como cliente HTTP. O endpoint
+de status é público na API oficial; a sonda não consulta usuários, stacks ou
+credenciais. Logs rotacionados ou sem marcador também falham fechados. Essas verificações
 comprovam prontidão de inicialização, não funcionamento de cada automação ou
 dispositivo. O healthcheck atual do HA comprova DNS/porta, não toda integração.
+
+A dependência Node-RED `ip-address` está fixada em 10.7.4 para corrigir a
+rejeição excessivamente lenta de entradas IPv6 com zona inválida, conforme
+o [aviso do mantenedor](https://github.com/advisories/GHSA-rxp7-6hxx-x8q5).
+O [recibo de revisão](../scripts/raspberry-mcp/ip-address-security.review.json)
+distingue o teste isolado da versão corrigida de seu carregamento pelo
+processo Node-RED. Alterar o lock ou instalar arquivos não comprova que um
+processo persistente passou a usar a biblioteca nova.
 
 Antes de `compose up`, o adaptador grava um registro privado em
 `.local-secrets/docker-update-recovery.json`, com Compose anterior/candidato e

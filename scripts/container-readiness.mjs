@@ -53,6 +53,39 @@ request.setTimeout(5000, () => request.destroy());
 request.on("error", () => process.exit(1));
 `;
 
+// Public status endpoint on the existing Compose network; no login or commands.
+export const portainerProbeScript = String.raw`
+const http = require("http");
+let finished = false;
+const finish = code => {
+  if (finished) return;
+  finished = true; clearTimeout(timer); process.exit(code);
+};
+const timer = setTimeout(() => finish(1), 7000);
+const request = http.get("http://portainer:9000/api/system/status", response => {
+  if (response.statusCode !== 200) { response.resume(); finish(1); return; }
+  const chunks = []; let bytes = 0;
+  response.on("data", chunk => {
+    if (finished) return;
+    bytes += chunk.length;
+    if (bytes > 8192) { finish(1); request.destroy(); return; }
+    chunks.push(chunk);
+  });
+  response.on("end", () => {
+    if (finished) return;
+    try {
+      const status = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      finish(typeof status?.Version === "string" &&
+        /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:[-+][a-zA-Z0-9.-]{1,40})?$/.test(status.Version) ? 0 : 1);
+    } catch { finish(1); }
+  });
+  response.on("error", () => finish(1));
+  response.on("aborted", () => finish(1));
+});
+request.setTimeout(5000, () => { finish(1); request.destroy(); });
+request.on("error", () => finish(1));
+`;
+
 export function startupComplete(service, logs) {
   const markers = service === "nodered"
     ? [/Started flows/g, /Stopping flows|Stopped flows/g]
@@ -66,8 +99,12 @@ export function probeService(service, { execute = execFileSync } = {}) {
     encoding: "utf8", timeout: 10000, maxBuffer: 1024 * 1024,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  if (!["mosquitto", "nodered", "zigbee2mqtt"].includes(service)) return null;
+  if (!["mosquitto", "nodered", "zigbee2mqtt", "portainer"].includes(service)) return null;
   try {
+    if (service === "portainer") {
+      docker(["exec", "nodered", "node", "-e", portainerProbeScript]);
+      return true;
+    }
     if (service !== "mosquitto") {
       const started = docker(["inspect", service, "--format", "{{.State.StartedAt}}"] ).trim();
       if (!/^\d{4}-\d{2}-\d{2}T/.test(started)) return false;
@@ -83,7 +120,7 @@ export function probeService(service, { execute = execFileSync } = {}) {
 
 export function requireReadinessCoverage(services, inspectHealth) {
   for (const service of services) {
-    if (["mosquitto", "nodered", "zigbee2mqtt"].includes(service)) continue;
+    if (["mosquitto", "nodered", "zigbee2mqtt", "portainer"].includes(service)) continue;
     if (!inspectHealth(service)) throw new Error(`Service ${service} has no readiness probe or healthcheck; update blocked before recreation`);
   }
 }
