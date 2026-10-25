@@ -42,7 +42,7 @@ com a Apple. Sessões e tokens continuam sob armazenamento da biblioteca.
 
 ## Compatibilidade e manutenção
 
-Compatibilidade fixada em Home Assistant Core 2026.10.1 e pyicloud 2.7.0.
+Compatibilidade revisada para Home Assistant Core 2026.10.1 e 2026.10.4, com pyicloud 2.7.0.
 `manual_auth.ManualOtpService` é um nome de compatibilidade para `GuardedService`;
 `config_flow.py` registra `ManualIcloudFlow`, implementado em `manual_flow.py`.
 O adaptador substitui a fábrica de cliente em `account` e usa um fluxo local
@@ -90,3 +90,31 @@ seguido dos gates normais de observabilidade e layout. Execute
 restaurações, primeiro clique, duplicata, entidade alheia e desconexão no
 controlador nativo instalado, sem chamar serviços nem dispositivos. Os testes
 dry-run dos tabs cobrem o restante do caminho de decisão e a fronteira de efeitos.
+
+## Verificação antes de atualizar a imagem
+
+O atualizador executa `scripts/icloud-image-preflight.py` na imagem candidata
+fixada por digest, antes de escrever o Compose ou recriar o Home Assistant.
+O container transitório não tem rede, privilégios nem configuração residencial;
+somente o verificador e `device_owner.py` são montados para leitura. O processo
+também fixa limites próprios de memória virtual, CPU, arquivos e duração, pois
+este host não oferece controle de memória por cgroup.
+
+Uma versão não revisada, hash de construtor divergente, versão diferente de
+pyicloud ou falha de coleta bloqueia a promoção. Não remover a allowlist para
+aceitar automaticamente uma versão nova. O modo dry-run informa `not_checked`
+e não inicia container nem comprova compatibilidade. Outros serviços não
+precisam desse verificador específico do iCloud.
+
+A revisão de 2026.10.4 comparou os 15 arquivos do diretório iCloud da imagem
+com os blobs do commit oficial identificado em `upstream.json`; não houve
+mudança nesse diretório desde a base revisada. O hash do construtor permanece
+obrigatório. A provenance original de 2026.10.1 e a licença foram preservadas;
+`validated_compatibility` registra a nova revisão sem reescrever essa base.
+
+Depois de carregar o código, conferir prova nova do processo HA com nonce e
+revisão correspondentes, `ha_running` e `manual_auth_guard_loaded`. Uma prova
+anterior ao início do processo não serve. `entry_waiting_user` comprova a espera
+protegida, e não sessão Apple pronta: o usuário ainda deve concluir a autenticação
+manual no Home Assistant. Não enviar OTP por automação nem apagar `.storage`.
+HTTP 200, carregamento do guard e sincronização remota são evidências distintas.

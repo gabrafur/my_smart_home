@@ -1,4 +1,4 @@
-"""Candidate only. Narrow Core 2026.10.1 device-owner adaptation.
+"""Reviewed Core 2026.10.1 and 2026.10.4 device-owner adaptation.
 Constructor derived from Home Assistant Core; retain LICENSE.upstream on adoption.
 No API calls, accounts, credentials or locations are read by this adapter.
 """
@@ -10,7 +10,7 @@ import textwrap
 EXPECTED_INIT = '69eacf8342e90c7c3f46b775fb60ef324c70835d5a353850be335f2ceed3ed17'
 
 def prepare_device_class(core, version):
-    if version != '2026.10.1':
+    if version not in ('2026.10.1', '2026.10.4'):
         raise RuntimeError('unsupported_icloud_core_version')
     original_class = core.IcloudDevice
     if getattr(original_class, '_reviewed_owner_adapter', False):

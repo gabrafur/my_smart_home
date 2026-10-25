@@ -280,6 +280,30 @@
       "normalizations": [
         "thread_identifiers_replaced_with_binding_markers"
       ]
+    },
+    "administrative-recovery/apply_icloud_core_compatibility.py": {
+      "source": "/run/raspberry-icloud-core-compatibility-20261025/apply.py",
+      "source_sha256": "b3a1c3f0110416c4f31fdae1fca2975d415c9006ed38e11a2f9f9ccdfd699bb3",
+      "export_sha256": "7a247c64145676b36ab67e69273a3f1c4fabdff3cbbc3a7fb0b9e59b50555f4b",
+      "normalizations": [
+        "operator_manifest_or_installer_binding_marker"
+      ]
+    },
+    "administrative-recovery/activate_icloud_core_compatibility.py": {
+      "source": "/run/raspberry-icloud-core-compatibility-20261025/activate.py",
+      "source_sha256": "9aff827b75bcd5644aa741ee582409fbdd20f7b9b38c31b4b8fd7bfc9c218def",
+      "export_sha256": "8f818ea7096c3af52397b1aadda2dc7d9c6eb3e7f988a941051ce29b139f9c87",
+      "normalizations": [
+        "operator_manifest_or_installer_binding_marker"
+      ]
+    },
+    "administrative-recovery/observe_icloud_core_compatibility.py": {
+      "source": "/run/raspberry-icloud-core-compatibility-20261025/observe.py",
+      "source_sha256": "16f4cd69d9fc5b6acccdc96d0ad0dd74c48c32f606ed3ce973363a238c880cf4",
+      "export_sha256": "c08cf17f4993bc170912f795a70e3cd6d1c4e5d51be8652f2134cfe206eb296b",
+      "normalizations": [
+        "operator_manifest_or_installer_binding_marker"
+      ]
     }
   }
 }

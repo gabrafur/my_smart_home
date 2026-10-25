@@ -34,5 +34,17 @@
       "file": "__init__.py",
       "change": "bind reviewed device subclass while preserving manual OTP factories and setup retry"
     }
+  ],
+  "validated_compatibility": [
+    {
+      "tag": "2026.10.4",
+      "commit": "357cae5c598dfcd7a0ea7dc5b1facccd4ec6037b",
+      "container_image_id": "sha256:23f4dfbb69ce76315dbc4de7915504f1c2dcecd7ca2648113a493a385972e133",
+      "icloud_source_changes_from_baseline": 0,
+      "core_account_sha256": "bf670a14deb0815900ec0ca76dae45ae67ec4dfb48a2f77daedbc6e57d3c6537",
+      "reviewed_constructor_sha256": "69eacf8342e90c7c3f46b775fb60ef324c70835d5a353850be335f2ceed3ed17",
+      "pyicloud": "2.7.0",
+      "review": "explicit compatibility allowlist; constructor hash remains enforced; manual authentication unchanged"
+    }
   ]
 }

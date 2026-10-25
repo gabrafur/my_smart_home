@@ -42,7 +42,7 @@ remain managed by the library's storage.
 
 ## Compatibility and maintenance
 
-Compatibility is pinned to Home Assistant Core 2026.10.1 and pyicloud 2.7.0.
+Compatibility is reviewed for Home Assistant Core 2026.10.1 and 2026.10.4, with pyicloud 2.7.0.
 `manual_auth.ManualOtpService` is a compatibility name for `GuardedService`;
 `config_flow.py` registers `ManualIcloudFlow`, implemented in `manual_flow.py`.
 The adapter replaces the client factory in `account` and uses a guarded local
@@ -89,3 +89,28 @@ by the normal observability and layout gates. Run
 a first press, a duplicate, an unrelated entity and disconnection against the
 installed native controller, without calling services or devices. Existing tab
 dry-run tests cover downstream decisions and the effects boundary.
+
+## Check before updating the image
+
+The updater runs `scripts/icloud-image-preflight.py` in the digest-pinned
+candidate before writing Compose or recreating Home Assistant. This disposable
+container has no network, privileges or home configuration. Only the checker
+and `device_owner.py` are mounted read-only. The process sets its own virtual
+memory, CPU, file and time limits because this host has no cgroup memory control.
+
+An unreviewed version, changed constructor hash, different pyicloud version or
+collection failure blocks promotion. Do not remove the allowlist to accept new
+versions automatically. Dry-run returns `not_checked`, creates no container and
+does not establish compatibility. Other services do not need this iCloud check.
+
+The 2026.10.4 review matched all 15 files of the image's iCloud directory against
+the official commit's Git blobs. That directory has no changes from the reviewed
+baseline. The constructor hash remains mandatory. Original 2026.10.1 provenance
+and the license remain preserved; `validated_compatibility` adds the new review.
+
+After loading the code, require a fresh HA-process proof with matching nonce and
+revision, `ha_running` and `manual_auth_guard_loaded`. A proof predating startup
+is insufficient. `entry_waiting_user` proves guarded waiting, not a ready Apple
+session: the owner must still complete manual authentication in Home Assistant.
+Never send OTP automatically or delete `.storage`. HTTP 200, a loaded guard and
+remote synchronization are separate evidence.

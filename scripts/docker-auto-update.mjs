@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { probeService, requireReadinessCoverage } from "./container-readiness.mjs";
+import { assertCustomIntegrationCompatibility } from "./custom-integration-compatibility.mjs";
 import { createDockerRecoveryStore } from "./docker-update-recovery.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -271,6 +272,10 @@ async function reconcileImages(channels, options = {}) {
     requireReadinessCoverage(changedServices, (service) => run("docker", ["inspect", service,
       "--format", "{{if .Config.Healthcheck}}{{json .Config.Healthcheck.Test}}{{else}}null{{end}}"],
     { capture: true, timeout: 10000 }).trim().match(/^\["CMD(?:-SHELL)?"/) !== null);
+    const compatibility = assertCustomIntegrationCompatibility(
+      plan.desiredImages.filter(row => changedServices.includes(row.service)),
+      { repoRoot, run, dryRun });
+    log(`custom integration compatibility: ${compatibility.state}`);
     if (dryRun) validateAfterComposeEdit();
     else validateComposeCandidate(plan, {
       read: () => fs.readFileSync(composePath, "utf8"),
