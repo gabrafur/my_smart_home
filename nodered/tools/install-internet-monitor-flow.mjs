@@ -288,7 +288,7 @@ for (const [id, name, payload, x, y] of [
 linkOut("internet_test_out", groups.test, "Amostra TESTE → ciclo real", "internet_cycle_in", 470, 1010);
 const remoteReport = (healthy) => ({ schema_version: 2, test_mode: true, checked_at: "2026-01-01T00:02:00Z", services: {
   remote_shell: { healthy: true, reason: "service_active" },
-  codex_remote: { installed: true, healthy, listener_state: healthy ? "present" : "absent", reason: healthy ? "app_server_ready" : "app_server_absent" },
+  codex_remote: { installed: true, healthy, reason: healthy ? "app_server_ready" : "app_server_absent", listener_state: healthy ? "present" : "absent" },
 } });
 inject("internet_test_codex_absent", groups.test, "TESTE 7: Codex ausente", [{ p: "payload", v: JSON.stringify(remoteReport(false)), vt: "json" }, { p: "_internet_test", v: "true", vt: "bool" }], 750, 900, [["internet_test_remote_report_out"]]);
 inject("internet_test_codex_ready", groups.test, "TESTE 8: Codex pronto", [{ p: "payload", v: JSON.stringify(remoteReport(true)), vt: "json" }, { p: "_internet_test", v: "true", vt: "bool" }], 750, 965, [["internet_test_remote_report_out"]]);
