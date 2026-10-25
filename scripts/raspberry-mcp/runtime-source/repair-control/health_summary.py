@@ -223,6 +223,77 @@ def static_capabilities(base):
     return result
 
 
+def project_acceptance_report(raw, now, collection_error=None):
+    """Observation of a fixed report, kept separate from administrative powers."""
+    import math
+    missing = {'state': 'unknown', 'source': 'fixed_readonly_procmon_acceptance_capture',
+               'collection_error': collection_error or 'report_missing_or_invalid',
+               'full_goal_accepted': False, 'administrative_admission_extended': False}
+    if not isinstance(raw, dict) or raw.get('schema_version') != 1 or raw.get('source') != missing['source']:
+        return missing
+    observed = stamp(raw.get('observed_at'))
+    scheduled = raw.get('scheduled_for')
+    if (observed is None or observed > now+1 or scheduled not in
+            ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z')
+            or stamp(scheduled) > observed):
+        return missing
+    def number(value):
+        return value if type(value) in (int, float) and math.isfinite(value) and 0 <= value <= 10**18 else None
+    def fields(value, names):
+        value = value if isinstance(value, dict) else {}
+        return {key: number(value.get(key)) for key in names}
+    source = raw.get('cadence') if isinstance(raw.get('cadence'), dict) else {}
+    cadence = fields(source, ('window_start', 'window_end', 'window_seconds', 'samples_in_window',
+        'max_sample_gap_seconds', 'partial_samples'))
+    issues = {'no_samples', 'future_sample', 'duplicate_or_nonmonotonic', 'boot_changed',
+        'clock_discontinuity', 'sampling_gap_over_60s', 'sample_collection_error',
+        'current_collector_not_completed', 'current_health_not_fresh'}
+    seen = source.get('issues')
+    known_issues = isinstance(seen, list) and all(isinstance(item, str) and item in issues for item in seen)
+    cadence['issues'] = sorted(set(seen)) if known_issues else ['collection_scope_unknown']
+    cadence['cadence_24h_proven'] = (source.get('cadence_24h_proven') is True
+        and known_issues and not seen and (cadence['window_seconds'] or 0) >= 86400
+        and cadence['window_start'] is not None and cadence['window_end'] is not None
+        and cadence['window_end'] - cadence['window_start'] >= 86400
+        and cadence['window_end'] <= observed+1
+        and abs(cadence['window_seconds'] - (cadence['window_end'] - cadence['window_start'])) <= 1
+        and cadence['max_sample_gap_seconds'] is not None and cadence['max_sample_gap_seconds'] <= 60)
+    source = raw.get('runtime') if isinstance(raw.get('runtime'), dict) else {}
+    runtime = fields(source, ('rows', 'failed_rows', 'invalid_telemetry_rows', 'observed_span_seconds',
+        'max_completion_gap_ms', 'nonmonotonic_pairs', 'max_wall_ms', 'sum_cpu_us',
+        'max_peak_rss_bytes', 'latest_observed_at', 'distinct_boot_count', 'journal_exit'))
+    runtime['journal_limit_reached'] = source.get('journal_limit_reached') if type(source.get('journal_limit_reached')) is bool else None
+    diagnostic = source.get('journal_diagnostic_category')
+    runtime['journal_diagnostic_category'] = diagnostic if diagnostic in ('none', 'implicit_reverse_order',
+        'reader_address_space_insufficient', 'journal_integrity_warning', 'access_scope_warning', 'unclassified_diagnostic') else 'unclassified_diagnostic'
+    runtime_window = ((runtime['observed_span_seconds'] or 0) >= 86400
+        and runtime['nonmonotonic_pairs'] == 0 and runtime['invalid_telemetry_rows'] == 0
+        and runtime['distinct_boot_count'] == 1 and runtime['journal_exit'] == 0
+        and runtime['journal_limit_reached'] is False
+        and runtime['journal_diagnostic_category'] in ('none', 'implicit_reverse_order'))
+    error = 'capture_incomplete' if raw.get('collection_error') is not None else collection_error
+    return {'state': 'observed' if not error else 'unknown', 'source': missing['source'],
+        'observed_at': raw['observed_at'], 'scheduled_for': scheduled, 'age_seconds': round(now-observed, 3),
+        'collection_error': error, 'cadence': cadence, 'runtime': runtime,
+        'cadence_and_emitted_runtime_window_proven': not error and cadence['cadence_24h_proven'] and runtime_window,
+        'PC_off_proven': False, 'all_event_latency_proven': False,
+        'missing_or_killed_invocation_cost_proven': False, 'full_goal_accepted': False,
+        'administrative_admission_extended': False,
+        'coverage': ['fixed_readonly_report_only', 'not_current_service_health', 'not_full_goal_acceptance',
+                     'no_raw_process_or_journal_messages']}
+
+
+def procmon_acceptance_observation():
+    import time
+    now = time.time()
+    for scheduled, filename in [('2026-10-25T20:33:00Z', 'window-2033.json'),
+            ('2026-10-25T15:20:00Z', 'window-1520.json'), ('2026-10-25T04:30:00Z', 'window-0430.json')]:
+        if stamp(scheduled) <= now:
+            report, error = read_metadata('/var/lib/raspberry-procmon-acceptance/' + filename, 0)
+            return project_acceptance_report(report, now, error)
+    return project_acceptance_report(None, now, 'source_missing')
+
+
 def backups():
     import time
     import maintenance_evidence as existing

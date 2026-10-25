@@ -1,0 +1,26 @@
+[Unit]
+Description=Fixed read-only capture of procmon acceptance evidence
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-procmon-acceptance/capture.py
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=10%
+MemoryMax=160M
+TimeoutStartSec=60
+UMask=0022
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX
+ReadWritePaths=/var/lib/raspberry-procmon-acceptance

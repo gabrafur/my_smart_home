@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "scope": "fixed one-day read-only evidence capture;no repair,credentials or administrative renewal",
+  "files": {
+    "capture.py": "2a066ec07f9c6409e3a7d2e824b6e2a060ed7b62e3292644d0c936b1311dcb53",
+    "cadence_window.py": "d3ed4c02cfe91eb9307e3d551ebb13f64e16832baca87e4c5b070708008cb640",
+    "raspberry-procmon-acceptance.service": "713f5b1416546ed89304bc8dd6193fc8d7939fa162958aa88bf3afd323df9cef",
+    "raspberry-procmon-acceptance.timer": "6421ed783a0b80f440ed8f88c101780f116d5c99e3f7ddbd076036b92d81d977"
+  },
+  "audit_runtime_source": "../runtime-source/procmon-observability/audit_runtime.py",
+  "audit_runtime_sha256": "ad4e40e235541b3447619975a35da47718f141c8464054e7b0c45589ef4310ce"
+}

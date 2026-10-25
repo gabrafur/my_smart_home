@@ -452,3 +452,14 @@ pelo cliente MCP real. Antes do primeiro resultado natural com proveniência,
 o ciclo agendado continua `unknown`. Somente o ciclo real posterior valida
 o produtor em operação. Sucesso Git nunca comprova upload offsite,
 integridade do bundle ou recuperação dos serviços.
+
+## Captura automática de evidências sem ampliar administração
+
+O componente [acceptance-observer](../scripts/raspberry-mcp/acceptance-observer/README.md)
+lê o histórico e a telemetria existentes em três horários fixos do dia
+25/10/2026, inclusive após o prazo administrativo. Ele não admite tarefas,
+não executa reparos e não renova a autorização. Consulta pelo MCP:
+`maintenance_capabilities`, campo `evidence.data.procmon_acceptance_observation`.
+A origem, a idade, falhas de coleta, cobertura e limites acompanham a resposta.
+Antes da primeira captura real, o estado permanece `unknown`. Uma janela
+válida não significa aceite do PC desligado, de todos os eventos ou da meta.

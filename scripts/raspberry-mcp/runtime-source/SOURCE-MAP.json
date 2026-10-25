@@ -68,8 +68,8 @@
     },
     "repair-control/health_summary.py": {
       "source": "/usr/local/lib/raspberry-repair-control/health_summary.py",
-      "source_sha256": "a61a6f10b007f7d44460211ab504bd80f57ed5d30833818b337a43c48b4a65e3",
-      "export_sha256": "a61a6f10b007f7d44460211ab504bd80f57ed5d30833818b337a43c48b4a65e3",
+      "source_sha256": "52418de977d2721b5859d31a4586547bbd7a8cc0711d9603323d50e332607bba",
+      "export_sha256": "52418de977d2721b5859d31a4586547bbd7a8cc0711d9603323d50e332607bba",
       "normalizations": []
     },
     "repair-control/event_projection.mjs": {
@@ -80,8 +80,8 @@
     },
     "repair-control/repair-broker.py": {
       "source": "/usr/local/lib/raspberry-repair-control/repair-broker.py",
-      "source_sha256": "a238eef12421a733cb3a88f3fdd24998bea5ed524b16aa8cfe0ba20e1f5749f1",
-      "export_sha256": "ede9445f49c1526c5f2199d82995fb67794370a5ec1528a00724a2f6be7dcc05",
+      "source_sha256": "cea13599395fc815f89a1b19004757661c6c61c2991319626f9c25f4f12e07e9",
+      "export_sha256": "4e7bb385c7abc5bf7527be5f987046c3e3a5b93cc8ff2e528dd02d3f8a765817",
       "normalizations": [
         "same_numeric_deadline_written_as_integer_plus_fraction"
       ]
@@ -142,8 +142,8 @@
     },
     "repair-control/test_health_summary.py": {
       "source": "/usr/local/lib/raspberry-repair-control/test_health_summary.py",
-      "source_sha256": "9a9f655cdb1f07464ac08f725dc97e9f90bbea68824f08a27784a590145d9f0f",
-      "export_sha256": "4bab73e145e1531cfec24866fafce1511f357a30d123d83fcfc7c53a6e9eacd9",
+      "source_sha256": "3c2bb07a494be56387fc45812d2c2f28125b6e68dcfcb661a8b2a8390b5edba9",
+      "export_sha256": "c642b2478d7dfd33c34e10cea54785172eea78ae19a7b8f669f0f2f1eb2bf723",
       "normalizations": [
         "unique_local_test_import",
         "synthetic_fixture_variable_name"

@@ -5,7 +5,7 @@ from pathlib import Path
 _spec = importlib.util.spec_from_file_location('_mcp_active_health_projection', Path(__file__).with_name('health_summary.py'))
 _active = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_active)
-correct_backups, publication, static_capabilities = _active.correct_backups, _active.publication, _active.static_capabilities
+correct_backups, publication, static_capabilities, project_acceptance_report = _active.correct_backups, _active.publication, _active.static_capabilities, _active.project_acceptance_report
 
 T1 = '2026-10-24T04:00:05+00:00'
 T2 = '2026-10-24T13:29:28+00:00'
@@ -163,6 +163,54 @@ class ScheduledProjectionTests(unittest.TestCase):
         self.assertEqual(value['known_failure_history'][0]['status'], 'failed')
         self.assertEqual(value['known_failure_history'][0]['operation_id'], 'c'*32)
         self.assertEqual(value['last_scheduled_cycle']['state'], 'unknown')
+
+
+
+class AcceptanceReportTests(unittest.TestCase):
+    def fixture(self):
+        return {'schema_version':1,'source':'fixed_readonly_procmon_acceptance_capture',
+            'observed_at':'2026-10-25T20:33:00Z','scheduled_for':'2026-10-25T20:33:00Z',
+            'collection_error':None,'cadence':{'window_start':1792873980,'window_end':1792960380,
+            'window_seconds':86400,'max_sample_gap_seconds':56,'issues':[], 'cadence_24h_proven':True},
+            'runtime':{'observed_span_seconds':86401,'nonmonotonic_pairs':0,'invalid_telemetry_rows':0,
+                'distinct_boot_count':1,'journal_exit':0,'journal_limit_reached':False,'journal_diagnostic_category':'none'},
+            'private_extra':'SYNTHETIC-PRIVATE'}
+
+    def test_report_is_sanitized_and_not_whole_goal(self):
+        value=project_acceptance_report(self.fixture(),1792960400)
+        self.assertTrue(value['cadence_and_emitted_runtime_window_proven'])
+        self.assertFalse(value['full_goal_accepted'])
+        self.assertFalse(value['administrative_admission_extended'])
+        self.assertNotIn('SYNTHETIC-PRIVATE',str(value))
+
+    def test_report_missing_future_and_failure_keep_unknown(self):
+        self.assertEqual(project_acceptance_report(None,1792960400)['state'],'unknown')
+        value=self.fixture();value['collection_error']='SYNTHETIC-PRIVATE'
+        result=project_acceptance_report(value,1792960400)
+        self.assertEqual(result['state'],'unknown');self.assertFalse(result['cadence_and_emitted_runtime_window_proven'])
+        self.assertNotIn('SYNTHETIC-PRIVATE',str(result))
+        self.assertEqual(project_acceptance_report(self.fixture(),1792880000)['state'],'unknown')
+
+    def test_MCP_recovers_immutable_window_without_latest_pointer(self):
+        from unittest.mock import Mock, patch
+        reader=Mock(return_value=(self.fixture(),None))
+        namespace=project_acceptance_report.__globals__
+        with patch.dict(namespace, {'read_metadata':reader}), patch('time.time',return_value=1792960400):
+            value=namespace['procmon_acceptance_observation']()
+        self.assertEqual(value['state'],'observed')
+        self.assertTrue(reader.call_args.args[0].endswith('/window-2033.json'))
+        reader=Mock(return_value=(None,'source_missing'))
+        with patch.dict(namespace, {'read_metadata':reader}), patch('time.time',return_value=1792960400):
+            value=namespace['procmon_acceptance_observation']()
+        self.assertEqual(value['state'],'unknown')
+        self.assertEqual(reader.call_count,1)
+
+    def test_report_gap_bad_clock_and_journal_warning_refuse_acceptance(self):
+        for field, change in [('cadence',{'max_sample_gap_seconds':112}),('cadence',{'issues':['clock_discontinuity']}),
+                ('cadence',{'window_start':None}),('runtime',{'journal_diagnostic_category':'reader_address_space_insufficient'}),
+                ('runtime',{'distinct_boot_count':2})]:
+            value=self.fixture();value[field].update(change)
+            self.assertFalse(project_acceptance_report(value,1792960400)['cadence_and_emitted_runtime_window_proven'])
 
 if __name__ == '__main__':
     unittest.main()
