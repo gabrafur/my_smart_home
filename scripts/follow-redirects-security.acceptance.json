@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-25T03:49:47+00:00",
+  "package": "follow-redirects",
+  "previous_version": "1.16.0",
+  "patched_version": "1.16.1",
+  "advisories": [
+    {
+      "id": "GHSA-q3jh-wrc6-jgq8",
+      "url": "https://github.com/advisories/GHSA-q3jh-wrc6-jgq8",
+      "severity": "high"
+    },
+    {
+      "id": "GHSA-8r9p-f939-6h3c",
+      "url": "https://github.com/advisories/GHSA-8r9p-f939-6h3c",
+      "severity": "high"
+    }
+  ],
+  "npm_integrity": "sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==",
+  "npm_archive_integrity_verified": true,
+  "installed_original_index_matched_upstream_tag": true,
+  "upstream_patch_scope": [
+    "array_header_normalization",
+    "literal_sensitive_header_regex_escaping"
+  ],
+  "regression_tests": 2,
+  "old_package_regression_exit": 1,
+  "patched_package_regression_exit": 0,
+  "test_network_scope": "synthetic HTTP servers bound only to loopback addresses;no household endpoints or credentials",
+  "on_disk_update_applied": true,
+  "live_process_reload": "pending_natural_backup_restart",
+  "services_restarted_by_patch": 0,
+  "public_lock_semantic_changes": [
+    "node_modules/follow-redirects.version",
+    "node_modules/follow-redirects.resolved",
+    "node_modules/follow-redirects.integrity"
+  ],
+  "additional_packages_changed": 0,
+  "exploitation_assessment": "not_performed;no_private_traffic_or_logs_read",
+  "extra_cost": false
+}
