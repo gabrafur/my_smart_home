@@ -2,8 +2,8 @@
 
 Este componente observa o coletor existente. Não executa o coletor, não repara
 serviços, não envia eventos e não concede acesso administrativo a um chatbot.
-Foi preparado para a janela específica de 25/10/2026. As três datas do timer
-são fixas: 04h30, 15h20 e 20h33 UTC. Não reutilize datas vencidas como uma nova
+Foi preparado para a janelas específicas de 25 e 26/10/2026. As quatro datas do timer
+são fixas: 25/10 às 04h30, 15h20 e 20h33 UTC, e 26/10 às 11h00 UTC. Não reutilize datas vencidas como uma nova
 aprovação temporal. A captura posterior ao prazo administrativo permite apenas
 ler fontes existentes e escrever o relatório sanitizado.
 
@@ -111,3 +111,33 @@ inativo. Preserve código e recibos; não apague arquivos ainda fixados na polí
 do MCP. Uma captura somente leitura já iniciada pode terminar normalmente.
 Revogar esse observador não altera o coletor original, sua instrumentação,
 as assinaturas Events ou o prazo administrativo.
+
+## Correlação nativa e janela posterior à instrumentação
+
+A captura lê também o auditor root fixo
+`/usr/local/lib/raspberry-procmon-observability/invocation_audit.py`, verificando
+arquivo regular, proprietário, modo, links e limite. As três consultas fixas
+correlacionam identidade e relógios de inícios do manager, telemetria do coletor
+e accounting da unidade. Não executam o coletor nem exportam journal bruto.
+A dependência do auditor está fixada na política root da projeção MCP.
+
+`invocation_correlation` informa contagens, lacunas, inícios sem telemetria,
+turnos ainda em execução, erros, CPU da unidade completa e RSS de processo
+observado. Falta de dado não vira custo zero. `unit_CPU_24h_window_proven` exige
+cobertura nativa e accounting de todos os inícios. O RSS observado na telemetria
+é uma medida do processo, e não limite de memória por cgroup. Sinais são recibos
+limitados; não identificam emissor nem estabelecem a causa histórica.
+
+A projeção calcula os aceites a partir dos campos sanitizados. Flags isoladas,
+contagens conflitantes, janela incorreta, falha de coleta ou dado ausente não
+comprovam custo. Relatórios antigos sem correlação mostram esse campo como
+`unknown`, preservando seus dados anteriores. O aceite global, PC desligado e
+latência de todos os eventos continuam separados.
+
+A quarta leitura, em 26/10 às 11h UTC, permite avaliar uma janela posterior a
+24 horas da instrumentação nova. Foi preparada durante a autorização vigente
+para cumprir a observação da meta. Ela não prolonga criação/envio/reparo de
+tarefas administrativas e não usa sessão IA. Mantém os mesmos limites do
+serviço e somente lê fontes fixas e grava evidências. Não alterar relatórios
+antigos para substituir uma janela que falhou. O relógio de agendamento não
+comprova por si só continuidade, custo ou conclusão.

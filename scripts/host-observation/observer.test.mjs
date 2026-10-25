@@ -5,6 +5,7 @@ import test from 'node:test';
 
 for (const directory of [new URL('.', import.meta.url),
     new URL('../raspberry-mcp/procmon-observability/', import.meta.url),
+    new URL('../raspberry-mcp/acceptance-observer/', import.meta.url),
     new URL('../raspberry-mcp/runtime-source/repair-control/', import.meta.url),
     new URL('../raspberry-mcp/runtime-source/native-events/', import.meta.url)]) {
   test(`isolated Python regressions: ${fileURLToPath(directory)}`, () => {

@@ -223,6 +223,56 @@ def static_capabilities(base):
     return result
 
 
+def project_invocation_correlation(value, observed):
+    """Strict cost scopes: whole-unit CPU is distinct from emitted-process RSS."""
+    base = {'state': 'unknown', 'collection_error': 'correlation_missing_or_invalid',
+        'unit_CPU_24h_window_proven': False, 'all_started_process_peak_RSS_observed': False,
+        'missing_or_killed_invocation_cost_proven': False, 'full_goal_accepted': False}
+    if not isinstance(value, dict) or value.get('source') != 'fixed_manager_native_and_unit_CPU_correlation':
+        return base
+    names = ('observed_at', 'window_start', 'window_end', 'window_seconds',
+        'started_invocations', 'failed_correlated_invocations', 'missing_runtime_invocations',
+        'duplicate_runtime_invocations', 'missing_or_duplicate_terminal_invocations',
+        'orphan_native_invocations', 'orphan_terminal_invocations', 'in_flight_invocations',
+        'temporal_or_state_conflicts', 'invalid_manager_rows', 'invalid_runtime_rows',
+        'invalid_accounting_rows', 'duplicate_start_rows', 'native_process_total_CPU_rows',
+        'legacy_observer_CPU_rows', 'sum_process_CPU_us_to_telemetry', 'sum_legacy_observer_CPU_us',
+        'native_unit_cgroup_CPU_rows', 'sum_native_unit_CPU_ns', 'observed_peak_rss_rows',
+        'invocations_without_observed_peak_rss', 'max_observed_peak_rss_bytes')
+    def integer(v):return type(v) is int and 0 <= v <= 10**18
+    safe = {name: value.get(name) if integer(value.get(name)) else None for name in names}
+    if (safe['window_seconds'] != 86400 or safe['window_start'] is None
+            or safe['window_end'] is None or safe['observed_at'] is None
+            or abs(safe['observed_at']-observed) > 1
+            or safe['window_end'] != safe['observed_at']
+            or safe['window_end']-safe['window_start'] != 86400):
+        return base
+    counts = ('started_invocations', 'missing_or_duplicate_terminal_invocations',
+        'orphan_native_invocations', 'orphan_terminal_invocations', 'in_flight_invocations',
+        'invalid_manager_rows', 'invalid_runtime_rows', 'invalid_accounting_rows', 'duplicate_start_rows')
+    if any(safe[name] is None for name in counts):return base
+    error = 'correlation_collection_unconfirmed' if value.get('journal_collection_error') is not None else None
+    manager = (not error and safe['started_invocations'] > 0 and value.get('one_boot') is True
+        and value.get('manager_start_window_coverage_proven') is True
+        and not any(safe[name] for name in counts[1:]))
+    cpu = (manager and value.get('all_started_invocation_unit_CPU_observed') is True
+        and safe['native_unit_cgroup_CPU_rows'] == safe['started_invocations']
+        and safe['sum_native_unit_CPU_ns'] is not None)
+    rss = (manager and safe['observed_peak_rss_rows'] == safe['started_invocations']
+        and safe['invocations_without_observed_peak_rss'] == 0 and safe['max_observed_peak_rss_bytes'] is not None
+        and all(safe[name] == 0 for name in ('missing_runtime_invocations', 'duplicate_runtime_invocations', 'temporal_or_state_conflicts'))
+        and value.get('all_starts_have_correlated_runtime_in_window') is True)
+    signals = value.get('observed_signals')
+    safe_signals = {name: signals[name] for name in ('SIGALRM', 'SIGTERM') if isinstance(signals, dict) and integer(signals.get(name))}
+    return {**base, **safe, 'state': 'observed' if not error else 'unknown', 'collection_error': error,
+        'observed_signals': safe_signals, 'unit_CPU_24h_window_proven': bool(cpu),
+        'all_started_process_peak_RSS_observed': bool(rss),
+        'missing_or_killed_invocation_cost_proven': bool(cpu and rss),
+        'coverage': ['fixed_native_invocation_identity_correlation', 'complete_unit_CPU_separate_from_emitted_process_peak_RSS',
+            'missing_killed_or_inflight_observations_not_zero_cost', 'signals_are_bounded_receipts_not_total_signal_count',
+            'no_raw_journal_messages_or_invocation_identifiers', 'not_full_goal_or_PC_off_or_event_latency_acceptance']}
+
+
 def project_acceptance_report(raw, now, collection_error=None):
     """Observation of a fixed report, kept separate from administrative powers."""
     import math
@@ -234,7 +284,7 @@ def project_acceptance_report(raw, now, collection_error=None):
     observed = stamp(raw.get('observed_at'))
     scheduled = raw.get('scheduled_for')
     if (observed is None or observed > now+1 or scheduled not in
-            ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z')
+            ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z', '2026-10-26T11:00:00Z')
             or stamp(scheduled) > observed):
         return missing
     def number(value):
@@ -271,13 +321,16 @@ def project_acceptance_report(raw, now, collection_error=None):
         and runtime['distinct_boot_count'] == 1 and runtime['journal_exit'] == 0
         and runtime['journal_limit_reached'] is False
         and runtime['journal_diagnostic_category'] in ('none', 'implicit_reverse_order'))
+    correlation = project_invocation_correlation(raw.get('invocation_correlation'), observed)
     error = 'capture_incomplete' if raw.get('collection_error') is not None else collection_error
     return {'state': 'observed' if not error else 'unknown', 'source': missing['source'],
         'observed_at': raw['observed_at'], 'scheduled_for': scheduled, 'age_seconds': round(now-observed, 3),
         'collection_error': error, 'cadence': cadence, 'runtime': runtime,
+        'invocation_correlation': correlation,
+        'unit_CPU_24h_window_proven': not error and correlation['unit_CPU_24h_window_proven'],
         'cadence_and_emitted_runtime_window_proven': not error and cadence['cadence_24h_proven'] and runtime_window,
         'PC_off_proven': False, 'all_event_latency_proven': False,
-        'missing_or_killed_invocation_cost_proven': False, 'full_goal_accepted': False,
+        'missing_or_killed_invocation_cost_proven': not error and correlation['missing_or_killed_invocation_cost_proven'], 'full_goal_accepted': False,
         'administrative_admission_extended': False,
         'coverage': ['fixed_readonly_report_only', 'not_current_service_health', 'not_full_goal_acceptance',
                      'no_raw_process_or_journal_messages']}
@@ -286,7 +339,8 @@ def project_acceptance_report(raw, now, collection_error=None):
 def procmon_acceptance_observation():
     import time
     now = time.time()
-    for scheduled, filename in [('2026-10-25T20:33:00Z', 'window-2033.json'),
+    for scheduled, filename in [('2026-10-26T11:00:00Z', 'window-1100.json'),
+            ('2026-10-25T20:33:00Z', 'window-2033.json'),
             ('2026-10-25T15:20:00Z', 'window-1520.json'), ('2026-10-25T04:30:00Z', 'window-0430.json')]:
         if stamp(scheduled) <= now:
             report, error = read_metadata('/var/lib/raspberry-procmon-acceptance/' + filename, 0)

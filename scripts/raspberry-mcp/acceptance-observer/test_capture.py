@@ -120,5 +120,30 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual((root/'latest.json').read_bytes(), b'new')
 
 
+class CorrelationReaderTests(unittest.TestCase):
+    def info(self, **change):
+        value=dict(st_uid=0,st_mode=stat.S_IFREG|0o644,st_nlink=1,st_size=100)
+        value.update(change)
+        return types.SimpleNamespace(**value)
+
+    def test_fixed_readonly_helper_calls_only_audit_with_same_observation_time(self):
+        from unittest.mock import Mock
+        module=types.SimpleNamespace(audit=Mock(return_value={'state':'partial'}))
+        spec=types.SimpleNamespace(loader=types.SimpleNamespace(exec_module=Mock()))
+        with patch.object(Path,'lstat',return_value=self.info()), patch.object(Path,'is_symlink',return_value=False), \
+             patch.object(c.importlib.util,'spec_from_file_location',return_value=spec)as location, \
+             patch.object(c.importlib.util,'module_from_spec',return_value=module):
+            self.assertEqual(c.invocation_correlation(100000),{'state':'partial'})
+        self.assertEqual(str(location.call_args.args[1]),'/usr/local/lib/raspberry-procmon-observability/invocation_audit.py')
+        module.audit.assert_called_once_with(100000)
+
+    def test_wrong_owner_mode_link_or_size_cannot_load_code(self):
+        for change in [{'st_uid':1001},{'st_mode':stat.S_IFREG|0o666},{'st_nlink':2},{'st_size':65537}]:
+            with patch.object(Path,'lstat',return_value=self.info(**change)), \
+                 patch.object(c.importlib.util,'spec_from_file_location')as location:
+                with self.assertRaises(ValueError):c.invocation_correlation(100000)
+                location.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()

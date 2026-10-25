@@ -1,4 +1,4 @@
-"""Three fixed, read-only captures. No collector invocation or repair admission."""
+"""Four fixed, read-only captures. No collector invocation or repair admission."""
 import datetime as dt
 import importlib.util
 import json
@@ -15,7 +15,7 @@ import time
 
 ROOT = Path('/usr/local/lib/raspberry-procmon-acceptance')
 STATE = Path('/var/lib/raspberry-procmon-acceptance')
-SCHEDULE = ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z')
+SCHEDULE = ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z', '2026-10-26T11:00:00Z')
 RUNTIME_KEYS = ('source', 'rows', 'invalid_telemetry_rows', 'failed_rows',
                 'failure_phases', 'failure_reasons', 'observed_span_seconds',
                 'requested_window_seconds', 'max_completion_gap_ms',
@@ -28,6 +28,19 @@ def load(name):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def invocation_correlation(now):
+    source = Path('/usr/local/lib/raspberry-procmon-observability/invocation_audit.py')
+    info = source.lstat()
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0
+            or stat.S_IMODE(info.st_mode) != 0o644 or info.st_nlink != 1
+            or info.st_size > 65536 or any(p.is_symlink() for p in source.parents)):
+        raise ValueError('unsafe_fixed_invocation_auditor')
+    spec = importlib.util.spec_from_file_location('_fixed_invocation_correlation', source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.audit(now)
 
 
 def journal_limits():
@@ -150,6 +163,7 @@ def main():
             os.close(directory)
         report['cadence'] = cadence.assess(rows, now, health)
         report['runtime'] = runtime_audit(audit.summarize, now)
+        report['invocation_correlation'] = invocation_correlation(now)
         report['acceptance'] = combine(report['cadence'], report['runtime'])
     except (OSError, ValueError, TypeError, KeyError, TimeoutError, subprocess.TimeoutExpired):
         report.update(collection_error='bounded_capture_incomplete', acceptance={'full_goal_accepted': False})

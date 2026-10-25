@@ -69,8 +69,8 @@
     },
     "repair-control/health_summary.py": {
       "source": "/usr/local/lib/raspberry-repair-control/health_summary.py",
-      "source_sha256": "f715aa51a5b71a3c6fccc8be078038f898d07ea811200dc712ba4dbb73594f35",
-      "export_sha256": "f715aa51a5b71a3c6fccc8be078038f898d07ea811200dc712ba4dbb73594f35",
+      "source_sha256": "decebe0c0d713db85d4fbd6553d1bb2a7dfeb53fe9ee31aec3bcfd790b843788",
+      "export_sha256": "decebe0c0d713db85d4fbd6553d1bb2a7dfeb53fe9ee31aec3bcfd790b843788",
       "normalizations": []
     },
     "repair-control/event_projection.mjs": {
@@ -303,6 +303,14 @@
       "export_sha256": "c08cf17f4993bc170912f795a70e3cd6d1c4e5d51be8652f2134cfe206eb296b",
       "normalizations": [
         "operator_manifest_or_installer_binding_marker"
+      ]
+    },
+    "administrative-recovery/apply_procmon_correlation_capture.py": {
+      "source": "/run/raspberry-procmon-correlation-capture-20261025/apply.py",
+      "source_sha256": "3bfca948b7cd1713e7241380dc7cfe74c1b0c850c4547f278c60c4c9180d0ca6",
+      "export_sha256": "8c7f3e4af1ff8236be4c7c7fc4f3582df41a9915709d17a4995cc83a04debc65",
+      "normalizations": [
+        "operator_manifest_binding_marker"
       ]
     }
   }
