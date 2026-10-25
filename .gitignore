@@ -152,3 +152,6 @@ appdaemon/secrets.yaml
 # Sanitized operational diagnostics remain local runtime, never source
 nodered/.notification-diagnostics.json
 nodered/.notification-diagnostics.json.*
+
+# Transient Zigbee database writes contain private runtime state
+/zigbee2mqtt/database.db.tmp.*
