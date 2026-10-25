@@ -1,5 +1,11 @@
 # MCP de leitura do Raspberry
 
+> A base de leitura e os reparos históricos estão descritos abaixo. Para a
+> administração delegada à Eva, o catálogo atual, a instalação de um transporte
+> opcional e o uso por outros chatbots, consulte o
+> [manual de administração e portabilidade](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md).
+> O título histórico deste arquivo não limita a autoridade das extensões ativas.
+
 ## Validação da conexão e reparo
 
 Em 2026-10-19, a conexão privada foi instalada usando o túnel existente e
@@ -340,3 +346,6 @@ links, conteúdo sensível, alvos fora do catálogo, expiração, replay e resul
 incerto de reinício. Foram aprovados 19 testes Python e 11 testes Node.
 Não confundir esses testes com execução de mutações na residência. A suíte
 pública completa e CI não foram executadas nesta etapa; não houve commit/push.
+
+O contrato da extensão de tarefas Codex, reconciliação de criação e listagem
+restrita de threads está em [RASPBERRY_CODEX_TASKS.md](RASPBERRY_CODEX_TASKS.md).

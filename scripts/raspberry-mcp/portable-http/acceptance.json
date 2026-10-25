@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "observed_date_utc": "2026-10-25",
+  "scope": "sanitized acceptance facts;not full household goal acceptance",
+  "administrative_delegation": {
+    "actual_remote_mcp_create_send_result_ack_verified": true,
+    "native_uid": 1001,
+    "administrative_uid": 0,
+    "same_ids_duplicate_return_verified": true,
+    "inference_turns": 1,
+    "shared_sends_per_24h": 48,
+    "minimum_spacing_seconds": 60,
+    "original_expiry_preserved": true,
+    "production_changes_in_identity_test": false,
+    "targeted_python_tests": 68,
+    "targeted_node_tests": 21
+  },
+  "portable_transport": {
+    "protocol_version": "2025-06-18",
+    "actual_unix_server_handshake": true,
+    "actual_http_to_unix_handshake": true,
+    "initialize_http_status": 200,
+    "initialized_notification_http_status": 202,
+    "tools_list_count": 38,
+    "maintenance_capabilities_read": true,
+    "configured_admin_delegation_observed": true,
+    "isolated_tests": 9,
+    "permanent_gateway_activated": false,
+    "new_public_listener_created": false,
+    "external_vendor_client_tested": false
+  },
+  "pending": [
+    "actual selected third-party chatbot enrollment and acceptance",
+    "remote connector new tool publication",
+    "sanitized host fault proactive event ingress",
+    "natural offsite backup and service recovery evidence",
+    "full24h continuity and PC-off proof"
+  ]
+}

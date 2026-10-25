@@ -38,6 +38,8 @@
     ]
   },
   "documents": [
+    {"path": "docs/RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
+    {"path": "docs/RASPBERRY_CODEX_TASKS.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/RASPBERRY_MCP_EVIDENCE_STAGE2.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/RASPBERRY_MCP_MAINTENANCE_MATRIX.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/RASPBERRY_MCP_MAINTENANCE_STAGE1.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},

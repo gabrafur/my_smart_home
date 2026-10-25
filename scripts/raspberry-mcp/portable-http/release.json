@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "files": {
+    "gateway.py": "91a94c05f96991693df60eda52bffd2cfb8d45b0188b24f4b15e6de459f36f55",
+    "raspberry-mcp-http.service": "e6b52ce395696fe48eba9487b12ffb8e9e940d6892fbd3d759970cb83667ad5d"
+  },
+  "loopback_only": true,
+  "automatic_activation": false,
+  "changes_backend_authority": false
+}

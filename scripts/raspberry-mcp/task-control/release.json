@@ -1,0 +1,14 @@
+{
+  "base_front_sha256": "6c6525f1633e7131018acb27afa2cb7c9964348f406f1ae303dc5bbbb251e09f",
+  "base_policy_sha256": "1da13b50cd651558d7cdcf8369f45c9e89d5747d52d60ecc53dee91961f4ffd5",
+  "files": {
+    "task-broker.py": "5e00d16f868904c8396a70843445925d4f5887697bac32a395facc6d2f0de910",
+    "task-server.mjs": "44067ea136fcf6e57ea255ac6f5ccdd1456b45a8c6e44655006af309e4f22c62",
+    "task-tools.mjs": "597967ba1daa293bf0653a3f1c89d75c1f11b5167c6871bced1c11ba922b2850",
+    "task_control.py": "0d85e18ad214638e5928f14c5b4779ca84d8821965c847fae22f9219d7deba0d",
+    "task_rpc.cjs": "56d90329c8192d6c968379d3f00667eba824b0de1d359836328c807c287de714",
+    "task_store.py": "1740a1397064e56ad3d273c3e13f55f830b2b86c6fd8234ae125ae9bacfd5c9f",
+    "thread_catalog.py": "05f2fb7694de39459620ee345df7411a0651ffa6fa8b4fa78fa8e3ea2465cb95"
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,37 @@
+[Unit]
+Description=Optional authenticated loopback MCP transport
+Requires=raspberry-mcp.socket
+After=raspberry-mcp.socket
+
+[Service]
+Type=simple
+User=raspberry-mcp-http
+Group=raspberry-mcp-http
+SupplementaryGroups=raspberry-mcp
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-mcp-http/gateway.py
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET
+RestrictSUIDSGID=yes
+LockPersonality=yes
+InaccessiblePaths=-/mnt/data/docker -/run/docker.sock -/root
+ReadOnlyPaths=/var/lib/raspberry-mcp-http
+TasksMax=4
+CPUQuota=5%
+LimitAS=67108864
+LimitNOFILE=64
+LimitCORE=0
+StandardOutput=null
+StandardError=journal
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

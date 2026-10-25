@@ -25,7 +25,7 @@ physical identifiers must appear only as placeholders.
 | [Storage audit — phase 2](operations/storage-audit-phase-2.md) | Developer tools, cache, PM2, Docker cleanup, and recorder analysis | Portuguese detailed record |
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee, Tuya, and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Codex remote access recovery](CODEX_REMOTE_RECOVERY.md) | Portuguese runbook for SSH/App Server detection, idempotent automatic recovery, and Tailscale separation | Portuguese source |
-| [Raspberry read-only MCP](RASPBERRY_READONLY_MCP.md) | Prepared stdio adapter: service health, image versions, disk, Git backup outcome and log counts. OpenAI outbound tunnel, account access and deployment await approval; no public listener or arbitrary commands | Portuguese runbook |
+| [Raspberry MCP administration and portability](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) | Delegated server administration, schemas, installation, client connections and revocation; current acceptance and deployment limits are explicit | Portuguese runbook |
 | [Global Node-RED failure notifications](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Portuguese runbook for flow errors, runtime unavailability, and the mandatory mobile delivery test | Portuguese source |
 | [Canonical Node-RED notification hubs](NODERED_NOTIFICATION_HUBS.md) | Portuguese contracts for mobile, Alexa, and HA persistent hubs, fail-closed recipients, and the migration equivalence matrix | Portuguese source |
 | [Node-RED ELK layout engine](node-red/ELK_LAYOUT_ENGINE.md) | Portuguese runbook for dry-run planning, the visual-only allowlist, quality gates, idempotency, and safe rollback | Portuguese source |
@@ -109,6 +109,25 @@ names, routes, or private identifiers.
 <!-- mcp-maintenance-docs-index-v1 -->
 
 ## Raspberry MCP maintenance
+
+[Administration and portability](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) is the
+current operational guide. Administrative objectives use the existing task
+tools and an explicitly authorized profile, with the original expiry and
+shared budgets preserved. Real MCP acceptance confirmed the executor's root
+identity; this does not certify complete proactive operation. The optional
+authenticated loopback HTTP transport was tested against the real Unix server
+and remains separately deployable. It does not provide a public URL, OAuth
+server, or certification for an untested chatbot. The schema template removes
+private thread bindings, and the runtime source map distinguishes active code
+from the older task-control candidate preserved below.
+
+[Codex tasks and authorized threads](RASPBERRY_CODEX_TASKS.md) documents the
+prepared `codex_threads_list` extension, strict input schemas, read-only
+pagination, partial host coverage and creation reconciliation. A durable thread
+with an incompatible permission profile remains blocked for sending. The
+installer preserves the current lease and authorized IDs; deployment and real
+MCP client validation are still required. Native titles, private history and
+unvalidated opening links are withheld.
 
 The Portuguese documents describe diagnostics, sanitized evidence, capability coverage and maintenance boundaries. Listed tools do not establish deployment or permission to modify household services.
 
