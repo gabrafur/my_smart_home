@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { auditFailureCategory } from "./kia-uvo-audit-failure.mjs";
+
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
@@ -785,6 +787,7 @@ if (invoked) {
   const mode = args[0] ?? "check";
   const targetIndex = args.indexOf("--target");
   const target = targetIndex >= 0 ? args[targetIndex + 1] : null;
+  try {
   if (mode === "check") {
     await check(target, { force: args.includes("--force") });
   } else if (mode === "apply") {
@@ -803,5 +806,13 @@ if (invoked) {
     console.log(statusLine(readStatus()));
   } else {
     throw new Error("usage: kia-uvo-safe-update.mjs check|apply|check-candidate|apply-candidate|status [--target vX.Y.Z]");
+  }
+  } catch (error) {
+    // An internal inherited descriptor carries only a closed reason token.
+    // No caller-supplied path, exception text, URL or raw stack is exported.
+    if (mode === "check" && process.env.KIA_UVO_AUDIT_DIAGNOSTIC_FD === "3") {
+      try { fs.writeSync(3, auditFailureCategory(error) + "\n"); } catch {}
+    }
+    throw error;
   }
 }

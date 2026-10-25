@@ -455,59 +455,7 @@ if (failed && !duplicate) {
 }
 return null;`;
 
-const parseKiaUpdateResult = `const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;
-const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
-if (!text) return null;
-const status = text.match(/\\bstatus=(running|compatible|conflict|applied|rollback|failed|deferred|unavailable|unknown)\\b/)?.[1];
-if (!status) {
-    if (!TEST_MODE) node.error("kia_uvo_update_result_unrecognized", msg);
-    return null;
-}
-const result = {
-    version: 1,
-    status,
-    request_id: text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? "unknown",
-    mode: text.match(/\\bmode=(audit|install)\\b/)?.[1] ?? "audit",
-    installed_version: text.match(/\\binstalled_version=([^ ]+)\\b/)?.[1] ?? null,
-    latest_version: text.match(/\\blatest_version=([^ ]+)\\b/)?.[1] ?? null,
-    patch_state: text.match(/\\bpatch_state=([^ ]+)\\b/)?.[1] ?? null,
-    conflicts: Number(text.match(/\\bconflicts=(\\d+)\\b/)?.[1] ?? 0),
-    checked_at: text.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? null,
-    test_mode: TEST_MODE,
-    observed_at: Date.now()
-};
-const signature = [result.request_id, result.status, result.latest_version, result.checked_at].join(":");
-const key = TEST_MODE ? "kia_uvo_update_last_result_v1__test" : "kia_uvo_update_last_result_v1";
-const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
-if (!TEST_MODE && previous?.signature === signature) return null;
-result.signature = signature;
-if (TEST_MODE) flow.set(key, result);
-else flow.set(key, result, "persistent");
-const failed = ["failed", "unavailable", "rollback"].includes(status);
-const compatible = ["compatible", "applied"].includes(status);
-node.status({
-    fill: failed ? "red" : compatible ? "green" : status === "conflict" ? "yellow" : "blue",
-    shape: failed || status === "conflict" ? "ring" : "dot",
-    text: status === "conflict"
-        ? "v" + String(result.latest_version ?? "?") + ": conflito; preservado"
-        : status
-});
-if (TEST_MODE) {
-    msg.payload = result;
-    return [msg, null];
-}
-if (failed) node.error("kia_uvo_update_check_failed status=" + status + " request_id=" + result.request_id, msg);
-else if (["compatible", "conflict"].includes(status) && result.mode === "install") {
-    if (status === "conflict") node.warn("kia_uvo_update_requires_codex_merge latest=" + String(result.latest_version));
-    if (!result.latest_version) {
-        node.error("kia_uvo_codex_merge_missing_target", msg);
-        return [null, null];
-    }
-    msg.payload = result.latest_version;
-    msg.kia_uvo_update = result;
-    return [null, msg];
-}
-return [null, null];`;
+const parseKiaUpdateResult = fs.readFileSync(path.join(here, "functions", "daily-kia-audit-result.js"), "utf8");
 
 const parseResult = parseHostStageResult("dietpi", "DietPi", true);
 
@@ -1706,7 +1654,7 @@ const nodes = [
       "daily_update_kia_result_poll", "daily_update_kia_read_result", "daily_update_kia_read_error",
       "daily_update_kia_read_complete", "daily_update_kia_parse_result", "daily_update_kia_test_result",
       "daily_update_kia_test_result_out", "daily_update_kia_test_result_in", "daily_update_kia_result_test_out",
-      "daily_update_kia_codex_request_out",
+      "daily_update_kia_codex_request_out", "daily_update_kia_audit_alert_out",
     ],
     x: 44, y: 1059, w: 1402, h: 552,
   },
@@ -1805,7 +1753,12 @@ const nodes = [
   },
   functionNode("daily_update_kia_read_error", kiaUpdateGroup, "Falha ao ler resultado Kia", recordExecError, 0, 810, 1480, []),
   functionNode("daily_update_kia_read_complete", kiaUpdateGroup, "Código da leitura Kia", recordCompletion, 0, 800, 1540, []),
-  functionNode("daily_update_kia_parse_result", kiaUpdateGroup, "Normalizar e rotear instalação autorizada", parseKiaUpdateResult, 2, 830, 1420, [["daily_update_kia_result_test_out"], ["daily_update_kia_codex_request_out"]]),
+  functionNode("daily_update_kia_parse_result", kiaUpdateGroup, "Normalizar e rotear instalação autorizada", parseKiaUpdateResult, 3, 830, 1420, [["daily_update_kia_result_test_out"], ["daily_update_kia_codex_request_out"], ["daily_update_kia_audit_alert_out"]]),
+  {
+    id: "daily_update_kia_audit_alert_out", type: "link out", z: TAB, g: kiaUpdateGroup,
+    name: "Falha ou conclusão da auditoria → observador", mode: "link",
+    links: ["global_observer_alert_to_dispatch_in"], x: 1163, y: 1561, wires: [],
+  },
   {
     id: "daily_update_kia_result_test_out", type: "link out", z: TAB, g: kiaUpdateGroup,
     name: "Resultado Kia TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],

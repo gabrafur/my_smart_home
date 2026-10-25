@@ -25,6 +25,7 @@ const externalEventOutIds = [
   "operations_daily_alert_out",
   "operations_memory_alert_out",
   "host_obs_alert_out",
+  "daily_update_kia_audit_alert_out",
   "notification_hub_mobile_observer_out",
   "notification_hub_alexa_observer_out",
   "notification_hub_persistent_observer_out",

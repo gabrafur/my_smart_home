@@ -75,10 +75,20 @@ for active_stage in dietpi home-assistant-core containers repository-dependency;
 done
 
 publish_result "kia-uvo-update status=running request_id=$request_id mode=$mode latest_version=$target"
+umask 077
+diagnostic_file=$(mktemp "$trigger_dir/.kia-uvo-diagnostic.XXXXXX")
+trap 'rm -f -- "$diagnostic_file"' EXIT
 set +e
-"$node_bin" "$status_script" check --target "$target"
+KIA_UVO_AUDIT_DIAGNOSTIC_FD=3 "$node_bin" "$status_script" check --target "$target" 3> "$diagnostic_file"
 status=$?
 set -e
+failure_reason=$(head -c 128 "$diagnostic_file")
+case "$failure_reason" in
+  connect_timeout|transport_timeout|dns_resolution_failed|connection_failed|tls_verification_failed|audit_failed_unclassified) ;;
+  *) failure_reason=audit_failed_unclassified ;;
+esac
+rm -f -- "$diagnostic_file"
+trap - EXIT
 
 if [ "$status" -eq 75 ]; then
   restore_request
@@ -95,6 +105,6 @@ if [ "$status" -eq 0 ]; then
   exit 0
 fi
 
-publish_result "kia-uvo-update status=failed request_id=$request_id mode=$mode latest_version=$target exit_code=$status"
+publish_result "kia-uvo-update status=failed request_id=$request_id mode=$mode latest_version=$target exit_code=$status reason=$failure_reason"
 promote_followup
 exit "$status"

@@ -1095,7 +1095,8 @@
             "daily_update_kia_result_test_out",
             "daily_update_kia_codex_request_out",
             "notification_hub_wire_out_b1f429a32a37",
-            "notification_hub_wire_in_b1f429a32a37"
+            "notification_hub_wire_in_b1f429a32a37",
+            "daily_update_kia_audit_alert_out"
         ],
         "x": 102,
         "y": 5180,
@@ -27166,8 +27167,8 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_group",
         "name": "Normalizar e rotear instalação autorizada",
-        "func": "const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return null;\nconst status = text.match(/\\bstatus=(running|compatible|conflict|applied|rollback|failed|deferred|unavailable|unknown)\\b/)?.[1];\nif (!status) {\n    if (!TEST_MODE) node.error(\"kia_uvo_update_result_unrecognized\", msg);\n    return null;\n}\nconst result = {\n    version: 1,\n    status,\n    request_id: text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\",\n    mode: text.match(/\\bmode=(audit|install)\\b/)?.[1] ?? \"audit\",\n    installed_version: text.match(/\\binstalled_version=([^ ]+)\\b/)?.[1] ?? null,\n    latest_version: text.match(/\\blatest_version=([^ ]+)\\b/)?.[1] ?? null,\n    patch_state: text.match(/\\bpatch_state=([^ ]+)\\b/)?.[1] ?? null,\n    conflicts: Number(text.match(/\\bconflicts=(\\d+)\\b/)?.[1] ?? 0),\n    checked_at: text.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? null,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nconst signature = [result.request_id, result.status, result.latest_version, result.checked_at].join(\":\");\nconst key = TEST_MODE ? \"kia_uvo_update_last_result_v1__test\" : \"kia_uvo_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return null;\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\", \"rollback\"].includes(status);\nconst compatible = [\"compatible\", \"applied\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : compatible ? \"green\" : status === \"conflict\" ? \"yellow\" : \"blue\",\n    shape: failed || status === \"conflict\" ? \"ring\" : \"dot\",\n    text: status === \"conflict\"\n        ? \"v\" + String(result.latest_version ?? \"?\") + \": conflito; preservado\"\n        : status\n});\nif (TEST_MODE) {\n    msg.payload = result;\n    return [msg, null];\n}\nif (failed) node.error(\"kia_uvo_update_check_failed status=\" + status + \" request_id=\" + result.request_id, msg);\nelse if ([\"compatible\", \"conflict\"].includes(status) && result.mode === \"install\") {\n    if (status === \"conflict\") node.warn(\"kia_uvo_update_requires_codex_merge latest=\" + String(result.latest_version));\n    if (!result.latest_version) {\n        node.error(\"kia_uvo_codex_merge_missing_target\", msg);\n        return [null, null];\n    }\n    msg.payload = result.latest_version;\n    msg.kia_uvo_update = result;\n    return [null, msg];\n}\nreturn [null, null];",
-        "outputs": 2,
+        "func": "const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return null;\nconst status = text.match(/\\bstatus=(running|compatible|conflict|applied|rollback|failed|deferred|unavailable|unknown)\\b/)?.[1];\nif (!status) {\n    if (!TEST_MODE) node.error(\"kia_uvo_update_result_unrecognized\", msg);\n    return null;\n}\nconst reasons = {\n    connect_timeout: \"O tempo de conexão com a fonte da auditoria foi excedido.\",\n    transport_timeout: \"A comunicação da auditoria excedeu o tempo disponível.\",\n    dns_resolution_failed: \"A auditoria não conseguiu resolver um nome de rede.\",\n    connection_failed: \"A conexão de rede da auditoria falhou.\",\n    tls_verification_failed: \"A verificação TLS da auditoria falhou.\",\n    audit_failed_unclassified: \"O produtor não registrou um motivo diagnóstico seguro.\",\n    invalid_request: \"A solicitação não passou pela validação do worker.\"\n};\nconst rawReason = text.match(/\\breason=([a-z_]+)\\b/)?.[1];\nconst reason = Object.hasOwn(reasons, rawReason) ? rawReason : \"audit_failed_unclassified\";\nconst result = {\n    version: 1, status,\n    request_id: text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\",\n    mode: text.match(/\\bmode=(audit|install)\\b/)?.[1] ?? \"audit\",\n    installed_version: text.match(/\\binstalled_version=([^ ]+)\\b/)?.[1] ?? null,\n    latest_version: text.match(/\\blatest_version=([^ ]+)\\b/)?.[1] ?? null,\n    patch_state: text.match(/\\bpatch_state=([^ ]+)\\b/)?.[1] ?? null,\n    conflicts: Number(text.match(/\\bconflicts=(\\d+)\\b/)?.[1] ?? 0),\n    checked_at: text.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? null,\n    reason, test_mode: TEST_MODE, observed_at: Date.now()\n};\nconst signature = [result.request_id, result.status, result.latest_version, result.checked_at].join(\":\");\nconst key = TEST_MODE ? \"kia_uvo_update_last_result_v1__test\" : \"kia_uvo_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (previous?.signature === signature) return null;\nresult.signature = signature;\nconst failed = [\"failed\", \"unavailable\", \"rollback\"].includes(status);\nconst completed = [\"compatible\", \"conflict\", \"applied\"].includes(status);\nconst now = result.observed_at;\nconst previousAlert = Number(previous?.failure_alert_at);\nconst validAlert = Number.isFinite(previousAlert) && previousAlert > 0 && previousAlert <= now;\nresult.failure_alert_at = validAlert ? previousAlert : null;\nresult.audit_incident_open = previous?.audit_incident_open === true;\nconst priorFailure = Number(previous?.audit_failure_observed_at);\nresult.audit_failure_observed_at = Number.isFinite(priorFailure) && priorFailure > 0 ? priorFailure : null;\nif (failed) result.audit_failure_observed_at = now;\nconst checkedAt = typeof result.checked_at === \"string\" ? Date.parse(result.checked_at) : NaN;\nconst freshCompleted = completed && /^v?\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(result.latest_version ?? \"\") &&\n    Number.isFinite(checkedAt) && checkedAt <= now && checkedAt > Number(result.audit_failure_observed_at);\nlet alert = null;\nif (failed && (!validAlert || now - previousAlert >= 6 * 60 * 60 * 1000)) {\n    result.failure_alert_at = now;\n    result.audit_incident_open = true;\n    alert = {\n        _global_observer_test: TEST_MODE,\n        payload: {\n            test_mode: TEST_MODE, observer_kind: \"domain_alert\",\n            incident_key: \"kia_uvo_update_audit\", reason,\n            source_id: \"daily_update_kia_parse_result\", flow_id: \"daily_host_updates_tab\"\n        },\n        alert: {\n            title: \"Verificação da integração veicular não concluída\",\n            message: reasons[reason] + \" Resultado do worker: \" + status +\n                \". A solicitação não será repetida automaticamente. Consulte o resultado da auditoria antes de solicitar outra tentativa.\"\n        }\n    };\n} else if (freshCompleted && result.audit_incident_open) {\n    result.audit_incident_open = false;\n    alert = {\n        _global_observer_test: TEST_MODE,\n        payload: {\n            test_mode: TEST_MODE, observer_kind: \"domain_recovery\",\n            persistent_incident_kind: \"domain_alert\",\n            persistent_notification_operation: \"dismiss\", mobile_notification: false,\n            incident_key: \"kia_uvo_update_audit\", resolution: \"later_audit_completed\"\n        },\n        alert: { title: \"Verificação da integração veicular concluída\",\n            message: \"Uma verificação posterior terminou. Este encerramento se refere à auditoria e não comprova a saúde de todos os serviços.\" }\n    };\n}\n// Persist deduplication and incident state before handing any effect onward.\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nnode.status({\n    fill: failed ? \"red\" : completed ? \"green\" : \"blue\",\n    shape: failed || status === \"conflict\" ? \"ring\" : \"dot\",\n    text: status === \"conflict\" ? \"v\" + String(result.latest_version ?? \"?\") + \": conflito; preservado\" : status\n});\nif (TEST_MODE) { msg.payload = result; return [msg, null, alert]; }\nif ([\"compatible\", \"conflict\"].includes(status) && result.mode === \"install\") {\n    if (status === \"conflict\") node.warn(\"kia_uvo_update_requires_codex_merge latest=\" + String(result.latest_version));\n    if (!result.latest_version) {\n        node.error(\"kia_uvo_codex_merge_missing_target\", msg);\n        return [null, null, alert];\n    }\n    msg.payload = result.latest_version;\n    msg.kia_uvo_update = result;\n    return [null, msg, alert];\n}\nreturn [null, null, alert];\n",
+        "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -27181,6 +27182,9 @@
             ],
             [
                 "daily_update_kia_codex_request_out"
+            ],
+            [
+                "daily_update_kia_audit_alert_out"
             ]
         ]
     },
@@ -42677,6 +42681,7 @@
             "operations_daily_alert_out",
             "operations_memory_alert_out",
             "host_obs_alert_out",
+            "daily_update_kia_audit_alert_out",
             "notification_hub_mobile_observer_out",
             "notification_hub_alexa_observer_out",
             "notification_hub_persistent_observer_out"
@@ -88621,6 +88626,20 @@
         ],
         "x": 3785,
         "y": 130,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_audit_alert_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Falha ou conclusão da auditoria → observador",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 1183,
+        "y": 5681,
         "wires": []
     },
     {

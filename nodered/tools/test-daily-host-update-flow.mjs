@@ -90,10 +90,11 @@ assert.equal(node("daily_update_kia_request_host").addpay, "payload");
 assert.ok(node("git_backup_daily_update_out").links.includes("daily_update_offsite_git_in"));
 assert.equal(node("daily_update_kia_read_result").command, "/opt/read-host-kia-uvo-update-result.sh");
 assert.equal(node("daily_update_kia_result_poll").repeat, "60");
-assert.equal(node("daily_update_kia_parse_result").outputs, 2);
+assert.equal(node("daily_update_kia_parse_result").outputs, 3);
 assert.deepEqual(node("daily_update_kia_parse_result").wires, [
   ["daily_update_kia_result_test_out"],
   ["daily_update_kia_codex_request_out"],
+  ["daily_update_kia_audit_alert_out"],
 ]);
 assert.deepEqual(node("daily_update_kia_codex_request_out").links, ["daily_update_kia_codex_request_in"]);
 assert.equal(node("daily_update_kia_codex_request").command, "/opt/request-kia-uvo-codex-merge.sh");
@@ -475,13 +476,31 @@ const kiaAuditCompatible = parseKia(
   runtimeNode,
   flow,
 );
-assert.deepEqual(kiaAuditCompatible, [null, null]);
-assert.deepEqual(parseKia(
-  { payload: "kia-uvo-update status=failed request_id=prod-kia" },
-  runtimeNode,
-  flow,
-), [null, null]);
-assert.match(errors.at(-1), /kia_uvo_update_check_failed/);
+assert.deepEqual(kiaAuditCompatible, [null, null, null]);
+const errorsBeforeKiaFailure = errors.length;
+const kiaFailed = parseKia(
+  { payload: "kia-uvo-update status=failed request_id=prod-kia reason=connect_timeout" }, runtimeNode, flow,
+);
+assert.equal(kiaFailed[1], null, "failed audit must never start Codex");
+assert.equal(kiaFailed[2].payload.observer_kind, "domain_alert");
+assert.equal(kiaFailed[2].payload.reason, "connect_timeout");
+assert.equal(errors.length, errorsBeforeKiaFailure, "worker failure is not a parser exception");
+assert.equal(parseKia({ payload: "kia-uvo-update status=failed request_id=prod-kia reason=connect_timeout" }, runtimeNode, flow), null, "duplicate must not repeat an effect");
+const kiaSuppressed = parseKia({ payload: "kia-uvo-update status=failed request_id=prod-kia-new reason=connect_timeout" }, runtimeNode, flow);
+assert.equal(kiaSuppressed[2], null, "same audit failure remains silenced for six hours");
+const priorKiaFailure = flow.get("kia_uvo_update_last_result_v1", "persistent");
+flow.set("kia_uvo_update_last_result_v1", { ...priorKiaFailure, audit_failure_observed_at: Date.now() - 1000 }, "persistent");
+const kiaRecovered = parseKia({ payload: "kia-uvo-update status=compatible request_id=prod-later mode=audit latest_version=v3.20.0 checked_at=" + new Date().toISOString() }, runtimeNode, flow);
+assert.equal(kiaRecovered[2].payload.persistent_notification_operation, "dismiss");
+assert.equal(kiaRecovered[2].payload.mobile_notification, false);
+const kiaSyntheticFailure = parseKia({ _kia_update_test:true, payload: "kia-uvo-update status=failed request_id=test-failure reason=private_sentinel" }, runtimeNode, flow);
+assert.equal(kiaSyntheticFailure[2]._global_observer_test, true);
+assert.equal(kiaSyntheticFailure[2].payload.reason, "audit_failed_unclassified");
+const kiaAuditGuard = new Function("msg", "node", "flow", node("global_observer_dispatch_guard").func);
+assert.equal(kiaAuditGuard(kiaSyntheticFailure[2], runtimeNode, flow)[0], null, "synthetic audit alert must not dispatch");
+assert.ok(kiaAuditGuard(kiaSyntheticFailure[2], runtimeNode, flow)[2], "synthetic failure reaches canonical dry-run boundary");
+assert.deepEqual(node("daily_update_kia_audit_alert_out").links, ["global_observer_alert_to_dispatch_in"]);
+
 
 const prepareAlexaMedia = new Function("msg", "node", "flow", node("daily_update_alexa_media_prepare").func);
 const alexaCandidate = prepareAlexaMedia({

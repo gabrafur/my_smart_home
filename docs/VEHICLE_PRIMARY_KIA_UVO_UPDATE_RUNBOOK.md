@@ -7,6 +7,44 @@ delta local do vehicle_primary. A base upstream e registrada em
 `scripts/kia-uvo-upstream.json`; as customizacoes permanecem nos commits deste
 repositorio, sem manter uma copia manual de patch que possa ficar stale.
 
+## Diagnóstico de falha da auditoria
+
+O worker publica `reason` no resultado `kia-uvo-result`, junto do status, ID,
+modo, alvo e código de saída já existentes. O campo aceita somente
+`connect_timeout`, `transport_timeout`, `dns_resolution_failed`,
+`connection_failed`, `tls_verification_failed` ou `audit_failed_unclassified`.
+Um motivo ausente ou não reconhecido permanece desconhecido; não se recupera
+uma causa histórica a partir de uma tentativa posterior.
+
+A categoria vem do código técnico da exceção e de sua cadeia de causas
+limitada, nunca do texto da mensagem. Um descritor herdado interno transporta
+somente esse token; não há parâmetro para caminho de diagnóstico nem exportação
+de URL, stack ou credencial. O arquivo temporário tem modo 0600 e é removido.
+O resultado mantém a publicação atômica e os IDs anteriores. Uma falha consumida
+não é repetida; o adiamento mantém a solicitação pelo contrato existente.
+
+No Node-RED, `failed`, `unavailable` e `rollback` são resultados operacionais do
+worker. Produzem o aviso **Verificação da integração veicular não concluída**,
+com motivo seguro, em vez de simular uma exceção do parser. Respostas de
+protocolo inválidas continuam sendo erros do nó. O aviso conserva silêncio de
+seis horas e deduplicação. O campo de motivo não autoriza retry ou instalação.
+
+O encerramento do aviso exige um resultado posterior `compatible`, `conflict`
+ou `applied`, com versão válida e `checked_at` posterior à falha e não futuro.
+Ausência, data antiga ou conflitante mantém o incidente aberto. O encerramento
+se refere à verificação; não prova a saúde do veículo, atualização instalada,
+execução da Eva ou saúde de outros serviços. A notificação genérica histórica
+não é apagada pela instalação desta correção.
+
+Os testes `scripts/kia-uvo-audit-*.test.mjs` usam workers e relógios sintéticos.
+Não executar `check` como teste de ausência de efeitos: o auditor real pode
+publicar um evento de atualização disponível no Home Assistant. A implantação
+altera somente o parser e sua ligação explícita ao observador, com deploy
+Node-RED do tipo `nodes`; não exige reiniciar serviços ou executar uma auditoria.
+Reversão exige conferir hashes e restaurar produtor, fluxo e fontes da revisão
+anterior, preservando recibos e solicitações; resultado incerto exige
+reconciliação antes de qualquer nova tentativa.
+
 ## Deteccao
 
 O tab Node-RED `atualizacoes_diarias` inventaria todas as entidades `update.*`
