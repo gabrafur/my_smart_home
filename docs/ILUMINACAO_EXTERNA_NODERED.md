@@ -8,7 +8,8 @@ para a iluminacao.
 ## Objetivo
 
 Controlar `switch.lampada_varanda`, `switch.lampadas_garagem` e
-`switch.refletores_jardim` por comando manual, por do sol e amanhecer. Uma
+`switch.refletores_jardim`, além de `switch.abajour_sala_de_estar`, por comando
+manual, por do sol e amanhecer. Uma
 queda do Node-RED durante o evento solar nunca e compensada com uma ligacao
 automatica.
 
@@ -27,7 +28,7 @@ automatica.
 ## Logica
 
 1. Um comando manual ON/OFF ou uma transicao real de `sun.sun` para
-   `below_horizon` prepara o payload para os tres topicos Zigbee2MQTT. O node
+   `below_horizon` prepara o payload para os quatro destinos Zigbee2MQTT. O node
    solar usa `outputInitially: false`: iniciar ou redeployar o Node-RED a noite
    nao equivale a um novo por do sol.
 2. Uma transicao real de `sun.sun` para `above_horizon` prepara diariamente um
@@ -54,13 +55,21 @@ automatica.
    publica em:
    - `zigbee2mqtt/example_exterior_light_1/set`;
    - `zigbee2mqtt/example_exterior_light_2/set`;
-   - `zigbee2mqtt/example_exterior_light_3/set`.
+   - `zigbee2mqtt/example_exterior_light_3/set`;
+   - `zigbee2mqtt/example_exterior_light_4/set`.
 7. `Confirmar somente o comando mais recente` aguarda cinco segundos. Um novo
    comando cancela a confirmacao anterior para impedir avisos obsoletos.
-8. `Confirmar estados no Home Assistant` le as tres entidades. Estados
-   `unknown` ou `unavailable` sao tratados como falha de comunicacao Zigbee;
-   a Alexa informa quais pontos ficaram indisponiveis e o comando nao e
-   repetido. Divergencias ON/OFF tambem sao anunciadas sem retry.
+8. `Confirmar estados no Home Assistant` lê os quatro destinos. Confirmação do
+   comando exige observação válida posterior à intenção. Um estado `on` que
+   permaneceu `on`, com data anterior ao comando, não comprova falha nem um novo
+   aceite do comando: se todos os estados coincidem com o solicitado, o fluxo
+   permanece silencioso e a confirmação continua `unconfirmed`.
+9. Estados divergentes, `unknown`, `unavailable` ou ausentes continuam sendo
+   diagnosticados, sem repetir comandos. O aviso cita somente os destinos que
+   não coincidem com o esperado. Falta de leitura válida orienta verificar a
+   integração, sem atribuir causa à alimentação ou ao Zigbee. Uma confirmação
+   posterior pode encerrar um incidente real; o alerta legado composto somente
+   por estados coincidentes e antigos não gera recuperação fictícia.
 
 ## Avisos
 
@@ -97,5 +106,8 @@ No grupo de testes do canvas, execute `TESTE 1: reset` e depois
 `TESTE 5: amanhecer`. O terminal deve registrar `simulated: true` e
 `dispatched: false`, sem publicar MQTT nem chamar Alexa ou notificacao.
 
-Depois de alterar `flows.json`, faca Deploy no editor ou reinicie o container
-Node-RED de forma segura.
+Depois de alterar a fonte geradora, regenere o flow e valide o diff. Para uma
+mudança de função, faça deploy somente dos nós alterados, com revisão da versão
+carregada e releitura posterior. Não é necessário reiniciar o container nem
+acionar luzes para testar a classificação. A regressão sintética específica é
+`node --test tools/test-external-lighting-matching-state.mjs` dentro de `nodered`.
