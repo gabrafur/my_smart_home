@@ -545,8 +545,9 @@ Isso não comprova todas as integrações nem restauração de desastre.
 
 O [produtor de fatos do host](../scripts/host-observation/README.md) foi instalado
 como serviço root isolado: eventos de containers/unidades e recursos sanitizados,
-sem comandos remotos ou efeitos de reparo. Sua integração a políticas Node-RED
-e ao resumo MCP ainda está pendente. O cliente não deve inferir essa cobertura
+sem comandos remotos ou efeitos de reparo. A integração a políticas
+[Node-RED](../nodered/tools/HOST_OBSERVER.md) foi implantada e tem aceite separado;
+a exposição do novo relatório pelo MCP ainda está pendente. O cliente não deve inferir essa cobertura
 apenas porque o serviço está ativo. Reconexões, anel limitado e falta de inventário
 inicial impedem afirmar histórico completo.
 

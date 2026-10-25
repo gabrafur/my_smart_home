@@ -50,8 +50,9 @@ A autorização administrativa temporária e sua revogação são contratos sepa
 
 O produtor instalado em 25/10/2026 observou falhas reais do procmon e conclusões
 naturais posteriores à recuperação, com latência apenas origem→observador.
-A integração de decisões e alertas no Node-RED e a exposição deste novo relatório
-pelo MCP ainda precisam de implantação própria. Não há comprovação de entrega
+A integração de decisões e alertas no
+[canvas Node-RED](../../nodered/tools/HOST_OBSERVER.md) recebeu implantação própria;
+a exposição deste novo relatório pelo MCP ainda está pendente. Não há comprovação de entrega
 à Eva, execução do assistente, PC desligado ou da meta completa.
 
 ## Testes e aceite

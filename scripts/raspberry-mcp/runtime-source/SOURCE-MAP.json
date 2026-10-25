@@ -201,6 +201,15 @@
         "operator_manifest_binding_marker_when_present",
         "same_numeric_deadline_written_as_integer_plus_fraction"
       ]
+    },
+    "administrative-recovery/apply_host_observer_integration.py": {
+      "source": "/run/raspberry-host-observer-integration-20261025-r2/apply.py",
+      "source_sha256": "922312d88ecc3db531c05dded8b1229b2c2ecf2000763479ea0b5b9db3a66949",
+      "export_sha256": "1a9f6095951782c67617b3a7b7e9467a1a9cd9cab433aa974ff9d549312ef199",
+      "normalizations": [
+        "same_numeric_deadline_written_as_integer_plus_fraction",
+        "approved_manifest_identifier_replaced_with_operator_binding_marker"
+      ]
     }
   }
 }

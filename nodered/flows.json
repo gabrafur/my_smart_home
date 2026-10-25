@@ -42028,6 +42028,7 @@
             "global_observer_coverage__ea0a6aa0d24ff863__out",
             "global_observer_coverage__git_backup_tab__out",
             "global_observer_coverage__host_memory_guardian_tab__out",
+            "global_observer_coverage__host_observer_tab__out",
             "global_observer_coverage__local_ai_rtx_recovery_tab__out",
             "global_observer_coverage__monitoramento_internet_tab__out",
             "global_observer_coverage__monitoramento_tuya_tab__out",
@@ -42675,6 +42676,7 @@
             "weekly_docs_review_alert_out",
             "operations_daily_alert_out",
             "operations_memory_alert_out",
+            "host_obs_alert_out",
             "notification_hub_mobile_observer_out",
             "notification_hub_alexa_observer_out",
             "notification_hub_persistent_observer_out"
@@ -86797,6 +86799,2227 @@
         "y": 670,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "host_observer_tab",
+        "type": "tab",
+        "label": "observacao_host",
+        "disabled": false,
+        "info": "Fatos sanitizados do produtor root → validação → decisões visuais → incidentes persistentes → canal global. Sem reparos/dispositivos neste canvas. Cobertura de streams parcial; start de container não comprova prontidão.",
+        "env": []
+    },
+    {
+        "id": "host_obs_policy_group",
+        "type": "group",
+        "z": "host_observer_tab",
+        "name": "0. Política visual: unidades, padrões e limites",
+        "style": {
+            "label": true,
+            "color": "#2563eb"
+        },
+        "nodes": [
+            "host_obs_policy_info",
+            "host_obs_policy_tick",
+            "host_obs_policy_config",
+            "host_obs_policy_store"
+        ],
+        "x": 64,
+        "y": 40,
+        "w": 980,
+        "h": 320
+    },
+    {
+        "id": "host_obs_input_group",
+        "type": "group",
+        "z": "host_observer_tab",
+        "name": "1. Fonte fixa, validade e falhas de observação",
+        "style": {
+            "label": true,
+            "color": "#2563eb"
+        },
+        "nodes": [
+            "host_obs_tick",
+            "host_obs_read",
+            "host_obs_read_complete",
+            "host_obs_test_frame_in",
+            "host_obs_normalize",
+            "host_obs_valid",
+            "host_obs_fresh",
+            "host_obs_report_unknown_out",
+            "host_obs_resource_age",
+            "host_obs_resource_fresh_gate",
+            "host_obs_resource_fresh",
+            "host_obs_resource_stale",
+            "host_obs_facts_out",
+            "notification_hub_wire_out_91f75af07cd0",
+            "notification_hub_wire_in_91f75af07cd0",
+            "notification_hub_wire_out_fa4ef9ce2ec8",
+            "notification_hub_wire_in_fa4ef9ce2ec8",
+            "notification_hub_wire_out_854a3e59838c",
+            "notification_hub_wire_in_854a3e59838c",
+            "notification_hub_wire_out_286e14c5405b",
+            "notification_hub_wire_in_286e14c5405b",
+            "notification_hub_wire_out_41e4101ae1e7",
+            "notification_hub_wire_in_41e4101ae1e7"
+        ],
+        "x": 64,
+        "y": 400,
+        "w": 1880,
+        "h": 460
+    },
+    {
+        "id": "host_obs_decision_group",
+        "type": "group",
+        "z": "host_observer_tab",
+        "name": "2. Classificação visual e lifecycle (produção / TESTE)",
+        "style": {
+            "label": true,
+            "color": "#2563eb"
+        },
+        "nodes": [
+            "host_obs_facts_in",
+            "host_obs_facts",
+            "host_obs_report_unknown_in",
+            "host_obs_report_unknown",
+            "host_obs_kind",
+            "host_obs_native",
+            "host_obs_observation",
+            "host_obs_value_known",
+            "host_obs_metric",
+            "host_obs_threshold_cpu",
+            "host_obs_threshold_memory",
+            "host_obs_threshold_disk",
+            "host_obs_threshold_inodes",
+            "host_obs_threshold_temperature",
+            "host_obs_failed_in",
+            "host_obs_failed_set",
+            "host_obs_healthy_in",
+            "host_obs_healthy_set",
+            "host_obs_unknown_in",
+            "host_obs_unknown_set",
+            "host_obs_lifecycle",
+            "host_obs_alert_out",
+            "host_obs_native_route_0",
+            "host_obs_native_route_1",
+            "host_obs_native_route_2",
+            "host_obs_observation_route_0",
+            "host_obs_observation_route_1",
+            "host_obs_value_known_route_0",
+            "host_obs_threshold_cpu_route_0",
+            "host_obs_threshold_cpu_route_1",
+            "host_obs_threshold_memory_route_0",
+            "host_obs_threshold_memory_route_1",
+            "host_obs_threshold_disk_route_0",
+            "host_obs_threshold_disk_route_1",
+            "host_obs_threshold_inodes_route_0",
+            "host_obs_threshold_inodes_route_1",
+            "host_obs_threshold_temperature_route_0",
+            "host_obs_threshold_temperature_route_1",
+            "notification_hub_wire_out_8960c3262ab6",
+            "notification_hub_wire_in_8960c3262ab6",
+            "notification_hub_wire_out_c1da726c3fd7",
+            "notification_hub_wire_in_c1da726c3fd7"
+        ],
+        "x": 64,
+        "y": 900,
+        "w": 2940,
+        "h": 620
+    },
+    {
+        "id": "host_obs_test_group",
+        "type": "group",
+        "z": "host_observer_tab",
+        "name": "3. Replay manual completo: somente dry-run",
+        "style": {
+            "label": true,
+            "color": "#2563eb"
+        },
+        "nodes": [
+            "host_obs_test_info",
+            "host_obs_test_reset",
+            "host_obs_test_healthy",
+            "host_obs_test_failure",
+            "host_obs_test_confirm",
+            "host_obs_test_resource_high",
+            "host_obs_test_source_failure",
+            "host_obs_test_stale",
+            "host_obs_test_malformed",
+            "host_obs_test_build",
+            "host_obs_test_frame_out",
+            "notification_hub_wire_out_f941866a0d9a",
+            "notification_hub_wire_in_f941866a0d9a",
+            "notification_hub_wire_out_896961521c78",
+            "notification_hub_wire_in_896961521c78",
+            "notification_hub_wire_out_b7e594ca51f8",
+            "notification_hub_wire_in_b7e594ca51f8",
+            "notification_hub_wire_out_e90587893caf",
+            "notification_hub_wire_in_e90587893caf",
+            "notification_hub_wire_out_dcae6f1998b4",
+            "notification_hub_wire_in_dcae6f1998b4",
+            "notification_hub_wire_out_94aa9b2537a4",
+            "notification_hub_wire_in_94aa9b2537a4"
+        ],
+        "x": 64,
+        "y": 1560,
+        "w": 1880,
+        "h": 380
+    },
+    {
+        "id": "host_obs_policy_info",
+        "type": "comment",
+        "z": "host_observer_tab",
+        "g": "host_obs_policy_group",
+        "name": "Padrões: leitura 2s; relatório 30s; recursos 45s; confirmar evento 5s / recurso 20s / observação 20s",
+        "x": 540,
+        "y": 90,
+        "wires": [],
+        "info": "Parâmetros JSON editáveis no nó Política. Validade relatório10–60s e recurso20–60s; confirmação evento1–60s,recurso20–120s,observação10–120s; CPU50–100%,memória128–2048MiB,disco/inodes70–95%,temperatura60–90°C. Inválidos não substituem última política. Recursos exigem duas amostras distintas; transient/unknown não prova recuperação. Confirmação é política, não latência medida."
+    },
+    {
+        "id": "host_obs_policy_tick",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_policy_group",
+        "name": "Carregar política ao iniciar",
+        "x": 260,
+        "y": 180,
+        "wires": [
+            [
+                "host_obs_policy_config"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_policy_config",
+        "type": "change",
+        "z": "host_observer_tab",
+        "g": "host_obs_policy_group",
+        "name": "POLÍTICA: padrões e limites explícitos",
+        "x": 600,
+        "y": 180,
+        "wires": [
+            [
+                "host_obs_policy_store"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"max_report_age_ms\":30000,\"max_resource_age_ms\":45000,\"event_confirm_ms\":5000,\"resource_confirm_ms\":20000,\"observation_confirm_ms\":20000,\"cpu_busy_percent\":90,\"memory_available_mib\":512,\"disk_used_percent\":85,\"inodes_used_percent\":85,\"temperature_celsius\":80}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "host_obs_policy_store",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "host_obs_policy_group",
+        "name": "Validar sem perder última política",
+        "x": 600,
+        "y": 280,
+        "wires": [],
+        "func": "const value = msg.payload;\nconst bounds = {\n    max_report_age_ms: [10000, 60000], max_resource_age_ms: [20000, 60000],\n    event_confirm_ms: [1000, 60000], resource_confirm_ms: [20000, 120000],\n    observation_confirm_ms: [10000, 120000], cpu_busy_percent: [50, 100],\n    memory_available_mib: [128, 2048], disk_used_percent: [70, 95],\n    inodes_used_percent: [70, 95], temperature_celsius: [60, 90]\n};\nif (!value || Object.keys(value).length !== Object.keys(bounds).length ||\n    !Object.entries(bounds).every(([key, [min, max]]) =>\n        Number.isFinite(value[key]) && value[key] >= min && value[key] <= max)) {\n    node.status({fill: \"red\", shape: \"ring\", text: \"política rejeitada; anterior preservada\"});\n    return null;\n}\nflow.set(\"host_observer_policy_v1\", {...value}, \"persistent\");\nnode.status({fill: \"green\", shape: \"dot\", text: \"política visual válida\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "host_obs_tick",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "FONTE: ler a cada 2s",
+        "x": 270,
+        "y": 480,
+        "wires": [
+            [
+                "host_obs_read"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "str"
+            }
+        ],
+        "repeat": "2",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "12",
+        "topic": "",
+        "payload": "",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_read",
+        "type": "exec",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Ler somente relatório root (limite 3s)",
+        "x": 610,
+        "y": 480,
+        "wires": [
+            [
+                "host_obs_normalize"
+            ],
+            [],
+            [
+                "notification_hub_wire_out_91f75af07cd0"
+            ]
+        ],
+        "command": "/usr/local/bin/node --max-old-space-size=32 /data/tools/read-host-observation.mjs",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "3",
+        "winHide": false,
+        "oldrc": false
+    },
+    {
+        "id": "host_obs_read_complete",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Falha do leitor → observação desconhecida",
+        "x": 410,
+        "y": 790,
+        "wires": [
+            [
+                "notification_hub_wire_out_fa4ef9ce2ec8"
+            ]
+        ],
+        "func": "const value = msg.payload;\nconst code = typeof value === \"object\" && value !== null ? value.code : value;\nif (code === 0 || code === \"0\") return null;\n// Return code/signal and stderr are not forwarded to notices or the assistant.\nreturn {payload: {schema_version: 1, collection_error: \"source_invalid_or_unavailable\", report: null}};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "host_obs_test_frame_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "TESTE → mesmo contrato",
+        "x": 800,
+        "y": 570,
+        "wires": [
+            [
+                "host_obs_normalize"
+            ]
+        ],
+        "links": [
+            "host_obs_test_frame_out"
+        ]
+    },
+    {
+        "id": "host_obs_normalize",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Adaptar estrutura e calcular idades",
+        "x": 970,
+        "y": 480,
+        "wires": [
+            [
+                "host_obs_valid"
+            ]
+        ],
+        "func": "const test = msg._host_observer_test === true;\nconst now = test && Number.isFinite(msg._host_test_now) ? msg._host_test_now : Date.now();\nconst policy = flow.get(\"host_observer_policy_v1\", \"persistent\");\nif (!policy) return null;\nlet value;\ntry {\n    value = typeof msg.payload === \"string\" && msg.payload.length <= 65536\n        ? JSON.parse(msg.payload) : msg.payload;\n} catch { value = null; }\nconst report = value?.schema_version === 1 && value.collection_error === null ? value.report : null;\nconst stamp = value => {\n    if (typeof value !== \"string\" || !/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,6})?(?:Z|\\+00:00)$/.test(value)) return NaN;\n    const parsed = Date.parse(value);\n    return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 19) === value.slice(0, 19) ? parsed : NaN;\n};\nconst at = stamp(report?.observed_at);\nconst valid = report?.schema_version === 1 && report.source === \"fixed_readonly_host_observer\" &&\n    /^[a-f0-9]{64}$/.test(report.instance_id ?? \"\") && /^[a-f0-9]{64}$/.test(report.boot_id_sha256 ?? \"\") &&\n    Number.isSafeInteger(report.sequence) && report.sequence >= 0 &&\n    Array.isArray(report.events) && report.events.length <= 64 &&\n    report.sources && report.resources?.data && Array.isArray(report.resources.collection_errors) && Number.isFinite(at) && at <= now + 1000;\nreturn {\n    _host_observer_test: test, _host_test_now: test ? now : undefined,\n    _host_now: now, _host_policy: policy, _host_report_valid: !!valid,\n    _host_report_age_ms: valid ? Math.max(0, now - at) : null,\n    _host_resource_age_ms: valid && Number.isFinite(stamp(report.resources.observed_at)) &&\n        stamp(report.resources.observed_at) <= at + 1000\n        ? Math.max(0, now - stamp(report.resources.observed_at)) : null,\n    _host_report: valid ? report : null\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "host_obs_valid",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Estrutura e relógio válidos?",
+        "x": 1290,
+        "y": 480,
+        "wires": [
+            [
+                "host_obs_fresh"
+            ],
+            [
+                "notification_hub_wire_out_854a3e59838c"
+            ]
+        ],
+        "property": "_host_report_valid",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_fresh",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Relatório dentro da validade visual?",
+        "x": 1650,
+        "y": 480,
+        "wires": [
+            [
+                "notification_hub_wire_out_286e14c5405b"
+            ],
+            [
+                "host_obs_report_unknown_out"
+            ]
+        ],
+        "property": "_host_report_age_ms",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lte",
+                "v": "_host_policy.max_report_age_ms",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_report_unknown_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Relatório ausente/stale → observação desconhecida",
+        "x": 1850,
+        "y": 560,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_report_unknown_in"
+        ]
+    },
+    {
+        "id": "host_obs_resource_age",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Idade dos recursos disponível?",
+        "x": 980,
+        "y": 670,
+        "wires": [
+            [
+                "notification_hub_wire_out_41e4101ae1e7"
+            ],
+            [
+                "host_obs_resource_fresh_gate"
+            ]
+        ],
+        "property": "_host_resource_age_ms",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "null"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_resource_fresh_gate",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Recursos dentro da validade visual?",
+        "x": 1310,
+        "y": 670,
+        "wires": [
+            [
+                "host_obs_resource_fresh"
+            ],
+            [
+                "host_obs_resource_stale"
+            ]
+        ],
+        "property": "_host_resource_age_ms",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lte",
+                "v": "_host_policy.max_resource_age_ms",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_resource_fresh",
+        "type": "change",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Recursos atuais",
+        "x": 1650,
+        "y": 650,
+        "wires": [
+            [
+                "host_obs_facts_out"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_host_resources_fresh",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "host_obs_resource_stale",
+        "type": "change",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Recursos desconhecidos",
+        "x": 1650,
+        "y": 760,
+        "wires": [
+            [
+                "host_obs_facts_out"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_host_resources_fresh",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "host_obs_facts_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Frame válido → fatos normalizados",
+        "x": 1860,
+        "y": 720,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_facts_in"
+        ]
+    },
+    {
+        "id": "host_obs_facts_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Receber frame válido",
+        "x": 100,
+        "y": 990,
+        "wires": [
+            [
+                "host_obs_facts"
+            ]
+        ],
+        "links": [
+            "host_obs_facts_out"
+        ]
+    },
+    {
+        "id": "host_obs_facts",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Cursor, baseline e projeção sanitizada",
+        "x": 410,
+        "y": 990,
+        "wires": [
+            [
+                "host_obs_kind"
+            ]
+        ],
+        "func": "const test = msg._host_observer_test === true;\nconst store = test ? undefined : \"persistent\";\nconst key = test ? \"host_observer_cursor_v1__test\" : \"host_observer_cursor_v1\";\nconst previous = flow.get(key, store);\nconst report = msg._host_report;\nconst services = {\n    docker: [\"homeassistant\", \"nodered\", \"mosquitto\", \"portainer\", \"appdaemon\", \"matter_server\",\n        \"zigbee2mqtt\", \"ai-bridge\", \"docs-review-scheduler\", \"kia-uvo-codex-merge\"],\n    systemd: [\"docker\", \"procmon\", \"mcp_collection\", \"external_heartbeat\", \"events\", \"ha_notices\", \"host_observation\"]\n};\nconst actions = {\n    docker: [\"start\", \"die\", \"restart\", \"destroy\", \"health_status: healthy\", \"health_status: unhealthy\", \"health_status: starting\"],\n    systemd: [\"started\", \"stopped\", \"failed\"]\n};\nconst native = previous?.instance === report.instance_id && previous.sequence <= report.sequence\n    ? previous : {instance: report.instance_id, sequence: report.sequence, states: {}, baseline_only: true};\nif (!native.states || typeof native.states !== \"object\") native.states = {};\nnative.source_gaps ??= {};\nconst reportGap = Number.isFinite(native.last_report_at) &&\n    msg._host_now - native.last_report_at > msg._host_policy.max_report_age_ms;\nfor (const source of [\"docker\", \"systemd\"]) {\n    const connected = report.sources[source]?.state === \"connected\" && report.sources[source]?.collection_error === null;\n    if (!connected) native.source_gaps[source] = true;\n    else if (native.source_gaps[source] || reportGap) {\n        for (const row of Object.values(native.states)) if (row.source === source) row.action = \"unknown\";\n        native.source_gaps[source] = false;\n        native.coverage_gap = true;\n    }\n}\nnative.last_report_at = msg._host_now;\nconst first = report.events[0]?.sequence;\nif (Number.isSafeInteger(first) && native.sequence < first - 1) native.coverage_gap = true;\nfor (const event of report.events) {\n    if (!event || typeof event !== \"object\") continue;\n    if (!Number.isSafeInteger(event.sequence) || event.sequence <= native.sequence || event.sequence > report.sequence) continue;\n    if (!services[event.source]?.includes(event.service) || !actions[event.source]?.includes(event.action)) continue;\n    const at = Date.parse(event.occurred_at);\n    if (!Number.isFinite(at) || at > msg._host_now + 1000) continue;\n    native.states[`${event.source}:${event.service}`] = {kind: \"native\", name: event.service,\n        source: event.source, action: event.action, occurred_at: event.occurred_at};\n}\nnative.sequence = report.sequence;\nflow.set(key, native, store);\nconst facts = [{kind: \"observation\", name: \"report\", state: \"connected\"}];\nfor (const source of [\"docker\", \"systemd\"]) {\n    const connected = report.sources[source]?.state === \"connected\" && report.sources[source]?.collection_error === null;\n    facts.push({kind: \"observation\", name: source, state: connected ? \"connected\" : \"unknown\"});\n    for (const fact of Object.values(native.states).filter(row => row.source === source)) {\n        facts.push({...fact, action: connected ? fact.action : \"unknown\"});\n    }\n}\nconst metrics = {cpu: \"cpu_busy_percent\", memory: \"memory_available_bytes\", disk: \"disk_used_percent\",\n    inodes: \"inodes_used_percent\", temperature: \"temperature_celsius\"};\nconst resource = report.resources;\nfacts.push({kind: \"observation\", name: \"resources\", state: msg._host_resources_fresh &&\n    Array.isArray(resource.collection_errors) && resource.collection_errors.length === 0 ? \"connected\" : \"unknown\"});\nfor (const [name, metric] of Object.entries(metrics)) {\n    const value = resource.data[metric];\n    const valid = msg._host_resources_fresh && Number.isFinite(value) && value >= 0 &&\n        (!resource.collection_errors?.includes(metric));\n    facts.push({kind: \"resource\", name, value: valid ? name === \"memory\" ? value / 1048576 : value : null,\n        observed_at: valid ? resource.observed_at : null});\n}\n// OOM is a counter, not proof that a particular process or service died.\nconst oom = resource.data.oom_kill_count;\nif (msg._host_resources_fresh && Number.isSafeInteger(oom) && oom >= 0) {\n    if (previous?.instance === report.instance_id && Number.isSafeInteger(previous.oom) && oom > previous.oom) {\n        native.oom_incident = {kind: \"native\", name: \"host_oom\", source: \"kernel_counter\", action: \"oom_increment\",\n            occurred_at: resource.observed_at};\n    }\n    native.oom = oom; flow.set(key, native, store);\n}\nif (native.oom_incident) facts.push(native.oom_incident);\nreturn [facts.map(fact => ({_host_observer_test: test, _host_now: msg._host_now,\n    _host_policy: msg._host_policy, _host_fact: fact}))];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "host_obs_report_unknown_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Receber falha de observação",
+        "x": 100,
+        "y": 1440,
+        "wires": [
+            [
+                "host_obs_report_unknown"
+            ]
+        ],
+        "links": [
+            "host_obs_report_unknown_out"
+        ]
+    },
+    {
+        "id": "host_obs_report_unknown",
+        "type": "change",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Falha somente na observação do relatório",
+        "x": 430,
+        "y": 1440,
+        "wires": [
+            [
+                "notification_hub_wire_out_8960c3262ab6"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_host_fact",
+                "pt": "msg",
+                "to": "{\"kind\":\"observation\",\"name\":\"report\",\"state\":\"unknown\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "host_obs_kind",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Classe do fato observado",
+        "x": 770,
+        "y": 990,
+        "wires": [
+            [
+                "host_obs_native"
+            ],
+            [
+                "host_obs_value_known"
+            ],
+            [
+                "notification_hub_wire_out_c1da726c3fd7"
+            ]
+        ],
+        "property": "_host_fact.kind",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "native",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "resource",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "observation",
+                "vt": "str"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 3
+    },
+    {
+        "id": "host_obs_native",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Transição autoritativa observada",
+        "x": 1130,
+        "y": 990,
+        "wires": [
+            [
+                "host_obs_native_route_0"
+            ],
+            [
+                "host_obs_native_route_1"
+            ],
+            [
+                "host_obs_native_route_2"
+            ]
+        ],
+        "property": "_host_fact.action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "regex",
+                "v": "^(failed|die|destroy|health_status: unhealthy|oom_increment)$",
+                "vt": "str",
+                "case": false
+            },
+            {
+                "t": "regex",
+                "v": "^(started|health_status: healthy)$",
+                "vt": "str",
+                "case": false
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 3
+    },
+    {
+        "id": "host_obs_observation",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Fonte conectada? Ausência é falha de observação",
+        "x": 1130,
+        "y": 1430,
+        "wires": [
+            [
+                "host_obs_observation_route_0"
+            ],
+            [
+                "host_obs_observation_route_1"
+            ]
+        ],
+        "property": "_host_fact.state",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "connected",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_value_known",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Métrica tem leitura válida?",
+        "x": 1110,
+        "y": 1110,
+        "wires": [
+            [
+                "host_obs_value_known_route_0"
+            ],
+            [
+                "host_obs_metric"
+            ]
+        ],
+        "property": "_host_fact.value",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "null"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_metric",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Métrica do recurso",
+        "x": 1470,
+        "y": 1130,
+        "wires": [
+            [
+                "host_obs_threshold_cpu"
+            ],
+            [
+                "host_obs_threshold_memory"
+            ],
+            [
+                "host_obs_threshold_disk"
+            ],
+            [
+                "host_obs_threshold_inodes"
+            ],
+            [
+                "host_obs_threshold_temperature"
+            ]
+        ],
+        "property": "_host_fact.name",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "cpu",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "memory",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "disk",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "inodes",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "temperature",
+                "vt": "str"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 5
+    },
+    {
+        "id": "host_obs_threshold_cpu",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "CPU ocupada ≥ limite %",
+        "x": 1840,
+        "y": 1010,
+        "wires": [
+            [
+                "host_obs_threshold_cpu_route_0"
+            ],
+            [
+                "host_obs_threshold_cpu_route_1"
+            ]
+        ],
+        "property": "_host_fact.value",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "_host_policy.cpu_busy_percent",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_threshold_memory",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Memória disponível ≤ limite MiB",
+        "x": 1840,
+        "y": 1100,
+        "wires": [
+            [
+                "host_obs_threshold_memory_route_0"
+            ],
+            [
+                "host_obs_threshold_memory_route_1"
+            ]
+        ],
+        "property": "_host_fact.value",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lte",
+                "v": "_host_policy.memory_available_mib",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_threshold_disk",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Disco usado ≥ limite %",
+        "x": 1840,
+        "y": 1190,
+        "wires": [
+            [
+                "host_obs_threshold_disk_route_0"
+            ],
+            [
+                "host_obs_threshold_disk_route_1"
+            ]
+        ],
+        "property": "_host_fact.value",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "_host_policy.disk_used_percent",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_threshold_inodes",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Inodes usados ≥ limite %",
+        "x": 1840,
+        "y": 1280,
+        "wires": [
+            [
+                "host_obs_threshold_inodes_route_0"
+            ],
+            [
+                "host_obs_threshold_inodes_route_1"
+            ]
+        ],
+        "property": "_host_fact.value",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "_host_policy.inodes_used_percent",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_threshold_temperature",
+        "type": "switch",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Temperatura ≥ limite °C",
+        "x": 1840,
+        "y": 1370,
+        "wires": [
+            [
+                "host_obs_threshold_temperature_route_0"
+            ],
+            [
+                "host_obs_threshold_temperature_route_1"
+            ]
+        ],
+        "property": "_host_fact.value",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "_host_policy.temperature_celsius",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "host_obs_failed_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "failed → lifecycle",
+        "x": 2160,
+        "y": 1030,
+        "wires": [
+            [
+                "host_obs_failed_set"
+            ]
+        ],
+        "links": [
+            "host_obs_native_route_0",
+            "host_obs_observation_route_1",
+            "host_obs_threshold_cpu_route_0",
+            "host_obs_threshold_memory_route_0",
+            "host_obs_threshold_disk_route_0",
+            "host_obs_threshold_inodes_route_0",
+            "host_obs_threshold_temperature_route_0"
+        ]
+    },
+    {
+        "id": "host_obs_failed_set",
+        "type": "change",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Marcar failed",
+        "x": 2370,
+        "y": 1030,
+        "wires": [
+            [
+                "host_obs_lifecycle"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_host_signal",
+                "pt": "msg",
+                "to": "failed",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "host_obs_healthy_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "healthy → lifecycle",
+        "x": 2160,
+        "y": 1170,
+        "wires": [
+            [
+                "host_obs_healthy_set"
+            ]
+        ],
+        "links": [
+            "host_obs_native_route_1",
+            "host_obs_observation_route_0",
+            "host_obs_threshold_cpu_route_1",
+            "host_obs_threshold_memory_route_1",
+            "host_obs_threshold_disk_route_1",
+            "host_obs_threshold_inodes_route_1",
+            "host_obs_threshold_temperature_route_1"
+        ]
+    },
+    {
+        "id": "host_obs_healthy_set",
+        "type": "change",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Marcar healthy",
+        "x": 2370,
+        "y": 1170,
+        "wires": [
+            [
+                "host_obs_lifecycle"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_host_signal",
+                "pt": "msg",
+                "to": "healthy",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "host_obs_unknown_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "unknown → lifecycle",
+        "x": 2160,
+        "y": 1310,
+        "wires": [
+            [
+                "host_obs_unknown_set"
+            ]
+        ],
+        "links": [
+            "host_obs_native_route_2",
+            "host_obs_value_known_route_0"
+        ]
+    },
+    {
+        "id": "host_obs_unknown_set",
+        "type": "change",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Marcar unknown",
+        "x": 2370,
+        "y": 1310,
+        "wires": [
+            [
+                "host_obs_lifecycle"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_host_signal",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "host_obs_lifecycle",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Incidente, confirmação e dedupe persistentes",
+        "x": 2720,
+        "y": 1170,
+        "wires": [
+            [
+                "host_obs_alert_out"
+            ]
+        ],
+        "func": "const test = msg._host_observer_test === true;\nconst store = test ? undefined : \"persistent\";\nconst key = test ? \"host_observer_incidents_v1__test\" : \"host_observer_incidents_v1\";\nconst state = flow.get(key, store) ?? {version: 1, incidents: {}};\nconst fact = msg._host_fact;\nconst name = `${fact.kind}_${fact.source ?? \"host\"}_${fact.name}`;\nif (!/^[a-z0-9_-]{1,90}$/.test(name) || ![\"failed\", \"healthy\", \"unknown\"].includes(msg._host_signal)) return null;\nconst now = msg._host_now;\nlet incident = state.incidents[name];\nif (incident && now < incident.last_seen_at) {\n    incident.clock_conflict = true;\n    flow.set(key, state, store);\n    return null;\n}\nif (msg._host_signal === \"unknown\") {\n    if (incident) { incident.current_evidence = \"unknown\"; incident.last_seen_at = now; }\n    flow.set(key, state, store);\n    return null;\n}\nconst label = fact.kind === \"resource\" ? `recurso ${fact.name}` :\n    fact.kind === \"observation\" ? `observação ${fact.name}` : `serviço ${fact.name}`;\nconst alert = (recovery) => ({\n    _global_observer_test: test,\n    payload: {test_mode: test, observer_kind: recovery ? \"host_recovery\" : \"host_failure\",\n        persistent_incident_kind: \"host_failure\", incident_key: name,\n        persistent_notification_operation: recovery ? \"dismiss\" : \"create\",\n        mobile_notification: !recovery, host_source: fact.source ?? \"host\", host_role: fact.name,\n        source_observed_at: fact.occurred_at ?? fact.observed_at ?? null,\n        policy_decided_at: new Date(now).toISOString(),\n        resolution: recovery ? \"approved_observation_returned\" : undefined},\n    alert: {title: `${test ? \"TESTE — \" : \"\"}${recovery ? \"Observação recuperada\" : \"Servidor exige atenção\"}`,\n        message: recovery ? `A observação de ${label} voltou ao estado esperado. O incidente anterior foi encerrado.` :\n            `Foi confirmada uma condição de atenção em ${label}. A Eva pode consultar o MCP para verificar a causa e os próximos passos. ` +\n            \"Este aviso não comprova uma ação do assistente ou a saúde de todos os serviços.\"}\n});\nif (msg._host_signal === \"healthy\") {\n    delete state.incidents[name];\n    flow.set(key, state, store);\n    return incident?.notified_at ? alert(true) : null;\n}\nincident ??= {first_seen_at: now, last_seen_at: now, notified_at: null, kind: fact.kind};\nif (incident.current_evidence === \"unknown\") {\n    incident.first_seen_at = now; incident.sample_count = 0; incident.last_sample_at = null;\n}\nincident.last_seen_at = now; incident.current_evidence = \"failed\";\nif (fact.kind === \"resource\" && fact.observed_at !== incident.last_sample_at) {\n    const observed = Date.parse(fact.observed_at);\n    if (!Number.isFinite(observed) || incident.last_sample_at && observed < Date.parse(incident.last_sample_at)) {\n        incident.clock_conflict = true;\n    } else {\n        incident.sample_count = (incident.sample_count ?? 0) + 1;\n        incident.last_sample_at = fact.observed_at;\n    }\n}\nconst confirmation = fact.kind === \"resource\" ? msg._host_policy.resource_confirm_ms :\n    fact.kind === \"observation\" ? msg._host_policy.observation_confirm_ms : msg._host_policy.event_confirm_ms;\nstate.incidents[name] = incident;\nif (!Number.isFinite(confirmation) || confirmation < 1000 || incident.clock_conflict ||\n    now - incident.first_seen_at < confirmation || fact.kind === \"resource\" && incident.sample_count < 2 ||\n    incident.notified_at !== null) {\n    flow.set(key, state, store);\n    return null;\n}\nincident.notified_at = now;\nflow.set(key, state, store);\nnode.log(`HOST_OBSERVATION_INCIDENT role=${fact.name} kind=${fact.kind} simulated=${test}`);\nreturn alert(false);",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "host_obs_alert_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Decisão → gate global produção / dry-run",
+        "x": 2940,
+        "y": 1170,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_info",
+        "type": "comment",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE: reset → saudável (baseline) → falha → confirmar → repetir → saudável; conferir dry-run global",
+        "x": 900,
+        "y": 1610,
+        "wires": [],
+        "info": "Todos os cenários percorrem normalização,validade,decisões visuais e lifecycle até global_observer_dispatch_guard. Somente estado __test;sem exec,HA,MQTT,notificações ou dispositivos. source_failure e relatório stale não provam falha física; healthy encerra apenas evidência esperada. Resource_high exige nova amostra no confirmar. Start de container não encerra incidente de prontidão."
+    },
+    {
+        "id": "host_obs_test_reset",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 0 reset",
+        "x": 260,
+        "y": 1700,
+        "wires": [
+            [
+                "notification_hub_wire_out_f941866a0d9a"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "reset",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "reset",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_healthy",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 1 saudável",
+        "x": 630,
+        "y": 1700,
+        "wires": [
+            [
+                "notification_hub_wire_out_896961521c78"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "healthy",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "healthy",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_failure",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 2 falha",
+        "x": 1000,
+        "y": 1700,
+        "wires": [
+            [
+                "notification_hub_wire_out_b7e594ca51f8"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "failure",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "failure",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_confirm",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 3 confirmar +25s",
+        "x": 1370,
+        "y": 1700,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "confirm",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "confirm",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_resource_high",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 4 CPU alta",
+        "x": 260,
+        "y": 1790,
+        "wires": [
+            [
+                "notification_hub_wire_out_e90587893caf"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "resource_high",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "resource_high",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_source_failure",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 5 fonte ausente",
+        "x": 630,
+        "y": 1790,
+        "wires": [
+            [
+                "notification_hub_wire_out_dcae6f1998b4"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "source_failure",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "source_failure",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_stale",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 6 relatório antigo",
+        "x": 1000,
+        "y": 1790,
+        "wires": [
+            [
+                "notification_hub_wire_out_94aa9b2537a4"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "stale",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "stale",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_malformed",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 7 inválido",
+        "x": 1370,
+        "y": 1790,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "malformed",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "malformed",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_build",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Construir somente frame sintético",
+        "x": 1580,
+        "y": 1830,
+        "wires": [
+            [
+                "host_obs_test_frame_out"
+            ]
+        ],
+        "func": "if (msg._host_observer_test !== true) return null;\nconst name = msg.payload;\nif (name === \"reset\") {\n    for (const key of [\"host_observer_cursor_v1__test\", \"host_observer_incidents_v1__test\", \"host_observer_fixture_v1__test\"]) flow.set(key, undefined);\n    node.status({fill: \"blue\", shape: \"dot\", text: \"somente TESTE resetado\"});\n    return null;\n}\nconst state = flow.get(\"host_observer_fixture_v1__test\") ?? {now: Date.now(), sequence: 0, action: \"started\", cpu: 10};\nstate.now += name === \"confirm\" ? 25000 : 1000;\nif ([\"failure\", \"healthy\"].includes(name)) {\n    state.sequence += 1; state.action = name === \"failure\" ? \"failed\" : \"started\";\n}\nif (name === \"resource_high\") state.cpu = 96;\nif (name === \"healthy\") state.cpu = 10;\nconst at = new Date(state.now).toISOString();\nconst report = {schema_version: 1, source: \"fixed_readonly_host_observer\", observed_at: at,\n    instance_id: \"a\".repeat(64), boot_id_sha256: \"b\".repeat(64), sequence: state.sequence,\n    evicted_event_records: 0,\n    sources: {docker: {state: \"connected\", collection_error: null}, systemd: {state: name === \"source_failure\" ? \"unknown\" : \"connected\", collection_error: name === \"source_failure\" ? \"stream_unavailable_or_invalid\" : null}},\n    events: state.sequence ? [{id: state.sequence.toString(16).padStart(64, \"0\"), source: \"systemd\", service: \"procmon\", action: state.action,\n        sequence: state.sequence, occurred_at: at, observed_at: at, source_to_observer_ms: 0}] : [],\n    resources: {observed_at: at, collection_errors: [], data: {cpu_busy_percent: state.cpu,\n        memory_available_bytes: 4096 * 1048576, memory_total_bytes: 8192 * 1048576,\n        disk_used_percent: 50, inodes_used_percent: 10, temperature_celsius: 50, oom_kill_count: 0}}};\nif (name === \"stale\") report.observed_at = new Date(state.now - 120000).toISOString();\nflow.set(\"host_observer_fixture_v1__test\", state);\nreturn {_host_observer_test: true, _host_test_now: state.now,\n    payload: name === \"malformed\" ? \"{\" : {schema_version: 1, collection_error: null, report}};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "host_obs_test_frame_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Replay → fonte normalizada",
+        "x": 1860,
+        "y": 1830,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_frame_in"
+        ]
+    },
+    {
+        "id": "host_obs_native_route_0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Transição autoritativa observada → failed_in",
+        "mode": "link",
+        "links": [
+            "host_obs_failed_in"
+        ],
+        "x": 1310,
+        "y": 970,
+        "wires": []
+    },
+    {
+        "id": "host_obs_native_route_1",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Transição autoritativa observada → healthy_in",
+        "mode": "link",
+        "links": [
+            "host_obs_healthy_in"
+        ],
+        "x": 1310,
+        "y": 1010,
+        "wires": []
+    },
+    {
+        "id": "host_obs_native_route_2",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Transição autoritativa observada → unknown_in",
+        "mode": "link",
+        "links": [
+            "host_obs_unknown_in"
+        ],
+        "x": 1310,
+        "y": 1050,
+        "wires": []
+    },
+    {
+        "id": "host_obs_observation_route_0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Fonte conectada? Ausência é falha de observação → healthy_in",
+        "mode": "link",
+        "links": [
+            "host_obs_healthy_in"
+        ],
+        "x": 1310,
+        "y": 1410,
+        "wires": []
+    },
+    {
+        "id": "host_obs_observation_route_1",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Fonte conectada? Ausência é falha de observação → failed_in",
+        "mode": "link",
+        "links": [
+            "host_obs_failed_in"
+        ],
+        "x": 1310,
+        "y": 1450,
+        "wires": []
+    },
+    {
+        "id": "host_obs_value_known_route_0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Métrica tem leitura válida? → unknown_in",
+        "mode": "link",
+        "links": [
+            "host_obs_unknown_in"
+        ],
+        "x": 1290,
+        "y": 1090,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_cpu_route_0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "CPU ocupada ≥ limite % → failed_in",
+        "mode": "link",
+        "links": [
+            "host_obs_failed_in"
+        ],
+        "x": 2020,
+        "y": 990,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_cpu_route_1",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "CPU ocupada ≥ limite % → healthy_in",
+        "mode": "link",
+        "links": [
+            "host_obs_healthy_in"
+        ],
+        "x": 2020,
+        "y": 1030,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_memory_route_0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Memória disponível ≤ limite MiB → failed_in",
+        "mode": "link",
+        "links": [
+            "host_obs_failed_in"
+        ],
+        "x": 2020,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_memory_route_1",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Memória disponível ≤ limite MiB → healthy_in",
+        "mode": "link",
+        "links": [
+            "host_obs_healthy_in"
+        ],
+        "x": 2020,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_disk_route_0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Disco usado ≥ limite % → failed_in",
+        "mode": "link",
+        "links": [
+            "host_obs_failed_in"
+        ],
+        "x": 2020,
+        "y": 1170,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_disk_route_1",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Disco usado ≥ limite % → healthy_in",
+        "mode": "link",
+        "links": [
+            "host_obs_healthy_in"
+        ],
+        "x": 2020,
+        "y": 1210,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_inodes_route_0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Inodes usados ≥ limite % → failed_in",
+        "mode": "link",
+        "links": [
+            "host_obs_failed_in"
+        ],
+        "x": 2020,
+        "y": 1260,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_inodes_route_1",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Inodes usados ≥ limite % → healthy_in",
+        "mode": "link",
+        "links": [
+            "host_obs_healthy_in"
+        ],
+        "x": 2020,
+        "y": 1300,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_temperature_route_0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Temperatura ≥ limite °C → failed_in",
+        "mode": "link",
+        "links": [
+            "host_obs_failed_in"
+        ],
+        "x": 2020,
+        "y": 1350,
+        "wires": []
+    },
+    {
+        "id": "host_obs_threshold_temperature_route_1",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Temperatura ≥ limite °C → healthy_in",
+        "mode": "link",
+        "links": [
+            "host_obs_healthy_in"
+        ],
+        "x": 2020,
+        "y": 1390,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__host_observer_tab__group",
+        "type": "group",
+        "z": "host_observer_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__host_observer_tab__catch",
+            "global_observer_coverage__host_observer_tab__status",
+            "global_observer_coverage__host_observer_tab__annotate",
+            "global_observer_coverage__host_observer_tab__out"
+        ],
+        "x": 3120,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__host_observer_tab__catch",
+        "type": "catch",
+        "z": "host_observer_tab",
+        "g": "global_observer_coverage__host_observer_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 3260,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__host_observer_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__host_observer_tab__status",
+        "type": "status",
+        "z": "host_observer_tab",
+        "g": "global_observer_coverage__host_observer_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 3270,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__host_observer_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__host_observer_tab__annotate",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "global_observer_coverage__host_observer_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"host_observer_tab\",\"flow_label\":\"observacao_host\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3540,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__host_observer_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__host_observer_tab__out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "global_observer_coverage__host_observer_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 3785,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_91f75af07cd0",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Encurtar: Ler somente relatório root (limite 3s)",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_91f75af07cd0"
+        ],
+        "x": 790,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_91f75af07cd0",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Continuar: Falha do leitor → observação desconhecida",
+        "links": [
+            "notification_hub_wire_out_91f75af07cd0"
+        ],
+        "x": 230,
+        "y": 790,
+        "wires": [
+            [
+                "host_obs_read_complete"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_fa4ef9ce2ec8",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Encurtar: Falha do leitor → observação desconhecida",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_fa4ef9ce2ec8"
+        ],
+        "x": 590,
+        "y": 790,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_fa4ef9ce2ec8",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Continuar: Adaptar estrutura e calcular idades",
+        "links": [
+            "notification_hub_wire_out_fa4ef9ce2ec8"
+        ],
+        "x": 790,
+        "y": 630,
+        "wires": [
+            [
+                "host_obs_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_854a3e59838c",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Encurtar: Estrutura e relógio válidos?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_854a3e59838c"
+        ],
+        "x": 1470,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_854a3e59838c",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Continuar: Relatório ausente/stale → observação desconhecida",
+        "links": [
+            "notification_hub_wire_out_854a3e59838c"
+        ],
+        "x": 1670,
+        "y": 560,
+        "wires": [
+            [
+                "host_obs_report_unknown_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_286e14c5405b",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Encurtar: Relatório dentro da validade visual?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_286e14c5405b"
+        ],
+        "x": 1830,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_286e14c5405b",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Continuar: Idade dos recursos disponível?",
+        "links": [
+            "notification_hub_wire_out_286e14c5405b"
+        ],
+        "x": 800,
+        "y": 720,
+        "wires": [
+            [
+                "host_obs_resource_age"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_41e4101ae1e7",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Encurtar: Idade dos recursos disponível?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_41e4101ae1e7"
+        ],
+        "x": 1160,
+        "y": 770,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_41e4101ae1e7",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Continuar: Recursos desconhecidos",
+        "links": [
+            "notification_hub_wire_out_41e4101ae1e7"
+        ],
+        "x": 1470,
+        "y": 760,
+        "wires": [
+            [
+                "host_obs_resource_stale"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_8960c3262ab6",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Encurtar: Falha somente na observação do relatório",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_8960c3262ab6"
+        ],
+        "x": 610,
+        "y": 1440,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_8960c3262ab6",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Continuar: Fonte conectada? Ausência é falha de observação",
+        "links": [
+            "notification_hub_wire_out_8960c3262ab6"
+        ],
+        "x": 950,
+        "y": 1430,
+        "wires": [
+            [
+                "host_obs_observation"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_c1da726c3fd7",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Encurtar: Classe do fato observado",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_c1da726c3fd7"
+        ],
+        "x": 950,
+        "y": 990,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_c1da726c3fd7",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_decision_group",
+        "name": "Continuar: Fonte conectada? Ausência é falha de observação",
+        "links": [
+            "notification_hub_wire_out_c1da726c3fd7"
+        ],
+        "x": 950,
+        "y": 1330,
+        "wires": [
+            [
+                "host_obs_observation"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_f941866a0d9a",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Encurtar: TESTE 0 reset",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_f941866a0d9a"
+        ],
+        "x": 440,
+        "y": 1700,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_f941866a0d9a",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Continuar: Construir somente frame sintético",
+        "links": [
+            "notification_hub_wire_out_f941866a0d9a"
+        ],
+        "x": 1400,
+        "y": 1880,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_896961521c78",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Encurtar: TESTE 1 saudável",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_896961521c78"
+        ],
+        "x": 810,
+        "y": 1700,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_896961521c78",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Continuar: Construir somente frame sintético",
+        "links": [
+            "notification_hub_wire_out_896961521c78"
+        ],
+        "x": 1400,
+        "y": 1630,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_b7e594ca51f8",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Encurtar: TESTE 2 falha",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_b7e594ca51f8"
+        ],
+        "x": 1180,
+        "y": 1700,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_b7e594ca51f8",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Continuar: Construir somente frame sintético",
+        "links": [
+            "notification_hub_wire_out_b7e594ca51f8"
+        ],
+        "x": 1320,
+        "y": 1880,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_e90587893caf",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Encurtar: TESTE 4 CPU alta",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_e90587893caf"
+        ],
+        "x": 440,
+        "y": 1790,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_e90587893caf",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Continuar: Construir somente frame sintético",
+        "links": [
+            "notification_hub_wire_out_e90587893caf"
+        ],
+        "x": 1320,
+        "y": 1630,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_dcae6f1998b4",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Encurtar: TESTE 5 fonte ausente",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_dcae6f1998b4"
+        ],
+        "x": 810,
+        "y": 1790,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_dcae6f1998b4",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Continuar: Construir somente frame sintético",
+        "links": [
+            "notification_hub_wire_out_dcae6f1998b4"
+        ],
+        "x": 1480,
+        "y": 1630,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_94aa9b2537a4",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Encurtar: TESTE 6 relatório antigo",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_94aa9b2537a4"
+        ],
+        "x": 1180,
+        "y": 1790,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_94aa9b2537a4",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Continuar: Construir somente frame sintético",
+        "links": [
+            "notification_hub_wire_out_94aa9b2537a4"
+        ],
+        "x": 1240,
+        "y": 1830,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
         ]
     }
 ]

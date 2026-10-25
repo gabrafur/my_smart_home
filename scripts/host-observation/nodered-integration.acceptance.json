@@ -1,0 +1,45 @@
+{
+  "observed_at": "2026-10-25T09:00:38+00:00",
+  "source": "actual NodeRED Admin API loaded/persisted reconciliation and native persistent context",
+  "deployment": "nodes_changed_only_no_service_restart",
+  "loaded_and_persisted_sha256": "f8686a37f4b78767409b2e351f64dadec67cb865553b6d5889615bca8f199226",
+  "reader_real_collection_error": null,
+  "NodeRED_version": "5.0.9",
+  "official_switch_module_sha256": "ca835b0d47bb3eb7cd877ea1ad7e589e87a942e31bec0111878d17f4c2b37434",
+  "official_switch_cases_passed": 42,
+  "history": {
+    "first_deployment": "loaded_but_cursor_did_not_advance",
+    "confirmed_defect": "unsupported switch operator isnull",
+    "separate_corrective_deployment": "two nodes changed to official null operator;original intent/receipt preserved",
+    "uncertain_effect_repeated": false
+  },
+  "actual_runtime": {
+    "policy_present": true,
+    "cursor_sequence": 186,
+    "native_role_count": 3,
+    "native_roles": [
+      "systemd:external_heartbeat",
+      "systemd:mcp_collection",
+      "systemd:procmon"
+    ],
+    "incidents_count": 0,
+    "notified_incident_count": 0
+  },
+  "tests": "closed reader,visual thresholds,cursors,baseline,reconnection,clock/data failure,resource distinct samples,OOM,lifecycle,dedupe and full dry-run replay;global lifecycle/observability/manual policy/layout validators passed",
+  "visual_inspection": "completed;zero_long_or_reverse_wires",
+  "services_restarted": 0,
+  "household_actuator_effects": 0,
+  "artificial_production_events": 0,
+  "new_root_or_sudo_permissions": false,
+  "administrative_expiry_extended": false,
+  "subscription_replaced": false,
+  "Events_budget_raised": false,
+  "new_report_exposed_by_MCP": false,
+  "natural_failure_alert_delivery": "not_observed_after_activation",
+  "source_to_NodeRED_complete_latency": "not_measured_yet",
+  "all_event_resource_latency_proven": false,
+  "PC_off_proven": false,
+  "full24h_proven": false,
+  "Eva_execution_proven": false,
+  "whole_goal_complete": false
+}

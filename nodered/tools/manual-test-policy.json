@@ -569,6 +569,25 @@
                 "global_observer_dry_run_terminal"
             ],
             "reason": "Snapshots sint\u00e9ticos cumulativos percorrem valida\u00e7\u00e3o, disponibilidade, c\u00e1lculo e serializa\u00e7\u00e3o reais; gate final bloqueia MQTT. Reset e estado de teste isolados. Replay do observador cobre erro e indisponibilidade sem notifica\u00e7\u00e3o."
+        },
+        "host_observer_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "host_obs_test_group",
+                "host_obs_test_reset",
+                "host_obs_test_healthy",
+                "host_obs_test_failure",
+                "host_obs_test_confirm",
+                "host_obs_test_resource_high",
+                "host_obs_test_source_failure",
+                "host_obs_test_stale",
+                "host_obs_test_malformed"
+            ],
+            "dry_run_terminal_ids": [
+                "global_observer_dry_run_terminal"
+            ],
+            "automated_test": "test-host-observer.mjs",
+            "reason": "Replay completo da fonte sanitizada,validade,thresholds visuais,dedupe/cursor/lifecycle e gate global;contexto sint\u00e9tico separado;sem exec,HA,MQTT ou dispositivos."
         }
     }
 }

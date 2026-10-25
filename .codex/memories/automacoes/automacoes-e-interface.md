@@ -346,3 +346,10 @@ O auxiliar de segurança resolve a imagem Node-RED diretamente do serviço canô
 Gatilhos server-state-changed de input_button precisam ignorar old_state nulo e emissão inicial. A criação/restauração da entidade após reinício pode republicar um timestamp antigo; isso não é clique e não autoriza efeitos. Manter ignorePrevStateUnknown=false permite o primeiro clique real de um helper já existente em unknown. O gerador install-input-button-restoration-guards preserva a geometria; o teste test-input-button-restoration usa o controlador nativo e cobre restauração, primeiro clique, duplicata, entidade alheia e desconexão sem serviços reais.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"observacao-host-fatos-e-incidentes","category":"ARCHITECTURE","kind":"VERIFIED_FACT","last_verified":"2026-10-25","evidence":[{"file":"nodered/tools/HOST_OBSERVER.md","sha256":"fff0cefc1dc4bfad5f409a4ad058d20347a111b85b0fbe391b597ac617a862d9"},{"file":"nodered/tools/install-host-observer-flow.mjs","sha256":"bb78468109f7b1f870b4317fa92d3ee59f67cd95c3a025d911f332723cdf6b58"},{"file":"nodered/tools/test-host-observer.mjs","sha256":"3a762ecfa6ed18fc56a84b1c4701e7a4fdb2c68e607a28dbd319af4f5a0500d7"}]} -->
+## Observação do host e evidência de incidentes
+
+O produtor passivo fornece fatos sanitizados; políticas de validade, thresholds, confirmação, dedupe e recuperação pertencem ao canvas observacao_host. Ausência de coleta é falha de observação, não prova de falha dos serviços. Container start não comprova prontidão; unknown preserva incidentes sem fabricar recuperação. Baseline não reenvia histórico; reconexão sem evento novo não confirma uma transição antiga. Testes usam contexto separado até o gate global dry-run. O operador do Switch para valor ausente é null; isnull não existe no runtime verificado. Replay aproximado não substitui validação do módulo oficial e observação operacional. Intenção de alerta, entrega do canal, execução do assistente e cobertura completa são provas distintas.
+
+<!-- /memory-record -->
