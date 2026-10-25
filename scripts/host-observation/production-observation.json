@@ -1,0 +1,36 @@
+{
+  "observed_at": "2026-10-25T08:26:35Z",
+  "source": "actual root-owned passive observer on Raspberry",
+  "installation": "root_owned_service_running",
+  "observer_sha256": "fa0ed53de540565ec159b7e9718b0c918dea86a332cace39e014e308ef48f0ef",
+  "unit_sha256": "c3052abe5e250eaed499ae67b93b15d5e3981fd041356a54b74929eb4ccd1cc9",
+  "isolated_regressions_passed": 7,
+  "sources": {
+    "docker": "connected",
+    "systemd": "connected"
+  },
+  "sequence": 81,
+  "evicted_event_records": 17,
+  "producer_self_cpu_seconds": 0.848,
+  "producer_self_peak_rss_bytes": 20316160,
+  "report_bytes_written": 2384236,
+  "cost_scope": "producer_self_only_not_child_or_24h",
+  "natural_procmon_started_source_to_observer_ms": [
+    477.068,
+    452.702,
+    448.182,
+    412.395
+  ],
+  "latency_scope": "source_to_passive_observer_only",
+  "household_effects": 0,
+  "private_messages_exported": false,
+  "original_collector_reinstalled": false,
+  "NodeRED_host_policy_activated": false,
+  "new_report_exposed_by_MCP": false,
+  "durable_reconnect_cursors": false,
+  "full24h_acceptance": false,
+  "PC_off_acceptance": false,
+  "assistant_execution_proven": false,
+  "whole_goal_complete": false,
+  "public_cost_rounding_decimal_places": 3
+}

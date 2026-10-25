@@ -1,0 +1,39 @@
+[Unit]
+Description=Read-only sanitized host event and resource observer
+After=docker.service local-fs.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-host-observation/observer.py
+Restart=on-failure
+RestartSec=10
+UMask=0022
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateNetwork=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/mnt/data/docker/nodered/.host-health-observer
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=10%
+MemoryMax=160M
+LimitAS=536870912
+LimitNOFILE=64
+LimitCORE=0
+TasksMax=8
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

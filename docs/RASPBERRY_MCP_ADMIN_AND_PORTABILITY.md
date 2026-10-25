@@ -539,3 +539,19 @@ preservada. A etapa posterior dos containers parou antes de recriar serviços
 porque faltava cobertura de prontidão do Portainer; esse gate permanece
 ativo. Consulte [homeassistant-recovery.acceptance.json](../scripts/raspberry-mcp/homeassistant-recovery.acceptance.json).
 Isso não comprova todas as integrações nem restauração de desastre.
+
+
+## Observador passivo e recuperação de coleta
+
+O [produtor de fatos do host](../scripts/host-observation/README.md) foi instalado
+como serviço root isolado: eventos de containers/unidades e recursos sanitizados,
+sem comandos remotos ou efeitos de reparo. Sua integração a políticas Node-RED
+e ao resumo MCP ainda está pendente. O cliente não deve inferir essa cobertura
+apenas porque o serviço está ativo. Reconexões, anel limitado e falta de inventário
+inicial impedem afirmar histórico completo.
+
+A [regressão do modo atômico](../scripts/raspberry-mcp/procmon-observability/README.md)
+registra a recuperação real de uma falha persistente da coleta, mantendo o
+coletor original e os gates. Os ciclos naturais voltaram; a lacuna de 10.623
+segundos permanece na evidência. Isso invalida o aceite de continuidade de 24h
+nessa janela. Falhas antigas continuam históricas, mesmo após sucesso posterior.

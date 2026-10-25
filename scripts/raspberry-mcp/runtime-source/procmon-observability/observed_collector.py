@@ -62,12 +62,22 @@ class Observer:
         original_prune=mod.prune
         original_preserve=mod.preserve_interrupted
 
-        def atomic(path,*args,**kwargs):
+        def atomic(path,value,maximum=mod.MAX_SAMPLE,mode=0o600):
             self.stage=('write_history' if path.parent.name=='history' else
                         'write_hour' if path.parent.name=='hours' else
                         'publish_snapshot' if path.name=='snapshot.json' else
                         'publish_health' if path.name=='health.json' else 'write_last')
-            return original_atomic(path,*args,**kwargs)
+            # The original requests an exact mode, then fchmods after open.
+            # A signal between those calls can leave an empty 0600 public
+            # temporary that the strict 0640 recovery gate correctly rejects.
+            # Create with the already-approved mode; preserve all deadlines,
+            # original writes, recovery checks and the sealed collector bytes.
+            previous_mask=os.umask(0o077)
+            try:
+                os.umask(previous_mask & ~mode)
+                return original_atomic(path,value,maximum,mode)
+            finally:
+                os.umask(previous_mask)
 
         def prune(path,*args,**kwargs):
             self.stage='prune_history' if path.name=='history' else 'prune_hours'
