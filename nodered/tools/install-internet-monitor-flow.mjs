@@ -14,6 +14,36 @@ const MQTT = "721c47f31046b8bc";
 const SERVER = "4126427d5e161a03";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
+// Source-only report changes retain the approved graph and its visual bridges.
+// Full graph construction remains the default for topology changes.
+if (process.argv[4] === "--refresh-remote-report") {
+  const byId = new Map(flows.map((node) => [node.id, node]));
+  for (const [id, file] of [
+    ["internet_remote_access_report_ingest", "internet-remote-access-report-ingest.js"],
+    ["internet_remote_facts_read", "internet-remote-access-facts-read.js"],
+  ]) {
+    const node = byId.get(id);
+    if (node?.type !== "function" || node.z !== TAB) throw Error("Report source node absent");
+    node.func = source(file);
+  }
+  for (const [id, healthy] of [["internet_test_codex_absent", false], ["internet_test_codex_ready", true]]) {
+    const node = byId.get(id);
+    if (node?.type !== "inject" || node.z !== TAB) throw Error("Report replay node absent");
+    const payload = node.props?.find((item) => item.p === "payload" && item.vt === "json");
+    if (!payload) throw Error("Report replay payload absent");
+    const value = JSON.parse(payload.v);
+    if (value.test_mode !== true || value.services?.codex_remote?.healthy !== healthy ||
+        value.services.codex_remote.installed !== true) throw Error("Report replay scope invalid");
+    value.schema_version = 2;
+    value.services.codex_remote.listener_state = healthy ? "present" : "absent";
+    payload.v = JSON.stringify(value);
+  }
+  fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
+  console.log(`Remote report sources refreshed without topology changes in ${outputPath}`);
+  process.exit(0);
+}
+if (process.argv[4] !== undefined) throw Error("Unknown generation mode");
+
 const observerPrefix = `global_observer_coverage__${TAB}__`;
 const observerNode = (node) => String(node.id).startsWith(observerPrefix);
 const owned = (node) => !observerNode(node) &&
@@ -256,9 +286,9 @@ for (const [id, name, payload, x, y] of [
   ["internet_test_success_2", "TESTE 6: sucesso 2/2", success, 170, 1120],
 ]) inject(id, groups.test, name, [{ p: "payload", v: JSON.stringify(payload), vt: "json" }, { p: "_internet_test", v: "true", vt: "bool" }], x, y, [["internet_test_out"]]);
 linkOut("internet_test_out", groups.test, "Amostra TESTE → ciclo real", "internet_cycle_in", 470, 1010);
-const remoteReport = (healthy) => ({ schema_version: 1, test_mode: true, checked_at: "2026-01-01T00:02:00Z", services: {
+const remoteReport = (healthy) => ({ schema_version: 2, test_mode: true, checked_at: "2026-01-01T00:02:00Z", services: {
   remote_shell: { healthy: true, reason: "service_active" },
-  codex_remote: { installed: true, healthy, reason: healthy ? "app_server_ready" : "app_server_absent" },
+  codex_remote: { installed: true, healthy, listener_state: healthy ? "present" : "absent", reason: healthy ? "app_server_ready" : "app_server_absent" },
 } });
 inject("internet_test_codex_absent", groups.test, "TESTE 7: Codex ausente", [{ p: "payload", v: JSON.stringify(remoteReport(false)), vt: "json" }, { p: "_internet_test", v: "true", vt: "bool" }], 750, 900, [["internet_test_remote_report_out"]]);
 inject("internet_test_codex_ready", groups.test, "TESTE 8: Codex pronto", [{ p: "payload", v: JSON.stringify(remoteReport(true)), vt: "json" }, { p: "_internet_test", v: "true", vt: "bool" }], 750, 965, [["internet_test_remote_report_out"]]);

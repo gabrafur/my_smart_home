@@ -6,18 +6,23 @@ try {
     payload = null;
 }
 const services = payload?.services;
-const valid = payload?.schema_version === 1 &&
+const remote = services?.codex_remote;
+const legacy = payload?.schema_version === 1;
+const v2 = payload?.schema_version === 2;
+const remoteValid = typeof remote?.installed === "boolean" && (legacy ?
+    typeof remote?.healthy === "boolean" && (!remote.healthy || remote.installed) :
+    v2 && (remote.listener_state === "unknown" ? remote.healthy === null :
+        remote.listener_state === "present" ? remote.healthy === remote.installed :
+        remote.listener_state === "absent" && remote.healthy === false));
+const valid = (legacy || v2) &&
     Number.isFinite(Date.parse(payload?.checked_at ?? "")) &&
     typeof services?.remote_shell?.healthy === "boolean" &&
-    typeof services?.codex_remote?.healthy === "boolean" &&
-    typeof services?.codex_remote?.installed === "boolean";
+    remoteValid;
 msg._internet_test = msg._internet_test === true || payload?.test_mode === true;
-if (!valid) {
-    msg.remote_access_report_valid = false;
-    return msg;
-}
+msg.remote_access_report_valid = valid;
+if (!valid) return msg;
 const report = {
-    schema_version: 1,
+    schema_version: 2,
     checked_at: payload.checked_at,
     services: {
         remote_shell: {
@@ -25,9 +30,10 @@ const report = {
             reason: String(services.remote_shell.reason ?? "unknown").slice(0, 80)
         },
         codex_remote: {
-            installed: services.codex_remote.installed,
-            healthy: services.codex_remote.healthy,
-            reason: String(services.codex_remote.reason ?? "unknown").slice(0, 80)
+            installed: remote.installed,
+            healthy: legacy && remote.healthy === false ? null : remote.healthy,
+            listener_state: legacy ? remote.healthy ? "present" : "unknown" : remote.listener_state,
+            reason: String(remote.reason ?? "unknown").slice(0, 80)
         }
     }
 };
@@ -35,6 +41,5 @@ const key = msg._internet_test ? "internet_remote_access_report_v1__test" : "int
 if (msg._internet_test) flow.set(key, report);
 else flow.set(key, report, "persistent");
 flow.set(key + "_received", true, "memoryOnly");
-msg.remote_access_report_valid = true;
 msg.remote_access_report = report;
 return msg;

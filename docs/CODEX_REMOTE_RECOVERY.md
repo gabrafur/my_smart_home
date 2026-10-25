@@ -68,3 +68,33 @@ npm --prefix nodered run flows:render-strict -- monitoramento_internet_tab
 Um pedido manual é seguro para smoke test porque o worker faz uma nova leitura
 antes de agir. Com o App Server ativo, o resultado esperado contém
 `status=healthy action=none reason=app_server_ready`.
+
+## Falha de consulta não confirma ausência
+
+A consulta do listener tem três estados: `present`, `absent` e `unknown`.
+Falha, timeout, sinal, saída inválida ou erro ao resolver o alias permanecem
+`unknown`. Recovery e restart retornam `deferred` (código 75), sem iniciar um
+processo substituto nem enviar sinal quando a observação inicial é incerta.
+Após um SIGTERM autorizado, erro de consulta também impede iniciar outro
+processo: somente ausência observada permite seguir. Incerteza após o início
+não é registrada como recuperação concluída.
+
+O produtor de saúde usa `schema_version: 2` e informa `listener_state`; em
+estado desconhecido, `healthy` é `null`. O Node-RED valida a consistência,
+impede recovery e não conta uma falha confirmada com esse relatório. Relatório
+legado positivo continua legível; um legado negativo não confirma ausência,
+pois o produtor antigo confundia erro de `ss` com listener ausente.
+
+Atualize primeiro os dois consumidores de relatório no Node-RED e depois o
+produtor. Os testes cobrem a cadeia produtor → normalização → decisão com
+relatórios sintéticos e proíbem lançamento/sinal durante falhas de consulta.
+Não é necessário reiniciar o App Server para carregar estes scripts; mantenha
+os gates de turno/meta ativa e não provoque uma queda para testar a correção.
+
+
+Para atualizar somente a fonte dos dois consumidores e os dois exemplos de
+relatório, preservando a geometria e todas as ligações aprovadas, use
+`node tools/install-internet-monitor-flow.mjs flows.json flows.json --refresh-remote-report`
+dentro de `nodered`, depois valide observabilidade e layout. Esse modo rejeita
+nós ausentes ou exemplos que não sejam de teste; mudanças de topologia seguem
+o gerador completo e sua revisão visual.

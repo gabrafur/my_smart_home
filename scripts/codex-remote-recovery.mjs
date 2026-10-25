@@ -11,14 +11,29 @@ function listenerLine(controlSocket, output) {
   // New Codex releases publish an alias to a protected physical Unix socket.
   // ss reports the physical path, never the alias used by clients.
   let physicalSocket = controlSocket;
-  try { physicalSocket = fs.realpathSync(controlSocket); } catch { /* absent or legacy socket */ }
+  try { physicalSocket = fs.realpathSync(controlSocket); } catch (error) {
+    if (!["ENOENT", "ENOTDIR"].includes(error?.code)) throw error;
+  }
   return String(output).split(/\r?\n/).find((line) =>
     line.trim().split(/\s+/).includes(physicalSocket));
 }
 
+export function listenerObservation(controlSocket, run = spawnSync) {
+  try {
+    const result = run("ss", ["-xl"], { encoding: "utf8", timeout: 5000, maxBuffer: 1048576 });
+    if (result?.status !== 0 || result.error || result.signal || typeof result.stdout !== "string")
+      return { state: "unknown", reason: "listener_observation_unconfirmed" };
+    const present = Boolean(listenerLine(controlSocket, result.stdout));
+    return { state: present ? "present" : "absent", reason: present ? "listener_present" : "listener_absent" };
+  } catch {
+    return { state: "unknown", reason: "listener_observation_unconfirmed" };
+  }
+}
+
+// Retain boolean results for known observations; null is explicitly unknown.
 export function listenerReady(controlSocket, run = spawnSync) {
-  const result = run("ss", ["-xl"], { encoding: "utf8", timeout: 5000 });
-  return result?.status === 0 && Boolean(listenerLine(controlSocket, result.stdout));
+  const observation = listenerObservation(controlSocket, run);
+  return observation.state === "unknown" ? null : observation.state === "present";
 }
 
 export function listenerPids(controlSocket, run = spawnSync) {
@@ -47,7 +62,9 @@ function startCodexRemote({ codexBin, controlSocket, run, launch, wait }) {
   });
   child.unref();
   for (let attempt = 0; attempt < 40; attempt += 1) {
-    if (listenerReady(controlSocket, run)) return { status: "recovered", action: "start", reason: "app_server_started" };
+    const observation = listenerObservation(controlSocket, run);
+    if (observation.state === "present") return { status: "recovered", action: "start", reason: "app_server_started" };
+    if (observation.state === "unknown") return { status: "deferred", action: "start", reason: "startup_observation_unconfirmed" };
     wait(250);
   }
   return { status: "failed", action: "start", reason: "startup_timeout" };
@@ -60,9 +77,14 @@ export function recoverCodexRemote({
   launch = spawn,
   wait = sleep,
 } = {}) {
-  if (listenerReady(controlSocket, run)) return { status: "healthy", action: "none", reason: "app_server_ready" };
+  const before = listenerObservation(controlSocket, run);
+  if (before.state === "unknown") return { status: "deferred", action: "none", reason: "listener_observation_unconfirmed" };
+  if (before.state === "present") return { status: "healthy", action: "none", reason: "app_server_ready" };
   const version = run(codexBin, ["--version"], { encoding: "utf8", timeout: 10_000 });
   if (version?.status !== 0) return { status: "failed", action: "none", reason: "binary_unavailable" };
+  const current = listenerObservation(controlSocket, run);
+  if (current.state === "unknown") return { status: "deferred", action: "none", reason: "listener_observation_unconfirmed" };
+  if (current.state === "present") return { status: "healthy", action: "none", reason: "app_server_ready" };
   return startCodexRemote({ codexBin, controlSocket, run, launch, wait });
 }
 
@@ -81,7 +103,9 @@ export function restartCodexRemote({
   const gate = preflightCodexRestart({ controlSocket, activity });
   if (gate.status === "deferred") return { ...gate, action: "restart" };
 
-  if (listenerReady(controlSocket, run)) {
+  const before = listenerObservation(controlSocket, run);
+  if (before.state === "unknown") return { status: "deferred", action: "restart", reason: "listener_observation_unconfirmed" };
+  if (before.state === "present") {
     const pids = listenerPids(controlSocket, run);
     if (pids.length !== 1 || !processIsCodexAppServer(pids[0], readFile)) {
       return { status: "failed", action: "restart", reason: "listener_owner_unverified" };
@@ -91,14 +115,18 @@ export function restartCodexRemote({
     } catch {
       return { status: "failed", action: "restart", reason: "shutdown_failed" };
     }
-    for (let attempt = 0; attempt < 40 && listenerReady(controlSocket, run); attempt += 1) wait(250);
-    if (listenerReady(controlSocket, run)) {
-      return { status: "failed", action: "restart", reason: "shutdown_timeout" };
+    let absent = false;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const observation = listenerObservation(controlSocket, run);
+      if (observation.state === "unknown") return { status: "deferred", action: "restart", reason: "shutdown_observation_unconfirmed" };
+      if (observation.state === "absent") { absent = true; break; }
+      wait(250);
     }
+    if (!absent) return { status: "failed", action: "restart", reason: "shutdown_timeout" };
   }
 
   const started = startCodexRemote({ codexBin, controlSocket, run, launch, wait });
-  if (started.status === "failed") return { ...started, action: "restart" };
+  if (started.status !== "recovered") return { ...started, action: "restart" };
   return { status: "recovered", action: "restart", reason: "app_server_restarted" };
 }
 

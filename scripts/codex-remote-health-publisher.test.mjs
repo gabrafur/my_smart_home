@@ -15,7 +15,7 @@ const healthy = collectCodexRemoteHealth({
     return { status: 0, stdout: "codex-cli test\n" };
   },
 });
-assert.equal(healthy.schema_version, 1);
+assert.equal(healthy.schema_version, 2);
 assert.equal(healthy.services.remote_shell.healthy, true);
 assert.equal(healthy.services.codex_remote.healthy, true);
 assert.equal(JSON.stringify(healthy).includes("/tmp"), false, "relatório não expõe caminho privado");

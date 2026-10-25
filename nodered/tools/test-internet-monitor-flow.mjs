@@ -240,12 +240,12 @@ const remoteFlow = context({ persistent: {
   internet_monitor_state_v1: { phase: "online" },
 } });
 const remoteReport = (healthy, checkedAt, testMode = false) => ({
-  schema_version: 1,
+  schema_version: 2,
   test_mode: testMode,
   checked_at: checkedAt,
   services: {
     remote_shell: { healthy: true, reason: "service_active" },
-    codex_remote: { installed: true, healthy, reason: healthy ? "app_server_ready" : "app_server_absent" },
+    codex_remote: { installed: true, healthy, listener_state: healthy ? "present" : "absent", reason: healthy ? "app_server_ready" : "app_server_absent" },
   },
 });
 const remoteNow = Date.UTC(2026, 8, 18, 20, 0, 0);
