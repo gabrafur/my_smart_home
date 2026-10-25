@@ -496,7 +496,9 @@ A correção usa o diretório privado já pertencente ao worker, preservando os
 bloqueios de registros antigos e mantendo recibos após prontidão verificada.
 
 As fontes auditadas das recuperações administrativas ficam em
-[`runtime-source/administrative-recovery`](../scripts/raspberry-mcp/runtime-source/administrative-recovery/).
+[`queue_offsite_handoff.py`](../scripts/raspberry-mcp/runtime-source/administrative-recovery/queue_offsite_handoff.py),
+[`apply_git_bridge_wait.py`](../scripts/raspberry-mcp/runtime-source/administrative-recovery/apply_git_bridge_wait.py)
+e [`flow_client.cjs`](../scripts/raspberry-mcp/runtime-source/administrative-recovery/flow_client.cjs).
 São snapshots para revisão, com marcadores para o manifesto aprovado e o
 host privado do Node-RED. Não são ferramentas de shell do MCP nem um
 instalador para sobrescrever políticas ativas. A submissão offsite tem intent
