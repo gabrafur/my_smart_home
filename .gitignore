@@ -114,6 +114,7 @@ nodered/.flows_cred.json*
 nodered/.sessions.json
 nodered/.config.users.json*
 nodered/.config.runtime.json*
+nodered/.git-backup-health.json
 nodered/context/
 nodered/notification-history/
 nodered/failure-history/

@@ -413,3 +413,42 @@ administrativa configurada. O aceite administrativo independente comprovou
 UID0 no executor e deduplicação de criação/envio. Nenhum desses resultados
 certifica uma nova conta de cliente,proxy externo ou outro chatbot ainda não
 conectado. Registrar esse aceite quando o cliente escolhido estiver disponível.
+
+## Proveniência dos ciclos Git e histórico de falhas
+
+O produtor `backup_results` usa o schema `1.3.0`. `last_worker_cycle` preserva
+o resultado original do worker; `last_observed_publication` observa publicações
+no log limitado e não identifica a origem da execução. `last_scheduled_cycle`
+exige os metadados do fluxo canônico, identidade da requisição e horários
+consistentes com o worker. Ausência, conflito ou falha de coleta mantém
+`unknown`. A origem vem do tópico canônico e do ID do helper, não de uma
+atestação criptográfica do agendador.
+
+O fluxo de backup grava somente metadados sanitizados no arquivo fixo
+`/data/.git-backup-health.json`, dentro do volume de dados já existente. A
+simulação não grava esse arquivo nem altera o contexto persistente. A agenda,
+os gates e o requisito de sucesso Git agendado para iniciar offsite são
+preservados. Execução manual não libera offsite.
+
+`known_failure_history` reúne a observação anterior preservada pelo operador
+e até 16 falhas conhecidas do produtor canônico. Isso não recompõe uma série
+histórica completa. Campos privados são descartados. O recibo anterior, o
+contexto original e os resultados do worker permanecem preservados. Uma
+publicação posterior não transforma uma falha antiga em sucesso.
+
+A instalação exige preservar uma observação sanitizada real em
+`/usr/local/lib/raspberry-repair-control/git-worker-baseline.json`, pertencente
+a root, e fixar seu hash nas dependências da política existente. Esse recibo
+é específico do host e não pertence ao pacote público. A API administrativa
+do Node-RED usa a credencial existente somente em memória, compara o hash e
+a revisão carregada, registra intent antes de submeter e confirma o estado
+carregado e persistido depois. Resultado incerto exige reconciliação somente
+leitura; não se repete a implantação. Não requer reiniciar o serviço.
+
+Aceite: executar os testes `test-git-backup-health.mjs` e
+`test-git-backup-flow.mjs`, as regressões puras de `test_health_summary.py`,
+a validação e inspeção visual do canvas; depois consultar `backup_results`
+pelo cliente MCP real. Antes do primeiro resultado natural com proveniência,
+o ciclo agendado continua `unknown`. Somente o ciclo real posterior valida
+o produtor em operação. Sucesso Git nunca comprova upload offsite,
+integridade do bundle ou recuperação dos serviços.

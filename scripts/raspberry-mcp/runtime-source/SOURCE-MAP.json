@@ -68,8 +68,8 @@
     },
     "repair-control/health_summary.py": {
       "source": "/usr/local/lib/raspberry-repair-control/health_summary.py",
-      "source_sha256": "dd85f82e167d4eb2ae2d4c7d37f35157c62bf7ae5b2f8e988a425f6e1b218d01",
-      "export_sha256": "dd85f82e167d4eb2ae2d4c7d37f35157c62bf7ae5b2f8e988a425f6e1b218d01",
+      "source_sha256": "a61a6f10b007f7d44460211ab504bd80f57ed5d30833818b337a43c48b4a65e3",
+      "export_sha256": "a61a6f10b007f7d44460211ab504bd80f57ed5d30833818b337a43c48b4a65e3",
       "normalizations": []
     },
     "repair-control/event_projection.mjs": {
@@ -139,6 +139,15 @@
       "source_sha256": "73322b6321338ab1e1736396df406a84ba7fd41fc37a9fb169ad327bb544c6a2",
       "export_sha256": "73322b6321338ab1e1736396df406a84ba7fd41fc37a9fb169ad327bb544c6a2",
       "normalizations": []
+    },
+    "repair-control/test_health_summary.py": {
+      "source": "/usr/local/lib/raspberry-repair-control/test_health_summary.py",
+      "source_sha256": "9a9f655cdb1f07464ac08f725dc97e9f90bbea68824f08a27784a590145d9f0f",
+      "export_sha256": "4bab73e145e1531cfec24866fafce1511f357a30d123d83fcfc7c53a6e9eacd9",
+      "normalizations": [
+        "unique_local_test_import",
+        "synthetic_fixture_variable_name"
+      ]
     }
   }
 }

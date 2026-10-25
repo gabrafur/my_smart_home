@@ -9,7 +9,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..", "..");
 const functionDir = path.join(here, "functions");
 const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8").replace(/\r\n/g, "\n");
-const flows = JSON.parse(fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"));
+const flows = JSON.parse(fs.readFileSync(process.argv[2] ?? path.resolve(here, "..", "flows.json"), "utf8"));
 const byId = new Map(flows.map((entry) => [entry.id, entry]));
 assert.equal(byId.size, flows.length, "o gerador não pode deixar IDs duplicados");
 const node = (id) => {

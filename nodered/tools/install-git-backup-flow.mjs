@@ -54,6 +54,7 @@ const groups = {
   decision: group("git_backup_decision_group", "1. Normalização e decisões visuais", 720, 20, 1140, 430, "#0f766e", "#ccfbf1"),
   effect: group("git_backup_effect_group", "2. Efeitos isolados, retry e confirmação", 1900, 20, 1260, 480, "#dc2626", "#fee2e2"),
   test: group("git_backup_test_group", "3. Replay manual completo — dry-run", 64, 540, 2400, 400, "#0891b2", "#cffafe"),
+  health: group("git_backup_health_group", "4. Registro sanitizado dos ciclos", 3820, 590, 1160, 220, "#64748b", "#e2e8f0"),
 };
 const grouped = (g, node) => { add(node); nodes.find((entry) => entry.id === g).nodes.push(node.id); return node.id; };
 const fn = (id, g, name, file, outputs, x, y, wires) => grouped(g, {
@@ -102,7 +103,8 @@ sw("git_backup_request_gate", groups.decision, "Pedido é TESTE?", "_git_backup_
 linkOut("git_backup_request_dry_out", groups.decision, "Pedido TESTE → dry-run", "git_backup_dry_in", 1180, 70);
 linkOut("git_backup_worker_out", groups.decision, "Produção → worker allowlisted", "git_backup_worker_in", 1180, 110);
 linkIn("git_backup_result_in", groups.decision, "Receber resultado real ou sintético", ["git_backup_result_out", "git_backup_test_result_out"], "git_backup_result", 770, 220);
-fn("git_backup_result", groups.decision, "Normalizar resposta textual", "git-backup-result-normalize.js", 1, 980, 220, [["git_backup_status_switch"]]);
+fn("git_backup_result", groups.decision, "Normalizar resposta textual", "git-backup-result-normalize.js", 1, 980, 220, [["git_backup_status_switch", "git_backup_health_out"]]);
+linkOut("git_backup_health_out", groups.decision, "Resultado → registro sanitizado", "git_backup_health_in", 1200, 350);
 sw("git_backup_status_switch", groups.decision, "Resultado: sucesso, falha ou adiado?", "git_backup_status", "msg", [
   { t: "eq", v: "success", vt: "str" }, { t: "eq", v: "failed", vt: "str" },
   { t: "eq", v: "deferred", vt: "str" }, { t: "else" },
@@ -180,6 +182,15 @@ grouped(groups.effect, {
   drop: false, allowrate: false, outputs: 1, x: 2250, y: 430, wires: [["git_backup_retry_out"]],
 });
 linkOut("git_backup_retry_out", groups.effect, "Retry → novo pedido", "git_backup_retry_in", 2510, 430);
+
+linkIn("git_backup_health_in", groups.health, "Receber resultado para registro", "git_backup_health_out", "git_backup_health_project", 3860, 670);
+fn("git_backup_health_project", groups.health, "Projetar metadados de backup", "git-backup-health-project.js", 1, 4160, 670, [["git_backup_health_file"]]);
+grouped(groups.health, {
+  id: "git_backup_health_file", type: "file", z: TAB, g: groups.health,
+  name: "EFEITO: gravar snapshot sanitizado", filename: "/data/.git-backup-health.json", filenameType: "str",
+  appendNewline: true, createDir: false, overwriteFile: "true", encoding: "utf8",
+  x: 4640, y: 670, wires: [[]],
+});
 
 grouped(groups.test, {
   id: "git_backup_test_instructions", type: "comment", z: TAB, g: groups.test,

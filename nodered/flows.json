@@ -3442,7 +3442,8 @@
             "notification_hub_wire_out_7b0d29c68a9f",
             "notification_hub_wire_in_7b0d29c68a9f",
             "notification_hub_wire_out_e8b646d9c5f3",
-            "notification_hub_wire_in_e8b646d9c5f3"
+            "notification_hub_wire_in_e8b646d9c5f3",
+            "git_backup_health_out"
         ],
         "x": 773,
         "y": 59,
@@ -3794,7 +3795,7 @@
         "z": "git_backup_tab",
         "g": "git_backup_decision_group",
         "name": "Normalizar resposta textual",
-        "func": "const testMode = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nif (!text) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"sem saída; erro tratado separadamente\" });\n    return null;\n}\nconst status = text.match(/\\bstatus=(success|failed|deferred)\\b/)?.[1] ?? \"invalid\";\nconst reason = text.match(/\\breason=([a-z0-9_]+)\\b/)?.[1] ?? \"unknown\";\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nconst result = { status, reason, finished_at: finishedAt };\nif (testMode) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nmsg.git_backup_status = status;\nmsg.payload = { ...result, test_mode: testMode };\nreturn msg;",
+        "func": "const testMode = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nif (!text) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"sem saída; erro tratado separadamente\" });\n    return null;\n}\nconst status = text.match(/\\bstatus=(success|failed|deferred)\\b/)?.[1] ?? \"invalid\";\nconst reason = text.match(/\\breason=([a-z0-9_]+)\\b/)?.[1] ?? \"unknown\";\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([0-9]{8}T[0-9]{6}Z-[0-9]+)\\b/)?.[1] ?? null;\nconst origin = [\"scheduled\", \"manual\"].includes(msg.topic) ? msg.topic : \"unknown\";\nconst result = { status, reason, finished_at: finishedAt, request_id: requestId, origin };\nif (testMode) flow.set(\"git_backup_last_result_v1__test\", result);\nelse {\n    const previous = flow.get(\"git_backup_last_result_v1\", \"persistent\");\n    const prior = flow.get(\"git_backup_failure_history_v1\", \"persistent\");\n    const safeFailure = value => value?.status === \"failed\" ? {\n        status: \"failed\",\n        reason: /^[a-z0-9_]{1,80}$/.test(value.reason ?? \"\") ? value.reason : \"unknown\",\n        finished_at: typeof value.finished_at === \"string\" ? value.finished_at.slice(0, 40) : null,\n        request_id: /^[0-9]{8}T[0-9]{6}Z-[0-9]+$/.test(value.request_id ?? \"\") ? value.request_id : null,\n        origin: [\"scheduled\", \"manual\"].includes(value.origin) ? value.origin : \"unknown\",\n    } : null;\n    const failures = Array.isArray(prior) ? prior.slice(-16).map(safeFailure).filter(Boolean) : [];\n    for (const item of [safeFailure(previous), safeFailure(result)]) {\n        if (item && !failures.some(old => JSON.stringify(old) === JSON.stringify(item))) failures.push(item);\n    }\n    flow.set(\"git_backup_failure_history_v1\", failures.slice(-16), \"persistent\");\n    if (origin === \"scheduled\" && requestId && [\"success\", \"failed\", \"deferred\"].includes(status)) {\n        flow.set(\"git_backup_last_scheduled_result_v1\", result, \"persistent\");\n    }\n    flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\n}\nmsg.git_backup_status = status;\nmsg.payload = { ...result, test_mode: testMode };\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -3805,7 +3806,8 @@
         "y": 280,
         "wires": [
             [
-                "git_backup_status_switch"
+                "git_backup_status_switch",
+                "git_backup_health_out"
             ]
         ]
     },
@@ -86701,6 +86703,100 @@
             [
                 "rtx_auto_hold_out"
             ]
+        ]
+    },
+    {
+        "id": "git_backup_health_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "4. Registro sanitizado dos ciclos",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#64748b",
+            "stroke-opacity": "1",
+            "fill": "#e2e8f0",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_health_in",
+            "git_backup_health_project",
+            "git_backup_health_file"
+        ],
+        "x": 3820,
+        "y": 590,
+        "w": 1160,
+        "h": 220
+    },
+    {
+        "id": "git_backup_health_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Resultado → registro sanitizado",
+        "mode": "link",
+        "links": [
+            "git_backup_health_in"
+        ],
+        "x": 1200,
+        "y": 350,
+        "wires": []
+    },
+    {
+        "id": "git_backup_health_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_health_group",
+        "name": "Receber resultado para registro",
+        "links": [
+            "git_backup_health_out"
+        ],
+        "x": 3860,
+        "y": 670,
+        "wires": [
+            [
+                "git_backup_health_project"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_health_project",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_health_group",
+        "name": "Projetar metadados de backup",
+        "func": "// A separate copy of the real result path; never changes the decision message.\nif (msg._git_backup_test === true) return null;\nconst safe = value => {\n    if (!value || typeof value !== \"object\") return null;\n    return {\n        status: [\"success\", \"failed\", \"deferred\", \"invalid\"].includes(value.status) ? value.status : \"unknown\",\n        reason: /^[a-z0-9_]{1,80}$/.test(value.reason ?? \"\") ? value.reason : \"unknown\",\n        finished_at: typeof value.finished_at === \"string\" ? value.finished_at.slice(0, 40) : null,\n        request_id: /^[0-9]{8}T[0-9]{6}Z-[0-9]+$/.test(value.request_id ?? \"\") ? value.request_id : null,\n        origin: [\"scheduled\", \"manual\"].includes(value.origin) ? value.origin : \"unknown\",\n    };\n};\nconst history = flow.get(\"git_backup_failure_history_v1\", \"persistent\");\nreturn { payload: JSON.stringify({\n    schema_version: 1,\n    source: \"canonical_nodered_git_backup_result\",\n    observed_at: new Date().toISOString(),\n    last_result: safe(flow.get(\"git_backup_last_result_v1\", \"persistent\")),\n    last_scheduled_cycle: safe(flow.get(\"git_backup_last_scheduled_result_v1\", \"persistent\")),\n    failure_history: Array.isArray(history) ? history.slice(-16).map(safe).filter(Boolean) : [],\n    history_coverage: \"last_16_known_failures;older_or_missing_records_not_inferred\",\n    origin_coverage: \"canonical_message_topic_and_helper_request_id;not_cryptographic_scheduler_attestation\",\n    offsite_success_inferred: false,\n    restoration_inferred: false,\n}) };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 4160,
+        "y": 670,
+        "wires": [
+            [
+                "git_backup_health_file"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_health_file",
+        "type": "file",
+        "z": "git_backup_tab",
+        "g": "git_backup_health_group",
+        "name": "EFEITO: gravar snapshot sanitizado",
+        "filename": "/data/.git-backup-health.json",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "utf8",
+        "x": 4640,
+        "y": 670,
+        "wires": [
+            []
         ]
     }
 ]

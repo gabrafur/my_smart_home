@@ -14,6 +14,111 @@ def stamp(value):
         return None
 
 
+def read_metadata(path, owner):
+    """Only called with fixed paths; never export source content or errors."""
+    import json
+    import os
+    import stat
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            info = os.fstat(fd)
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != owner
+                    or info.st_mode & 0o022 or info.st_size > 16384):
+                raise ValueError('unsafe_metadata')
+            raw = os.read(fd, 16385)
+            if len(raw) > 16384:
+                raise ValueError('oversized_metadata')
+            value = json.loads(raw)
+            if not isinstance(value, dict):
+                raise ValueError('invalid_metadata')
+            return value, None
+        finally:
+            os.close(fd)
+    except FileNotFoundError:
+        return None, 'source_missing'
+    except (OSError, ValueError, UnicodeError):
+        return None, 'source_invalid_or_unavailable'
+
+
+def safe_cycle(value):
+    import hashlib
+    if not isinstance(value, dict):
+        return None
+    request = value.get('request_id')
+    request = request if isinstance(request, str) and re.fullmatch(r'\d{8}T\d{6}Z-\d{1,12}', request) else None
+    status = value.get('status')
+    reason = value.get('reason')
+    return {
+        'status': status if status in ('success', 'failed', 'deferred', 'invalid') else 'unknown',
+        'reason': reason if isinstance(reason, str) and re.fullmatch(r'[a-z0-9_]{1,80}', reason) else 'unknown',
+        'finished_at': value.get('finished_at') if stamp(value.get('finished_at')) is not None else None,
+        'operation_id': hashlib.sha256(request.encode()).hexdigest()[:32] if request else None,
+        'origin': value.get('origin') if value.get('origin') in ('scheduled', 'manual') else 'unknown',
+    }
+
+
+def apply_cycle_projection(git, projection, collection_error, historical, now, worker_error):
+    """Canonical topic is provenance, not cryptographic scheduler attestation."""
+    failures = []
+    if isinstance(historical, dict):
+        item = safe_cycle(historical.get('worker_cycle'))
+        if item and item['status'] == 'failed':
+            # Baseline is collected from an already sanitized worker response.
+            op = historical['worker_cycle'].get('operation_id')
+            item['operation_id'] = op if isinstance(op, str) and re.fullmatch(r'[a-f0-9]{32}', op) else None
+            item['source'] = 'sealed_pre_change_worker_observation'
+            failures.append(item)
+    valid = isinstance(projection, dict) and projection.get('schema_version') == 1 and projection.get('source') == 'canonical_nodered_git_backup_result'
+    if valid and isinstance(projection.get('failure_history'), list):
+        for row in projection['failure_history'][-16:]:
+            item = safe_cycle(row)
+            if item and item['status'] == 'failed' and not any(old.get('operation_id') == item['operation_id'] and old.get('finished_at') == item['finished_at'] and old.get('reason') == item['reason'] for old in failures):
+                failures.append(item)
+    git['known_failure_history'] = failures
+    git['known_failure_history_coverage'] = 'sealed_pre_change_worker_observation_and_last_16_canonical_failures;not_complete_history'
+    if not valid:
+        git['last_scheduled_cycle']['collection_error'] = collection_error or 'canonical_metadata_missing_or_invalid'
+        return
+    raw = projection.get('last_scheduled_cycle')
+    item = safe_cycle(raw)
+    observed = stamp(projection.get('observed_at'))
+    finished = stamp(item.get('finished_at')) if item else None
+    worker = git['last_worker_cycle']
+    worker_finished = stamp(worker.get('finished_at'))
+    reason = None
+    if collection_error or worker_error:
+        reason = 'collection_failed'
+    elif observed is None or observed > now + 1 or finished is None or finished > observed or finished > now + 1:
+        reason = 'scheduled_dates_missing_or_conflicting'
+    elif ((worker.get('status') == 'success' and worker.get('exit_code') not in (None, 0))
+          or (worker.get('status') == 'failed' and worker.get('exit_code') == 0)
+          or (stamp(worker.get('started_at')) is not None and (worker_finished is None or stamp(worker['started_at']) > worker_finished))):
+        reason = 'worker_status_or_dates_conflicting'
+    elif not item or item['origin'] != 'scheduled' or not item['operation_id'] or item['status'] not in ('success', 'failed', 'deferred'):
+        reason = 'scheduled_origin_or_identity_missing'
+    else:
+        try:
+            started = dt.datetime.strptime(raw['request_id'].split('-')[0], '%Y%m%dT%H%M%SZ').replace(tzinfo=dt.timezone.utc).timestamp()
+        except (KeyError, ValueError, TypeError):
+            started = None
+        if started is None or started > finished or worker_finished is None or worker_finished < finished:
+            reason = 'scheduled_worker_dates_missing_or_conflicting'
+        elif worker.get('operation_id') == item['operation_id']:
+            if worker.get('status') != item['status'] or worker_finished != finished:
+                reason = 'scheduled_worker_result_conflicting'
+        elif worker_finished == finished:
+            reason = 'scheduled_worker_identity_conflicting'
+    if reason:
+        git['last_scheduled_cycle'] = {'state': 'unknown', 'status': 'unknown', 'reason': reason, 'finished_at': None, 'collection_error': collection_error}
+        return
+    item.update(state='observed', source='canonical_nodered_git_backup_result', observed_at=projection['observed_at'],
+                worker_relation='same_current_worker' if worker.get('operation_id') == item['operation_id'] else 'older_than_current_worker',
+                coverage=['canonical_message_topic_and_helper_request_id', 'not_cryptographic_scheduler_attestation', 'not_offsite_or_restoration'])
+    git['last_scheduled_cycle'] = item
+    git['summary']['scheduled_success_proven'] = item['status'] == 'success'
+
+
 def publication(log, now):
     """A no-changes cycle is not publication. Clock/order ambiguity stays unknown."""
     if not isinstance(log, str) or len(log.encode()) > 524288:
@@ -41,7 +146,7 @@ def publication(log, now):
                          'not_scheduled_cycle', 'not_offsite_or_restoration']}
 
 
-def correct_backups(base, log, now):
+def correct_backups(base, log, now, projection=None, projection_error=None, historical=None):
     """Keep original fields/receipts; add explicitly scoped, conservative views."""
     value = copy.deepcopy(base)
     git = value['data']['git']
@@ -89,7 +194,8 @@ def correct_backups(base, log, now):
     git['history_coverage'] = ['original_latest_worker_result_preserved',
                                'original_sources_not_modified',
                                'bounded_log_not_complete_failure_history']
-    value['schema_version'] = '1.2.0'
+    apply_cycle_projection(git, projection, projection_error, historical, now, bool(base.get('collection_error') or cycle_error))
+    value['schema_version'] = '1.3.0'
     value['coverage'] = list(dict.fromkeys([*value.get('coverage', []),
         'worker_cycle_separate_from_publication', 'scheduled_origin_not_inferred',
         'chronology_unknown_on_missing_conflicting_or_unavailable_evidence']))
@@ -125,4 +231,8 @@ def backups():
         log = existing.fixed_tail(existing.ROOT / '.git-backup.log')
     except (OSError, ValueError):
         log = None
-    return correct_backups(base, log, time.time())
+    projection, error = read_metadata('/mnt/data/docker/nodered/.git-backup-health.json', 1000)
+    history, history_error = read_metadata('/usr/local/lib/raspberry-repair-control/git-worker-baseline.json', 0)
+    result = correct_backups(base, log, time.time(), projection, error, history)
+    result['data']['git']['historical_baseline_collection_error'] = history_error
+    return result
