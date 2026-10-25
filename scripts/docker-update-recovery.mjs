@@ -6,6 +6,10 @@ export function createDockerRecoveryStore(root) {
   const current = path.join(root, ".local-secrets", "docker-update-recovery.json");
   const legacy = path.join(root, ".local-state", "docker-update-recovery.json");
   const history = path.join(root, ".local-secrets", "docker-update-history");
+  const present = file => {
+    try { fs.lstatSync(file); return true; }
+    catch (error) { if (error.code === "ENOENT") return false; throw error; }
+  };
   const syncDirectory = directory => {
     const fd = fs.openSync(directory, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY);
     try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
@@ -23,7 +27,7 @@ export function createDockerRecoveryStore(root) {
   };
   return {
     current, legacy, history,
-    hasPending: () => [current, legacy, `${current}.tmp`, `${legacy}.tmp`].some(file => fs.existsSync(file)),
+    hasPending: () => [current, legacy, `${current}.tmp`, `${legacy}.tmp`].some(present),
     record: state => write(current, { ...state, recorded_at: new Date().toISOString() }),
     clear: () => {
       const record = JSON.parse(fs.readFileSync(current, "utf8"));

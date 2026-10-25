@@ -16,6 +16,7 @@ function fixture(fn) {
 
 test("recovery uses the private worker store without changing shared state permissions", () => fixture(root => {
   const shared = path.join(root, ".local-state");fs.mkdirSync(shared, { mode: 0o555 });
+  fs.chmodSync(shared, 0o555);
   const store = createDockerRecoveryStore(root);
   store.record({ status: "pending", previous_compose: "before", candidate_compose: "after" });
   assert.equal(fs.statSync(shared).mode & 0o777, 0o555);
@@ -42,6 +43,10 @@ test("legacy and interrupted records remain blockers and are never removed", () 
   fs.writeFileSync(`${store.current}.tmp`, "interrupted");
   assert.equal(store.hasPending(), true);
   assert.equal(fs.readFileSync(`${store.current}.tmp`, "utf8"), "interrupted");
+  fs.unlinkSync(`${store.current}.tmp`);
+  fs.symlinkSync(path.join(root, "missing-target"), store.current);
+  assert.equal(store.hasPending(), true);
+  assert.equal(fs.lstatSync(store.current).isSymbolicLink(), true);
 }));
 
 test("a recovery write failure prevents any container recreation", async () => {
