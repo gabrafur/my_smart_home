@@ -19,6 +19,44 @@ const processScript = path.join(scriptsDir, "process-git-backup-request.sh");
 const installScript = path.join(scriptsDir, "install-git-backup-nodered-bridge.sh");
 const backupScript = path.join(scriptsDir, "git-backup.sh");
 
+test("fixed Node-RED wait covers validation beyond the old 180 second budget", { timeout: 15000 }, () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-long-wait-"));
+  const fakeBin = path.join(fixture, "bin");
+  fs.mkdirSync(fakeBin);
+  fs.writeFileSync(path.join(fakeBin, "sleep"), `#!/bin/sh
+set -eu
+n=$(cat "$FAKE_WAIT_COUNT")
+n=$((n + 1))
+printf '%s' "$n" > "$FAKE_WAIT_COUNT"
+if [ "$n" -eq 185 ]; then
+  id=$(sed -n '1p' "$GIT_BACKUP_TRIGGER_DIR/requested")
+  printf 'status=success\\nreason=none\\nrequest_id=%s\\nfinished_at=2026-10-25T04:03:26Z\\n' "$id" > "$GIT_BACKUP_TRIGGER_DIR/result"
+fi
+`);
+  fs.chmodSync(path.join(fakeBin, "sleep"), 0o700);
+  try {
+    for (const budget of [180, 600]) {
+      const trigger = path.join(fixture, String(budget));
+      const counter = path.join(fixture, `count-${budget}`);
+      fs.mkdirSync(trigger);fs.writeFileSync(counter, "0");
+      const result = spawnSync(requestScript, [], { encoding: "utf8", timeout: 6000,
+        env: { ...process.env, PATH: `${fakeBin}:${process.env.PATH}`,
+          GIT_BACKUP_TRIGGER_DIR: trigger, GIT_BACKUP_REQUEST_TIMEOUT_SECONDS: String(budget),
+          FAKE_WAIT_COUNT: counter } });
+      const originalId = fs.readFileSync(path.join(trigger, "requested"), "utf8").trim();
+      assert.match(originalId, /^\d{8}T\d{6}Z-\d+$/);
+      assert.equal(result.status, budget === 180 ? 75 : 0, result.stderr);
+      if (budget === 600) {
+        assert.match(result.stdout, /status=success/);
+        assert.ok(result.stdout.includes(`request_id=${originalId}`));
+        assert.equal(Number(fs.readFileSync(counter, "utf8")), 185);
+      } else assert.match(result.stderr, /timed out/);
+    }
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
 function waitForFile(file, timeoutMs = 3000) {
   const started = Date.now();
   return new Promise((resolve, reject) => {

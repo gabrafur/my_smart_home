@@ -62,8 +62,8 @@ assert.deepEqual(node("git_backup_request_gate").wires.map((_, output) => logica
 ]);
 assert.deepEqual(node("git_backup_request_dry_out").links, ["git_backup_dry_in"]);
 assert.deepEqual(node("git_backup_worker_out").links, ["git_backup_worker_in"]);
-assert.equal(node("git_backup_request").command, "/opt/request-host-git-backup.sh");
-assert.equal(node("git_backup_request").timer, "240");
+assert.equal(node("git_backup_request").command, "/usr/bin/env GIT_BACKUP_REQUEST_TIMEOUT_SECONDS=600 /opt/request-host-git-backup.sh");
+assert.equal(node("git_backup_request").timer, "660");
 assert.ok(!JSON.stringify(node("git_backup_request")).includes("docker.sock"));
 assert.ok(!JSON.stringify(node("git_backup_request")).includes("/mnt/data/docker"));
 assert.ok(!JSON.stringify(node("git_backup_request")).includes(".ssh"));

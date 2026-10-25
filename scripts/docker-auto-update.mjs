@@ -3,12 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { probeService, requireReadinessCoverage } from "./container-readiness.mjs";
+import { createDockerRecoveryStore } from "./docker-update-recovery.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const composePath = path.join(repoRoot, "docker-compose.yml");
 const logPath = path.join(repoRoot, ".docker-auto-update.log");
 const lockPath = path.join(repoRoot, ".docker-auto-update.lock");
-const recoveryPath = path.join(repoRoot, ".local-state", "docker-update-recovery.json");
+const recovery = createDockerRecoveryStore(repoRoot);
 
 const imageChannels = [
   { service: "portainer", repo: "portainer/portainer-ce", tag: "latest" },
@@ -251,7 +252,7 @@ function validateAfterComposeEdit() {
 async function reconcileImages(channels, options = {}) {
   let completed = false;
   try {
-    if (fs.existsSync(recoveryPath)) {
+    if (recovery.hasPending()) {
       throw new Error("Unresolved Docker update recovery record; review persistent data and readiness before clearing it manually");
     }
     const plan = updateComposeDigests(channels);
@@ -284,14 +285,11 @@ async function reconcileImages(channels, options = {}) {
           wait: waitForHealthyService,
           report: log,
           record: (state) => {
-            fs.mkdirSync(path.dirname(recoveryPath), { recursive: true, mode: 0o700 });
-            const next = `${recoveryPath}.tmp`;
-            fs.writeFileSync(next, JSON.stringify({ ...state, recorded_at: new Date().toISOString(),
+            recovery.record({ ...state,
               previous_compose: plan.before, candidate_compose: plan.compose,
-              previous_images: previousImages, desired_images: plan.desiredImages }, null, 2), { mode: 0o600 });
-            fs.renameSync(next, recoveryPath);
+              previous_images: previousImages, desired_images: plan.desiredImages });
           },
-          clear: () => fs.rmSync(recoveryPath),
+          clear: recovery.clear,
         });
       }
       run("docker", ["compose", "ps"]);

@@ -148,6 +148,32 @@
         "unique_local_test_import",
         "synthetic_fixture_variable_name"
       ]
+    },
+    "administrative-recovery/queue_offsite_handoff.py": {
+      "source": "/run/raspberry-offsite-handoff-recovery-20261025/queue.py",
+      "source_sha256": "fe18f963b94d98421eaf25a6808d1210a1e7ddfdb52429a7e354cbff55872518",
+      "export_sha256": "9023e0be1b38baf549e921bf1321faf420c942994d1db6a38ca784966d87450a",
+      "normalizations": [
+        "same_numeric_deadline_written_as_integer_plus_fraction",
+        "operator_specific_manifest_hash_marker"
+      ]
+    },
+    "administrative-recovery/apply_git_bridge_wait.py": {
+      "source": "/run/raspberry-git-bridge-wait-20261025/apply.py",
+      "source_sha256": "03ba6f0801931df6a7d97bee7c9500f348775922c2fb49a33abacd0b3f91c2d6",
+      "export_sha256": "732807218661c6b8b8081f19c641e20e6c310001d06058354ff231dfb2d9dadf",
+      "normalizations": [
+        "same_numeric_deadline_written_as_integer_plus_fraction",
+        "operator_specific_manifest_hash_marker"
+      ]
+    },
+    "administrative-recovery/flow_client.cjs": {
+      "source": "/run/raspberry-git-bridge-wait-20261025/flow_client.cjs",
+      "source_sha256": "acf586e34bfeb90b863d158ac88f8009a9ca307b266a1facc54c08e2d4dbde6e",
+      "export_sha256": "846fbb9e00f6df40e6de07e9c3e39dcec804630374711f366340ee8b01486d71",
+      "normalizations": [
+        "private_node_red_host_marker"
+      ]
     }
   }
 }

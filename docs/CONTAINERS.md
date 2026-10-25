@@ -391,10 +391,17 @@ comprovam prontidão de inicialização, não funcionamento de cada automação 
 dispositivo. O healthcheck atual do HA comprova DNS/porta, não toda integração.
 
 Antes de `compose up`, o adaptador grava um registro privado em
-`.local-state/docker-update-recovery.json`, com Compose anterior/candidato e
+`.local-secrets/docker-update-recovery.json`, com Compose anterior/candidato e
 imagens desejadas. Falha ou interrupção mantém o registro e bloqueia novas
 reconciliações, inclusive quando o digest já coincide. A falha impede o backup
 Git e a limpeza de imagens; não remove volumes nem faz downgrade automático.
+O diretório privado pertence ao worker; a pasta compartilhada `.local-state`
+não recebe permissões adicionais. Registros antigos nesse local e temporários
+interrompidos continuam bloqueando novas tentativas. A gravação usa arquivo
+privado, sincronização e troca atômica antes da primeira recriação. Após a
+prontidão verificada, um recibo em `.local-secrets/docker-update-history/`
+é sincronizado antes de remover o registro ativo. Esse recibo não comprova
+restauração de volumes ou funcionamento de todas as integrações.
 
 Recuperação requer revisão humana: identificar o serviço que falhou, conferir
 logs privados, imagens e eventual migração de dados; preferir correção compatível

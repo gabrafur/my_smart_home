@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-25T05:03:15+00:00",
+  "operation_type": "administrative_recovery_after_scheduled_bridge_timeout",
+  "automatic_canonical_handoff_accepted": false,
+  "Git_reexecuted": false,
+  "worker_started_at": "2026-10-25T04:26:01Z",
+  "worker_finished_at": "2026-10-25T04:33:59Z",
+  "capture_verified": true,
+  "remote_verified": true,
+  "protected": true,
+  "components": 13,
+  "outage_seconds": 64,
+  "retention_mode": "observe_only",
+  "retention_pruned": 0,
+  "protected_services": [
+    {
+      "service": "appdaemon",
+      "state": "running",
+      "health": "not_reported",
+      "started_at": "2026-10-25T04:41:08Z"
+    },
+    {
+      "service": "homeassistant",
+      "state": "running",
+      "health": "healthy",
+      "started_at": "2026-10-25T04:41:07Z"
+    },
+    {
+      "service": "matter_server",
+      "state": "running",
+      "health": "not_reported",
+      "started_at": "2026-10-25T04:41:08Z"
+    },
+    {
+      "service": "mosquitto",
+      "state": "running",
+      "health": "not_reported",
+      "started_at": "2026-10-25T04:40:58Z"
+    },
+    {
+      "service": "nodered",
+      "state": "running",
+      "health": "healthy",
+      "started_at": "2026-10-25T04:41:03Z"
+    },
+    {
+      "service": "portainer",
+      "state": "running",
+      "health": "not_reported",
+      "started_at": "2026-10-25T04:40:58Z"
+    },
+    {
+      "service": "zigbee2mqtt",
+      "state": "running",
+      "health": "not_reported",
+      "started_at": "2026-10-25T04:40:58Z"
+    }
+  ],
+  "all_seven_services_running_after_cycle": true,
+  "service_readiness_source": "worker waitForServices plus post-cycle Docker state",
+  "independent_remote_download_checksum_proven": false,
+  "disaster_restore_from_this_backup_proven": false,
+  "scope": "verified local capture and HA protected external-agent receipt;normal service resumption;not full goal acceptance",
+  "additional_manual_Git_runs": 0,
+  "new_synthetic_household_events": 0,
+  "subsequent_daily_stages": [
+    {
+      "stage": "dietpi",
+      "status": "success",
+      "started_at": "2026-10-25T04:35:01Z",
+      "finished_at": "2026-10-25T04:41:12Z"
+    },
+    {
+      "stage": "home-assistant-core",
+      "status": "failed",
+      "started_at": "2026-10-25T04:42:01Z",
+      "finished_at": "2026-10-25T04:46:37Z",
+      "cause": "not_yet_classified"
+    }
+  ],
+  "post_cycle_container_times_scope": "latest observed state;later starts are separate from the64s backup service-resumption measurement"
+}

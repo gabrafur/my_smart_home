@@ -463,3 +463,50 @@ não executa reparos e não renova a autorização. Consulta pelo MCP:
 A origem, a idade, falhas de coleta, cobertura e limites acompanham a resposta.
 Antes da primeira captura real, o estado permanece `unknown`. Uma janela
 válida não significa aceite do PC desligado, de todos os eventos ou da meta.
+
+## Limite de espera do Git e recuperação de repasse
+
+O executor Node-RED de backup usa uma variável de ambiente fixa
+`GIT_BACKUP_REQUEST_TIMEOUT_SECONDS=600` e limite externo de 660 segundos.
+O payload não vira argumento de comando. O script bind-mounted permanece
+inalterado; o valor não vem do cliente MCP. O ciclo de 25/10/2026 mostrou
+uma solicitação concluída em 206 segundos, após o limite antigo de 180.
+A validação isolada reproduz a espera acima de 180 passos sem aguardar
+minutos reais e confirma o mesmo identificador no resultado.
+
+Timeout da ponte continua sendo erro de comunicação, não falha comprovada
+do Git. Consulte `backup_results`, correlacione o identificador com o resultado
+do worker e preserve os recibos. Não repita o Git nem invente uma origem
+agendada para liberar offsite. A correção do limite não introduz retry
+automático para efeitos incertos. O gate de origem agendada e a separação
+entre backup manual e offsite permanecem iguais.
+
+A recuperação administrativa de 25/10 teve recibo próprio e uma única
+submissão ao worker offsite existente, depois da publicação Git real. Foram
+confirmados 13 componentes, proteção criptográfica, recibo do agente externo,
+retomada dos sete serviços em 64 segundos e retenção `observe_only` sem
+exclusões. Isso não constitui aceite de um encadeamento canônico automático
+completo, download remoto com checksum independente ou restauração de
+desastre. As evidências públicas sanitizadas ficam em
+[offsite-recovery.acceptance.json](../scripts/raspberry-mcp/offsite-recovery.acceptance.json).
+O fluxo diário existente avançou depois para outras etapas: DietPi concluiu
+e a atualização do Home Assistant falhou antes de recriar o container:
+o worker não podia gravar seu registro de recuperação na pasta compartilhada.
+A correção usa o diretório privado já pertencente ao worker, preservando os
+bloqueios de registros antigos e mantendo recibos após prontidão verificada.
+
+As fontes auditadas das recuperações administrativas ficam em
+[`runtime-source/administrative-recovery`](../scripts/raspberry-mcp/runtime-source/administrative-recovery/).
+São snapshots para revisão, com marcadores para o manifesto aprovado e o
+host privado do Node-RED. Não são ferramentas de shell do MCP nem um
+instalador para sobrescrever políticas ativas. A submissão offsite tem intent
+anterior ao efeito, uma identidade fixa, verificação do Git concluído,
+checagem de recursos/concorrência e recibo imutável. Após a submissão,
+`backup_results` fornece o resultado atual do worker; o recibo de fila
+isoladamente não comprova execução.
+
+A candidata de imagem que não passou pela etapa de validação do Home
+Assistant foi preservada fora do checkout para revisão. O Compose voltou
+à imagem que permanece em execução, sem reiniciar serviços nessa contenção.
+Antes de editar ou validar o projeto, confira a atividade de todas as etapas
+diárias; o fluxo existente pode avançar após o resultado offsite.

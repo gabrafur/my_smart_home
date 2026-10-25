@@ -143,7 +143,7 @@ linkOut("git_backup_dry_out", groups.decision, "TESTE → terminal dry-run", "gi
 linkIn("git_backup_worker_in", groups.effect, "Receber pedido de produção", "git_backup_worker_out", "git_backup_request", 1950, 100);
 grouped(groups.effect, {
   id: "git_backup_request", type: "exec", z: TAB, g: groups.effect,
-  command: "/opt/request-host-git-backup.sh", addpay: "", append: "", useSpawn: "false", timer: "240", winHide: false, oldrc: false,
+  command: "/usr/bin/env GIT_BACKUP_REQUEST_TIMEOUT_SECONDS=600 /opt/request-host-git-backup.sh", addpay: "", append: "", useSpawn: "false", timer: "660", winHide: false, oldrc: false,
   name: "EFEITO: solicitar backup ao host", x: 2210, y: 100,
   wires: [["git_backup_result_out"], ["git_backup_error"], ["git_backup_complete"]],
 });
