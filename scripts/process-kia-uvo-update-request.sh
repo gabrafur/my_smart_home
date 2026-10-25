@@ -75,8 +75,10 @@ for active_stage in dietpi home-assistant-core containers repository-dependency;
 done
 
 publish_result "kia-uvo-update status=running request_id=$request_id mode=$mode latest_version=$target"
-umask 077
-diagnostic_file=$(mktemp "$trigger_dir/.kia-uvo-diagnostic.XXXXXX")
+diagnostic_file=$(
+  umask 077
+  mktemp "$trigger_dir/.kia-uvo-diagnostic.XXXXXX"
+)
 trap 'rm -f -- "$diagnostic_file"' EXIT
 set +e
 KIA_UVO_AUDIT_DIAGNOSTIC_FD=3 "$node_bin" "$status_script" check --target "$target" 3> "$diagnostic_file"
