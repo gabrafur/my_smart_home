@@ -1,0 +1,14 @@
+import fs from 'node:fs';import {pathToFileURL} from 'node:url';
+import {makeEventRoute} from './events-server.mjs';import {makeRoute} from './notices-server.mjs';import {route as legacy} from './durable-server.mjs';import {route as toolRoute,brokerCall} from './expanded-server.mjs';
+const threads=['${AUTHORIZED_THREAD_ID_1}','${AUTHORIZED_THREAD_ID_2}'];
+const observationThreads=[...threads,'${AUTHORIZED_THREAD_ID_3}'];
+export const descriptors=['read','status','send'].map(action=>({name:'codex_thread_'+action,description:action==='send'?'Send only continue or checkpoint to one of two existing Raspberry Codex threads. Requires armed 24h admission; maximum six sends. Uses existing thread permissions and included subscription. Active thread is busy. Same operation_id never replays uncertain input. No free prompt, paths, shell, model or permission override.':'Read authorized existing-reference metadata, including the owner coordinator; operation results remain adapter-owned. No raw history, prompts, tools or credentials.',inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},thread_id:{type:'string',enum:action==='send'?threads:observationThreads},operation_id:{type:'string',pattern:'^[a-f0-9]{32}$'},...(action==='send'?{intent:{type:'string',enum:['continue','checkpoint']}}:{})},required:['host','thread_id',...(action==='send'?['operation_id','intent']:[])]},annotations:{readOnlyHint:action!=='send',destructiveHint:action==='send',idempotentHint:true,openWorldHint:false}}));
+export function makeControlRoute(prior,invoke=brokerCall){return async request=>{
+ if(request?.method==='tools/call'&&descriptors.some(t=>t.name===request.params?.name))return toolRoute({...request,params:{...request.params,name:'project_files'}},undefined,undefined,()=>invoke(request.params));
+ const r=await prior(request);if(request?.method==='tools/list'&&r?.result?.tools)r.result.tools.push(...structuredClone(descriptors));return r;
+};}
+async function serve(){
+ const audit=row=>fs.writeSync(2,JSON.stringify(row)+'\n');const route=makeControlRoute(makeEventRoute(makeRoute(legacy,toolRoute,brokerCall,audit)));let pending=Buffer.alloc(0),count=0,start=Date.now();
+ for await(const chunk of process.stdin){for(const byte of chunk){if(pending.length>=16384)return;pending=Buffer.concat([pending,Buffer.from([byte])]);if(byte!==10)continue;if(Date.now()-start>=60000){start=Date.now();count=0;}if(++count>60)return;let q;try{q=JSON.parse(pending.toString())}catch{q=null}pending=Buffer.alloc(0);const r=await route(q);if(r&&!process.stdout.write(JSON.stringify(r)+'\n'))await new Promise(resolve=>process.stdout.once('drain',resolve));}}
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)serve().catch(()=>{process.exitCode=1;});

@@ -7,6 +7,13 @@
 > [proveniência das fontes ativas](../scripts/raspberry-mcp/runtime-source/SOURCE-MAP.json).
 > Não aplicar o manifesto histórico do candidato sobre a política instalada.
 
+O acesso atual à coordenadora usa a referência `coordenacao_meta`. Mesmo com
+catálogo antigo, `maintenance_capabilities({"host":"raspberry"})` expõe os
+metadados e o resumo sanitizado de trabalho em
+`evidence.data.authorized_thread_observations`. Consulte o
+[procedimento atual de acesso](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md#consultar-a-conversa-coordenadora-pela-eva).
+O resumo pode estar desatualizado e não substitui recibos de execução.
+
 Esta extensão fica em `scripts/raspberry-mcp/task-control/`. O catálogo do
 cliente só passa a representar esta versão depois de instalar o release.
 A presença de descritores não prova execução nem conclusão de uma tarefa.

@@ -13,7 +13,7 @@ import sys
 # or colliding with the older candidate's module names in the shared suite.
 def load_local(name, filename, bindings=None):
     source = Path(__file__).with_name(filename).read_text()
-    for index, suffix in [(1, '10'), (2, '20')]:
+    for index, suffix in [(1, '10'), (2, '20'), (3, '30')]:
         source = source.replace('${AUTHORIZED_THREAD_ID_' + str(index) + '}',
                                 '00000000-0000-7000-8000-' + suffix.zfill(12))
     spec = importlib.util.spec_from_loader(name, loader=None)
@@ -166,6 +166,14 @@ class ListTests(unittest.TestCase):
             self.assertEqual(changed['collection_error'], 'snapshot_changed')
         finally:
             fixture.tearDown()
+
+
+class ScopedListingTests(test_listing.ListingTests):
+    """Run scoped pagination and sanitization fixtures in canonical discovery."""
+
+
+class ReconciliationTests(test_listing.RefusalTests):
+    """Run preserved uncertain-send and consumed-creation regressions."""
 
 
 if __name__ == '__main__':

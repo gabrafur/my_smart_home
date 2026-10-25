@@ -14,6 +14,7 @@ import time
 REFERENCES = {
  '${AUTHORIZED_THREAD_ID_1}': 'principal',
  '${AUTHORIZED_THREAD_ID_2}': 'backup',
+ '${AUTHORIZED_THREAD_ID_3}': 'coordenacao_meta',
 }
 UUID = re.compile(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}')
 OP = re.compile(r'[a-f0-9]{32}')
@@ -107,7 +108,7 @@ def project(raw,observation,now):
     if isinstance(observation,dict) and valid_time(observation.get('created_at'),now):created=observation['created_at']
     daemon_ready=bool(isinstance(observation,dict) and not error and status=='idle' and observation.get('can_accept_direct_input') is True)
     admission=('closed' if raw['adapter_creation_state'] in ('cancelled_before_first_send','creation_lost_before_send') else
-               'fresh_preflight_required' if raw['origin']=='adapter_created' else 'legacy_fixed_intents_only')
+               'fresh_preflight_required' if raw['origin']=='adapter_created' else 'coordinator_observation_only' if raw['thread_id']=='${AUTHORIZED_THREAD_ID_3}' else 'legacy_fixed_intents_only')
     outcome='unknown'
     if execution:
         try:
@@ -161,7 +162,7 @@ def page(rows,args,registry_hash,errors,truncated,now):
     return {'source':'authorized_references_and_adapter_registry_plus_daemon_metadata',
       'observed_at':iso(now),'collection_error':'partial_collection_failure' if errors or any(r['collection_error'] for r in ordered) else None,
       'collection_errors':sorted(set(errors)),'coverage_partial':True,
-      'coverage':['two_fixed_existing_references','adapter_registered_thread_identities_only',
+      'coverage':['authorized_fixed_existing_references','adapter_registered_thread_identities_only',
        'no_global_native_thread_enumeration','no_prompts_raw_history_private_titles_logs_or_credentials',
        'point_in_time_metadata_not_execution_or_PC_off_proof'],
       'registry_truncated':truncated,'maximum_registered_tasks':MAX_TASKS,

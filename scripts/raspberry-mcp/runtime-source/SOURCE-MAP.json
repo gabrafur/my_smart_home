@@ -8,9 +8,10 @@
   "files": {
     "task-control/task_control.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_control.py",
-      "source_sha256": "cac96fc17bffa807e8935c044de598218c4e2a7e76e5f2657ce498c45cf93d79",
-      "export_sha256": "771e4b2ec2e77f90c95f2dfc55a5679ede3e306089f6a2eba425a075d1a95d71",
+      "source_sha256": "1bf7a7e409b469842a648c6a2bd751c96e398cd49ea7b3b8eaa5030ef20aee91",
+      "export_sha256": "555d7284f937b65757d1ce1703f845b818505557f3a20993822371d4566f1c4e",
       "normalizations": [
+        "thread_identifiers_replaced_with_binding_markers",
         "same_numeric_deadline_written_as_integer_plus_fraction"
       ]
     },
@@ -30,8 +31,8 @@
     },
     "task-control/task_list.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_list.py",
-      "source_sha256": "f91ca4c557a9f0aca4d0b157d2a20f069c760e5cb78e75bb4e357d441899f8cb",
-      "export_sha256": "1ba4d8f902859b7726664fac6f26a510c81145f4259232fe63648475ff48dbc8",
+      "source_sha256": "1bf9e9c4dbed0344d63f0008480dc4832fb45f166ac1bc0316d37dd8ac69f012",
+      "export_sha256": "96344416868cde610ac2cd8e1958d18b4fa9b0ddc899aed8b6ad93bfcb5146e7",
       "normalizations": [
         "thread_identifiers_replaced_with_binding_markers"
       ]
@@ -80,8 +81,8 @@
     },
     "repair-control/repair-broker.py": {
       "source": "/usr/local/lib/raspberry-repair-control/repair-broker.py",
-      "source_sha256": "5a2ec98f86ca6372c75837425d24ce04b68d2d4f4621e85343e77495ffd1b06c",
-      "export_sha256": "97b0a98544de8a051cc021da224f2bf709d46f8e6dc35a793a41fb81475e3058",
+      "source_sha256": "f3e747d7761f1607573c4bddb8bf4ca8cb135886a40699eb406b18ff929e0190",
+      "export_sha256": "4695e3821e35fea95f3b28b0b9bcb96bd1a07ecf7c6685b0d24aaa19e1764fdd",
       "normalizations": [
         "same_numeric_deadline_written_as_integer_plus_fraction"
       ]
@@ -254,6 +255,30 @@
       "normalizations": [
         "same_numeric_deadline_written_as_integer_plus_fraction",
         "operator_manifest_binding_marker_when_present"
+      ]
+    },
+    "legacy-control/codex_control.py": {
+      "source": "/usr/local/lib/raspberry-mcp/codex_control.py",
+      "source_sha256": "9375446426c67700c7eaff871f7608bad7eff022ff8bfae25513ecffa16520f3",
+      "export_sha256": "3d06a42d9a4e13e0a7d4f35b55e323e411379224665f75aee9728dc0dbb040a2",
+      "normalizations": [
+        "thread_identifiers_replaced_with_binding_markers"
+      ]
+    },
+    "legacy-control/codex_control_rpc.cjs": {
+      "source": "/usr/local/lib/raspberry-mcp/codex_control_rpc.cjs",
+      "source_sha256": "f1f3f8428b49e31169e42bdccb83618d199abcddfd276064ae4b78a47f5ab897",
+      "export_sha256": "ed32924e8d7324e948cd7dcb3414941f0d4a3549d5e0060ab2e8e88b6b59e48f",
+      "normalizations": [
+        "thread_identifiers_replaced_with_binding_markers"
+      ]
+    },
+    "frontend/codex-control-server.mjs": {
+      "source": "/var/lib/raspberry-mcp/root/app/codex-control-server.mjs",
+      "source_sha256": "a875d7a258af74e5c66897656103a3c0d003afb4359726ee20b924c89ed22952",
+      "export_sha256": "e0b84cf4eb4e5b6592c54bb9dd60d07c143e31c25159e06e442b02fe3735e326",
+      "normalizations": [
+        "thread_identifiers_replaced_with_binding_markers"
       ]
     }
   }

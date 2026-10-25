@@ -33,7 +33,7 @@ class ListingTests(unittest.TestCase):
   return listing.collect({'host':'raspberry','page_size':size,'cursor':cursor},self.tasks,invoke or self.invoke,NOW)
  def test_existing_new_old_order_and_separate_latest_execution(self):
   page=self.get(16)
-  self.assertEqual(len(page['threads']),4)
+  self.assertEqual(len(page['threads']),5)
   self.assertEqual(page['latest_created_thread']['thread_id'],B)
   self.assertEqual(page['latest_executed_thread']['thread_id'],A)
   dates=[r['last_activity_at'] for r in page['threads']]
@@ -47,7 +47,7 @@ class ListingTests(unittest.TestCase):
   while True:
    page=self.get(1,cursor);seen.extend(r['thread_id'] for r in page['threads']);cursor=page['next_cursor']
    if not cursor:break
-  self.assertEqual(len(seen),4);self.assertEqual(len(set(seen)),4)
+  self.assertEqual(len(seen),5);self.assertEqual(len(set(seen)),5)
  def test_not_loaded_not_terminal_or_input_ready(self):
   row=next(r for r in self.get(16)['threads'] if r['thread_id']==B)
   self.assertEqual(row['state'],'notLoaded');self.assertFalse(row['notLoaded_is_terminal']);self.assertFalse(row['can_accept_input'])
@@ -71,7 +71,7 @@ class ListingTests(unittest.TestCase):
  def test_collector_cannot_inject_unauthorized_identity(self):
   page=self.get(16,invoke=lambda q:{'rows':[{'thread_id':'00000000-0000-7000-8000-000000000099','status':'idle'}]})
   self.assertEqual(page['collection_error'],'partial_collection_failure')
-  self.assertEqual(len(page['threads']),4)
+  self.assertEqual(len(page['threads']),5)
  def test_observation_poll_is_not_thread_activity(self):
   row=next(r for r in self.get(16)['threads'] if r['thread_id']==A)
   self.assertEqual(row['last_activity_at'],listing.iso(NOW-10))

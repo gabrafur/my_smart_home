@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-25T11:51:22Z",
+  "source": "real_standard_Unix_MCP_and_connected_native_MCP",
+  "coordinator_reference": "${AUTHORIZED_THREAD_ID_3}",
+  "direct_read_schema_includes_coordinator": true,
+  "native_existing_tool": "maintenance_capabilities",
+  "native_metadata_path": "evidence.data.authorized_thread_observations",
+  "coordination_checkpoint_accepted": true,
+  "scope_report_stale_becomes_unknown": true,
+  "scope_report_is_not_authority_or_execution": true,
+  "standard_tool_count": 38,
+  "native_catalogue_tool_count": 31,
+  "authorized_threads_observed": 9,
+  "coverage_partial": true,
+  "old_not_loaded_thread_collection_error_preserved": true,
+  "pagination": {
+    "page_size": 2,
+    "pages": 5,
+    "stable_complete": true,
+    "no_duplicates": true
+  },
+  "notLoaded_is_terminal": false,
+  "verified_open_links": 0,
+  "latest_adapter_protocol_state": "completed",
+  "latest_adapter_task_outcome": "blocked",
+  "new_threads": 0,
+  "new_sends": 0,
+  "new_inferences": 0,
+  "services_restarted": 0,
+  "raw_history_exported": false,
+  "scope_or_lease_extended": false,
+  "privileged_policy_chain": {
+    "initial_missing_link_rejected": true,
+    "explicit_legacy_policy_pin_reconciled": true,
+    "admission_and_observation_verified_after_reconciliation": true,
+    "private_receipts_preserved": true
+  },
+  "tests": {
+    "snapshot_python_cases": 40,
+    "legacy_RPC_descriptor_cases": 6,
+    "installed_repair_verifier_python_cases": 42,
+    "installed_repair_verifier_node_exit": 0
+  },
+  "full_goal_acceptance": false
+}

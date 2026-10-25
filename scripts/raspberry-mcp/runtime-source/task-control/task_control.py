@@ -354,6 +354,147 @@ def handle(name, args, old):
             db.close()
 
 
+
+
+COORDINATOR_THREAD = '${AUTHORIZED_THREAD_ID_3}'
+COORDINATOR_REPORT = Path('/home/gabriel/smart-home-proactive-review-20261023/evidence/coordinator-thread-summary-20261025.json')
+COORDINATION_WORK = frozenset(('owner_thread_access', 'icloud_core_compatibility', 'offsite_integrity',
+    'acceptance_capture', 'event_latency_observation', 'listener_recovery_guard', 'final_goal_audit'))
+COORDINATION_COMPLETED = frozenset(('owner_thread_access', 'events_retained_pending_separation',
+    'procmon_signal_io_unit_cpu', 'native_maintenance_recoveries', 'host_observer_MCP_metadata',
+    'offsite_authenticated_copy', 'icloud_core_compatibility', 'listener_recovery_guard', 'acceptance_capture_correlation'))
+COORDINATION_PENDING = frozenset(('owner_thread_access_publication', 'icloud_core_compatibility',
+    'new_offsite_authentication', 'acceptance_capture_correlation', 'full_latency_scope', 'PC_off_and_24h',
+    'scheduled_backup_handoff', 'service_restore_scope', 'event_delivery_sustained', 'portable_client_catalogue',
+    'listener_recovery_guard'))
+COORDINATION_COMPONENTS = frozenset(('thread_access_adapter', 'MCP_capabilities_projection',
+    'MCP_source_provenance', 'icloud_adapter', 'native_update_compatibility_guard',
+    'offsite_integrity_reader', 'acceptance_capture', 'host_observer', 'NodeRED_host_observer',
+    'events_registry', 'events_projection', 'codex_recovery'))
+
+
+def project_coordinator_checkpoint(value, now):
+    """Allowlisted coordination report, not an execution receipt or authority."""
+    import datetime
+    base = {'source': 'sanitized_coordinator_scope_report', 'state': 'unknown',
+        'collection_error': 'coordinator_report_unavailable_or_invalid',
+        'observed_at': datetime.datetime.fromtimestamp(now, datetime.timezone.utc).isoformat(timespec='seconds'),
+        'execution_receipt': False, 'goal_completion_verified': False,
+        'administrative_authority_from_report': False}
+    if not isinstance(value, dict):
+        return base
+    keys = {'schema_version', 'source', 'thread_id', 'observed_at', 'state', 'active_work', 'head',
+        'completed', 'pending', 'reserved_components', 'events_delivery_opportunity',
+        'execution_receipt', 'full_goal_complete'}
+    def choices(name, allowed):
+        row = value.get(name)
+        return isinstance(row, list) and len(row) <= len(allowed) and all(isinstance(x, str) and x in allowed for x in row) and len(set(row)) == len(row)
+    if (set(value) != keys or type(value.get('schema_version')) is not int or value.get('schema_version') != 1
+            or value.get('source') != 'coordinator_scope_report' or value.get('thread_id') != COORDINATOR_THREAD
+            or value.get('state') not in ('in_progress', 'waiting_natural_evidence', 'complete', 'blocked', 'paused')
+            or not isinstance(value.get('active_work'), str) or value.get('active_work') not in COORDINATION_WORK
+            or not isinstance(value.get('head'), str) or re.fullmatch('[a-f0-9]{40}', value['head']) is None
+            or not choices('completed', COORDINATION_COMPLETED) or not choices('pending', COORDINATION_PENDING)
+            or not choices('reserved_components', COORDINATION_COMPONENTS)
+            or value.get('events_delivery_opportunity') not in ('candidate_not_implemented_by_coordinator', 'under_review', 'implemented', 'rejected', 'unknown')
+            or value.get('execution_receipt') is not False or type(value.get('full_goal_complete')) is not bool):
+        return base
+    try:
+        stamp = value['observed_at']
+        if not isinstance(stamp, str) or len(stamp) > 40:
+            return base
+        date = datetime.datetime.fromisoformat(stamp.replace('Z', '+00:00'))
+        if date.tzinfo is None:
+            return base
+        at = date.timestamp()
+        if not 0 <= at <= now + 1:
+            return base
+    except (ValueError, TypeError, OverflowError):
+        return base
+    fresh = now - at <= 300
+    base.update(state='observed' if fresh else 'unknown', collection_error=None if fresh else 'coordinator_report_stale',
+        thread_id=COORDINATOR_THREAD, report_observed_at=stamp, age_seconds=round(max(0, now-at), 3),
+        reported_state=value['state'], reported_active_work=value['active_work'],
+        reported_head=value['head'], reported_completed=list(value['completed']),
+        reported_pending=list(value['pending']), reported_reserved_components=list(value['reserved_components']),
+        events_delivery_opportunity=value['events_delivery_opportunity'], scope_fresh=fresh,
+        reported_goal_complete=value['full_goal_complete'],
+        coverage=['coordinator_report_not_daemon_history', 'not_privileged_approval_or_execution_receipt',
+            'stale_reservations_are_unknown_not_released', 'no_free_text_prompts_messages_logs_or_credentials'])
+    return base
+
+
+def coordinator_checkpoint():
+    try:
+        value = json.loads(read(COORDINATOR_REPORT, UID, 0o600, 16384))
+    except (OSError, ValueError, TypeError):
+        value = None
+    result = project_coordinator_checkpoint(value, time.time())
+    fingerprints = {}
+    for role, path in (('events_registry', '/usr/local/lib/raspberry-mcp-events/registry.py'),
+                       ('events_projection', '/usr/local/lib/raspberry-repair-control/event_projection.mjs')):
+        try:
+            fingerprints[role] = hashlib.sha256(read(Path(path), 0, 0o644, 1048576)).hexdigest()
+        except (OSError, ValueError):
+            fingerprints[role] = None
+    result['installed_source_fingerprints'] = fingerprints
+    return result
+
+def project_reference_observations(references, reply, now):
+    """Closed metadata projection. No message, prompt, title or turn item is read."""
+    import datetime
+    rows = reply.get('rows') if isinstance(reply, dict) else None
+    valid = (isinstance(rows, list) and len(rows) == len(references)
+             and all(isinstance(row, dict) and row.get('thread_id') in references for row in rows)
+             and len({row['thread_id'] for row in rows}) == len(references))
+    by_id = {row['thread_id']: row for row in rows} if valid else {}
+    projected = []
+    for identifier, alias in references.items():
+        row = by_id.get(identifier, {})
+        status = row.get('status')
+        if status not in ('idle', 'active', 'notLoaded', 'systemError'):
+            status = 'unknown'
+        error = row.get('collection_error')
+        if error is not None or not row or status == 'unknown':
+            error = error if error in ('thread_not_loaded_metadata_unavailable', 'daemon_metadata_unconfirmed') else 'reference_metadata_unconfirmed'
+        updated = row.get('updated_at')
+        if not (type(updated) in (int, float) and 0 <= updated <= now + 5):
+            updated = None
+        ready = not error and status == 'idle' and row.get('can_accept_direct_input') is True
+        projected.append({'thread_id': identifier, 'safe_title': alias,
+            'origin': 'authorized_existing_reference', 'status': status,
+            'last_activity_at': datetime.datetime.fromtimestamp(updated, datetime.timezone.utc).isoformat(timespec='seconds') if updated is not None else None,
+            'can_receive_input': bool(ready),
+            'adapter_send_admission': 'coordinator_observation_only' if alias == 'coordenacao_meta' else 'fresh_legacy_send_preflight_required',
+            'serial_execution_gate': 'busy' if status == 'active' else 'fresh_send_preflight_required' if ready else 'not_ready_or_unknown',
+            'durable_identity_observed': row.get('durable') if type(row.get('durable')) is bool else None,
+            'collection_error': error, 'notLoaded_is_terminal': False,
+            'open_link': None, 'link_reason': 'not_provided_or_validated_by_integration'})
+    projected.sort(key=lambda row: (row['last_activity_at'] or '', row['thread_id']), reverse=True)
+    return {'source': 'fixed_authorized_reference_metadata_from_existing_daemon',
+        'observed_at': datetime.datetime.fromtimestamp(now, datetime.timezone.utc).isoformat(timespec='seconds'),
+        'collection_error': 'partial_reference_metadata_unconfirmed' if any(row['collection_error'] for row in projected) else None,
+        'threads': projected, 'coverage_partial': True,
+        'coverage': ['fixed_existing_references_only', 'adapter_registry_available_through_codex_task_list',
+            'no_raw_history_prompts_private_titles_logs_or_credentials', 'no_send_resume_or_inference'],
+        'metadata_available_through_existing_tool': 'maintenance_capabilities',
+        'direct_read_tool': 'codex_thread_read',
+        'direct_read_requires_current_client_schema': True,
+        'mutation_performed': False, 'assistant_dispatches': 0}
+
+
+def reference_observations(old):
+    import task_list
+    _, legacy = policy(old, observation=True)
+    with locked(read_only=True):
+        try:
+            reply = rpc({'mode': 'metadata_batch', 'thread_ids': list(task_list.REFERENCES)}, legacy, old)
+        except Exception:
+            reply = None
+    result = project_reference_observations(task_list.REFERENCES, reply, time.time())
+    result['coordination_checkpoint'] = coordinator_checkpoint()
+    return result
+
 def legacy_call(name, args, old, call):
     # ALL legacy adapter entrypoints share this lock after the broker overlay.
     # This avoids racing a legacy send against a dynamic send from another socket.
@@ -374,4 +515,7 @@ def legacy_call(name, args, old, call):
                     admission(count, latest, p)
                 finally:
                     db.close()
-        return call(name, args)
+        result = call(name, args)
+        if name in ('codex_thread_read', 'codex_thread_status') and args.get('thread_id') == COORDINATOR_THREAD and 'operation_id' not in args:
+            result['coordination_checkpoint'] = coordinator_checkpoint()
+        return result
