@@ -45,8 +45,8 @@ A autorização administrativa temporária e sua revogação são contratos sepa
 - Limites de CPU, I/O, processos, descritores, memória virtual e tamanho são
   declarados na unidade. `MemoryMax` depende do controlador de memória do host;
   sua ausência impede alegar teto físico de RAM efetivo.
-- Custos reportados incluem somente o produtor Python; excluem o filho
-  `journalctl`, demais coletores e uma janela de 24h.
+- O custo do próprio observador no relatório inclui somente o produtor Python;
+  exclui o filho `journalctl`, demais coletores e uma janela de 24h.
 
 O produtor instalado em 25/10/2026 observou falhas reais do procmon e conclusões
 naturais posteriores à recuperação, com latência apenas origem→observador.
@@ -68,3 +68,23 @@ Aceite operacional: reler a unidade e as permissões; aguardar eventos naturais;
 correlacionar horários de origem e observação; registrar qualquer perda do anel
 ou desconexão; medir o trecho completo até o consumidor quando a integração
 existir. O relatório precisa permanecer desconhecido para os fatos que não mede.
+
+
+## Contabilidade nativa do coletor
+
+Após transição real de conclusão/falha do coletor, o observador registra primeiro
+o evento e consulta somente `systemctl show raspberry-procmon.service`, com
+campos fixos de identidade, CPU, memória, datas monotônicas e resultado. O
+subprocesso tem prazo de dois segundos e saída limitada. Não há controle de
+unidade, rede adicional ou parâmetro proveniente do cliente MCP.
+
+O registro `procmon_unit_accounting_v1` vai ao journal sanitizado do observador,
+limitado a 768 bytes. O `InvocationID` deve corresponder ao evento; somente seu
+hash é exportado. Corrida de identidade, contador ausente ou falha de consulta
+mantêm o dado desconhecido. `MemoryPeak=[not set]` não vira zero. O contador
+`CPUUsageNSec` é da unidade inteira, separado do custo do wrapper e do próprio
+observador. A consulta ocorre depois da inclusão do evento, preservando a
+medição origem→observador. Um restart perde o anel volátil e deve constar como
+cobertura parcial. O [auditor fixo](../raspberry-mcp/procmon-observability/invocation_audit.py)
+correlaciona esses registros com o gerenciador e a telemetria; não aceita a meta
+somente por tempo decorrido.

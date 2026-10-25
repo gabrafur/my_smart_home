@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import resource
+import re
 import socket
 import stat
 import subprocess
@@ -74,6 +75,62 @@ def journal_event(value, now):
     return {'id': identity, 'source': 'systemd', 'service': service, 'action': action,
         'occurred_at': iso(occurred), 'observed_at': iso(now),
         'source_to_observer_ms': round(max(0, now - occurred) * 1000, 3)}
+
+
+def procmon_accounting(value, now=None, run=subprocess.run):
+    """Fixed systemd read after a real collector transition; never controls a unit."""
+    invocation = value.get('INVOCATION_ID') if isinstance(value, dict) else None
+    base = {'source': 'procmon_unit_accounting_v1', 'schema': 1, 'observed_at': iso(now),
+        'state': 'unknown', 'collection_error': 'invocation_identity_unavailable',
+        'collector_invocation_id_sha256': None, 'cpu_usage_ns': None,
+        'memory_peak_bytes': None, 'memory_collection_error': 'not_reported',
+        'started_monotonic_us': None, 'exited_monotonic_us': None, 'unit_result': 'unknown',
+        'coverage': 'native_collector_unit_cgroup_CPU;memory_may_be_unavailable;not_full_goal'}
+    if not isinstance(invocation, str) or re.fullmatch('[a-f0-9]{32}', invocation) is None:
+        return base
+    base['collector_invocation_id_sha256'] = hashlib.sha256(invocation.encode()).hexdigest()
+    try:
+        result = run(['/usr/bin/prlimit', '--as=536870912', '/usr/bin/systemctl', 'show',
+            'raspberry-procmon.service',
+            '--property=InvocationID,CPUUsageNSec,MemoryPeak,ExecMainStartTimestampMonotonic,ExecMainExitTimestampMonotonic,Result',
+            '--no-pager'], capture_output=True, timeout=2,
+            env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C', 'SYSTEMD_COLORS': '0'})
+        if result.returncode != 0 or len(result.stdout) > 4096 or len(result.stderr) > 4096:
+            raise ValueError('unit_accounting_unavailable')
+        properties = {}
+        for line in result.stdout.decode('ascii', 'strict').splitlines():
+            key, sep, content = line.partition('=')
+            if not sep or key in properties:
+                raise ValueError('unit_accounting_invalid')
+            properties[key] = content
+        if properties.get('InvocationID') != invocation:
+            raise ValueError('unit_invocation_changed')
+        def counter(name, optional=False):
+            text = properties.get(name)
+            if optional and text in (None, '[not set]', '18446744073709551615'):
+                return None
+            if not isinstance(text, str) or re.fullmatch('[0-9]{1,18}', text) is None:
+                raise ValueError('unit_accounting_invalid')
+            return int(text)
+        cpu = counter('CPUUsageNSec');started = counter('ExecMainStartTimestampMonotonic')
+        exited = counter('ExecMainExitTimestampMonotonic');memory = counter('MemoryPeak', True)
+        if not 0 < started <= exited:
+            raise ValueError('unit_accounting_dates_invalid')
+        outcome = properties.get('Result')
+        base.update(state='observed', collection_error=None, cpu_usage_ns=cpu,
+            memory_peak_bytes=memory, memory_collection_error=None if memory is not None else 'memory_controller_or_metric_unavailable',
+            started_monotonic_us=started, exited_monotonic_us=exited,
+            unit_result=outcome if outcome in ('success', 'exit-code', 'signal', 'timeout', 'core-dump', 'resources', 'start-limit-hit') else 'unknown')
+    except (OSError, ValueError, UnicodeError, subprocess.SubprocessError):
+        base['collection_error'] = 'unit_accounting_unavailable_or_identity_conflicting'
+    return base
+
+
+def emit_accounting(value):
+    raw = (json.dumps(value, separators=(',', ':'), allow_nan=False) + '\n').encode()
+    if len(raw) > 768:
+        raise ValueError('accounting_frame_limit')
+    os.write(2, raw)
 
 
 def resource_sample(previous=None):
@@ -169,7 +226,7 @@ def docker_watch(state):
 def journal_watch(state):
     command = ['/usr/bin/prlimit', '--as=536870912', '/usr/bin/journalctl',
         '--follow', '--no-pager', '--output=json', '--since=now', '_PID=1',
-        '--output-fields=__REALTIME_TIMESTAMP,__CURSOR,UNIT,MESSAGE_ID']
+        '--output-fields=__REALTIME_TIMESTAMP,__CURSOR,UNIT,MESSAGE_ID,INVOCATION_ID']
     while True:
         child = None
         try:
@@ -179,7 +236,13 @@ def journal_watch(state):
                 line = child.stdout.readline(8193)
                 if not line or len(line) > 8192:
                     raise ValueError('journal_stream')
-                state.add(journal_event(json.loads(line), time.time()))
+                value = json.loads(line)
+                event = journal_event(value, time.time())
+                state.add(event)
+                if event and event['service'] == 'procmon' and event['action'] in ('started', 'failed'):
+                    # The event reaches the report before this bounded metadata
+                    # query. No command, path or unit comes from an MCP caller.
+                    emit_accounting(procmon_accounting(value))
         except Exception:
             state.health('systemd', 'unknown', 'stream_unavailable_or_invalid')
         finally:

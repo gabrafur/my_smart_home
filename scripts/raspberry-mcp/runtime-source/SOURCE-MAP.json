@@ -112,8 +112,8 @@
     },
     "procmon-observability/observed_collector.py": {
       "source": "/usr/local/lib/raspberry-procmon-observability/observed_collector.py",
-      "source_sha256": "f2219f4e52a291070ecec182e0ce2d6f345f94458712df6d745184f0d680f7fe",
-      "export_sha256": "f2219f4e52a291070ecec182e0ce2d6f345f94458712df6d745184f0d680f7fe",
+      "source_sha256": "6ec3a67e7d034d77dedc2124f8cef46b2262c9ac51da3ac9fd3beb2eb50d219e",
+      "export_sha256": "6ec3a67e7d034d77dedc2124f8cef46b2262c9ac51da3ac9fd3beb2eb50d219e",
       "normalizations": []
     },
     "procmon-observability/audit_runtime.py": {
@@ -236,6 +236,24 @@
       "normalizations": [
         "out_of_scope_private_test_thread_identifier_replaced_with_binding_marker",
         "relative_frontend_test_import_points_to_public_snapshot"
+      ]
+    },
+    "administrative-recovery/apply_procmon_signal_accounting.py": {
+      "source": "/run/raspberry-procmon-signal-accounting-20261025/apply-r2.py",
+      "source_sha256": "2c245866e5caffcfb1614b68095eb515c928f2cfcd9f316f7513b20e27a5d3a9",
+      "export_sha256": "1787079af46b2c5f7b21203e68c1ec8a95090524c6e6eb4a847adcb31cc51083",
+      "normalizations": [
+        "same_numeric_deadline_written_as_integer_plus_fraction",
+        "operator_manifest_binding_marker_when_present"
+      ]
+    },
+    "administrative-recovery/apply_procmon_audit_empty_match.py": {
+      "source": "/run/raspberry-procmon-signal-accounting-20261025/apply-audit-r2.py",
+      "source_sha256": "636584e1d4832705128bd464fd11b227b075c91d710a8b7fa78a082c0b70bc8d",
+      "export_sha256": "563c8e433eb6458ec373bbc004cde794e91b3229ccde9fb4c633930f52894daf",
+      "normalizations": [
+        "same_numeric_deadline_written_as_integer_plus_fraction",
+        "operator_manifest_binding_marker_when_present"
       ]
     }
   }

@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "installed_source_files": {
+    "scripts/raspberry-mcp/runtime-source/procmon-observability/observed_collector.py": {
+      "target": "/usr/local/lib/raspberry-procmon-observability/observed_collector.py",
+      "sha256": "6ec3a67e7d034d77dedc2124f8cef46b2262c9ac51da3ac9fd3beb2eb50d219e"
+    },
+    "scripts/raspberry-mcp/procmon-observability/invocation_audit.py": {
+      "target": "/usr/local/lib/raspberry-procmon-observability/invocation_audit.py",
+      "sha256": "40731a78e5d3876113a3124946e09b108604546f0bef87e508b1179e018fc783"
+    },
+    "scripts/host-observation/observer.py": {
+      "target": "/usr/local/lib/raspberry-host-observation/observer.py",
+      "sha256": "5a909a7a631e9822ab9becbaf464754445277cddf2a38c7a63486a31433405db"
+    }
+  },
+  "observed_at": "2026-10-25T10:41:23+00:00",
+  "source": "real native cycles,systemd invocation correlation,immutable root receipts and actual MCP client",
+  "original_collector_changed": false,
+  "original_units_timer_limits_and_expiry_changed": false,
+  "collector_called_directly": false,
+  "synthetic_signals": 0,
+  "household_services_restarted": 0,
+  "observer_service_restarts": 1,
+  "observer_ring_reset_partial_coverage": true,
+  "activation_preflight": {
+    "initial_rejected_before_restart": true,
+    "canonical_protected_report_reader_reused": true
+  },
+  "readonly_helper": {
+    "empty_grep_before_first_record_was_unknown": true,
+    "empty_match_distinguished_from_failed_collection": true,
+    "new_tool_or_authority": false
+  },
+  "natural_cycles": {
+    "count": 3,
+    "all_completed": true,
+    "latest_observed_at": "2026-10-25T10:39:45+00:00",
+    "latest_process_cpu_us_to_telemetry": 173944,
+    "latest_legacy_observer_cpu_us": 63113,
+    "latest_fsync": {
+      "calls": 10,
+      "sum_wall_ms": 60,
+      "max_wall_ms": 15,
+      "first_failure": null
+    },
+    "signals_observed": 0
+  },
+  "invocation_window": {
+    "PC_off_proven": false,
+    "all_started_invocation_unit_CPU_observed": false,
+    "all_starts_have_correlated_runtime_in_window": false,
+    "collector_invoked": false,
+    "coverage": [
+      "native_invocation_identity_and_clock_correlation",
+      "CPU_scope_explicit_legacy_vs_process_to_telemetry_vs_complete_unit",
+      "missing_killed_or_inflight_invocations_are_not_zero_cost",
+      "signal_receipt_does_not_identify_sender_or_historical_RCA",
+      "not_durable_sample_cadence_or_event_latency_or_24h_goal_acceptance"
+    ],
+    "duplicate_runtime_invocations": 0,
+    "duplicate_start_rows": 0,
+    "failed_correlated_invocations": 199,
+    "full_goal_accepted": false,
+    "in_flight_invocations": 0,
+    "invalid_accounting_rows": 0,
+    "invalid_manager_rows": 0,
+    "invalid_runtime_rows": 0,
+    "invocations_without_observed_peak_rss": 634,
+    "journal_collection_error": null,
+    "legacy_observer_CPU_rows": 910,
+    "manager_start_window_coverage_proven": false,
+    "max_observed_peak_rss_bytes": 19185664,
+    "missing_or_duplicate_terminal_invocations": 0,
+    "missing_runtime_invocations": 634,
+    "native_process_total_CPU_rows": 3,
+    "native_unit_cgroup_CPU_rows": 2,
+    "observed_at": 1792924796,
+    "observed_peak_rss_rows": 913,
+    "observed_signals": {},
+    "one_boot": true,
+    "orphan_native_invocations": 0,
+    "orphan_terminal_invocations": 0,
+    "raw_messages_exported": false,
+    "source": "fixed_manager_native_and_unit_CPU_correlation",
+    "started_invocations": 1547,
+    "state_changed": false,
+    "sum_legacy_observer_CPU_us": 43022838,
+    "sum_native_unit_CPU_ns": 351640000,
+    "sum_process_CPU_us_to_telemetry": 495366,
+    "temporal_or_state_conflicts": 0,
+    "window_end": 1792924796,
+    "window_seconds": 86400,
+    "window_start": 1792838396
+  },
+  "tests": {
+    "procmon_observability": 19,
+    "host_observation": 12
+  },
+  "actual_MCP": {
+    "host_state": "observed",
+    "collection_error": null,
+    "native_roles_observed": 3,
+    "operational_health": "unknown"
+  },
+  "full_goal_accepted": false,
+  "PC_off_proven": false,
+  "full24h_proven": false
+}

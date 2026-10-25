@@ -8,6 +8,7 @@ import resource
 import stat
 import sys
 import time
+import types
 
 COLLECTOR = Path('/usr/local/lib/raspberry-procmon/collector.py')
 COLLECTOR_SHA = 'd53a173123b0d6d96406e56bd73559fd5fd00d6dd040bf36cf2c21b978e1b277'
@@ -55,12 +56,59 @@ class Observer:
     def __init__(self):
         self.stage='bootstrap';self.first_failure=None
         self.started=time.monotonic();self.usage=resource.getrusage(resource.RUSAGE_SELF)
+        self.signal_observations=[];self.signal_count=0
+        self.fsync_calls=0;self.fsync_wall_ms=0;self.fsync_max_wall_ms=0
+        self.active_io=None;self.first_io_failure=None
 
     def install(self,mod):
         original_cycle=mod.cycle
         original_atomic=mod.atomic
         original_prune=mod.prune
         original_preserve=mod.preserve_interrupted
+
+        # Isolate adapter attributes: never monkey-patch the process-wide os or
+        # signal modules, nor change the original alarm or handler semantics.
+        original_os=mod.os
+        original_signal=mod.signal
+        os_adapter=types.SimpleNamespace(**vars(original_os))
+        signal_adapter=types.SimpleNamespace(**vars(original_signal))
+
+        def fsync(fd):
+            started=time.monotonic()
+            kind='fsync_directory' if stat.S_ISDIR(original_os.fstat(fd).st_mode) else 'fsync_regular_file'
+            previous=self.active_io
+            self.active_io={'operation':kind,'started':started}
+            self.fsync_calls+=1
+            try:
+                return original_os.fsync(fd)
+            except BaseException:
+                if self.first_io_failure is None:
+                    self.first_io_failure={'operation':kind,'phase':self.stage}
+                raise
+            finally:
+                elapsed=max(0,round((time.monotonic()-started)*1000))
+                self.fsync_wall_ms+=elapsed
+                self.fsync_max_wall_ms=max(self.fsync_max_wall_ms,elapsed)
+                self.active_io=previous
+
+        def register_signal(signum,handler):
+            if signum in (original_signal.SIGALRM,original_signal.SIGTERM) and callable(handler):
+                def observed_signal(received,frame):
+                    self.signal_count=min(1000,self.signal_count+1)
+                    if len(self.signal_observations)<2:
+                        io=self.active_io
+                        self.signal_observations.append({
+                            'signal':'SIGALRM' if received==original_signal.SIGALRM else 'SIGTERM',
+                            'phase':self.stage,
+                            'io_operation':io['operation'] if io else None,
+                            'io_elapsed_ms':max(0,round((time.monotonic()-io['started'])*1000)) if io else None})
+                    return handler(received,frame)
+                return original_signal.signal(signum,observed_signal)
+            return original_signal.signal(signum,handler)
+
+        os_adapter.fsync=fsync
+        signal_adapter.signal=register_signal
+        mod.os=os_adapter;mod.signal=signal_adapter
 
         def atomic(path,value,maximum=mod.MAX_SAMPLE,mode=0o600):
             self.stage=('write_history' if path.parent.name=='history' else
@@ -108,7 +156,12 @@ class Observer:
              'cpu_us':max(0,round(((usage.ru_utime+usage.ru_stime)-
                                   (self.usage.ru_utime+self.usage.ru_stime))*1e6)),
              'peak_rss_bytes':int(usage.ru_maxrss)*1024,
-             'automatic_retry':False}
+             'automatic_retry':False,
+             'process_total_cpu_us':max(0,round((usage.ru_utime+usage.ru_stime)*1e6)),
+             'fsync_observation':{'calls':self.fsync_calls,'sum_wall_ms':self.fsync_wall_ms,
+                                  'max_wall_ms':self.fsync_max_wall_ms,
+                                  'first_failure':self.first_io_failure},
+             'signals_observed':self.signal_observations,'signal_count':self.signal_count}
         if exc:
             row.update(self.first_failure or {'phase':self.stage,**classification(exc)})
         return row

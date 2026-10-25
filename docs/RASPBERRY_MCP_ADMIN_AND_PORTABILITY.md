@@ -620,3 +620,21 @@ assinatura e os intents existentes. Nenhum serviço residencial ou daemon Codex
 foi reiniciado. As fontes auditadas e testes estão no snapshot público; manifestos,
 políticas locais e credenciais continuam privados. Esses snapshots não podem
 sobrescrever políticas de outro servidor sem revisão dos bindings pelo operador.
+
+
+## Correlação de falhas e custo do coletor
+
+A instrumentação de [sinal/gravação/custo](../scripts/raspberry-mcp/procmon-observability/README.md)
+preserva o coletor original e seus limites. O observador do host registra CPU
+nativa da unidade após transição real e com identidade correspondente. O
+[auditor fixo](../scripts/raspberry-mcp/procmon-observability/invocation_audit.py)
+é somente leitura, sem argumentos e sem nova operação de comandos no MCP.
+Seu aceite real e hashes estão em
+[procmon-signal-accounting.acceptance.json](../scripts/raspberry-mcp/procmon-signal-accounting.acceptance.json).
+
+O resultado distingue CPU do observador, CPU do processo até a telemetria e CPU
+da unidade inteira. Invocações históricas sem telemetria continuam ausentes;
+memória sem contador continua desconhecida. O aceite não substitui cadência das
+amostras duráveis, observação de 24h, latência até Eva nem prova de PC desligado.
+Esses campos novos ainda não são projetados pelo coletor agendado de aceite;
+o MCP continua expondo os limites explícitos da projeção já instalada.
