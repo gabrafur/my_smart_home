@@ -801,9 +801,9 @@ com revisão e hash carregados iguais à base preparada. A fonte geradora usa
 `crypto` usa o módulo embutido; não instala dependências. Revogar o token
 administrativo temporário da API ao terminar.
 
-O índice operacional fixo é
-`nodered/.notification-diagnostics.json`, UID/GID 1000, modo 0644, ignorado pelo
-Git. Ele contém apenas tokens técnicos sanitizados e hashes, nunca o erro
+O índice operacional fixo fica no diretório local de dados do Node-RED,
+com o nome `.notification-diagnostics.json`, UID/GID 1000, modo 0644. É runtime
+ignorado pelo Git. Ele contém apenas tokens técnicos sanitizados e hashes, nunca o erro
 bruto. Não ampliar mounts, ACLs ou acesso ao histórico privado. Aplicar uma
 única vez cada manifesto, com intent durável anterior a escrita, implantação e
 restart. Após resultado incerto, consultar/reconciliar; não repetir efeitos.
