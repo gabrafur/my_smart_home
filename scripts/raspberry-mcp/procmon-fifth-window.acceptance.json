@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "source": "actual_fixed_fifth_readonly_calendar_installation",
+  "fifth_calendar": "2026-10-26T16:00:00Z",
+  "timer_active_verified": true,
+  "previous_four_calendars_preserved": true,
+  "previous_report_hashes_unchanged": true,
+  "isolated_preinstallation_tests_passed": 39,
+  "actual_MCP_existing_tool_after_installation": true,
+  "actual_MCP_collection_error": null,
+  "administrative_admission_remained_active": true,
+  "policy_changed_only_three_integrity_pins": true,
+  "services_restarted": 0,
+  "collector_invoked": false,
+  "webhook_sent": false,
+  "new_access": false,
+  "administrative_admission_extended": false,
+  "fifth_report_observed": false,
+  "full_24h_coverage_accepted": false,
+  "PC_off_proven": false,
+  "full_goal_accepted": false
+}

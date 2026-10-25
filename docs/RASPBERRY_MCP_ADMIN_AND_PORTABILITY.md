@@ -456,8 +456,9 @@ integridade do bundle ou recuperação dos serviços.
 ## Captura automática de evidências sem ampliar administração
 
 O componente [acceptance-observer](../scripts/raspberry-mcp/acceptance-observer/README.md)
-lê o histórico e a telemetria existentes em três horários fixos do dia
-25/10/2026, inclusive após o prazo administrativo. Ele não admite tarefas,
+lê o histórico e a telemetria existentes em cinco horários fixos: 25/10/2026
+às 04h30, 15h20 e 20h33 UTC e 26/10 às 11h e 16h UTC. Esses calendários
+não renovam a validade administrativa. Ele não admite tarefas,
 não executa reparos e não renova a autorização. Consulta pelo MCP:
 `maintenance_capabilities`, campo `evidence.data.procmon_acceptance_observation`.
 A origem, a idade, falhas de coleta, cobertura e limites acompanham a resposta.

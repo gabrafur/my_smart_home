@@ -1,4 +1,4 @@
-"""Four fixed, read-only captures. No collector invocation or repair admission."""
+"""Five fixed, read-only captures. No collector invocation or repair admission."""
 import datetime as dt
 import importlib.util
 import json
@@ -15,7 +15,7 @@ import time
 
 ROOT = Path('/usr/local/lib/raspberry-procmon-acceptance')
 STATE = Path('/var/lib/raspberry-procmon-acceptance')
-SCHEDULE = ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z', '2026-10-26T11:00:00Z')
+SCHEDULE = ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z', '2026-10-26T11:00:00Z', '2026-10-26T16:00:00Z')
 RUNTIME_KEYS = ('source', 'rows', 'invalid_telemetry_rows', 'failed_rows',
                 'failure_phases', 'failure_reasons', 'observed_span_seconds',
                 'requested_window_seconds', 'max_completion_gap_ms',

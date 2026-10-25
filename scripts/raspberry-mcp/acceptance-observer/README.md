@@ -2,8 +2,8 @@
 
 Este componente observa o coletor existente. Não executa o coletor, não repara
 serviços, não envia eventos e não concede acesso administrativo a um chatbot.
-Foi preparado para a janelas específicas de 25 e 26/10/2026. As quatro datas do timer
-são fixas: 25/10 às 04h30, 15h20 e 20h33 UTC, e 26/10 às 11h00 UTC. Não reutilize datas vencidas como uma nova
+Foi preparado para a janelas específicas de 25 e 26/10/2026. As cinco datas do timer
+são fixas: 25/10 às 04h30, 15h20 e 20h33 UTC, e 26/10 às 11h00 e 16h00 UTC. Não reutilize datas vencidas como uma nova
 aprovação temporal. A captura posterior ao prazo administrativo permite apenas
 ler fontes existentes e escrever o relatório sanitizado.
 
@@ -141,3 +141,21 @@ tarefas administrativas e não usa sessão IA. Mantém os mesmos limites do
 serviço e somente lê fontes fixas e grava evidências. Não alterar relatórios
 antigos para substituir uma janela que falhou. O relógio de agendamento não
 comprova por si só continuidade, custo ou conclusão.
+
+## Quinta leitura após descontinuidade de boot/relógio
+
+Uma quinta captura fixa em 26/10 às 16h UTC permite avaliar uma janela posterior
+ao boot/ajuste de relógio observado no dia anterior. Ela está dentro da validade
+administrativa renovada, sem prorrogá-la. A leitura de 11h continua instalada;
+a de 16h não garante continuidade, CPU, RSS ou saúde. O leitor escolhe a janela
+mais recente já devida. Ausência ou falha dessa janela permanece unknown, sem
+substituição por um sucesso anterior. Relatórios antigos permanecem intactos.
+
+Para atualizar uma instalação existente, conferir hashes de capture.py,
+health_summary.py e timer, e atualizar somente os três pins correspondentes
+na política root. Preservar todas as demais permissões e parâmetros. Um
+daemon-reload carrega o calendário; não iniciar manualmente o serviço. Após
+resultado incerto, reconciliar fontes e timer antes de qualquer nova ação.
+Reversão restaura esses quatro arquivos e recarrega o calendário, recusando
+drift ou alterações posteriores da mesma política. Preservar todos os relatórios
+e recibos, inclusive janelas ainda não completas.
