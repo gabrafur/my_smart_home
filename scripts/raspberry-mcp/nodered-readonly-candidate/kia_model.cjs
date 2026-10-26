@@ -1,7 +1,8 @@
 'use strict';
 // Pure fixed-source projection. No I/O, clock reads, imports or exported raw values.
 const SOURCES=['sensor','safe_update','worker_result','merge','promotion','promotion_public','pending','schedule'];
-const REASONS=new Set(['connect_timeout','transport_timeout','dns_resolution_failed','connection_failed','tls_verification_failed','audit_failed_unclassified','invalid_request','working_tree_changed','main_behind_remote','host_update_in_progress','git_publication_failed']);
+const REASONS=new Set(['connect_timeout','transport_timeout','dns_resolution_failed','connection_failed','tls_verification_failed','audit_failed_unclassified','invalid_request','working_tree_changed','main_behind_remote','host_update_in_progress','git_publication_failed','candidate_preparation_error','candidate_preflight_error','runtime_application_unconfirmed','candidate_cleanup_error','promotion_stage_unknown']);
+const STAGE_EFFECTS={candidate_validation:'runtime_not_attempted',candidate_extract:'runtime_not_attempted',candidate_preflight:'runtime_not_attempted',runtime_apply:'runtime_outcome_unknown',git_publication:'publication_outcome_unknown',candidate_cleanup:'cleanup_outcome_unknown'};
 const RESULTS={sensor:['unknown','compatible','conflict','applying','applied','rollback','failed'],safe_update:['unknown','compatible','conflict','applying','applied','rollback','failed','ready'],worker_result:['unknown','running','compatible','conflict','applied','rollback','failed','deferred','unavailable'],merge:['waiting','running','success','failed'],promotion:['deferred','applying','runtime_applied','applied_pending_git','main_published','completed','failed'],promotion_public:['deferred','applying','runtime_applied','applied_pending_git','main_published','completed','failed']};
 const record=x=>x!==null&&typeof x==='object'&&!Array.isArray(x)&&Object.getPrototypeOf(x)===Object.prototype;
 const version=x=>typeof x==='string'&&/^v?\d{1,6}\.\d{1,6}\.\d{1,6}(?:[-+][A-Za-z0-9.-]{1,64})?$/.test(x)?x:null;
@@ -17,7 +18,7 @@ function parseLine(x){
  return out;
 }
 function row(name,envelope,now){
- const out={source:name,observed_at:null,source_updated_at:null,age_seconds:null,state:'missing',collection_error:null,stage:name,result:null,reason_code:null,request_id:null,mode:null,installed_version:null,target_version:null,coverage:['fixed_allowlist_no_raw_messages_or_vehicle_values']};
+ const out={source:name,observed_at:null,source_updated_at:null,age_seconds:null,state:'missing',collection_error:null,stage:name,result:null,reason_code:null,failure_stage:null,effect_state:'unknown',request_id:null,mode:null,installed_version:null,target_version:null,coverage:['fixed_allowlist_no_raw_messages_or_vehicle_values']};
  if(envelope==null)return out;
  if(!record(envelope))return {...out,state:'unknown',collection_error:'invalid_schema'};
  out.observed_at=stamp(envelope.observed_at);
@@ -38,6 +39,11 @@ function row(name,envelope,now){
   if(!RESULTS[name].includes(result))return {...out,state:'unknown',collection_error:'invalid_schema'};
   out.result=result;
   out.reason_code=REASONS.has(d.reason_code)?d.reason_code:REASONS.has(d.reason)?d.reason:null;
+  if(name.startsWith('promotion')){
+   out.coverage.push('effect_state_current_attempt_only_not_current_service_or_vehicle_health');
+   if(typeof d.failure_stage==='string'&&Object.hasOwn(STAGE_EFFECTS,d.failure_stage)&&d.effect_state===STAGE_EFFECTS[d.failure_stage]){out.failure_stage=d.failure_stage;out.effect_state=d.effect_state;}
+   else if(d.failure_stage!=null)out.coverage.push('failure_stage_or_effect_unrecognized_or_inconsistent');
+  }
   out.request_id=id(d.request_id);out.mode=['audit','install'].includes(d.mode)?d.mode:null;
   out.installed_version=version(d.installed_version);out.target_version=version(d.latest_version)||version(d.target);
   const timeKeys=['checked_at','applied_at','rollback_at','started_at','finished_at','updated_at'];

@@ -146,8 +146,8 @@ recuperação geral de outro host.
 
 ## Testes e capacidade
 
-A exportação contém 18 casos Python e 52 casos Node lógicos: 24 modelo/recursos,
-9 coletor Node-RED (inclui deadline absoluto), 6 coletor HA e 13 projeção Kia.
+A suíte agrega casos Python de leitura e da transação delimitada de diagnóstico,
+além dos modelos/recursos Node, coletores Node-RED e HA e projeção Kia.
 O último usa runner próprio de asserts; a contagem de subtests TAP pode diferir.
 `candidate.test.mjs` executa Python e arquivos Node serialmente. Não há tráfego
 real, credenciais reais, root ou dispositivos nesses testes.
@@ -156,8 +156,27 @@ real, credenciais reais, root ou dispositivos nesses testes.
 node --test scripts/raspberry-mcp/nodered-readonly-candidate/candidate.test.mjs
 ```
 
-Os testes não foram executados durante esta preparação da exportação. A prova de
+A preparação original não executou a suíte; os aceites posteriores estão datados
+no artefato sanitizado. A prova de
 capacidade anterior, em processo isolado com heap128MiB, usou o arquivo público
 como runtime/revisão: 4.534.284 bytes combinados, raiz e primeira página completas
 em chunks4000 e uma única fonte Function. Durou cerca de1,81s, com pico RSS152,1MiB;
 isso não comprova memória total do daemon em produção nem acesso real da Eva.
+
+
+## Evidência de etapa e operação administrativa delimitada
+
+A projeção Kia inclui `failure_stage` e `effect_state` fechados. Pares hostis ou
+inconsistentes ficam desconhecidos; recibo antigo nunca ganha causa presumida.
+`effect_state` refere-se à tentativa atual e não prova saúde ou rollback. O erro
+anterior continua ao lado da auditoria posterior, com seu timestamp preservado.
+
+A superfície de descoberta/leitura segue sem novas operações de escrita. Uma
+correção separada usa a delegação administrativa MCP já aprovada e um helper root
+selado com três arquivos fixos e fases distintas. Aplicação, reversão e reaplicação
+foram comprovadas pelo cliente real; não houve instalação da integração, execução
+do promotor ou reinício de HA/Node-RED residencial. A fonte de referência é
+[apply_kia_promotion_evidence.py](../runtime-source/administrative-recovery/apply_kia_promotion_evidence.py).
+O manifesto e as identidades de tarefa são locais e temporários: não reutilizar
+operações consumidas nem ampliar escopo/validade. Ver o
+[aceite sanitizado](../kia-promotion-evidence.acceptance.json).

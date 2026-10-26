@@ -179,3 +179,37 @@ Falha de startup, entidades ausentes, combustivel indisponivel, versao de
 biblioteca incorreta ou metadata HACS divergente interrompe o processo. O
 Home Assistant e parado, componente e metadata sao restaurados e a versao
 anterior e iniciada novamente. O estado final fica `rollback` com a causa.
+
+
+## Repetição incerta e evidência da etapa de promoção
+
+Recibo `applying`, ilegível ou desconhecido bloqueia aplicação antes de fetch e
+extração. Uma candidata diferente também não pode sobrescrever `runtime_applied`,
+`applied_pending_git` ou `main_published`: reconcilie a operação anterior primeiro.
+Um `failed` anterior não comprova rollback. Outra candidata só pode avançar se a
+etapa e o efeito registrados demonstrarem `runtime_not_attempted`. A mesma
+candidata terminal continua deduplicada, sem reinstalação.
+
+O promotor publica `failure_stage` e `effect_state` em enumerações fechadas.
+Falha em `runtime_apply` permanece `runtime_outcome_unknown`; publicação Git e
+cleanup possuem suas próprias incertezas. `runtime_not_attempted` descreve apenas
+a tentativa atual. Campo ausente em recibo antigo continua desconhecido; não
+classificar retrospectivamente por mensagem, mtime ou código novo. Uma falha de
+validação durante a retomada Git preserva `git_publication_failed`, para continuar
+acionável pelo consumidor existente.
+
+Na investigação de 26/10/2026, os frames do log foram correlacionados com o código
+versionado e confirmaram timeout na primeira espera de prontidão, antes da espera
+pelo polling natural. O Recorder registrou os seis papéis exigidos indisponíveis
+nesse intervalo. Os 36 arquivos atuais coincidem com o backup anterior à aplicação.
+Essas provas não identificam a causa interna da indisponibilidade, nem comprovam
+recuperação funcional da candidata. A versão instalada continua 3.19.0 e a tentativa
+anterior não foi repetida.
+
+A guarda e sua projeção MCP foram aplicadas, revertidas e reaplicadas por tarefas
+administrativas MCP seriais, com hashes e leitura real completos em cada fase.
+Somente o sidecar de diagnóstico foi ativado; os sete serviços mantiveram seus
+horários de início. Nenhuma fase executou promotor, updater ou chamada ao veículo.
+Veja o [aceite sanitizado](../scripts/raspberry-mcp/kia-promotion-evidence.acceptance.json).
+Uma nova reversão exige comparação dos hashes atuais e pacote delimitado próprio;
+não reutilize fases ou IDs já consumidos, nem repita efeitos incertos.

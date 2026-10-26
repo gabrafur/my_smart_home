@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "source": "sanitized_actual_MCP_controlled_Kia_diagnostic_acceptance",
+  "observed_at": "2026-10-26T23:14:48+00:00",
+  "state": "diagnostic_patch_apply_rollback_reapply_verified",
+  "existing_tools": [
+    "codex_task_create",
+    "codex_task_status",
+    "codex_task_send",
+    "codex_task_reconcile",
+    "project_files",
+    "project_read"
+  ],
+  "serial_inference_turns": 3,
+  "phase_results": {
+    "apply": "root_receipt_and_new_fields_in_actual_MCP_complete_read",
+    "rollback": "all_three_original_hashes_and_old_MCP_reader_restored",
+    "reapply": "final_hashes_and_new_MCP_reader_confirmed"
+  },
+  "target_count": 3,
+  "new_tools_or_authority": false,
+  "ledgers_reset_or_deleted": false,
+  "all_seven_household_service_start_times_unchanged": true,
+  "old_private_promotion_receipt_unchanged": true,
+  "integration_files_protected": 36,
+  "integration_deployment": false,
+  "provider_or_vehicle_calls": 0,
+  "household_services_restarted": 0,
+  "only_activated_service": "raspberry-nodered-diagnostics.service",
+  "tests": {
+    "Node_runner_cases": 62,
+    "Python_deployment_cases": 16,
+    "original_Git_fixture_suite_included": true
+  },
+  "historical_failure": {
+    "initial_readiness_timeout_proved": true,
+    "six_required_roles_recorded_unavailable": true,
+    "current_component_matches_pre_apply_backup": true,
+    "underlying_setup_or_provider_cause_proved": false,
+    "runtime_manifest_version": "3.19.0",
+    "candidate_functional_recovery_proved": false
+  },
+  "limits": [
+    "not_general_NodeRED_flow_deployment_acceptance",
+    "not_Events_assistant_execution_acceptance",
+    "not_24h_or_PC_off_whole_goal_acceptance",
+    "not_seven_service_restore_acceptance",
+    "no_replay_of_original_promotion"
+  ],
+  "source_sha256": {
+    "scripts/promote-kia-uvo-candidate.mjs": "472e12be6a37341f34b2eb63abbc6c48be82dade235c9dde0df429994d939831",
+    "scripts/raspberry-mcp/nodered-readonly-candidate/kia_model.cjs": "bd3da3d64dc616ab7ec61446d9c8cead1c7f754c2c1bf6514a3d0ecb0b6bccd2",
+    "scripts/raspberry-mcp/runtime-source/administrative-recovery/apply_kia_promotion_evidence.py": "1c542c255bac9658a8ce60b80aeec4ee5197853a49a022eb1e1bcb3dc4836c3a"
+  }
+}

@@ -72,6 +72,7 @@ function writePublicStatus(status) {
     target: status?.target,
     updated_at: status?.updated_at ?? status?.finished_at,
     reason_code: publicPromotionReason(status?.reason_code),
+    ...promotionStageEvidence(status?.failure_stage),
   };
   const temporary = `${promotionPublicStatusPath}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, `${JSON.stringify(publicStatus)}\n`, { mode: 0o640 });
@@ -79,7 +80,7 @@ function writePublicStatus(status) {
 }
 
 export function publicPromotionReason(value) {
-  return ["working_tree_changed", "main_behind_remote", "host_update_in_progress", "git_publication_failed"].includes(value) ? value : null;
+  return ["working_tree_changed", "main_behind_remote", "host_update_in_progress", "git_publication_failed", "candidate_preparation_error", "candidate_preflight_error", "runtime_application_unconfirmed", "candidate_cleanup_error", "promotion_stage_unknown"].includes(value) ? value : null;
 }
 
 export class PromotionDeferred extends Error {
@@ -103,6 +104,7 @@ export function nextPromotionStatus(previous, patch, updatedAt = new Date().toIS
     ...(sourceChanged ? {} : previous),
     ...patch,
     reason_code: publicPromotionReason(patch?.reason_code),
+    ...promotionStageEvidence(patch?.failure_stage),
     updated_at: updatedAt,
   };
 }
@@ -345,13 +347,54 @@ function deleteCandidateBranch(candidate) {
   return true;
 }
 
+export function promotionRequiresReconciliation(promotion, exists = true, candidateCommit = null) {
+  if (!exists) return false;
+  // An interrupted application may already have effects. No new candidate or
+  // scheduled request can decide its outcome. Preserve the original receipt.
+  if (!promotion || typeof promotion !== "object" || Array.isArray(promotion)) return true;
+  // A different candidate cannot overwrite an unfinished publication/cleanup.
+  if (["runtime_applied", "applied_pending_git", "main_published"].includes(promotion.state) &&
+      promotion.source_commit !== candidateCommit) return true;
+  if (promotion.state === "failed" && promotion.source_commit !== candidateCommit) {
+    // A terminal failure does not prove rollback. Only a positively recorded
+    // failure before any runtime attempt permits a different future candidate.
+    return promotionStageEvidence(promotion.failure_stage).effect_state !== "runtime_not_attempted" ||
+      promotion.effect_state !== "runtime_not_attempted";
+  }
+  return ![
+    "deferred", "runtime_applied", "applied_pending_git",
+    "main_published", "completed", "failed",
+  ].includes(promotion.state);
+}
+
+export function promotionStageEvidence(stage) {
+  const stages = ["candidate_validation", "candidate_preflight", "candidate_extract", "runtime_apply", "git_publication", "candidate_cleanup"];
+  if (!stages.includes(stage)) return { failure_stage: null, effect_state: "unknown" };
+  const effect = stage === "runtime_apply" ? "runtime_outcome_unknown" :
+    stage === "git_publication" ? "publication_outcome_unknown" :
+    stage === "candidate_cleanup" ? "cleanup_outcome_unknown" : "runtime_not_attempted";
+  return { failure_stage: stage, effect_state: effect };
+}
+
+export function promotionStageReason(stage) {
+  const codes = { candidate_validation: "candidate_preparation_error", candidate_extract: "candidate_preparation_error",
+    candidate_preflight: "candidate_preflight_error", runtime_apply: "runtime_application_unconfirmed",
+    git_publication: "git_publication_failed", candidate_cleanup: "candidate_cleanup_error" };
+  return Object.hasOwn(codes, stage) ? codes[stage] : "promotion_stage_unknown";
+}
+
 export async function promote({ checkOnly = false } = {}) {
   configureGitHubSshTransport();
   if (!fs.existsSync(workerStatusPath)) return false;
   const candidate = normalizeCandidateStatus(readJson(workerStatusPath));
   if (!candidate) return false;
   let promotion = {};
-  try { promotion = readJson(promotionStatusPath); } catch { /* first run */ }
+  const promotionExists = fs.existsSync(promotionStatusPath);
+  if (promotionExists) {
+    try { promotion = readJson(promotionStatusPath); }
+    catch { return false; } // Existing unreadable receipt is uncertain, not first run.
+  }
+  if (promotionRequiresReconciliation(promotion, promotionExists, candidate.commit)) return false;
   if (shouldResumeCandidateCleanup(promotion, candidate)) {
     try {
       const candidateBranchDeleted = deleteCandidateBranch(candidate);
@@ -377,6 +420,7 @@ export async function promote({ checkOnly = false } = {}) {
         commit: promotion.commit,
         pushed: true,
         reason: String(error.message).slice(0, 800),
+        reason_code: "candidate_cleanup_error", failure_stage: "candidate_cleanup",
       });
       log(`Kia UVO candidate cleanup deferred target=${candidate.target}: ${error.message}`);
       throw error;
@@ -406,6 +450,7 @@ export async function promote({ checkOnly = false } = {}) {
   }
   let expectedPaths;
   let candidateRoot;
+  let failureStage = "candidate_validation";
   try {
     if (!checkOnly && !resumeGit && workingTreePaths().length) {
       writeStatus({ state: "deferred", source_commit: candidate.commit, target: candidate.target, reason: "working_tree_not_clean", reason_code: "working_tree_changed" });
@@ -415,7 +460,9 @@ export async function promote({ checkOnly = false } = {}) {
     if (checkOnly) {
       const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kia-uvo-promotion-check-"));
       try {
+        failureStage = "candidate_extract";
         extractCandidate(candidate, temporaryRoot);
+        failureStage = "candidate_preflight";
         run("node", [safeUpdater, "check-candidate", "--target", candidate.target, "--candidate-root", temporaryRoot], { inherit: true });
       } finally {
         fs.rmSync(temporaryRoot, { recursive: true, force: true });
@@ -426,18 +473,23 @@ export async function promote({ checkOnly = false } = {}) {
     if (!resumeGit) {
       const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kia-uvo-promotion-"));
       candidateRoot = temporaryRoot;
+      failureStage = "candidate_extract";
       extractCandidate(candidate, candidateRoot);
       writeStatus({ state: "applying", source_commit: candidate.commit, target: candidate.target, branch: candidate.branch, reason: null });
+      failureStage = "runtime_apply";
       run("node", [safeUpdater, "apply-candidate", "--target", candidate.target, "--candidate-root", candidateRoot], {
         inherit: true,
         env: { HA_LONG_LIVED_TOKEN: readHaToken() },
       });
       writeStatus({ state: "runtime_applied", source_commit: candidate.commit, target: candidate.target, branch: candidate.branch, reason: null });
+      failureStage = "candidate_cleanup";
       fs.rmSync(temporaryRoot, { recursive: true, force: true });
       candidateRoot = undefined;
     }
+    failureStage = "git_publication";
     const commit = commitAndPush(candidate, expectedPaths);
     writeStatus({ state: "main_published", source_commit: candidate.commit, target: candidate.target, branch: candidate.branch, commit, pushed: true, reason: null });
+    failureStage = "candidate_cleanup";
     const candidateBranchDeleted = deleteCandidateBranch(candidate);
     writeStatus({ state: "completed", source_commit: candidate.commit, target: candidate.target, branch: candidate.branch, commit, pushed: true, candidate_branch_deleted: candidateBranchDeleted, finished_at: new Date().toISOString(), reason: null });
     log(`Kia UVO candidate promoted target=${candidate.target} commit=${commit.slice(0, 12)}`);
@@ -458,7 +510,7 @@ export async function promote({ checkOnly = false } = {}) {
       : ["runtime_applied", "applied_pending_git"].includes(current.state)
         ? "applied_pending_git"
         : "failed";
-    writeStatus({ state, source_commit: candidate.commit, target: candidate.target, reason: String(error.message).slice(0, 800), reason_code: state === "applied_pending_git" ? "git_publication_failed" : null, finished_at: new Date().toISOString() });
+    writeStatus({ state, source_commit: candidate.commit, target: candidate.target, reason: String(error.message).slice(0, 800), reason_code: state === "applied_pending_git" ? "git_publication_failed" : promotionStageReason(failureStage), ...promotionStageEvidence(failureStage), finished_at: new Date().toISOString() });
     log(`Kia UVO candidate promotion failed target=${candidate.target}: ${error.message}`);
     throw error;
   } finally {

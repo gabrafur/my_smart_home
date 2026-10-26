@@ -107,6 +107,8 @@ test("a new candidate lifecycle does not inherit stale promotion fields", () => 
     state: "applying",
     target: "v3.13.0",
     reason_code: null,
+    failure_stage: null,
+    effect_state: "unknown",
     updated_at: "2026-09-14T14:00:00.000Z",
   });
 });

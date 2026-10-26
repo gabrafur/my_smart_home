@@ -1158,3 +1158,33 @@ não eliminam um intervalo maior que 60 segundos entre inícios. Cadência dos
 snapshots, parcialidade da amostra, custo, latências e PC desligado continuam
 aceites separados. O resultado da nova captura precisa ser consultado pelo
 MCP real; a programação não prova que a janela passou.
+
+
+## Aplicação e reversão de diagnóstico Kia pelo MCP existente
+
+Em 26/10/2026, a delegação `eva-admin-` existente executou três fases seriais:
+aplicação, reversão confirmada e reaplicação de uma correção de diagnóstico Kia.
+Cada fase teve criação/envio registrados antes da chamada, recibo root e resultado
+terminal reconhecido pelo hash exato. O cliente MCP refez a descoberta e leu todas
+as partes do documento Kia entre as fases: os novos campos apareceram, desapareceram
+na reversão e reapareceram na reaplicação. Isso comprova efeito real além do catálogo
+ou da identidade administrativa.
+
+O pacote modifica somente o promotor, a biblioteca de projeção Kia e seu selo de
+dependência. Mantém grants, prazo, quotas, credenciais, rede, integração e recibo
+original. O helper exige os locks existentes e exatamente a tarefa/envio admitidos
+para aquela fase; qualquer outra pendência impede o efeito. Não altera nem limpa
+ledgers. Atribuição permanece no principal já autenticado, sem isolamento
+criptográfico novo por conversa.
+
+Apenas `raspberry-nodered-diagnostics.service` foi ativado. Seu encerramento ocioso
+após 30 segundos é normal; snapshot expirado exige `project_files` novamente antes
+de `project_read`. Paginar o recurso da descoberta atual evita confundir cache
+perdido com queda do Node-RED. A projeção conserva etapa desconhecida dos recibos
+antigos e não comprova saúde do veículo.
+
+O [aceite sanitizado](../scripts/raspberry-mcp/kia-promotion-evidence.acceptance.json)
+e o [runbook Kia](VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md) delimitam o resultado.
+Essa prova cobre a correção de diagnóstico; aplicação geral de flows Node-RED,
+consumo natural de Events pela Eva e recuperação funcional da candidata continuam
+exigindo suas próprias evidências. Não há nova ferramenta ou gateway de shell.
