@@ -37,6 +37,14 @@
     {
       "file": "loaded_contract.py",
       "change": "fixed in-process loaded binding booleans and allowlisted latest natural-call stages;no provider properties or diagnostic service calls;root-owned expiring collection scope"
+    },
+    {
+      "file": "auth_gate.py",
+      "change": "preserve PROBE/VALID only for classified cached-session transport;all actual auth challenges and uncertain OTP remain manual;no old blocked-state reopening"
+    },
+    {
+      "file": "native_bridge.py",
+      "change": "typed chained transport classification before permanent manual state;existing natural setup/keep-alive retry only;no primary login,OTP or extra provider request"
     }
   ],
   "validated_compatibility": [

@@ -40,8 +40,8 @@ class SelectionTests(unittest.TestCase):
 
 class CaptureTests(unittest.TestCase):
  def test_fifth_schedule_preserves_four_previous_dates_and_lease(self):
-  self.assertEqual(c.SCHEDULE[:-1],('2026-10-25T04:30:00Z','2026-10-25T15:20:00Z','2026-10-25T20:33:00Z','2026-10-26T11:00:00Z'))
-  self.assertEqual(c.SCHEDULE[-1],FIFTH);self.assertLess(h.stamp(FIFTH),(1793048374 + 764524 / 1_000_000))
+  self.assertEqual(c.SCHEDULE[:4],('2026-10-25T04:30:00Z','2026-10-25T15:20:00Z','2026-10-25T20:33:00Z','2026-10-26T11:00:00Z'))
+  self.assertEqual(c.SCHEDULE[4],FIFTH);self.assertLess(h.stamp(FIFTH),(1793048374 + 764524 / 1_000_000))
  def test_existing_fifth_immutable_report_does_not_collect_again(self):
   with tempfile.TemporaryDirectory() as tmp:
    root=Path(tmp);(root/'window-1600.json').write_text('original')

@@ -2,8 +2,8 @@
 
 Este componente observa o coletor existente. Não executa o coletor, não repara
 serviços, não envia eventos e não concede acesso administrativo a um chatbot.
-Foi preparado para a janelas específicas de 25 e 26/10/2026. As cinco datas do timer
-são fixas: 25/10 às 04h30, 15h20 e 20h33 UTC, e 26/10 às 11h00 e 16h00 UTC. Não reutilize datas vencidas como uma nova
+Foi preparado para janelas específicas de 25 e 26/10/2026. As seis datas do timer
+são fixas: 25/10 às 04h30, 15h20 e 20h33 UTC, e 26/10 às 11h00, 16h00 e 20h00 UTC. Não reutilize datas vencidas como uma nova
 aprovação temporal. A captura posterior ao prazo administrativo permite apenas
 ler fontes existentes e escrever o relatório sanitizado.
 
@@ -159,3 +159,13 @@ resultado incerto, reconciliar fontes e timer antes de qualquer nova ação.
 Reversão restaura esses quatro arquivos e recarrega o calendário, recusando
 drift ou alterações posteriores da mesma política. Preservar todos os relatórios
 e recibos, inclusive janelas ainda não completas.
+
+## Sexta leitura e cobertura temporal
+
+A sexta captura, em 26/10 às 20h UTC, preserva os cinco recibos anteriores e
+os mesmos critérios de aceitação. Uma captura faltante ou incompleta permanece
+unknown, sem repetição nem fallback para uma janela antiga bem-sucedida.
+Sua data programada não substitui observed_at real se houver catch-up tardio.
+Somente o timer de observação precisa ser recarregado para acrescentar a data;
+o coletor e os serviços residenciais não são reiniciados. CPU/RSS correlacionados,
+cadência dos snapshots, latências e PC desligado são verificações distintas.

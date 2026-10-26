@@ -114,3 +114,21 @@ is insufficient. `entry_waiting_user` proves guarded waiting, not a ready Apple
 session: the owner must still complete manual authentication in Home Assistant.
 Never send OTP automatically or delete `.storage`. HTTP 200, a loaded guard and
 remote synchronization are separate evidence.
+
+
+## Cached-session transport and concurrency
+
+A typed or chained transport failure during saved-token validation preserves
+`probe_cached_session` or `session_valid`. Conversion happens before the native
+API exception handler can erase the transport cause. Setup uses HA's existing
+backoff; keep-alive waits for its next native cycle without an immediate retry.
+This path performs no primary login, authenticated renewal or OTP delivery.
+
+The gate serializes validation and provides other consumers a locked state
+snapshot. Contention defers work instead of interpreting a temporary checkpoint
+as expired authentication. The validating and manual contexts avoid relocking
+their own operation. Actual expiration, challenges, unknown failures and uncertain
+delivery remain blocked; old blocked states are never reopened automatically.
+`test_icloud_cached_transport.py` covers these boundaries and deterministic
+interleavings. Its public provider model supplements the isolated native-library
+check. A loaded-code proof establishes the version, not Apple recovery.

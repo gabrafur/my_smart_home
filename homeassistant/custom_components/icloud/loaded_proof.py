@@ -40,7 +40,13 @@ def policy_self_test():
     gate.cached_session(lambda:Outcome.EXPIRED)
     gate.cached_session(lambda:calls.append('forbidden'))
     gate.submit('prepare_session',lambda:calls.append('forbidden'),explicit_submission=False)
-    return gate.state==State.USER and not calls and writes[-1]['state']==State.USER
+    strict=gate.state==State.USER and not calls and writes[-1]['state']==State.USER
+    transient=AuthGate(writes.append)
+    first=transient.cached_session(lambda:Outcome.TRANSPORT)
+    probe_preserved=first.state==State.PROBE.value and transient.state==State.PROBE
+    transient.cached_session(lambda:Outcome.VALID)
+    later=transient.cached_session(lambda:Outcome.TRANSPORT)
+    return strict and probe_preserved and later.state==State.VALID.value and transient.state==State.VALID
 
 def read_request(config_dir):
     path=Path(config_dir)/'.mcp-icloud-activation.json'

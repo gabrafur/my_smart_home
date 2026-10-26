@@ -8,8 +8,15 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 import re
 from .auth_gate import AuthGate, Outcome, State, diagnostic
+from .setup_retry import is_transport_failure
 
 BOUND_GATE = ContextVar('icloud_manual_gate', default=None)
+
+class CachedSessionTransportError(ConnectionError):
+    """Typed transient failure; no provider/account text and no auth permission."""
+
+class CachedSessionBusyError(RuntimeError):
+    """Another guarded operation owns validation; no new request or repair."""
 
 class ManualActionRequired(Exception):
     """Static signal; never contains an account or provider response."""
@@ -42,6 +49,7 @@ def service_adapter(base, *, transport_errors=()):
             self.auth_gate = BOUND_GATE.get()
             if self.auth_gate is None: raise ManualActionRequired('gate_not_loaded')
             self._explicit_auth = ContextVar('explicit_icloud_auth', default=False)
+            self._cached_validation = ContextVar('cached_icloud_validation', default=False)
             self._manual_context_ready = False
             kwargs.update(authenticate=False, pause_2fa=True)
             super().__init__(*args, **kwargs)
@@ -52,22 +60,53 @@ def service_adapter(base, *, transport_errors=()):
         @property
         def requires_2fa(self):
             # Makes native setup/update_devices stop before private service access.
-            return self.auth_gate.state != State.VALID or super().requires_2fa
+            if not self._explicit_auth.get() and not self._cached_validation.get():
+                snapshot = self.auth_gate.snapshot_state()
+                if snapshot.reason == 'operation_in_progress':
+                    raise CachedSessionBusyError('cached_session_operation_in_progress')
+                state = snapshot.state
+            else:
+                # These contexts already own the gate effect; never relock it.
+                state = self.auth_gate.state
+            return state != State.VALID or super().requires_2fa
+
+        def _validate_token(self):
+            if self._explicit_auth.get():
+                return super()._validate_token()
+            try:
+                return super()._validate_token()
+            except Exception as exc:
+                # The native reuse helper swallows APIResponseException. Convert
+                # typed transport before that catch, preserving auth/unknown errors.
+                if isinstance(exc, transport_errors) or is_transport_failure(exc):
+                    raise CachedSessionTransportError('cached_session_transport_unavailable') from None
+                raise
 
         def authenticate(self, force_refresh=False, service=None, pause_2fa=None):
             if self._explicit_auth.get():
                 return super().authenticate(force_refresh=force_refresh, service=service, pause_2fa=True)
             def cached_only():
+                token = self._cached_validation.set(True)
                 try:
-                    valid = super(GuardedService, self)._try_reuse_cached_session(False, True)
-                    if not valid: return Outcome.EXPIRED
-                    if super(GuardedService, self).requires_2fa or super(GuardedService, self).requires_2sa:
-                        return Outcome.CHALLENGE
-                    super(GuardedService, self)._update_state()
-                    return Outcome.VALID
-                except transport_errors: return Outcome.TRANSPORT
+                    try:
+                        valid = super(GuardedService, self)._try_reuse_cached_session(False, True)
+                        if not valid: return Outcome.EXPIRED
+                        if super(GuardedService, self).requires_2fa or super(GuardedService, self).requires_2sa:
+                            return Outcome.CHALLENGE
+                        super(GuardedService, self)._update_state()
+                        return Outcome.VALID
+                    except Exception as exc:
+                        if isinstance(exc, transport_errors) or is_transport_failure(exc):
+                            return Outcome.TRANSPORT
+                        raise
+                finally:
+                    self._cached_validation.reset(token)
             result = self.auth_gate.cached_session(cached_only)
-            if result.state != State.VALID or result.reason == Outcome.TRANSPORT:
+            if result.reason == 'operation_in_progress':
+                raise CachedSessionBusyError('cached_session_operation_in_progress')
+            if result.reason == Outcome.TRANSPORT:
+                raise CachedSessionTransportError('cached_session_transport_unavailable') from None
+            if result.state != State.VALID:
                 raise ManualActionRequired(result.reason)
 
         def _authenticate(self, *args, **kwargs):
@@ -204,7 +243,10 @@ def account_adapter(base, gates, client_factory, *, auth_required_errors=()):
     class GuardedAccount(base):
         def setup(self):
             gate = gates[self._config_entry.entry_id]
-            if gate.state not in (State.PROBE, State.VALID):
+            snapshot = gate.snapshot_state()
+            if snapshot.reason == 'operation_in_progress':
+                raise CachedSessionBusyError('cached_session_operation_in_progress')
+            if snapshot.state not in (State.PROBE, State.VALID):
                 with bind_gate(gate):
                     self.api = client_factory(self._username, self._password, self._icloud_dir.path, with_family=self._with_family)
                 self._require_reauth(); return
@@ -223,6 +265,10 @@ def account_adapter(base, gates, client_factory, *, auth_required_errors=()):
             if gate.state not in (State.PROBE, State.VALID): return
             with bind_gate(gate):
                 try: return super().keep_alive(now)
+                except (CachedSessionTransportError, CachedSessionBusyError):
+                    # The next existing native cycle may try cached validation.
+                    # Never retry now, update devices, or open a repair here.
+                    return
                 except ManualActionRequired:
                     if gate.state != State.VALID: self._require_reauth()
     return GuardedAccount

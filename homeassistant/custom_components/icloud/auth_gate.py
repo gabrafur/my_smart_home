@@ -138,9 +138,18 @@ class AuthGate:
     def open_screen(self):
         return self.result('display_only')
 
+    def snapshot_state(self):
+        """Observe a stable gate state, or report contention without waiting."""
+        if not self._lock.acquire(blocking=False):
+            return self.result('operation_in_progress')
+        try:
+            return self.result('state_observed')
+        finally:
+            self._lock.release()
+
     def cached_session(self, validate_cached_token):
-        if self.busy or self.state not in (State.PROBE, State.VALID):
-            return self.result('waiting_for_user')
+        # The effect owns the nonblocking lock and authoritative state recheck.
+        # An unlocked busy/state precheck could mistake transient USER for expiry.
         # Caller must validate ONLY the saved token, with no login fallback.
         return self._effect(validate_cached_token, background=True)
 
@@ -190,7 +199,7 @@ class AuthGate:
             elif outcome == Outcome.INVALID_CODE and prior == State.CODE: state = State.CODE
             elif outcome == Outcome.PRIMARY: state = State.PRIMARY
             elif outcome == Outcome.LIMITED: state = State.LIMITED
-            elif outcome == Outcome.TRANSPORT and background and prior == State.VALID: state = State.VALID
+            elif outcome == Outcome.TRANSPORT and background and prior in (State.PROBE, State.VALID): state = prior
             elif action in ('request_challenge', 'verify_code') and outcome in (Outcome.TRANSPORT, Outcome.UNKNOWN): state = State.UNCERTAIN
             else: state = State.USER
             stage = 'persist_after'

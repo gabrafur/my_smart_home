@@ -1114,3 +1114,37 @@ A leitura descrita é implementação comprovada. A aplicação controlada geral
 componentes Node-RED, validação funcional e execução específica da Eva continuam
 aceites separados, sujeitos a locks, versão, reversão e recibo. O desaparecimento
 de notificações ou contêiner saudável não fecha esses aceites.
+
+
+## Sessão iCloud: transporte, concorrência e aceite
+
+A correção de 26/10 separa transporte tipado durante a validação do token salvo
+de autenticação realmente expirada. Um snapshot do gate sob lock evita reparos
+falsos durante validações concorrentes. Setup mantém o backoff nativo; keep-alive
+não repete a chamada imediatamente. Login primário, renovação autenticada, OTP e
+reabertura de estados antigos bloqueados não foram automatizados. O contrato
+operacional e seus testes estão em [ICLOUD_MANUAL_AUTH.md](ICLOUD_MANUAL_AUTH.md).
+
+O cliente MCP real confirmou os objetos Python novos e a identidade do processo.
+Após o reinício, o estado observado continuou `entry_waiting_user`; por isso o
+aceite da correção local não equivale a sessão remota recuperada. As chamadas
+naturais anteriores concluídas continuam evidência histórica. Os mesmos IDs
+do catálogo público foram preservados, com os hashes de fonte revisados
+atualizados; nenhum caminho ou permissão de edição foi acrescentado.
+
+
+## Sexta captura fixa de continuidade
+
+A programação de aceite acrescenta uma única captura somente de leitura às
+20UTC de 26/10/2026, sem mudar o coletor, sua instrumentação ou os critérios.
+Os cinco recibos anteriores permanecem imutáveis. `window-2000.json` também é
+imutável: uma falha de coleta mantém `unknown` e não provoca repetição ou
+fallback para sucesso antigo. O horário observado continua sendo o da coleta
+real, inclusive em eventual catch-up tardio. Nenhuma autoridade foi renovada.
+
+A auditoria da janela anterior separou os custos correlacionados das execuções
+da cobertura temporal. CPU/RSS presentes para todas as execuções observadas
+não eliminam um intervalo maior que 60 segundos entre inícios. Cadência dos
+snapshots, parcialidade da amostra, custo, latências e PC desligado continuam
+aceites separados. O resultado da nova captura precisa ser consultado pelo
+MCP real; a programação não prova que a janela passou.

@@ -19,7 +19,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from .auth_gate import AuthGate, State
 from .device_owner import prepare_device_class
-from .native_bridge import service_adapter, account_adapter, load_native_gate
+from .native_bridge import service_adapter, account_adapter, load_native_gate, CachedSessionBusyError
 from .setup_retry import is_transport_failure
 from . import loaded_proof, loaded_contract
 
@@ -59,6 +59,7 @@ def collect_loaded_contract(hass):
 def proof_functions():
     from .config_flow import ManualIcloudFlow
     functions={'setup':async_setup,'emit_proof':emit_proof,
+            'cached_transport_classifier':is_transport_failure,
             'collect_loaded_contract':collect_loaded_contract,
             'setup_entry':async_setup_entry,'auth_gate_effect':AuthGate._effect,
             'account_setup':GuardedAccount.setup,'account_keep_alive':GuardedAccount.keep_alive,
@@ -138,6 +139,8 @@ async def async_setup_entry(hass, entry):
         account._manual_platforms_loaded=True
         await native.async_setup_photo_cache(hass,account)
     except Exception as error:
+        if isinstance(error,CachedSessionBusyError):
+            raise ConfigEntryNotReady('iCloud cached session validation in progress') from None
         if is_transport_failure(error):
             raise ConfigEntryNotReady('iCloud transport unavailable during setup') from None
         raise

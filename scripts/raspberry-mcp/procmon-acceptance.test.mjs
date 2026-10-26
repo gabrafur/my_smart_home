@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 for (const [label, directory, pattern] of [
-  ["fixed capture and fifth-window selection", "./acceptance-observer/", "test_*.py"],
+  ["fixed capture and scheduled-window selection", "./acceptance-observer/", "test_*.py"],
   ["sanitized health evidence", "./runtime-source/repair-control/", "test_health_summary.py"],
 ]) {
   test(`procmon acceptance: ${label}`, () => {

@@ -1,5 +1,5 @@
 [Unit]
-Description=Five fixed observation times; no repair or privilege renewal
+Description=Six fixed observation times; no repair or privilege renewal
 
 [Timer]
 OnCalendar=2026-10-25 04:30:00 UTC
@@ -7,6 +7,7 @@ OnCalendar=2026-10-25 15:20:00 UTC
 OnCalendar=2026-10-25 20:33:00 UTC
 OnCalendar=2026-10-26 11:00:00 UTC
 OnCalendar=2026-10-26 16:00:00 UTC
+OnCalendar=2026-10-26 20:00:00 UTC
 AccuracySec=1s
 RandomizedDelaySec=0
 Persistent=true

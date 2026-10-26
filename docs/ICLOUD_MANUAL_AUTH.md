@@ -118,3 +118,24 @@ anterior ao início do processo não serve. `entry_waiting_user` comprova a espe
 protegida, e não sessão Apple pronta: o usuário ainda deve concluir a autenticação
 manual no Home Assistant. Não enviar OTP por automação nem apagar `.storage`.
 HTTP 200, carregamento do guard e sincronização remota são evidências distintas.
+
+
+## Transporte da sessão salva e concorrência
+
+A validação de token salvo preserva `probe_cached_session` ou `session_valid`
+quando encontra uma falha de transporte tipada, inclusive encapsulada numa
+exceção da API. A conversão ocorre antes do catch nativo que apagava essa causa.
+Setup usa o backoff existente do HA; keep-alive aguarda seu próximo ciclo, sem
+retry imediato. Não há login primário, renovação autenticada ou OTP nesse caminho.
+
+O gate serializa a validação e oferece um snapshot sob lock para outros
+consumidores. Uma validação concorrente adia o trabalho em vez de interpretar
+o checkpoint temporário como sessão expirada. O contexto da própria validação
+e a submissão manual não tentam adquirir novamente o mesmo lock.
+
+Expiração real, desafio, causa desconhecida e entrega incerta continuam
+bloqueados. Estados bloqueados de antes da correção não são reabertos. O teste
+`test_icloud_cached_transport.py` cobre transporte encapsulado, recuperação no
+próximo ciclo, expiração, concorrência e preservação do OTP manual. O modelo do
+provider no teste público não substitui o ensaio isolado da biblioteca nativa.
+Uma prova de código carregado confirma a versão; não comprova recuperação Apple.
