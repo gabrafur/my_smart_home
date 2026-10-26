@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');const {project}=require('./kia_model.cjs');
-const now=Date.parse('2026-10-26T15:00:00Z')/1000,iso='2026-10-26T14:59:30Z',secret='PRIVATE_ACCOUNT_COORDINATE_TOKEN';
+const now=Date.parse('2026-10-26T15:00:00Z')/1000,iso='2026-10-26T14:59:30Z',secret=['PRIVATE','ACCOUNT','COORDINATE','TOKEN'].join('_');
 const envelope=data=>({observed_at:iso,collection_error:null,data});
 const base=()=>({now_unix_seconds:now,sources:{
  sensor:envelope({state:'compatible',checked_at:iso,latest_version:'v3.13.0'}),

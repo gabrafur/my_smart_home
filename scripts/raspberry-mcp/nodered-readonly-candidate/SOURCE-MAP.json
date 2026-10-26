@@ -115,22 +115,27 @@
       "source_role": "test_ha_collector.cjs"
     },
     "test_kia_model.cjs": {
-      "export_sha256": "2a5a2e17c64e70b3b210d4a40e693d66292724ba5223592f123b384cc499bab4",
+      "export_sha256": "e33e3ad5929e0c9c685f6e2c47cd50447650fa6eab7fe153a98bc7ec01986292",
       "normalizations": [
-        "local_exported_Kia_model_import"
+        "local_exported_Kia_model_import",
+        "synthetic_privacy_regression_vectors_generated_in_memory_no_literal_credentials_or_coordinate_shapes"
       ],
       "prepared_source_sha256": "ea04c61e2182178fabe33c31cf5421c8e77267744805c283c9a1012d28f3770c",
       "source_role": "reviewed_Kia_pure_model_test"
     },
     "test_nodered_model.cjs": {
-      "export_sha256": "13c1b30fa0f211fc91e1f87406731b1d6d0bf882e98608fcf92bdb1542c6c5ce",
-      "normalizations": [],
+      "export_sha256": "3555f2de9e122b98ae285ddc369bfc635d086ea37f32847b78efc90250455150",
+      "normalizations": [
+        "synthetic_privacy_regression_vectors_generated_in_memory_no_literal_credentials_or_coordinate_shapes"
+      ],
       "prepared_source_sha256": "13c1b30fa0f211fc91e1f87406731b1d6d0bf882e98608fcf92bdb1542c6c5ce",
       "source_role": "test_nodered_model.cjs"
     },
     "test_root_snapshot.py": {
-      "export_sha256": "8949bcb392aa53ff429423795a4953b84f86d4125ce6ca49e57e1421627ccb41",
-      "normalizations": [],
+      "export_sha256": "6e1ccd6ab69c9c929dd8cc2a504d718754c1998f0aad7714a5b3c685cb0412e7",
+      "normalizations": [
+        "synthetic_privacy_regression_vectors_generated_in_memory_no_literal_credentials_or_coordinate_shapes"
+      ],
       "prepared_source_sha256": "8949bcb392aa53ff429423795a4953b84f86d4125ce6ca49e57e1421627ccb41",
       "source_role": "test_root_snapshot.py"
     },
@@ -155,6 +160,10 @@
     "candidate.test.mjs": {
       "role": "portable_reference_and_serial_isolated_test_wrapper",
       "sha256": "3b8b3d3f79de2b0d9afb841bef17ef80cd36c59927b733fd8611d8da6916f456"
+    },
+    "test-vectors.cjs": {
+      "role": "synthetic_privacy_regression_vectors_only",
+      "sha256": "58d27866febcc163eff5b66bf6f7646ed2813cf5394e32eb74d6ceb1c2a40975"
     }
   },
   "private_policy_config_receipts_credentials_and_operation_IDs_exported": false,

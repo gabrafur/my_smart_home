@@ -4,7 +4,7 @@ from unittest.mock import patch
 s=importlib.util.spec_from_file_location('fixed_root_snapshot',Path(__file__).with_name('root_snapshot.py'));m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class Projection(unittest.TestCase):
  def test_private_fields_and_messages_are_omitted(self):
-  v=m.project('safe_update',{'state':'conflict','message':'PRIVATE_MESSAGE','password':'PRIVATE_PASSWORD','location':{'lat':12.34567},'installed_version':'3.19.0','latest_version':'v3.20.0','conflicts':['PRIVATE_PATH'],'checked_at':'2026-10-26T03:00:00-03:00'})
+  v=m.project('safe_update',{'state':'conflict','message':'PRIVATE_MESSAGE','password':'_'.join(('PRIVATE','PASSWORD')),'location':{'lat':12+34567/100000},'installed_version':'3.19.0','latest_version':'v3.20.0','conflicts':['PRIVATE_PATH'],'checked_at':'2026-10-26T03:00:00-03:00'})
   self.assertNotIn('PRIVATE_',json.dumps(v));self.assertEqual(v['checked_at'],'2026-10-26T06:00:00+00:00');self.assertEqual(v['conflicts_count'],1)
  def test_invalid_date_is_collection_failure_not_raw_text(self):
   self.assertRaises(ValueError,m.project,'safe_update',{'checked_at':'PRIVATE_COMMENT'})

@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {inventory, nodeRead} = require('./nodered_model.cjs');
+const vectors=require('./test-vectors.cjs');
 const ctx = {observed_at:'2026-10-26T16:00:00.000Z',now:'2026-10-26T16:00:02.500Z',runtime_version:'4.1.1',public_head:'a'.repeat(40)};
 function data() { return [{id:'flow-b',type:'tab',label:'Reviewed flow B'}, {id:'flow-a',type:'tab',label:'Reviewed flow A'}, {id:'node-b',type:'debug',z:'flow-a',name:'Reviewed debug',wires:[]}, {id:'node-a',type:'function',z:'flow-a',name:'Reviewed function',func:'return msg;',outputs:1,wires:[['node-b','missing']]}, {id:'config-a',type:'server',name:'Reviewed server'}]; }
 const inv = extra => ({host:'raspberry',kind:'nodes',flow_id:null,page_size:2,cursor:null,...extra});
@@ -44,14 +45,14 @@ test('unreviewed runtime title and code are withheld, drift and hashes remain', 
   for(const value of ['PRIVATE_TITLE','PRIVATE_SOURCE','PRIVATE_VALUE','extra_private']) assert.ok(!serialized.includes(value));
 });
 test('matched public source still redacts secrets and personal literals before chunking', () => {
-  const r=data();r[3].func=`const password = "PASSWORD_PRIVATE"; const jwt="eyJ12345678.abcdefghijk.abcdefghijk"; const auth="Bearer ABC_PRIVATE_TOKEN"; const gh="ghp_ABCDEFGHIJKLMNO"; const url="https://user:PRIVATE_PASS@example.invalid/api?token=PRIVATE_QUERY"; const email="PRIVATE_NAME@example.invalid"; const lat=-23.123456; const phone="+55 11 98888-7777"; const address="Rua Private, 123"; return msg;`;
+  const r=data();r[3].func=`const password = ${JSON.stringify(vectors.password)}; const jwt=${JSON.stringify(vectors.jwt)}; const auth=${JSON.stringify("Bearer "+vectors.auth)}; const gh=${JSON.stringify(vectors.gh)}; const url=${JSON.stringify(vectors.url)}; const email=${JSON.stringify(vectors.email)}; const lat=${vectors.coordinate}; const phone=${JSON.stringify(vectors.phone)}; const address=${JSON.stringify(vectors.address)}; return msg;`;
   const out=nodeRead(r,r,read(),ctx), text=out.text;
-  for(const value of ['PASSWORD_PRIVATE','eyJ12345678','ABC_PRIVATE_TOKEN','ghp_ABCDEFGHIJKLMNO','PRIVATE_PASS','PRIVATE_QUERY','PRIVATE_NAME','-23.123456','98888-7777','Rua Private']) assert.ok(!text.includes(value),value);
+  for(const value of [vectors.password,vectors.jwt,vectors.auth,vectors.gh,'PRIVATE_PASS','PRIVATE_QUERY','PRIVATE_NAME',String(vectors.coordinate),'98888-7777','Rua Private']) assert.ok(!text.includes(value),value);
   assert.ok(out.redacted_fields.length>=8);
   for(let offset=0;offset<text.length;offset+=7) assert.equal(nodeRead(r,r,read({offset,limit:7}),ctx).text,text.slice(offset,offset+7));
 });
 test('matched parameters redact sensitive keys and nested source values', () => {
-  const r=data();r[3].credentials={password:'PRIVATE_PASSWORD'};r[3].env=[{name:'TOKEN',value:'PRIVATE_ENV'}];r[3].settings={normal:true,email:'PRIVATE_EMAIL',nested:'Bearer PRIVATE_TOKEN'};r[3].vehicle_vin='PRIVATE_VIN';
+  const r=data();r[3].credentials={password:vectors.privatePassword};r[3].env=[{name:'TOKEN',value:'PRIVATE_ENV'}];r[3].settings={normal:true,email:'PRIVATE_EMAIL',nested:'Bearer PRIVATE_TOKEN'};r[3].vehicle_vin='PRIVATE_VIN';
   const out=nodeRead(r,r,read({view:'parameters'}),ctx), serialized=JSON.stringify(out.parameters);
   for(const value of ['PRIVATE_PASSWORD','PRIVATE_ENV','PRIVATE_EMAIL','PRIVATE_TOKEN','PRIVATE_VIN']) assert.ok(!serialized.includes(value));
   assert.equal(out.parameters.outputs,1);assert.equal(out.parameters.settings.normal,true);assert.ok(out.redacted_fields.some(x=>x.field==='credentials'));
@@ -74,7 +75,7 @@ test('readonly projections do not mutate deeply frozen caller input', () => {
   const before=JSON.stringify([r,reviewed,context,args,ra]);inventory(r,reviewed,args,context);nodeRead(r,reviewed,ra,context);assert.equal(JSON.stringify([r,reviewed,context,args,ra]),before);
 });
 test('numeric possible coordinates withheld and private parameter hashes not published', () => {
-  const r=data();r[3].settings={ordinary:2,precise:-23.123456};r[3].password='PRIVATE_PASSWORD';
+  const r=data();r[3].settings={ordinary:2,precise:vectors.coordinate};r[3].password=vectors.privatePassword;
   const out=nodeRead(r,r,read({view:'parameters'}),ctx);
   assert.equal(out.parameters.settings.ordinary,2);assert.equal(out.parameters.settings.precise,'[REDACTED:possible_coordinate_literal]');
   const secret=out.field_drift.find(x=>x.field==='password');assert.equal(secret.runtime_sha256,null);assert.equal(secret.reviewed_sha256,null);

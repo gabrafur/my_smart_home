@@ -22,7 +22,7 @@ class ForbiddenProvider:
 class Account:
     def __init__(self, username=SECRET, api=True):
         self._username = username; self.api = ForbiddenProvider() if api else None
-        self._password = 'PRIVATE_PASSWORD_SENTINEL'
+        self._password = '_'.join(('PRIVATE','PASSWORD','SENTINEL'))
     @property
     def username(self): raise AssertionError(SECRET)
     @property

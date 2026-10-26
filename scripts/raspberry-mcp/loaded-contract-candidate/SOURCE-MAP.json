@@ -66,8 +66,10 @@
       "source_role": "test_client_contract.py"
     },
     "test_loaded_contract.py": {
-      "export_sha256": "0c7e456381ce91adb8dd8432926561f79c1e5c3644e04de2d28fc3fea1b24e32",
-      "normalizations": [],
+      "export_sha256": "0e912da4b7884abc034ad384a8de8ea46455bdd451e130396655ac67a8042258",
+      "normalizations": [
+        "synthetic_privacy_regression_vectors_generated_in_memory_no_literal_credentials_or_coordinate_shapes"
+      ],
       "prepared_source_sha256": "0c7e456381ce91adb8dd8432926561f79c1e5c3644e04de2d28fc3fea1b24e32",
       "source_role": "test_loaded_contract.py"
     },
