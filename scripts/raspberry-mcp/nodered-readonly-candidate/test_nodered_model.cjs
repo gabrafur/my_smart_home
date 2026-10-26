@@ -47,7 +47,7 @@ test('unreviewed runtime title and code are withheld, drift and hashes remain', 
 test('matched public source still redacts secrets and personal literals before chunking', () => {
   const r=data();r[3].func=`const password = ${JSON.stringify(vectors.password)}; const jwt=${JSON.stringify(vectors.jwt)}; const auth=${JSON.stringify("Bearer "+vectors.auth)}; const gh=${JSON.stringify(vectors.gh)}; const url=${JSON.stringify(vectors.url)}; const email=${JSON.stringify(vectors.email)}; const lat=${vectors.coordinate}; const phone=${JSON.stringify(vectors.phone)}; const address=${JSON.stringify(vectors.address)}; return msg;`;
   const out=nodeRead(r,r,read(),ctx), text=out.text;
-  for(const value of [vectors.password,vectors.jwt,vectors.auth,vectors.gh,'PRIVATE_PASS','PRIVATE_QUERY','PRIVATE_NAME',String(vectors.coordinate),'98888-7777','Rua Private']) assert.ok(!text.includes(value),value);
+  for(const value of [vectors.password,vectors.jwt,vectors.auth,vectors.gh,'PRIVATE_PASS','PRIVATE_QUERY','PRIVATE_NAME',String(vectors.coordinate),vectors.phone,'Rua Private']) assert.ok(!text.includes(value),value);
   assert.ok(out.redacted_fields.length>=8);
   for(let offset=0;offset<text.length;offset+=7) assert.equal(nodeRead(r,r,read({offset,limit:7}),ctx).text,text.slice(offset,offset+7));
 });
