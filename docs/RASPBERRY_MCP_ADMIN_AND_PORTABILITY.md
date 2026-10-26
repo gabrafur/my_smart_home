@@ -848,3 +848,18 @@ O recibo público sanitizado é
 Ele comprova leitura, não que Eva executou uma correção ou que os serviços
 voltaram a responder. Nenhum callback, nova assinatura, conta ou efeito
 residencial foi criado.
+
+## Candidato de reparo por componente ainda desativado
+
+O [protótipo e seus esquemas](../scripts/raspberry-mcp/component-repair-candidate/README.md)
+separam fonte revisada, identidade carregada, reservas, recibos e prova funcional.
+As doze ferramentas desse protótipo não pertencem ao catálogo ativo. Leitura
+administrativa real confirmou as identidades dos dois canvases permitidos e
+a prova de código do processo iCloud; isso não equivale a acesso da Eva ou
+execução de reparo pelo MCP. Heartbeat ainda não emite identidade carregada.
+
+O protótipo exige recibo da operação exata para reconciliar efeitos incertos
+e confirmação explícita de coordenação/recursos para aplicar. O executor real,
+integração de tarefas e orçamentos, bootstrap root, aprovação específica e
+aceite pelo cliente MCP continuam pendentes. Publicação de fontes e testes
+não instala nem autoriza essa ampliação.

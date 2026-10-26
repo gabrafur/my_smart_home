@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "state": "offline_candidate_not_registered_in_MCP",
+  "new_tools_registered": 0,
+  "production_writes_enabled": false,
+  "runtime_ports": "owner_only_read_probes_not_MCP_access",
+  "Python_tests": 41,
+  "Node_model_and_schema_tests": 10,
+  "kernel_profile_and_daemon_profile_acceptance": "not_interchangeable",
+  "remaining": [
+    "heartbeat_loaded_code_identity",
+    "controlled_component_effect_worker",
+    "shared_task_registry_and_budget_integration",
+    "root_bootstrap_and_complete_hash_chain",
+    "specific_access_approval_before_activation",
+    "actual_MCP_execution_and_natural_functional_acceptance"
+  ]
+}
