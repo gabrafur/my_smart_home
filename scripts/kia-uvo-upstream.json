@@ -1,7 +1,7 @@
 {
   "repository": "Hyundai-Kia-Connect/kia_uvo",
-  "base_version": "v3.19.0",
-  "base_commit": "5192990716f7e0aa854c2620b5353575b08b457c",
+  "base_version": "v3.20.0",
+  "base_commit": "4d2fba60a40a15ff46d21c4e0e51989d0d0ccb57",
   "component_path": "homeassistant/custom_components/kia_uvo",
   "hacs_repository_id": "356385629"
 }

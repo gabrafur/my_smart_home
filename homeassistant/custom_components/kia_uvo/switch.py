@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+import logging
 from typing import Any, Final
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
@@ -180,7 +180,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
         icon="mdi:key-variant",
         value_fn=lambda vehicle: vehicle.valet_mode_active,
         exists_fn=lambda vehicle: (
-            vehicle.supports_valet_mode and vehicle.valet_mode_active is not None
+            bool(vehicle.supports_valet_mode) and vehicle.valet_mode_active is not None
         ),
         on_fn=lambda coordinator, vid: coordinator.async_start_valet_mode(vid),
         off_fn=lambda coordinator, vid: coordinator.async_stop_valet_mode(vid),
