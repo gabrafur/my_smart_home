@@ -1,19 +1,21 @@
 {
   "schema_version": 1,
-  "state": "offline_candidate_with_NodeRED_worker_not_registered_in_MCP",
+  "state": "offline_candidate_with_existing_task_budget_and_maintenance_ports_not_registered_in_MCP",
   "new_tools_registered": 0,
   "production_writes_enabled": false,
   "runtime_ports": "owner_only_read_probes_not_MCP_access",
-  "Python_tests": 50,
+  "Python_tests": 70,
   "kernel_profile_and_daemon_profile_acceptance": "not_interchangeable",
   "remaining": [
     "heartbeat loaded-code identity",
     "heartbeat and HA effect ports",
-    "protected admission derived from actual shared task registry and budgets",
-    "actual maintenance-lock wrapper and root job bootstrap",
+    "protected root-parent job wiring, review creation, live other-executor observation and worker IPC",
+    "fixed production bindings, lock ordering and root job bootstrap",
     "full privileged hash chain and specific access approval",
     "actual MCP execution and natural functional acceptance"
   ],
   "Node_model_schema_worker_tests": 22,
-  "NodeRED_worker_production_deployments": 0
+  "NodeRED_worker_production_deployments": 0,
+  "task_registry_read_port": "existing SQLite schema and shared policy; real read accepted, no registry write",
+  "maintenance_port": "real scheduler flock implemented; production wiring not installed"
 }

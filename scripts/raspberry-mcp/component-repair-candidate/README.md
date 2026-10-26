@@ -149,3 +149,46 @@ para aplicação como para reversão. Uma rejeição definitiva pode conservar
 coleta. Sem identidade completa, recibo terminal verificado e ausência de
 efeito comprovada, o erro mantém a operação incerta. A reserva continua retida
 quando a reversão foi rejeitada; isso não significa que a versão antiga voltou.
+
+## Admissão protegida e bloqueio de manutenção
+
+[`admission.py`](admission.py) implementa ports internos; não tem CLI nem rota
+MCP. O bootstrap root deverá fornecer as dependências e caminhos fixos. Nada
+nesse módulo aceita caminho, política, principal ou sinalizador de privilégio
+do cliente MCP.
+
+`TaskBudgetPort` usa o lock `coordinator.lock` existente e chama o verificador
+de integridade/política instalado. Consulta os bancos de tarefas e legados em
+SQLite somente leitura, sem construir os Stores mutáveis, executar DDL,
+reservar outro envio ou consumir uma inferência. A tarefa e o envio exatos
+precisam existir, ter thread/turn registrados e pertencer à delegação
+administrativa. Resultado concluído exige reconciliação. Outros envios
+incertos, resultados pendentes e reservas conflitantes bloqueiam a aplicação.
+Falhas históricas terminais permanecem no banco. A contagem usa a janela de
+24h existente e inclui envios legados e recusados, como o controlador atual;
+o envio pai já contado não é contado de novo. Não redefine o limite de
+48 envios ou o espaçamento de 60 segundos. Esses são limites de tarefas,
+separados das seis tentativas/24h e dez minutos dos Events.
+
+`MaintenanceLease` adquire o flock real do scheduler, sem criar ou substituir
+o arquivo de lock. Mantém o descritor aberto até a saída, inclusive quando
+ocorre erro. Confere identidade do inode e os gatilhos `processing` de update
+e Git; nenhum gatilho é removido. Teste em dois processos comprova exclusão e
+liberação. Os testes usam caminhos temporários; nenhum teste bloqueia ou
+dispara manutenção residencial.
+
+`ProtectedReview` exige registro protegido de owner/modo e vincula operação,
+tarefa, envio, principal, componente, ação e identidades de versão. Aplicação
+e reversão têm registros distintos e o mesmo ID de operação. O registro não
+é um argumento do MCP. `ProtectedAdmission` exige ambos os locks, revisão,
+política vigente, margem de 90s para finalizar, gate de recursos existente e
+observação root recente dos demais executores. A leitura do registro de
+threads sozinha **não** prova ausência de outros efeitos administrativos.
+
+Restam o bootstrap root com bindings fixos, criação segura dos registros de
+revisão, observação real de jobs administrativos/componentes e IPC limitado
+entre pai protegido e worker. Os testes usam um observador substituto e não
+provam essa integração. O novo leitor foi também exercitado pelo operador
+contra os registros existentes, sem escrita; isso não constitui aceite MCP
+nem acesso novo da Eva. Não registrar ferramentas ou executar aplicação antes
+de completar e revisar o pacote de acesso e sua revogação.
