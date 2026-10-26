@@ -1,50 +1,12 @@
 {
-  "schema_version": 1,
-  "fragments": {
-    "notice": "Notificação do Home Assistant",
-    "redacted": "[trecho ocultado]",
-    "no_safe_clause": "Conteúdo sem cláusula diagnóstica reconhecida; trecho ocultado.",
-    "node_red": "Node-RED",
-    "ha": "Home Assistant",
-    "icloud": "iCloud",
-    "mqtt": "MQTT",
-    "mosquitto": "Mosquitto",
-    "recorder": "Recorder",
-    "backup": "Backup",
-    "zigbee": "Zigbee2MQTT",
-    "public_bindings": "public_bindings",
-    "flow_failure": "Falha em fluxo Node-RED",
-    "flow_host": "Fluxo observacao_host",
-    "flow_people": "Fluxo localizacao_pessoas",
-    "node_age": "Nó Idade dos recursos disponível?",
-    "node_icloud_primary": "Nó EFEITO: atualizar localização iCloud primary",
-    "node_icloud_secondary": "Nó EFEITO: atualizar localização iCloud secondary",
-    "execution_error": "Erro de execução",
-    "unavailable": "Indisponibilidade",
-    "authentication": "Autenticação necessária ou recusada",
-    "timeout": "Tempo limite excedido",
-    "connection_refused": "Conexão recusada",
-    "connection_reset": "Conexão interrompida",
-    "permission_denied": "Permissão negada",
-    "disk_full": "Espaço em disco insuficiente",
-    "invalid_configuration": "Configuração inválida",
-    "database_locked": "Banco de dados bloqueado",
-    "switch_operator": "operators[rule.t] is not a function",
-    "icloud_provider_unavailable": "iCloud location refresh provider is unavailable",
-    "unsupported_icloud_core": "unsupported_icloud_core_version",
-    "security_scan_failed": "security_scan_failed",
-    "notification_cooldown": "O mesmo erro será silenciado por 6 horas para evitar notificações repetidas.",
-    "check_integration": "Confira o estado atual da integração e suas evidências antes de repetir a operação.",
-    "check_manual_auth": "Conclua a autenticação manual no Home Assistant; não envie código automaticamente.",
-    "check_switch": "Valide o operador do nó switch na versão instalada do Node-RED.",
-    "check_core_compatibility": "Confira a compatibilidade revisada do adaptador com a versão do Home Assistant.",
-    "check_backup": "Confira o resultado específico do backup; Git, cópia externa e restauração têm aceites distintos.",
-    "ha_started": "Home Assistant iniciado",
-    "ha_started_message": "Home Assistant iniciou; este aviso registra uma inicialização e não comprova falha.",
-    "host_last_boot": "Último boot do Raspberry Pi: horário omitido.",
-    "startup_guidance": "Se a inicialização não foi planejada, verifique energia, temperatura e logs.",
-    "service_unavailable": "Serviço do Home Assistant indisponível",
-    "check_service": "Confira se o serviço e a integração estão carregados no Home Assistant; disponibilidade do contêiner não comprova disponibilidade do serviço."
+  "context_flows": {
+    "ea0a6aa0d24ff863": "localizacao_pessoas",
+    "host_observer_tab": "observacao_host"
+  },
+  "context_nodes": {
+    "host_obs_resource_age": "Idade dos recursos dispon\u00edvel?",
+    "people_visual_primary_icloud_update": "EFEITO: atualizar localiza\u00e7\u00e3o iCloud primary",
+    "people_visual_secondary_icloud_update": "EFEITO: atualizar localiza\u00e7\u00e3o iCloud secondary"
   },
   "error_types": [
     "Error",
@@ -63,6 +25,59 @@
     "PyiCloudAuthRequiredException",
     "HTTPError"
   ],
+  "fragments": {
+    "authentication": "Autentica\u00e7\u00e3o necess\u00e1ria ou recusada",
+    "backup": "Backup",
+    "check_backup": "Confira o resultado espec\u00edfico do backup; Git, c\u00f3pia externa e restaura\u00e7\u00e3o t\u00eam aceites distintos.",
+    "check_core_compatibility": "Confira a compatibilidade revisada do adaptador com a vers\u00e3o do Home Assistant.",
+    "check_integration": "Confira o estado atual da integra\u00e7\u00e3o e suas evid\u00eancias antes de repetir a opera\u00e7\u00e3o.",
+    "check_manual_auth": "Conclua a autentica\u00e7\u00e3o manual no Home Assistant; n\u00e3o envie c\u00f3digo automaticamente.",
+    "check_service": "Confira o servi\u00e7o registrado, o handler e suas depend\u00eancias; a mensagem gen\u00e9rica n\u00e3o comprova servi\u00e7o ausente nem identifica o provedor indispon\u00edvel.",
+    "check_switch": "Valide o operador do n\u00f3 switch na vers\u00e3o instalada do Node-RED.",
+    "connection_refused": "Conex\u00e3o recusada",
+    "connection_reset": "Conex\u00e3o interrompida",
+    "database_locked": "Banco de dados bloqueado",
+    "disk_full": "Espa\u00e7o em disco insuficiente",
+    "execution_error": "Erro de execu\u00e7\u00e3o",
+    "flow_failure": "Falha em fluxo Node-RED",
+    "flow_host": "Fluxo observacao_host",
+    "flow_people": "Fluxo localizacao_pessoas",
+    "ha": "Home Assistant",
+    "ha_started": "Home Assistant iniciado",
+    "ha_started_message": "Home Assistant iniciou; este aviso registra uma inicializa\u00e7\u00e3o e n\u00e3o comprova falha.",
+    "host_last_boot": "\u00daltimo boot do Raspberry Pi: hor\u00e1rio omitido.",
+    "icloud": "iCloud",
+    "icloud_provider_unavailable": "iCloud location refresh provider is unavailable",
+    "invalid_configuration": "Configura\u00e7\u00e3o inv\u00e1lida",
+    "mosquitto": "Mosquitto",
+    "mqtt": "MQTT",
+    "no_safe_clause": "Conte\u00fado sem cl\u00e1usula diagn\u00f3stica reconhecida; trecho ocultado.",
+    "node_age": "N\u00f3 Idade dos recursos dispon\u00edvel?",
+    "node_icloud_primary": "N\u00f3 EFEITO: atualizar localiza\u00e7\u00e3o iCloud primary",
+    "node_icloud_secondary": "N\u00f3 EFEITO: atualizar localiza\u00e7\u00e3o iCloud secondary",
+    "node_red": "Node-RED",
+    "notice": "Notifica\u00e7\u00e3o do Home Assistant",
+    "notification_cooldown": "O mesmo erro ser\u00e1 silenciado por 6 horas para evitar notifica\u00e7\u00f5es repetidas.",
+    "permission_denied": "Permiss\u00e3o negada",
+    "public_bindings": "public_bindings",
+    "recorder": "Recorder",
+    "redacted": "[trecho ocultado]",
+    "security_scan_failed": "security_scan_failed",
+    "service_unavailable": "Servi\u00e7o indispon\u00edvel; origem n\u00e3o comprovada",
+    "startup_guidance": "Se a inicializa\u00e7\u00e3o n\u00e3o foi planejada, verifique energia, temperatura e logs.",
+    "switch_operator": "operators[rule.t] is not a function",
+    "timeout": "Tempo limite excedido",
+    "unavailable": "Indisponibilidade",
+    "unsupported_icloud_core": "unsupported_icloud_core_version",
+    "zigbee": "Zigbee2MQTT"
+  },
+  "redaction_fields": [
+    "title",
+    "message",
+    "error.message",
+    "error.stack",
+    "error.cause"
+  ],
   "redaction_reasons": [
     "credential",
     "authentication_code",
@@ -74,23 +89,7 @@
     "unreviewed_stack_frame",
     "input_truncated"
   ],
-  "redaction_fields": [
-    "title",
-    "message",
-    "error.message",
-    "error.stack",
-    "error.cause"
-  ],
-  "stack_sources": [
-    "homeassistant/core.py",
-    "homeassistant/components/icloud/account.py",
-    "homeassistant/components/icloud/services.py",
-    "homeassistant/custom_components/public_bindings/__init__.py",
-    "node-red/core/function/10-switch.js",
-    "node-red/core/function/10-function.js",
-    "node-red-ha/api.js",
-    "node-red-ha/controller.js"
-  ],
+  "schema_version": 1,
   "stack_functions": [
     "async_call",
     "_execute_service",
@@ -107,13 +106,14 @@
     "evaluate",
     "evaluateNodeProperty"
   ],
-  "context_flows": {
-    "ea0a6aa0d24ff863": "localizacao_pessoas",
-    "host_observer_tab": "observacao_host"
-  },
-  "context_nodes": {
-    "people_visual_primary_icloud_update": "EFEITO: atualizar localização iCloud primary",
-    "people_visual_secondary_icloud_update": "EFEITO: atualizar localização iCloud secondary",
-    "host_obs_resource_age": "Idade dos recursos disponível?"
-  }
+  "stack_sources": [
+    "homeassistant/core.py",
+    "homeassistant/components/icloud/account.py",
+    "homeassistant/components/icloud/services.py",
+    "homeassistant/custom_components/public_bindings/__init__.py",
+    "node-red/core/function/10-switch.js",
+    "node-red/core/function/10-function.js",
+    "node-red-ha/api.js",
+    "node-red-ha/controller.js"
+  ]
 }

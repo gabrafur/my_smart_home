@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "state": "wording_fixed_actual_MCP_existing_notices_read",
+  "new_access": false,
+  "MCP_content": "generic_service_unavailable_origin_unknown",
+  "unchanged": [
+    "notification_IDs",
+    "history",
+    "triggers",
+    "sanitization",
+    "budgets",
+    "authority_expiry"
+  ],
+  "service_restarts": 0,
+  "tunnel_reconnects": 0,
+  "webhook_calls": 0,
+  "location_refresh_calls": 0,
+  "iCloud_service_contract": {
+    "expected_NodeRED_service": "public_bindings.call",
+    "expected_action": "refresh_location",
+    "two_loaded_nodes_match": true,
+    "service_present_in_existing_NodeRED_cache": true,
+    "live_HA_service_RPC_observed": false,
+    "loaded_iCloud_process_phase": "entry_ready",
+    "provenance": "administrative_fixed_read_not_Eva_MCP_readiness_access"
+  },
+  "functional_recovery_proven": false,
+  "full_goal_complete": false
+}

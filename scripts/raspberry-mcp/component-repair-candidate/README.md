@@ -278,3 +278,14 @@ final do worker. Hora ausente/inconsistente, resultado não terminal ou tipo de
 identidade de outro componente falham fechado. Carregar código não comprova
 resultado funcional: destino, regressões e vínculo com a operação permanecem
 exigidos. Nenhum port novo está registrado ou ativado no MCP.
+
+
+`heartbeat_observer.py` liga o worker ao snapshot protegido e à unidade fixa
+do systemd. Confere a mesma invocação antes/depois da coleta, boot, PID,
+sequência, tempos monotônicos, bindings e uma das duas identidades revisadas.
+O port abre os segmentos fixos de StateDirectory sem seguir symlinks e não
+aceita caminhos, nomes de unidade ou comandos pelo MCP.
+Uma leitura administrativa real confirmou o contrato com o ciclo natural;
+o observador não chamou sender, serviço ou credencial. A ferramenta MCP,
+o bootstrap privilegiado e o controle durável dos jobs continuam pendentes.
+Falha do transporte não apaga identidade de código válida nem prova saúde.

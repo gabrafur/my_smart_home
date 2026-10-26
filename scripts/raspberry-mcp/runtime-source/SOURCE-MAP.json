@@ -315,8 +315,8 @@
     },
     "ha-notices/diagnostic_templates.json": {
       "source": "/usr/local/lib/raspberry-ha-notices/diagnostic_templates.json",
-      "source_sha256": "86fd8f3f1ded07b01217a7bdcc5cda0ed19fd08c9116da00297ce003f548a380",
-      "export_sha256": "86fd8f3f1ded07b01217a7bdcc5cda0ed19fd08c9116da00297ce003f548a380",
+      "source_sha256": "db852e558f2c1546d277041a29443d634c109761d91c2c7cb5785d96382cc1fa",
+      "export_sha256": "db852e558f2c1546d277041a29443d634c109761d91c2c7cb5785d96382cc1fa",
       "normalizations": []
     },
     "ha-notices/content_sanitizer.cjs": {
@@ -556,6 +556,24 @@
         "synthetic_test_credential_label_and_equivalent_split_deadline_literal"
       ],
       "execution_scope": "synthetic_operator_test_not_automatic_or_live_backup"
+    },
+    "service-wording/apply.py": {
+      "source": "reviewed_operator_package/service-wording/apply.py",
+      "source_sha256": "a46fb82aa4848c1d6b6fd972e5c21bd1f97b79d7c4eb729657a07a26ec1c607c",
+      "export_sha256": "6ee425307319762927f047fca85a535bb83b3148c9e9ce565ba8c4463a5c69a7",
+      "normalizations": [
+        "operator_stage_and_state_bindings",
+        "authority_expiry_and_manifest_not_armed"
+      ]
+    },
+    "service-wording/test_apply.py": {
+      "source": "reviewed_operator_package/service-wording/test_apply.py",
+      "source_sha256": "e9fa6fef7ea66ee63228c53e6d4362a88536697df73038e3e56863cd775e0c52",
+      "export_sha256": "e9fa6fef7ea66ee63228c53e6d4362a88536697df73038e3e56863cd775e0c52",
+      "normalizations": [
+        "operator_stage_and_state_bindings",
+        "authority_expiry_and_manifest_not_armed"
+      ]
     }
   }
 }

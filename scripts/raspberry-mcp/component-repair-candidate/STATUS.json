@@ -4,11 +4,11 @@
   "new_tools_registered": 0,
   "production_writes_enabled": false,
   "runtime_ports": "owner_only_read_probes_not_MCP_access",
-  "Python_tests": 117,
+  "Python_tests": 125,
   "kernel_profile_and_daemon_profile_acceptance": "not_interchangeable",
   "remaining": [
     "HA effect port",
-    "heartbeat protected observer/bootstrap and durable job binding",
+    "heartbeat privileged bootstrap and durable job binding",
     "safe review creation, reciprocal broker gates and complete durable job control",
     "effective daemon analysis profile acceptance before any new model inference",
     "full privileged integrity chain and specific new-access approval",
@@ -22,5 +22,6 @@
   "existing_executor_observation": "owner_only_actual_snapshot_accepted_not_full_effect_admission",
   "native_heartbeat_identity": "installed natural completed invocation verified owner-only; not new MCP acceptance",
   "heartbeat_worker": "implemented_synthetic_filesystem_and_native_observer_tests_no_live_service_calls",
-  "heartbeat_source_identity": "compiled_without_execution_matches_recorded_native_code_domain"
+  "heartbeat_source_identity": "compiled_without_execution_matches_recorded_native_code_domain",
+  "heartbeat_native_observer": "fixed_root_read_port_actual_natural_completed_invocation_verified_owner_only_not_MCP"
 }

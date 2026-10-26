@@ -964,3 +964,20 @@ precisa de aprovação específica vinculada ao manifesto. Não concede novo
 acesso MCP nem renova a validade administrativa. Snapshot público usa bindings;
 não instalá-lo diretamente sobre a política vigente. A autenticação real e
 a exposição do resultado pelo MCP continuam aceites separados.
+
+
+## Indisponibilidade genérica e contrato dos nós iCloud
+
+Os nós de atualização de localização chamam `public_bindings.call` com a ação
+`refresh_location`; o nome do nó não implica chamada direta a um serviço
+`icloud.*`. `HomeAssistantError: Service not available` não identifica sozinho
+serviço ausente, handler incompatível ou dependência remota indisponível.
+O conteúdo sanitizado mantém a origem não comprovada e orienta conferir essas
+camadas separadamente. Alterar a redação não remove o aviso nem prova recuperação.
+
+Uma observação administrativa dos dois nós carregados confirmou esse contrato
+e presença de `public_bindings.call` no cache de serviços da conexão existente.
+A prova ligada ao processo HA confirmou o adaptador iCloud em `entry_ready`.
+Cache não equivale a consulta HA ao vivo; entry ready não prova saúde Apple.
+A leitura administrativa ainda não é uma ferramenta de diagnóstico da Eva.
+As chamadas reais de localização não foram repetidas para testar o diagnóstico.
