@@ -1,6 +1,8 @@
 # MCP Raspberry: administração, instalação e outros chatbots
 
-Estado observado em 25/10/2026. Este manual descreve a instalação existente e
+Estado reconciliado em 26/10/2026. As seções finais registram os aceites atuais
+de diagnóstico iCloud e Node-RED; revisões datadas anteriores permanecem históricas.
+Este manual descreve a instalação existente e
 a conexão de novos clientes ao mesmo servidor. Não afirma que o instalador
 histórico da base reinstala sozinho todas as extensões atuais em outro host.
 A [documentação da base e das ampliações anteriores](RASPBERRY_READONLY_MCP.md)
@@ -1010,3 +1012,105 @@ de início. A falha anterior e os recibos continuam preservados.
 Isso comprova a integridade daquele artefato, sem afirmar restauração ou
 recuperação funcional dos serviços. Não repetir a leitura consumida da chave
 ou a transferência para reproduzir esse aceite.
+
+
+## Contrato iCloud carregado e tentativas naturais
+
+A ampliação de 26/10 acrescenta `native_contract` ao diagnóstico iCloud existente.
+O cliente MCP real recebeu os oito booleanos dos dois papéis fixos, vinculados
+à prova do processo e ao setup público carregado. A coleta preserva seu horário
+original, limita validade independentemente e não chama serviços nem o provedor.
+Uma chamada natural posterior registrou erro na etapa `provider_refresh`; a fase
+`entry_waiting_user` e o reparo visual confirmado pelo proprietário apontam a
+necessidade de reautenticação manual. Isso não comprova a causa de toda falha
+histórica nem autoriza OTP automático ou captura de senha/código no chat.
+
+O pacote preservou registros de entidades/dispositivos/entradas, Recorder e
+horários dos outros seis serviços. A configuração HA passou antes do único
+restart de carregamento. O aceite atual não equivale a recuperação funcional.
+Fontes Root/client, schema fechado, testes de frescor e reversão estão no
+[contrato carregado desarmado](../scripts/raspberry-mcp/loaded-contract-candidate/README.md).
+A exportação não contém concessão, política privada ou instalador armado.
+
+## Diagnóstico de todos os componentes Node-RED
+
+O escopo de leitura inclui todos os fluxos e nós carregados necessários no
+Raspberry, além do Kia. O cliente real comprovou paginação dos 31 fluxos,
+conexões e código de nó em `observacao_host`. O catálogo estático de fontes
+continua disponível; duas raízes virtuais na primeira página acrescentam a
+observação carregada e o diagnóstico fixo da atualização Kia:
+
+```json
+{"name":"project_files","arguments":{"host":"raspberry","category":"nodered","offset":0}}
+{"name":"project_read","arguments":{"host":"raspberry","file_id":"<ID de 32 hex retornado>","offset":0}}
+```
+
+Em `project_files`, `offset` continua paginando apenas o catálogo estático.
+Raízes virtuais aparecem somente em `offset=0`; `pagination_semantics` informa
+essa diferença. Os IDs são opacos e somente leitura. Os documentos JSON podem
+ter várias páginas de 4000 caracteres: concatenar `text` seguindo `next_offset`
+antes de interpretar o JSON. Recursos internos usam `resource_id`; passar esse
+valor em `project_read.file_id`. Seguir `resources`/`next_page` para inventários,
+parâmetros, fonte e continuação da fonte. Nenhum parâmetro aceita caminho livre.
+
+Cada coleta recebe snapshot, origem, horário, idade, erros e cobertura. A ordem
+do inventário é por ID. Nós globais/configuração são descobertos pela raiz
+`all_nodes`. Código e parâmetros só são divulgados após correspondência com
+commit público aprovado e sanitização, com `redacted_fields` e motivo quando
+retidos. Drift privado não produz hash dos valores privados. A base dos hashes
+de código é `sanitized_reviewed_source`; não confundir com bytes privados.
+O processo limita cache e entrada; TTL máximo é 120s. O serviço pode sair após
+30s ocioso, exigindo redescoberta antecipada; ID expirado não autoriza acesso
+arbitrário nem prova remoção de componente. Não misturar páginas de snapshots.
+
+O proxy local reutiliza usuário e autenticação; não expõe HTTP livre, shell,
+Docker, histórico de contexto ou credenciais. A pré-leitura Root tem alvos fixos
+e mantém namespace e capabilities vazias. Consultas não injetam mensagens,
+criam assinaturas ou executam dispositivos. O listener systemd pode apresentar
+UID 0 a frio e UID do serviço durante a operação: o cliente verifica somente
+essas identidades previstas, além do dono/modo do inode. Autenticação de
+entrada continua pertencendo ao MCP existente, não a um novo chatbot específico.
+
+A ativação incluiu uma correção mínima de retorno TCP do mesmo contêiner,
+aprovada especificamente. Não se concede uma subnet Docker. O destino HTTP
+permanece fixo. A coleta também tem deadline absoluto, porque request.setTimeout
+sozinho não cobre TCP ainda não conectado. Falha não repete autenticação/envio
+automaticamente. O cliente preserva reason codes fechados e nunca erro bruto.
+Recibos de falhas iniciais, manifestos, recuperações e aprovações são mantidos
+fora do Git; a presença do código público não substitui esses recibos.
+
+A leitura nova foi autorizada até revogação, inclusive sua pré-leitura Root fixa.
+Isso não renova o prazo administrativo nem permite executar reparos depois dele.
+Revogação e rollback comparado estão no
+[guia Node-RED e Kia desarmado](../scripts/raspberry-mcp/nodered-readonly-candidate/README.md).
+Para instalar por outra IA, conectar o mesmo endpoint MCP pelo transporte
+compatível e autenticação do proprietário; descobrir o schema, ler as duas
+raízes e verificar os campos recebidos. Outra implantação do servidor requer
+binding privado, versões/rotas conferidas, política selada, aprovação e teste
+pelo cliente real. Não transportar tokens do Raspberry para o chatbot.
+
+## Atualização Kia: estado observado não é instalação
+
+A segunda raiz virtual reúne somente o sensor da integração, estado protegido
+do safe updater, worker, merge/promoção, flags de pendência e agendamento/TZ.
+Não é atualização dos dados do veículo. O cliente MCP observou versão 3.19.0 no
+manifesto do HA e candidata v3.20.0: merge success às 06:06 UTC e promoção failed
+às 06:11 UTC em 26/10. O motivo exato do recibo antigo permanece desconhecido;
+`reason_code=null` não é transformado em causa inventada. Auditoria posterior
+com conflito não apaga essa falha nem comprova execução install ou publicação.
+O agendamento carregado é 03h com fuso America/Sao_Paulo, mas a cadeia antiga
+perdeu o ID do ciclo na ponte target-only; correlação por versão é parcial.
+O manifesto em HA não é atestado de todos os objetos Python carregados.
+Nenhuma instalação, wake, refresh veicular ou operação incerta foi repetida.
+O próximo ciclo natural e a recuperação funcional ainda precisam de prova.
+
+No aviso antigo de `host_obs_resource_age`, o cliente MCP confirmou o switch e
+normalizador carregados. Cinco casos sintéticos usando o switch e util nativos
+da mesma imagem passaram, sem configuração residencial ou rede. O operador
+`null` existe nessa versão. O erro histórico não foi reproduzido; não mudar a
+política de disponibilidade nem inventar uma causa baseada só no título.
+
+A leitura descrita é implementação comprovada. A aplicação controlada geral de
+componentes Node-RED, validação funcional e execução específica da Eva continuam
+aceites separados, sujeitos a locks, versão, reversão e recibo. O desaparecimento
+de notificações ou contêiner saudável não fecha esses aceites.

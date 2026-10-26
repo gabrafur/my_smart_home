@@ -155,3 +155,5 @@ nodered/.notification-diagnostics.json.*
 
 # Transient Zigbee database writes contain private runtime state
 /zigbee2mqtt/database.db.tmp.*
+/homeassistant/.mcp-icloud-contract-scope.json
+/homeassistant/.mcp-icloud-contract-revoked

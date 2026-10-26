@@ -9,6 +9,8 @@ import stat
 import sys
 import types
 from .auth_gate import AuthGate, Outcome, State
+from . import loaded_contract
+import math
 from .release_identity import BUILD_REVISION
 
 def _constant(value):
@@ -54,7 +56,9 @@ def read_request(config_dir):
         return row
     except (OSError,ValueError,TypeError):return None
 
-def publish(config_dir, functions, *, ha_running, phases, bindings_valid=True):
+def publish(config_dir, functions, *, ha_running, phases, bindings_valid=True, native_contract=None, observation_at=None):
+    published_at=datetime.datetime.now(datetime.timezone.utc).timestamp()
+    if type(observation_at) not in (int,float) or not math.isfinite(observation_at) or not 0<=published_at-observation_at<=60:return False
     request=read_request(config_dir)
     if request is None:return False
     phase_values=set(phases)
@@ -62,13 +66,15 @@ def publish(config_dir, functions, *, ha_running, phases, bindings_valid=True):
            'entry_ready' if phase_values=={'entry_ready'} else
            'entry_waiting_user' if phase_values and phase_values<={'entry_ready','entry_waiting_user'} else
            'domain_loaded')
-    row={'schema_version':1,'source':'homeassistant.main_process.icloud',
-         'observed_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    row={'schema_version':2,'source':'homeassistant.main_process.icloud',
+         'observed_at':datetime.datetime.fromtimestamp(observation_at,datetime.timezone.utc).isoformat(),
+         'published_at':datetime.datetime.fromtimestamp(published_at,datetime.timezone.utc).isoformat(),
          'operation_id':request['operation_id'],'release_revision':BUILD_REVISION,
          'loaded_code_sha256':fingerprint(functions),'pid':os.getpid(),
          'process_start_ticks':Path('/proc/self/stat').read_text().rsplit(')',1)[1].split()[19],
          'ha_running':ha_running is True,'phase':phase,
          'manual_auth_guard_loaded':bindings_valid is True and policy_self_test(),
+         'native_contract':loaded_contract.validate_snapshot(native_contract,datetime.datetime.now(datetime.timezone.utc).timestamp()),
          'coverage':['loaded_python_code_objects','in_process_policy_self_test',
                      'no_apple_login_no_location_no_private_data','not_icloud_remote_functional_health']}
     folder=Path(config_dir);tmp=folder/('.mcp-icloud-proof.tmp.'+str(os.getpid()))

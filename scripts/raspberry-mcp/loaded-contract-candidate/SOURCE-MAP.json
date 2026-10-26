@@ -1,0 +1,142 @@
+{
+  "checkout_sources_not_duplicated": {
+    "homeassistant/custom_components/icloud/__init__.py": {
+      "binding": "repository_checkout_source_not_Root_permission",
+      "sha256": "2bd76aca13de6f3c423ad006775349082ef6b559f5e470845dfe502d42c939f5"
+    },
+    "homeassistant/custom_components/icloud/loaded_contract.py": {
+      "binding": "repository_checkout_source_not_Root_permission",
+      "sha256": "1df61757cd4f8be0a3a852af6783724f2e831b1c1cb82c4830fe1a51561e4f36"
+    },
+    "homeassistant/custom_components/icloud/loaded_proof.py": {
+      "binding": "repository_checkout_source_not_Root_permission",
+      "sha256": "488130ebb194c804322fbc2dc4ee4cc116f104ac6c4d7c2500a02c2780522a52"
+    },
+    "homeassistant/custom_components/icloud/release_identity.py": {
+      "binding": "repository_checkout_source_not_Root_permission",
+      "sha256": "10533eff854aa17111e33680b8636142eaa2b13d038d0b753696b9637b61be41"
+    },
+    "homeassistant/custom_components/icloud/upstream.json": {
+      "binding": "repository_checkout_source_not_Root_permission",
+      "sha256": "3b026fa3d7de6a221e6ee6190f9e18b40822d9a1eefa156a7d6c1a2ca9c96a85"
+    },
+    "homeassistant/custom_components/public_bindings/__init__.py": {
+      "binding": "repository_checkout_source_not_Root_permission",
+      "sha256": "dc6d94639f501be2921902d095e457dcb42366e0b04df946abf761ce20855427"
+    }
+  },
+  "files": {
+    "loaded_contract.py": {
+      "export_sha256": "1df61757cd4f8be0a3a852af6783724f2e831b1c1cb82c4830fe1a51561e4f36",
+      "normalizations": [],
+      "prepared_source_sha256": "1df61757cd4f8be0a3a852af6783724f2e831b1c1cb82c4830fe1a51561e4f36",
+      "source_role": "loaded_contract.py"
+    },
+    "root-candidate/executor.py": {
+      "export_sha256": "9160aee2a485a131b197996e407cbf9fed081c26e8a6e4e7ea24beb448607ba5",
+      "normalizations": [
+        "added_zero_expiry_export_guard_before_socket_or_readiness",
+        "operator_native_principal_placeholder"
+      ],
+      "prepared_source_sha256": "9b185e950e7ae70eabe84d22c371a5d69635b5be89a3ee6f6f95eca39109cb4c",
+      "source_role": "root-candidate/executor.py"
+    },
+    "root-candidate/icloud_readiness.py": {
+      "export_sha256": "a032adab17fb2c75f7f4c9ba94611e6a91494dadf4eda6696ee7ee0a88363f00",
+      "normalizations": [],
+      "prepared_source_sha256": "a032adab17fb2c75f7f4c9ba94611e6a91494dadf4eda6696ee7ee0a88363f00",
+      "source_role": "root-candidate/icloud_readiness.py"
+    },
+    "root-candidate/loaded_contract.py": {
+      "export_sha256": "1df61757cd4f8be0a3a852af6783724f2e831b1c1cb82c4830fe1a51561e4f36",
+      "normalizations": [],
+      "prepared_source_sha256": "1df61757cd4f8be0a3a852af6783724f2e831b1c1cb82c4830fe1a51561e4f36",
+      "source_role": "root-candidate/loaded_contract.py"
+    },
+    "root-candidate/readiness_client.py": {
+      "export_sha256": "445d83f42b2188737501c884bd2f1e6cb4cb3b9415a32f02c3121d1c43695c30",
+      "normalizations": [],
+      "prepared_source_sha256": "445d83f42b2188737501c884bd2f1e6cb4cb3b9415a32f02c3121d1c43695c30",
+      "source_role": "root-candidate/readiness_client.py"
+    },
+    "test_client_contract.py": {
+      "export_sha256": "20d9c749fa9b646e1255efd4b925240ff55572816347105d7187a1501da5aae5",
+      "normalizations": [],
+      "prepared_source_sha256": "20d9c749fa9b646e1255efd4b925240ff55572816347105d7187a1501da5aae5",
+      "source_role": "test_client_contract.py"
+    },
+    "test_loaded_contract.py": {
+      "export_sha256": "0c7e456381ce91adb8dd8432926561f79c1e5c3644e04de2d28fc3fea1b24e32",
+      "normalizations": [],
+      "prepared_source_sha256": "0c7e456381ce91adb8dd8432926561f79c1e5c3644e04de2d28fc3fea1b24e32",
+      "source_role": "test_loaded_contract.py"
+    },
+    "test_observation_freshness.py": {
+      "export_sha256": "bd6450fca98a5cf9febcb1ea27d153f26d8b39703c97e729b7106486f8bdc687",
+      "normalizations": [
+        "publisher_import_uses_fixed_checkout_relative_integration"
+      ],
+      "prepared_source_sha256": "409db7fdaeb434cd552acb2e3748e5f651178840cd67a4a872190ba83aa1c57b",
+      "source_role": "test_observation_freshness.py"
+    },
+    "test_refresh_diagnostics.py": {
+      "export_sha256": "93ee426dcea9c1bcad1c8e86b5ba60e0df0b286bef840bc46d629d1f66d6a6c7",
+      "normalizations": [
+        "AST_source_uses_fixed_checkout_relative_public_bindings"
+      ],
+      "prepared_source_sha256": "68259679b0ce55c4d46f5f50e8a68e505bd434b94611f8f4303602860d1e6767",
+      "source_role": "public-bindings-candidate/test_refresh_diagnostics.py"
+    },
+    "test_root_contract_view.py": {
+      "export_sha256": "c3031e1a2d3cb26a7aefd2af16886313c0039befcc07144196f2d4994df97c4e",
+      "normalizations": [],
+      "prepared_source_sha256": "c3031e1a2d3cb26a7aefd2af16886313c0039befcc07144196f2d4994df97c4e",
+      "source_role": "test_root_contract_view.py"
+    },
+    "test_scope_snapshot.py": {
+      "export_sha256": "8887a49ac23f2f4fcb23f2f50baebcdafd822d6431b7240a34cfc135c6362895",
+      "normalizations": [],
+      "prepared_source_sha256": "8887a49ac23f2f4fcb23f2f50baebcdafd822d6431b7240a34cfc135c6362895",
+      "source_role": "test_scope_snapshot.py"
+    },
+    "test_upgrade_recovery.py": {
+      "export_sha256": "97d51c8c99dc9c43b01cf8074f7454dde76639119b98d50c5d31c33d62146a72",
+      "normalizations": [],
+      "prepared_source_sha256": "97d51c8c99dc9c43b01cf8074f7454dde76639119b98d50c5d31c33d62146a72",
+      "source_role": "test_upgrade_recovery.py"
+    },
+    "upgrade.template.py": {
+      "export_sha256": "b6282847d70fe4068a5c8ec37ff46bc79271cdefa7cea0ed407ab17a8a86903d",
+      "normalizations": [
+        "operator_stage_and_state_placeholders",
+        "zero_expiry_and_manifest_pin",
+        "zero_private_prepared_helper_pin"
+      ],
+      "prepared_source_sha256": "67a0a09e3e2cf438bfe6a2fef37a0961d76a480b9bd77431f9e31c732218cf80",
+      "source_role": "upgrade.template.py"
+    }
+  },
+  "generated_documentation": {
+    "README.md": {
+      "role": "portable_operator_and_MCP_client_contract",
+      "sha256": "59b9e8d793475cd935003c59f5042add09d2480b0b47e72277af37c8b1c2d7ef"
+    },
+    "candidate.test.mjs": {
+      "role": "serial_isolated_Python_test_wrapper",
+      "sha256": "a444489231bb09b35aad78acd71ca8783cf0fc5a9986ae84b786f258d0d5fba2"
+    }
+  },
+  "private_policies_receipts_IDs_credentials_or_authority_exported": false,
+  "state": "public_source_export_prepared_unarmed_not_deployed",
+  "static_test_case_counts": {
+    "test_client_contract.py": 8,
+    "test_loaded_contract.py": 19,
+    "test_observation_freshness.py": 5,
+    "test_refresh_diagnostics.py": 8,
+    "test_root_contract_view.py": 16,
+    "test_scope_snapshot.py": 11,
+    "test_upgrade_recovery.py": 10
+  },
+  "static_test_case_total": 77,
+  "test_execution_in_export_preparation": false
+}

@@ -1,5 +1,8 @@
 """Pinned native iCloud adapter with persisted, user-initiated authentication."""
 from datetime import timedelta
+import sys
+import time
+import types
 from functools import partial
 from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudAuthRequiredException
@@ -18,7 +21,7 @@ from .auth_gate import AuthGate, State
 from .device_owner import prepare_device_class
 from .native_bridge import service_adapter, account_adapter, load_native_gate
 from .setup_retry import is_transport_failure
-from . import loaded_proof
+from . import loaded_proof, loaded_contract
 
 CONFIG_SCHEMA=native.CONFIG_SCHEMA
 GATES={}
@@ -29,9 +32,34 @@ GuardedAccount=account_adapter(core_account.IcloudAccount,GATES,GuardedService,
 core_account.IcloudDevice=prepare_device_class(core_account,core_version)
 core_account.PyiCloudService=GuardedService
 
+def collect_loaded_contract(hass):
+    now=time.time()
+    try:
+        request=loaded_proof.read_request(hass.config.config_dir)
+        scope=loaded_contract.read_scope(hass.config.config_dir)
+        if not loaded_contract.scope_allowed(scope,request,now):
+            return loaded_contract.snapshot(loaded_contract.project(loaded_contract.unknown('scope_inactive')),None,None,now)
+        from homeassistant.core import HassJob, Service
+        module=sys.modules.get('custom_components.public_bindings')
+        if type(module) is not types.ModuleType:
+            raise ValueError('loaded_binding_module_unavailable')
+        setup=module.__dict__.get('async_setup')
+        if type(setup) is not types.FunctionType:
+            raise ValueError('loaded_binding_setup_unavailable')
+        entries=hass.config_entries.async_loaded_entries('icloud')
+        if len(entries)>16:raise ValueError('loaded_account_limit')
+        accounts=tuple(entry.runtime_data for entry in entries)
+        bindings=loaded_contract.observe(hass.services,accounts,GuardedAccount,Service,HassJob,setup)
+        setup_sha=loaded_proof.fingerprint({'public_bindings_setup':setup})
+        container=hass.data.get('public_bindings')
+        return loaded_contract.snapshot(bindings,container,setup_sha,now)
+    except Exception:
+        return loaded_contract.snapshot(loaded_contract.project(loaded_contract.unknown()),None,None,now)
+
 def proof_functions():
     from .config_flow import ManualIcloudFlow
     functions={'setup':async_setup,'emit_proof':emit_proof,
+            'collect_loaded_contract':collect_loaded_contract,
             'setup_entry':async_setup_entry,'auth_gate_effect':AuthGate._effect,
             'account_setup':GuardedAccount.setup,'account_keep_alive':GuardedAccount.keep_alive,
             'device_owner':core_account.IcloudDevice.__init__,
@@ -45,6 +73,10 @@ def proof_functions():
             for name,fn in vars(base).items():
                 if isinstance(fn,property):fn=fn.fget
                 if hasattr(fn,'__code__'):functions[base.__name__+'.'+name]=fn
+    for module in (loaded_proof,loaded_contract):
+        for name,fn in vars(module).items():
+            if type(fn) is types.FunctionType and fn.__module__==module.__name__:
+                functions[module.__name__.rsplit('.',1)[-1]+'.'+name]=fn
     return functions
 
 def bindings_valid(hass):
@@ -61,13 +93,15 @@ def bindings_valid(hass):
     return bool(PHASES)
 
 async def emit_proof(hass, now=None):
+    observation_at=time.time()
     functions=proof_functions()
     phases=list(PHASES.values())
     bindings=bindings_valid(hass)
     running=getattr(hass.state,'name',None)=='running'
+    contract=collect_loaded_contract(hass)
     await hass.async_add_executor_job(
         lambda:loaded_proof.publish(hass.config.config_dir,functions,
-            ha_running=running,phases=phases,bindings_valid=bindings))
+            ha_running=running,phases=phases,bindings_valid=bindings,native_contract=contract,observation_at=observation_at))
 
 async def async_setup(hass, config):
     result=await native.async_setup(hass,config)

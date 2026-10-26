@@ -33,6 +33,10 @@
     {
       "file": "__init__.py",
       "change": "bind reviewed device subclass while preserving manual OTP factories and setup retry"
+    },
+    {
+      "file": "loaded_contract.py",
+      "change": "fixed in-process loaded binding booleans and allowlisted latest natural-call stages;no provider properties or diagnostic service calls;root-owned expiring collection scope"
     }
   ],
   "validated_compatibility": [

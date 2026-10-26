@@ -1,0 +1,175 @@
+{
+  "export_static_checks": {
+    "known_private_binding_files": [],
+    "test_execution": false,
+    "unit_allows_only_localhost": true
+  },
+  "files": {
+    "collector.cjs": {
+      "export_sha256": "3aaf2e8e643cfc85596600f05fbe0a5849b281bf9fd65a72f669e3dcca2cd330",
+      "normalizations": [
+        "fixed_HTTP_destination_requires_private_operator_binding"
+      ],
+      "prepared_source_sha256": "b250da9a0825a674b7e9db56915935e80a474d42610cdc2f02c13958bcf5bcbf",
+      "source_role": "collector.cjs"
+    },
+    "ha-collector.cjs": {
+      "export_sha256": "ab1f9a557e58ce1ff924e9475eff6914ed0d8084e6b9dd3472c4b61985e987ee",
+      "normalizations": [],
+      "prepared_source_sha256": "ab1f9a557e58ce1ff924e9475eff6914ed0d8084e6b9dd3472c4b61985e987ee",
+      "source_role": "ha-collector.cjs"
+    },
+    "install.template.py": {
+      "export_sha256": "9cb47863fc6786bdb16f5ea90daac6e2c5887f303e15c8097092b6cb1c0c6033",
+      "normalizations": [
+        "zero_installation_admission_expiry_and_manifest_helper_pins",
+        "operator_staging_placeholder",
+        "REFERENCE_ONLY_new_Root_directory_chmod0755_before_helper_validation_not_installed_bytes"
+      ],
+      "prepared_source_sha256": "306f8a669a34a2724e94a8f2dfbea0c77349f13f2b4b9392ba80cd9b77e4db84",
+      "source_role": "install.template.py"
+    },
+    "kia_model.cjs": {
+      "export_sha256": "1be309437ab609f0843e98103a83eb479dcee5c5e71779ae0c8ea544c6473acb",
+      "normalizations": [],
+      "prepared_source_sha256": "1be309437ab609f0843e98103a83eb479dcee5c5e71779ae0c8ea544c6473acb",
+      "source_role": "kia_model.cjs"
+    },
+    "network_recovery.template.py": {
+      "export_sha256": "dda3a2f6fe4dc7b02e0b792a14de235d1bde5e319c41988340ad99eb9eaa45c8",
+      "normalizations": [
+        "zero_admission_expiry_manifest_and_helper_pins",
+        "operator_staging_state_and_exact_network_peer_placeholders"
+      ],
+      "prepared_source_sha256": "f77d5b5904d6dc544f39acba9e5070d8814ab2176f0254b303f8830b342f9694",
+      "source_role": "network_recovery.template.py"
+    },
+    "nodered_model.cjs": {
+      "export_sha256": "d79d65245efc3800e8ec8c553db1344648e9832efe6507f499ecce0a48228082",
+      "normalizations": [],
+      "prepared_source_sha256": "d79d65245efc3800e8ec8c553db1344648e9832efe6507f499ecce0a48228082",
+      "source_role": "nodered_model.cjs"
+    },
+    "raspberry-nodered-diagnostics.conf": {
+      "export_sha256": "e7e211628bd1c2d54fbf99a6a5de2f9efd0625b75738e55ca0e10bc16c69e76b",
+      "normalizations": [],
+      "prepared_source_sha256": "e7e211628bd1c2d54fbf99a6a5de2f9efd0625b75738e55ca0e10bc16c69e76b",
+      "source_role": "raspberry-nodered-diagnostics.conf"
+    },
+    "raspberry-nodered-diagnostics.service": {
+      "export_sha256": "2957eb7f4d42505fc36685824a3752ce2cdf7128a3a55a5ec12569008ff6ba43",
+      "normalizations": [
+        "deny_all_network_except_localhost_until_specific_private_network_binding",
+        "operator_native_account_placeholder"
+      ],
+      "prepared_source_sha256": "a5f38f3c77f8e4727fc7873638592a402df413d8a9c00696b169988cb29d78ac",
+      "source_role": "raspberry-nodered-diagnostics.service"
+    },
+    "raspberry-nodered-diagnostics.socket": {
+      "export_sha256": "94ac0b7158049bf1c8e6e7d8aefc4d8ab89b6e405b24b3b493d2ec682a7eb6ff",
+      "normalizations": [
+        "operator_socket_account_placeholder"
+      ],
+      "prepared_source_sha256": "3180f766c65f315f4895bd473041670624d371eec2e3fab411e9348f383db87a",
+      "source_role": "raspberry-nodered-diagnostics.socket"
+    },
+    "repair-broker.py": {
+      "export_sha256": "99a7ef8034b53fde58a2d2e629e5f9c4d13eb8af782c1266d10b9e04d0d6d45d",
+      "normalizations": [
+        "zero_authority_display_deadline",
+        "operator_administrative_principal_placeholder"
+      ],
+      "prepared_source_sha256": "2ff0eb74115111e75074bdf49a42ffa90aff63c0137120607ce24798c19dcc28",
+      "source_role": "repair-broker.py"
+    },
+    "root_snapshot.py": {
+      "export_sha256": "a37e12fed771557b2596edd129905c9f1aa5717ca0bb619ebe9b993b98d27934",
+      "normalizations": [
+        "unarmed_Root_entrypoint_after_revocation_before_any_collection"
+      ],
+      "prepared_source_sha256": "bd2532bb90c9cf82467565a55733791d16868288d43fd9897700d09b14601893",
+      "source_role": "root_snapshot.py"
+    },
+    "runtime_client.py": {
+      "export_sha256": "e10e3cfb521d715755cb357f0b5a51963370324fb1a562a9c9958f626b7168cc",
+      "normalizations": [],
+      "prepared_source_sha256": "e10e3cfb521d715755cb357f0b5a51963370324fb1a562a9c9958f626b7168cc",
+      "source_role": "runtime_client.py"
+    },
+    "sidecar.cjs": {
+      "export_sha256": "6fc369e54834036101ad31a91bdedd183d5c6c0f91485b3bccbddf9af4eff44a",
+      "normalizations": [],
+      "prepared_source_sha256": "6fc369e54834036101ad31a91bdedd183d5c6c0f91485b3bccbddf9af4eff44a",
+      "source_role": "sidecar.cjs"
+    },
+    "test_collector.cjs": {
+      "export_sha256": "c42a04cdd70d329dae167a4529ab946954917affa1adcf6607544124f693569a",
+      "normalizations": [],
+      "prepared_source_sha256": "c42a04cdd70d329dae167a4529ab946954917affa1adcf6607544124f693569a",
+      "source_role": "test_collector.cjs"
+    },
+    "test_ha_collector.cjs": {
+      "export_sha256": "ecccbcf8dc241d04572774da31ad62ad7e76e9a712d16b7f6e0f6214ac7aba65",
+      "normalizations": [],
+      "prepared_source_sha256": "ecccbcf8dc241d04572774da31ad62ad7e76e9a712d16b7f6e0f6214ac7aba65",
+      "source_role": "test_ha_collector.cjs"
+    },
+    "test_kia_model.cjs": {
+      "export_sha256": "2a5a2e17c64e70b3b210d4a40e693d66292724ba5223592f123b384cc499bab4",
+      "normalizations": [
+        "local_exported_Kia_model_import"
+      ],
+      "prepared_source_sha256": "ea04c61e2182178fabe33c31cf5421c8e77267744805c283c9a1012d28f3770c",
+      "source_role": "reviewed_Kia_pure_model_test"
+    },
+    "test_nodered_model.cjs": {
+      "export_sha256": "13c1b30fa0f211fc91e1f87406731b1d6d0bf882e98608fcf92bdb1542c6c5ce",
+      "normalizations": [],
+      "prepared_source_sha256": "13c1b30fa0f211fc91e1f87406731b1d6d0bf882e98608fcf92bdb1542c6c5ce",
+      "source_role": "test_nodered_model.cjs"
+    },
+    "test_root_snapshot.py": {
+      "export_sha256": "8949bcb392aa53ff429423795a4953b84f86d4125ce6ca49e57e1421627ccb41",
+      "normalizations": [],
+      "prepared_source_sha256": "8949bcb392aa53ff429423795a4953b84f86d4125ce6ca49e57e1421627ccb41",
+      "source_role": "test_root_snapshot.py"
+    },
+    "test_runtime_client.py": {
+      "export_sha256": "936142695794f3aa375d33470e92a97d1f5dda4c54c6b357123e688b17ff117b",
+      "normalizations": [],
+      "prepared_source_sha256": "936142695794f3aa375d33470e92a97d1f5dda4c54c6b357123e688b17ff117b",
+      "source_role": "test_runtime_client.py"
+    },
+    "virtual-resources.cjs": {
+      "export_sha256": "eb9514bb91ff2da1c524d8a27efc129548b93e36dd97671d5c76756bb8bf43d0",
+      "normalizations": [],
+      "prepared_source_sha256": "eb9514bb91ff2da1c524d8a27efc129548b93e36dd97671d5c76756bb8bf43d0",
+      "source_role": "virtual-resources.cjs"
+    }
+  },
+  "generated_support": {
+    "README.md": {
+      "role": "portable_reference_and_serial_isolated_test_wrapper",
+      "sha256": "37f26f1c39f626f32e021a58215a6b8d3dbcb3b2a99fe08b8b35500ce27af0d7"
+    },
+    "candidate.test.mjs": {
+      "role": "portable_reference_and_serial_isolated_test_wrapper",
+      "sha256": "3b8b3d3f79de2b0d9afb841bef17ef80cd36c59927b733fd8611d8da6916f456"
+    }
+  },
+  "private_policy_config_receipts_credentials_and_operation_IDs_exported": false,
+  "state": "implementation_reference_public_export_unarmed",
+  "static_Node_logical_cases": {
+    "test_collector.cjs": 9,
+    "test_ha_collector.cjs": 6,
+    "test_kia_model.cjs": 13,
+    "test_nodered_model.cjs": 24
+  },
+  "static_Node_logical_total": 52,
+  "static_Python_cases": {
+    "test_root_snapshot.py": 8,
+    "test_runtime_client.py": 10
+  },
+  "static_Python_total": 18,
+  "test_execution_during_export": false
+}

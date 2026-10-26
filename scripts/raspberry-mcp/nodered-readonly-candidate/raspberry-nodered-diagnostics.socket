@@ -1,0 +1,11 @@
+[Unit]
+Description=Local fixed readonly Node-RED MCP diagnostics
+[Socket]
+ListenStream=/run/raspberry-nodered-diagnostics.sock
+SocketUser=__OPERATOR_NATIVE_ACCOUNT__
+SocketGroup=raspberry-mcp
+SocketMode=0600
+RemoveOnStop=yes
+Service=raspberry-nodered-diagnostics.service
+[Install]
+WantedBy=sockets.target

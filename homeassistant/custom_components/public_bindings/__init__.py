@@ -423,6 +423,33 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             if not listener_fired:
                 remove_listener()
 
+    refresh_diagnostics: dict[str, dict[str, Any]] = {}
+
+    def record_icloud_refresh(role, stage, outcome, error=None):
+        """Bounded diagnostics only; never affect an existing service call."""
+        try:
+            if (type(role) is not str
+                    or role not in ("resident_primary", "resident_secondary")
+                    or stage not in ("provider_refresh", "downstream_call")
+                    or outcome not in ("started", "completed", "error")):
+                return
+            category = None
+            if outcome == "error":
+                name = type(error).__name__
+                category = name if name in (
+                    "HomeAssistantError", "ServiceNotFound",
+                    "PyiCloudServiceUnavailable", "PyiCloudServiceNotActivatedException",
+                    "TimeoutError", "ConnectionError",
+                ) else "other"
+            refresh_diagnostics[role] = {
+                "stage": stage, "outcome": outcome,
+                "observed_at": datetime.now(timezone.utc).isoformat(),
+                "exception_class": category,
+            }
+        except Exception:
+            # Diagnostic failure must not mask the original result or exception.
+            return
+
     async def call_binding(call: ServiceCall) -> None:
         binding = services.get((call.data["role"], call.data["action"]))
         if binding is None:
@@ -432,6 +459,14 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         data = dict(binding.get("data", {}))
         data.update(call.data.get("data", {}))
         refresh_provider = binding.get("location_refresh_provider")
+        diagnostic_role = (
+            call.data["role"]
+            if (type(call.data["role"]) is str
+                and call.data["role"] in ("resident_primary", "resident_secondary")
+                and call.data["action"] == "refresh_location"
+                and refresh_provider == "icloud")
+            else None
+        )
         refresh_public_id = binding.get("location_refresh_public_entity_id")
         if refresh_provider is not None or refresh_public_id is not None:
             entity_binding = entities.get(refresh_public_id)
@@ -448,7 +483,13 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             if refresh_provider == "icloud":
                 configured_account = binding.get("data", {}).get("account")
                 data["account"] = configured_account
-                await force_icloud_location_refresh(configured_account)
+                record_icloud_refresh(diagnostic_role, "provider_refresh", "started")
+                try:
+                    await force_icloud_location_refresh(configured_account)
+                except Exception as error:
+                    record_icloud_refresh(diagnostic_role, "provider_refresh", "error", error)
+                    raise
+                record_icloud_refresh(diagnostic_role, "provider_refresh", "completed")
         target_public_id = binding.get("target_public_entity_id")
         if target_public_id:
             entity_binding = entities.get(target_public_id)
@@ -460,14 +501,23 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             data["entity_id"] = targets[0]
         elif binding.get("target_entity_id"):
             data["entity_id"] = binding["target_entity_id"]
-        await hass.services.async_call(
-            domain,
-            service,
-            data,
-            blocking=not is_best_effort_notification(domain, data),
-        )
+        record_icloud_refresh(diagnostic_role, "downstream_call", "started")
+        try:
+            await hass.services.async_call(
+                domain,
+                service,
+                data,
+                blocking=not is_best_effort_notification(domain, data),
+            )
+        except Exception as error:
+            record_icloud_refresh(diagnostic_role, "downstream_call", "error", error)
+            raise
+        record_icloud_refresh(diagnostic_role, "downstream_call", "completed")
 
     binding_service_handler = call_binding
     binding_service_ready.set()
-    hass.data[DOMAIN] = {"entities": tuple(entities), "service_count": len(services)}
+    hass.data[DOMAIN] = {
+        "entities": tuple(entities), "service_count": len(services),
+        "icloud_refresh_diagnostics": refresh_diagnostics,
+    }
     return True
