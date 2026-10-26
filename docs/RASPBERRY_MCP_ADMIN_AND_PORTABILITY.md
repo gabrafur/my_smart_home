@@ -534,6 +534,35 @@ recibo próprio e não reiniciou o daemon Codex nem serviços residenciais.
 Veja [event-delivery-health.acceptance.json](../scripts/raspberry-mcp/event-delivery-health.acceptance.json)
 e [os testes de entrega](../scripts/raspberry-mcp/event-delivery-health.test.mjs).
 
+A entrega agrupada ativa usa `notification_summary_v1`. Cada tentativa inclui
+até oito notificações e agrupa suas revisões, com estado atual vindo de snapshot
+recente. Estados atuais e mudanças novas precedem remoções antigas. Os IDs e
+transições permanecem no ledger, com intent e membros atômicos antes da rede.
+Remoção não comprova recuperação; resultado incerto não permite reenviar os
+membros, mesmo em outro resumo. Registros que saem da janela recebem arquivo
+e motivo explícitos, sem descarte silencioso; arquivo cheio falha fechado.
+
+`events_status.delivery_queue` informa grupos, revisões agrupáveis, idade,
+contagens de arquivo e vínculos duráveis. `delivery_opportunity` calcula o
+bloqueio, próximo slot e compatibilidade com a validade da assinatura. Os mesmos
+agregados estão em `maintenance_capabilities` no campo `delivery.summary`.
+São projeções fechadas; coleta falha não vira zero. Os limites continuam em
+seis tentativas por 24h e intervalo mínimo de dez minutos, sem reset.
+
+Foi comprovada a leitura dos novos campos pelo cliente MCP real; a entrega de
+um resumo no ciclo natural e a execução do assistente exigem recibos separados.
+Confira o [contrato e procedimento](../scripts/raspberry-mcp/runtime-source/native-events/README.md),
+o [aceite parcial](../scripts/raspberry-mcp/event-summary.acceptance.json) e
+os [testes de resumo](../scripts/raspberry-mcp/event-summary.test.mjs).
+
+Atualizar um módulo ESM no disco não muda o import já carregado no frontend
+MCP persistente. Validar a chamada real pode revelar esse caso mesmo quando
+testes isolados passaram. A correção precisou recarregar Events e reconectar
+somente o túnel existente, mantendo autenticação e assinatura. Não reiniciou
+Home Assistant, Node-RED, MQTT ou Codex. Reversão conserva dados/membros e
+mantém Events parado até revisão de compatibilidade, para impedir replay.
+
+
 A recuperação do Home Assistant concluiu no worker existente, confirmou
 versão e prontidão e publicou o Compose no GitHub. A falha anterior foi
 preservada. A etapa posterior dos containers parou antes de recriar serviços

@@ -13,6 +13,7 @@ import re
 import sqlite3
 import stat
 import time
+from delivery_summary import group_events, make_batch, opportunity, VERSION
 from webhook import Refused, callback_parts, key_bytes, signed_headers, verify_callback, post
 
 PROJECT = '/mnt/data/docker'
@@ -78,9 +79,18 @@ class Registry:
           subscription TEXT, event TEXT, state TEXT, at REAL,
           PRIMARY KEY(subscription,event));
         CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value REAL);
+        CREATE TABLE IF NOT EXISTS delivery_batches(
+          id TEXT PRIMARY KEY, subscription TEXT, body TEXT, at REAL);
+        CREATE TABLE IF NOT EXISTS delivery_members(
+          subscription TEXT, event TEXT, batch TEXT,
+          PRIMARY KEY(subscription,event));
+        CREATE TABLE IF NOT EXISTS event_archive(
+          id TEXT PRIMARY KEY, topic TEXT, body TEXT, created REAL,
+          retired_at REAL, reason TEXT);
         ''')
         self.principal, self.approved, self.sender, self.clock = principal, approved, sender, clock
         self.high_clock = None
+        self.current_evidence = None
 
     def now(self):
         now = self.clock()
@@ -216,7 +226,7 @@ class Registry:
         data = {'project':PROJECT,'topic':topic,'source':source,'phase':phase,
                 'object_id':object_id,'revision':revision}
         eid = hashlib.sha256(canonical(data).encode()).hexdigest()
-        if self.db.execute('SELECT 1 FROM events WHERE id=?',(eid,)).fetchone():
+        if self.db.execute('SELECT 1 FROM events WHERE id=? UNION ALL SELECT 1 FROM event_archive WHERE id=?',(eid,eid)).fetchone():
             return {'id':eid,'duplicate':True}
         # Fail closed when full; never remove uncertain receipts to permit retries.
         if self.db.execute('SELECT count(*) FROM events').fetchone()[0] >= 256:
@@ -231,7 +241,24 @@ class Registry:
         # No uncertain dispatch receipt is ever deleted or made retryable.
         self.db.execute("UPDATE subscriptions SET active=0,secret='',old_secret=NULL WHERE expires<=? AND (active=1 OR secret!='')",(now,))
         self.db.execute("DELETE FROM dispatch WHERE state IN ('webhook_accepted','delivery_refused') AND at<?",(now-7*86400,))
-        self.db.execute("DELETE FROM events WHERE created<? AND NOT EXISTS(SELECT 1 FROM dispatch WHERE dispatch.event=events.id)",(now-86400,))
+        # Archive, never silently discard old undelivered transitions. An archive
+        # cap stops collection/delivery instead of losing history or resetting IDs.
+        self.db.execute('BEGIN IMMEDIATE')
+        try:
+            rows = self.db.execute("SELECT * FROM events e WHERE created<? AND NOT EXISTS(SELECT 1 FROM dispatch d WHERE d.event=e.id) AND NOT EXISTS(SELECT 1 FROM delivery_members m JOIN dispatch d ON d.subscription=m.subscription AND d.event=m.batch WHERE m.event=e.id AND d.state='uncertain')", (now-86400,)).fetchall()
+            count = self.db.execute('SELECT count(*) FROM event_archive').fetchone()[0]
+            if count+len(rows) > 4096:
+                raise Refused('event_history_archive_full')
+            for row in rows:
+                covered = self.db.execute('SELECT 1 FROM delivery_members WHERE event=?', (row['id'],)).fetchone()
+                self.db.execute('INSERT INTO event_archive VALUES(?,?,?,?,?,?)',
+                                (row['id'],row['topic'],row['body'],row['created'],now,
+                                 'covered_by_summary' if covered else 'eligibility_window_elapsed'))
+                self.db.execute('DELETE FROM events WHERE id=?', (row['id'],))
+            self.db.execute('COMMIT')
+        except BaseException:
+            self.db.execute('ROLLBACK')
+            raise
 
     def event_counts(self, now):
         """Read-only snapshot of retained rows and the dispatcher's eligible work."""
@@ -253,8 +280,8 @@ class Registry:
                 placeholders = ','.join('?' for _ in allowed)
                 pending = self.db.execute(
                     'SELECT count(*) FROM events e WHERE e.created>=? AND e.topic IN (' + placeholders +
-                    ') AND NOT EXISTS (SELECT 1 FROM dispatch d WHERE d.subscription=? AND d.event=e.id)',
-                    (max(now-86400, started), *allowed, sub['id'])).fetchone()[0]
+                    ') AND NOT EXISTS (SELECT 1 FROM dispatch d WHERE d.subscription=? AND d.event=e.id) AND NOT EXISTS (SELECT 1 FROM delivery_members m WHERE m.subscription=? AND m.event=e.id)',
+                    (max(now-86400, started), *allowed, sub['id'], sub['id'])).fetchone()[0]
         except (ValueError, TypeError, KeyError, sqlite3.Error):
             pending = None
             error = 'event_count_scope_or_collection_unconfirmed'
@@ -287,7 +314,7 @@ class Registry:
         return {'source':'persistent_mcp_event_delivery','observed_at':iso(now),
                 'subscription_lease':lease_metadata,
                 'active_subscriptions':self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>?',(now,)).fetchone()[0],
-                **self.event_counts(now),
+                **self.event_counts(now), **self.delivery_diagnostics(now),
                 'dispatch_states':states,'attempts_last_24h':self.db.execute('SELECT count(*) FROM dispatch WHERE at>?',(now-86400,)).fetchone()[0],
                 'maximum_attempts_per_day':6,'minimum_attempt_spacing_seconds':600,
                 'assistant_run_confirmed':False,'automatic_retry':False,
@@ -295,41 +322,107 @@ class Registry:
                 'subscription_diagnostic_coverage':['worker_received_only','not_platform_or_frontend_arrival','last_32_stages_max_8192_bytes'],
                 'coverage':['webhook_acceptance_not_assistant_execution','no_private_callback_or_key_export','uncertain_receipts_preserved']}
 
+    def observe_current(self, notifications, observed_at):
+        now = self.clock()
+        if (not isinstance(notifications,list) or len(notifications)>512
+                or type(observed_at) not in (int,float) or not 0<=now-observed_at<=15):
+            raise Refused('summary_current_evidence_unconfirmed')
+        current = {}
+        for item in notifications:
+            if (not isinstance(item,dict) or any(not isinstance(item.get(k),str)
+                    or not re.fullmatch('[a-f0-9]{64}',item[k]) for k in ('id','revision'))
+                    or item['id'] in current):
+                raise Refused('summary_current_evidence_unconfirmed')
+            current[item['id']]=item['revision']
+        self.current_evidence = (observed_at,current)
+
+    def summary_plan(self, now):
+        active=self.db.execute('SELECT * FROM subscriptions WHERE active=1 AND expires>? AND owner=?', (now,self.principal)).fetchall()
+        if len(active)>1:
+            raise Refused('summary_subscription_scope_unconfirmed')
+        if not active:
+            return None, [], []
+        sub=active[0]
+        allowed=filters(json.loads(sub['args']))['topics']
+        if type(sub['started']) not in (int,float) or not 0<=sub['started']<=now:
+            raise Refused('summary_subscription_scope_unconfirmed')
+        marks=','.join('?' for _ in allowed)
+        rows=self.db.execute('SELECT e.* FROM events e WHERE e.created>=? AND e.topic IN ('+marks+') AND NOT EXISTS(SELECT 1 FROM dispatch d WHERE d.subscription=? AND d.event=e.id) AND NOT EXISTS(SELECT 1 FROM delivery_members m WHERE m.subscription=? AND m.event=e.id) ORDER BY e.created,e.id',
+                             (max(now-86400,sub['started']),*allowed,sub['id'],sub['id'])).fetchall()
+        evidence=self.current_evidence
+        current=evidence[1] if evidence and 0<=now-evidence[0]<=15 else None
+        return sub, rows, group_events(rows,now,current)
+
+    def delivery_diagnostics(self, now):
+        self.db.execute('SAVEPOINT delivery_observation')
+        try:
+            sub,rows,groups=self.summary_plan(now)
+            times=[r[0] for r in self.db.execute('SELECT at FROM dispatch WHERE at>?',(now-86400,))]
+            upcoming=opportunity(times,now,sub['expires'] if sub else None,len(rows))
+            archived=self.db.execute('SELECT reason,count(*) FROM event_archive GROUP BY reason').fetchall()
+            batches=self.db.execute('SELECT count(*) FROM delivery_batches').fetchone()[0]
+            members=self.db.execute('SELECT count(*) FROM delivery_members').fetchone()[0]
+            return {'delivery_summary_version':VERSION,
+                    'delivery_queue':{'state':'observed','collection_error':None,
+                      'eligible_event_records':len(rows),'notification_groups':len(groups),
+                      'revisions_coalescible':len(rows)-len(groups),
+                      'oldest_eligible_at':iso(min(r['created'] for r in rows)) if rows else None,
+                      'oldest_eligible_age_seconds':round(now-min(r['created'] for r in rows),3) if rows else None,
+                      'newest_eligible_at':iso(max(r['created'] for r in rows)) if rows else None,
+                      'ordering':'current_then_latest_change_desc_no_severity_inferred',
+                      'max_groups_per_delivery':8,'durable_summary_batches':batches,
+                      'durable_covered_event_records':members,
+                      'covered_revisions_coalesced':members-sum(len(json.loads(r[0])['data']['notifications']) for r in self.db.execute('SELECT body FROM delivery_batches')),
+                      'archived_event_records':sum(r[1] for r in archived),
+                      'archive_reasons':{r[0]:r[1] for r in archived},
+                      'history_archive_limit':4096,'archive_full_behavior':'fail_closed_no_silent_discard',
+                      'existing_intents_excluded_including_uncertain':True},
+                    'delivery_opportunity':upcoming}
+        except (ValueError,TypeError,KeyError,sqlite3.Error,OverflowError):
+            return {'delivery_summary_version':VERSION,
+                    'delivery_queue':{'state':'unknown','collection_error':'summary_scope_or_collection_unconfirmed'},
+                    'delivery_opportunity':{'state':'unknown','collection_error':'delivery_opportunity_unconfirmed'}}
+        finally:
+            self.db.execute('RELEASE delivery_observation')
+
     def dispatch_one(self):
         if not self.approved:
             raise Refused('activation_not_approved')
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            now = self.now()
-            recent = self.db.execute('SELECT count(*),max(at) FROM dispatch WHERE at>?',(now-86400,)).fetchone()
-            # Six attempts per rolling day, including uncertain/failed requests.
-            if recent[0] >= 6 or (recent[1] is not None and now-recent[1] < 600):
+            now=self.now()
+            recent=self.db.execute('SELECT count(*),max(at) FROM dispatch WHERE at>?',(now-86400,)).fetchone()
+            if recent[0]>=6 or recent[1] is not None and now-recent[1]<600:
                 self.db.execute('COMMIT')
                 return {'state':'budget_held'}
-            chosen = None
-            for sub in self.db.execute('SELECT * FROM subscriptions WHERE active=1 AND expires>? AND owner=?',(now,self.principal)):
-                topics=json.loads(sub['args'])['topics']
-                for event in self.db.execute('SELECT * FROM events WHERE created>=? ORDER BY created,id',(max(now-86400,sub['started']),)):
-                    if event['topic'] in topics and not self.db.execute('SELECT 1 FROM dispatch WHERE subscription=? AND event=?',(sub['id'],event['id'])).fetchone():
-                        chosen=(sub,event);break
-                if chosen:break
-            if not chosen:
-                self.db.execute('COMMIT');return {'state':'idle'}
-            sub,event=chosen
-            self.db.execute("INSERT INTO dispatch VALUES(?,?,'uncertain',?)",(sub['id'],event['id'],now))
+            sub,rows,groups=self.summary_plan(now)
+            evidence=self.current_evidence
+            at=iso(evidence[0]) if evidence and 0<=now-evidence[0]<=15 else None
+            batch=make_batch(groups,sub['id'],now,at) if sub else None
+            if not batch:
+                self.db.execute('COMMIT')
+                return {'state':'idle'}
+            identity,body,members=batch
+            self.db.execute('INSERT INTO delivery_batches VALUES(?,?,?,?)',(identity,sub['id'],body,now))
+            for member in members:
+                self.db.execute('INSERT INTO delivery_members VALUES(?,?,?)',(sub['id'],member,identity))
+            self.db.execute("INSERT INTO dispatch VALUES(?,?,'uncertain',?)",(sub['id'],identity,now))
             self.db.execute('COMMIT')
         except BaseException:
-            self.db.execute('ROLLBACK');raise
-        # Once intent is durable, a crash or exception prevents automatic repeat.
-        body=event['body'].encode()
-        old=sub['old_secret'] if now-sub['rotated_at'] < 300 else None
-        headers=signed_headers(sub['secret'],event['id'],body,int(now),sub['id'],old)
+            self.db.execute('ROLLBACK')
+            raise
+        # Batch body and ALL memberships were durably committed before any I/O.
+        # A lost reply never makes any covered revision eligible for another send.
+        raw=body.encode()
+        old=sub['old_secret'] if now-sub['rotated_at']<300 else None
+        headers=signed_headers(sub['secret'],identity,raw,int(now),sub['id'],old)
         try:
-            status,_=self.sender(sub['url'],headers,body)
+            status,_=self.sender(sub['url'],headers,raw)
             state='webhook_accepted' if 200<=status<300 else 'delivery_refused'
-            self.db.execute('UPDATE dispatch SET state=? WHERE subscription=? AND event=?',(state,sub['id'],event['id']))
+            self.db.execute('UPDATE dispatch SET state=? WHERE subscription=? AND event=?',(state,sub['id'],identity))
             if status in (401,403,410):
                 self.db.execute('UPDATE subscriptions SET active=0 WHERE id=?',(sub['id'],))
         except Exception:
             state='uncertain'
-        return {'event_id':event['id'],'state':state,'assistant_run_confirmed':False,'automatic_retry':False}
+        return {'event_id':identity,'state':state,'covered_event_records':len(members),
+                'delivery_kind':VERSION,'assistant_run_confirmed':False,'automatic_retry':False}

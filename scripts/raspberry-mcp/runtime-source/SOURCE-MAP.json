@@ -75,8 +75,8 @@
     },
     "repair-control/event_projection.mjs": {
       "source": "/usr/local/lib/raspberry-repair-control/event_projection.mjs",
-      "source_sha256": "e2ac7e1633ccf80cc634fb2d154040a6d28acce9ac80c33d4d34252dbe128ba1",
-      "export_sha256": "e2ac7e1633ccf80cc634fb2d154040a6d28acce9ac80c33d4d34252dbe128ba1",
+      "source_sha256": "b123572d43f4b9ad602b2a7a7037383314b2c5aa3ea0a2aed5134d85c5fd293c",
+      "export_sha256": "b123572d43f4b9ad602b2a7a7037383314b2c5aa3ea0a2aed5134d85c5fd293c",
       "normalizations": []
     },
     "repair-control/repair-broker.py": {
@@ -107,8 +107,8 @@
     },
     "frontend/event_projection.mjs": {
       "source": "/var/lib/raspberry-mcp/root/app/event_projection.mjs",
-      "source_sha256": "e2ac7e1633ccf80cc634fb2d154040a6d28acce9ac80c33d4d34252dbe128ba1",
-      "export_sha256": "e2ac7e1633ccf80cc634fb2d154040a6d28acce9ac80c33d4d34252dbe128ba1",
+      "source_sha256": "b123572d43f4b9ad602b2a7a7037383314b2c5aa3ea0a2aed5134d85c5fd293c",
+      "export_sha256": "b123572d43f4b9ad602b2a7a7037383314b2c5aa3ea0a2aed5134d85c5fd293c",
       "normalizations": []
     },
     "procmon-observability/observed_collector.py": {
@@ -125,14 +125,14 @@
     },
     "native-events/registry.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/registry.py",
-      "source_sha256": "df3e345815f2dd0d1fa79df1c415fcd42c59e4d0d4afebe70ab125e222b5ee18",
-      "export_sha256": "df3e345815f2dd0d1fa79df1c415fcd42c59e4d0d4afebe70ab125e222b5ee18",
+      "source_sha256": "e12cedbbb5370be4faf63788f22b7528727b862b8b213441c27b5f8d5ce73df7",
+      "export_sha256": "e12cedbbb5370be4faf63788f22b7528727b862b8b213441c27b5f8d5ce73df7",
       "normalizations": []
     },
     "native-events/worker.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/worker.py",
-      "source_sha256": "e161ebc6dfc9eacb983ccdfe9e86f6cdac4ec9b6ff9009be4b31e3c2a825b570",
-      "export_sha256": "e161ebc6dfc9eacb983ccdfe9e86f6cdac4ec9b6ff9009be4b31e3c2a825b570",
+      "source_sha256": "06305758f58dbe837dc14d36b742aace3ba4ca5e6af58f844b7d88ab38b0e075",
+      "export_sha256": "06305758f58dbe837dc14d36b742aace3ba4ca5e6af58f844b7d88ab38b0e075",
       "normalizations": []
     },
     "native-events/webhook.py": {
@@ -395,6 +395,12 @@
       "source": "/usr/local/lib/raspberry-host-heartbeat/loaded_identity.py",
       "source_sha256": "f35b41a42e3255993365ed6e157ca4f53aa78c499d40bec6982fe064d768b3c8",
       "export_sha256": "f35b41a42e3255993365ed6e157ca4f53aa78c499d40bec6982fe064d768b3c8",
+      "normalizations": []
+    },
+    "native-events/delivery_summary.py": {
+      "source": "/usr/local/lib/raspberry-mcp-events/delivery_summary.py",
+      "source_sha256": "f73291ae36821e27db087df38f71d727648c4838f2df793949d55e914ae1c7b0",
+      "export_sha256": "f73291ae36821e27db087df38f71d727648c4838f2df793949d55e914ae1c7b0",
       "normalizations": []
     }
   }

@@ -86,13 +86,15 @@ class Engine:
                 if at<max(now-86400,self.activation_epoch):continue
                 if event.get('phase') not in ('added','updated','removed') or any(not isinstance(event.get(k),str) or not re.fullmatch('[a-f0-9]{64}',event[k]) for k in ('object_id','revision')):raise Refused('invalid_event_envelope')
                 events.append((event['topic'],event['source'],event['phase'],event['object_id'],event['revision'],at))
+            # Validate current IDs/revisions without persisting diagnostic bodies.
+            self.registry.observe_current(row.get('notifications'),observed)
             for event in events:self.registry.enqueue(*event)
             self.source_health={'state':'observed','observed_at':row['observed_at'],'age_seconds':round(now-observed,3),'collection_error':None,
                                 'source_dropped_events':row.get('dropped') if type(row.get('dropped')) is int else None,
                                 'coverage':['sanitized_HA_notification_events','not_all_household_events','initial_snapshot_not_recovery']}
             return True
         except (OSError,ValueError,TypeError,KeyError,OverflowError) as error:
-            allowed={'unsafe_snapshot','snapshot_changed','invalid_event_time','invalid_snapshot','snapshot_stale','source_collection_failed','invalid_event_source','invalid_event_envelope','unsafe_event','event_storage_full','clock_reconciliation_required'}
+            allowed={'unsafe_snapshot','snapshot_changed','invalid_event_time','invalid_snapshot','snapshot_stale','source_collection_failed','invalid_event_source','invalid_event_envelope','unsafe_event','event_storage_full','clock_reconciliation_required','summary_current_evidence_unconfirmed','event_history_archive_full'}
             reason=str(error) if isinstance(error,Refused) and str(error) in allowed else 'snapshot_read_denied' if isinstance(error,PermissionError) else 'snapshot_missing' if isinstance(error,FileNotFoundError) else 'invalid_snapshot'
             self.source_health={'state':'unknown','observed_at':datetime.datetime.fromtimestamp(now,datetime.timezone.utc).isoformat(),
                                 'collection_error':reason,'coverage':['collection_failure_not_household_failure']}
@@ -102,8 +104,12 @@ class Engine:
         try:
             self.registry.prune()
             if self.ingest():self.last_dispatch=self.registry.dispatch_one()
-        except Exception:
-            self.last_dispatch={'state':'reconciliation_required','assistant_run_confirmed':False,'automatic_retry':False}
+        except Exception as error:
+            allowed={'event_history_archive_full','event_storage_full','clock_reconciliation_required',
+                     'summary_scope_unconfirmed','summary_event_unconfirmed','summary_payload_limit'}
+            reason=str(error) if isinstance(error,ValueError) and str(error) in allowed else 'event_dispatch_reconciliation_required'
+            self.last_dispatch={'state':'reconciliation_required','reason':reason,
+                                'assistant_run_confirmed':False,'automatic_retry':False}
 
 
 def serve_connection(connection, engine):

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "scope": "same_authorized_Raspberry_native_event_delivery",
+  "verified_on": "2026-10-26",
+  "summary_version": "notification_summary_v1",
+  "actual_MCP_reads": {
+    "events_status": "loaded_queue_and_opportunity_observed",
+    "maintenance_capabilities": "loaded_closed_delivery_summary_observed"
+  },
+  "same_subscription_identity_verified": true,
+  "subscription_expiry_changed": false,
+  "new_subscriptions_requested": 0,
+  "new_tools_or_parameters": false,
+  "new_access": false,
+  "delivery_limits": {
+    "maximum_attempts_per_24h": 6,
+    "minimum_spacing_seconds": 600,
+    "changed": false,
+    "counters_reset": false
+  },
+  "manual_webhook_calls": 0,
+  "runtime_reload": {
+    "Events_service": true,
+    "existing_tunnel_reconnected": true,
+    "household_services_restarted": false
+  },
+  "natural_summary_delivery": "pending_budget_slot_not_yet_verified",
+  "assistant_execution": "unproven",
+  "historical_failure_and_uncertain_intents_preserved": true,
+  "whole_goal_complete": false,
+  "private_runtime_or_credentials_exported": false
+}
