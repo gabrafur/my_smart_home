@@ -408,6 +408,154 @@
       "source_sha256": "a58dbf0d07feb95efe7b2d8f19bd4e42da75a75c32bed50728ae16059afd68ed",
       "export_sha256": "a58dbf0d07feb95efe7b2d8f19bd4e42da75a75c32bed50728ae16059afd68ed",
       "normalizations": []
+    },
+    "offsite-integrity/activate.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/activate.py",
+      "source_sha256": "4f86ae2106cacece2028154745db7430156afe6ec7b8cecf4b4aedce0ebd5dfd",
+      "export_sha256": "b8c3e54ac81d464ae22578010e344338d05e440cb23717c32349c270dd03237b",
+      "normalizations": [
+        "private_binding_or_synthetic_fixture_substitution",
+        "synthetic_test_credential_label_and_equivalent_split_deadline_literal"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/authenticate.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/authenticate.py",
+      "source_sha256": "7912bd7bd6f963c66b19a175f84d3358282ac1745c5247d825f0b3bcc29e2dd8",
+      "export_sha256": "7912bd7bd6f963c66b19a175f84d3358282ac1745c5247d825f0b3bcc29e2dd8",
+      "normalizations": [],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/crypto_diagnostic.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/crypto_diagnostic.py",
+      "source_sha256": "55c852a0262a40d89d115c36e27f6339b4aa61953da483ed44b64cc138968827",
+      "export_sha256": "55c852a0262a40d89d115c36e27f6339b4aa61953da483ed44b64cc138968827",
+      "normalizations": [],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/download_backup.cjs": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/download_backup.cjs",
+      "source_sha256": "bc0124c50c8aedf7d0455f63001d6bbd9096ce0c4e106385d0d1ef74bc75a815",
+      "export_sha256": "fde99f5874bc260a252e39523d98357b4e11f3e7a73c4526c8fdacee28dc7f9b",
+      "normalizations": [
+        "private_binding_or_synthetic_fixture_substitution"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/native_key_reader.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/native_key_reader.py",
+      "source_sha256": "1fe48b809ce71c52d37f52db919efe64e28ed913f329b9eb9cdc4cd084eeff68",
+      "export_sha256": "268bcbaf6ea15cb6c81e92fa507de8819c1ca728693b6da64f6411da380d2375",
+      "normalizations": [
+        "private_binding_or_synthetic_fixture_substitution",
+        "synthetic_test_credential_label_and_equivalent_split_deadline_literal"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/recovery_guard.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/recovery_guard.py",
+      "source_sha256": "0927a605b9cb12b54c58fc42f8a89b22aaa316452c3151d65fd8884ae72f5ee0",
+      "export_sha256": "8b511fbc49797c15f4f01f162469e9fc3bda2f7473eb5a2f0efc7d8bbd4b890a",
+      "normalizations": [
+        "private_binding_or_synthetic_fixture_substitution"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/test_activate.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/test_activate.py",
+      "source_sha256": "934cb10caa6f87417966a7c9356f02cdd5e502ff3a4a64d97dcc1c8857a3be63",
+      "export_sha256": "934cb10caa6f87417966a7c9356f02cdd5e502ff3a4a64d97dcc1c8857a3be63",
+      "normalizations": [],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/test_crypto.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/test_crypto.py",
+      "source_sha256": "f04bed6fb1eb1f09eaf873c1ad8d1d92524c213edb01c953f82a1e3c5e9b0afa",
+      "export_sha256": "2eef8ea16f9c22a3abf7d3ed138bc1cf0034b87ce9649fc1abe77e8d53de5e4d",
+      "normalizations": [
+        "synthetic_test_credential_label_and_equivalent_split_deadline_literal"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/test_crypto_diagnostic.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/test_crypto_diagnostic.py",
+      "source_sha256": "f5d80cb9b7aa14cef005f69f061cfee8088b8cffbfe9c8f818f785cd5ea831c6",
+      "export_sha256": "f5d80cb9b7aa14cef005f69f061cfee8088b8cffbfe9c8f818f785cd5ea831c6",
+      "normalizations": [],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/test_download.cjs": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/test_download.cjs",
+      "source_sha256": "38bc5ae1af2714089eb635d5542af26aa1935f9552df31a1e82e2abe05cd1124",
+      "export_sha256": "4a2457dfeaa10e6129924633239d5ddca6cc7a04da4e203b5975a3dc156a5778",
+      "normalizations": [
+        "private_binding_or_synthetic_fixture_substitution"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/test_key_reader.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/test_key_reader.py",
+      "source_sha256": "7ac1135ac59c1c9cbd7e8ccff047d221e906a2cc1618916bc8d9d54076ff214d",
+      "export_sha256": "370dd8e268bc788545b0876e0448cceef3d95571d00660ce78c5de51176caee8",
+      "normalizations": [
+        "private_binding_or_synthetic_fixture_substitution",
+        "synthetic_test_credential_label_and_equivalent_split_deadline_literal"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/test_recovery_guard.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/test_recovery_guard.py",
+      "source_sha256": "734bf72d6a51ae7261f3ec186aac0cf5d36c07e064694921e087330e897f3686",
+      "export_sha256": "d846df0e7eb66e0d02a05201a6ece09bfb218d2ece7ee354c4bf1b6b7866424b",
+      "normalizations": [
+        "private_binding_or_synthetic_fixture_substitution"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/test_verify.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/test_verify.py",
+      "source_sha256": "546710d6962718ac765cb772dfe4761b7a5e55e70d2a7f70e0fcba5f318b91ac",
+      "export_sha256": "546710d6962718ac765cb772dfe4761b7a5e55e70d2a7f70e0fcba5f318b91ac",
+      "normalizations": [],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/verify.py": {
+      "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/verify.py",
+      "source_sha256": "af31b0957a9aa0075e59fbf99e17580648677f5810ee45806693d4179391249b",
+      "export_sha256": "c5b14b5d86c9e06d3918b565ea2e2cc1a1e3d6fef76a1a7fa64ca4b795aa5c53",
+      "normalizations": [
+        "private_binding_or_synthetic_fixture_substitution"
+      ],
+      "execution_scope": "prepared_one_off_reconciliation_not_MCP_registration"
+    },
+    "offsite-integrity/integration/stdin_cases.py": {
+      "source": "/run/raspberry-offsite-stdin-synthetic-sources-20261026/test_transport.py",
+      "source_sha256": "afb2bb383a2d7a8844d59ff9cb72e34193bf6012c3d36deb8a18c33e5a6c97f0",
+      "export_sha256": "afb2bb383a2d7a8844d59ff9cb72e34193bf6012c3d36deb8a18c33e5a6c97f0",
+      "normalizations": [
+        "operator_source_paths_replaced_with_binding_markers"
+      ],
+      "execution_scope": "synthetic_operator_test_not_automatic_or_live_backup"
+    },
+    "offsite-integrity/integration/crypto_case.py": {
+      "source": "/run/raspberry-offsite-stdin-synthetic-sources-20261026/test_crypto_transport.py",
+      "source_sha256": "b380a9d5310a6bfde591ed8345daea44950ee3b1086a2f4148bec67f56137e01",
+      "export_sha256": "2abe3b5c8e84f7c49f719145fa5fc2b5c7536c769f8d956e3792a515d5700ad8",
+      "normalizations": [
+        "operator_source_paths_replaced_with_binding_markers",
+        "synthetic_test_credential_label_and_equivalent_split_deadline_literal"
+      ],
+      "execution_scope": "synthetic_operator_test_not_automatic_or_live_backup"
+    },
+    "offsite-integrity/integration/parent_case.py": {
+      "source": "/run/raspberry-offsite-stdin-synthetic-sources-20261026/test_parent_transport.py",
+      "source_sha256": "4871ae734bfc54be921f3134ec3c3e08857d54ae686233d303502dde72aed317",
+      "export_sha256": "2c4fdc4c6f5ef68480fa71d6fafe82e8e2c4c7d4b6ec27202ccef313246f7cb9",
+      "normalizations": [
+        "operator_source_paths_replaced_with_binding_markers",
+        "synthetic_test_credential_label_and_equivalent_split_deadline_literal"
+      ],
+      "execution_scope": "synthetic_operator_test_not_automatic_or_live_backup"
     }
   }
 }

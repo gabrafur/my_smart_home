@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "scope": "independent_backup_authentication_and_stdin_transport",
+  "state": "real_authentication_not_started_input_transport_failed_cleaned",
+  "encrypted_transfer_verified": true,
+  "ciphertext_authentication_proven": false,
+  "private_copy_removed": true,
+  "test_container_removed": true,
+  "production_service_start_times_unchanged": true,
+  "raw_credentials_or_private_data_exported": false,
+  "new_MCP_access": false,
+  "known_transport_failure": "create_stdin_not_enabled",
+  "historical_failure_cause": "unknown_not_rewritten",
+  "fix_state": "prepared_actual_synthetic_parent_pipeline_passed",
+  "limited_reconciliation": "specific_approval_pending_not_activated",
+  "restored_services_proven": false,
+  "whole_goal_complete": false
+}
