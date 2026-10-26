@@ -9,6 +9,7 @@ from pathlib import Path
 
 BUSY=frozenset(('create_intent','create_unknown','send_intent','send_unknown','accepted','inProgress','outcome_unknown'))
 TERMINAL=frozenset(('completed','failed','interrupted','not_dispatched'))
+IDENTITY_KINDS={'localizacao_pessoas':'nodered_scoped_configuration_v1','observacao_host':'nodered_scoped_configuration_v1','external_heartbeat':'python_code_objects_v1','icloud_adapter':'python_code_objects_v1'}
 def need(value,reason):
  if not value:raise ValueError(reason)
 def ident(value,length=32):need(isinstance(value,str)and re.fullmatch('[a-f0-9]{'+str(length)+'}',value),'invalid_bound_identity')
@@ -105,7 +106,7 @@ class ProtectedReview:
   try:row=json.loads(os.read(fd,16385))
   finally:os.close(fd)
   need(set(row)=={'binding','send_id','identity_kind','isolated_tests_passed','reviewed_scope','expires_at'},'review_record_shape')
-  need(row['binding']==binding and binding.get('principal_sha256')==principal and row['identity_kind']=='nodered_scoped_configuration_v1'and row['isolated_tests_passed']is True and row['reviewed_scope']is True,'protected_review_binding_mismatch')
+  need(row['binding']==binding and binding.get('principal_sha256')==principal and binding.get('component_id')in IDENTITY_KINDS and row['identity_kind']==IDENTITY_KINDS[binding['component_id']]and row['isolated_tests_passed']is True and row['reviewed_scope']is True,'protected_review_binding_mismatch')
   ident(row['send_id']);need(finite(row['expires_at']),'review_expiry_unconfirmed');return row
 
 class ProtectedAdmission:

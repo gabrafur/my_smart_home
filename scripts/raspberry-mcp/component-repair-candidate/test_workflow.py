@@ -167,4 +167,12 @@ class Cases(unittest.TestCase):
   for proof in [self.receipt(loaded_sha256=AFTER,collection_error='unavailable'),self.receipt(definitive_no_effect=True,executor_terminal=False,collection_error='revision_conflict')]:
    self.w.reconcile(A,lambda r:proof);self.assertEqual(self.w.status(A)['state'],'uncertain')
 
+ def test_natural_load_confirmation_uses_write_time_not_later_receipt_time(self):
+  self.prepare();self.validate();self.now=110
+  self.execute(A,self.observe,lambda r:self.receipt(loaded_sha256=AFTER,effect_applied_at=101))
+  self.assertEqual(self.w.status(A)['result']['applied_at'],101)
+  proof={**self.functional(self.w.row(A)),'before_failed_at':100,'after_success_at':105};self.w.verify(A,lambda r:proof);self.assertEqual(self.w.status(A)['state'],'verified')
+ def test_inconsistent_effect_time_cannot_confirm_apply(self):
+  self.prepare();self.validate();self.now=110
+  self.execute(A,self.observe,lambda r:self.receipt(loaded_sha256=AFTER,effect_applied_at=111));self.assertEqual(self.w.status(A)['state'],'uncertain')
 if __name__=='__main__':unittest.main()

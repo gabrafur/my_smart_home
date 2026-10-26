@@ -56,7 +56,13 @@ class Workflow:
    self.put(op,'validated',proof);return self.status(op)
  def receipt_matches(self,r,p,action):
   if not(isinstance(p,dict)and p.get('receipt_verified')is True and p.get('executor_terminal')is True and p.get('operation_id')==r['id']and p.get('component_id')==r['component']and p.get('task_id')==r['task']and p.get('action')==action):return False
-  at=p.get('worker_finished_at');return type(at)in(int,float)and math.isfinite(at)and r['created']<=at<=self.clock()+1 and at<self.expiry
+  at=p.get('worker_finished_at')
+  if not(type(at)in(int,float)and math.isfinite(at)and r['created']<=at<=self.clock()+1 and at<self.expiry):return False
+  if 'effect_applied_at'in p:
+   effect=p['effect_applied_at']
+   if not(type(effect)in(int,float)and math.isfinite(effect)and r['created']<=effect<=at and p.get('definitive_no_effect')is not True):return False
+  return True
+ def applied_time(self,proof):return proof.get('effect_applied_at',proof['worker_finished_at'])
  def outcome(self,r,p,action):
   previous=json.loads(r['result'])if r.get('result')else{}
   pending=set(previous.get('pending_cleanup_actions',[]))
@@ -80,7 +86,7 @@ class Workflow:
    if self.receipt_matches(r,result,'apply')and result.get('definitive_no_effect')is True:
     self.put(op,'failed_without_effect',{'definitive_no_effect':True,'automatic_retry':False,**self.outcome(r,result,'apply')})
    elif self.receipt_matches(r,result,'apply')and result.get('loaded_sha256')==r['candidate']:
-    self.put(op,'applied_awaiting_functional_proof',{'loaded_sha256':r['candidate'],'applied_at':result['worker_finished_at'],'functional_proof':False,**self.outcome(r,result,'apply')})
+    self.put(op,'applied_awaiting_functional_proof',{'loaded_sha256':r['candidate'],'applied_at':self.applied_time(result),'functional_proof':False,**self.outcome(r,result,'apply')})
    else:self.put(op,'uncertain',{'automatic_retry':False,'collection_error':'apply_outcome_unconfirmed'})
    return self.status(op)
  def reconcile(self,op,observe):
@@ -106,7 +112,7 @@ class Workflow:
     return self.status(op)
    if not self.receipt_matches(r,proof,'apply'):return self.status(op)
    if proof.get('definitive_no_effect')is True:self.put(op,'failed_without_effect',{'definitive_no_effect':True,'automatic_retry':False,**self.outcome(r,proof,'apply')})
-   elif proof.get('loaded_sha256')==r['candidate']:self.put(op,'applied_awaiting_functional_proof',{'loaded_sha256':r['candidate'],'applied_at':proof['worker_finished_at'],'reconciled_without_execution':True,'functional_proof':False,**self.outcome(r,proof,'apply')})
+   elif proof.get('loaded_sha256')==r['candidate']:self.put(op,'applied_awaiting_functional_proof',{'loaded_sha256':r['candidate'],'applied_at':self.applied_time(proof),'reconciled_without_execution':True,'functional_proof':False,**self.outcome(r,proof,'apply')})
    elif proof.get('loaded_sha256')==r['base']and proof.get('definitive_no_dispatch')is True:self.put(op,'confirmed_not_applied',{'definitive_no_dispatch':True,'automatic_retry':False,**self.outcome(r,proof,'apply')})
    return self.status(op)
  def verify(self,op,functional_observer):

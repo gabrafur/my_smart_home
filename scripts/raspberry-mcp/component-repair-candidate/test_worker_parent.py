@@ -109,7 +109,7 @@ job.run('a'*32,'apply')
    end=time.monotonic()+2;terminal=False
    while time.monotonic()<end:
     try:state=Path('/proc/'+str(pid)+'/stat').read_text().rsplit(')',1)[1].split()[0]
-    except FileNotFoundError:terminal=True;break
+    except (FileNotFoundError,ProcessLookupError):terminal=True;break
     if state in('Z','X'):terminal=True;break
     time.sleep(.01)
    self.assertTrue(terminal,'worker outlived parent holding lease')

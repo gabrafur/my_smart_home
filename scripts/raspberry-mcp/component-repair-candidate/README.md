@@ -234,9 +234,47 @@ executou reparo. A integração completa não está instalada.
 
 Faltam criação segura das revisões, bindings/instalador/controle durável dos
 jobs e gates nos outros caminhos de mutação para que respeitem reservas ou
-incertezas do novo coordenador. Heartbeat e HA ainda precisam de ports de
-efeito. A identidade do código do heartbeat já foi emitida e vinculada em
+incertezas do novo coordenador. O worker de heartbeat está preparado com journal e teste isolado; HA ainda
+precisa do port de efeito. A identidade do código do heartbeat já foi emitida e vinculada em
 ciclo natural pelo produtor instalado, com leitura owner-only; isso não
 ativa o port no MCP. Não ativar o acesso novo com apenas este subprocesso: apresentar o
 pacote completo de integridade, validade e revogação e obter aprovação
 específica antes do aceite real pelo MCP.
+
+## Worker de heartbeat preparado
+
+`static_code_identity.py` compila os quatro módulos do domínio nativo sem
+executar a proposta. Usa o fingerprint protegido já existente e separa hash do
+conjunto de fontes de identidade dos objetos de código. Funções/métodos e
+cache tag definem o domínio; dados globais e bindings de imports não são a
+mesma prova. Decoradores dinâmicos e inventário ambíguo são recusados. Compilar
+não é sandbox, revisão de segurança, aprovação ou prova de carregamento.
+
+`heartbeat_effect.py` e `heartbeat_files.py` preparam aplicação/reversão de
+funções em heartbeat.py, history.py ou webhook.py. Imports, dados globais,
+bases de classes, assinaturas, defaults, instrumentação de identidade e
+entrypoint ficam protegidos. O preparador root vincula artefato e fontes ao
+registro da tarefa; caminhos e callbacks são bindings internos, não parâmetros
+MCP. O processo não chama o sender, dispara timer ou reinicia serviço.
+
+Antes de substituir um arquivo atomicamente, verifica os cinco arquivos,
+identidade compilada, versão nativa e admissão protegida. Backup e intent
+duráveis antecedem o replace. Journal protegido limita 64 operações/32MiB e
+conserva recibos; ID existente nunca repete escrita. Aguardam-se invocações
+naturais por até 75s. Mesmo boot, nova invocação, código esperado, bindings e
+observação recente são necessários. Arquivo gravado sem prova de carregamento
+continua explicitamente não confirmado.
+
+Consulta pode reconciliar depois de reinício sem escrever a fonte novamente.
+Se o processo perdeu o retorno do replace, o recibo distingue o limite temporal
+do intent da hora exata de aplicação e exige fonte esperada e prova nativa
+posterior. Não inferir ausência de efeito somente porque se vê a versão antiga.
+Cleanup incerto mantém a reserva. Reversão usa o backup da mesma operação e
+compare/replace; não rebobina o histórico do coletor.
+
+O coordenador aceita a hora protegida da escrita separada da confirmação do
+carregamento. Uma amostra natural posterior à escrita pode preceder o recibo
+final do worker. Hora ausente/inconsistente, resultado não terminal ou tipo de
+identidade de outro componente falham fechado. Carregar código não comprova
+resultado funcional: destino, regressões e vínculo com a operação permanecem
+exigidos. Nenhum port novo está registrado ou ativado no MCP.

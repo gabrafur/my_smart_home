@@ -892,8 +892,12 @@ owner-only não ativa ferramentas novas para a Eva.
 O protótipo exige recibo da operação exata para reconciliar efeitos incertos
 e confirmação explícita de coordenação/recursos para aplicar. O candidato tem
 pai e IPC testados em isolamento. Revisão segura, instalação root, gates
-recíprocos, ports de efeito heartbeat/HA, aprovação específica e aceite pelo
-cliente MCP continuam pendentes. Publicação de fontes e testes
+recíprocos, port de efeito HA, binding protegido do worker heartbeat,
+aprovação específica e aceite pelo cliente MCP continuam pendentes. O worker
+heartbeat candidato já possui escrita atômica, journal e reconciliação
+sem repetição, testados com fontes e observações sintéticas. Ele aguarda a
+invocação natural para separar arquivo escrito de código carregado; isso
+não comprova envio ao destino nem recuperação funcional. Publicação de fontes e testes
 não instala nem autoriza essa ampliação.
 
 ## Contrato de payload dos resumos Events

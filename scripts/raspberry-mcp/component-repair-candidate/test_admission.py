@@ -139,4 +139,12 @@ class Cases(unittest.TestCase):
   with self.port.locked(),self.lease:
    value=self.guard().check(self.binding)
   self.assertEqual(value['observed_at'],1000.123);self.assertLessEqual(value['observed_at'],self.now)
+ def test_python_component_requires_exact_identity_kind_in_protected_review(self):
+  self.binding['component_id']='external_heartbeat';self.review['identity_kind']='python_code_objects_v1';self.write_review()
+  with self.port.locked(),self.lease:self.assertEqual(self.guard().check(self.binding)['identity_kind'],'python_code_objects_v1')
+  self.review['identity_kind']='nodered_scoped_configuration_v1';self.write_review()
+  with self.assertRaisesRegex(ValueError,'protected_review_binding_mismatch'):self.review_port.read(self.binding,PRINCIPAL)
+ def test_unknown_component_never_inherits_python_scope(self):
+  self.binding['component_id']='arbitrary';self.review['identity_kind']='python_code_objects_v1';self.write_review()
+  with self.assertRaisesRegex(ValueError,'protected_review_binding_mismatch'):self.review_port.read(self.binding,PRINCIPAL)
 if __name__=='__main__':unittest.main()

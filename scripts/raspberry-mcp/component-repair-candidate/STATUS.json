@@ -1,16 +1,17 @@
 {
   "schema_version": 1,
-  "state": "offline_candidate_with_pinned_parent_private_IPC_and_registered_executor_observation_not_registered_in_MCP",
+  "state": "candidate_with_heartbeat_atomic_file_worker_native_load_journal_not_MCP_registered",
   "new_tools_registered": 0,
   "production_writes_enabled": false,
   "runtime_ports": "owner_only_read_probes_not_MCP_access",
-  "Python_tests": 99,
+  "Python_tests": 117,
   "kernel_profile_and_daemon_profile_acceptance": "not_interchangeable",
   "remaining": [
-    "heartbeat and HA effect ports",
-    "safe review creation and complete fixed bootstrap, reciprocal broker gates and durable job control",
+    "HA effect port",
+    "heartbeat protected observer/bootstrap and durable job binding",
+    "safe review creation, reciprocal broker gates and complete durable job control",
     "effective daemon analysis profile acceptance before any new model inference",
-    "full privileged integrity chain and specific access approval",
+    "full privileged integrity chain and specific new-access approval",
     "actual MCP submission/results and natural functional acceptance"
   ],
   "Node_model_schema_worker_tests": 22,
@@ -19,5 +20,7 @@
   "maintenance_port": "real scheduler flock implemented; production wiring not installed",
   "protected_parent_process": "implemented_and_synthetic_integration_tested_not_installed",
   "existing_executor_observation": "owner_only_actual_snapshot_accepted_not_full_effect_admission",
-  "native_heartbeat_identity": "installed natural completed invocation verified owner-only; not new MCP acceptance"
+  "native_heartbeat_identity": "installed natural completed invocation verified owner-only; not new MCP acceptance",
+  "heartbeat_worker": "implemented_synthetic_filesystem_and_native_observer_tests_no_live_service_calls",
+  "heartbeat_source_identity": "compiled_without_execution_matches_recorded_native_code_domain"
 }
