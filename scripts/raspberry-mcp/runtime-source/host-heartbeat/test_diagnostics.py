@@ -15,11 +15,12 @@ ROOT=Path(__file__).parent
 
 def module(name,file):
     spec=importlib.util.spec_from_file_location(name,ROOT/file)
-    result=importlib.util.module_from_spec(spec);spec.loader.exec_module(result);return result
+    result=importlib.util.module_from_spec(spec);sys.modules[name]=result;spec.loader.exec_module(result);return result
 
 history=module('heartbeat_category_history','history.py')
 webhook=module('heartbeat_category_webhook','webhook.py')
-with patch.dict(sys.modules,{'history':history,'webhook':webhook}):
+identity=module('heartbeat_category_identity','loaded_identity.py')
+with patch.dict(sys.modules,{'history':history,'webhook':webhook,'loaded_identity':identity}):
     heartbeat=module('heartbeat_category_sender','heartbeat.py')
 send_once=heartbeat.send_once
 History=history.History
@@ -115,7 +116,7 @@ class HistoryDiagnostics(unittest.TestCase):
         result=self.history.summary();self.assertNotIn(sample,json.dumps(result));self.assertNotIn(IDENTIFIER,json.dumps(result))
         self.assertEqual(before,list(self.history.db.iterdump()))
         self.history.publish_status();value=json.loads((Path(self.tmp.name)/'status.json').read_text())
-        self.assertEqual(value['diagnostic_schema_version'],2)
+        self.assertEqual(value['diagnostic_schema_version'],3)
 
     def test_legacy_six_column_table_remains_unchanged_and_readable(self):
         sample=self.history.begin();self.history.finish(sample,{'state':'provider_refused','http_status':503,'duration_ms':8})

@@ -2,6 +2,8 @@
 import datetime
 import fcntl
 import json
+import math
+import re
 import os
 from pathlib import Path
 import sqlite3
@@ -20,6 +22,21 @@ def check_file(path):
     info=path.lstat()
     if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.geteuid() or stat.S_IMODE(info.st_mode)!=0o600 or info.st_nlink!=1 or info.st_size>2*1048576+16384:
         raise ValueError('unsafe_history_file')
+
+
+def validated_identity(value):
+    fields={'schema_version','source','observed_at','observed_monotonic','identity_kind','loaded_code_sha256','critical_binding_sha256','critical_bindings_valid','runtime_cache_tag','pid','process_start_ticks','boot_id_sha256','invocation_id_sha256'}
+    if not isinstance(value,dict)or set(value)!=fields:return None
+    if type(value['schema_version'])is not int or value['schema_version']!=1 or value['source']!='native_heartbeat.loaded_code' or value['identity_kind']!='python_code_objects_v1' or type(value['critical_bindings_valid'])is not bool:return None
+    if any(not isinstance(value[k],str)or re.fullmatch('[a-f0-9]{64}',value[k])is None for k in('loaded_code_sha256','critical_binding_sha256','boot_id_sha256','invocation_id_sha256')):return None
+    if type(value['pid'])is not int or not 0<value['pid']<2**22 or not isinstance(value['process_start_ticks'],str)or re.fullmatch('[0-9]{1,20}',value['process_start_ticks'])is None:return None
+    if not isinstance(value['runtime_cache_tag'],str)or re.fullmatch('cpython-[0-9]{2,4}',value['runtime_cache_tag'])is None:return None
+    if type(value['observed_monotonic'])not in(int,float)or not math.isfinite(value['observed_monotonic'])or value['observed_monotonic']<0:return None
+    try:
+        if not isinstance(value['observed_at'],str)or len(value['observed_at'])>40:return None
+        at=datetime.datetime.fromisoformat(value['observed_at']);valid=at.tzinfo is not None and math.isfinite(at.timestamp())
+    except ValueError:return None
+    return value if valid else None
 
 
 class History:
@@ -41,7 +58,8 @@ class History:
             if self.db.execute('PRAGMA max_page_count=512').fetchone()[0]>512:raise ValueError('history_storage_limit')
             self.db.executescript('''CREATE TABLE IF NOT EXISTS samples(seq INTEGER PRIMARY KEY,id TEXT UNIQUE,at REAL,state TEXT,http INTEGER,duration_ms REAL);
             CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value REAL);
-            CREATE TABLE IF NOT EXISTS failure_diagnostics(id TEXT PRIMARY KEY,category TEXT);''')
+            CREATE TABLE IF NOT EXISTS failure_diagnostics(id TEXT PRIMARY KEY,category TEXT);
+            CREATE TABLE IF NOT EXISTS loaded_identity(singleton INTEGER PRIMARY KEY CHECK(singleton=1),sample_id TEXT,proof TEXT);''')
             self.clock=clock
         except BaseException:
             if hasattr(self,'db'):self.db.close()
@@ -68,7 +86,7 @@ class History:
             self.db.execute('ROLLBACK');raise
         return identifier
 
-    def finish(self,identifier,result):
+    def finish(self,identifier,result,loaded_identity=None):
         if result.get('state') not in ('provider_accepted','provider_refused','uncertain'):raise ValueError('invalid_sample_state')
         status=result.get('http_status');duration=result.get('duration_ms')
         if status is not None and (type(status) is not int or not 100<=status<=599):raise ValueError('invalid_http_status')
@@ -82,19 +100,32 @@ class History:
             if changed!=1:raise ValueError('sample_already_finished_or_missing')
             if category is not None:
                 self.db.execute('INSERT INTO failure_diagnostics VALUES(?,?)',(identifier,category))
+            # Optional observation cannot roll back the already recorded outcome.
+            self.db.execute('SAVEPOINT code_identity')
+            try:
+                self.db.execute('DELETE FROM loaded_identity')
+                proof=validated_identity(loaded_identity)
+                if proof is not None:self.db.execute('INSERT INTO loaded_identity VALUES(1,?,?)',(identifier,json.dumps(proof,sort_keys=True,separators=(',',':'))))
+            except sqlite3.Error:
+                self.db.execute('ROLLBACK TO code_identity')
+            finally:self.db.execute('RELEASE code_identity')
             self.db.execute('COMMIT')
         except BaseException:
             self.db.execute('ROLLBACK');raise
 
     def summary(self):
-        now=self.clock();row=self.db.execute('SELECT seq,at,state,http,duration_ms FROM samples ORDER BY seq DESC LIMIT 1').fetchone()
+        now=self.clock();row=self.db.execute('SELECT seq,at,state,http,duration_ms,id FROM samples ORDER BY seq DESC LIMIT 1').fetchone()
         count=self.db.execute('SELECT count(*) FROM samples').fetchone()[0]
         latest=self.db.execute('SELECT s.seq,s.at,s.state,s.http,d.category,s.duration_ms FROM samples s LEFT JOIN failure_diagnostics d ON s.id=d.id WHERE s.state!=? ORDER BY s.seq DESC LIMIT 1',('provider_accepted',)).fetchone()
         failure=None if latest is None else {'observed_at':datetime.datetime.fromtimestamp(latest[1],datetime.timezone.utc).isoformat(),
             'state':latest[2],'http_status':latest[3],'failure_category':latest[4] if latest[4] in FAILURE_CATEGORIES else 'not_recorded',
             'is_latest_attempt':bool(row and row[0]==latest[0]),'sample_completion_recorded':latest[5] is not None,
             'transport_outcome_not_service_health':True}
-        return {'source':'bounded_local_heartbeat_history','diagnostic_schema_version':2,'latest_failed_or_uncertain_sample':failure,'observed_at':datetime.datetime.fromtimestamp(now,datetime.timezone.utc).isoformat(),
+        loaded=self.db.execute('SELECT proof FROM loaded_identity WHERE singleton=1 AND sample_id=?',(row[5],)).fetchone()if row else None
+        try:identity=validated_identity(json.loads(loaded[0]))if loaded else None
+        except (TypeError,ValueError):identity=None
+        if identity is not None:identity={**identity,'sample_sequence':row[0]}
+        return {'source':'bounded_local_heartbeat_history','diagnostic_schema_version':3,'last_loaded_identity':identity,'latest_failed_or_uncertain_sample':failure,'observed_at':datetime.datetime.fromtimestamp(now,datetime.timezone.utc).isoformat(),
                 'samples_retained':count,'maximum_samples':LIMIT,'maximum_age_days':7,
                 'last_sequence':row[0] if row else None,'last_sample_observed_at':datetime.datetime.fromtimestamp(row[1],datetime.timezone.utc).isoformat() if row else None,'last_http_status':row[3] if row else None,'last_sample_age_seconds':round(now-row[1],3) if row else None,
                 'last_sample_state':row[2] if row else 'unknown',

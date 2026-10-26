@@ -856,10 +856,13 @@ separam fonte revisada, identidade carregada, reservas, recibos e prova funciona
 As doze ferramentas desse protótipo não pertencem ao catálogo ativo. Leitura
 administrativa real confirmou as identidades dos dois canvases permitidos e
 a prova de código do processo iCloud; isso não equivale a acesso da Eva ou
-execução de reparo pelo MCP. Heartbeat ainda não emite identidade carregada.
+execução de reparo pelo MCP. O heartbeat já emite identidade de código em
+ciclo natural, vinculada à invocação concluída pelo systemd; a leitura
+owner-only não ativa ferramentas novas para a Eva.
 
 O protótipo exige recibo da operação exata para reconciliar efeitos incertos
-e confirmação explícita de coordenação/recursos para aplicar. O executor real,
-integração de tarefas e orçamentos, bootstrap root, aprovação específica e
-aceite pelo cliente MCP continuam pendentes. Publicação de fontes e testes
+e confirmação explícita de coordenação/recursos para aplicar. O candidato tem
+pai e IPC testados em isolamento. Revisão segura, instalação root, gates
+recíprocos, ports de efeito heartbeat/HA, aprovação específica e aceite pelo
+cliente MCP continuam pendentes. Publicação de fontes e testes
 não instala nem autoriza essa ampliação.

@@ -61,8 +61,9 @@ refresh ou leitura de localização. `entry_ready` não comprova saúde remota.
 Um hash dos arquivos não substitui essa prova.
 
 O heartbeat pode comprovar aceite HTTP pelo provedor e preservar falhas antigas
-após sucesso posterior. Enquanto não emitir identidade de código carregado,
-essa versão permanece unknown. Os ports reais foram exercitados somente pelo
+após sucesso posterior. O produtor nativo já emite identidade dos objetos de
+código, vinculada à mesma amostra e à invocação concluída do systemd. Sem
+essa prova e os bindings revisados, a versão permanece unknown. Os ports reais foram exercitados somente pelo
 executor administrativo existente; não estão disponíveis à Eva nas ferramentas
 propostas. Arquivos privados, bindings, registros e capturas reais não integram
 este diretório público.
@@ -234,6 +235,8 @@ executou reparo. A integração completa não está instalada.
 Faltam criação segura das revisões, bindings/instalador/controle durável dos
 jobs e gates nos outros caminhos de mutação para que respeitem reservas ou
 incertezas do novo coordenador. Heartbeat e HA ainda precisam de ports de
-efeito. Não ativar o acesso novo com apenas este subprocesso: apresentar o
+efeito. A identidade do código do heartbeat já foi emitida e vinculada em
+ciclo natural pelo produtor instalado, com leitura owner-only; isso não
+ativa o port no MCP. Não ativar o acesso novo com apenas este subprocesso: apresentar o
 pacote completo de integridade, validade e revogação e obter aprovação
 específica antes do aceite real pelo MCP.

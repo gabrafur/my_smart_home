@@ -25,7 +25,7 @@ def project_icloud(proof,binding,expected_release,now):
  return {**out,'state':'observed','observed_at':proof['observed_at'],'loaded_sha256':proof['loaded_code_sha256'],'collection_error':None,
   'reviewed_release_revision':expected_release,'entry_phase':phase,'remote_functional_health':'unknown','process_identity_verified':True,
   'coverage':['actual_HA_process_code_object_fingerprint','reviewed_release_marker_and_existing_nonce','not_source_file_identity_equality','not_remote_icloud_or_location_health','no_authentication_or_location_refresh_called']}
-def project_heartbeat(status,now):
+def project_heartbeat(status,now,binding=None):
  out=unknown('external_heartbeat',now,'native_loaded_identity_not_recorded')
  out['diagnostics']={'state':'unknown','collection_error':'runtime_collection_failed'}
  if not isinstance(status,dict)or status.get('source')!='bounded_local_heartbeat_history':return out
@@ -40,4 +40,17 @@ def project_heartbeat(status,now):
   if failed_at is not None and failed_at<=now and failure.get('state')in ('provider_refused','uncertain'):
    category=failure.get('failure_category');category=category if isinstance(category,str)and category in CATEGORIES else'not_recorded'
    data['latest_failed_or_uncertain_sample']={'observed_at':failure['observed_at'],'state':failure['state'],'failure_category':category,'is_latest_attempt':failure.get('is_latest_attempt')if type(failure.get('is_latest_attempt'))is bool else None,'sample_completion_recorded':failure.get('sample_completion_recorded')if type(failure.get('sample_completion_recorded'))is bool else None,'transport_outcome_not_service_health':True}
- out['diagnostics']=data;return out
+ out['diagnostics']=data
+ proof=status.get('last_loaded_identity')
+ if not isinstance(proof,dict):return out
+ at=stamp(proof.get('observed_at'))
+ if (type(proof.get('schema_version'))is not int or proof.get('schema_version')!=1 or proof.get('source')!='native_heartbeat.loaded_code' or proof.get('identity_kind')!='python_code_objects_v1'
+     or at is None or not 0<=now-at<=120 or type(proof.get('sample_sequence'))is not int or type(status.get('last_sequence'))is not int or proof.get('sample_sequence')!=status.get('last_sequence')
+     or not isinstance(proof.get('runtime_cache_tag'),str)or re.fullmatch('cpython-[0-9]{2,4}',proof['runtime_cache_tag'])is None
+     or proof.get('critical_bindings_valid')is not True or not sha(proof.get('loaded_code_sha256'))or not sha(proof.get('critical_binding_sha256'))):return {**out,'collection_error':'native_loaded_identity_invalid_or_stale'}
+ if (not isinstance(binding,dict)or binding.get('native_invocation_verified')is not True
+     or proof['loaded_code_sha256']!=binding.get('expected_loaded_sha256')
+     or proof['critical_binding_sha256']!=binding.get('expected_critical_binding_sha256')
+     or proof.get('runtime_cache_tag')!=binding.get('expected_runtime_cache_tag')):return {**out,'collection_error':'native_loaded_identity_binding_unconfirmed'}
+ return {**out,'state':'observed','observed_at':proof['observed_at'],'loaded_sha256':proof['loaded_code_sha256'],'collection_error':None,'native_invocation_identity_verified':True,
+  'coverage':['actual_code_from_completed_native_invocation','systemd_invocation_PID_boot_and_monotonic_binding','critical_runtime_bindings_match_reviewed_source','not_currently_live_process_or_remote_health','not_assistant_execution_or_household_health']}

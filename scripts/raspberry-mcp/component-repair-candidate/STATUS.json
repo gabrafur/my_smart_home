@@ -4,10 +4,9 @@
   "new_tools_registered": 0,
   "production_writes_enabled": false,
   "runtime_ports": "owner_only_read_probes_not_MCP_access",
-  "Python_tests": 93,
+  "Python_tests": 99,
   "kernel_profile_and_daemon_profile_acceptance": "not_interchangeable",
   "remaining": [
-    "heartbeat native loaded-code identity",
     "heartbeat and HA effect ports",
     "safe review creation and complete fixed bootstrap, reciprocal broker gates and durable job control",
     "effective daemon analysis profile acceptance before any new model inference",
@@ -19,5 +18,6 @@
   "task_registry_read_port": "existing SQLite schema and shared policy; real read accepted, no registry write",
   "maintenance_port": "real scheduler flock implemented; production wiring not installed",
   "protected_parent_process": "implemented_and_synthetic_integration_tested_not_installed",
-  "existing_executor_observation": "owner_only_actual_snapshot_accepted_not_full_effect_admission"
+  "existing_executor_observation": "owner_only_actual_snapshot_accepted_not_full_effect_admission",
+  "native_heartbeat_identity": "installed natural completed invocation verified owner-only; not new MCP acceptance"
 }

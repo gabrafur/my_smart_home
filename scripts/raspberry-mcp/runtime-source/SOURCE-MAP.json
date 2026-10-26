@@ -369,14 +369,14 @@
     },
     "host-heartbeat/heartbeat.py": {
       "source": "/usr/local/lib/raspberry-host-heartbeat/heartbeat.py",
-      "source_sha256": "eef218ac7bc91e12ed727d723646865d232f6b7371514f977417beae45f8e00d",
-      "export_sha256": "eef218ac7bc91e12ed727d723646865d232f6b7371514f977417beae45f8e00d",
+      "source_sha256": "6d3e20e9d0f7d9f6a5694a4244a8af777146948961881bd6ac816bbb32127f10",
+      "export_sha256": "6d3e20e9d0f7d9f6a5694a4244a8af777146948961881bd6ac816bbb32127f10",
       "normalizations": []
     },
     "host-heartbeat/history.py": {
       "source": "/usr/local/lib/raspberry-host-heartbeat/history.py",
-      "source_sha256": "70a03bb8556739324042ac3743a42dae5772e75ba7329bcb9a0ed4f77e464f13",
-      "export_sha256": "70a03bb8556739324042ac3743a42dae5772e75ba7329bcb9a0ed4f77e464f13",
+      "source_sha256": "721b3621f01152f4fa396c2025076a34630294375e1606f976d0166f7413b7da",
+      "export_sha256": "721b3621f01152f4fa396c2025076a34630294375e1606f976d0166f7413b7da",
       "normalizations": []
     },
     "host-heartbeat/webhook.py": {
@@ -389,6 +389,12 @@
       "source": "/usr/local/lib/raspberry-host-heartbeat/heartbeat-entrypoint.py",
       "source_sha256": "924473adf5cd35b655144b360f884373138142d1f187d7b8eae8d1a5448f82ee",
       "export_sha256": "924473adf5cd35b655144b360f884373138142d1f187d7b8eae8d1a5448f82ee",
+      "normalizations": []
+    },
+    "host-heartbeat/loaded_identity.py": {
+      "source": "/usr/local/lib/raspberry-host-heartbeat/loaded_identity.py",
+      "source_sha256": "f35b41a42e3255993365ed6e157ca4f53aa78c499d40bec6982fe064d768b3c8",
+      "export_sha256": "f35b41a42e3255993365ed6e157ca4f53aa78c499d40bec6982fe064d768b3c8",
       "normalizations": []
     }
   }

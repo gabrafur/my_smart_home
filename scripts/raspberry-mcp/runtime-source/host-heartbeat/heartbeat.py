@@ -9,9 +9,11 @@ import socket
 import ssl
 import http.client
 import time
+import sys
 
 from webhook import post
 from history import History
+from loaded_identity import capture as capture_loaded_identity
 
 HISTORY='.'
 CREDENTIAL='/run/credentials/raspberry-host-heartbeat.service/heartbeat_uuid'
@@ -61,7 +63,9 @@ def main():
     try:
         observation=history.begin()  # Durable intent before network, no replay.
         result=send_once(identifier)
-        history.finish(observation,result)
+        try:loaded=capture_loaded_identity(sys.modules[__name__])
+        except Exception:loaded=None  # Observation failure must not add/retry a request.
+        history.finish(observation,result,loaded)
         history.publish_status()
         result['observation_id']=observation
         result['collection_error']=None if result['state']=='provider_accepted' else result['state']
