@@ -1,8 +1,8 @@
 # Candidato de reparo por componente
 
 Estas fontes e esquemas são preparação isolada. As doze ferramentas propostas
-não estão registradas no MCP. Não há instalador, worker de efeito ou permissão
-de produção neste diretório. O transporte MCP instalado está documentado em
+não estão registradas no MCP. Há um worker Node-RED candidato, testado em HTTP sintético; não há instalador
+ou permissão de produção neste diretório. O transporte MCP instalado está documentado em
 [RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md](../../../docs/RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md).
 
 ## Contrato proposto
@@ -87,11 +87,65 @@ Saúde do contêiner, notificação removida ou notLoaded não encerram a tarefa
 node --test --test-concurrency=1 scripts/raspberry-mcp/component-repair-candidate/candidate.test.mjs scripts/raspberry-mcp/component-repair-candidate/schemas.test.mjs
 ```
 
-Os testes usam SQLite temporário, relógios e efeitos falsos. Não chamam rede,
-daemon, Home Assistant ou dispositivos. Participam de make validate-public.
+Os testes usam SQLite temporário, relógios e efeitos falsos. O worker usa apenas um servidor HTTP sintético em loopback. Não chama o
+daemon, Home Assistant ou dispositivos reais. Participam de make validate-public.
 
 Antes de ativar a ampliação: concluir ports/executor, reservas e orçamentos
 compartilhados; preparar diff, hashes, identidade, validade e revogação; obter
 a aprovação específica exigida; então instalar pela cadeia existente e validar
 submissão, resultado e prova natural pelo cliente MCP real. Não copiar estas
 fontes sobre uma política ativa nem interpretar a publicação como aprovação.
+
+## Worker Node-RED com recibo durável
+
+[effects/nodered_effect.cjs](effects/nodered_effect.cjs) contém cliente HTTP
+e armazenamento real de recibos. O host, a porta e a autenticação são binding
+do operador; nunca parâmetros do chatbot. Não há CLI ou registro MCP que
+permita ativar esse código diretamente. A integração root ainda é pendente.
+
+O controlador protegido deve comprovar tarefa, principal, revisão da candidata,
+budget compartilhado reservado, recursos, validade e posse do lock de manutenção.
+O worker confere a identidade exata e a idade dessa admissão. Os testes usam
+um provedor falso; seus booleanos não são autorização para produção.
+
+Somente func em nós function ou rules em nós change podem variar no canvas
+permitido, após revisão e validação isolada. Nós, tipos, conexões, alvos de
+efeitos, libs, initialize e finalize ficam congelados. Funções com inicialização
+ou finalização não vazia são recusadas. A restrição estrutural não substitui
+a revisão semântica da lógica nem autoriza efeitos residenciais adicionais.
+
+Antes do POST, o worker persiste identidade, backup apenas do canvas permitido
+e intenção. Usa rev do Admin API e deploy do tipo nodes. Confere configuração
+carregada, identidade esperada e preservação das demais fontes. HTTP 409 tem
+recibo de rejeição sem efeito; não é ausência de envio e não dispara retry.
+Resposta perdida, verificação divergente ou recibo terminal incompleto mantém
+incerteza. Um hash desejado sozinho não resolve o caso.
+
+Apply e rollback usam o mesmo ID de operação e stores separados por finalidade.
+O rollback lê o backup protegido, confere a versão e registra intenção própria;
+não apaga a aplicação ou seus recibos. Pedidos duplicados leem o recibo existente.
+São até 64 operações e 32 MiB por store, sem exclusão automática para liberar
+espaço. Diretório/arquivos têm owner do executor, modos 0700/0600, sem symlinks
+ou hardlinks; conteúdo e quantidade são limitados.
+
+Falha de revogação da sessão fica explícita. O coordenador mantém pendência de
+limpeza, bloqueia novas aplicações e não libera a reserva nem confirma prova
+funcional até receber evidência protegida. Uma reversão não apaga pendência
+de autenticação da aplicação anterior. Sucesso funcional precisa ser posterior
+à conclusão real do deploy, com operação, tarefa e componente corretos.
+
+O teste entre Python, processo Node filho, filesystem e servidor HTTP falso
+perde a resposta ao coordenador após o deploy. Recupera o recibo da mesma
+operação e reconcilia sem outro POST. Esse teste não é aceite MCP ou produção.
+
+Fluxos distintos já implantados podem aguardar prova funcional enquanto outra
+aplicação disjunta ocorre serialmente. Efeito em andamento/incerto ou limpeza
+pendente continua bloqueando globalmente; a reserva do mesmo componente não é
+liberada por tempo decorrido.
+
+A reconciliação aceita o recibo terminal verificado com `action` exata tanto
+para aplicação como para reversão. Uma rejeição definitiva pode conservar
+`collection_error` com o motivo (`revision_conflict`), sem se tornar falha de
+coleta. Sem identidade completa, recibo terminal verificado e ausência de
+efeito comprovada, o erro mantém a operação incerta. A reserva continua retida
+quando a reversão foi rejeitada; isso não significa que a versão antiga voltou.
