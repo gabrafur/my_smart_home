@@ -60,7 +60,7 @@ class FixedNodeRedClient {
     const chunks=[];let size=0;res.on('data',chunk=>{size+=chunk.length;if(size>16*1048576)req.destroy(new Error('bounded_response_limit'));else chunks.push(chunk);});
     res.on('end',()=>{try{const text=Buffer.concat(chunks).toString('utf8');resolve({status:res.statusCode,data:text?JSON.parse(text):null});}catch{reject(new Error('bounded_response_invalid'));}});
     res.on('error',()=>reject(new Error('transport_outcome_unknown')));
-   });req.setTimeout(12000,()=>req.destroy(new Error('transport_outcome_unknown')));req.on('error',()=>reject(new Error('transport_outcome_unknown')));req.end(body);
+   });const totalDeadline=setTimeout(()=>req.destroy(new Error('transport_outcome_unknown')),12000);req.on('close',()=>clearTimeout(totalDeadline));req.setTimeout(12000,()=>req.destroy(new Error('transport_outcome_unknown')));req.on('error',()=>reject(new Error('transport_outcome_unknown')));req.end(body);
  });}
  async login(){const r=await this.#request('POST','/auth/token',{client_id:'node-red-admin',grant_type:'password',scope:'*',username:this.binding.username,password:this.binding.password});need(r.status===200&&typeof r.data?.access_token==='string','authentication_refused');this.token=r.data.access_token;}
  async configuration(){const r=await this.#request('GET','/flows');need(r.status===200&&isSha(r.data?.rev)&&Array.isArray(r.data.flows)&&r.data.flows.length<=10000,'configuration_unconfirmed');return r.data;}

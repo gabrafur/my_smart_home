@@ -100,8 +100,8 @@ fontes sobre uma política ativa nem interpretar a publicação como aprovação
 
 [effects/nodered_effect.cjs](effects/nodered_effect.cjs) contém cliente HTTP
 e armazenamento real de recibos. O host, a porta e a autenticação são binding
-do operador; nunca parâmetros do chatbot. Não há CLI ou registro MCP que
-permita ativar esse código diretamente. A integração root ainda é pendente.
+do operador; nunca parâmetros do chatbot. Não há entrypoint privilegiado instalado nem registro MCP. O port de
+subprocesso interno está descrito abaixo; o bootstrap root continua pendente.
 
 O controlador protegido deve comprovar tarefa, principal, revisão da candidata,
 budget compartilhado reservado, recursos, validade e posse do lock de manutenção.
@@ -185,10 +185,55 @@ política vigente, margem de 90s para finalizar, gate de recursos existente e
 observação root recente dos demais executores. A leitura do registro de
 threads sozinha **não** prova ausência de outros efeitos administrativos.
 
-Restam o bootstrap root com bindings fixos, criação segura dos registros de
-revisão, observação real de jobs administrativos/componentes e IPC limitado
-entre pai protegido e worker. Os testes usam um observador substituto e não
-provam essa integração. O novo leitor foi também exercitado pelo operador
-contra os registros existentes, sem escrita; isso não constitui aceite MCP
-nem acesso novo da Eva. Não registrar ferramentas ou executar aplicação antes
-de completar e revisar o pacote de acesso e sua revogação.
+O pai, o IPC limitado e os leitores de jobs descritos a seguir já têm
+implementação e testes isolados. Restam o bootstrap com bindings fixos, criação
+segura das revisões e gates recíprocos nos outros caminhos de mutação. As
+fixtures de admissão não são autorização root. Leituras owner-only reais não
+constituem aceite MCP nem acesso novo da Eva. Não registrar ferramentas ou
+executar aplicação antes de completar e revisar o pacote e sua revogação.
+
+## Processo pai, IPC e observação dos executores
+
+[`worker_parent.py`](worker_parent.py) implementa a execução do worker Node-RED
+como subprocesso fixo. `run()` recebe somente ID e ação; o conteúdo preparado
+vem de um arquivo protegido. O pai confere owner, modo e SHA dos três módulos
+antes de lançar `/usr/bin/node` com argumentos fixos. Não há shell. Fontes,
+diretórios de estado, autenticação existente e descritores são bindings
+internos do futuro bootstrap root, não campos de ferramenta.
+
+Um socketpair privado permite duas consultas sequenciais de admissão,
+com ID/tarefa/principal/versões/ação exatos e frames limitados. Credenciais
+existentes transitam por outro descritor herdado, não por argv, ambiente ou
+logs. O pai faz um preflight antes de ler credenciais. A observação usa precisão
+canônica de milissegundos, comum a Python e Node; isso evita rejeitar uma prova
+válida por diferença de precisão, sem tolerância adicional para datas futuras.
+
+O pai mantém os locks até a saída do filho. Há prazo máximo de 75s, limites
+de heap/CPU/descritores e nenhum core dump. Linux `PR_SET_PDEATHSIG` impede que
+o filho continue quando o processo que segura os locks morre. O teste mata
+apenas um pai sintético e confirma a saída do seu filho. Resposta perdida após
+um grant mantém incerteza; não causa novo POST. Antes de qualquer grant, a
+recusa pode gerar recibo protegido de ausência de efeito. Resultado terminal
+só é aceito do recibo durável, vinculado à mesma operação. Conteúdo adicional
+ou não revisado no recibo é recusado; stdout/stderr brutos não são exportados.
+
+[`executor_observer.py`](executor_observer.py) consulta, sem instanciar Stores
+mutáveis, o executor administrativo antigo, jobs duráveis, journal de deploy
+e jobs do novo coordenador. Exige locks reais de operações/admin/manutenção.
+Uma tentativa histórica `held` só deixa de bloquear quando o contrato root e
+os hashes da linha/audit confirmam a correção vinculada em `verified` ou
+`contained`. A linha original não muda. Tarefas incertas, cleanup pendente,
+novas operações concorrentes e coleta falha continuam bloqueando.
+
+Essa exclusão cobre executores registrados e os locks compartilhados; não
+representa exclusão de toda atividade root nem saúde residencial. Uma leitura
+owner-only dos registros existentes confirmou a correção vinculada e nenhum
+job durável ativo, mas não provou a exclusão de um job novo de componente nem
+executou reparo. A integração completa não está instalada.
+
+Faltam criação segura das revisões, bindings/instalador/controle durável dos
+jobs e gates nos outros caminhos de mutação para que respeitem reservas ou
+incertezas do novo coordenador. Heartbeat e HA ainda precisam de ports de
+efeito. Não ativar o acesso novo com apenas este subprocesso: apresentar o
+pacote completo de integridade, validade e revogação e obter aprovação
+específica antes do aceite real pelo MCP.

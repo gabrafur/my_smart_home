@@ -134,4 +134,9 @@ class Cases(unittest.TestCase):
   with self.assertRaises(FileNotFoundError):
    with second:pass
   self.assertFalse(self.lock.exists())
+ def test_grant_timestamp_uses_shared_millisecond_precision_without_future_tolerance(self):
+  self.now=1000+123987/1000000
+  with self.port.locked(),self.lease:
+   value=self.guard().check(self.binding)
+  self.assertEqual(value['observed_at'],1000.123);self.assertLessEqual(value['observed_at'],self.now)
 if __name__=='__main__':unittest.main()

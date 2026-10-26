@@ -22,8 +22,8 @@ def safe_file(path,owner,mode,limit):
   return fd,s
  except BaseException:os.close(fd);raise
 @contextlib.contextmanager
-def readonly_db(path,owner):
- fd,info=safe_file(path,owner,0o600,1048576);db=None
+def readonly_db(path,owner,mode=0o600):
+ fd,info=safe_file(path,owner,mode,1048576);db=None
  try:
   db=sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro',uri=True,timeout=2,isolation_level=None)
   db.row_factory=sqlite3.Row;db.execute('PRAGMA query_only=ON');db.execute('BEGIN')
@@ -123,4 +123,4 @@ class ProtectedAdmission:
   need(isinstance(external,dict)and external.get('global_admin_idle')is True and external.get('root_verified')is True and external.get('coverage')==['legacy_admin_executor','durable_jobs','component_jobs']and external.get('collection_error')is None and finite(external.get('observed_at'))and 0<=now-external['observed_at']<=5,'external_admin_state_unconfirmed')
   # Existing resource gate raises on pressure; it must not be a caller boolean.
   need(self.resources()is None,'resource_gate_contract_changed')
-  return {**binding,'identity_kind':review['identity_kind'],'registered_task':True,'reviewed_candidate':True,'principal_matches':True,'shared_budget_reserved':True,'global_admin_idle':True,'resources_available':True,'maintenance_lock_held':True,'observed_at':self.clock(),'expires_at':expiry,'existing_send_id':review['send_id'],'shared_sends_last_24h':task['shared_sends_last_24h'],'new_sends_reserved':0}
+  return {**binding,'identity_kind':review['identity_kind'],'registered_task':True,'reviewed_candidate':True,'principal_matches':True,'shared_budget_reserved':True,'global_admin_idle':True,'resources_available':True,'maintenance_lock_held':True,'observed_at':math.floor(self.clock()*1000)/1000,'expires_at':expiry,'existing_send_id':review['send_id'],'shared_sends_last_24h':task['shared_sends_last_24h'],'new_sends_reserved':0}

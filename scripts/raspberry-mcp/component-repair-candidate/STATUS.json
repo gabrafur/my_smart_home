@@ -1,21 +1,23 @@
 {
   "schema_version": 1,
-  "state": "offline_candidate_with_existing_task_budget_and_maintenance_ports_not_registered_in_MCP",
+  "state": "offline_candidate_with_pinned_parent_private_IPC_and_registered_executor_observation_not_registered_in_MCP",
   "new_tools_registered": 0,
   "production_writes_enabled": false,
   "runtime_ports": "owner_only_read_probes_not_MCP_access",
-  "Python_tests": 70,
+  "Python_tests": 93,
   "kernel_profile_and_daemon_profile_acceptance": "not_interchangeable",
   "remaining": [
-    "heartbeat loaded-code identity",
+    "heartbeat native loaded-code identity",
     "heartbeat and HA effect ports",
-    "protected root-parent job wiring, review creation, live other-executor observation and worker IPC",
-    "fixed production bindings, lock ordering and root job bootstrap",
-    "full privileged hash chain and specific access approval",
-    "actual MCP execution and natural functional acceptance"
+    "safe review creation and complete fixed bootstrap, reciprocal broker gates and durable job control",
+    "effective daemon analysis profile acceptance before any new model inference",
+    "full privileged integrity chain and specific access approval",
+    "actual MCP submission/results and natural functional acceptance"
   ],
   "Node_model_schema_worker_tests": 22,
   "NodeRED_worker_production_deployments": 0,
   "task_registry_read_port": "existing SQLite schema and shared policy; real read accepted, no registry write",
-  "maintenance_port": "real scheduler flock implemented; production wiring not installed"
+  "maintenance_port": "real scheduler flock implemented; production wiring not installed",
+  "protected_parent_process": "implemented_and_synthetic_integration_tested_not_installed",
+  "existing_executor_observation": "owner_only_actual_snapshot_accepted_not_full_effect_admission"
 }
