@@ -1,4 +1,7 @@
-"""Metadata-only observation around the unchanged, root-sealed collector."""
+"""Observe the unchanged root-sealed collector with a fixed15s wall/I/O envelope.
+Original CPU/memory/file limits and handlers remain; original collector bytes
+still arm5s. This wrapper explicitly rearms15s after original apply_limits.
+"""
 import hashlib
 import importlib.util
 import json
@@ -12,6 +15,7 @@ import types
 
 COLLECTOR = Path('/usr/local/lib/raspberry-procmon/collector.py')
 COLLECTOR_SHA = 'd53a173123b0d6d96406e56bd73559fd5fd00d6dd040bf36cf2c21b978e1b277'
+WALL_IO_ENVELOPE_SECONDS = 15
 REASONS = frozenset(('not_regular','oversize','stat_format','negative','identity_format',
     'boot_format','output_limit','interrupted_scan_limit','unsafe_interrupted_sample',
     'interrupted_archive_full','unsafe_interrupted_archive','interrupted_sample_changed',
@@ -67,7 +71,8 @@ class Observer:
         original_preserve=mod.preserve_interrupted
 
         # Isolate adapter attributes: never monkey-patch the process-wide os or
-        # signal modules, nor change the original alarm or handler semantics.
+        # signal modules. Handlers stay original; main explicitly rearms the
+        # wall/I/O alarm to the fixed15s envelope after original apply_limits.
         original_os=mod.os
         original_signal=mod.signal
         os_adapter=types.SimpleNamespace(**vars(original_os))
@@ -173,14 +178,23 @@ class Observer:
         os.write(2,raw)
 
 
+def apply_observed_limits(mod):
+    # Fixed wall-clock allowance, not a CPU/memory/cadence or durability waiver.
+    if type(WALL_IO_ENVELOPE_SECONDS) is not int or WALL_IO_ENVELOPE_SECONDS != 15:
+        raise ValueError('unsupported_wall_io_envelope')
+    mod.apply_limits()  # Original CPU/memory/files/handlers and original5s alarm.
+    mod.signal.alarm(WALL_IO_ENVELOPE_SECONDS)  # No new handler or retry.
+
+
 def main():
     observer=Observer()
     try:
         if len(sys.argv)!=1 or os.geteuid()==0:
             raise ValueError('fixed_unprivileged_entrypoint_required')
         mod=load_collector();observer.install(mod)
-        # Original limits, alarm, state machine and history retention are unchanged.
-        mod.apply_limits();observer.stage='state_validation'
+        # Original non-wall limits, state machine, durability and retention stay.
+        # Only the wrapper wall/I/O envelope is explicitly extended from5s to15s.
+        apply_observed_limits(mod);observer.stage='state_validation'
         mod.run_once()
     except Exception as exc:
         observer.emit(exc)

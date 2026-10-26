@@ -1,0 +1,33 @@
+[Unit]
+Description=Bounded metadata-only process inventory
+After=local-fs.target
+[Service]
+Type=oneshot
+User=raspberry-procmon
+Group=raspberry-procmon
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-procmon/collector.py
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateNetwork=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+InaccessiblePaths=-/mnt/data/docker -/run/docker.sock -/run/raspberry-mcp
+ReadWritePaths=/var/lib/raspberry-procmon
+TimeoutStartSec=20
+TasksMax=4
+CPUQuota=15%
+LimitAS=67108864
+LimitCPU=2
+LimitFSIZE=1048576
+LimitNOFILE=32
+StandardOutput=null
+StandardError=journal

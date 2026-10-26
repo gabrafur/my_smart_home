@@ -664,6 +664,16 @@ nativa da unidade após transição real e com identidade correspondente. O
 Seu aceite real e hashes estão em
 [procmon-signal-accounting.acceptance.json](../scripts/raspberry-mcp/procmon-signal-accounting.acceptance.json).
 
+Em 26/10/2026 o wrapper do coletor recebeu um envelope explícito de 15 segundos
+para concluir I/O, preservando CPU, memória, timer, handlers e durabilidade.
+A unidade usa `TimeoutStartSec=20`. Dois ciclos naturais posteriores concluíram;
+a continuidade de 24h segue pendente. Uma captura fixa somente de leitura está
+agendada para 27/10/2026 às 23:00 UTC, inclusive após expiração administrativa,
+sem novas admissões ou reparos. O [contrato do procmon](../scripts/raspberry-mcp/procmon-observability/README.md)
+explica os limites da evidência, testes e reversão; os relatórios históricos
+e seus resultados reprovados permanecem preservados.
+
+
 O resultado distingue CPU do observador, CPU do processo até a telemetria e CPU
 da unidade inteira. Invocações históricas sem telemetria continuam ausentes;
 memória sem contador continua desconhecida. O aceite não substitui cadência das

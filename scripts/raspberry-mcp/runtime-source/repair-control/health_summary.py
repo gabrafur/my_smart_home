@@ -284,7 +284,7 @@ def project_acceptance_report(raw, now, collection_error=None):
     observed = stamp(raw.get('observed_at'))
     scheduled = raw.get('scheduled_for')
     if (observed is None or observed > now+1 or scheduled not in
-            ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z', '2026-10-26T11:00:00Z', '2026-10-26T16:00:00Z', '2026-10-26T20:00:00Z')
+            ('2026-10-25T04:30:00Z', '2026-10-25T15:20:00Z', '2026-10-25T20:33:00Z', '2026-10-26T11:00:00Z', '2026-10-26T16:00:00Z', '2026-10-26T20:00:00Z', '2026-10-27T23:00:00Z')
             or stamp(scheduled) > observed):
         return missing
     def number(value):
@@ -339,7 +339,8 @@ def project_acceptance_report(raw, now, collection_error=None):
 def procmon_acceptance_observation():
     import time
     now = time.time()
-    for scheduled, filename in [('2026-10-26T20:00:00Z', 'window-2000.json'),
+    for scheduled, filename in [('2026-10-27T23:00:00Z', 'window-2300.json'),
+            ('2026-10-26T20:00:00Z', 'window-2000.json'),
             ('2026-10-26T16:00:00Z', 'window-1600.json'),
             ('2026-10-26T11:00:00Z', 'window-1100.json'),
             ('2026-10-25T20:33:00Z', 'window-2033.json'),

@@ -35,7 +35,7 @@ class SixthTests(unittest.TestCase):
    stack.enter_context(patch('builtins.print'));c.main()
   return writes,loader,runtime,correlation
  def test_sixth_appends_exactly_five_original_capture_dates(self):
-  self.assertEqual(c.SCHEDULE,(*OLD,SIXTH))
+  self.assertEqual(c.SCHEDULE[:6],(*OLD,SIXTH))
  def test_capture_not_due_before20_preserves_previous_receipt_without_collecting(self):
   writes,loader,runtime,correlation=self.run_capture(AT-1)
   self.assertEqual(writes,[]);loader.assert_not_called();runtime.assert_not_called();correlation.assert_not_called();self.assertFalse((self.state/'window-2000.json').exists());self.unchanged()
@@ -68,7 +68,7 @@ class SixthTests(unittest.TestCase):
  def test_future_or_seventh_schedule_stays_unknown(self):
   for raw in [report(AT+10),{**report(),'scheduled_for':'2026-10-27T20:00:00Z'}]:self.assertEqual(h.project_acceptance_report(raw,AT)['state'],'unknown')
  def test_timer_keeps_closed_schedule_and_resource_parameters(self):
-  text=(P/'raspberry-procmon-acceptance.timer').read_text();self.assertEqual(text.count('OnCalendar='),6)
+  text=(P/'raspberry-procmon-acceptance.timer').read_text();self.assertEqual(text.count('OnCalendar='),7)
   self.assertIn('OnCalendar=2026-10-26 20:00:00 UTC',text)
   for field in ['AccuracySec=1s','RandomizedDelaySec=0','Persistent=true','Unit=raspberry-procmon-acceptance.service']:self.assertIn(field,text)
  def test_elapsed_runtime_does_not_override_missing_cadence(self):

@@ -38,7 +38,7 @@ Os intents, identidade de inode e recibos originais permanecem privados.
 
 O wrapper observa `SIGALRM` e `SIGTERM` recebidos pelo handler original e o
 intervalo de `fsync` de arquivo/diretório. Adaptadores privados do módulo
-preservam os handlers, o alarme original, os limites e a agenda; não alteram
+preservam os handlers, os limites de recursos e a agenda; não alteram
 `os` ou `signal` globalmente. O quadro sanitizado continua limitado a 768 bytes.
 Não contém caminhos, descritores, mensagens de erro nem remetente do sinal.
 Um sinal observado no futuro não identifica a causa de uma falha antiga.
@@ -71,3 +71,41 @@ Os testes isolados cobrem handlers e limites originais, isolamento dos
 adaptadores, interrupção propagada, tamanho do quadro, correlação, coleta
 incompleta, CPU legado/completa e ausência de memória. A janela sintética de
 24h dos testes não constitui evidência de produção.
+
+## Envelope de parede para concluir I/O
+
+Em 26/10/2026 seis interrupções recentes em escrita foram comprovadas com
+`SIGALRM`; esperas de `fsync` ainda pendentes foram observadas acima de cinco
+segundos. Isso não identifica uma falha física de armazenamento nem explica a
+lacuna histórica de 112 segundos.
+
+O wrapper agora chama os limites originais uma vez, preserva seus handlers e
+rearma explicitamente o alarme de parede de 5 para 15 segundos. A unidade
+existente passa de `TimeoutStartSec=7` para `20`. CPU por invocação de 2 segundos,
+quota de 15%, memória, descritores, durabilidade, locks e timer de 55 segundos
+permanecem. O coletor original continua com os mesmos bytes e alarme de cinco
+segundos; o novo envelope pertence ao wrapper. Não existe retry automático.
+
+A aplicação às 22:22 UTC carregou a unidade sem iniciar o coletor ou reiniciar
+serviços. Os dois primeiros ciclos naturais concluíram, com aproximadamente
+56 segundos entre eles. Isso comprova execução posterior à aplicação, ainda
+sem provar que uma escrita acima do limite antigo completará ou que a
+cadência de 24 horas foi recuperada. Reutiliza-se a evidência anterior de
+CPU/RSS; as falhas e lacunas históricas continuam preservadas.
+
+A captura fixa de 27/10/2026 às 23:00 UTC acrescenta uma janela posterior à
+correção. Somente lê histórico e journal e escreve o recibo sanitizado; pode
+rodar após expiração administrativa, sem admitir reparos nem depender de PC
+ou conversa. Os seis relatórios anteriores são imutáveis. Ausência, falha ou
+lacuna continuam impedindo aceite. A projeção MCP seleciona a nova janela
+quando devida, sem substituir resultado ausente por sucesso antigo.
+
+As fontes de referência dos dois pacotes ficam em
+[apply_procmon_runtime_budget.py](../runtime-source/administrative-recovery/apply_procmon_runtime_budget.py)
+e [apply_procmon_post_budget_capture.py](../runtime-source/administrative-recovery/apply_procmon_post_budget_capture.py).
+São operações fixas seladas, com before/intent/recibos privados, não comandos
+arbitrários fornecidos ao MCP. A reversão compara os hashes conhecidos e
+recarrega apenas a unidade ou o timer correspondente; edição externa ou
+política posterior exige reconciliação antes. Os testes usam diretórios e
+fronteiras sintéticos para falha parcial, resultado incerto, recusa de
+repetição e reversão, sem serviço residencial.
