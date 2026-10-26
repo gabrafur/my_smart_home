@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "expires_at": 0,
+  "minimum_poll_seconds": 60,
+  "schema_version": 1
+}

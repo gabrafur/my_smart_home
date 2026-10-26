@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "state": "installed_implementation_exported_with_unarmed_bindings",
+  "public_sources_are_not_live_root_permission": true,
+  "private_policies_receipts_and_credentials_exported": false,
+  "files": {
+    "operator_workspace.py": {
+      "source_role": "reviewed_operator_candidate/operator_workspace.py",
+      "prepared_source_sha256": "8f33313e9ec3c0eb20d5c3554fc05202a062c00381ef53b3cfeee98eff1e332e",
+      "export_sha256": "8f33313e9ec3c0eb20d5c3554fc05202a062c00381ef53b3cfeee98eff1e332e",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_operator_workspace.py": {
+      "source_role": "reviewed_operator_candidate/test_operator_workspace.py",
+      "prepared_source_sha256": "99d6e17d7103b3f3cb78e1ff25d661286776cc9139ad8dcd89b64e7286c31b4f",
+      "export_sha256": "99d6e17d7103b3f3cb78e1ff25d661286776cc9139ad8dcd89b64e7286c31b4f",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "durable_revocation.py": {
+      "source_role": "reviewed_operator_candidate/durable_revocation.py",
+      "prepared_source_sha256": "b75e4cc11d7c2c7a56b81fa77b299592fd73151fd366ea8b9fd97c8a7d092e84",
+      "export_sha256": "894c0e1eb7c2ad52c6b13d0640e3c6a240921614001c3b3e6d686a91cbe763e8",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_durable_revocation.py": {
+      "source_role": "reviewed_operator_candidate/test_durable_revocation.py",
+      "prepared_source_sha256": "9757879fee8ca52c9a98f76bef4ccd1b9bfff7e2a7f1e9acec545d42a1732c5d",
+      "export_sha256": "9757879fee8ca52c9a98f76bef4ccd1b9bfff7e2a7f1e9acec545d42a1732c5d",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "service_probe.cjs": {
+      "source_role": "reviewed_operator_candidate/service_probe.cjs",
+      "prepared_source_sha256": "ebc2b5d66dcaab4018c95b29ef81152686e7a0a70af167d434f8cf5e98452398",
+      "export_sha256": "ebc2b5d66dcaab4018c95b29ef81152686e7a0a70af167d434f8cf5e98452398",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "notification_collector.cjs": {
+      "source_role": "reviewed_operator_candidate/notification_collector.cjs",
+      "prepared_source_sha256": "cd60791cddf02b322df6bb5cd1cae527cd0813e8b92780360777dea6e7e98e58",
+      "export_sha256": "ac0d5c3a3f39189c4f557ae01fc0b2a36d6f35589fa5f07d0ca071a73ab5b8a9",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "icloud_readiness.py": {
+      "source_role": "reviewed_operator_candidate/icloud_readiness.py",
+      "prepared_source_sha256": "ecc9bb88f5bd658e716e08b12c77a88d960d3888f1bfeb339c1d9b8c36095d42",
+      "export_sha256": "ecc9bb88f5bd658e716e08b12c77a88d960d3888f1bfeb339c1d9b8c36095d42",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "readiness_client.py": {
+      "source_role": "reviewed_operator_candidate/readiness_client.py",
+      "prepared_source_sha256": "41c9bd6e5ed6065af1c2eb532277b717707b49107efcae17d604277261df78f3",
+      "export_sha256": "41c9bd6e5ed6065af1c2eb532277b717707b49107efcae17d604277261df78f3",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "executor.py": {
+      "source_role": "reviewed_operator_candidate/executor.py",
+      "prepared_source_sha256": "ff861fc3178dc6332721fe6f5eabb00eea65db3c3ce7197384885f103e7639bc",
+      "export_sha256": "2f1d95bec4488c3a62f17027c01e5983866d534c6d2b049dad1093d7f72e1628",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "recovery.py": {
+      "source_role": "reviewed_operator_candidate/recovery.py",
+      "prepared_source_sha256": "27627b8ae3ba2ac68144e5b22801f612d3029d9ef7c1663e83d9529e6c7ffe9c",
+      "export_sha256": "b72de1be38f590b214798ce065a81851a0751d28f588e8f223d29446ebb8fde8",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "repair-broker.py": {
+      "source_role": "reviewed_operator_candidate/repair-broker.py",
+      "prepared_source_sha256": "0d59a1d7dde44ffd8cf756b7ad28a15b3ddee6d594c591c4e7ee9f71debc7695",
+      "export_sha256": "d281a278c0b6bdad1ff187aaef587f7068cc25836ead6b4ff4c64a0e95bf017b",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "package_model.py": {
+      "source_role": "reviewed_operator_candidate/package_model.py",
+      "prepared_source_sha256": "fc8c28efe24cac92d8ec71fd7dd05beb27761264c1dc9b0f882e9f1a5320d9de",
+      "export_sha256": "ef076e3994cf3b8a024409fbf96ec0c9db4a72d67f9f18e6bd4750d339838025",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "apply.py": {
+      "source_role": "reviewed_operator_candidate/apply.py",
+      "prepared_source_sha256": "7df4d1f378479f3c03bbd5b4efe7420fb2c5ff4661f357881311380f57f33ebb",
+      "export_sha256": "81169bde6c17be2d842b3eb6894bdac87c798d0a1c29bcd90e128df7530b153d",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "build_bundle.py": {
+      "source_role": "reviewed_operator_candidate/build_bundle.py",
+      "prepared_source_sha256": "64043e9d138eaee6286e07f2e349697f8a9d864f2a36e0dc9a1338b9018e5dd3",
+      "export_sha256": "64043e9d138eaee6286e07f2e349697f8a9d864f2a36e0dc9a1338b9018e5dd3",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_icloud_readiness.py": {
+      "source_role": "reviewed_operator_candidate/test_icloud_readiness.py",
+      "prepared_source_sha256": "02c5be5a7967955c1aee8eacf83e9da2ae1555ace13437b6c227354800118735",
+      "export_sha256": "02c5be5a7967955c1aee8eacf83e9da2ae1555ace13437b6c227354800118735",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_readiness_client.py": {
+      "source_role": "reviewed_operator_candidate/test_readiness_client.py",
+      "prepared_source_sha256": "9cbb107b029faaff850dcf999a341cb0eb2fbae06b8e18b9f8ce8454f5be0a75",
+      "export_sha256": "9cbb107b029faaff850dcf999a341cb0eb2fbae06b8e18b9f8ce8454f5be0a75",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_root_readiness_gate.py": {
+      "source_role": "reviewed_operator_candidate/test_root_readiness_gate.py",
+      "prepared_source_sha256": "ee354436c08418b109fea309768c27a536e043a9bc7d2b0d85d437914034a676",
+      "export_sha256": "ee354436c08418b109fea309768c27a536e043a9bc7d2b0d85d437914034a676",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_recovery_readiness.py": {
+      "source_role": "reviewed_operator_candidate/test_recovery_readiness.py",
+      "prepared_source_sha256": "3b951c2d80cb4406b3ff43d3f08edf0cacc6f2d784e0ad7ffaaa48d0178744fd",
+      "export_sha256": "3b951c2d80cb4406b3ff43d3f08edf0cacc6f2d784e0ad7ffaaa48d0178744fd",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_package_model.py": {
+      "source_role": "reviewed_operator_candidate/test_package_model.py",
+      "prepared_source_sha256": "6d14570c76e124ee0d5ca0e28689f1d60e4bd7816b51ccc0d4e24e0c094a6712",
+      "export_sha256": "6d14570c76e124ee0d5ca0e28689f1d60e4bd7816b51ccc0d4e24e0c094a6712",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_installer.py": {
+      "source_role": "reviewed_operator_candidate/test_installer.py",
+      "prepared_source_sha256": "2bce349fb75100fd6c93c032e082623337e771740395f658772f4e57c5841ce1",
+      "export_sha256": "2bce349fb75100fd6c93c032e082623337e771740395f658772f4e57c5841ce1",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_service_probe.cjs": {
+      "source_role": "reviewed_operator_candidate/test_service_probe.cjs",
+      "prepared_source_sha256": "784318556535da539e524ae902f17b28a5cb13b4903065770cce8b1fd6540562",
+      "export_sha256": "784318556535da539e524ae902f17b28a5cb13b4903065770cce8b1fd6540562",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "test_collector.cjs": {
+      "source_role": "reviewed_operator_candidate/test_collector.cjs",
+      "prepared_source_sha256": "5db70e50b1a8532c4dc8754ffee0df8e3ec98e51da52a23baccc92817ec86319",
+      "export_sha256": "5db70e50b1a8532c4dc8754ffee0df8e3ec98e51da52a23baccc92817ec86319",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "icloud-readiness.conf": {
+      "source_role": "reviewed_operator_candidate/icloud-readiness.conf",
+      "prepared_source_sha256": "188e7f8843c2f118209c6a70f741a27c92824101a8413a1c7143c1bbe03cb082",
+      "export_sha256": "188e7f8843c2f118209c6a70f741a27c92824101a8413a1c7143c1bbe03cb082",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    },
+    "before-recovery.py": {
+      "source_role": "reviewed_operator_candidate/before-recovery.py",
+      "prepared_source_sha256": "35969d50915e1d2c3f61c520c95355e76b33f69fc2038c56b8dba0539953a279",
+      "export_sha256": "a81db5221b9d542ed19f9df7c8c2288c4ddca25e9bbca0d0bf825606aafaabf4",
+      "normalizations": [
+        "unarmed_operator_stage_state_expiry_and_manifest",
+        "machine_principal_and_legacy_intent_bindings",
+        "private_historical_row_replaced_by_fixture",
+        "fixture_import_and_fingerprint_bindings"
+      ]
+    }
+  }
+}

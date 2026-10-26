@@ -575,5 +575,6 @@
         "authority_expiry_and_manifest_not_armed"
       ]
     }
-  }
+  },
+  "snapshot_scope_note": "Historical per-file captures; active readonly iCloud collector/root/broker delta is exported with unarmed bindings in ../icloud-readiness-candidate. Historical hashes remain provenance, not current loaded-runtime claims."
 }

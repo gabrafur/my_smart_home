@@ -979,5 +979,34 @@ Uma observação administrativa dos dois nós carregados confirmou esse contrato
 e presença de `public_bindings.call` no cache de serviços da conexão existente.
 A prova ligada ao processo HA confirmou o adaptador iCloud em `entry_ready`.
 Cache não equivale a consulta HA ao vivo; entry ready não prova saúde Apple.
-A leitura administrativa ainda não é uma ferramenta de diagnóstico da Eva.
+O campo `evidence.data.icloud_readiness` de `maintenance_capabilities` agora
+expõe prova do processo e presença de `public_bindings.call` no registro HA
+consultado localmente. Duas leituras pelo cliente MCP real passaram, com
+420,031 segundos de avanço da coleta nativa. Presença no registro não prova
+execução do handler nem disponibilidade do provedor Apple.
 As chamadas reais de localização não foram repetidas para testar o diagnóstico.
+
+O Node-RED instalado envolve respostas API com código/mensagem em
+`HomeAssistantError`, preservando a mensagem e perdendo o código original.
+Esse rótulo não identifica a classe Python nem distingue atualização do
+provedor de chamada downstream. O diagnóstico continua sem atribuir causa
+com base apenas no texto genérico.
+
+Fonte, campos, preparação por outro operador, limites, pré-checagem do socket,
+revogação persistente e restrições de rollback estão no
+[guia do diagnóstico iCloud](../scripts/raspberry-mcp/icloud-readiness-candidate/README.md).
+A exportação pública tem bindings desarmados e políticas privadas ausentes;
+não deve ser copiada sobre uma instalação viva. O aceite do cliente MCP
+não identifica por si só uma execução específica da Eva/dots.
+
+
+## Aceite independente do backup de 26/10/2026
+
+Após a exceção limitada aprovada pelo proprietário, a verificação do mesmo
+artefato externo terminou `verified_cleaned`: o hash esperado do ciphertext
+foi confirmado e todo o fluxo securetar v3 foi autenticado. A cópia e o
+contêiner temporários foram removidos; os sete serviços mantiveram os horários
+de início. A falha anterior e os recibos continuam preservados.
+Isso comprova a integridade daquele artefato, sem afirmar restauração ou
+recuperação funcional dos serviços. Não repetir a leitura consumida da chave
+ou a transferência para reproduzir esse aceite.
