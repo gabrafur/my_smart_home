@@ -407,9 +407,7 @@ for (const source of ["manual", "sunrise"]) {
   assert.match(failure[1].alert.message, /não foi repetido/);
 }
 const unavailable = confirmationCase("off", ["off", "unknown", "unavailable", "off"]);
-assert.match(unavailable[1].alert.message, /garagem.*unknown/);
-assert.match(unavailable[1].alert.message, /jardim.*unavailable/);
-assert.equal(unavailable[1].payload.observer_kind, "external_lighting_confirmation");
+assert.deepEqual(unavailable, [null, null], "leitura indisponível mantém incerteza sem aviso de falha");
 
 const policyValues = new Map();
 const policyContext = {

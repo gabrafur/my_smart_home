@@ -21,7 +21,8 @@ const devices = Object.entries(labels).map(([id, label]) => {
 });
 const failed = devices.filter(d => d.reason !== 'confirmed');
 const matching = devices.every(d => d.state === expected);
-const unresolved = failed.filter(d => d.state !== expected);
+// An unavailable/unknown/missing/stale report is inconclusive, not a failed light.
+const actionable = failed.filter(d => d.reason === 'mismatch');
 msg.external_confirmation = { issued_at: issuedAt, observed_at: now, devices,
     status: failed.length ? 'unconfirmed' : 'confirmed', matching_reported_states: matching,
     coverage: ['ha_entity_report_after_command', 'not_physical_light_or_human_ack'] };
@@ -32,35 +33,35 @@ if (!failed.length) {
     if (testMode) flow.set('external_pending_v1__test', null);
     else flow.set('external_pending_v1', null, 'persistent');
 }
-const signature = unresolved.map(d => `${d.id}:${d.reason}:${d.state}`).join('|');
-// Preserve a genuine prior confirmation incident, but not the legacy false alarm
-// whose entire signature was matching cached states. Never announce recovery
-// from a cached match alone.
-const previousIncident = previous?.expected === expected && (previous?.incident_open === true ||
-    previous?.version === 1 && previous.failed === true &&
-    previous.signature?.split('|').some(item => !item.endsWith(`:stale:${expected}`)));
-const current = { issued_at: issuedAt, expected, failed: unresolved.length > 0, signature,
-    incident_open: unresolved.length > 0 || failed.length > 0 && previousIncident === true,
-    awaiting_fresh_report: failed.length > 0, observed_at: now, version: 2 };
+const actionableSignature = actionable.map(d => `${d.id}:${d.reason}:${d.state}`).join('|');
+// Only a fresh on/off mismatch opens an incident. Migrate known mismatch
+// signatures, but never turn legacy unavailable/stale notices into recoveries.
+const previousIncident = previous?.expected === expected && (previous?.version >= 3
+    ? previous.incident_open === true && previous.incident_kind === 'fresh_mismatch'
+    : previous?.failed === true && previous.signature?.split('|').some(item => /:mismatch:(on|off)$/.test(item)));
+const signature = actionableSignature || (failed.length && previousIncident ? previous.signature : '');
+const incidentOpen = actionable.length > 0 || failed.length > 0 && previousIncident === true;
+const current = { issued_at: issuedAt, expected, failed: actionable.length > 0, signature,
+    incident_open: incidentOpen, incident_kind: incidentOpen ? 'fresh_mismatch' : null,
+    awaiting_fresh_report: failed.length > 0, observed_at: now, version: 3 };
 if (testMode) flow.set(key, current); else flow.set(key, current, 'persistent');
 // Persistent lifecycle: startup alone never emits a recovery. A change of intention
 // supersedes the old incident instead of claiming its original command succeeded.
 if (matching && failed.length) return [null, null];
 const recovered = !failed.length && previousIncident === true;
-const duplicate = previous?.expected === expected && previous?.signature === signature && previous?.failed === current.failed;
-if (unresolved.length && !duplicate || recovered) {
+const duplicate = previous?.expected === expected && previous?.signature === signature &&
+    (actionable.length ? previousIncident === true : previous?.failed === current.failed);
+if (actionable.length && !duplicate || recovered) {
     const intention = expected === 'on' ? 'ligar' : 'desligar';
-    const detail = unresolved.map(d => `${d.label}: esperado ${expected}, encontrado ${d.state} (${d.reason})`).join('; ');
-    const mismatch = unresolved.some(d => d.reason === 'mismatch');
-    const guidance = mismatch ? 'Uma leitura posterior ao comando difere do esperado; verifique o dispositivo.' :
-        'Falta uma leitura válida dos destinos indicados; verifique a integração no Home Assistant.';
+    const detail = actionable.map(d => `${d.label}: esperado ${expected}, encontrado ${d.state} (${d.reason})`).join('; ');
+    const guidance = 'Uma leitura válida posterior ao comando difere do esperado; verifique o dispositivo.';
     const message = failed.length
         ? `Iluminação externa: não foi possível confirmar ${intention}. ${detail}. ${guidance} O comando não foi repetido.`
         : `Iluminação externa: novos estados de todos os destinos confirmam ${intention}. Isso confirma o estado informado pelos dispositivos, não a emissão de luz.`;
     const alertMsg = { ...msg, _global_observer_test: testMode,
         payload: { test_mode: testMode, observer_kind: 'external_lighting_confirmation',
             incident_key: 'exterior_light', recovery: recovered, mobile_notification: true },
-        alert: { title: recovered ? 'Iluminação externa confirmada' : mismatch ? 'Iluminação externa com estado diferente' : 'Confirmação da iluminação indisponível', message } };
+        alert: { title: recovered ? 'Iluminação externa confirmada' : 'Iluminação externa com estado diferente', message } };
     return [null, alertMsg];
 }
 if (failed.length || duplicate || msg.source === 'sunrise') return [null, null];

@@ -64,12 +64,15 @@ automatica.
    permaneceu `on`, com data anterior ao comando, não comprova falha nem um novo
    aceite do comando: se todos os estados coincidem com o solicitado, o fluxo
    permanece silencioso e a confirmação continua `unconfirmed`.
-9. Estados divergentes, `unknown`, `unavailable` ou ausentes continuam sendo
-   diagnosticados, sem repetir comandos. O aviso cita somente os destinos que
-   não coincidem com o esperado. Falta de leitura válida orienta verificar a
-   integração, sem atribuir causa à alimentação ou ao Zigbee. Uma confirmação
-   posterior pode encerrar um incidente real; o alerta legado composto somente
-   por estados coincidentes e antigos não gera recuperação fictícia.
+9. Somente uma leitura válida posterior ao comando, com `on` ou `off` oposto
+   ao esperado, gera aviso de divergência. `unknown`, `unavailable`, ausência ou
+   data antiga permanecem `unconfirmed`, sem aviso de falha e sem repetir o
+   comando. O estado geral do Zigbee2MQTT não confirma o estado individual de
+   uma lâmpada. A indisponibilidade de leitura não abre incidente nem gera uma
+   recuperação quando a leitura volta. Incidente real por divergência permanece
+   aberto durante um intervalo inconclusivo, sem repetir o mesmo aviso; somente
+   observações novas de todos os destinos podem encerrá-lo. Avisos legados de
+   indisponibilidade ou estados antigos não viram recuperações fictícias.
 
 ## Avisos
 
