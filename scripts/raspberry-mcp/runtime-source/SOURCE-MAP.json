@@ -402,6 +402,12 @@
       "source_sha256": "f73291ae36821e27db087df38f71d727648c4838f2df793949d55e914ae1c7b0",
       "export_sha256": "f73291ae36821e27db087df38f71d727648c4838f2df793949d55e914ae1c7b0",
       "normalizations": []
+    },
+    "frontend/events-server.mjs": {
+      "source": "/var/lib/raspberry-mcp/root/app/events-server.mjs",
+      "source_sha256": "a58dbf0d07feb95efe7b2d8f19bd4e42da75a75c32bed50728ae16059afd68ed",
+      "export_sha256": "a58dbf0d07feb95efe7b2d8f19bd4e42da75a75c32bed50728ae16059afd68ed",
+      "normalizations": []
     }
   }
 }

@@ -24,9 +24,23 @@
     "existing_tunnel_reconnected": true,
     "household_services_restarted": false
   },
-  "natural_summary_delivery": "pending_budget_slot_not_yet_verified",
+  "natural_summary_delivery": "webhook_accepted_on_natural_cycle",
   "assistant_execution": "unproven",
   "historical_failure_and_uncertain_intents_preserved": true,
   "whole_goal_complete": false,
-  "private_runtime_or_credentials_exported": false
+  "private_runtime_or_credentials_exported": false,
+  "natural_delivery_coverage": [
+    "durable_batch_and_all_members_observed",
+    "webhook_acceptance_only",
+    "not_assistant_execution"
+  ],
+  "advertised_payload_contract": {
+    "state": "loaded_by_actual_MCP_events_status",
+    "compatible_variants": [
+      "individual_notification_v1",
+      "notification_summary_v1"
+    ],
+    "remote_client_schema_cache": "unknown",
+    "schema_sha256": "925b4a17575957c98c2b254e4443fab5ed7ec0c527292e3986412cfe038ca72b"
+  }
 }

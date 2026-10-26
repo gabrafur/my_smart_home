@@ -895,3 +895,46 @@ pai e IPC testados em isolamento. Revisão segura, instalação root, gates
 recíprocos, ports de efeito heartbeat/HA, aprovação específica e aceite pelo
 cliente MCP continuam pendentes. Publicação de fontes e testes
 não instala nem autoriza essa ampliação.
+
+## Contrato de payload dos resumos Events
+
+`events/list` anuncia `smart_home.observation` com duas alternativas fechadas:
+o evento individual legado e `notification_summary_v1`. O schema completo
+está em `scripts/raspberry-mcp/runtime-source/frontend/events-server.mjs`,
+exportado como `eventPayloadSchema`. `inputSchema`, identidade autenticada,
+assinatura, transporte, seis tentativas/24h e intervalo de 600s permanecem.
+
+O resumo contém `project`, `topic`, `source`, `delivery_kind`,
+`source_observed_at`, `summary_as_of`, `notifications`, `covered_event_records`,
+`remaining_notification_groups`, `recovery_proven`, `assistant_execution` e
+`history_semantics`. Cada grupo contém hash opaco, estado/revisão atuais, última
+fase conhecida, ambiguidade histórica, primeiro/último horário, contagens por
+fase, prévia limitada de transições e quantidade omitida. Até oito grupos e
+256 registros; nenhum título, mensagem, credencial ou localização nesse payload.
+Remoção mantém recuperação não comprovada; execução continua desconhecida.
+
+O cliente chama `events_status` com `{"host":"raspberry"}` e consulta
+`frontend_payload_contract`: versão, hash SHA256 do schema e variantes
+carregadas no frontend que respondeu. Essa informação não comprova atualização
+do cache de outro cliente, entrega do webhook ou execução do assistente. Um
+cliente novo deve redescobrir Events; não criar assinatura adicional nem trocar
+IDs ou chave para tentar resolver cache. Preservar a assinatura existente.
+
+Uma entrega agrupada natural foi observada no MCP e no ledger: há batch e
+vínculos duráveis dos eventos cobertos, com webhook aceito. O contrato antigo
+ainda anunciado aceitava apenas evento individual; a regressão reproduz essa
+incompatibilidade sem atribuir a ela uma rejeição da plataforma não observada.
+O schema corrigido aceita os dois formatos. Aceite continua sem prova de Eva.
+
+Testes públicos usam o produtor Python puro e Ajv fixado no lockfile de
+`validation`; `make validate-dependencies` instala as dependências de teste,
+sem scripts npm. Não precisa de Ajv no daemon de produção. Execute
+`node --test --test-concurrency=1 scripts/raspberry-mcp/event-payload-contract.test.mjs`.
+Os testes não usam o PC, callback, assinatura, dispositivos ou credenciais.
+
+Para atualizar esse frontend privilegiado, conferir a cadeia de hashes das
+políticas task-control e repair-control. Mudam somente o pin do frontend e o
+pin transitivo da política; orçamento, prazo e aprovação não são renovados.
+Recarregar apenas a conexão existente do MCP. Reversão exige comparação das
+bases e preserva todos os dados/intents/membros de Events, inclusive incertos.
+Nunca repetir uma entrega para testar o schema ou comprovar consumo externo.
