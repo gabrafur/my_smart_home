@@ -46,9 +46,10 @@
     "repair-control/repair_control.py": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_control.py",
       "source_sha256": "bcc984d7905dd8f75084ce62018edc9d3ba60e5ebf6a6b97af8cb08e456386fa",
-      "export_sha256": "0cd67a4602cb351a9ff1a59aefdb40e57ef5f7c8e1da330e99414c48b33af940",
+      "export_sha256": "a4956fbb3bb24e8b33ffcdf551ff029b4d48f186c8a5725e08e9c0b0f3abd7c4",
       "normalizations": [
-        "same_numeric_deadline_written_as_integer_plus_fraction"
+        "same_numeric_deadline_written_as_integer_plus_fraction",
+        "reference_update_exact_private_binding_0640_dependency_mode;not_original_captured_runtime_bytes"
       ]
     },
     "repair-control/repair_store.py": {

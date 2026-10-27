@@ -40,7 +40,10 @@ def configuration(tasks):
         need(hashlib.sha256(tasks.read(ROOT/name, 0, 0o644)).hexdigest() == h,
              'repair_source_changed')
     for path, h in policy['dependencies'].items():
-        need(hashlib.sha256(tasks.read(Path(path), 0, 0o644)).hexdigest() == h,
+        # This fixed binding contains private entity IDs. Its integrity pin
+        # must not require making it world-readable like executable sources.
+        mode = 0o640 if path == '/etc/raspberry-nodered-diagnostics/kia-runtime-binding.json' else 0o644
+        need(hashlib.sha256(tasks.read(Path(path), 0, mode)).hexdigest() == h,
              'repair_dependency_changed')
     return policy
 
