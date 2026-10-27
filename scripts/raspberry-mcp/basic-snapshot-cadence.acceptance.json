@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "verified_UTC_date": "2026-10-27",
+  "scope": "existing_basic_MCP_snapshot_timer_initial_trigger_repair",
+  "actual_initial_MCP_error": "snapshot_unavailable",
+  "initial_failure_observed_via": "service_health",
+  "initial_snapshot_missing": true,
+  "initial_timer_active_elapsed_no_last_or_next_trigger": true,
+  "current_failure_mechanism": "dropin_empty_assignment_removed_base_boot_trigger",
+  "historical_outage_start_unknown": true,
+  "source": "scripts/raspberry-mcp/collector-cadence/60-sampling.conf",
+  "source_sha256": "d372c64c478e57105968ac2480cde56364f1d0a6399f801f65186e62385c6997",
+  "changed_target_files": 1,
+  "added_lines": 1,
+  "restored_initial_boot_trigger_seconds": 60,
+  "existing_recurrence_seconds_preserved": 55,
+  "accuracy_seconds": 1,
+  "random_delay_seconds": 0,
+  "native_MCP_apply_confirmed_and_ACKed": true,
+  "rollback_original_bytes_prepared_not_executed": true,
+  "natural_distinct_snapshot_observations": 4,
+  "natural_adjacent_intervals_seconds": [
+    55.561,
+    56.292,
+    55.672
+  ],
+  "effective_boot_and_relative_timers_both_observed": true,
+  "next_timer_activation_finite": true,
+  "collector_last_observed_exit_success": true,
+  "actual_five_tools_collection_error_null": [
+    "service_health",
+    "service_versions",
+    "disk_space",
+    "backup_results",
+    "log_summary"
+  ],
+  "shared_snapshot_consumers_proven": [
+    "service_health",
+    "service_versions",
+    "disk_space"
+  ],
+  "modern_backup_and_log_sources_separate": true,
+  "other_initial_tool_failures_not_individually_observed": true,
+  "snapshot_schema_and_file_mode_unchanged": true,
+  "snapshot_fabricated_or_written_by_helper": false,
+  "collector_directly_started": false,
+  "household_service_start_times_preserved": 7,
+  "household_services_restarted": 0,
+  "new_access_or_expiry": false,
+  "limits": {
+    "short_natural_observation_window_only": true,
+    "historical_gap_backfilled": false,
+    "full_24h_cadence_proven": false,
+    "cold_host_reboot_test_performed": false,
+    "assistant_execution_proven": false,
+    "seven_service_backup_restore_proven": false
+  }
+}

@@ -1296,3 +1296,31 @@ Esse teste prova a transação e o processamento dos metadados no runtime. Não
 comprova tempos de incidentes reais, chegada de push, execução natural da Eva,
 24 horas de continuidade ou recuperação funcional de integrações e backups.
 As operações e seus IDs foram consumidos; não repetir para produzir evidência.
+
+## Recuperação do snapshot básico após boot
+
+Uma consulta real a `service_health` retornou `snapshot_unavailable`: o snapshot
+compartilhado estava ausente, com timer ativo em `elapsed`, sem último disparo
+nem próxima execução. A configuração efetiva continha somente a recorrência
+relativa de 55 segundos. O reset da lista no override havia removido o disparo
+de boot da unidade base. Essa evidência prova o mecanismo da falha observada,
+sem datar o começo da lacuna histórica.
+
+O [override canônico](../scripts/raspberry-mcp/collector-cadence/60-sampling.conf)
+recoloca o disparo inicial depois do reset. Uma tarefa MCP nativa aplicou a
+única linha adicional, preservando intervalo, precisão, atraso, produtor,
+autenticação e limites existentes. Somente o timer foi parado e reativado;
+o coletor publicou pelas ativações naturais. Nenhum snapshot foi fabricado
+e nenhum serviço residencial foi reiniciado. A propriedade `TimersMonotonic`
+pode aparecer várias vezes: preservar todos os valores ao interpretar a saída.
+
+O [aceite sanitizado](../scripts/raspberry-mcp/basic-snapshot-cadence.acceptance.json)
+registra snapshots naturais distintos e consultas reais bem-sucedidas aos
+cinco diagnósticos. Saúde, versões e disco compartilham esse snapshot; as rotas
+atuais de backups e logs usam fontes separadas. Não atribuir às duas últimas
+uma falha anterior que não foi consultada.
+
+O [procedimento de aplicação/reversão](../scripts/raspberry-mcp/collector-cadence/README.md)
+preserva o override anterior e a história. A configuração antiga está guardada
+para reversão, que não foi executada neste aceite. A cobertura é curta: não
+comprova reboot do host, 24 horas ou execução natural da assistente.
