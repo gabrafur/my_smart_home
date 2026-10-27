@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "verified_UTC_date": "2026-10-27",
+  "scope": "reviewed_fixed_NodeRED_component_transaction_and_native_full_dry_run",
+  "runtime_NodeRED_version": "5.0.9",
+  "origin": "coordinator_requested_serial_MCP_administrative_tasks",
+  "changed_runtime_function_bodies": 6,
+  "changed_versioned_function_bodies": 5,
+  "other_node_fields_wires_and_geometry_unchanged": true,
+  "previously_published_diagnostic_wording_loaded": true,
+  "original_loaded_configuration_restored_by_rollback": true,
+  "reviewed_after_configuration_reapplied": true,
+  "phases": [
+    {
+      "phase": "apply",
+      "actual_MCP_admitted_task": true,
+      "native_root_result_confirmed": true,
+      "loaded_and_persisted_hashes_match": true,
+      "native_replay_steps": 7,
+      "failure_and_recovery_confirmed": true,
+      "deduplicated": true,
+      "test_context_cleaned": true,
+      "persistent_test_keys_absent": true,
+      "opaque_session_revoked": true,
+      "own_live_progress_cache_observed": null,
+      "simulated": true,
+      "dispatched": false
+    },
+    {
+      "phase": "rollback",
+      "actual_MCP_admitted_task": true,
+      "native_root_result_confirmed": true,
+      "loaded_and_persisted_hashes_match": true,
+      "native_replay_steps": 7,
+      "failure_and_recovery_confirmed": true,
+      "deduplicated": true,
+      "test_context_cleaned": true,
+      "persistent_test_keys_absent": true,
+      "opaque_session_revoked": true,
+      "own_live_progress_cache_observed": true,
+      "simulated": true,
+      "dispatched": false
+    },
+    {
+      "phase": "reapply",
+      "actual_MCP_admitted_task": true,
+      "native_root_result_confirmed": true,
+      "loaded_and_persisted_hashes_match": true,
+      "native_replay_steps": 7,
+      "failure_and_recovery_confirmed": true,
+      "deduplicated": true,
+      "test_context_cleaned": true,
+      "persistent_test_keys_absent": true,
+      "opaque_session_revoked": true,
+      "own_live_progress_cache_observed": true,
+      "simulated": true,
+      "dispatched": false
+    }
+  ],
+  "native_identity_and_existing_delegation_route_verified": true,
+  "all_six_sends_terminal_and_acknowledged": true,
+  "historical_pre_effect_refusals": {
+    "direct_sudo_password_required": true,
+    "owned_progress_cache_rejected_by_frozen_guard": true,
+    "both_refusals_reconciled_without_effect_replay": true
+  },
+  "admission_revision": {
+    "own_live_cache_schema_fields": [
+      "operation_state",
+      "turn_id",
+      "started_at",
+      "completed_at"
+    ],
+    "only_inProgress_same_turn_accepted": true,
+    "original_transaction_bundle_and_payloads_preserved": true,
+    "new_permissions_endpoints_or_expiry": false,
+    "foreign_terminal_unknown_or_malformed_own_result_cache_rejected": true,
+    "all_unrelated_busy_or_unreconciled_operations_blocking": true
+  },
+  "serialization_normalized_without_redeploy": true,
+  "household_services_restarted": 0,
+  "household_service_start_times_preserved": 7,
+  "household_device_or_notification_dispatches": 0,
+  "limits": {
+    "natural_Events_Eva_execution_proven": false,
+    "icloud_or_Kia_functional_recovery_proven": false,
+    "backup_service_recovery_proven": false,
+    "PC_off_24h_or_all_latencies_proven": false,
+    "runtime_public_reference_refresh_included": false,
+    "generic_live_installer": false,
+    "replay_of_consumed_operations_allowed": false
+  },
+  "public_source_sha256": {
+    "scripts/raspberry-mcp/runtime-source/administrative-recovery/apply_nodered_dry_run_receipts.py": "951cd40afa6a64143b85d6551645518ccb762d409c33c882cf35548f3d129fe2",
+    "scripts/raspberry-mcp/runtime-source/administrative-recovery/nodered_receipt_client.cjs": "13c436452b4bf94172be6ba87016e9197bcaf7181782de6e14d83f56cabab820",
+    "scripts/raspberry-mcp/runtime-source/administrative-recovery/scoped_task_admission.py": "4f64daff4d34a031608464bbc3375ff36039c933aa0fe79a0cb5c1665c49e8da",
+    "nodered/tools/functions/global-flow-observer-dry-run.js": "a6ba91563188f8807f9a3a14276e834bea0bc2c90892bbe71f5518d7f870532b",
+    "nodered/tools/functions/host-observer-normalize.js": "c36e88777e1da758228dce5f0b7500592a31e78d436da83f09fe02ea6e1abf7a",
+    "nodered/tools/functions/host-observer-facts.js": "bcf7856a7aa8f7cd64ffde64d3abe40f03e94bbac3d644fcaf3b6b05727630b7",
+    "nodered/tools/functions/host-observer-lifecycle.js": "21e759d02b493cf70462467c68fe5704ef583f8af496f3d1e08a9d91b20ead4e",
+    "nodered/tools/functions/host-observer-test-build.js": "0686ee28d6033339af17612aa7ffe18c5bb885575310b54b9b433849afaba921",
+    "nodered/tools/functions/global-flow-observer-diagnostic-build.js": "7f98b5c56e2fc0c6806d7b169d11b78e656057f23c7ccabbb13ea07a2449e579",
+    "nodered/tools/lib/diagnostic_templates.json": "db852e558f2c1546d277041a29443d634c109761d91c2c7cb5785d96382cc1fa"
+  },
+  "public_flow_artifact_sha256": "d793ded9e80ceb780223fcddcf6b2b4f6769fc03bbce8c8fa080e2a8e0106edd"
+}

@@ -21,6 +21,9 @@ const label = fact.kind === "resource" ? `recurso ${fact.name}` :
     fact.kind === "observation" ? `observação ${fact.name}` : `serviço ${fact.name}`;
 const alert = (recovery) => ({
     _global_observer_test: test,
+    ...(test && msg._host_test_run_id !== undefined ? {_observer_test_receipt: {
+        run_id: msg._host_test_run_id, source_flow_id: "host_observer_tab"
+    }} : {}),
     payload: {test_mode: test, observer_kind: recovery ? "host_recovery" : "host_failure",
         persistent_incident_kind: "host_failure", incident_key: name,
         persistent_notification_operation: recovery ? "dismiss" : "create",

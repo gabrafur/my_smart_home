@@ -61,6 +61,16 @@ funções, decisões e lifecycle até `global_observer_dispatch_guard`, que enca
 exclusivamente ao terminal dry-run. Não clicar nos nós reais de leitura para
 simular incidentes e não usar o teste opcional de push como requisito deste tab.
 
+O replay automatizado no runtime pode fornecer `_host_test_run_id` com 32 hex.
+Reset inicia esse rascunho isolado; outras etapas só avançam com o mesmo ID.
+Cliques manuais continuam disponíveis após reset sem ID. O identificador
+atravessa os mesmos adaptadores e lifecycle até o terminal compartilhado, que
+registra `run_id`, `source_flow_id` e `receipt_sequence` em memória. Produção,
+teste de entrega e traces inválidos não geram esse recibo. Confirmação duplicada
+preserva a sequência; recuperação cria o próximo recibo. O cliente espera as
+barreiras do fixture, incidente e terminal, depois limpa apenas as chaves de
+teste e confirma sua ausência no store persistente.
+
 Automatizado: `node nodered/tools/test-host-observer.mjs`. A descoberta canônica
 inclui o teste; cobre datas ausentes/conflitantes, coleta falha, alertas/recovery,
 container start sem prontidão, recurso sem nova amostra, OOM, cursor, dedupe,
@@ -91,3 +101,7 @@ cobertura global. Nunca apagar intents ou limpar contexto de produção para
 permitir repetição de efeitos incertos.
 
 Evidência sanitizada de implantação e ingestão natural: [nodered-integration.acceptance.json](../../scripts/host-observation/nodered-integration.acceptance.json).
+
+Aplicação/reversão/reaplicação pelo MCP, com replay nativo correlacionado:
+[nodered-controlled-deployment.acceptance.json](../../scripts/raspberry-mcp/nodered-controlled-deployment.acceptance.json).
+Esse aceite não substitui os gates de eventos naturais, latência, PC ou 24h.

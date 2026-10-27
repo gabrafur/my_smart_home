@@ -574,6 +574,26 @@
         "operator_stage_and_state_bindings",
         "authority_expiry_and_manifest_not_armed"
       ]
+    },
+    "administrative-recovery/apply_nodered_dry_run_receipts.py": {
+      "source": "/run/raspberry-nodered-dry-run-receipts-20261027/apply.py",
+      "source_sha256": "951cd40afa6a64143b85d6551645518ccb762d409c33c882cf35548f3d129fe2",
+      "export_sha256": "951cd40afa6a64143b85d6551645518ccb762d409c33c882cf35548f3d129fe2",
+      "normalizations": []
+    },
+    "administrative-recovery/nodered_receipt_client.cjs": {
+      "source": "/run/raspberry-nodered-dry-run-receipts-20261027/client.cjs",
+      "source_sha256": "1e5d0576f84deb08c43bbf2f07622cbc049741ddad151584678c13b959a59965",
+      "export_sha256": "13c436452b4bf94172be6ba87016e9197bcaf7181782de6e14d83f56cabab820",
+      "normalizations": [
+        "private_node_red_host_marker"
+      ]
+    },
+    "administrative-recovery/scoped_task_admission.py": {
+      "source": "/run/raspberry-nodered-dry-run-receipts-20261027/task_admission.py",
+      "source_sha256": "4f64daff4d34a031608464bbc3375ff36039c933aa0fe79a0cb5c1665c49e8da",
+      "export_sha256": "4f64daff4d34a031608464bbc3375ff36039c933aa0fe79a0cb5c1665c49e8da",
+      "normalizations": []
     }
   },
   "snapshot_scope_note": "Historical per-file captures; active readonly iCloud collector/root/broker delta is exported with unarmed bindings in ../icloud-readiness-candidate. Historical hashes remain provenance, not current loaded-runtime claims."

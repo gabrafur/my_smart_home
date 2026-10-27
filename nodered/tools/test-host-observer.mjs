@@ -71,6 +71,39 @@ assert.equal(resource.dry.length,1);assert.equal(resource.dry[0].payload.host_ro
 resource.scenario('confirm');assert.equal(resource.dry.length,1);
 resource.scenario('healthy');assert.equal(resource.dry.length,2);
 
+// Correlate the actual shared terminal, including dedupe and recovery, without
+// writing production context or accepting an interleaved/manual run as ours.
+const traced=harness(), runId='c'.repeat(32);
+const step=(name,id=runId)=>traced.run('host_obs_test_build',{
+ _host_observer_test:true,_host_test_run_id:id,payload:name});
+const receipt=()=>traced.context('global_flow_observer_tab').get('global_flow_observer_last_dry_run_v1');
+for(const name of ['reset','healthy','failure','confirm'])step(name);
+assert.equal(receipt().run_id,runId);
+assert.equal(receipt().source_flow_id,'host_observer_tab');
+assert.equal(receipt().receipt_sequence,1);
+assert.equal(receipt().observer_kind,'host_failure');
+assert.equal(receipt().simulated,true);assert.equal(receipt().dispatched,false);
+const before=structuredClone(receipt());step('confirm');assert.deepEqual(receipt(),before,'same incident is not dispatched again');
+const fixture=structuredClone(traced.context('host_observer_tab').get('host_observer_fixture_v1__test'));
+for(const id of ['d'.repeat(32),'invalid',null])step('healthy',id);
+traced.run('host_obs_test_build',{_host_observer_test:true,payload:'healthy'});
+assert.deepEqual(traced.context('host_observer_tab').get('host_observer_fixture_v1__test'),fixture,'other runs cannot advance fixture');
+step('healthy');assert.equal(receipt().receipt_sequence,2);assert.equal(receipt().observer_kind,'host_recovery');
+assert.equal(traced.context('host_observer_tab').get('host_observer_incidents_v1','persistent'),undefined);
+assert.equal(traced.context('host_observer_tab').get('host_observer_cursor_v1','persistent'),undefined);
+assert.equal(traced.effects.length,0);assert.equal(traced.errors.length,0);
+for(const input of [
+ {payload:{observer_kind:'host_failure'}},
+ {_global_observer_test:true,_observer_delivery_test:true,payload:{test_mode:true}},
+ {_global_observer_test:true,_observer_test_receipt:{run_id:'bad',source_flow_id:'host_observer_tab'}},
+ {_global_observer_test:true,_observer_test_receipt:{run_id:runId,source_flow_id:'other'}},
+ {_global_observer_test:true,_observer_test_receipt:{run_id:runId,source_flow_id:'host_observer_tab',extra:true}},
+]){
+ traced.run('global_observer_dry_run_terminal',input);
+ assert.equal(receipt().receipt_sequence,2,'invalid or production input creates no dry-run receipt');
+}
+traced.scenario('reset');assert.equal(traced.context('host_observer_tab').get('host_observer_fixture_v1__test'),undefined);
+
 function frame(at=1000000,sequence=0,action='started'){
  const iso=new Date(at).toISOString();return {schema_version:1,source:'fixed_readonly_host_observer',observed_at:iso,instance_id:'a'.repeat(64),boot_id_sha256:'b'.repeat(64),sequence,evicted_event_records:0,
   sources:{docker:{state:'connected',collection_error:null},systemd:{state:'connected',collection_error:null}},

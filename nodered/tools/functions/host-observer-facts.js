@@ -72,4 +72,5 @@ if (msg._host_resources_fresh && Number.isSafeInteger(oom) && oom >= 0) {
 }
 if (native.oom_incident) facts.push(native.oom_incident);
 return [facts.map(fact => ({_host_observer_test: test, _host_now: msg._host_now,
+    _host_test_run_id: test ? msg._host_test_run_id : undefined,
     _host_policy: msg._host_policy, _host_fact: fact}))];

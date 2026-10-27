@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const functionDir = path.join(here, "functions");
 const flows = JSON.parse(
-  fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"),
+  fs.readFileSync(process.env.GLOBAL_OBSERVER_TEST_FLOW ?? path.resolve(here, "..", "flows.json"), "utf8"),
 );
 const byId = new Map(flows.map((node) => [node.id, node]));
 for (const node of flows.filter((candidate) => candidate.z === "global_flow_observer_tab" && candidate.g)) {

@@ -121,6 +121,14 @@ server, or certification for an untested chatbot. The schema template removes
 private thread bindings, and the runtime source map distinguishes active code
 from the older task-control candidate preserved below.
 
+The [Node-RED transaction acceptance](../scripts/raspberry-mcp/nodered-controlled-deployment.acceptance.json)
+also records real MCP apply, rollback and reapply, each with a complete native
+dry-run, dedupe, recovery and cleanup. Only six function bodies changed; service
+start times were preserved. A strict admission correction accepts the current
+task's own in-progress observation while retaining every other identity, busy
+and reconciliation gate. These fixed consumed transactions do not establish
+natural Events consumption, integration recovery or 24-hour independence.
+
 [Codex tasks and authorized threads](RASPBERRY_CODEX_TASKS.md) documents the
 prepared `codex_threads_list` extension, strict input schemas, read-only
 pagination, partial host coverage and creation reconciliation. A durable thread

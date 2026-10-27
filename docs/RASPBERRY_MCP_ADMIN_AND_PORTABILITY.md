@@ -188,6 +188,9 @@ Procedimento:
 2. Criar uma vez; guardar o ID de criação e o ID real da thread retornada.
 3. Confirmar identidade, durabilidade e prontidão pelo status. Criação não envia
    o objetivo nem comprova inferência. `notLoaded` não significa conclusão.
+   `durable_ready` mantém a reserva até o primeiro envio. Não reconhecer uma
+   criação saudável: a reconciliação de criação é reservada à ausência
+   `missing_before_first_send` comprovada, sem envios anteriores.
 4. Enviar uma vez com o ID de envio previamente registrado e `task_id` igual ao
    ID da criação. Instruir correção, validação real e recibo sanitizado.
 5. Consultar o mesmo envio até obter estado terminal ou incerteza comprovada.
@@ -211,8 +214,10 @@ comprovada nesta instalação usou:
 
 ```sh
 /usr/bin/id -u
-sudo -n -u codex-house-01a16f9f /usr/bin/sudo -n /usr/bin/id -u
+sudo -n -u USUARIO_ADMIN_DELEGADO /usr/bin/sudo -n /usr/bin/id -u
 ```
+
+`USUARIO_ADMIN_DELEGADO` representa o binding local já autorizado.
 
 Esses comandos pertencem ao executor local, não são ferramentas de shell do
 MCP nem devem ser enviados como parâmetros de transporte. Se a autenticação
@@ -223,6 +228,56 @@ Também testar repetição com os mesmos IDs e parâmetros: deve retornar os
 mesmos IDs de thread/turno com `duplicate=true`. Guardar o recibo terminal antes
 do reconhecimento. O aceite atual passou por criação, envio, resultado,
 reconciliação e duplicatas reais pelo cliente MCP remoto, com uma inferência.
+
+### Aplicação e reversão Node-RED comprovadas
+
+O [recibo sanitizado](../scripts/raspberry-mcp/nodered-controlled-deployment.acceptance.json)
+registra aplicação, reversão e reaplicação por tarefas MCP reais. O pacote altera
+seis corpos de Function nodes: quatro adaptadores do observador do host, o
+terminal dry-run e dois fragmentos de diagnóstico já publicados que ainda não
+estavam carregados. As demais propriedades, ligações e geometria permanecem
+iguais. O hash carregado e o persistido foram conferidos em cada fase, com os
+horários de início dos sete serviços residenciais preservados.
+
+Cada fase executou reset, baseline, falha, confirmação, repetição para dedupe,
+recuperação e limpeza no runtime Node-RED, pelo mesmo caminho de decisões até o
+terminal compartilhado. Os recibos correlacionados trazem `simulated: true` e
+`dispatched: false`; nenhuma entrega de notificação foi usada como teste.
+Isso comprova a transação controlada e o replay nativo. Entrega natural Events,
+consumo pela Eva, recuperação de integrações e continuidade de 24h exigem suas
+próprias evidências.
+
+A rota delegada deve ser explícita no comando selado. UID numérico observado
+não comprova, sozinho, autorização para `sudo` direto. A tentativa direta foi
+recusada antes do helper; a rota dedicada já aprovada executou o pacote. Não
+alterar sudoers ou solicitar senha para corrigir essa diferença de invocação.
+
+Consultar andamento pode preencher o cache de resultado com `inProgress`.
+O [gate compartilhado](../scripts/raspberry-mcp/runtime-source/administrative-recovery/scoped_task_admission.py)
+admite essa observação somente para o envio esperado, tarefa/hash/turno exatos,
+schema fechado de quatro campos e `completed_at: null`. Resultados terminais,
+desconhecidos, malformados, turnos diferentes e outras reservas pendentes
+continuam bloqueando. A regressão reproduz a recusa do gate anterior, e os
+recibos de reversão/reaplicação confirmam esse caso no runtime. O bundle
+original aplicado é preservado; a revisão do protocolo confere seu selo e
+payload antes de prosseguir, com novos IDs para envios comprovadamente recusados
+antes de qualquer intent. IDs consumidos não são reaproveitados para uma nova ação.
+
+As fontes do [controller fixo](../scripts/raspberry-mcp/runtime-source/administrative-recovery/apply_nodered_dry_run_receipts.py)
+e do [cliente Admin API](../scripts/raspberry-mcp/runtime-source/administrative-recovery/nodered_receipt_client.cjs)
+permitem revisar CAS, intents anteriores a cada POST, barreiras de execução,
+limpeza e revogação da sessão opaca. O cliente expõe somente os endpoints
+necessários e injects sintéticos nomeados. Esses artefatos descrevem uma
+transação consumida; não são um instalador genérico nem autorização para repetir
+suas fases ou importar políticas locais de outro servidor.
+
+O resultado da tarefa usa exclusivamente JSON com `operation_id`, `project`,
+`state`, `summary` e `next_step`. Dois JSONs soltos ou saída livre podem produzir
+`answer_withheld`. Preserve o recibo terminal e reconcilie seu hash; se precisar
+do relato, use um novo envio de checkpoint na mesma tarefa, explicitamente sem
+ferramentas ou efeitos e dentro do orçamento. Confirme o relato com o estado do
+componente. O leitor legado de threads aceita somente referências registradas;
+não ampliar sua allowlist para ler uma tarefa recém-criada.
 
 ## Erros, atualização, recuperação e revogação
 

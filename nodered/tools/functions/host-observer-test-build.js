@@ -1,11 +1,17 @@
 if (msg._host_observer_test !== true) return null;
 const name = msg.payload;
+const runId = msg._host_test_run_id;
+if (runId !== undefined && (typeof runId !== "string" || !/^[a-f0-9]{32}$/.test(runId))) return null;
+if (!["reset", "healthy", "failure", "confirm", "resource_high", "source_failure", "stale", "malformed"].includes(name)) return null;
 if (name === "reset") {
     for (const key of ["host_observer_cursor_v1__test", "host_observer_incidents_v1__test", "host_observer_fixture_v1__test"]) flow.set(key, undefined);
+    if (runId !== undefined) flow.set("host_observer_fixture_v1__test",
+        {now: Date.now(), sequence: 0, action: "started", cpu: 10, run_id: runId});
     node.status({fill: "blue", shape: "dot", text: "somente TESTE resetado"});
     return null;
 }
 const state = flow.get("host_observer_fixture_v1__test") ?? {now: Date.now(), sequence: 0, action: "started", cpu: 10};
+if (state.run_id !== runId) return null;
 state.now += name === "confirm" ? 25000 : 1000;
 if (["failure", "healthy"].includes(name)) {
     state.sequence += 1; state.action = name === "failure" ? "failed" : "started";
@@ -25,4 +31,5 @@ const report = {schema_version: 1, source: "fixed_readonly_host_observer", obser
 if (name === "stale") report.observed_at = new Date(state.now - 120000).toISOString();
 flow.set("host_observer_fixture_v1__test", state);
 return {_host_observer_test: true, _host_test_now: state.now,
+    _host_test_run_id: runId,
     payload: name === "malformed" ? "{" : {schema_version: 1, collection_error: null, report}};

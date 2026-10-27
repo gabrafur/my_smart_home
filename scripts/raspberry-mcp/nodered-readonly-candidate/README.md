@@ -69,6 +69,14 @@ presentes, declaram base no conteúdo público sanitizado; não são prova de
 identidade do código executado nem fingerprints de valores privados divergentes.
 A correspondência pública é parcial por desenho, não aprovação de todo arquivo.
 
+`public_head` identifica `approved_public_head`, a revisão pública usada nessa
+comparação; não afirma que o checkout atual tem o mesmo HEAD. Uma correção nova
+pode estar carregada e ter sua fonte retida até a referência ser atualizada.
+Depois da publicação validada, essa atualização deve preservar o escopo,
+bindings, permissões e prazos existentes e reconciliar os pins correspondentes.
+Uma nova descoberta/paginação pelo cliente deve confirmar a revisão e o campo
+pretendido. Não remover o filtro de correspondência para contornar a diferença.
+
 O cliente Python valida proprietário/modo do inode Unix e o peer previsto:
 root/systemd cria o listener frio; o processo Node nativo pode renovar a
 identidade do listener aquecido. Os UIDs 0/1001 são bindings desta referência,
