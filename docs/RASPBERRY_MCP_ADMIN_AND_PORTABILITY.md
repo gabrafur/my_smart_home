@@ -856,6 +856,16 @@ seguir `next_offset`, que pode ser menor que 16.
 | `associated_errors_collection_error` | Associação exata ausente, fonte inacessível ou formato inválido, sem inventar stack |
 | `recovery_proven` | Sempre falso nesta ferramenta; remoção e desaparecimento não comprovam recuperação |
 
+`created_or_updated_at` preserva o `created_at` fornecido pelo Home Assistant.
+No produtor nativo, criar ou atualizar um aviso atribui um novo horário UTC;
+isso não fornece o horário da remoção. `observed_at` pertence ao frame lido
+pelo coletor: uma nova fotografia `current` pode atualizar esse campo, portanto
+não o trate automaticamente como o primeiro recebimento daquela revisão.
+Para medir um trecho, correlacione a mesma revisão com o registro de mudança
+retido e declare quais relógios e etapas foram observados. Ausência de horário
+de origem ou de registro correspondente permanece desconhecida. Nem a idade
+do aviso nem `last_processing_latency_ms` comprovam chegada ou execução na Eva.
+
 `category`, `summary` e `content_withheld` são campos legados de deduplicação.
 Uma categoria legada `unclassified` não invalida os novos campos diagnósticos.
 `content_withheld=true` indica retenção do conteúdo bruto. IDs, revisão e
@@ -993,6 +1003,24 @@ carregadas no frontend que respondeu. Essa informação não comprova atualizaç
 do cache de outro cliente, entrega do webhook ou execução do assistente. Um
 cliente novo deve redescobrir Events; não criar assinatura adicional nem trocar
 IDs ou chave para tentar resolver cache. Preservar a assinatura existente.
+
+Quando o catálogo ou `payloadSchema` mudar, execute **Rescan** do servidor na
+página do plugin no ChatGPT e confira o evento anunciado. Reconectar o frontend
+carrega seus módulos locais; isso não comprova que o catálogo remoto foi
+reexaminado. A [documentação oficial de MCP Events](https://developers.openai.com/plugins/build/mcp-events)
+separa descoberta, assinatura, aceite HTTP e resposta do assistente, e exige
+Rescan após mudanças em ferramentas ou eventos.
+
+Diagnostique os trechos separadamente: valide o envelope persistido e seu
+`data` contra o schema anunciado; confira o catálogo do plugin e a tarefa no
+destino; depois correlacione evento, execução e resultado reais. `2xx` confirma
+somente o recebimento do webhook, processado assincronamente pelo ChatGPT.
+`assistant_run_confirmed=false` informa ausência de recibo de execução neste
+servidor, não uma resposta de falha emitida pela plataforma. Permissão para
+usar ferramentas também não comprova que a tarefa de evento está ativa.
+Não use ausência de linhas em um journal indisponível ou truncado como prova
+de que a descoberta ou execução não aconteceu. Preserve os seis envios por
+24h, o intervalo de 600s, IDs e resultados incertos durante essa conferência.
 
 Uma entrega agrupada natural foi observada no MCP e no ledger: há batch e
 vínculos duráveis dos eventos cobertos, com webhook aceito. O contrato antigo

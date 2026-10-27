@@ -129,6 +129,13 @@ task's own in-progress observation while retaining every other identity, busy
 and reconciliation gate. These fixed consumed transactions do not establish
 natural Events consumption, integration recovery or 24-hour independence.
 
+After changing MCP event definitions, rescan the server from its ChatGPT plugin
+page while preserving the existing subscription and delivery limits. A loaded
+local schema and an accepted webhook do not establish the remote catalog or
+an assistant run; correlate the destination's actual execution and result.
+Notification source, collector observation and processing timestamps describe
+different stages and must not be substituted for end-to-end latency.
+
 [Codex tasks and authorized threads](RASPBERRY_CODEX_TASKS.md) documents the
 prepared `codex_threads_list` extension, strict input schemas, read-only
 pagination, partial host coverage and creation reconciliation. A durable thread
