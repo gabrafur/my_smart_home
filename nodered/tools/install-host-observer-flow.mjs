@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {withHostTimingSource} from './host-observation-timing.mjs';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {reconcileGeneratedFlows} from './reconcile-generated-flows.mjs';
 
@@ -7,7 +8,7 @@ export const POLICY = {max_report_age_ms: 30000, max_resource_age_ms: 45000,
   event_confirm_ms: 5000, resource_confirm_ms: 20000, observation_confirm_ms: 20000,
   cpu_busy_percent: 90, memory_available_mib: 512, disk_used_percent: 85,
   inodes_used_percent: 85, temperature_celsius: 80};
-const source = file => fs.readFileSync(new URL(`functions/host-observer-${file}.js`, import.meta.url), 'utf8').trimEnd();
+const source = file => withHostTimingSource(fs.readFileSync(new URL(`functions/host-observer-${file}.js`, import.meta.url), 'utf8').trimEnd());
 
 export function installHostObserver(flows) {
   const owned = n => n.id === TAB || n.z === TAB && !n.id.startsWith('global_observer_coverage__');
@@ -17,6 +18,7 @@ export function installHostObserver(flows) {
   const group = (id, name, x, y, w, h) => add({id:`host_obs_${id}`,type:'group',z:TAB,name,
     style:{label:true,color:'#2563eb'},nodes:[],x,y,w,h});
   const g = {policy:group('policy_group','0. Política visual: unidades, padrões e limites',64,40,980,320),
+    timing:group('timing_group','0b. Medição passiva: contratos, contadores e relógios',1100,40,1840,320),
     input:group('input_group','1. Fonte fixa, validade e falhas de observação',64,400,1880,460),
     decision:group('decision_group','2. Classificação visual e lifecycle (produção / TESTE)',64,900,2940,620),
     test:group('test_group','3. Replay manual completo: somente dry-run',64,1560,1880,380)};
@@ -31,11 +33,21 @@ export function installHostObserver(flows) {
   inject('policy_tick',g.policy,'Carregar política ao iniciar','',260,180,'host_obs_policy_config',{once:true,onceDelay:'0.2'});
   change('policy_config',g.policy,'POLÍTICA: padrões e limites explícitos','payload',JSON.stringify(POLICY),'json',600,180,'host_obs_policy_store');
   fn('policy_store',g.policy,'Validar sem perder última política','policy',600,280,[],0);
+  node('timing_info','comment',g.timing,'Medição: evento ≤ 10.000 ms; recurso ≤ 60.000 ms; nenhum efeito residencial',2010,90,{info:'Parâmetros exclusivos da evidência de desempenho. Padrões evento10000ms/recurso60000ms; limites1000–60000ms/20000–120000ms. Valor inválido preserva o último contrato. Não altera confirmação,dedupe ou dispositivos. Âncoras horárias limitadas e contadores persistentes mantêm perdas/unknown; timestamps históricos não são inventados. Relógio monotônico do canvas via builtin perf_hooks; margens de alinhamento explícitas no contrato.'});
+  inject('timing_policy_tick',g.timing,'Carregar contrato de medição','',1320,180,'host_obs_timing_policy_config',{once:true,onceDelay:'0.25'});
+  change('timing_policy_config',g.timing,'Medição: limites em ms','payload',JSON.stringify({event_latency_ms:10000,resource_latency_ms:60000}),'json',1640,180,'host_obs_timing_policy_store');
+  fn('timing_policy_store',g.timing,'Validar; preservar último contrato','timing-policy',1990,180,[],0);
+  input('timing_frame_in',g.timing,'Receber toda leitura',['host_obs_timing_frame_out'],'host_obs_timing_account',2210,250);
+  fn('timing_account',g.timing,'Contabilizar cada fato sem decisões residenciais','timing',2500,250,[['host_obs_timing_return_out']]);
+  nodes.find(n=>n.id==='host_obs_timing_account').libs=[{var:'timingClock',module:'perf_hooks'}];
+  out('timing_return_out',g.timing,'Retornar para os gates existentes',['host_obs_timing_return_in'],2790,250);
   inject('tick',g.input,'FONTE: ler a cada 2s','',270,480,'host_obs_read',{repeat:'2',once:true,onceDelay:'12'});
   node('read','exec',g.input,'Ler somente relatório root (limite 3s)',610,480,{command:'/usr/local/bin/node --max-old-space-size=32 /data/tools/read-host-observation.mjs',addpay:'',append:'',useSpawn:'false',timer:'3',winHide:false,oldrc:false,wires:[['host_obs_normalize'],[],['host_obs_read_complete']]});
   fn('read_complete',g.input,'Falha do leitor → observação desconhecida','read-completion',410,790,[['host_obs_normalize']]);
   input('test_frame_in',g.input,'TESTE → mesmo contrato',['host_obs_test_frame_out'],'host_obs_normalize',800,570);
-  fn('normalize',g.input,'Adaptar estrutura e calcular idades','normalize',970,480,[['host_obs_valid']]);
+  fn('normalize',g.input,'Adaptar estrutura e calcular idades','normalize',970,480,[['host_obs_timing_frame_out']]);
+  out('timing_frame_out',g.input,'Leitura → medição passiva',['host_obs_timing_frame_in'],1100,540);
+  input('timing_return_in',g.input,'Receber sem mudar os gates',['host_obs_timing_return_out'],'host_obs_valid',1140,430);
   sw('valid',g.input,'Estrutura e relógio válidos?','_host_report_valid',[{t:'true'},{t:'else'}],1290,480,[['host_obs_fresh'],['host_obs_report_unknown_out']]);
   sw('fresh',g.input,'Relatório dentro da validade visual?','_host_report_age_ms',[{t:'lte',v:'_host_policy.max_report_age_ms',vt:'msg'},{t:'else'}],1650,480,[['host_obs_resource_age'],['host_obs_report_unknown_out']]);
   out('report_unknown_out',g.input,'Relatório ausente/stale → observação desconhecida',['host_obs_report_unknown_in'],1850,560);

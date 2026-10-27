@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import crypto from 'node:crypto';
+import {projectProducerTiming} from './host-timing-protocol.mjs';
 import {pathToFileURL} from 'node:url';
 
 export const SERVICES = ['homeassistant', 'nodered', 'mosquitto', 'portainer',
@@ -37,10 +39,17 @@ export function projectObservation(value) {
     need(stamp(row.occurred_at) && stamp(row.observed_at));
     const delay = Date.parse(row.observed_at) - Date.parse(row.occurred_at);
     need(delay >= -1000 && delay <= 60000 && Date.parse(row.observed_at) <= Date.parse(value.observed_at) + 1000);
-    need(Number.isFinite(row.source_to_observer_ms) && row.source_to_observer_ms >= 0 &&
-      Math.abs(row.source_to_observer_ms - Math.max(0, delay)) <= 2);
-    return Object.fromEntries(['id', 'source', 'service', 'action', 'occurred_at',
-      'observed_at', 'source_to_observer_ms', 'sequence'].map(key => [key, row[key]]));
+    need(delay < 0 ? row.source_to_observer_ms === null || row.source_to_observer_ms === 0 :
+      (Number.isFinite(row.source_to_observer_ms) && row.source_to_observer_ms >= 0 &&
+      Math.abs(row.source_to_observer_ms - delay) <= 2) ||
+      row.source_to_observer_ms === null && row.source_clock_ordered === null);
+    const projected = Object.fromEntries(['id', 'source', 'service', 'action', 'occurred_at',
+      'observed_at', 'sequence'].map(key => [key, row[key]]));
+    projected.source_to_observer_ms = delay < 0 ? null : row.source_to_observer_ms;
+    projected.source_clock_ordered = row.source_clock_ordered === null ? null : delay >= 0;
+    projected.observer_monotonic_seconds = Number.isFinite(row.observer_monotonic_seconds) &&
+      row.observer_monotonic_seconds >= 0 ? row.observer_monotonic_seconds : null;
+    return projected;
   });
   const resource = value.resources;
   need(resource && stamp(resource.observed_at) && Date.parse(resource.observed_at) <= Date.parse(value.observed_at) + 1000);
@@ -57,6 +66,7 @@ export function projectObservation(value) {
   return {schema_version: 1, source: value.source, observed_at: value.observed_at,
     instance_id: value.instance_id, boot_id_sha256: value.boot_id_sha256,
     sequence: value.sequence, evicted_event_records: value.evicted_event_records,
+    ...(value.timing_v1 === undefined ? {} : {timing_v1: projectProducerTiming(value)}),
     sources, events, resources: {observed_at: resource.observed_at,
       data, collection_errors: [...resource.collection_errors]},
     coverage: ['allowlisted_current_stream_observations', 'partial_reconnect_and_ring_history',
@@ -66,6 +76,18 @@ export function projectObservation(value) {
 export function safeMetadata(info, directory = false) {
   return (directory ? info.isDirectory() : info.isFile()) && info.uid === 0 && info.gid === 0 &&
     (info.mode & 0o7777) === (directory ? 0o755 : 0o644) && (directory || info.nlink === 1 && info.size <= 65536);
+}
+
+export function consumerClock() {
+  try {
+    const boot = fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8');
+    if (!/^[a-f0-9-]{36}$/.test(boot.trim())) throw Error('invalid_boot');
+    return {version: 1, state: 'observed', collection_error: null,
+      observed_at: new Date().toISOString(), monotonic_seconds: Number(process.hrtime.bigint()) / 1e9,
+      boot_id_sha256: crypto.createHash('sha256').update(boot).digest('hex')};
+  } catch {
+    return {version: 1, state: 'unknown', collection_error: 'consumer_clock_unavailable'};
+  }
 }
 
 export function readFixedObservation() {
@@ -79,7 +101,7 @@ export function readFixedObservation() {
     if (!safeMetadata(fs.fstatSync(fd))) throw new Error('unsafe_observation');
     const buffer = Buffer.alloc(65537); const length = fs.readSync(fd, buffer, 0, buffer.length, 0);
     if (length > 65536) throw new Error('oversized_observation');
-    return {schema_version: 1, collection_error: null, report: projectObservation(JSON.parse(buffer.subarray(0, length).toString('utf8')))};
+    return {schema_version: 1, collection_error: null, report: projectObservation(JSON.parse(buffer.subarray(0, length).toString('utf8'))), consumer_clock: consumerClock()};
   } catch {
     return {schema_version: 1, collection_error: 'source_invalid_or_unavailable', report: null};
   } finally {

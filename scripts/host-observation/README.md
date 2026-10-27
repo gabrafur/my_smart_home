@@ -38,6 +38,10 @@ A autorização administrativa temporária e sua revogação são contratos sepa
   atualização de eventos com debounce mínimo de 250ms.
 - As conexões dos streams são informadas; `connected` não prova ausência de
   falhas anteriores, prontidão de aplicação nem completude histórica.
+- O bloco opcional `timing_v1` informa relógio monotônico do relatório/amostra,
+  sequência de recursos, totais por origem, falhas de stream e mudanças de
+  relógio. Os totais sobrevivem à remoção de registros do anel, mas não ao restart.
+  Tempo futuro ou relógio incerto produz latência `null`, sem clamp para zero.
 - Anel de 64 eventos, dedupe de 256 IDs; reinício perde esse estado. Reconexão
   Docker usa somente os dois segundos recentes; journal inicia no momento da
   conexão. Eventos durante desconexão podem faltar. Não há inventário inicial
@@ -68,6 +72,18 @@ Aceite operacional: reler a unidade e as permissões; aguardar eventos naturais;
 correlacionar horários de origem e observação; registrar qualquer perda do anel
 ou desconexão; medir o trecho completo até o consumidor quando a integração
 existir. O relatório precisa permanecer desconhecido para os fatos que não mede.
+
+Atualização compatível: instalar primeiro o leitor Node-RED e o módulo
+`host-timing-protocol.mjs`, ambos legíveis pelo usuário do container. O leitor
+novo aceita o relatório legado; o antigo não aceita todos os novos valores
+nulos de relógio. Depois atualizar o produtor, reiniciar somente sua unidade,
+confirmar amostras naturais, aplicar o canvas e atualizar a projeção MCP com
+o hash da fonte na política existente. A reversão aplica primeiro o canvas
+anterior, depois o produtor anterior e finalmente o leitor anterior. Preservar
+modos, proprietários, hashes, contexto e intents. Não reutilizar operações de
+uma implantação consumida. O [contrato do canvas](../../nodered/tools/HOST_OBSERVER.md#medição-passiva-e-janela-de-cobertura)
+detalha épocas, contagens e limites; nenhuma etapa aceita a meta só por tempo
+decorrido ou por teste sintético de 25 horas.
 
 
 ## Contabilidade nativa do coletor

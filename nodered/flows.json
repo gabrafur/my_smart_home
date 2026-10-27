@@ -86861,6 +86861,8 @@
             "host_obs_resource_fresh",
             "host_obs_resource_stale",
             "host_obs_facts_out",
+            "host_obs_timing_frame_out",
+            "host_obs_timing_return_in",
             "notification_hub_wire_out_91f75af07cd0",
             "notification_hub_wire_in_91f75af07cd0",
             "notification_hub_wire_out_fa4ef9ce2ec8",
@@ -87159,10 +87161,10 @@
         "y": 480,
         "wires": [
             [
-                "host_obs_valid"
+                "host_obs_timing_frame_out"
             ]
         ],
-        "func": "const test = msg._host_observer_test === true;\nconst now = test && Number.isFinite(msg._host_test_now) ? msg._host_test_now : Date.now();\nconst policy = flow.get(\"host_observer_policy_v1\", \"persistent\");\nif (!policy) return null;\nlet value;\ntry {\n    value = typeof msg.payload === \"string\" && msg.payload.length <= 65536\n        ? JSON.parse(msg.payload) : msg.payload;\n} catch { value = null; }\nconst report = value?.schema_version === 1 && value.collection_error === null ? value.report : null;\nconst stamp = value => {\n    if (typeof value !== \"string\" || !/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,6})?(?:Z|\\+00:00)$/.test(value)) return NaN;\n    const parsed = Date.parse(value);\n    return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 19) === value.slice(0, 19) ? parsed : NaN;\n};\nconst at = stamp(report?.observed_at);\nconst valid = report?.schema_version === 1 && report.source === \"fixed_readonly_host_observer\" &&\n    /^[a-f0-9]{64}$/.test(report.instance_id ?? \"\") && /^[a-f0-9]{64}$/.test(report.boot_id_sha256 ?? \"\") &&\n    Number.isSafeInteger(report.sequence) && report.sequence >= 0 &&\n    Array.isArray(report.events) && report.events.length <= 64 &&\n    report.sources && report.resources?.data && Array.isArray(report.resources.collection_errors) && Number.isFinite(at) && at <= now + 1000;\nreturn {\n    _host_observer_test: test, _host_test_now: test ? now : undefined,\n    _host_test_run_id: test && typeof msg._host_test_run_id === \"string\" &&\n        /^[a-f0-9]{32}$/.test(msg._host_test_run_id) ? msg._host_test_run_id : undefined,\n    _host_now: now, _host_policy: policy, _host_report_valid: !!valid,\n    _host_report_age_ms: valid ? Math.max(0, now - at) : null,\n    _host_resource_age_ms: valid && Number.isFinite(stamp(report.resources.observed_at)) &&\n        stamp(report.resources.observed_at) <= at + 1000\n        ? Math.max(0, now - stamp(report.resources.observed_at)) : null,\n    _host_report: valid ? report : null\n};",
+        "func": "const test = msg._host_observer_test === true;\nconst now = test && Number.isFinite(msg._host_test_now) ? msg._host_test_now : Date.now();\nconst policy = flow.get(\"host_observer_policy_v1\", \"persistent\");\nif (!policy) return null;\nlet value;\ntry {\n    value = typeof msg.payload === \"string\" && msg.payload.length <= 65536\n        ? JSON.parse(msg.payload) : msg.payload;\n} catch { value = null; }\nconst report = value?.schema_version === 1 && value.collection_error === null ? value.report : null;\nconst stamp = value => {\n    if (typeof value !== \"string\" || !/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,6})?(?:Z|\\+00:00)$/.test(value)) return NaN;\n    const parsed = Date.parse(value);\n    return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 19) === value.slice(0, 19) ? parsed : NaN;\n};\nconst at = stamp(report?.observed_at);\nconst valid = report?.schema_version === 1 && report.source === \"fixed_readonly_host_observer\" &&\n    /^[a-f0-9]{64}$/.test(report.instance_id ?? \"\") && /^[a-f0-9]{64}$/.test(report.boot_id_sha256 ?? \"\") &&\n    Number.isSafeInteger(report.sequence) && report.sequence >= 0 &&\n    Array.isArray(report.events) && report.events.length <= 64 &&\n    report.sources && report.resources?.data && Array.isArray(report.resources.collection_errors) && Number.isFinite(at) && at <= now + 1000;\nreturn {\n    _host_observer_test: test, _host_test_now: test ? now : undefined,\n    _host_test_run_id: test && typeof msg._host_test_run_id === \"string\" &&\n        /^[a-f0-9]{32}$/.test(msg._host_test_run_id) ? msg._host_test_run_id : undefined,\n    _host_now: now, _host_policy: policy,\n    _host_consumer_clock: value?.consumer_clock ?? null,\n    _host_test_canvas_monotonic_ms: test ? msg._host_test_canvas_monotonic_ms : undefined, _host_report_valid: !!valid,\n    _host_report_age_ms: valid ? Math.max(0, now - at) : null,\n    _host_resource_age_ms: valid && Number.isFinite(stamp(report.resources.observed_at)) &&\n        stamp(report.resources.observed_at) <= at + 1000\n        ? Math.max(0, now - stamp(report.resources.observed_at)) : null,\n    _host_report: valid ? report : null\n};",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -87408,7 +87410,7 @@
                 "host_obs_kind"
             ]
         ],
-        "func": "const test = msg._host_observer_test === true;\nconst store = test ? undefined : \"persistent\";\nconst key = test ? \"host_observer_cursor_v1__test\" : \"host_observer_cursor_v1\";\nconst previous = flow.get(key, store);\nconst report = msg._host_report;\nconst services = {\n    docker: [\"homeassistant\", \"nodered\", \"mosquitto\", \"portainer\", \"appdaemon\", \"matter_server\",\n        \"zigbee2mqtt\", \"ai-bridge\", \"docs-review-scheduler\", \"kia-uvo-codex-merge\"],\n    systemd: [\"docker\", \"procmon\", \"mcp_collection\", \"external_heartbeat\", \"events\", \"ha_notices\", \"host_observation\"]\n};\nconst actions = {\n    docker: [\"start\", \"die\", \"restart\", \"destroy\", \"health_status: healthy\", \"health_status: unhealthy\", \"health_status: starting\"],\n    systemd: [\"started\", \"stopped\", \"failed\"]\n};\nconst native = previous?.instance === report.instance_id && previous.sequence <= report.sequence\n    ? previous : {instance: report.instance_id, sequence: report.sequence, states: {}, baseline_only: true};\nif (!native.states || typeof native.states !== \"object\") native.states = {};\nnative.source_gaps ??= {};\nconst reportGap = Number.isFinite(native.last_report_at) &&\n    msg._host_now - native.last_report_at > msg._host_policy.max_report_age_ms;\nfor (const source of [\"docker\", \"systemd\"]) {\n    const connected = report.sources[source]?.state === \"connected\" && report.sources[source]?.collection_error === null;\n    if (!connected) native.source_gaps[source] = true;\n    else if (native.source_gaps[source] || reportGap) {\n        for (const row of Object.values(native.states)) if (row.source === source) row.action = \"unknown\";\n        native.source_gaps[source] = false;\n        native.coverage_gap = true;\n    }\n}\nnative.last_report_at = msg._host_now;\nconst first = report.events[0]?.sequence;\nif (Number.isSafeInteger(first) && native.sequence < first - 1) native.coverage_gap = true;\nfor (const event of report.events) {\n    if (!event || typeof event !== \"object\") continue;\n    if (!Number.isSafeInteger(event.sequence) || event.sequence <= native.sequence || event.sequence > report.sequence) continue;\n    if (!services[event.source]?.includes(event.service) || !actions[event.source]?.includes(event.action)) continue;\n    const at = Date.parse(event.occurred_at);\n    if (!Number.isFinite(at) || at > msg._host_now + 1000) continue;\n    native.states[`${event.source}:${event.service}`] = {kind: \"native\", name: event.service,\n        source: event.source, action: event.action, occurred_at: event.occurred_at};\n}\nnative.sequence = report.sequence;\nflow.set(key, native, store);\nconst facts = [{kind: \"observation\", name: \"report\", state: \"connected\"}];\nfor (const source of [\"docker\", \"systemd\"]) {\n    const connected = report.sources[source]?.state === \"connected\" && report.sources[source]?.collection_error === null;\n    facts.push({kind: \"observation\", name: source, state: connected ? \"connected\" : \"unknown\"});\n    for (const fact of Object.values(native.states).filter(row => row.source === source)) {\n        facts.push({...fact, action: connected ? fact.action : \"unknown\"});\n    }\n}\nconst metrics = {cpu: \"cpu_busy_percent\", memory: \"memory_available_bytes\", disk: \"disk_used_percent\",\n    inodes: \"inodes_used_percent\", temperature: \"temperature_celsius\"};\nconst resource = report.resources;\nfacts.push({kind: \"observation\", name: \"resources\", state: msg._host_resources_fresh &&\n    Array.isArray(resource.collection_errors) && resource.collection_errors.length === 0 ? \"connected\" : \"unknown\"});\nfor (const [name, metric] of Object.entries(metrics)) {\n    const value = resource.data[metric];\n    const valid = msg._host_resources_fresh && Number.isFinite(value) && value >= 0 &&\n        (!resource.collection_errors?.includes(metric));\n    facts.push({kind: \"resource\", name, value: valid ? name === \"memory\" ? value / 1048576 : value : null,\n        observed_at: valid ? resource.observed_at : null});\n}\n// OOM is a counter, not proof that a particular process or service died.\nconst oom = resource.data.oom_kill_count;\nif (msg._host_resources_fresh && Number.isSafeInteger(oom) && oom >= 0) {\n    if (previous?.instance === report.instance_id && Number.isSafeInteger(previous.oom) && oom > previous.oom) {\n        native.oom_incident = {kind: \"native\", name: \"host_oom\", source: \"kernel_counter\", action: \"oom_increment\",\n            occurred_at: resource.observed_at};\n    }\n    native.oom = oom; flow.set(key, native, store);\n}\nif (native.oom_incident) facts.push(native.oom_incident);\nreturn [facts.map(fact => ({_host_observer_test: test, _host_now: msg._host_now,\n    _host_test_run_id: test ? msg._host_test_run_id : undefined,\n    _host_policy: msg._host_policy, _host_fact: fact}))];",
+        "func": "const test = msg._host_observer_test === true;\nconst store = test ? undefined : \"persistent\";\nconst key = test ? \"host_observer_cursor_v1__test\" : \"host_observer_cursor_v1\";\nconst previous = flow.get(key, store);\nconst report = msg._host_report;\nconst services = {\n    docker: [\"homeassistant\", \"nodered\", \"mosquitto\", \"portainer\", \"appdaemon\", \"matter_server\",\n        \"zigbee2mqtt\", \"ai-bridge\", \"docs-review-scheduler\", \"kia-uvo-codex-merge\"],\n    systemd: [\"docker\", \"procmon\", \"mcp_collection\", \"external_heartbeat\", \"events\", \"ha_notices\", \"host_observation\"]\n};\nconst actions = {\n    docker: [\"start\", \"die\", \"restart\", \"destroy\", \"health_status: healthy\", \"health_status: unhealthy\", \"health_status: starting\"],\n    systemd: [\"started\", \"stopped\", \"failed\"]\n};\nconst native = previous?.instance === report.instance_id && previous.sequence <= report.sequence\n    ? previous : {instance: report.instance_id, sequence: report.sequence, states: {}, baseline_only: true};\nif (!native.states || typeof native.states !== \"object\") native.states = {};\nnative.source_gaps ??= {};\nconst reportGap = Number.isFinite(native.last_report_at) &&\n    msg._host_now - native.last_report_at > msg._host_policy.max_report_age_ms;\nfor (const source of [\"docker\", \"systemd\"]) {\n    const connected = report.sources[source]?.state === \"connected\" && report.sources[source]?.collection_error === null;\n    if (!connected) native.source_gaps[source] = true;\n    else if (native.source_gaps[source] || reportGap) {\n        for (const row of Object.values(native.states)) if (row.source === source) row.action = \"unknown\";\n        native.source_gaps[source] = false;\n        native.coverage_gap = true;\n    }\n}\nnative.last_report_at = msg._host_now;\nconst first = report.events[0]?.sequence;\nif (Number.isSafeInteger(first) && native.sequence < first - 1) native.coverage_gap = true;\nfor (const event of report.events) {\n    if (!event || typeof event !== \"object\") continue;\n    if (!Number.isSafeInteger(event.sequence) || event.sequence <= native.sequence || event.sequence > report.sequence) continue;\n    if (!services[event.source]?.includes(event.service) || !actions[event.source]?.includes(event.action)) continue;\n    const at = Date.parse(event.occurred_at);\n    if (!Number.isFinite(at) || at > msg._host_now + 1000) continue;\n    native.states[`${event.source}:${event.service}`] = {kind: \"native\", name: event.service,\n        source: event.source, action: event.action, occurred_at: event.occurred_at, observed_at: event.observed_at};\n}\nnative.sequence = report.sequence;\nflow.set(key, native, store);\nconst facts = [{kind: \"observation\", name: \"report\", state: \"connected\"}];\nfor (const source of [\"docker\", \"systemd\"]) {\n    const connected = report.sources[source]?.state === \"connected\" && report.sources[source]?.collection_error === null;\n    facts.push({kind: \"observation\", name: source, state: connected ? \"connected\" : \"unknown\"});\n    for (const fact of Object.values(native.states).filter(row => row.source === source)) {\n        facts.push({...fact, action: connected ? fact.action : \"unknown\"});\n    }\n}\nconst metrics = {cpu: \"cpu_busy_percent\", memory: \"memory_available_bytes\", disk: \"disk_used_percent\",\n    inodes: \"inodes_used_percent\", temperature: \"temperature_celsius\"};\nconst resource = report.resources;\nfacts.push({kind: \"observation\", name: \"resources\", state: msg._host_resources_fresh &&\n    Array.isArray(resource.collection_errors) && resource.collection_errors.length === 0 ? \"connected\" : \"unknown\"});\nfor (const [name, metric] of Object.entries(metrics)) {\n    const value = resource.data[metric];\n    const valid = msg._host_resources_fresh && Number.isFinite(value) && value >= 0 &&\n        (!resource.collection_errors?.includes(metric));\n    facts.push({kind: \"resource\", name, value: valid ? name === \"memory\" ? value / 1048576 : value : null,\n        observed_at: valid ? resource.observed_at : null});\n}\n// OOM is a counter, not proof that a particular process or service died.\nconst oom = resource.data.oom_kill_count;\nif (msg._host_resources_fresh && Number.isSafeInteger(oom) && oom >= 0) {\n    if (previous?.instance === report.instance_id && Number.isSafeInteger(previous.oom) && oom > previous.oom) {\n        native.oom_incident = {kind: \"native\", name: \"host_oom\", source: \"kernel_counter\", action: \"oom_increment\",\n            occurred_at: resource.observed_at};\n    }\n    native.oom = oom; flow.set(key, native, store);\n}\nif (native.oom_incident) facts.push(native.oom_incident);\nreturn [facts.map(fact => ({_host_observer_test: test, _host_now: msg._host_now,\n    _host_test_run_id: test ? msg._host_test_run_id : undefined,\n    _host_policy: msg._host_policy, _host_fact: fact}))];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -88296,7 +88298,7 @@
                 "host_obs_test_frame_out"
             ]
         ],
-        "func": "if (msg._host_observer_test !== true) return null;\nconst name = msg.payload;\nconst runId = msg._host_test_run_id;\nif (runId !== undefined && (typeof runId !== \"string\" || !/^[a-f0-9]{32}$/.test(runId))) return null;\nif (![\"reset\", \"healthy\", \"failure\", \"confirm\", \"resource_high\", \"source_failure\", \"stale\", \"malformed\"].includes(name)) return null;\nif (name === \"reset\") {\n    for (const key of [\"host_observer_cursor_v1__test\", \"host_observer_incidents_v1__test\", \"host_observer_fixture_v1__test\"]) flow.set(key, undefined);\n    if (runId !== undefined) flow.set(\"host_observer_fixture_v1__test\",\n        {now: Date.now(), sequence: 0, action: \"started\", cpu: 10, run_id: runId});\n    node.status({fill: \"blue\", shape: \"dot\", text: \"somente TESTE resetado\"});\n    return null;\n}\nconst state = flow.get(\"host_observer_fixture_v1__test\") ?? {now: Date.now(), sequence: 0, action: \"started\", cpu: 10};\nif (state.run_id !== runId) return null;\nstate.now += name === \"confirm\" ? 25000 : 1000;\nif ([\"failure\", \"healthy\"].includes(name)) {\n    state.sequence += 1; state.action = name === \"failure\" ? \"failed\" : \"started\";\n}\nif (name === \"resource_high\") state.cpu = 96;\nif (name === \"healthy\") state.cpu = 10;\nconst at = new Date(state.now).toISOString();\nconst report = {schema_version: 1, source: \"fixed_readonly_host_observer\", observed_at: at,\n    instance_id: \"a\".repeat(64), boot_id_sha256: \"b\".repeat(64), sequence: state.sequence,\n    evicted_event_records: 0,\n    sources: {docker: {state: \"connected\", collection_error: null}, systemd: {state: name === \"source_failure\" ? \"unknown\" : \"connected\", collection_error: name === \"source_failure\" ? \"stream_unavailable_or_invalid\" : null}},\n    events: state.sequence ? [{id: state.sequence.toString(16).padStart(64, \"0\"), source: \"systemd\", service: \"procmon\", action: state.action,\n        sequence: state.sequence, occurred_at: at, observed_at: at, source_to_observer_ms: 0}] : [],\n    resources: {observed_at: at, collection_errors: [], data: {cpu_busy_percent: state.cpu,\n        memory_available_bytes: 4096 * 1048576, memory_total_bytes: 8192 * 1048576,\n        disk_used_percent: 50, inodes_used_percent: 10, temperature_celsius: 50, oom_kill_count: 0}}};\nif (name === \"stale\") report.observed_at = new Date(state.now - 120000).toISOString();\nflow.set(\"host_observer_fixture_v1__test\", state);\nreturn {_host_observer_test: true, _host_test_now: state.now,\n    _host_test_run_id: runId,\n    payload: name === \"malformed\" ? \"{\" : {schema_version: 1, collection_error: null, report}};",
+        "func": "if (msg._host_observer_test !== true) return null;\nconst name = msg.payload;\nconst runId = msg._host_test_run_id;\nif (runId !== undefined && (typeof runId !== \"string\" || !/^[a-f0-9]{32}$/.test(runId))) return null;\nif (![\"reset\", \"healthy\", \"failure\", \"confirm\", \"resource_high\", \"source_failure\", \"stale\", \"malformed\"].includes(name)) return null;\nif (name === \"reset\") {\n    for (const key of [\"host_observer_cursor_v1__test\", \"host_observer_incidents_v1__test\", \"host_observer_fixture_v1__test\", \"host_observer_timing_v1__test\"]) flow.set(key, undefined);\n    flow.set(\"host_observer_timing_runtime_v1__test\", undefined, \"memoryOnly\");\n    if (runId !== undefined) flow.set(\"host_observer_fixture_v1__test\",\n        {now: Date.now(), sequence: 0, action: \"started\", cpu: 10, run_id: runId});\n    node.status({fill: \"blue\", shape: \"dot\", text: \"somente TESTE resetado\"});\n    return null;\n}\nconst state = flow.get(\"host_observer_fixture_v1__test\") ?? {now: Date.now(), sequence: 0, action: \"started\", cpu: 10};\nif (state.run_id !== runId) return null;\nstate.base_now ??= state.now;\nstate.sample_sequence = (state.sample_sequence ?? 0) + 1;\nstate.source_faults ??= 0;\nif (name === \"source_failure\" && state.last_source_state !== \"unknown\") state.source_faults++;\nstate.last_source_state = name === \"source_failure\" ? \"unknown\" : \"connected\";\nstate.now += name === \"confirm\" ? 25000 : 1000;\nif ([\"failure\", \"healthy\"].includes(name)) {\n    state.sequence += 1; state.action = name === \"failure\" ? \"failed\" : \"started\";\n}\nif (name === \"resource_high\") state.cpu = 96;\nif (name === \"healthy\") state.cpu = 10;\nconst at = new Date(state.now).toISOString();\nconst report = {schema_version: 1, source: \"fixed_readonly_host_observer\", observed_at: at,\n    instance_id: \"a\".repeat(64), boot_id_sha256: \"b\".repeat(64), sequence: state.sequence,\n    evicted_event_records: 0,\n    timing_v1: {version: 1, state: \"observed\", collection_error: null,\n        report_monotonic_seconds: state.now / 1000, resource_sample_sequence: state.sample_sequence,\n        resource_sampled_monotonic_seconds: state.now / 1000,\n        source_event_counts: {docker: 0, systemd: state.sequence},\n        source_fault_counts: {docker: 0, systemd: state.source_faults}, clock_change_count: 0, clock_stable: true,\n        resource_period_seconds: 20, idle_report_period_seconds: 10},\n    sources: {docker: {state: \"connected\", collection_error: null}, systemd: {state: name === \"source_failure\" ? \"unknown\" : \"connected\", collection_error: name === \"source_failure\" ? \"stream_unavailable_or_invalid\" : null}},\n    events: state.sequence ? [{id: state.sequence.toString(16).padStart(64, \"0\"), source: \"systemd\", service: \"procmon\", action: state.action,\n        sequence: state.sequence, occurred_at: at, observed_at: at, source_to_observer_ms: 0, source_clock_ordered: true, observer_monotonic_seconds: state.now / 1000}] : [],\n    resources: {observed_at: at, collection_errors: [], data: {cpu_busy_percent: state.cpu,\n        memory_available_bytes: 4096 * 1048576, memory_total_bytes: 8192 * 1048576,\n        disk_used_percent: 50, inodes_used_percent: 10, temperature_celsius: 50, oom_kill_count: 0}}};\nif (name === \"stale\") report.observed_at = new Date(state.now - 120000).toISOString();\nflow.set(\"host_observer_fixture_v1__test\", state);\nreturn {_host_observer_test: true, _host_test_now: state.now,\n    _host_test_run_id: runId, _host_test_canvas_monotonic_ms: state.now - state.base_now,\n    payload: name === \"malformed\" ? \"{\" : {schema_version: 1, collection_error: null, report, consumer_clock: {version: 1, state: \"observed\", collection_error: null,\n        observed_at: at, monotonic_seconds: state.now / 1000, boot_id_sha256: \"b\".repeat(64)}}};",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -88641,6 +88643,201 @@
         "x": 1183,
         "y": 5681,
         "wires": []
+    },
+    {
+        "id": "host_obs_timing_group",
+        "type": "group",
+        "z": "host_observer_tab",
+        "name": "0b. Medição passiva: contratos, contadores e relógios",
+        "style": {
+            "label": true,
+            "color": "#2563eb"
+        },
+        "nodes": [
+            "host_obs_timing_info",
+            "host_obs_timing_policy_tick",
+            "host_obs_timing_policy_config",
+            "host_obs_timing_policy_store",
+            "host_obs_timing_frame_in",
+            "host_obs_timing_account",
+            "host_obs_timing_return_out"
+        ],
+        "x": 1100,
+        "y": 40,
+        "w": 1840,
+        "h": 320
+    },
+    {
+        "id": "host_obs_timing_info",
+        "type": "comment",
+        "z": "host_observer_tab",
+        "g": "host_obs_timing_group",
+        "name": "Medição: evento ≤ 10.000 ms; recurso ≤ 60.000 ms; nenhum efeito residencial",
+        "x": 2010,
+        "y": 90,
+        "wires": [],
+        "info": "Parâmetros exclusivos da evidência de desempenho. Padrões evento10000ms/recurso60000ms; limites1000–60000ms/20000–120000ms. Valor inválido preserva o último contrato. Não altera confirmação,dedupe ou dispositivos. Âncoras horárias limitadas e contadores persistentes mantêm perdas/unknown; timestamps históricos não são inventados. Relógio monotônico do canvas via builtin perf_hooks; margens de alinhamento explícitas no contrato."
+    },
+    {
+        "id": "host_obs_timing_policy_tick",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_timing_group",
+        "name": "Carregar contrato de medição",
+        "x": 1320,
+        "y": 180,
+        "wires": [
+            [
+                "host_obs_timing_policy_config"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.25",
+        "topic": "",
+        "payload": "",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_timing_policy_config",
+        "type": "change",
+        "z": "host_observer_tab",
+        "g": "host_obs_timing_group",
+        "name": "Medição: limites em ms",
+        "x": 1640,
+        "y": 180,
+        "wires": [
+            [
+                "host_obs_timing_policy_store"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"event_latency_ms\":10000,\"resource_latency_ms\":60000}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "host_obs_timing_policy_store",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "host_obs_timing_group",
+        "name": "Validar; preservar último contrato",
+        "x": 1990,
+        "y": 180,
+        "wires": [],
+        "func": "const value = msg.payload;\nif (!value || Object.keys(value).length !== 2 ||\n    !Number.isFinite(value.event_latency_ms) || value.event_latency_ms < 1000 || value.event_latency_ms > 60000 ||\n    !Number.isFinite(value.resource_latency_ms) || value.resource_latency_ms < 20000 || value.resource_latency_ms > 120000) {\n    node.status({fill: \"yellow\", shape: \"ring\", text: \"contrato inválido; anterior preservado\"});\n    return null;\n}\nflow.set(\"host_observer_timing_policy_v1\", {...value}, \"persistent\");\nnode.status({fill: \"green\", shape: \"dot\", text: \"contrato de medição publicado\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "host_obs_timing_frame_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_timing_group",
+        "name": "Receber toda leitura",
+        "x": 2210,
+        "y": 250,
+        "wires": [
+            [
+                "host_obs_timing_account"
+            ]
+        ],
+        "links": [
+            "host_obs_timing_frame_out"
+        ]
+    },
+    {
+        "id": "host_obs_timing_account",
+        "type": "function",
+        "z": "host_observer_tab",
+        "g": "host_obs_timing_group",
+        "name": "Contabilizar cada fato sem decisões residenciais",
+        "x": 2500,
+        "y": 250,
+        "wires": [
+            [
+                "host_obs_timing_return_out"
+            ]
+        ],
+        "func": "function hostTimingTransition(previous, input) {\n  try {\n  const count = x => Number.isSafeInteger(x) && x >= 0 && x <= 1e12;\n  const number = x => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1e15;\n  const stamp = x => typeof x === 'string' && /^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,6})?(?:Z|\\+00:00)$/.test(x) && Number.isFinite(Date.parse(x)) ? Date.parse(x) : NaN;\n  const sources = ['docker', 'systemd', 'resources'];\n  const fields = ['expected', 'observed', 'unknown', 'over_contract', 'missing'];\n  const emptySource = () => ({expected: 0, observed: 0, unknown: 0, over_contract: 0, missing: 0,\n    max_source_to_reader_ms: null, max_reader_to_canvas_ms: null, max_source_to_canvas_upper_ms: null});\n  const flat = state => [...sources.flatMap(source => fields.map(field => state.sources[source][field])),\n    state.report_gaps, state.source_unavailable, state.source_faults, state.clock_conflicts, state.invalid_observations];\n  const missing = reason => {\n    const state = previous?.version === 1 && JSON.stringify(previous).length <= 24000\n      ? JSON.parse(JSON.stringify(previous)) : {version: 1, state: 'unknown', collection_error: null,\n        epoch: 0, previous_epochs: 0, historical_unknown_epochs: 0, past_counters: Array(20).fill(0),\n        sources: Object.fromEntries(sources.map(source => [source, emptySource()])),\n        report_gaps: 0, source_unavailable: 0, source_faults: 0, clock_conflicts: 0, invalid_observations: 0, anchors: []};\n    state.state = 'unknown'; state.collection_error = reason;\n    if (count(state.invalid_observations) && state.invalid_observations < 1e12) state.invalid_observations++;\n    if (reason.includes('clock') && count(state.clock_conflicts) && state.clock_conflicts < 1e12) state.clock_conflicts++;\n    return state;\n  };\n  const {report, reader, now_ms: now, canvas_monotonic_ms: canvas, limits, max_report_age_ms: freshness,\n    runtime_restarted: restarted} = input;\n  if (!limits || Object.keys(limits).length !== 2 || !number(limits.event_latency_ms) ||\n      limits.event_latency_ms < 1000 || limits.event_latency_ms > 60000 ||\n      !number(limits.resource_latency_ms) || limits.resource_latency_ms < 20000 || limits.resource_latency_ms > 120000) {\n    return missing('measurement_policy_unavailable');\n  }\n  if (!report || !number(now) || !number(canvas) || !number(freshness) ||\n      !Number.isFinite(stamp(report.observed_at)) || now - stamp(report.observed_at) < -1000 ||\n      now - stamp(report.observed_at) > freshness) return missing('report_unavailable_or_stale');\n  const timing = report.timing_v1;\n  if (timing?.version !== 1 || timing.state !== 'observed' ||\n      !number(timing.report_monotonic_seconds) || !count(timing.resource_sample_sequence) ||\n      !number(timing.resource_sampled_monotonic_seconds) ||\n      !count(timing.source_event_counts?.docker) || !count(timing.source_event_counts?.systemd) ||\n      !count(timing.source_fault_counts?.docker) || !count(timing.source_fault_counts?.systemd) ||\n      !count(timing.clock_change_count) ||\n      timing.source_event_counts.docker + timing.source_event_counts.systemd !== report.sequence) return missing('producer_timing_unavailable');\n  if (timing.clock_stable !== true) return missing('producer_clock_unstable');\n  if (reader?.state !== 'observed' || reader.boot_id_sha256 !== report.boot_id_sha256 ||\n      !number(reader.monotonic_seconds) || !Number.isFinite(stamp(reader.observed_at))) return missing('reader_clock_unavailable');\n  const wallOffset = now - canvas;\n  const readerCanvas = now - stamp(reader.observed_at);\n  // A one-second protocol alignment bound is included in the latency upper\n  // bound. An unverified clock relation never becomes a zero duration.\n  const alignment = Math.abs((stamp(reader.observed_at) - stamp(report.observed_at)) -\n    (reader.monotonic_seconds - timing.report_monotonic_seconds) * 1000);\n  if (readerCanvas < 0 || alignment > 1000 || reader.monotonic_seconds < timing.report_monotonic_seconds ||\n      timing.resource_sampled_monotonic_seconds > reader.monotonic_seconds) return missing('clock_alignment_unconfirmed');\n  let state = previous?.version === 1 ? JSON.parse(JSON.stringify(previous)) : null;\n  const reason = !state?.instance ? 'initial_baseline' : restarted ? 'consumer_runtime_restart' :\n    state.instance !== report.instance_id || state.boot !== report.boot_id_sha256 ? 'producer_epoch_changed' :\n    state.last_clock_change_count !== timing.clock_change_count ? 'producer_clock_changed' :\n    JSON.stringify(state.limits) !== JSON.stringify(limits) ? 'measurement_policy_changed' :\n    Math.abs(state.wall_offset_ms - wallOffset) > 1000 ? 'civil_clock_changed' :\n    canvas < state.last_canvas_monotonic_ms ? 'consumer_monotonic_changed' : null;\n  if (reason) {\n    if (state?.instance && ['civil_clock_changed', 'producer_clock_changed', 'consumer_monotonic_changed'].includes(reason)) state.clock_conflicts++;\n    const past = state?.past_counters ?? Array(20).fill(0);\n    if (state?.sources) flat(state).forEach((value, index) => { past[index] += value; });\n    state = {version: 1, state: 'observed', collection_error: null,\n      epoch: (state?.epoch ?? 0) + 1, previous_epochs: state?.instance ? (state.previous_epochs ?? 0) + 1 : state?.previous_epochs ?? 0,\n      historical_unknown_epochs: (state?.historical_unknown_epochs ?? 0) + (state ? 1 : 0),\n      epoch_reason: reason, past_counters: past, instance: report.instance_id, boot: report.boot_id_sha256,\n      limits: {...limits}, started_at: new Date(now).toISOString(),\n      started_canvas_monotonic_ms: canvas, last_canvas_monotonic_ms: canvas,\n      wall_offset_ms: wallOffset, observed_at: new Date(now).toISOString(),\n      last_report_at: report.observed_at, report_observations: 1,\n      last_event_sequence: report.sequence, last_event_totals: {...timing.source_event_counts},\n      last_source_faults: {...timing.source_fault_counts}, last_clock_change_count: timing.clock_change_count,\n      last_resource_sequence: timing.resource_sample_sequence,\n      sources: Object.fromEntries(sources.map(source => [source, emptySource()])),\n      report_gaps: 0, source_unavailable: 0, source_faults: 0, clock_conflicts: 0, invalid_observations: 0,\n      anchors: [], anchor_slot: -1, window24h: {state: 'collecting', minimum_span_seconds: 0, counters: null}};\n    // The current report may precede instrumentation. Never backfill its\n    // first detection or pretend its old ring members were newly observed.\n    return state;\n  }\n  if (canvas - state.last_canvas_monotonic_ms > freshness) state.report_gaps++;\n  state.last_canvas_monotonic_ms = canvas;\n  state.wall_offset_ms = wallOffset;\n  state.observed_at = new Date(now).toISOString();\n  state.state = 'observed'; state.collection_error = null;\n  if (report.sequence < state.last_event_sequence || timing.resource_sample_sequence < state.last_resource_sequence ||\n      ['docker', 'systemd'].some(source => timing.source_event_counts[source] < state.last_event_totals[source])) {\n    return missing('producer_counter_reversed');\n  }\n  const add = (source, sourceReader, unknown) => {\n    const row = state.sources[source]; row.observed++;\n    if (unknown || !number(sourceReader)) { row.unknown++; return; }\n    const upper = sourceReader + readerCanvas + 1000;\n    row.max_source_to_reader_ms = Math.max(row.max_source_to_reader_ms ?? 0, sourceReader);\n    row.max_reader_to_canvas_ms = Math.max(row.max_reader_to_canvas_ms ?? 0, readerCanvas);\n    row.max_source_to_canvas_upper_ms = Math.max(row.max_source_to_canvas_upper_ms ?? 0, upper);\n    if (upper > limits[source === 'resources' ? 'resource_latency_ms' : 'event_latency_ms']) row.over_contract++;\n  };\n  const seen = {docker: 0, systemd: 0};\n  for (const event of report.events ?? []) {\n    if (!['docker', 'systemd'].includes(event.source) || !count(event.sequence) ||\n        event.sequence <= state.last_event_sequence || event.sequence > report.sequence) continue;\n    const delta = number(event.observer_monotonic_seconds)\n      ? (reader.monotonic_seconds - event.observer_monotonic_seconds) * 1000 : null;\n    const good = number(event.source_to_observer_ms) && number(delta) && event.source_clock_ordered === true;\n    add(event.source, good ? event.source_to_observer_ms + delta : null, !good);\n    seen[event.source]++;\n  }\n  for (const source of ['docker', 'systemd']) {\n    const expected = timing.source_event_counts[source] - state.last_event_totals[source];\n    if (seen[source] > expected) return missing('producer_counter_mismatch');\n    state.sources[source].expected += expected;\n    state.sources[source].missing += expected - seen[source];\n    state.last_event_totals[source] = timing.source_event_counts[source];\n  }\n  state.last_event_sequence = report.sequence;\n  const expectedResources = timing.resource_sample_sequence - state.last_resource_sequence;\n  if (expectedResources > 0) {\n    state.sources.resources.expected += expectedResources;\n    state.sources.resources.missing += expectedResources - 1;\n    const data = report.resources?.data ?? {};\n    const good = Array.isArray(report.resources?.collection_errors) && report.resources.collection_errors.length === 0 &&\n      ['cpu_busy_percent', 'memory_available_bytes', 'disk_used_percent', 'inodes_used_percent', 'temperature_celsius']\n        .every(key => number(data[key]));\n    add('resources', (reader.monotonic_seconds - timing.resource_sampled_monotonic_seconds) * 1000, !good);\n    state.last_resource_sequence = timing.resource_sample_sequence;\n  }\n  if (report.observed_at !== state.last_report_at) {\n    state.report_observations++;\n    if (['docker', 'systemd'].some(source => report.sources?.[source]?.state !== 'connected' ||\n        report.sources[source].collection_error !== null)) state.source_unavailable++;\n    state.last_report_at = report.observed_at;\n  }\n  for (const source of ['docker', 'systemd']) {\n    if (timing.source_fault_counts[source] < state.last_source_faults[source]) return missing('producer_counter_reversed');\n    state.source_faults += timing.source_fault_counts[source] - state.last_source_faults[source];\n  }\n  state.last_source_faults = {...timing.source_fault_counts};\n  const counts = flat(state);\n  if (!counts.every(count)) return missing('accounting_counter_exhausted');\n  const slot = Math.floor((canvas - state.started_canvas_monotonic_ms) / 3600000);\n  const usable = ['docker', 'systemd'].every(source => report.sources?.[source]?.state === 'connected' &&\n    report.sources[source].collection_error === null) &&\n    report.resources?.data?.cpu_busy_percent !== null && report.resources?.collection_errors?.length === 0;\n  if (slot > state.anchor_slot && usable) {\n    state.anchors.push([canvas, state.observed_at, ...counts]);\n    state.anchors = state.anchors.slice(-25); state.anchor_slot = slot;\n  }\n  const eligible = state.anchors.filter(anchor => canvas - anchor[0] >= 86400000);\n  const anchor = eligible.at(-1);\n  state.window24h = anchor ? {state: 'candidate', minimum_span_seconds: (canvas - anchor[0]) / 1000,\n    started_at: anchor[1], ended_at: state.observed_at,\n    counters: counts.map((value, index) => value - anchor[index + 2])} :\n    {state: 'collecting', minimum_span_seconds: state.anchors.length ? (canvas - state.anchors[0][0]) / 1000 : 0, counters: null};\n  return state;\n  } catch {\n    return {version: 1, state: 'unknown', collection_error: 'accounting_state_invalid',\n      historical_state_unavailable: true, historical_unknown_epochs: 1};\n  }\n}\n// Measurement only: every normalized receipt continues to the existing gates.\nconst test = msg._host_observer_test === true;\nconst suffix = test ? \"__test\" : \"\";\nconst store = test ? undefined : \"persistent\";\nconst key = \"host_observer_timing_v1\" + suffix;\nconst runtimeKey = \"host_observer_timing_runtime_v1\" + suffix;\nconst origin = timingClock.performance.timeOrigin;\nconst previous = flow.get(key, store);\nconst result = hostTimingTransition(previous, {\n    report: msg._host_report_valid ? msg._host_report : null,\n    reader: msg._host_consumer_clock,\n    now_ms: msg._host_now,\n    canvas_monotonic_ms: test ? msg._host_test_canvas_monotonic_ms : timingClock.performance.now(),\n    limits: flow.get(\"host_observer_timing_policy_v1\", \"persistent\"),\n    max_report_age_ms: msg._host_policy.max_report_age_ms,\n    runtime_restarted: flow.get(runtimeKey, \"memoryOnly\") !== origin\n});\nflow.set(key, result, store);\nflow.set(runtimeKey, origin, \"memoryOnly\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "timingClock",
+                "module": "perf_hooks"
+            }
+        ]
+    },
+    {
+        "id": "host_obs_timing_return_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_timing_group",
+        "name": "Retornar para os gates existentes",
+        "x": 2790,
+        "y": 250,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_timing_return_in"
+        ]
+    },
+    {
+        "id": "host_obs_timing_frame_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Leitura → medição passiva",
+        "x": 1100,
+        "y": 540,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_timing_frame_in"
+        ]
+    },
+    {
+        "id": "host_obs_timing_return_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_input_group",
+        "name": "Receber sem mudar os gates",
+        "x": 1140,
+        "y": 430,
+        "wires": [
+            [
+                "host_obs_valid"
+            ]
+        ],
+        "links": [
+            "host_obs_timing_return_out"
+        ]
     },
     {
         "id": "notification_hub_wire_out_91f75af07cd0",

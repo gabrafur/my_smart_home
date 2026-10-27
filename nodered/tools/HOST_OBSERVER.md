@@ -52,6 +52,50 @@ Essa marca prova intenção local, não confirmação do Home Assistant, do celu
 da Eva; falha de entrega deve ser reconciliada pelo canal global, sem replay cego.
 Recuperação remove somente o aviso associado; o histórico de falhas continua.
 
+## Medição passiva e janela de cobertura
+
+O grupo próprio de medição recebe toda leitura normalizada e sempre a devolve
+aos gates existentes. Não altera notificações, thresholds ou lifecycle. Seus
+contratos visíveis são evento até 10.000 ms e recurso até 60.000 ms; a validação
+aceita respectivamente 1.000–60.000 ms e 20.000–120.000 ms, preservando o último
+valor válido. São limites da evidência, separados dos tempos de confirmação.
+
+O produtor publica sequências de amostras, totais por origem e contadores de
+falhas de stream, inclusive quando a conexão se recupera entre duas leituras.
+O consumidor conta cada incremento uma vez, incluindo eventos saudáveis e
+amostras sem incidente. Eventos removidos do anel e amostras intermediárias
+não lidas entram em `missing`; horário ou métrica ausente entra em `unknown`.
+`expected` representa incrementos conhecidos da sequência, não uma contagem
+independente de ciclos que o produtor deveria ter executado. Cadência real e
+intervalos sem produção precisam de verificação adicional para aceite de 24h.
+Ausência de eventos Docker permanece contagem zero, sem comprovar a latência
+daquela origem. A contagem começa no baseline, sem reconstruir o passado.
+
+O leitor mede seu próprio horário e relógio monotônico, exigindo o mesmo hash
+de boot do produtor. Cada leitura verifica a relação entre relógios com limite
+de alinhamento de 1.000 ms, incluído conservadoramente no limite superior da
+latência fonte→leitor→canvas. Relação não confirmada permanece desconhecida.
+O canvas usa o builtin `perf_hooks` para medir a janela monotônica. Mudança
+de instância, reinício do consumidor, alteração do contrato ou salto de relógio
+abre outra época e preserva contadores anteriores e épocas inconclusivas.
+O produtor marca incerteza de relógio por 60s após um salto civil detectado.
+
+O estado `host_observer_timing_v1` fica no store `persistent`, com até 25 âncoras
+horárias cumulativas. A janela só vira `candidate` depois de abranger pelo
+menos 86.400s monotônicos; seus deltas precisam corresponder às âncoras. Isso
+não é aprovação de 24h: verificar contagens, perdas, desconhecidos, excessos,
+falhas de fonte e lacunas. O contexto tem flush de 30s e não é arquivo bruto de
+eventos nem journal transacional. Perdas anteriores ao produtor e interrupções
+entre épocas continuam fora da cobertura comprovada. HA/MQTT, chegada de push
+e execução da Eva exigem evidência adicional própria.
+
+A projeção fechada é
+`maintenance_capabilities.evidence.data.host_observation.passive_timing`.
+Ela expõe épocas, contadores, máximos e janela, sem IDs brutos ou âncoras. Seus
+campos de aceite global permanecem falsos. O
+[aceite sanitizado](../../scripts/raspberry-mcp/passive-host-timing.acceptance.json)
+separa replay sintético, transação MCP e amostras naturais.
+
 ## Replay e implantação
 
 Sequência no canvas: reset → saudável (baseline) → falha → confirmar (+25s) →
@@ -70,6 +114,13 @@ teste de entrega e traces inválidos não geram esse recibo. Confirmação dupli
 preserva a sequência; recuperação cria o próximo recibo. O cliente espera as
 barreiras do fixture, incidente e terminal, depois limpa apenas as chaves de
 teste e confirma sua ausência no store persistente.
+
+O mesmo replay atravessa a medição com `host_observer_timing_v1__test`, somente
+em memória. Após saudável, falha, duas confirmações e recuperação, deve contar
+quatro amostras de recursos e dois eventos novos de systemd, sem duplicar o
+anel. Reset limpa também esse estado e o marcador de runtime de teste, sem
+alterar o estado de produção. Os recibos de notificação desse cenário usam
+horário sintético futuro e conservam conflito de relógio; não medem entrega.
 
 Automatizado: `node nodered/tools/test-host-observer.mjs`. A descoberta canônica
 inclui o teste; cobre datas ausentes/conflitantes, coleta falha, alertas/recovery,

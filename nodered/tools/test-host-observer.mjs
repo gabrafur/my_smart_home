@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {withHostTimingSource} from './host-observation-timing.mjs';
 import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {projectObservation, safeMetadata, SERVICES, UNITS, METRICS} from './read-host-observation.mjs';
@@ -6,9 +7,9 @@ import {POLICY, installHostObserver} from './install-host-observer-flow.mjs';
 
 const flows=JSON.parse(fs.readFileSync(process.env.HOST_OBSERVER_TEST_FLOW??new URL('../flows.json',import.meta.url),'utf8'));
 const byId=new Map(flows.map(n=>[n.id,n]));
-const source=file=>fs.readFileSync(new URL(`functions/host-observer-${file}.js`,import.meta.url),'utf8').trimEnd();
-for(const name of ['normalize','facts','lifecycle','test-build','policy','read-completion']){
-  const id={facts:'facts',lifecycle:'lifecycle','test-build':'test_build',normalize:'normalize',policy:'policy_store','read-completion':'read_complete'}[name];
+const source=file=>withHostTimingSource(fs.readFileSync(new URL(`functions/host-observer-${file}.js`,import.meta.url),'utf8').trimEnd());
+for(const name of ['normalize','facts','lifecycle','test-build','policy','read-completion','timing','timing-policy']){
+  const id={facts:'facts',lifecycle:'lifecycle','test-build':'test_build',normalize:'normalize',policy:'policy_store','read-completion':'read_complete',timing:'timing_account','timing-policy':'timing_policy_store'}[name];
   assert.equal(byId.get(`host_obs_${id}`)?.func,source(name));
 }
 const supportedSwitchRules=new Set(['eq','lte','gte','true','null','else','regex']);
@@ -36,7 +37,7 @@ function harness(){
    if(n.type==='function'){
     if(id==='global_observer_dispatch_guard')decisions.push(structuredClone(input));
     if(id==='global_observer_dry_run_terminal')dry.push(structuredClone(input));
-    const result=new Function('msg','flow','node','global',n.func)(input,context(n.z),{status(){},log(){},warn(){},error(v){errors.push(v);}},{get(){}});
+    const result=new Function('msg','flow','node','global','timingClock',n.func)(input,context(n.z),{status(){},log(){},warn(){},error(v){errors.push(v);}},{get(){}},{performance:{timeOrigin:1,now:()=>0}});
     if(result){const outputs=Array.isArray(result)?result:[result];for(const [i,value]of outputs.entries())for(const message of Array.isArray(value)?value:[value])if(message)send(n.wires?.[i],message);}
    }else if(n.type==='change'){
     for(const rule of n.rules){assert.equal(rule.pt,'msg');let value=rule.tot==='json'?JSON.parse(rule.to):rule.tot==='bool'?rule.to==='true':rule.tot==='num'?Number(rule.to):rule.to;set(input,rule.p,value);}send(n.wires[0],input);
@@ -53,6 +54,7 @@ function harness(){
   }
  };
  run('host_obs_policy_config',{payload:null});
+ run('host_obs_timing_policy_config',{payload:null});
  return {run,context,dry,effects,decisions,errors,scenario(name){run('host_obs_test_build',{_host_observer_test:true,payload:name});}};
 }
 const h=harness();h.scenario('reset');h.scenario('healthy');h.scenario('failure');assert.equal(h.dry.length,0);
@@ -141,3 +143,18 @@ const meta={uid:0,gid:0,mode:0o100644,nlink:1,size:1,isFile:()=>true,isDirectory
 assert.equal(safeMetadata(meta),true);for(const changes of [{uid:1000},{mode:0o104644},{mode:0o100666},{nlink:2},{size:65537},{isFile:()=>false}])assert.equal(safeMetadata({...meta,...changes}),false);
 const refused=spawnSync(process.execPath,[new URL('./read-host-observation.mjs',import.meta.url).pathname,'free-argument'],{encoding:'utf8'});assert.equal(refused.status,64);assert.equal(JSON.parse(refused.stdout).collection_error,'arguments_refused');
 console.log('Host observer: closed reader,visual thresholds,cursors,unknown states,failures,recovery,dedupe and full dry-run replay passed.');
+
+const measured = harness();
+measured.scenario('reset'); measured.scenario('healthy'); measured.scenario('failure'); measured.scenario('confirm');
+const timingState = measured.context('host_observer_tab').get('host_observer_timing_v1__test');
+assert.equal(timingState.state, 'observed');
+assert.ok(timingState.sources.resources.observed > 0);
+assert.ok(timingState.sources.systemd.observed > 0);
+const limitsBefore = measured.context('host_observer_tab').get('host_observer_timing_policy_v1','persistent');
+measured.run('host_obs_timing_policy_store',{payload:{event_latency_ms:1,resource_latency_ms:60000}});
+assert.deepEqual(measured.context('host_observer_tab').get('host_observer_timing_policy_v1','persistent'),limitsBefore);
+assert.equal(measured.context('host_observer_tab').get('host_observer_timing_v1','persistent'),undefined);
+measured.scenario('reset');
+assert.equal(measured.context('host_observer_tab').get('host_observer_timing_v1__test'),undefined);
+assert.equal(measured.context('host_observer_tab').get('host_observer_timing_runtime_v1__test','memoryOnly'),undefined);
+console.log('Passive accounting traverses the complete manual graph, preserves production separation and resets only test state.');

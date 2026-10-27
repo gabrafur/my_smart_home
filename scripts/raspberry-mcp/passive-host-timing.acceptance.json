@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "verified_UTC_date": "2026-10-27",
+  "scope": "passive_host_timing_in_existing_readonly_producer_NodeRED_and_MCP",
+  "origin": "serial_actual_MCP_administrative_tasks",
+  "added_nodes": 10,
+  "changed_existing_nodes": 4,
+  "removed_nodes": 0,
+  "existing_household_thresholds_lifecycle_dedupe_and_routes_preserved": true,
+  "phases": [
+    {
+      "state": "confirmed_apply_with_native_full_dry_run",
+      "replay_steps": 7,
+      "deduplicated": true,
+      "test_context_cleaned": true,
+      "persistent_test_keys_absent": true,
+      "session_revoked": true,
+      "household_services_restarted": 0,
+      "observer_service_restarted": 1,
+      "policy_changed_only_health_source_digest": true,
+      "new_access_or_expiry": false,
+      "physical_effects": 0,
+      "notification_timing_states": [
+        "clock_conflict",
+        "clock_conflict"
+      ],
+      "phase": "apply",
+      "synthetic_measurement": {
+        "production_instance_distinct": true,
+        "sources": {
+          "docker": {
+            "expected": 0,
+            "max_reader_to_canvas_ms": null,
+            "max_source_to_canvas_upper_ms": null,
+            "max_source_to_reader_ms": null,
+            "missing": 0,
+            "observed": 0,
+            "over_contract": 0,
+            "unknown": 0
+          },
+          "resources": {
+            "expected": 4,
+            "max_reader_to_canvas_ms": 0,
+            "max_source_to_canvas_upper_ms": 1000,
+            "max_source_to_reader_ms": 0,
+            "missing": 0,
+            "observed": 4,
+            "over_contract": 0,
+            "unknown": 0
+          },
+          "systemd": {
+            "expected": 2,
+            "max_reader_to_canvas_ms": 0,
+            "max_source_to_canvas_upper_ms": 1000,
+            "max_source_to_reader_ms": 0,
+            "missing": 0,
+            "observed": 2,
+            "over_contract": 0,
+            "unknown": 0
+          }
+        },
+        "synthetic": true,
+        "test_context_cleaned": true
+      }
+    },
+    {
+      "state": "confirmed_rollback_with_native_full_dry_run",
+      "replay_steps": 7,
+      "deduplicated": true,
+      "test_context_cleaned": true,
+      "persistent_test_keys_absent": true,
+      "session_revoked": true,
+      "household_services_restarted": 0,
+      "observer_service_restarted": 1,
+      "policy_changed_only_health_source_digest": true,
+      "new_access_or_expiry": false,
+      "physical_effects": 0,
+      "notification_timing_states": [
+        "clock_conflict",
+        "clock_conflict"
+      ],
+      "phase": "rollback",
+      "synthetic_measurement": null
+    },
+    {
+      "state": "confirmed_reapply_with_native_full_dry_run",
+      "replay_steps": 7,
+      "deduplicated": true,
+      "test_context_cleaned": true,
+      "persistent_test_keys_absent": true,
+      "session_revoked": true,
+      "household_services_restarted": 0,
+      "observer_service_restarted": 1,
+      "policy_changed_only_health_source_digest": true,
+      "new_access_or_expiry": false,
+      "physical_effects": 0,
+      "notification_timing_states": [
+        "clock_conflict",
+        "clock_conflict"
+      ],
+      "phase": "reapply",
+      "synthetic_measurement": {
+        "production_instance_distinct": true,
+        "sources": {
+          "docker": {
+            "expected": 0,
+            "max_reader_to_canvas_ms": null,
+            "max_source_to_canvas_upper_ms": null,
+            "max_source_to_reader_ms": null,
+            "missing": 0,
+            "observed": 0,
+            "over_contract": 0,
+            "unknown": 0
+          },
+          "resources": {
+            "expected": 4,
+            "max_reader_to_canvas_ms": 0,
+            "max_source_to_canvas_upper_ms": 1000,
+            "max_source_to_reader_ms": 0,
+            "missing": 0,
+            "observed": 4,
+            "over_contract": 0,
+            "unknown": 0
+          },
+          "systemd": {
+            "expected": 2,
+            "max_reader_to_canvas_ms": 0,
+            "max_source_to_canvas_upper_ms": 1000,
+            "max_source_to_reader_ms": 0,
+            "missing": 0,
+            "observed": 2,
+            "over_contract": 0,
+            "unknown": 0
+          }
+        },
+        "synthetic": true,
+        "test_context_cleaned": true
+      }
+    }
+  ],
+  "three_sends_terminal_and_ACKed": true,
+  "actual_MCP_projection_observed_after_apply_and_reapply": true,
+  "source_export_byte_identity_verified": true,
+  "source_hashes": {
+    "scripts/host-observation/observer.py": "9acf20d0b29ad478d22862cedef2dc8cd761a83a51eba90cf9a6978587778232",
+    "nodered/tools/read-host-observation.mjs": "c899c046247fd07e319d20cadebb26fe021cc4dc78257c75acc74cea58f21b52",
+    "scripts/raspberry-mcp/runtime-source/repair-control/health_summary.py": "5bfe3eb7a1dd56b55e85775268029c7f117f01c56361e728d0d74ffdfed10f3b",
+    "nodered/tools/host-observation-timing.mjs": "ea4058a28ad6aaf3252ba2c32d6dee7195f5f6205efe3b4dad867069e830004e",
+    "nodered/tools/host-timing-protocol.mjs": "f741ce48cbebdafe605d5f42efccb4fb3601cd975787e83f96c278bf5a507f0a"
+  },
+  "natural_short_windows": [
+    {
+      "phase": "apply",
+      "source_counts": {
+        "docker": {
+          "expected": 0,
+          "observed": 0,
+          "unknown": 0,
+          "missing": 0,
+          "over_contract": 0,
+          "max_source_to_canvas_upper_ms": null
+        },
+        "systemd": {
+          "expected": 7,
+          "observed": 7,
+          "unknown": 0,
+          "missing": 0,
+          "over_contract": 0,
+          "max_source_to_canvas_upper_ms": 2909
+        },
+        "resources": {
+          "expected": 7,
+          "observed": 7,
+          "unknown": 0,
+          "missing": 0,
+          "over_contract": 0,
+          "max_source_to_canvas_upper_ms": 10397
+        }
+      },
+      "epoch": 1,
+      "previous_epochs": 0,
+      "historical_unknown_epochs": 0,
+      "elapsed_seconds_floor": 141
+    },
+    {
+      "phase": "reapply",
+      "source_counts": {
+        "docker": {
+          "expected": 0,
+          "observed": 0,
+          "unknown": 0,
+          "missing": 0,
+          "over_contract": 0,
+          "max_source_to_canvas_upper_ms": null
+        },
+        "systemd": {
+          "expected": 4,
+          "observed": 4,
+          "unknown": 0,
+          "missing": 0,
+          "over_contract": 0,
+          "max_source_to_canvas_upper_ms": 3290
+        },
+        "resources": {
+          "expected": 4,
+          "observed": 4,
+          "unknown": 0,
+          "missing": 0,
+          "over_contract": 0,
+          "max_source_to_canvas_upper_ms": 11271
+        }
+      },
+      "epoch": 2,
+      "previous_epochs": 1,
+      "historical_unknown_epochs": 1,
+      "elapsed_seconds_floor": 78
+    }
+  ],
+  "previous_counters_retained_after_reapply": {
+    "docker.expected": 0,
+    "docker.observed": 0,
+    "docker.unknown": 0,
+    "docker.over_contract": 0,
+    "docker.missing": 0,
+    "systemd.expected": 11,
+    "systemd.observed": 11,
+    "systemd.unknown": 0,
+    "systemd.over_contract": 0,
+    "systemd.missing": 0,
+    "resources.expected": 10,
+    "resources.observed": 10,
+    "resources.unknown": 0,
+    "resources.over_contract": 0,
+    "resources.missing": 0,
+    "report_gaps": 0,
+    "source_unavailable": 0,
+    "source_faults": 0,
+    "clock_conflicts": 0,
+    "invalid_observations": 0
+  },
+  "measurement_contract_ms": {
+    "event_latency_ms": 10000,
+    "resource_latency_ms": 60000
+  },
+  "clock_alignment_upper_allowance_ms": 1000,
+  "context_flush_allowance_seconds": 30,
+  "hourly_anchor_limit": 25,
+  "native_clock_builtin": "perf_hooks",
+  "new_npm_dependencies_or_security_configuration": false,
+  "early_status_errors_preserved_without_replaying_effect": true,
+  "early_status_error_RCA": "unknown",
+  "layout_observability_manual_tests_and_strict_render_passed": true,
+  "canvas_visually_inspected": true,
+  "global_generator_idempotency_verified": true,
+  "limits": {
+    "first_observation_baseline_not_backfilled": true,
+    "expected_counts_are_producer_sequence_deltas_not_independent_scheduled_cycle_proof": true,
+    "producer_restart_and_window_between_epochs_inconclusive": true,
+    "Docker_latency_not_measured_without_events": true,
+    "producer_disconnection_can_lose_events": true,
+    "bounded_context_not_transactional_event_archive": true,
+    "synthetic_25h_test_is_not_real_24h": true,
+    "full24h_proven": false,
+    "all_event_latency_proven": false,
+    "home_assistant_and_MQTT_source_timing_proven": false,
+    "notification_arrival_or_Eva_execution_proven": false,
+    "seven_service_restore_proven": false
+  },
+  "public_duration_rounding": "elapsed seconds floor; latency upper milliseconds ceiling; exact originals retained privately"
+}

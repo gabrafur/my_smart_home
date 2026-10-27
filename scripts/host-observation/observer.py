@@ -16,6 +16,8 @@ import time
 import urllib.parse
 
 DESTINATION = Path('/mnt/data/docker/nodered/.host-health-observer')
+RESOURCE_PERIOD_SECONDS = 20
+REPORT_PERIOD_SECONDS = 10
 SERVICES = frozenset(('homeassistant', 'nodered', 'mosquitto', 'portainer',
     'appdaemon', 'matter_server', 'zigbee2mqtt', 'ai-bridge',
     'docs-review-scheduler', 'kia-uvo-codex-merge'))
@@ -37,7 +39,7 @@ def iso(value=None):
         datetime.timezone.utc).isoformat(timespec='milliseconds')
 
 
-def docker_event(value, now):
+def docker_event(value, now, observed_monotonic=None, clock_stable=True):
     if not isinstance(value, dict) or value.get('Type') != 'container':
         return None
     actor = value.get('Actor')
@@ -55,10 +57,11 @@ def docker_event(value, now):
         action, nano], separators=(',', ':')).encode()).hexdigest()
     return {'id': identity, 'source': 'docker', 'service': service,
         'action': action, 'occurred_at': iso(occurred), 'observed_at': iso(now),
-        'source_to_observer_ms': round(max(0, now - occurred) * 1000, 3)}
+        'source_to_observer_ms': round((now - occurred) * 1000, 3) if now >= occurred and clock_stable else None,
+        'observer_monotonic_seconds': observed_monotonic, 'source_clock_ordered': now >= occurred if clock_stable else None}
 
 
-def journal_event(value, now):
+def journal_event(value, now, observed_monotonic=None, clock_stable=True):
     if not isinstance(value, dict):
         return None
     service, action = UNITS.get(value.get('UNIT')), JOBS.get(value.get('MESSAGE_ID'))
@@ -74,7 +77,8 @@ def journal_event(value, now):
         action, value['__REALTIME_TIMESTAMP']], separators=(',', ':')).encode()).hexdigest()
     return {'id': identity, 'source': 'systemd', 'service': service, 'action': action,
         'occurred_at': iso(occurred), 'observed_at': iso(now),
-        'source_to_observer_ms': round(max(0, now - occurred) * 1000, 3)}
+        'source_to_observer_ms': round((now - occurred) * 1000, 3) if now >= occurred and clock_stable else None,
+        'observer_monotonic_seconds': observed_monotonic, 'source_clock_ordered': now >= occurred if clock_stable else None}
 
 
 def procmon_accounting(value, now=None, run=subprocess.run):
@@ -177,11 +181,29 @@ class State:
         self.seen = collections.deque(maxlen=256)
         self.sources = {key: {'state': 'unknown', 'collection_error': 'starting'} for key in ('docker', 'systemd')}
         self.sequence, self.dropped, self.generation = 0, 0, 0
+        self.source_event_counts = {key: 0 for key in ('docker', 'systemd')}
+        self.source_fault_counts = {key: 0 for key in ('docker', 'systemd')}
+        self.clock_previous = None
+        self.clock_change_count, self.clock_uncertain_until = 0, 0
+
+    def clock(self, wall=None, mono=None):
+        with self.lock:
+            wall = time.time() if wall is None else wall
+            mono = time.monotonic() if mono is None else mono
+            if self.clock_previous is None or mono >= self.clock_previous[1]:
+                if self.clock_previous and abs((wall-self.clock_previous[0]) - (mono-self.clock_previous[1])) > 1:
+                    self.clock_change_count += 1
+                    self.clock_uncertain_until = mono + 60
+                    self.generation += 1
+                self.clock_previous = (wall, mono)
+            return wall, mono, mono >= self.clock_uncertain_until
 
     def health(self, source, state, error=None):
         with self.lock:
             value = {'state': state, 'collection_error': error}
             if self.sources[source] != value:
+                if state != 'connected':
+                    self.source_fault_counts[source] += 1
                 self.sources[source] = value
                 self.generation += 1
 
@@ -193,6 +215,7 @@ class State:
                 return
             self.seen.append(event['id'])
             self.sequence += 1
+            self.source_event_counts[event['source']] += 1
             if len(self.events) == self.events.maxlen:
                 self.dropped += 1
             self.events.append({**event, 'sequence': self.sequence})
@@ -215,7 +238,7 @@ def docker_watch(state):
                 line = response.readline(65537)
                 if not line or len(line) > 65536:
                     raise ValueError('docker_stream')
-                state.add(docker_event(json.loads(line), time.time()))
+                state.add(docker_event(json.loads(line), *state.clock()))
         except Exception:
             state.health('docker', 'unknown', 'stream_unavailable_or_invalid')
         finally:
@@ -237,7 +260,7 @@ def journal_watch(state):
                 if not line or len(line) > 8192:
                     raise ValueError('journal_stream')
                 value = json.loads(line)
-                event = journal_event(value, time.time())
+                event = journal_event(value, *state.clock())
                 state.add(event)
                 if event and event['service'] == 'procmon' and event['action'] in ('started', 'failed'):
                     # The event reaches the report before this bounded metadata
@@ -294,19 +317,32 @@ def main():
     for function in (docker_watch, journal_watch):
         threading.Thread(target=function, args=(state,), daemon=True).start()
     last_sample, last_write, generation = 0, 0, -1
+    sample_sequence = 0
     while True:
-        monotonic = time.monotonic()
-        if monotonic - last_sample >= 20:
+        _, monotonic, _ = state.clock()
+        if monotonic - last_sample >= RESOURCE_PERIOD_SECONDS:
             metrics, previous = resource_sample(previous)
+            sample_sequence += 1
+            metrics['sample_sequence'] = sample_sequence
+            metrics['sampled_monotonic_seconds'] = time.monotonic()
             last_sample = monotonic
         with state.lock:
             changed = generation != state.generation
-            if monotonic - last_write >= 10 or changed and monotonic - last_write >= .25:
+            if monotonic - last_write >= REPORT_PERIOD_SECONDS or changed and monotonic - last_write >= .25:
                 report = {'schema_version': 1, 'source': 'fixed_readonly_host_observer',
                     'observed_at': iso(), 'boot_id_sha256': boot, 'instance_id': instance,
                     'sequence': state.sequence, 'evicted_event_records': state.dropped,
                     'sources': dict(state.sources), 'events': list(state.events),
                     'resources': metrics, 'bytes_written_before_report': total_bytes,
+                    'timing_v1': {'version': 1, 'report_monotonic_seconds': time.monotonic(),
+                        'resource_sample_sequence': sample_sequence,
+                        'resource_sampled_monotonic_seconds': metrics['sampled_monotonic_seconds'],
+                        'source_event_counts': dict(state.source_event_counts),
+                        'source_fault_counts': dict(state.source_fault_counts),
+                        'clock_change_count': state.clock_change_count,
+                        'clock_stable': time.monotonic() >= state.clock_uncertain_until,
+                        'resource_period_seconds': RESOURCE_PERIOD_SECONDS,
+                        'idle_report_period_seconds': REPORT_PERIOD_SECONDS},
                     'producer_cost': {'self_cpu_seconds': round(resource.getrusage(resource.RUSAGE_SELF).ru_utime +
                         resource.getrusage(resource.RUSAGE_SELF).ru_stime, 6),
                         'self_peak_rss_bytes': resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024,

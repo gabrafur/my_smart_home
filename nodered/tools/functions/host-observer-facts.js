@@ -37,7 +37,7 @@ for (const event of report.events) {
     const at = Date.parse(event.occurred_at);
     if (!Number.isFinite(at) || at > msg._host_now + 1000) continue;
     native.states[`${event.source}:${event.service}`] = {kind: "native", name: event.service,
-        source: event.source, action: event.action, occurred_at: event.occurred_at};
+        source: event.source, action: event.action, occurred_at: event.occurred_at, observed_at: event.observed_at};
 }
 native.sequence = report.sequence;
 flow.set(key, native, store);

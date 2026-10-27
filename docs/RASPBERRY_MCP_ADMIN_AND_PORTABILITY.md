@@ -1324,3 +1324,35 @@ O [procedimento de aplicação/reversão](../scripts/raspberry-mcp/collector-cad
 preserva o override anterior e a história. A configuração antiga está guardada
 para reversão, que não foi executada neste aceite. A cobertura é curta: não
 comprova reboot do host, 24 horas ou execução natural da assistente.
+
+## Contagem passiva de eventos e amostras
+
+`maintenance_capabilities.evidence.data.host_observation.passive_timing` expõe
+o resultado canônico do [grupo de medição no Node-RED](../nodered/tools/HOST_OBSERVER.md#medição-passiva-e-janela-de-cobertura).
+Conta eventos e amostras saudáveis, além dos incidentes; sequências do produtor
+permitem declarar registros ausentes sem transformar ausência em zero latência.
+A projeção mantém limites, máximos conservadores, desconhecidos, épocas e
+contadores anteriores, com até 25 âncoras horárias internas para a janela.
+
+O [aceite sanitizado](../scripts/raspberry-mcp/passive-host-timing.acceptance.json)
+registra aplicação, reversão e reaplicação em três tarefas MCP seriais. Cada
+fase confirmou sete passos nativos de dry-run, dedupe, limpeza e revogação da
+sessão. Somente o observador passivo reiniciou; início dos sete serviços e
+políticas residenciais foram preservados. O hash da fonte de projeção mudou
+na política existente, sem ampliar acesso, dependências ou validade.
+
+A chamada real posterior comprovou contadores de systemd e recursos na janela
+curta. A reversão interrompeu a medição; a reaplicação abriu outra época e
+preservou contadores anteriores. Consultas iniciais de status tiveram falhas
+transitórias, mantidas nos recibos, sem repetição do efeito e sem RCA presumida.
+O replay de medição usa relógio sintético separado; conflitos nos recibos de
+notificação continuam explícitos. Não comprova 24h naturais, latência de Docker
+sem ocorrências, fontes HA/MQTT, chegada de push, execução da Eva ou restore.
+
+Para outro servidor, seguir a [ordem compatível de atualização/reversão](../scripts/host-observation/README.md#testes-e-aceite),
+revisar caminhos e allowlists e preparar novos hashes/IDs e autorização local.
+Não copiar os selos, políticas privadas, operação consumida ou validade deste
+host. O builtin `perf_hooks` reutiliza a configuração Function já existente;
+não exige instalação npm ou mudança de segurança. O leitor continua fechado
+no relatório protegido e acrescenta apenas a leitura do identificador público
+do boot para verificar o relógio do próprio host.

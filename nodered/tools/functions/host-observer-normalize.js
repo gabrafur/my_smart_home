@@ -23,7 +23,9 @@ return {
     _host_observer_test: test, _host_test_now: test ? now : undefined,
     _host_test_run_id: test && typeof msg._host_test_run_id === "string" &&
         /^[a-f0-9]{32}$/.test(msg._host_test_run_id) ? msg._host_test_run_id : undefined,
-    _host_now: now, _host_policy: policy, _host_report_valid: !!valid,
+    _host_now: now, _host_policy: policy,
+    _host_consumer_clock: value?.consumer_clock ?? null,
+    _host_test_canvas_monotonic_ms: test ? msg._host_test_canvas_monotonic_ms : undefined, _host_report_valid: !!valid,
     _host_report_age_ms: valid ? Math.max(0, now - at) : null,
     _host_resource_age_ms: valid && Number.isFinite(stamp(report.resources.observed_at)) &&
         stamp(report.resources.observed_at) <= at + 1000

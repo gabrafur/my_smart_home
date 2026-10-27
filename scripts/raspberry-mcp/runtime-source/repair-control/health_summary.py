@@ -414,6 +414,102 @@ def _observer_json(directory, filename, owner):
             os.close(parent)
 
 
+HOST_TIMING_SOURCES = ('docker', 'systemd', 'resources')
+HOST_TIMING_FIELDS = ('expected', 'observed', 'unknown', 'over_contract', 'missing')
+HOST_TIMING_COUNTERS = tuple(source+'.'+field for source in HOST_TIMING_SOURCES for field in HOST_TIMING_FIELDS) + (
+    'report_gaps', 'source_unavailable', 'source_faults', 'clock_conflicts', 'invalid_observations')
+HOST_TIMING_ERRORS = frozenset(('measurement_policy_unavailable', 'report_unavailable_or_stale',
+    'producer_timing_unavailable', 'producer_clock_unstable', 'reader_clock_unavailable',
+    'clock_alignment_unconfirmed', 'producer_counter_reversed', 'producer_counter_mismatch',
+    'accounting_counter_exhausted', 'accounting_state_invalid'))
+
+
+def project_passive_host_timing(context, report, now):
+    """Closed view of canonical counters, never administrative or whole-goal authority."""
+    import math
+    result = {'version': 1, 'state': 'unknown', 'collection_error': 'passive_timing_not_recorded',
+        'observed_at': None, 'age_seconds': None, 'epoch': None, 'sources': None,
+        'window24h': None, 'full24h_proven': False, 'all_event_latency_proven': False,
+        'coverage': ['producer_sequence_deltas_not_events_lost_before_the_producer',
+            'first_reader_and_canvas_observation_includes_healthy_samples',
+            'canvas_monotonic_window_and_declared_clock_alignment_bound',
+            'hourly_cumulative_anchors_not_raw_event_archive',
+            'historical_unknown_epochs_and_missing_records_preserved',
+            'no_home_assistant_or_MQTT_source_timing_in_this_contract',
+            'not_notification_delivery_assistant_execution_or_whole_goal_acceptance']}
+    def number(x, minimum=0, maximum=1e15):
+        return type(x) in (int, float) and math.isfinite(x) and minimum <= x <= maximum
+    def count(x):return type(x) is int and 0 <= x <= 10**12
+    def counters(x):return isinstance(x, list) and len(x)==len(HOST_TIMING_COUNTERS) and all(count(v)for v in x)
+    def need(value):
+        if not value:raise ValueError('invalid_passive_timing')
+    value = context.get('host_observer_timing_v1') if isinstance(context, dict) else None
+    if not isinstance(value, dict):return result
+    if value.get('state') == 'unknown':
+        error = value.get('collection_error')
+        result['collection_error'] = error if error in HOST_TIMING_ERRORS else 'passive_timing_invalid'
+        return result
+    try:
+        need(value.get('version')==1 and value.get('state')=='observed' and value.get('collection_error')is None)
+        observed, started = stamp(value.get('observed_at')), stamp(value.get('started_at'))
+        need(observed is not None and started is not None and started<=observed<=now+1)
+        need(isinstance(report,dict)and isinstance(report.get('instance_id'),str)and re.fullmatch('[a-f0-9]{64}',report['instance_id'])and isinstance(report.get('boot_id_sha256'),str)and re.fullmatch('[a-f0-9]{64}',report['boot_id_sha256'])and value.get('instance')==report.get('instance_id')and value.get('boot')==report.get('boot_id_sha256'))
+        need(count(value.get('epoch'))and value['epoch']>0 and count(value.get('previous_epochs'))and count(value.get('historical_unknown_epochs')))
+        need(value.get('epoch_reason')in('initial_baseline','consumer_runtime_restart','producer_epoch_changed',
+            'measurement_policy_changed','civil_clock_changed','consumer_monotonic_changed','producer_clock_changed'))
+        limits=value.get('limits');policy=context.get('host_observer_timing_policy_v1')
+        need(isinstance(limits,dict)and set(limits)=={'event_latency_ms','resource_latency_ms'}and limits==policy and
+            number(limits['event_latency_ms'],1000,60000)and number(limits['resource_latency_ms'],20000,120000))
+        need(number(value.get('started_canvas_monotonic_ms'))and number(value.get('last_canvas_monotonic_ms'))and
+            value['last_canvas_monotonic_ms']>=value['started_canvas_monotonic_ms'])
+        source_rows=value.get('sources');need(isinstance(source_rows,dict)and set(source_rows)==set(HOST_TIMING_SOURCES))
+        sources={};current=[]
+        for source in HOST_TIMING_SOURCES:
+            row=source_rows[source];need(isinstance(row,dict)and all(count(row.get(key))for key in HOST_TIMING_FIELDS))
+            need(row['observed']<=row['expected']and row['missing']==row['expected']-row['observed']and
+                row['unknown']<=row['observed']and row['over_contract']<=row['observed']-row['unknown'])
+            current.extend(row[key]for key in HOST_TIMING_FIELDS)
+            sources[source]={key:row[key]for key in HOST_TIMING_FIELDS}
+            for key in ('max_source_to_reader_ms','max_reader_to_canvas_ms','max_source_to_canvas_upper_ms'):
+                need(row.get(key)is None or number(row[key]));sources[source][key]=row.get(key)
+        for key in HOST_TIMING_COUNTERS[15:]:need(count(value.get(key)));current.append(value[key])
+        need(counters(value.get('past_counters')))
+        anchors=value.get('anchors');need(isinstance(anchors,list)and len(anchors)<=25)
+        previous_mono=None;previous_counters=None
+        for anchor in anchors:
+            need(isinstance(anchor,list)and len(anchor)==22 and number(anchor[0])and stamp(anchor[1])is not None and
+                anchor[0]<=value['last_canvas_monotonic_ms']and counters(anchor[2:])and
+                all(v<=current[i]for i,v in enumerate(anchor[2:])))
+            need(previous_mono is None or anchor[0]>previous_mono)
+            need(previous_counters is None or all(v>=previous_counters[i]for i,v in enumerate(anchor[2:])))
+            previous_mono,previous_counters=anchor[0],anchor[2:]
+        window=value.get('window24h');need(isinstance(window,dict)and window.get('state')in('collecting','candidate')and number(window.get('minimum_span_seconds')))
+        projected_window={'state':window['state'],'minimum_span_seconds':window['minimum_span_seconds'],'counters':None}
+        if window['state']=='candidate':
+            need(window['minimum_span_seconds']>=86400 and counters(window.get('counters'))and
+                all(v<=current[i]for i,v in enumerate(window['counters']))and
+                stamp(window.get('started_at'))is not None and stamp(window.get('ended_at'))is not None)
+            eligible=[anchor for anchor in anchors if value['last_canvas_monotonic_ms']-anchor[0]>=86400000]
+            need(bool(eligible))
+            anchor=eligible[-1]
+            need(window['started_at']==anchor[1]and window['ended_at']==value['observed_at']and
+                window['minimum_span_seconds']==(value['last_canvas_monotonic_ms']-anchor[0])/1000 and
+                window['counters']==[v-anchor[i+2]for i,v in enumerate(current)])
+            projected_window.update(started_at=window['started_at'],ended_at=window['ended_at'],
+                counters=dict(zip(HOST_TIMING_COUNTERS,window['counters'])))
+        else:need(window.get('counters')is None)
+        result.update(state='observed',collection_error=None,observed_at=value['observed_at'],
+            age_seconds=round(max(0,now-observed),3),epoch=value['epoch'],epoch_reason=value['epoch_reason'],
+            started_at=value['started_at'],elapsed_canvas_monotonic_seconds=(value['last_canvas_monotonic_ms']-value['started_canvas_monotonic_ms'])/1000,
+            sources=sources,limits=dict(limits),anchor_count=len(anchors),window24h=projected_window,
+            current_counters=dict(zip(HOST_TIMING_COUNTERS,current)),previous_epochs=value['previous_epochs'],
+            historical_unknown_epochs=value['historical_unknown_epochs'],past_counters=dict(zip(HOST_TIMING_COUNTERS,value['past_counters'])),
+            alignment_upper_bound_allowance_ms=1000,application_context_flush_allowance_seconds=30)
+        return result
+    except (ValueError,TypeError,KeyError,OverflowError,IndexError):
+        result['collection_error']='passive_timing_invalid';return result
+
+
 def project_host_observation(report, context, now, report_error=None, context_error=None):
     """Metadata observation only. Never derive administrative authority or whole-host health."""
     import math
@@ -552,6 +648,7 @@ def project_host_observation(report, context, now, report_error=None, context_er
     result['collection_error'] = ';'.join(dict.fromkeys(errors)) if errors else None
     if not errors and result['producer'] is not None and result['NodeRED'] is not None:
         result['state'] = 'observed'
+    result['passive_timing'] = project_passive_host_timing(context, report, now)
     return result
 
 

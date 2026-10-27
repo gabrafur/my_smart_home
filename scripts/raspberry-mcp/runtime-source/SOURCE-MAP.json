@@ -69,8 +69,8 @@
     },
     "repair-control/health_summary.py": {
       "source": "/usr/local/lib/raspberry-repair-control/health_summary.py",
-      "source_sha256": "4eea8ee909638c15ac771af8bb831ef0a9a74b6a2984bc9d09f098d3c09bd80e",
-      "export_sha256": "4eea8ee909638c15ac771af8bb831ef0a9a74b6a2984bc9d09f098d3c09bd80e",
+      "source_sha256": "5bfe3eb7a1dd56b55e85775268029c7f117f01c56361e728d0d74ffdfed10f3b",
+      "export_sha256": "5bfe3eb7a1dd56b55e85775268029c7f117f01c56361e728d0d74ffdfed10f3b",
       "normalizations": []
     },
     "repair-control/event_projection.mjs": {
