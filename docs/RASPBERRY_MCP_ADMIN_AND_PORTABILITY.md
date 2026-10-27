@@ -1251,7 +1251,7 @@ pelo cliente real. Não transportar tokens do Raspberry para o chatbot.
 
 ## Atualização Kia: estado observado não é instalação
 
-A segunda raiz virtual reúne somente o sensor da integração, estado protegido
+Por padrão, a segunda raiz virtual reúne o sensor da integração, estado protegido
 do safe updater, worker, merge/promoção, flags de pendência e agendamento/TZ.
 Não é atualização dos dados do veículo. O cliente MCP observou versão 3.19.0 no
 manifesto do HA e candidata v3.20.0: merge success às 06:06 UTC e promoção failed
@@ -1274,6 +1274,39 @@ A leitura descrita é implementação comprovada. A aplicação controlada geral
 componentes Node-RED, validação funcional e execução específica da Eva continuam
 aceites separados, sujeitos a locks, versão, reversão e recibo. O desaparecimento
 de notificações ou contêiner saudável não fecha esses aceites.
+
+### Indicadores nativos Kia com autorização separada
+
+A leitura opcional `runtime_facts` permanece desarmada sem um vínculo protegido
+pelo Root e aprovação específica. Seu escopo corresponde aos seis papéis do
+validador existente: combustível, último scan, botão de refresh, botão de alerta,
+viagem recente e retorno de comando. A seleção exige uma correspondência única
+por papel, na mesma integração, entrada e dispositivo. A descoberta usa somente
+metadados do registro de entidades; não lê configuração de contas.
+
+O coletor verifica a identidade já aprovada antes de enviar um template fixo ao
+Home Assistant. O resultado contém apenas `missing`, `unknown`, `unavailable`
+ou `value`, o horário da coleta e o horário válido do último scan.
+Valores numéricos do veículo, atributos, localização e IDs privados ficam fora
+da resposta. Os estados dos botões são lidos; nenhum botão é acionado. O módulo
+não recebe templates, caminhos ou destinos do cliente e não cria assinaturas,
+chama serviços, solicita dados do provedor ou instala integrações.
+
+O vínculo local usa `/etc/raspberry-nodered-diagnostics/kia-runtime-binding.json`,
+com owner Root, permissão de leitura para o grupo do diagnóstico, seis alvos
+fixos e referência da aprovação. O arquivo não integra o repositório. Vínculo
+ausente, inválido ou revogado impede a consulta. A revogação usa o marcador fixo
+`/var/lib/raspberry-nodered-diagnostics/kia-runtime-facts-revoked` e encerra a
+sessão de diagnóstico para invalidar o cache anterior; não reinicia os serviços
+residenciais. Identidade, resposta ou transporte inválidos mantêm `unknown`.
+Há prazo absoluto de um segundo e resposta limitada a 16 KiB; falha desta leitura
+opcional preserva o diagnóstico de metadados anterior.
+
+Esses fatos não atestam os objetos Python carregados, a causa de uma falha antiga
+ou recuperação funcional. O avanço do scan exige duas observações naturais
+correlacionadas; continuidade, atualidade e aceite de instalação permanecem
+verificações separadas. A fonte publicada e os testes não comprovam ativação:
+esta exige aprovação, aplicação selada e nova leitura pelo MCP real.
 
 
 ## Sessão iCloud: transporte, concorrência e aceite

@@ -1,6 +1,8 @@
-// Fixed integration metadata only: never services, subscriptions or vehicle states.
+// Fixed integration metadata plus separately approved, locally sanitized runtime facts.
+// Runtime facts remain unarmed without the Root-owned binding; never calls services.
 const fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto');
 const WebSocket=require('/usr/local/lib/raspberry-ha-notices/vendor/ws');
+const runtimeFacts=require('./kia-runtime-facts.cjs');
 function makeResult(){return {source:'HA_fixed_Kia_integration_metadata',observed_at:null,collection_error:null,identity_verified:false,runtime_manifest:null,sensor:null,vehicle_data_read:false,service_calls:0,new_subscriptions:0,automatic_retry:false};}
 const version=v=>typeof v==='string'&&/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][A-Za-z0-9.-]{1,60})?$/.test(v)?v:null;
 const stamp=v=>typeof v==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|[+-]\d\d:\d\d)$/.test(v)&&Number.isFinite(Date.parse(v))?new Date(v).toISOString():null;
@@ -11,6 +13,7 @@ async function collectHA(existingToken,identity){const at=new Date().toISOString
   token=existingToken;
   await new Promise((resolve,reject)=>{let phase='auth';timer=setTimeout(()=>reject(Error('fixed_time_limit')),8000);ws=new WebSocket('ws://127.0.0.1:8123/api/websocket',{maxPayload:65536,handshakeTimeout:3000,perMessageDeflate:false});ws.on('error',()=>reject(Error('fixed_transport_failed')));ws.on('message',raw=>{try{const m=JSON.parse(raw);if(m.type==='auth_required'&&phase==='auth'){phase='waiting';ws.send(JSON.stringify({type:'auth',access_token:token}))}else if(m.type==='auth_ok'&&phase==='waiting'){phase='identity';ws.send(JSON.stringify({id:1,type:'auth/current_user'}))}else if(m.type==='result'&&m.id===1&&phase==='identity'){const u=m.result;if(m.success!==true||u?.is_owner!==false||u.is_admin!==(identity.role==='approved_existing_administrator')||typeof u.id!=='string'||crypto.createHash('sha256').update(u.id).digest('hex')!==identity.user_id_sha256)throw Error('identity_refused');result.identity_verified=true;phase='manifest';ws.send(JSON.stringify({id:2,type:'manifest/get',integration:'kia_uvo'}))}else if(m.type==='result'&&m.id===2&&phase==='manifest'){if(m.success===true&&m.result?.domain==='kia_uvo'){result.runtime_manifest={source:'HA_integration_loader_cached_manifest',state:'observed',domain:'kia_uvo',version:version(m.result.version),code_byte_identity_proven:false,coverage:['manifest_from_running_HA_loader','may_load_definition_if_not_already_cached','not_direct_python_code_object_attestation']};}else result.runtime_manifest={state:'unknown',collection_error:'fixed_manifest_unavailable'};resolve()}else if(m.type==='auth_invalid')throw Error('auth_refused')}catch{reject(Error('fixed_reply_refused'))}})});
   clearTimeout(timer);ws.terminate();result.sensor=await httpGet(token);
+  try{result.runtime_facts=await runtimeFacts.collectRuntime(token,result.identity_verified);result.vehicle_data_read=result.runtime_facts.request_attempted===true;}catch{result.runtime_facts=runtimeFacts.projectRuntimeFacts(null);result.vehicle_data_read=null;}
  }catch{result.collection_error='fixed_HA_integration_read_unavailable';}
  finally{clearTimeout(timer);try{ws?.terminate()}catch{}token=null;}
  return result;

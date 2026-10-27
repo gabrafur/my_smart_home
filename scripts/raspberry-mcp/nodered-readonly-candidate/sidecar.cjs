@@ -1,7 +1,7 @@
 'use strict';
 // Local fixed-target readonly proxy. Caller supplies only catalog offsets/opaque IDs.
 const net=require('node:net'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{execFile}=require('node:child_process');
-const {collect}=require('./collector.cjs'),{collectHA}=require('./ha-collector.cjs'),{createVirtualResources}=require('./virtual-resources.cjs'),kia=require('./kia_model.cjs');
+const {collect}=require('./collector.cjs'),{collectHA}=require('./ha-collector.cjs'),{createVirtualResources}=require('./virtual-resources.cjs'),kia=require('./kia_model.cjs'),runtimeFacts=require('./kia-runtime-facts.cjs');
 const ROOT='/usr/local/lib/raspberry-nodered-diagnostics',PROJ='/mnt/data/docker';
 const provider=createVirtualResources(),ID=/^[a-f0-9]{32}$/;
 let cache=null,busy=false,lastAttempt=0,idle;
@@ -32,7 +32,7 @@ async function prepare(){const now=Date.now();if(cache&&now-Date.parse(cache.obs
    localSources[name]=row;
   }
   const sources={...root.sources,...localSources,sensor:{observed_at:ha.observed_at,collection_error:ha.collection_error||ha.sensor?.collection_error,data:ha.sensor},pending:{observed_at:root.observed_at,collection_error:null,data:root.pending},schedule:{observed_at:at,collection_error:root.timezone?.collection_error||null,data:{crontab:schedule?.crontab,timezone:root.timezone?.timezone,loaded:isLoaded,authorizes_install:authorizes}}};
-  integration=kia.project({now_unix_seconds:Date.now()/1000,sources});integration.runtime_manifest=ha.runtime_manifest;integration.root_snapshot_observed_at=root.observed_at;integration.readonly=true;integration.collection_error=ha.collection_error||null;
+  integration=kia.project({now_unix_seconds:Date.now()/1000,sources});integration.runtime_manifest=ha.runtime_manifest;integration.runtime_facts=runtimeFacts.projectRuntimeFacts(ha.runtime_facts);integration.root_snapshot_observed_at=root.observed_at;integration.readonly=true;integration.collection_error=ha.collection_error||null;
  }catch{integration={source:'fixed_kia_updater_readonly_diagnostic',observed_at:new Date().toISOString(),collection_error:'integration_collection_unavailable',state:'unknown',coverage:['no_vehicle_data_or_calls','not_cycle_acceptance']}}
  const text=JSON.stringify(integration);if(Buffer.byteLength(text)>32768)fail('integration_collection_unavailable');
  cache={...seed,observed_at:at,kia_resource_id:kid,kia_text:text};return cache;

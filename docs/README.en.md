@@ -129,6 +129,13 @@ task's own in-progress observation while retaining every other identity, busy
 and reconciliation gate. These fixed consumed transactions do not establish
 natural Events consumption, integration recovery or 24-hour independence.
 
+An optional Kia `runtime_facts` reader requires separate approval and a
+Root-owned binding for the existing validator's six entity roles. Its fixed
+template returns only state kinds and timestamps, with no vehicle values,
+attributes, location or private IDs. Missing or revoked approval prevents the
+request; these observations do not establish loaded code, provider recovery
+or natural polling. See the [read-scope contract](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md#indicadores-nativos-kia-com-autorização-separada).
+
 After changing MCP event definitions, rescan the server from its ChatGPT plugin
 page while preserving the existing subscription and delivery limits. A loaded
 local schema and an accepted webhook do not establish the remote catalog or

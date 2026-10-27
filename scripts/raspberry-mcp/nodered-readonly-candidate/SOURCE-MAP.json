@@ -14,10 +14,11 @@
       "source_role": "collector.cjs"
     },
     "ha-collector.cjs": {
-      "export_sha256": "ab1f9a557e58ce1ff924e9475eff6914ed0d8084e6b9dd3472c4b61985e987ee",
+      "export_sha256": "19aa65a49f0d8ef53a4b2d90a67c32964a522fe79dfdf03f22bb298663426b78",
+      "prepared_source_sha256": "19aa65a49f0d8ef53a4b2d90a67c32964a522fe79dfdf03f22bb298663426b78",
+      "source_role": "ha-collector.cjs",
       "normalizations": [],
-      "prepared_source_sha256": "ab1f9a557e58ce1ff924e9475eff6914ed0d8084e6b9dd3472c4b61985e987ee",
-      "source_role": "ha-collector.cjs"
+      "runtime_activation": "not_established_by_export;optional_read_scope_requires_separate_Root_approval"
     },
     "install.template.py": {
       "export_sha256": "9cb47863fc6786bdb16f5ea90daac6e2c5887f303e15c8097092b6cb1c0c6033",
@@ -97,10 +98,11 @@
       "source_role": "runtime_client.py"
     },
     "sidecar.cjs": {
-      "export_sha256": "6fc369e54834036101ad31a91bdedd183d5c6c0f91485b3bccbddf9af4eff44a",
+      "export_sha256": "38bae3ec8123e2e6ffb9a45d666896f81894c5eb157588b38db973dc5f97faef",
+      "prepared_source_sha256": "38bae3ec8123e2e6ffb9a45d666896f81894c5eb157588b38db973dc5f97faef",
+      "source_role": "sidecar.cjs",
       "normalizations": [],
-      "prepared_source_sha256": "6fc369e54834036101ad31a91bdedd183d5c6c0f91485b3bccbddf9af4eff44a",
-      "source_role": "sidecar.cjs"
+      "runtime_activation": "not_established_by_export;optional_read_scope_requires_separate_Root_approval"
     },
     "test_collector.cjs": {
       "export_sha256": "c42a04cdd70d329dae167a4529ab946954917affa1adcf6607544124f693569a",
@@ -109,10 +111,11 @@
       "source_role": "test_collector.cjs"
     },
     "test_ha_collector.cjs": {
-      "export_sha256": "ecccbcf8dc241d04572774da31ad62ad7e76e9a712d16b7f6e0f6214ac7aba65",
+      "export_sha256": "ca8b4a3ee06cd1c9a841156a6a92973ea8993302f57fd37aace9a5e8e28afcf7",
+      "prepared_source_sha256": "ca8b4a3ee06cd1c9a841156a6a92973ea8993302f57fd37aace9a5e8e28afcf7",
+      "source_role": "test_ha_collector.cjs",
       "normalizations": [],
-      "prepared_source_sha256": "ecccbcf8dc241d04572774da31ad62ad7e76e9a712d16b7f6e0f6214ac7aba65",
-      "source_role": "test_ha_collector.cjs"
+      "runtime_activation": "not_established_by_export;optional_read_scope_requires_separate_Root_approval"
     },
     "test_kia_model.cjs": {
       "export_sha256": "e33e3ad5929e0c9c685f6e2c47cd50447650fa6eab7fe153a98bc7ec01986292",
@@ -150,16 +153,37 @@
       "normalizations": [],
       "prepared_source_sha256": "eb9514bb91ff2da1c524d8a27efc129548b93e36dd97671d5c76756bb8bf43d0",
       "source_role": "virtual-resources.cjs"
+    },
+    "kia-runtime-facts.cjs": {
+      "export_sha256": "61756808330722e5bbf6072c574cc8a348acb985c649f6c275f82bfbcba8354d",
+      "prepared_source_sha256": "61756808330722e5bbf6072c574cc8a348acb985c649f6c275f82bfbcba8354d",
+      "source_role": "kia-runtime-facts.cjs",
+      "normalizations": [],
+      "runtime_activation": "not_established_by_export;optional_read_scope_requires_separate_Root_approval"
+    },
+    "test_runtime_facts.cjs": {
+      "export_sha256": "08756d35dbf5857d47e7716d703713dc4678b9db1751efeee5ab7d89561b1c07",
+      "prepared_source_sha256": "08756d35dbf5857d47e7716d703713dc4678b9db1751efeee5ab7d89561b1c07",
+      "source_role": "test_runtime_facts.cjs",
+      "normalizations": [],
+      "runtime_activation": "not_established_by_export;optional_read_scope_requires_separate_Root_approval"
+    },
+    "test_runtime_facts_integration.cjs": {
+      "export_sha256": "11e10fc1b8d291c0d00013871df56209133d44bde855c5e24a13a950e3f1f404",
+      "prepared_source_sha256": "11e10fc1b8d291c0d00013871df56209133d44bde855c5e24a13a950e3f1f404",
+      "source_role": "test_runtime_facts_integration.cjs",
+      "normalizations": [],
+      "runtime_activation": "not_established_by_export;optional_read_scope_requires_separate_Root_approval"
     }
   },
   "generated_support": {
     "README.md": {
       "role": "portable_reference_and_serial_isolated_test_wrapper",
-      "sha256": "19d8ad4c644bfa3d7384311dafe5a43e7285da707eb7e9da1ecf954755b02dd4"
+      "sha256": "5061d70148f59fb9b087c61ddb47572cd8f064fc17c4e05cc74820da8f1d7017"
     },
     "candidate.test.mjs": {
       "role": "portable_reference_and_serial_isolated_test_wrapper",
-      "sha256": "f5199a1c08d28492818bb36f71b7fd0b03e715659da8f312ca27f7b359b42199"
+      "sha256": "4dd62d5eefa7e34140f1146734f6f80a46c4902cb282ce66c7d4aba03a9927b4"
     },
     "kia-stage-model.test.cjs": {
       "role": "isolated_fixed_stage_projection_privacy_regression",
@@ -200,6 +224,52 @@
       "previous_static_Node_logical_total": 52,
       "previous_static_Python_total": 18,
       "reason": "actual_MCP_apply_rollback_reapply_of_Kia_stage_projection"
+    },
+    {
+      "observed_at": "2026-10-27",
+      "reason": "optional_runtime_facts_reference_prepared_separately_from_existing_metadata_only_runtime_acceptance",
+      "previous_files": {
+        "ha-collector.cjs": {
+          "export_sha256": "ab1f9a557e58ce1ff924e9475eff6914ed0d8084e6b9dd3472c4b61985e987ee",
+          "normalizations": [],
+          "prepared_source_sha256": "ab1f9a557e58ce1ff924e9475eff6914ed0d8084e6b9dd3472c4b61985e987ee",
+          "source_role": "ha-collector.cjs"
+        },
+        "sidecar.cjs": {
+          "export_sha256": "6fc369e54834036101ad31a91bdedd183d5c6c0f91485b3bccbddf9af4eff44a",
+          "normalizations": [],
+          "prepared_source_sha256": "6fc369e54834036101ad31a91bdedd183d5c6c0f91485b3bccbddf9af4eff44a",
+          "source_role": "sidecar.cjs"
+        },
+        "test_ha_collector.cjs": {
+          "export_sha256": "ecccbcf8dc241d04572774da31ad62ad7e76e9a712d16b7f6e0f6214ac7aba65",
+          "normalizations": [],
+          "prepared_source_sha256": "ecccbcf8dc241d04572774da31ad62ad7e76e9a712d16b7f6e0f6214ac7aba65",
+          "source_role": "test_ha_collector.cjs"
+        }
+      },
+      "previous_generated_support": {
+        "README.md": {
+          "role": "portable_reference_and_serial_isolated_test_wrapper",
+          "sha256": "19d8ad4c644bfa3d7384311dafe5a43e7285da707eb7e9da1ecf954755b02dd4"
+        },
+        "candidate.test.mjs": {
+          "role": "portable_reference_and_serial_isolated_test_wrapper",
+          "sha256": "f5199a1c08d28492818bb36f71b7fd0b03e715659da8f312ca27f7b359b42199"
+        },
+        "kia-stage-model.test.cjs": {
+          "role": "isolated_fixed_stage_projection_privacy_regression",
+          "sha256": "f9e5bdf08881b922db1fd30c0e4d78f458e938ac0fd7a1f8d1a31993d0eb7d69"
+        },
+        "test-vectors.cjs": {
+          "role": "synthetic_privacy_regression_vectors_only",
+          "sha256": "9d2f54ee89cff4cecabb17e68aac61ed23e7d63c7fdb635a1693615f0f3ca43d"
+        },
+        "test_kia_deployment.py": {
+          "role": "isolated_fixed_admin_task_deployment_lifecycle",
+          "sha256": "f86c73c034ea5705da147fe9b2124bff52392ef08ce1195302a8105603bbf497"
+        }
+      }
     }
   ],
   "later_actual_acceptance": "../kia-promotion-evidence.acceptance.json",
@@ -210,9 +280,11 @@
     "test_collector.cjs": 9,
     "test_ha_collector.cjs": 6,
     "test_kia_model.cjs": 13,
-    "test_nodered_model.cjs": 24
+    "test_nodered_model.cjs": 24,
+    "test_runtime_facts.cjs": 13,
+    "test_runtime_facts_integration.cjs": 5
   },
-  "static_Node_logical_total": 60,
+  "static_Node_logical_total": 78,
   "static_Python_cases": {
     "test_kia_deployment.py": 16,
     "test_root_snapshot.py": 8,
@@ -220,5 +292,11 @@
   },
   "static_Python_total": 34,
   "test_execution_during_export": false,
-  "test_execution_field_scope": "original_export_only;later_serial_targeted_checks_and_runtime_acceptance_are_separate"
+  "test_execution_field_scope": "original_export_only;later_serial_targeted_checks_and_runtime_acceptance_are_separate",
+  "optional_runtime_facts": {
+    "state": "reference_unarmed_without_separate_Root_binding",
+    "role_count": 6,
+    "raw_vehicle_values_or_private_ids_exported": false,
+    "native_polling_or_loaded_code_proven_by_reference": false
+  }
 }

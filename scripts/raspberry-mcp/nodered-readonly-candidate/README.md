@@ -4,9 +4,16 @@ Referência pública desarmada da extensão somente leitura. O escopo inclui tod
 os fluxos e nós Node-RED do Raspberry, não apenas Kia: inventário, conexões e
 conteúdo que corresponda à revisão pública aprovada. A referência de capacidade
 usou 3885 nós públicos; o escopo previsto abrange os 31 fluxos observados, sem
-fixar esse número como limite. O diagnóstico Kia é uma segunda raiz fechada,
+fixar esse número como limite. Por padrão, o diagnóstico Kia é uma segunda raiz fechada,
 sem leitura de estados do veículo, localização, comandos, assinaturas ou testes
 domésticos.
+
+Uma extensão opcional e desarmada de `runtime_facts` usa aprovação separada e
+vínculo Root para seis indicadores do validador Kia. Retorna somente classes de
+estado e horários; botões permanecem como fontes de leitura. O template fixo
+não exporta valores do veículo, atributos, localização ou IDs privados.
+Vínculo ausente, revogado ou inválido impede a consulta; a falha opcional não
+remove os metadados existentes. Veja o [contrato de autorização e evidência](../../../docs/RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md#indicadores-nativos-kia-com-autorização-separada).
 
 Em 26/10/2026, o cliente MCP real paginou os 31 fluxos e recebeu código e conexões de um Function node de observacao_host, além dos recibos fixos Kia. Esse aceite é do contrato autenticado; não comprova uma execução autônoma específica da Eva.
 
