@@ -272,7 +272,10 @@ transação consumida; não são um instalador genérico nem autorização para 
 suas fases ou importar políticas locais de outro servidor.
 
 O resultado da tarefa usa exclusivamente JSON com `operation_id`, `project`,
-`state`, `summary` e `next_step`. Dois JSONs soltos ou saída livre podem produzir
+`state`, `summary` e `next_step`. `state` aceita somente `checkpoint`,
+`progress`, `blocked` ou `complete`; `completed` e `failed` são inválidos para
+o texto da resposta, mesmo quando aparecem no recibo externo da operação.
+Dois JSONs soltos ou saída livre podem produzir
 `answer_withheld`. Preserve o recibo terminal e reconcilie seu hash; se precisar
 do relato, use um novo envio de checkpoint na mesma tarefa, explicitamente sem
 ferramentas ou efeitos e dentro do orçamento. Confirme o relato com o estado do
@@ -1009,6 +1012,33 @@ pin transitivo da política; orçamento, prazo e aprovação não são renovados
 Recarregar apenas a conexão existente do MCP. Reversão exige comparação das
 bases e preserva todos os dados/intents/membros de Events, inclusive incertos.
 Nunca repetir uma entrega para testar o schema ou comprovar consumo externo.
+
+## Conclusão durável do transporte Events
+
+`events_status.webhook_transport_timing` expõe duração monotônica da chamada
+ao sender e horário civil de conclusão. A tabela adicional não modifica as
+quatro colunas originais de dispatch, IDs, assinatura ou orçamento. Só registra
+observação para um intent existente, uma vez; falha na observação não libera
+reenvio. Registros sem observação continuam desconhecidos, com horários nulos.
+A duração exclui fila e persistência, e não mede decisão ou execução da Eva.
+
+O [aceite sanitizado](../scripts/raspberry-mcp/event-transport-timing.acceptance.json)
+registra uma medição natural, 19 conclusões históricas desconhecidas e a
+preservação dessa medição através de reversão/reaplicação pelo MCP real. O
+primeiro helper terminou sem confirmação porque sua fotografia antecedeu a
+criação da tabela; a observação posterior reconciliou o efeito sem repeti-lo.
+O estado ativo do systemd exige uma barreira adicional de prontidão do worker.
+Uma recusa posterior de reaplicação ocorreu antes de intent porque o verificador
+exigia um campo ausente no recibo anterior; a correção vincula o hash exato do
+recibo ao intent original, preservando ambos. Somente após provar a ausência
+de efeito foi usado um envio novo. Nenhum evento artificial foi gerado.
+
+Essa reversão é compatível com a base imediata que já suporta resumos e membros.
+Código anterior ao suporte a resumos continua exigindo Events parado e revisão
+específica antes da retomada, para evitar replay. Limites, validade e acesso
+permanecem os existentes. Entrega aceita ainda exige prova própria de execução
+do assistente; a medição de transporte não conclui a meta de latência ponta a
+ponta nem a cobertura de 24 horas.
 
 ## Verificação do backup e entrada do contêiner
 

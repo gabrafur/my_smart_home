@@ -35,12 +35,32 @@ recarregar os módulos. Frontend MCP persistente também pode manter um import
 ESM antigo: testar a chamada real e, se necessário, reconectar somente o túnel
 existente com mesma configuração. Não reiniciar serviços domésticos para isso.
 
-Reversão preserva banco e membros e deixa Events parado. O código antigo não
-conhece membros de resumo; reiniciá-lo pode causar replay. A retomada exige
-revisão de compatibilidade. Não reaplicar manifestos de base antiga sobre
+Reversão para código anterior ao suporte a resumos preserva banco e membros e
+deixa Events parado: esse código não conhece os membros e pode causar replay.
+A retomada exige revisão de compatibilidade. A observação de transporte admite
+reversão somente à base imediata que já suporta resumos: as tabelas originais
+não mudam, e a tabela adicional permanece. Essa compatibilidade foi validada
+com reversão/reaplicação pelo MCP; não vale para qualquer versão anterior. Não reaplicar manifestos de base antiga sobre
 políticas atualizadas nem substituir arquivos que outra operação modificou.
 
-Os 53 testes Python e os testes de projeção são sintéticos: não enviam webhook,
+Os 69 testes Python e os testes de projeção são sintéticos: não enviam webhook,
 criam assinatura real, executam assistente ou comandam dispositivo. Participam
 da validação pública. Instalação, leitura MCP, entrega natural e execução do
 assistente exigem evidências separadas; testes ou catálogo não as substituem.
+
+`webhook_transport_timing` informa a conclusão em relógio civil e a duração
+monotônica somente da chamada ao sender, em milissegundos. Exclui fila,
+persistência, decisão e processamento pelo assistente. A tabela opcional
+`transport_observations` referencia intents existentes e não muda elegibilidade
+ou orçamento; a primeira observação é imutável. Erros da coleta mantêm envio
+e recibos existentes, com diagnóstico explícito. Sem registro anterior,
+`completed_at` e `sender_duration_ms` permanecem nulos; não inferir zero nem
+preencher horários antigos. Retenção acompanha dispatch; recibos incertos
+continuam preservados.
+
+Uma entrega natural gerou a primeira observação, preservada através de rollback
+e reapply. O [aceite sanitizado](../../event-transport-timing.acceptance.json)
+registra limites e falhas de confirmação. Serviço systemd ativo pode anteceder
+a criação da tabela/socket: aguardar prontidão antes da fotografia final.
+Conferir a chamada MCP real depois da fase. Uma confirmação perdida exige
+reconciliação somente leitura ligada ao intent original, sem repetir o efeito.

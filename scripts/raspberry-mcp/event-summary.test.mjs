@@ -46,5 +46,5 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 test('native event grouping keeps protocol and uncertain intents in synthetic SQLite',()=>{
  const r=spawnSync('python3',['-I','-S','-B','-m','unittest','discover','-s',fileURLToPath(new URL('./runtime-source/native-events/',import.meta.url)),'-p','test_*.py'],{encoding:'utf8',timeout:30000,maxBuffer:131072});
- assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);assert.match(r.stderr,/Ran 53 tests/);
+ assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);assert.match(r.stderr,/Ran 69 tests/);
 });

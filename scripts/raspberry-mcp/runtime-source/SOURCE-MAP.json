@@ -125,8 +125,8 @@
     },
     "native-events/registry.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/registry.py",
-      "source_sha256": "e12cedbbb5370be4faf63788f22b7528727b862b8b213441c27b5f8d5ce73df7",
-      "export_sha256": "e12cedbbb5370be4faf63788f22b7528727b862b8b213441c27b5f8d5ce73df7",
+      "source_sha256": "5d466c17c5052e68790744476306900f42b51b1683eaa47cb8d93dca3e18f9b9",
+      "export_sha256": "5d466c17c5052e68790744476306900f42b51b1683eaa47cb8d93dca3e18f9b9",
       "normalizations": []
     },
     "native-events/worker.py": {

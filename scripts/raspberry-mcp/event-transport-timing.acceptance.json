@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "verified_UTC_date": "2026-10-27",
+  "scope": "optional_durable_webhook_sender_completion",
+  "origin": "serial_actual_MCP_tasks_and_natural_delivery",
+  "runtime_source_sha256": "5d466c17c5052e68790744476306900f42b51b1683eaa47cb8d93dca3e18f9b9",
+  "phases": {
+    "apply": {
+      "effect_confirmed_by_later_actual_MCP": true,
+      "original_helper_result_missing": true,
+      "original_failure_reason": "optional_timing_table_not_created",
+      "original_answer_withheld": true,
+      "context_only_checkpoint_received": true,
+      "original_effect_repeated": false
+    },
+    "rollback": {
+      "helper_confirmed": true,
+      "actual_MCP_old_feature_restored": true,
+      "original_data_and_new_timing_retained": true
+    },
+    "reapply": {
+      "first_attempt_refused_before_intent": true,
+      "first_refusal_reason": "preceding_phase_unconfirmed",
+      "fresh_attempt_after_proven_pre_effect_refusal": true,
+      "helper_confirmed": true,
+      "actual_MCP_timing_feature_restored": true,
+      "same_natural_observation_retained": true
+    }
+  },
+  "historical_unknown_completion_records": 19,
+  "natural_transport_observation": {
+    "dispatch_records": 20,
+    "observation_records": 1,
+    "complete_timing_records": 1,
+    "sender_duration_ms": 790.622,
+    "outcome": "response_2xx",
+    "wall_clock_ordered": true
+  },
+  "original_dispatch_schema_columns": [
+    "subscription",
+    "event",
+    "state",
+    "at"
+  ],
+  "original_schemas_leases_events_archive_batches_members_and_activation_preserved": true,
+  "terminal_results_acknowledged": true,
+  "readiness_barrier_before_final_snapshot": true,
+  "new_access_pins_or_expiry": false,
+  "household_service_start_times_preserved": 7,
+  "household_services_restarted": 0,
+  "event_service_reloads": 3,
+  "agent_generated_callbacks_or_events": 0,
+  "tests": {
+    "synthetic_native_suite": 69,
+    "new_transport_tests": 16,
+    "deployment_preservation_and_readiness_tests": 25
+  },
+  "limits": {
+    "sender_call_only": true,
+    "queue_and_persistence_duration_measured": false,
+    "assistant_execution_proven": false,
+    "end_to_end_latency_proven": false,
+    "full_24h_coverage_proven": false,
+    "old_missing_observations_backfilled": false,
+    "generic_unattended_deployer": false
+  }
+}

@@ -7,6 +7,7 @@ and opaque identifiers. Ambiguous dispatch is retained, never retried.
 import datetime
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -48,7 +49,8 @@ def filters(args):
 
 
 class Registry:
-    def __init__(self, directory, principal, *, approved=False, sender=post, clock=time.time):
+    def __init__(self, directory, principal, *, approved=False, sender=post,
+                 clock=time.time, monotonic=time.monotonic):
         if not re.fullmatch(r'[a-z0-9_-]{1,64}', principal):
             raise Refused('principal_invalid')
         root = Path(directory)
@@ -89,6 +91,14 @@ class Registry:
           retired_at REAL, reason TEXT);
         ''')
         self.principal, self.approved, self.sender, self.clock = principal, approved, sender, clock
+        self.monotonic = monotonic
+        self.transport_observation_error = None
+        try:
+            self.db.execute('CREATE TABLE IF NOT EXISTS transport_observations('
+                'subscription TEXT,event TEXT,completed_at REAL,sender_duration_ms REAL,'
+                'outcome TEXT,collection_error TEXT,PRIMARY KEY(subscription,event))')
+        except sqlite3.Error:
+            self.transport_observation_error = 'transport_observation_schema_unavailable'
         self.high_clock = None
         self.current_evidence = None
 
@@ -241,6 +251,12 @@ class Registry:
         # No uncertain dispatch receipt is ever deleted or made retryable.
         self.db.execute("UPDATE subscriptions SET active=0,secret='',old_secret=NULL WHERE expires<=? AND (active=1 OR secret!='')",(now,))
         self.db.execute("DELETE FROM dispatch WHERE state IN ('webhook_accepted','delivery_refused') AND at<?",(now-7*86400,))
+        try:
+            self.db.execute('DELETE FROM transport_observations WHERE NOT EXISTS '
+                            '(SELECT 1 FROM dispatch d WHERE d.subscription=transport_observations.subscription '
+                            'AND d.event=transport_observations.event)')
+        except sqlite3.Error:
+            self.transport_observation_error = 'transport_observation_prune_failed'
         # Archive, never silently discard old undelivered transitions. An archive
         # cap stops collection/delivery instead of losing history or resetting IDs.
         self.db.execute('BEGIN IMMEDIATE')
@@ -296,6 +312,93 @@ class Registry:
                     'existing_dispatch_intents_excluded_regardless_of_outcome',
                     'budget_and_assistant_execution_are_separate']}
 
+    @staticmethod
+    def observation_clock(clock):
+        # Optional evidence must never prevent or repeat an admitted delivery.
+        try:
+            value = clock()
+            return float(value) if type(value) in (int, float) and math.isfinite(value) else None
+        except Exception:
+            return None
+
+    def record_transport(self, subscription, event, started, ended, completed, status):
+        duration = ((ended-started)*1000 if started is not None and ended is not None
+                    and ended >= started else None)
+        if duration is not None and not math.isfinite(duration):
+            duration = None
+        if completed is not None and not 0 <= completed <= 253402300799:
+            completed = None
+        error = ('sender_duration_unavailable' if duration is None else
+                 'completion_clock_unavailable' if completed is None else None)
+        outcome = ('response_2xx' if type(status) is int and 200 <= status < 300 else
+                   'response_non2xx' if type(status) is int and 100 <= status <= 599 else
+                   'outcome_unknown')
+        try:
+            # The dispatch intent already exists; this table cannot make an
+            # event eligible, change its state, or overwrite earlier evidence.
+            self.db.execute('INSERT OR IGNORE INTO transport_observations '
+                            'SELECT ?,?,?,?,?,? WHERE EXISTS '
+                            '(SELECT 1 FROM dispatch WHERE subscription=? AND event=?)',
+                            (subscription, event, completed,
+                             round(duration, 3) if duration is not None else None, outcome, error,
+                             subscription, event))
+            self.transport_observation_error = None
+        except (sqlite3.Error, ValueError, TypeError, OverflowError):
+            self.transport_observation_error = 'transport_observation_write_failed'
+
+    def transport_diagnostics(self):
+        try:
+            counts = self.db.execute('SELECT count(*),count(t.event),'
+                "sum(CASE WHEN typeof(t.completed_at) IN ('real','integer') AND t.completed_at>=d.at "
+                "AND typeof(t.sender_duration_ms) IN ('real','integer') AND t.sender_duration_ms>=0 "
+                "AND t.outcome IN ('response_2xx','response_non2xx','outcome_unknown') "
+                'AND t.collection_error IS NULL '
+                'THEN 1 ELSE 0 END) FROM dispatch d JOIN subscriptions s ON s.id=d.subscription '
+                'LEFT JOIN transport_observations t ON t.subscription=d.subscription AND t.event=d.event '
+                'WHERE s.owner=?', (self.principal,)).fetchone()
+            row = self.db.execute('SELECT d.at,t.event IS NOT NULL AS recorded,t.completed_at,'
+                't.sender_duration_ms,t.outcome,t.collection_error FROM dispatch d '
+                'JOIN subscriptions s ON s.id=d.subscription LEFT JOIN transport_observations t '
+                'ON t.subscription=d.subscription AND t.event=d.event WHERE s.owner=? '
+                'ORDER BY d.at DESC,d.event DESC LIMIT 1', (self.principal,)).fetchone()
+            latest = None
+            if row is not None:
+                if row['recorded']:
+                    if (row['outcome'] not in ('response_2xx', 'response_non2xx', 'outcome_unknown') or
+                            row['collection_error'] not in
+                            (None, 'sender_duration_unavailable', 'completion_clock_unavailable') or
+                            any(value is not None and
+                                (type(value) not in (int, float) or not math.isfinite(value) or value < 0)
+                                for value in (row['completed_at'], row['sender_duration_ms']))):
+                        raise ValueError('invalid_transport_observation')
+                error = row['collection_error'] if row['recorded'] else 'completion_not_recorded'
+                ordered = None if row['completed_at'] is None else row['completed_at'] >= row['at']
+                if ordered is False:
+                    error = 'wall_clock_reconciliation_required'
+                latest = {'state': 'not_recorded' if not row['recorded'] else
+                          'partial' if error else 'recorded',
+                          'intent_at': iso(row['at']),
+                          'completed_at': None if row['completed_at'] is None else iso(row['completed_at']),
+                          'sender_duration_ms': row['sender_duration_ms'],
+                          'wall_clock_ordered': ordered, 'outcome': row['outcome'],
+                          'collection_error': error}
+            return {'schema_version': 1, 'state': 'observed',
+                    'collection_error': self.transport_observation_error,
+                    'dispatch_records': counts[0], 'observation_records': counts[1],
+                    'complete_timing_records': counts[2] or 0,
+                    'records_without_completion_observation': counts[0]-counts[1],
+                    'latest': latest,
+                    'coverage': ['same_principal_only', 'sender_call_only_excludes_queue_and_persistence',
+                                 'monotonic_duration_and_wall_clock_completion',
+                                 'missing_historical_completion_stays_unknown',
+                                 'not_assistant_processing_or_end_to_end_latency']}
+        except (sqlite3.Error, ValueError, TypeError, OverflowError):
+            return {'schema_version': 1, 'state': 'unknown',
+                    'collection_error': 'transport_observation_collection_unconfirmed',
+                    'dispatch_records': None, 'observation_records': None,
+                    'complete_timing_records': None,
+                    'records_without_completion_observation': None, 'latest': None}
+
     def status(self):
         try:
             diagnostics = self.subscription_diagnostics()
@@ -315,6 +418,7 @@ class Registry:
                 'subscription_lease':lease_metadata,
                 'active_subscriptions':self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>?',(now,)).fetchone()[0],
                 **self.event_counts(now), **self.delivery_diagnostics(now),
+                'webhook_transport_timing': self.transport_diagnostics(),
                 'dispatch_states':states,'attempts_last_24h':self.db.execute('SELECT count(*) FROM dispatch WHERE at>?',(now-86400,)).fetchone()[0],
                 'maximum_attempts_per_day':6,'minimum_attempt_spacing_seconds':600,
                 'assistant_run_confirmed':False,'automatic_retry':False,
@@ -416,13 +520,24 @@ class Registry:
         raw=body.encode()
         old=sub['old_secret'] if now-sub['rotated_at']<300 else None
         headers=signed_headers(sub['secret'],identity,raw,int(now),sub['id'],old)
+        started = self.observation_clock(self.monotonic)
+        ended = completed = response_status = None
+        sender_returned = False
         try:
             status,_=self.sender(sub['url'],headers,raw)
+            sender_returned = True
+            ended = self.observation_clock(self.monotonic)
+            completed = self.observation_clock(self.clock)
+            response_status = status
             state='webhook_accepted' if 200<=status<300 else 'delivery_refused'
             self.db.execute('UPDATE dispatch SET state=? WHERE subscription=? AND event=?',(state,sub['id'],identity))
             if status in (401,403,410):
                 self.db.execute('UPDATE subscriptions SET active=0 WHERE id=?',(sub['id'],))
         except Exception:
             state='uncertain'
+        if not sender_returned:
+            ended = self.observation_clock(self.monotonic)
+            completed = self.observation_clock(self.clock)
+        self.record_transport(sub['id'], identity, started, ended, completed, response_status)
         return {'event_id':identity,'state':state,'covered_event_records':len(members),
                 'delivery_kind':VERSION,'assistant_run_confirmed':False,'automatic_retry':False}
