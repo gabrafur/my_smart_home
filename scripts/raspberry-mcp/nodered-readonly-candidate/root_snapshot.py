@@ -10,6 +10,17 @@ DATE_KEYS={'checked_at','applied_at','rollback_at','started_at','finished_at','u
 STATE_KEYS={'state','status','mode','patch_state','reason_code'}
 STATES={'unknown','unavailable','compatible','conflict','checking','applying','applied','rollback','failed','running','deferred','pending','idle','requested','processing','success','completed','applied_pending_git','audit','install','clean','patched','skipped','blocked'}
 REASONS={'no_update_needed','audit_only','conflict','busy','maintenance_lock_busy','processing','candidate_pending','promotion_failed','runtime_validation_failed','publication_pending','applied_pending_git','invalid_request','target_invalid','unknown'}
+PATCH_FILES=frozenset(('coordinator.py','sensor.py','__init__.py','manifest.json','config_flow.py','device_tracker.py','const.py','button.py','lock.py','climate.py','switch.py','binary_sensor.py','number.py','select.py'))
+def patch_conflict(data):
+ out={'state':'unknown','collection_error':'invalid_conflict_details','reported_details':None,'classified_details':0,'files':[],'categories':[]}
+ values=data.get('conflicts')
+ if type(values)is not list or len(values)>20 or any(type(x)is not str or len(x)>8192 for x in values):return out
+ files=set();categories=set();classified=0
+ for text in values:
+  match=re.fullmatch(r'error: patch failed: ([a-z_]+\.py|manifest\.json):[1-9][0-9]{0,6}',text);category='patch_hunk_failed'
+  if not match:match=re.fullmatch(r'error: ([a-z_]+\.py|manifest\.json): patch does not apply',text);category='patch_does_not_apply'
+  if match and match[1]in PATCH_FILES:files.add(match[1]);categories.add(category);classified+=1
+ return dict(out,state='observed',collection_error=None,reported_details=len(values),classified_details=classified,files=sorted(files),categories=sorted(categories))
 def stamp(v):
  try:
   if not isinstance(v,str)or len(v)>40:return None
@@ -39,6 +50,7 @@ def project(name,v):
  for k in ('commit','source_commit','upstream_commit'):
   if k in v:out[k]=v[k]if isinstance(v[k],str)and re.fullmatch('[a-f0-9]{40}',v[k])else None
  if isinstance(v.get('conflicts'),list):out['conflicts_count']=len(v['conflicts'])
+ if name=='safe_update'and v.get('state')=='conflict'and v.get('patch_state')=='conflict':out['patch_conflict']=patch_conflict(v)
  return out
 class Docker(http.client.HTTPConnection):
  def __init__(self):super().__init__('localhost',timeout=2)

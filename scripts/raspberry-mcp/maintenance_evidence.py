@@ -154,6 +154,7 @@ def backups(root=ROOT):
 # Output messages are approved templates. Arbitrary payloads (calendar details,
 # names, addresses, IDs, paths, URLs and exception keys) are never copied.
 PATTERNS=[
+ ('icloud_manual_action_required',r'\bcustom_components\.icloud\.native_bridge\.ManualActionRequired:\s*waiting_for_user\s*(?:\x1b\[[0-9;]*m)*$', 'iCloud: guard local aguardando autenticação manual; necessidade de código não comprovada'),
  ('missing_field',r'\bKeyError\s*:', 'KeyError: [chave omitida]'),
  ('ipp_timeout',r'Error fetching .*Invalid response.*Timeout', 'Error fetching [alvo omitido]: Invalid response; Timeout'),
  ('unexpected_exception',r'Unexpected exception', 'Unexpected exception'),

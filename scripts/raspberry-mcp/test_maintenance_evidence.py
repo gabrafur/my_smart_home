@@ -20,6 +20,17 @@ class EvidenceTests(unittest.TestCase):
   row=e.result_file(path,'fixture',self.now)
   self.assertEqual(row['data']['reason'],'maintenance_busy');self.assertEqual(row['age_seconds'],60)
   self.assertNotIn('PRIVATE',json.dumps(row));self.assertNotIn('private-request',json.dumps(row))
+ def test_local_icloud_guard_has_closed_diagnostic(self):
+  raw=('2026-10-19T13:59:00Z custom_components.icloud.native_bridge.ManualActionRequired: waiting_for_user\n')
+  rows=e.summarize_logs('homeassistant',raw,self.now-3600,self.now)['events']
+  self.assertEqual(rows[0]['category'],'icloud_manual_action_required')
+  self.assertIn('necessidade de código não comprovada',rows[0]['message'])
+ def test_local_icloud_guard_does_not_export_or_accept_extra_payload(self):
+  for suffix in [' PRIVATE_ACCOUNT', ' https://example.invalid/PRIVATE_TOKEN', '_PRIVATE_VALUE']:
+   raw='2026-10-19T13:59:00Z custom_components.icloud.native_bridge.ManualActionRequired: waiting_for_user'+suffix+'\n'
+   rows=e.summarize_logs('homeassistant',raw,self.now-3600,self.now)['events']
+   self.assertFalse(any(row['category']=='icloud_manual_action_required'for row in rows))
+   self.assertNotIn('PRIVATE',json.dumps(rows))
  def test_stale_failure_remains_reported(self):
   path=self.root/'result';path.write_text('status=failed finished_at=2026-10-15T04:08:13Z exit_code=1')
   row=e.result_file(path,'fixture',self.now)

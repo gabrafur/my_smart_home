@@ -1,8 +1,24 @@
-import datetime,importlib.util,json,tempfile,unittest
+import datetime,importlib.util,json,tempfile,unittest,subprocess,shutil
 from pathlib import Path
 from unittest.mock import patch
 s=importlib.util.spec_from_file_location('fixed_root_snapshot',Path(__file__).with_name('root_snapshot.py'));m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class Projection(unittest.TestCase):
+ def test_patch_conflicts_are_classified_before_crossing_root_boundary(self):
+  v=m.project('safe_update',{'state':'conflict','patch_state':'conflict','conflicts':['error: patch failed: coordinator.py:3','error: sensor.py: patch does not apply','PRIVATE_PATH_TOKEN']})
+  self.assertNotIn('PRIVATE',json.dumps(v));self.assertNotIn('conflicts',v)
+  self.assertEqual(v['patch_conflict']['files'],['coordinator.py','sensor.py'])
+  self.assertEqual(v['patch_conflict']['classified_details'],2)
+ def test_private_paths_and_multiline_payload_are_not_classified(self):
+  v=m.patch_conflict({'conflicts':['error: patch failed: /PRIVATE/coordinator.py:3','error: patch failed: secret.py:3','error: patch failed: coordinator.py:3\nPRIVATE_TOKEN']})
+  self.assertEqual(v['classified_details'],0);self.assertNotIn('PRIVATE',json.dumps(v))
+ def test_conflict_bounds_fail_closed(self):
+  for values in (None,[{}],['x'*8193],['x']*21):
+   self.assertEqual(m.patch_conflict({'conflicts':values})['state'],'unknown')
+ def test_root_projection_reaches_the_actual_javascript_contract(self):
+  v=m.project('safe_update',{'state':'conflict','patch_state':'conflict','checked_at':'2026-10-26T17:00:00Z','conflicts':['error: patch failed: coordinator.py:3','error: patch failed: sensor.py:723','PRIVATE_TOKEN']})
+  program="const fs=require('node:fs'),m=require('./kia_model.cjs'); const data=JSON.parse(fs.readFileSync(0,'utf8'));console.log(JSON.stringify(m.project({now_unix_seconds:1793034000,sources:{safe_update:{observed_at:'2026-10-26T17:00:00Z',collection_error:null,data}}}).sources.find(x=>x.source==='safe_update')));"
+  result=subprocess.run([shutil.which('node'),'-e',program],input=json.dumps(v),text=True,capture_output=True,timeout=10,cwd=Path(__file__).parent,check=True)
+  row=json.loads(result.stdout);self.assertEqual(row['reason_code'],'local_patch_conflict');self.assertEqual(row['patch_conflict']['state'],'observed');self.assertEqual(row['patch_conflict']['files'],['coordinator.py','sensor.py']);self.assertNotIn('PRIVATE',result.stdout)
  def test_private_fields_and_messages_are_omitted(self):
   v=m.project('safe_update',{'state':'conflict','message':'PRIVATE_MESSAGE','password':'_'.join(('PRIVATE','PASSWORD')),'location':{'lat':12+34567/100000},'installed_version':'3.19.0','latest_version':'v3.20.0','conflicts':['PRIVATE_PATH'],'checked_at':'2026-10-26T03:00:00-03:00'})
   self.assertNotIn('PRIVATE_',json.dumps(v));self.assertEqual(v['checked_at'],'2026-10-26T06:00:00+00:00');self.assertEqual(v['conflicts_count'],1)

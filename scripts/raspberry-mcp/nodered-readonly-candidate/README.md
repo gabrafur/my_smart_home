@@ -103,6 +103,20 @@ limitação real do lifecycle, não promessa de IDs persistentes por 120 segundo
 
 ## Diagnóstico fixo Kia e limites de evidência
 
+Quando o recibo `safe_update` declara `state: conflict` e `patch_state: conflict`,
+a projeção publica `reason_code: local_patch_conflict` e `patch_conflict`.
+Esse bloco contém apenas contagens, categorias fechadas e nomes de arquivos
+públicos permitidos. Detalhes inválidos ficam desconhecidos; mensagens Git,
+caminhos e conteúdo dos patches não são exportados. Isso descreve a aplicação
+do delta em staging e não explica uma falha de promoção anterior. A idade e
+eventual classificação `stale` do recibo continuam valendo.
+
+O leitor `log_summary` reconhece a exceção fechada do guard iCloud
+`ManualActionRequired: waiting_for_user`. A categoria
+`icloud_manual_action_required` indica bloqueio local aguardando autenticação
+manual. Não comprova falha de transporte Apple, sessão válida ou necessidade
+atual de código. A leitura não inicia autenticação nem atualização do provedor.
+
 A segunda raiz combina projeções sanitizadas de recibos fixos, pendências,
 agendamento carregado, TZ configurado do contêiner, manifesto do loader HA e um
 sensor fixo da integração. O produtor root lê somente o recibo privado fixo e

@@ -10,6 +10,13 @@ const stamp=x=>typeof x==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6}
 const sha=x=>typeof x==='string'&&/^[a-f0-9]{40}$/.test(x)?x:null;
 const id=x=>typeof x==='string'&&/^\d{8}T\d{6}Z-\d{1,12}$/.test(x)?x:null;
 const equalVersion=(a,b)=>a&&b?a.replace(/^v/,'')===b.replace(/^v/,''):null;
+const PATCH_FILES=new Set(['coordinator.py','sensor.py','__init__.py','manifest.json','config_flow.py','device_tracker.py','const.py','button.py','lock.py','climate.py','switch.py','binary_sensor.py','number.py','select.py']);
+function patchConflict(data){
+ const base={state:'unknown',collection_error:'invalid_conflict_details',reported_details:null,classified_details:0,files:[],categories:[],coverage:['saved_patch_check_only','not_previous_promotion_failure_or_runtime_health','raw_git_messages_and_paths_omitted']};
+ const v=data.patch_conflict;
+ if(!record(v)||Object.keys(v).sort().join(',')!=='categories,classified_details,collection_error,files,reported_details,state'||v.state!=='observed'||v.collection_error!==null||!Number.isSafeInteger(v.reported_details)||v.reported_details<0||v.reported_details>20||!Number.isSafeInteger(v.classified_details)||v.classified_details<0||v.classified_details>v.reported_details||!Array.isArray(v.files)||v.files.length>PATCH_FILES.size||!v.files.every(x=>PATCH_FILES.has(x))||new Set(v.files).size!==v.files.length||!Array.isArray(v.categories)||v.categories.length>2||!v.categories.every(x=>['patch_hunk_failed','patch_does_not_apply'].includes(x))||new Set(v.categories).size!==v.categories.length||v.files.length>v.classified_details||v.categories.length>v.classified_details||(v.classified_details===0)!==(v.files.length===0&&v.categories.length===0))return base;
+ return {...base,state:'observed',collection_error:null,reported_details:v.reported_details,classified_details:v.classified_details,files:[...v.files].sort(),categories:[...v.categories].sort()};
+}
 function parseLine(x){
  if(typeof x!=='string'||x.length>2048||/[\r\n\0]/.test(x))return null;
  const tokens=x.trim().split(/ +/);if(tokens.shift()!=='kia-uvo-update')return null;
@@ -39,6 +46,9 @@ function row(name,envelope,now){
   if(!RESULTS[name].includes(result))return {...out,state:'unknown',collection_error:'invalid_schema'};
   out.result=result;
   out.reason_code=REASONS.has(d.reason_code)?d.reason_code:REASONS.has(d.reason)?d.reason:null;
+  if(name==='safe_update'&&result==='conflict'&&d.patch_state==='conflict'){
+   out.reason_code='local_patch_conflict';out.patch_conflict=patchConflict(d);
+  }
   if(name.startsWith('promotion')){
    out.coverage.push('effect_state_current_attempt_only_not_current_service_or_vehicle_health');
    if(typeof d.failure_stage==='string'&&Object.hasOwn(STAGE_EFFECTS,d.failure_stage)&&d.effect_state===STAGE_EFFECTS[d.failure_stage]){out.failure_stage=d.failure_stage;out.effect_state=d.effect_state;}

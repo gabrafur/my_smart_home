@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "source": "sanitized_actual_MCP_integration_diagnostic_acceptance",
+  "observed_at": "2026-10-27T10:53:19+00:00",
+  "state": "apply_rollback_reapply_actual_MCP_verified",
+  "existing_tools": [
+    "log_summary",
+    "project_files",
+    "project_read",
+    "codex_task_create",
+    "codex_task_status",
+    "codex_task_send",
+    "codex_task_reconcile"
+  ],
+  "target_count": 4,
+  "dependency_digests_changed": 3,
+  "new_source_paths_or_tools_or_authority": false,
+  "ledgers_reset_or_deleted": false,
+  "all_seven_household_service_start_times_unchanged": true,
+  "old_promotion_receipt_unchanged": true,
+  "integration_deployment": false,
+  "provider_or_vehicle_or_auth_calls": 0,
+  "household_services_restarted": 0,
+  "only_activated_service": "raspberry-nodered-diagnostics.service",
+  "serial_native_turns": {
+    "accepted_final_transaction": 3,
+    "prior_sudo_pre_effect_refusal_preserved": 1,
+    "superseded_partial_apply_and_rollback_preserved": 2
+  },
+  "phase_results": {
+    "apply": "closed_guard_category_and_complete_patch_diagnostic_read_from_actual_MCP",
+    "rollback": "all_original_target_hashes_and_original_MCP_projection_verified",
+    "reapply": "all_final_target_hashes_and_complete_MCP_projection_verified_after_ID_namespace_correlation"
+  },
+  "tests": {
+    "Python_log_projection": 29,
+    "Python_root_projection_including_actual_Node_contract": 12,
+    "Node_Kia_projection": 18,
+    "Node_promotion_stage_projection": 8
+  },
+  "transaction_manifest_sha256": "9dc6d936fcbc02e0f0ea2b1b9c171d2115170cad7095ebb3ef5d7dc25032e6c4",
+  "transaction_helper_sha256": "c0ed3febe49b7b85093a6b0e238fbb0c5d7614e9c85b02653738ba9eb811df5f",
+  "source_sha256": {
+    "scripts/raspberry-mcp/maintenance_evidence.py": "ef6bd74c4125d7442427796a71dd06134318bb5e0f8f28eb04aef0bd6c7a99c8",
+    "scripts/raspberry-mcp/nodered-readonly-candidate/root_snapshot.py": "511c8fd8f93c38f0a7b9b9dee462ad6ede72b9caf914fa876b02bb55274a8fe9",
+    "scripts/raspberry-mcp/nodered-readonly-candidate/kia_model.cjs": "024f725e451d5dc80f40f73b9aee43fb00945763cf0c248d28e7447d4913099a"
+  },
+  "limits": [
+    "saved_patch_check_does_not_explain_previous_promotion_failure",
+    "guard_waiting_for_user_does_not_prove_OTP_requirement",
+    "not_iCloud_or_Kia_functional_recovery",
+    "not_Eva_automatic_execution",
+    "not_24h_PC_off_or_seven_service_restore_acceptance",
+    "unknown_private_conflict_details_remain_omitted"
+  ]
+}
