@@ -85,7 +85,21 @@ horárias cumulativas. A janela só vira `candidate` depois de abranger pelo
 menos 86.400s monotônicos; seus deltas precisam corresponder às âncoras. Isso
 não é aprovação de 24h: verificar contagens, perdas, desconhecidos, excessos,
 falhas de fonte e lacunas. O contexto tem flush de 30s e não é arquivo bruto de
-eventos nem journal transacional. Perdas anteriores ao produtor e interrupções
+eventos nem journal transacional.
+
+`invalid_reason_history` preserva contagens por motivo fechado e as últimas 16
+observações inválidas, com horário de observação (ou `null`) e época. A
+recuperação não apaga esse registro. `covered_total` vincula a atribuição à soma
+dos contadores inválidos atual e anterior; metadados incoerentes ficam
+`unknown`, sem reiniciar contadores ou inventar um histórico limpo.
+
+A migração registra falhas anteriores em `unattributed_prior_count`, sem deduzir
+sua causa. Ela mantém época, início e âncoras existentes. Se uma reversão para o
+produtor antigo acrescentar contagens sem atualizar os motivos, a versão nova
+reconcilia somente essa diferença como desconhecida. Os testes de motivos
+incluem recuperação, reinício, reversão, retenção limitada e entradas corruptas.
+O MCP valida esse contrato e omite texto ou campos fora da allowlist. Isso é
+diagnóstico de observações, não uma nova política de alerta residencial. Perdas anteriores ao produtor e interrupções
 entre épocas continuam fora da cobertura comprovada. HA/MQTT, chegada de push
 e execução da Eva exigem evidência adicional própria.
 

@@ -36,4 +36,35 @@ console.log(JSON.stringify({context:{host_observer_timing_v1:state,host_observer
  def test_window_must_match_actual_anchor_delta_and_monotonic_span(self):
   for mutate in [lambda s:s['window24h']['counters'].__setitem__(10,0),lambda s:s['window24h'].__setitem__('minimum_span_seconds',86401),lambda s:s['window24h'].__setitem__('started_at',s['observed_at'])]:
    value=copy.deepcopy(self.fixture);mutate(value['context']['host_observer_timing_v1']);self.assertEqual(self.project(value)['state'],'unknown')
+ def test_closed_reason_history_matches_JS_across_recovery_and_legacy_migration(self):
+  root=Path(__file__).resolve().parents[4]
+  code="""import {hostTimingTransition as next} from './nodered/tools/host-observation-timing.mjs';
+import {frame,limits} from './nodered/tools/host-timing-fixtures.mjs';
+let state=next(next(null,frame()),frame(20));delete state.invalid_reason_history;
+state.invalid_observations=2;state=next(state,frame(40));
+const bad=frame(60);bad.report=null;state=next(state,bad);
+const unknown=JSON.parse(JSON.stringify(state));state=next(state,frame(80));
+console.log(JSON.stringify({context:{host_observer_timing_v1:state,host_observer_timing_policy_v1:limits},report:frame(80).report,unknown}));"""
+  run=subprocess.run(['node','--max-old-space-size=32','--input-type=module','-'],input=code,text=True,cwd=root,capture_output=True,timeout=10,check=True)
+  data=json.loads(run.stdout);state=data['context']['host_observer_timing_v1'];now=m.stamp(state['observed_at'])
+  result=m.project_passive_host_timing(data['context'],data['report'],now)
+  self.assertEqual(result['state'],'observed');history=result['invalid_reason_history']
+  self.assertEqual(history['unattributed_prior_count'],2)
+  self.assertEqual(history['counts']['report_unavailable_or_stale'],1)
+  self.assertEqual(history['recent'][0]['reason'],'report_unavailable_or_stale')
+  self.assertEqual(m.project_passive_invalid_history(data['unknown']),history)
+ def test_legacy_missing_reason_history_reports_unknown_attribution(self):
+  state=copy.deepcopy(self.fixture['context']['host_observer_timing_v1']);state.pop('invalid_reason_history')
+  state['invalid_observations']=1;state['past_counters'][19]=2
+  result=m.project_passive_invalid_history(state)
+  self.assertEqual(result['state'],'unknown');self.assertEqual(result['unattributed_prior_count'],3)
+  self.assertIsNone(result['counts']);self.assertEqual(result['recent'],[])
+ def test_corrupt_or_private_reason_metadata_never_crosses_projection(self):
+  for mutate in [lambda h:h['counts'].__setitem__('PRIVATE_SENTINEL',1),
+                 lambda h:h.__setitem__('unattributed_prior_count',True),
+                 lambda h:h.__setitem__('version',True),
+                 lambda h:h.__setitem__('recent',[{'reason':[],'observed_at':None,'epoch':1}]),
+                 lambda h:h.__setitem__('recent',[{'reason':'PRIVATE_SENTINEL','observed_at':None,'epoch':1}])]:
+   data=copy.deepcopy(self.fixture);mutate(data['context']['host_observer_timing_v1']['invalid_reason_history'])
+   result=self.project(data);self.assertEqual(result['state'],'unknown');self.assertNotIn('PRIVATE_SENTINEL',json.dumps(result))
 if __name__=='__main__':unittest.main()

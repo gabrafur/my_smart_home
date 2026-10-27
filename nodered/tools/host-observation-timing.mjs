@@ -10,6 +10,41 @@ export function hostTimingTransition(previous, input) {
     max_source_to_reader_ms: null, max_reader_to_canvas_ms: null, max_source_to_canvas_upper_ms: null});
   const flat = state => [...sources.flatMap(source => fields.map(field => state.sources[source][field])),
     state.report_gaps, state.source_unavailable, state.source_faults, state.clock_conflicts, state.invalid_observations];
+  const reasons = ['measurement_policy_unavailable', 'report_unavailable_or_stale',
+    'producer_timing_unavailable', 'producer_clock_unstable', 'reader_clock_unavailable',
+    'clock_alignment_unconfirmed', 'producer_counter_reversed', 'producer_counter_mismatch',
+    'accounting_counter_exhausted', 'accounting_state_invalid'];
+  const priorInvalid = previous == null ? 0 :
+    count(previous.invalid_observations) && Array.isArray(previous.past_counters) &&
+    previous.past_counters.length === 20 && previous.past_counters.every(count)
+      ? previous.invalid_observations + previous.past_counters[19] : NaN;
+  if (!Number.isSafeInteger(priorInvalid)) throw new Error('invalid_accounting_state');
+  const history = previous?.invalid_reason_history === undefined ? {
+    version: 1, covered_total: priorInvalid, unattributed_prior_count: priorInvalid,
+    counts: Object.fromEntries(reasons.map(reason => [reason, 0])), recent: []
+  } : JSON.parse(JSON.stringify(previous.invalid_reason_history));
+  const historyCount = value => Number.isSafeInteger(value) && value >= 0 && value <= 2e12;
+  const exactKeys = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
+    JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
+  if (!exactKeys(history, ['version', 'covered_total', 'unattributed_prior_count', 'counts', 'recent']) ||
+      history.version !== 1 || !historyCount(history.unattributed_prior_count) ||
+      !historyCount(history.covered_total) || history.covered_total > priorInvalid ||
+      !exactKeys(history.counts, reasons) || !Object.values(history.counts).every(historyCount) ||
+      history.unattributed_prior_count + Object.values(history.counts).reduce((sum, n) => sum + n, 0) !== history.covered_total ||
+      !Array.isArray(history.recent) || history.recent.length > 16 ||
+      history.recent.some(row => !exactKeys(row, ['reason', 'observed_at', 'epoch']) ||
+        !reasons.includes(row.reason) || history.counts[row.reason] < 1 || !count(row.epoch) ||
+        !count(previous?.epoch) || row.epoch > previous.epoch ||
+        !(row.observed_at === null || Number.isFinite(stamp(row.observed_at)))) ||
+      reasons.some(reason => history.recent.filter(row => row.reason === reason).length > history.counts[reason])) {
+    // Preserve the corrupt record and counters for review; never reset them to
+    // a plausible clean history or export arbitrary reason text.
+    return {...previous, state: 'unknown', collection_error: 'reason_history_invalid'};
+  }
+  // An older producer can preserve this record without attributing its new
+  // failures. Reconcile that uncovered count as unknown after a rollback.
+  history.unattributed_prior_count += priorInvalid - history.covered_total;
+  history.covered_total = priorInvalid;
   const missing = reason => {
     const state = previous?.version === 1 && JSON.stringify(previous).length <= 24000
       ? JSON.parse(JSON.stringify(previous)) : {version: 1, state: 'unknown', collection_error: null,
@@ -17,7 +52,16 @@ export function hostTimingTransition(previous, input) {
         sources: Object.fromEntries(sources.map(source => [source, emptySource()])),
         report_gaps: 0, source_unavailable: 0, source_faults: 0, clock_conflicts: 0, invalid_observations: 0, anchors: []};
     state.state = 'unknown'; state.collection_error = reason;
-    if (count(state.invalid_observations) && state.invalid_observations < 1e12) state.invalid_observations++;
+    state.invalid_reason_history = history;
+    if (count(state.invalid_observations) && state.invalid_observations < 1e12) {
+      state.invalid_observations++;
+      history.counts[reason]++;
+      history.covered_total++;
+      const observed = number(input?.now_ms) ? new Date(input.now_ms).toISOString() : null;
+      history.recent.push({reason, observed_at: Number.isFinite(stamp(observed)) ? observed : null,
+        epoch: count(state.epoch) ? state.epoch : 0});
+      history.recent = history.recent.slice(-16);
+    }
     if (reason.includes('clock') && count(state.clock_conflicts) && state.clock_conflicts < 1e12) state.clock_conflicts++;
     return state;
   };
@@ -51,6 +95,7 @@ export function hostTimingTransition(previous, input) {
   if (readerCanvas < 0 || alignment > 1000 || reader.monotonic_seconds < timing.report_monotonic_seconds ||
       timing.resource_sampled_monotonic_seconds > reader.monotonic_seconds) return missing('clock_alignment_unconfirmed');
   let state = previous?.version === 1 ? JSON.parse(JSON.stringify(previous)) : null;
+  if (state) state.invalid_reason_history = history;
   const reason = !state?.instance ? 'initial_baseline' : restarted ? 'consumer_runtime_restart' :
     state.instance !== report.instance_id || state.boot !== report.boot_id_sha256 ? 'producer_epoch_changed' :
     state.last_clock_change_count !== timing.clock_change_count ? 'producer_clock_changed' :
@@ -74,6 +119,7 @@ export function hostTimingTransition(previous, input) {
       last_resource_sequence: timing.resource_sample_sequence,
       sources: Object.fromEntries(sources.map(source => [source, emptySource()])),
       report_gaps: 0, source_unavailable: 0, source_faults: 0, clock_conflicts: 0, invalid_observations: 0,
+      invalid_reason_history: history,
       anchors: [], anchor_slot: -1, window24h: {state: 'collecting', minimum_span_seconds: 0, counters: null}};
     // The current report may precede instrumentation. Never backfill its
     // first detection or pretend its old ring members were newly observed.

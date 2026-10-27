@@ -422,7 +422,50 @@ HOST_TIMING_COUNTERS = tuple(source+'.'+field for source in HOST_TIMING_SOURCES 
 HOST_TIMING_ERRORS = frozenset(('measurement_policy_unavailable', 'report_unavailable_or_stale',
     'producer_timing_unavailable', 'producer_clock_unstable', 'reader_clock_unavailable',
     'clock_alignment_unconfirmed', 'producer_counter_reversed', 'producer_counter_mismatch',
-    'accounting_counter_exhausted', 'accounting_state_invalid'))
+    'accounting_counter_exhausted', 'accounting_state_invalid', 'reason_history_invalid'))
+
+
+def project_passive_invalid_history(value):
+    """Project bounded canonical reasons; never infer a past failure's cause."""
+    result = {'version': 1, 'state': 'unknown', 'collection_error': 'reason_history_not_recorded',
+              'covered_total': None,
+              'unattributed_prior_count': None, 'counts': None, 'recent': []}
+    def count(x):return type(x) is int and 0 <= x <= 2*10**12
+    if not isinstance(value,dict):return result
+    current,past=value.get('invalid_observations'),value.get('past_counters')
+    if (not count(current) or not isinstance(past,list) or len(past)!=20 or not count(past[19])):
+        return result
+    total=current+past[19]
+    if not count(total):return result
+    if 'invalid_reason_history' not in value:
+        result['unattributed_prior_count']=total
+        return result
+    result['collection_error']='passive_reason_history_invalid'
+    history=value['invalid_reason_history']
+    reasons=HOST_TIMING_ERRORS-{'reason_history_invalid'}
+    if (not isinstance(history,dict) or set(history)!={'version','covered_total','unattributed_prior_count','counts','recent'}
+            or type(history['version'])is not int or history['version']!=1
+            or not count(history['unattributed_prior_count']) or not isinstance(history['counts'],dict)
+            or set(history['counts'])!=reasons or not all(count(n)for n in history['counts'].values())
+            or not count(history['covered_total']) or history['covered_total']!=total
+            or history['unattributed_prior_count']+sum(history['counts'].values())!=history['covered_total']
+            or not isinstance(history['recent'],list) or len(history['recent'])>16):
+        return result
+    retained={reason:0 for reason in reasons}
+    for row in history['recent']:
+        if (not isinstance(row,dict) or set(row)!={'reason','observed_at','epoch'}
+                or type(row['reason'])is not str or row['reason']not in reasons
+                or not count(row['epoch']) or not count(value.get('epoch'))
+                or row['epoch']>value['epoch']
+                or not(row['observed_at']is None or stamp(row['observed_at'])is not None)):
+            return result
+        retained[row['reason']]+=1
+    if any(retained[reason]>history['counts'][reason]for reason in reasons):return result
+    result.update(state='observed',collection_error=None,
+        covered_total=history['covered_total'],
+        unattributed_prior_count=history['unattributed_prior_count'],counts=dict(history['counts']),
+        recent=[dict(row)for row in history['recent']])
+    return result
 
 
 def project_passive_host_timing(context, report, now):
@@ -445,7 +488,10 @@ def project_passive_host_timing(context, report, now):
     def need(value):
         if not value:raise ValueError('invalid_passive_timing')
     value = context.get('host_observer_timing_v1') if isinstance(context, dict) else None
+    result['invalid_reason_history']=project_passive_invalid_history(value)
     if not isinstance(value, dict):return result
+    if result['invalid_reason_history']['collection_error']=='passive_reason_history_invalid':
+        result['collection_error']='passive_timing_invalid';return result
     if value.get('state') == 'unknown':
         error = value.get('collection_error')
         result['collection_error'] = error if error in HOST_TIMING_ERRORS else 'passive_timing_invalid'

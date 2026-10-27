@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "source": "bounded_passive_invalid_reason_history_acceptance",
+  "observed_at": "2026-10-27T14:02:02Z",
+  "public_source_base": "9330ffee5cb94d703228fcbcc76bbff6e6d61cc1",
+  "deployment": {
+    "flow_delta": {
+      "modified_existing_function_nodes": 1,
+      "added_nodes": 0,
+      "removed_nodes": 0,
+      "changed_fields": [
+        "func"
+      ]
+    },
+    "loaded_and_persisted_digest": "6fff9bb53dc9c1b4cc3ca0d5e9242ec00be58b4eccbc9cc780fc1c2e6026fa75",
+    "root_manifest_sha256": "a477348f078e3c42bd17e0a322f4025603b1f4b618fbb3aaeafca4d782cb4f60",
+    "native_dry_run_steps": 7,
+    "native_steps_confirmed": true,
+    "deduplicated": true,
+    "test_context_cleaned": true,
+    "persistent_test_keys_absent": true,
+    "simulated": true,
+    "dispatched": false,
+    "session_revoked": true,
+    "household_service_restarts": 0,
+    "passive_observer_restarts": 0,
+    "new_access_or_expiry": false
+  },
+  "natural_followup": {
+    "same_epoch": true,
+    "same_measurement_start": true,
+    "invalid_count_before": 1,
+    "invalid_count_after": 1,
+    "unattributed_prior_count": 1,
+    "covered_invalid_total": 1,
+    "new_reason_counts": {
+      "measurement_policy_unavailable": 0,
+      "report_unavailable_or_stale": 0,
+      "producer_timing_unavailable": 0,
+      "producer_clock_unstable": 0,
+      "reader_clock_unavailable": 0,
+      "clock_alignment_unconfirmed": 0,
+      "producer_counter_reversed": 0,
+      "producer_counter_mismatch": 0,
+      "accounting_counter_exhausted": 0,
+      "accounting_state_invalid": 0
+    },
+    "resources_observed_increase": 22,
+    "systemd_observed_increase": 23,
+    "current_report_gaps": 0,
+    "old_causes_inferred": false
+  },
+  "source_sha256": {
+    "nodered/tools/host-observation-timing.mjs": "7af7a95b9ac119422424201204405afe5b8de278cee463a76ea078ae4ae8b8ae",
+    "scripts/raspberry-mcp/runtime-source/repair-control/health_summary.py": "9c8bb5c09132fc4cbe73051773d7333a754c723a7a9d02a67fa2ab1a0a32bead"
+  },
+  "limits": [
+    "future_invalid_reason_classification_tested_synthetically_not_by_creating_a_household_fault",
+    "old_invalid_cause_remains_unknown",
+    "not_full24h_PCoff_Eva_execution_or_HA_MQTT_latency_proof",
+    "NodeRED_source_disclosure_uses_separate_reviewed_public_reference_pin",
+    "unused_rollback_requires_unchanged_seals_or_a_new_reviewed_package"
+  ]
+}

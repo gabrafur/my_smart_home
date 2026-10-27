@@ -1333,6 +1333,13 @@ Conta eventos e amostras saudáveis, além dos incidentes; sequências do produt
 permitem declarar registros ausentes sem transformar ausência em zero latência.
 A projeção mantém limites, máximos conservadores, desconhecidos, épocas e
 contadores anteriores, com até 25 âncoras horárias internas para a janela.
+O campo `invalid_reason_history` conserva motivos canônicos após recuperação,
+com contagens fechadas e até 16 observações recentes. Contagens antigas sem
+motivo permanecem sem atribuição. A migração e a retomada após rollback não
+reiniciam a janela nem deduzem causas retroativas. A projeção rejeita histórico
+incoerente ou campos privados; não declara cobertura de 24h por esse histórico.
+O [aceite dos motivos inválidos](../scripts/raspberry-mcp/passive-invalid-reasons.acceptance.json)
+registra o replay nativo e a migração observada sem reiniciar a época.
 
 O [aceite sanitizado](../scripts/raspberry-mcp/passive-host-timing.acceptance.json)
 registra aplicação, reversão e reaplicação em três tarefas MCP seriais. Cada
