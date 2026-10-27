@@ -1,3 +1,13 @@
+// Carry only canonical timing fields; the receipt serializer validates them.
+// Missing source clocks remain unknown, including legacy domain alerts.
+const timingPayload = msg.payload ?? {};
+msg._notification_timing = {
+    version: 1,
+    source_observed_at: timingPayload.source_observed_at ?? null,
+    source_time_kind: timingPayload.source_time_kind ?? "unknown",
+    first_detected_at: timingPayload.first_detected_at ?? null,
+    policy_decided_at: timingPayload.policy_decided_at ?? null
+};
 const TEST_MODE =
     msg._global_observer_test === true ||
     msg.payload?.test_mode === true;

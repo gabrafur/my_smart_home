@@ -11,6 +11,7 @@ const acceptedAt = new Date().toISOString();
 const record = {
     version: 1,
     accepted_at: acceptedAt,
+    timing: notificationTimingObservation(msg._notification_timing, acceptedAt),
     status: simulated ? "simulated" : "accepted",
     channel,
     source: notification.source,
@@ -29,7 +30,9 @@ const record = {
 // Do not carry the caller context, credentials or unrelated residential state.
 const entry = { payload: JSON.stringify(record) };
 if (simulated) {
-    entry.notification_delivery = { simulated: true, dispatched: false, channel };
+    entry.notification_delivery = { simulated: true, dispatched: false, channel, timing: record.timing,
+        run_id: typeof msg._notification_timing_test_run_id === "string" &&
+            /^[a-f0-9]{32}$/.test(msg._notification_timing_test_run_id) ? msg._notification_timing_test_run_id : null };
     return [null, entry];
 }
 entry.filename = `/data/notification-history/${channel}/${acceptedAt.slice(0, 13)}.jsonl`;

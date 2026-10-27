@@ -1,3 +1,4 @@
+import { withNotificationTimingSource } from "./notification-timing.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
@@ -13,7 +14,7 @@ import {
   restoreGeneratedWireRoutes,
 } from "./install-notification-hubs.mjs";
 
-const sourceFlows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
+const sourceFlows = JSON.parse(fs.readFileSync(process.env.GLOBAL_OBSERVER_TEST_FLOW ?? new URL("../flows.json", import.meta.url), "utf8"));
 const sourceById = new Map(sourceFlows.map((candidate) => [candidate.id, candidate]));
 for (const id of ["2818bf202b397612", "light_notify_on_secondary"]) {
   const payloadRule = sourceById.get(id)?.rules?.find((rule) => rule.p === "payload");
@@ -277,7 +278,7 @@ assert.doesNotMatch(functionSources, /persistent_notification\.(?:create|dismiss
   "Function Node de negócio não pode esconder uma saída de notificação");
 
 function executeFunction(filename, msg, globalValues = {}) {
-  const code = fs.readFileSync(new URL(`./functions/${filename}`, import.meta.url), "utf8");
+  const code = withNotificationTimingSource(fs.readFileSync(new URL(`./functions/${filename}`, import.meta.url), "utf8"));
   const warnings = [];
   const store = new Map();
   const sandbox = {

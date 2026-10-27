@@ -341,3 +341,53 @@ particular, o watchdog de indisponibilidade do próprio Node-RED deve permanecer
 independente em `homeassistant/packages/nodered_flow_health.yaml`; movê-lo para
 o runtime observado eliminaria a capacidade de alertar quando o Node-RED está
 fora do ar.
+
+## Horários canônicos e limites de latência
+
+O campo interno opcional `msg._notification_timing` atravessa os adaptadores de
+pedido e os hubs. Seu contrato fechado tem exatamente `version: 1`,
+`source_observed_at`, `source_time_kind`, `first_detected_at` e
+`policy_decided_at`. Horários são ISO UTC ou nulos. `source_time_kind` distingue
+`producer_occurrence`, `producer_observation` e `unknown`: o horário da
+observação não estabelece quando a condição começou no equipamento.
+
+O [adaptador puro compartilhado](../nodered/tools/notification-timing.mjs) é
+incorporado pelos geradores aos Function nodes, sem módulos extras no runtime.
+Ele valida somente a estrutura e a ordem dos relógios. Cada registro JSONL e
+recibo do hub contém `timing` com estado `observed`, `partial`, `unknown` ou
+`clock_conflict`, motivo e os intervalos numéricos `source_to_detection_ms`,
+`detection_to_decision_ms` e `decision_to_accept_ms`. Horários ausentes mantêm
+intervalos nulos; dados inválidos não são copiados e não impedem a entrega.
+Conflito de ordem preserva os horários válidos, mas mantém os intervalos nulos.
+Não interpretar um relógio civil ordenado como prova de ausência de ajuste do
+relógio; os valores não são durações monotônicas.
+
+`accepted_at` continua marcando o retorno da chamada ao Home Assistant. Não
+comprova chegada ao celular/Alexa, leitura humana ou execução da Eva. A medição
+do sender Events é outra etapa e não deve ser somada a estes números para
+inventar uma latência ponta a ponta. Registros antigos permanecem intactos,
+sem horários retroativos. Não há alteração de destinatários, comandos, filas,
+políticas de confirmação, deduplicação ou retry.
+
+Para testes sem efeito, use os controles existentes de falha, confirmação,
+saudável e reset de `observacao_host`; o terminal global registra também o
+metadado de horário. O relógio sintético pode avançar além do relógio real:
+nesse caso `clock_conflict` e durações nulas são o resultado esperado. Nos
+três hubs, `TESTE: registro sem escrita` atravessa o serializador até seu
+terminal dry-run; sem metadado, o resultado esperado é `unknown`. O replay
+MCP revisado fornece horários sintéticos e um identificador opaco aos mesmos
+injects de histórico. O terminal emite `NOTIFICATION_HISTORY_TIMING_DRY_RUN`
+para correlação, sem arquivo ou contexto persistente de teste. Esse replay
+consumido não autoriza sua repetição. Não usar o smoke test de push real para
+validar estes metadados.
+
+```bash
+node nodered/tools/test-notification-timing.mjs
+node nodered/tools/test-notification-history.mjs
+```
+
+O [aceite sanitizado](../scripts/raspberry-mcp/notification-timing.acceptance.json)
+registra aplicação, reversão e reaplicação pelo MCP, com sete etapas do replay
+do host em cada fase e três terminais de histórico nas fases com instrumentação.
+Esses resultados provam o caminho sintético e a versão carregada. Medições
+de incidentes reais e cobertura completa de 24 horas exigem ciclos naturais.

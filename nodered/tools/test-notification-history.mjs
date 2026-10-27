@@ -1,3 +1,4 @@
+import { withNotificationTimingSource } from "./notification-timing.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -6,7 +7,7 @@ import vm from "node:vm";
 import { purgeHistory, RETENTION_DAYS } from "./purge-notification-history.mjs";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
-const source = await fs.readFile(new URL("functions/notification-hub-history-record.js", import.meta.url), "utf8");
+const source = withNotificationTimingSource(await fs.readFile(new URL("functions/notification-hub-history-record.js", import.meta.url), "utf8"));
 const errors = [];
 const errorContexts = [];
 const serialize = (msg) => vm.runInNewContext(`(function () { ${source}\n })()`, {
@@ -60,7 +61,7 @@ assert.equal(purgeErrors.length, 1);
 
 
 // Topology: journal every successful service leg before aggregate completion.
-const flows = JSON.parse(await fs.readFile(new URL("../flows.json", import.meta.url), "utf8"));
+const flows = JSON.parse(await fs.readFile(process.env.GLOBAL_OBSERVER_TEST_FLOW ?? new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((n) => [n.id, n]));
 const generated = installNotificationHubs(structuredClone(flows));
 assert.deepEqual(installNotificationHubs(structuredClone(generated)), generated, "hub generation is idempotent");

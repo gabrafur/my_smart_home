@@ -1,5 +1,6 @@
 const notification = msg.notification ?? {};
 const channel = String(msg._notification_hub_channel ?? "unknown");
+const completedAt = Date.now();
 const result = {
     version: 1,
     simulated: true,
@@ -11,7 +12,8 @@ const result = {
     operation: notification.operation ?? null,
     source: notification.source ?? "manual_test",
     reason: msg._notification_hub_failure_reason ?? "test_mode",
-    completed_at: Date.now()
+    completed_at: completedAt,
+    timing: notificationTimingObservation(msg._notification_timing, new Date(completedAt).toISOString())
 };
 flow.set(`notification_hub_${channel}_last_dry_run_v1`, result);
 msg.notification_delivery = result;

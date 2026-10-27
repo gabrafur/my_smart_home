@@ -91,6 +91,7 @@ const recoveryMessage = (incident, resolution, mobileNotification) => ({
     payload: {
         test_mode: TEST_MODE,
         observer_kind: "integration_recovery",
+        first_detected_at: new Date(now).toISOString(), policy_decided_at: new Date(now).toISOString(),
         incident_key: safeIncident(incident.entry_id),
         integration_domain: incident.domain,
         persistent_incident_kind: "integration_failure",
@@ -152,6 +153,8 @@ for (const entry of snapshot.entries) {
             payload: {
                 test_mode: TEST_MODE,
                 observer_kind: "integration_failure",
+                first_detected_at: new Date(active.first_seen_at).toISOString(),
+                policy_decided_at: new Date(now).toISOString(),
                 incident_key: safeIncident(entry.entry_id),
                 integration_domain: entry.domain,
                 integration_state: entry.state,

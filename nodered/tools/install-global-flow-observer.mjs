@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { withNotificationTimingSource } from "./notification-timing.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,7 +41,7 @@ const flows = hasNotificationHubs
   : installNotificationHubs(structuredClone(parsedFlows));
 
 const source = (name) =>
-  fs.readFileSync(path.join(functionDir, name), "utf8").trimEnd();
+  withNotificationTimingSource(fs.readFileSync(path.join(functionDir, name), "utf8").trimEnd());
 const isCoverageId = (id) =>
   typeof id === "string" && id.startsWith("global_observer_coverage__");
 const isGeneratedWireRoute = (node) =>

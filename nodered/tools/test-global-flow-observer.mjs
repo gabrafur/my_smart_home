@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { withNotificationTimingSource } from "./notification-timing.mjs";
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -17,7 +18,7 @@ for (const node of flows.filter((candidate) => candidate.z === "global_flow_obse
   assert.equal(owner?.type, "group", `${node.id} deve apontar para um grupo existente`);
   assert.ok(owner.nodes.includes(node.id), `${node.id} deve constar em ${owner.id}.nodes`);
 }
-const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8");
+const source = (name) => withNotificationTimingSource(fs.readFileSync(path.join(functionDir, name), "utf8"));
 const code = {
   policyValidate: source("global-flow-observer-policy-validate.js"),
   policyStore: source("global-flow-observer-policy-store.js"),

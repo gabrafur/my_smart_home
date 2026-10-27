@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { withNotificationTimingSource } from "./notification-timing.mjs";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -90,7 +91,7 @@ export const NOTIFICATION_MIGRATIONS = Object.freeze([
   }),
 ]);
 
-const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
+const source = (name) => withNotificationTimingSource(fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd());
 const contextRule = () => ({
   t: "set", p: "_notification_hub_context", pt: "msg",
   to: '{"payload":payload,"notification":notification,"had_notification":$exists(notification)}', tot: "jsonata",
@@ -899,7 +900,10 @@ if (invokedPath === fileURLToPath(import.meta.url)) {
     /notification_hub_mobile_(startup_|service_retry_|final_failure_)/.test(node.id)
   ).map((node) => node.id));
   const changedIds = new Set([...startupIds, "notification_hub_mobile_service_catch", "notification_hub_mobile_dry_in"]);
-  const owned = (node) => historyNode(node) || startupIds.has(node.id);
+  const timingAdapters = new Set(["notification_hub_mobile_success", "notification_hub_alexa_success", "notification_hub_persistent_success",
+    "notification_hub_mobile_dry_run_terminal", "notification_hub_alexa_dry_run_terminal", "notification_hub_persistent_dry_run_terminal",
+    "notification_hub_mobile_dry_run_assert", "notification_hub_alexa_dry_run_assert", "notification_hub_persistent_dry_run_assert"]);
+  const owned = (node) => historyNode(node) || startupIds.has(node.id) || timingAdapters.has(node.id);
   const reconciled = reconcileGeneratedFlows(flows, migrated, { isOwned: owned, shouldUpdate: (node) => owned(node) || changedIds.has(node.id), preserveLayout: true });
   for (const node of reconciled) {
     if (node.type === "link call" && Object.values(NOTIFICATION_HUBS).some(hub => node.links?.includes(hub.input))) {

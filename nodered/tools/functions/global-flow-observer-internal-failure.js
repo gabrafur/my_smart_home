@@ -37,7 +37,8 @@ if (
 flow.set(STATE_KEY, { signature, notified_at: now }, STORE);
 msg.payload = {
     observer_kind: "monitor_internal_error",
-    source_id: sourceId
+    source_id: sourceId, first_detected_at: new Date(now).toISOString(),
+    policy_decided_at: new Date(now).toISOString()
 };
 msg.alert = {
     title: "Falha no monitor global do Node-RED",
@@ -46,6 +47,10 @@ msg.alert = {
         `${errorMessage}. Incidentes idênticos serão silenciados por ` +
         `${policy.reminder_hours} horas.`
 };
+// This recursion-safe error route intentionally bypasses the ordinary guard.
+msg._notification_timing = { version: 1, source_observed_at: null,
+    source_time_kind: "unknown", first_detected_at: new Date(now).toISOString(),
+    policy_decided_at: new Date(now).toISOString() };
 msg._observer_persistent_notification_id =
     `nodered_observabilidade_global_monitor_internal_error_${sourceId}`
         .replace(/[^a-zA-Z0-9_-]+/g, "_")

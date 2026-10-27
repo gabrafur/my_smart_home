@@ -8,6 +8,7 @@ const previous = flow.get("global_flow_observer_last_dry_run_v1");
 const sequence = Number.isSafeInteger(previous?.receipt_sequence) && previous.receipt_sequence >= 0
     ? previous.receipt_sequence : 0;
 if (sequence === Number.MAX_SAFE_INTEGER) return null;
+const completedAt = Date.now();
 const result = {
     version: 1,
     simulated: true,
@@ -18,7 +19,8 @@ const result = {
     receipt_sequence: sequence + 1,
     run_id: trace?.run_id ?? null,
     source_flow_id: trace?.source_flow_id ?? null,
-    completed_at: Date.now()
+    completed_at: completedAt,
+    timing: notificationTimingObservation(msg._notification_timing, new Date(completedAt).toISOString())
 };
 flow.set("global_flow_observer_last_dry_run_v1", result);
 node.status({

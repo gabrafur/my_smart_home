@@ -28,7 +28,9 @@ const alert = (recovery) => ({
         persistent_incident_kind: "host_failure", incident_key: name,
         persistent_notification_operation: recovery ? "dismiss" : "create",
         mobile_notification: !recovery, host_source: fact.source ?? "host", host_role: fact.name,
-        source_observed_at: fact.occurred_at ?? fact.observed_at ?? null,
+        source_observed_at: recovery ? fact.occurred_at ?? fact.observed_at ?? null : incident.source_first_observed_at ?? null,
+        source_time_kind: recovery ? fact.occurred_at ? "producer_occurrence" : fact.observed_at ? "producer_observation" : "unknown" : incident.source_time_kind ?? "unknown",
+        first_detected_at: new Date(recovery ? now : incident.first_seen_at).toISOString(),
         policy_decided_at: new Date(now).toISOString(),
         resolution: recovery ? "approved_observation_returned" : undefined},
     alert: {title: `${test ? "TESTE — " : ""}${recovery ? "Observação recuperada" : "Servidor exige atenção"}`,
@@ -41,9 +43,13 @@ if (msg._host_signal === "healthy") {
     flow.set(key, state, store);
     return incident?.notified_at ? alert(true) : null;
 }
-incident ??= {first_seen_at: now, last_seen_at: now, notified_at: null, kind: fact.kind};
+incident ??= {first_seen_at: now, last_seen_at: now, notified_at: null, kind: fact.kind,
+    source_first_observed_at: fact.occurred_at ?? fact.observed_at ?? null,
+    source_time_kind: fact.occurred_at ? "producer_occurrence" : fact.observed_at ? "producer_observation" : "unknown"};
 if (incident.current_evidence === "unknown") {
     incident.first_seen_at = now; incident.sample_count = 0; incident.last_sample_at = null;
+    incident.source_first_observed_at = fact.occurred_at ?? fact.observed_at ?? null;
+    incident.source_time_kind = fact.occurred_at ? "producer_occurrence" : fact.observed_at ? "producer_observation" : "unknown";
 }
 incident.last_seen_at = now; incident.current_evidence = "failed";
 if (fact.kind === "resource" && fact.observed_at !== incident.last_sample_at) {

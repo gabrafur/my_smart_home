@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "verified_UTC_date": "2026-10-27",
+  "scope": "canonical_notification_timing_and_native_safe_component_transaction",
+  "origin": "serial_actual_MCP_administrative_tasks",
+  "changed_function_bodies": 22,
+  "node_inventory_wires_geometry_and_other_properties_preserved": true,
+  "production_flow_context_and_seven_service_start_times_preserved": true,
+  "phases": [
+    {
+      "phase": "apply",
+      "state": "confirmed_apply_with_native_full_dry_run",
+      "changed_functions": 22,
+      "replay_steps": 7,
+      "deduplicated": true,
+      "session_revoked": true,
+      "services_restarted": 0,
+      "physical_effects": 0,
+      "new_access_or_expiry": false,
+      "history_terminals": 3,
+      "channels": [
+        "alexa",
+        "mobile",
+        "persistent"
+      ],
+      "synthetic_history_states": [
+        "observed",
+        "observed",
+        "observed"
+      ]
+    },
+    {
+      "phase": "rollback",
+      "state": "confirmed_rollback_with_native_full_dry_run",
+      "changed_functions": 22,
+      "replay_steps": 7,
+      "deduplicated": true,
+      "session_revoked": true,
+      "services_restarted": 0,
+      "physical_effects": 0,
+      "new_access_or_expiry": false,
+      "history_terminals": 0,
+      "channels": [],
+      "synthetic_history_states": []
+    },
+    {
+      "phase": "reapply",
+      "state": "confirmed_reapply_with_native_full_dry_run",
+      "changed_functions": 22,
+      "replay_steps": 7,
+      "deduplicated": true,
+      "session_revoked": true,
+      "services_restarted": 0,
+      "physical_effects": 0,
+      "new_access_or_expiry": false,
+      "history_terminals": 3,
+      "channels": [
+        "alexa",
+        "mobile",
+        "persistent"
+      ],
+      "synthetic_history_states": [
+        "observed",
+        "observed",
+        "observed"
+      ]
+    }
+  ],
+  "three_sends_terminal_and_acknowledged": true,
+  "all_seven_host_replay_steps_each_phase": true,
+  "history_test_no_JSONL_write_path": true,
+  "history_test_no_persistent_context": true,
+  "metadata_shared_pure_function": "nodered/tools/notification-timing.mjs",
+  "legacy_missing_source_timestamps_not_backfilled": true,
+  "host_first_source_observation_preserved_across_confirmation": true,
+  "native_host_replay_clock_conflicts_retained_with_null_durations": true,
+  "notification_calls_recipients_gates_dedupe_and_retry_choices_unchanged": true,
+  "all_five_changed_tab_canvases_strict_rendered_and_visually_inspected": true,
+  "layout_observability_and_manual_test_gates_passed": true,
+  "serialization_normalized_without_redeploy": true,
+  "new_access_endpoints_or_expiry": false,
+  "household_notifications_and_physical_effects": 0,
+  "services_restarted": 0,
+  "limits": {
+    "native_history_timings_are_synthetic": true,
+    "production_timing_observation_proven": false,
+    "all_event_source_latency_proven": false,
+    "push_arrival_or_assistant_execution_proven": false,
+    "full_24h_coverage_proven": false,
+    "full_integration_or_seven_service_restore_proven": false,
+    "generic_unattended_deployer": false
+  }
+}

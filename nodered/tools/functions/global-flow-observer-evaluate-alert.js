@@ -16,7 +16,9 @@ if (data.kind === "home_assistant") {
 msg.payload = {
     test_mode: data.test_mode,
     observer_kind: "node_unavailable",
-    incident_key: data.key
+    incident_key: data.key,
+    first_detected_at: new Date(data.first_seen_at).toISOString(),
+    policy_decided_at: new Date(Number(msg.observer_now)).toISOString()
 };
 msg.alert = { title: data.test_mode ? `TESTE — ${title}` : title, message };
 return msg;

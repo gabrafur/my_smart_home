@@ -1273,3 +1273,26 @@ e o [runbook Kia](VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md) delimitam o resulta
 Essa prova cobre a correção de diagnóstico; aplicação geral de flows Node-RED,
 consumo natural de Events pela Eva e recuperação funcional da candidata continuam
 exigindo suas próprias evidências. Não há nova ferramenta ou gateway de shell.
+
+## Horários de notificações no Node-RED
+
+O [contrato de horários dos hubs](NODERED_NOTIFICATION_HUBS.md#horários-canônicos-e-limites-de-latência)
+preserva observação da fonte, primeira detecção e decisão, quando disponíveis,
+até o recibo do Home Assistant e o histórico privado. Há uma única definição
+estrutural incorporada pelos geradores; não exige novas dependências, acesso
+ou ferramentas MCP. Dados antigos ou incompletos não ganham durações zero.
+
+O [aceite da transação](../scripts/raspberry-mcp/notification-timing.acceptance.json)
+registra três tarefas MCP seriais: aplicação, rollback e reapply de 22 corpos
+de função, preservando os demais campos, contexto de produção e início dos
+sete serviços. Cada fase confirmou sete passos de replay do host, dedupe,
+limpeza e revogação da sessão Admin API. Aplicação e reaplicação confirmaram
+também os três terminais de histórico, em dry-run, sem JSONL de teste. O
+conflito entre relógio sintético do host e relógio civil permaneceu explícito,
+com intervalos nulos. A normalização posterior de indentação preservou o hash
+semântico dos flows e não reaplicou nem recarregou o runtime.
+
+Esse teste prova a transação e o processamento dos metadados no runtime. Não
+comprova tempos de incidentes reais, chegada de push, execução natural da Eva,
+24 horas de continuidade ou recuperação funcional de integrações e backups.
+As operações e seus IDs foram consumidos; não repetir para produzir evidência.

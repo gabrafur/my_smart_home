@@ -1,4 +1,5 @@
 const notification = msg.notification ?? {};
+const acceptedAt = Date.now();
 msg.notification_delivery = {
     version: 1,
     status: "accepted",
@@ -8,7 +9,8 @@ msg.notification_delivery = {
     target: msg._notification_hub_target ?? null,
     operation: notification.operation ?? null,
     source: notification.source ?? "unknown",
-    accepted_at: Date.now()
+    accepted_at: acceptedAt,
+    timing: notificationTimingObservation(msg._notification_timing, new Date(acceptedAt).toISOString())
 };
 
 const original = msg._notification_hub_context;

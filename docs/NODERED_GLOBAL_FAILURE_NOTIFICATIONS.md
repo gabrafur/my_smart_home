@@ -195,3 +195,24 @@ npm --prefix nodered run flows:test-global-observer
 npm --prefix nodered run flows:validate-layout
 npm --prefix nodered run flows:render-strict -- observabilidade_global
 ```
+
+## Evidência de detecção, decisão e aceite
+
+O produtor do host preserva a primeira observação usada na abertura do
+incidente e sua primeira detecção enquanto aguarda a confirmação. Amostras
+posteriores não substituem esses horários. Se um incidente legado não possuía
+o horário da fonte, ele permanece desconhecido. Uma nova responsabilidade
+após `unknown` começa com a observação nova, conforme o lifecycle existente.
+
+Erros de nós, confirmação de status e inventário de integrações publicam os
+horários de detecção e decisão disponíveis. Eles não inventam um horário de
+ocorrência no equipamento. A rota interna que evita recursão também publica
+seus horários próprios. O gate final transporta somente os campos canônicos
+para produção e dry-run. Domínios que ainda não publicam horários continuam
+com observação parcial ou desconhecida; não inferir cobertura universal.
+
+O [contrato dos hubs](NODERED_NOTIFICATION_HUBS.md#horários-canônicos-e-limites-de-latência)
+documenta a validação, os intervalos e os limites. A classificação e os gates
+das falhas permanecem no produtor canônico; os números de horário não mudam
+confirmação, dedupe, lifecycle ou escolha do efeito. Nenhum incidente artificial
+ou notificação real é necessário para validar a instrumentação.
