@@ -4,7 +4,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 test("candidate component reader, projections and ledger stay isolated", () => {
- const r=spawnSync("python3",["-I","-S","-B","-m","unittest","discover","-s",fileURLToPath(new URL("./",import.meta.url)),"-p","test_*.py"],{encoding:"utf8",timeout:30000,maxBuffer:128*1024});
+ const r=spawnSync("python3",["-I","-S","-B","-m","unittest","discover","-s",fileURLToPath(new URL("./",import.meta.url)),"-p","test_*.py"],{encoding:"utf8",timeout:30000,maxBuffer:128*1024,
+  env:{...process.env,COMPONENT_REPAIR_TEST_NODE:process.execPath}});
  assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);assert.match(r.stderr,/Ran [1-9]\d* tests/);
 });
 test("candidate deployed-configuration identity rejects material changes",()=>{

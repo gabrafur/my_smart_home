@@ -1,5 +1,6 @@
 """Real private IPC/subprocess/HTTP/filesystem, synthetic data and admission only."""
-import contextlib,copy,fcntl,hashlib,http.server,json,math,os,socket,subprocess,sys,threading,tempfile,time,unittest
+import contextlib,copy,fcntl,hashlib,http.server,json,math,os,shutil,socket,subprocess,sys,threading,tempfile,time,unittest
+from unittest.mock import patch
 from pathlib import Path
 from admission import MaintenanceLease
 from worker_parent import BoundNodeRedParent
@@ -13,6 +14,16 @@ def identity(nodes):
 class Cases(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.owner=os.getuid();self.calls=[];self.guards=0;self.credentials=0;self.deny=0;self.mode='success';self.lock_violations=[]
+  # A synthetic fixture uses the Node executable selected by its test runner.
+  # Keep the candidate's fixed production command unchanged and assert it here.
+  self.node_binary=os.environ.get('COMPONENT_REPAIR_TEST_NODE')or shutil.which('node')
+  self.assertTrue(self.node_binary and Path(self.node_binary).is_file(),'fixture Node runtime unavailable')
+  self.node_launches=[];original_popen=subprocess.Popen
+  def fixture_popen(args,*positional,**kwargs):
+   if args[0]=='/usr/bin/node':
+    self.node_launches.append(tuple(args));args=[self.node_binary,*args[1:]]
+   return original_popen(args,*positional,**kwargs)
+  mock=patch('worker_parent.subprocess.Popen',side_effect=fixture_popen);mock.start();self.addCleanup(mock.stop)
   self.lock=self.root/'maintenance.lock';self.lock.touch();self.lock.chmod(0o664);triggers=[self.root/'daily',self.root/'git']
   for p in triggers:p.mkdir(mode=0o700)
   self.lease=MaintenanceLease(self.lock,self.owner,triggers)
@@ -65,6 +76,11 @@ class Cases(unittest.TestCase):
  def test_private_ipc_grants_twice_under_actual_lease_and_keeps_one_terminal_receipt(self):
   parent=self.parent();result=parent.run(OP,'apply');self.assertEqual(result['state'],'applied',result);self.assertTrue(result['receipt_verified']);self.assertTrue(result['security_cleanup_confirmed']);self.assertEqual(self.guards,3);self.assertEqual(self.posts(),1);self.assertFalse(self.lock_violations)
   duplicate=parent.run(OP,'apply');self.assertTrue(duplicate['duplicate']);self.assertEqual(self.posts(),1);self.assertEqual(self.credentials,1);self.assertNotIn('PRIVACY_TEST_FIXTURE',json.dumps(result))
+  self.assertEqual(len(self.node_launches),1);self.assertEqual(self.node_launches[0][:4],('/usr/bin/node','--jitless','--no-expose-wasm','--max-old-space-size=32'))
+ def test_fixture_supports_Node_outside_the_fixed_system_location(self):
+  alias=self.root/'toolchain-node';alias.symlink_to(self.node_binary);self.node_binary=str(alias)
+  result=self.parent().run(OP,'apply');self.assertEqual(result['state'],'applied',result);self.assertEqual(self.posts(),1)
+  self.assertEqual(self.node_launches[0][0],'/usr/bin/node','production binding remains fixed')
  def test_prelaunch_denial_is_durable_no_effect_without_reading_credentials(self):
   self.deny=1;parent=self.parent();r=parent.run(OP,'apply');self.assertEqual(r['state'],'rejected_without_effect');self.assertTrue(r['definitive_no_effect']);self.assertEqual(self.credentials,0);self.assertEqual(self.calls,[]);parent.run(OP,'apply');self.assertEqual(self.guards,1)
  def test_second_child_guard_denial_revokes_session_without_deploy(self):
@@ -82,7 +98,7 @@ class Cases(unittest.TestCase):
  def test_unknown_cleanup_and_explicit_conflict_remain_distinct(self):
   self.mode='revoke-failure';r=self.parent().run(OP,'apply');self.assertEqual(r['state'],'applied',r);self.assertFalse(r['security_cleanup_confirmed'])
  def test_child_is_killed_if_the_process_holding_the_lease_dies(self):
-  config={'module_root':str(Path(__file__).parent),'entry':str(self.effects/'nodered_job.cjs'),'hashes':self.source_hashes,'prepared':str(self.prepared_dir),'state':str(self.state),'lock':str(self.lock),'triggers':[str(self.root/'daily'),str(self.root/'git')],'port':self.server.server_address[1],'pid_file':str(self.root/'worker.pid')}
+  config={'module_root':str(Path(__file__).parent),'entry':str(self.effects/'nodered_job.cjs'),'hashes':self.source_hashes,'prepared':str(self.prepared_dir),'state':str(self.state),'lock':str(self.lock),'triggers':[str(self.root/'daily'),str(self.root/'git')],'port':self.server.server_address[1],'pid_file':str(self.root/'worker.pid'),'node_binary':self.node_binary}
   code="""import contextlib,json,math,os,sys,time
 from pathlib import Path
 c=json.loads(sys.argv[1]);sys.path.insert(0,c['module_root'])
@@ -96,6 +112,7 @@ def admission():
   yield check
 original=worker_parent.subprocess.Popen
 def launched(*args,**kwargs):
+ if args[0][0]=='/usr/bin/node':args=([c['node_binary'],*args[0][1:]],*args[1:])
  p=original(*args,**kwargs);Path(c['pid_file']).write_text(str(p.pid));return p
 worker_parent.subprocess.Popen=launched
 job=worker_parent.BoundNodeRedParent(c['entry'],c['hashes'],c['prepared'],c['state'],admission,lambda:{'host':'127.0.0.1','port':c['port'],'username':'synthetic','password':'PRIVACY_TEST_FIXTURE'},os.getuid())
