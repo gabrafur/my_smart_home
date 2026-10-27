@@ -68,7 +68,7 @@ class SixthTests(unittest.TestCase):
  def test_future_or_seventh_schedule_stays_unknown(self):
   for raw in [report(AT+10),{**report(),'scheduled_for':'2026-10-27T20:00:00Z'}]:self.assertEqual(h.project_acceptance_report(raw,AT)['state'],'unknown')
  def test_timer_keeps_closed_schedule_and_resource_parameters(self):
-  text=(P/'raspberry-procmon-acceptance.timer').read_text();self.assertEqual(text.count('OnCalendar='),7)
+  text=(P/'raspberry-procmon-acceptance.timer').read_text();self.assertEqual(text.count('OnCalendar='),len(c.SCHEDULE))
   self.assertIn('OnCalendar=2026-10-26 20:00:00 UTC',text)
   for field in ['AccuracySec=1s','RandomizedDelaySec=0','Persistent=true','Unit=raspberry-procmon-acceptance.service']:self.assertIn(field,text)
  def test_elapsed_runtime_does_not_override_missing_cadence(self):

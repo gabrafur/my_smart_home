@@ -69,8 +69,8 @@
     },
     "repair-control/health_summary.py": {
       "source": "/usr/local/lib/raspberry-repair-control/health_summary.py",
-      "source_sha256": "5bfe3eb7a1dd56b55e85775268029c7f117f01c56361e728d0d74ffdfed10f3b",
-      "export_sha256": "5bfe3eb7a1dd56b55e85775268029c7f117f01c56361e728d0d74ffdfed10f3b",
+      "source_sha256": "17fa73c0c637b8bca15ccbfb5db467ab07b8914abaab77591c3f1f13721b211b",
+      "export_sha256": "17fa73c0c637b8bca15ccbfb5db467ab07b8914abaab77591c3f1f13721b211b",
       "normalizations": []
     },
     "repair-control/event_projection.mjs": {
@@ -593,6 +593,12 @@
       "source": "/run/raspberry-nodered-dry-run-receipts-20261027/task_admission.py",
       "source_sha256": "4f64daff4d34a031608464bbc3375ff36039c933aa0fe79a0cb5c1665c49e8da",
       "export_sha256": "4f64daff4d34a031608464bbc3375ff36039c933aa0fe79a0cb5c1665c49e8da",
+      "normalizations": []
+    },
+    "procmon-observability/raspberry-procmon.timer": {
+      "source": "/etc/systemd/system/raspberry-procmon.timer",
+      "source_sha256": "16e58ea45d06c4b9ad59a827bb1277e7a67b392f4a55f94aaef5d0e2557db6af",
+      "export_sha256": "16e58ea45d06c4b9ad59a827bb1277e7a67b392f4a55f94aaef5d0e2557db6af",
       "normalizations": []
     }
   },

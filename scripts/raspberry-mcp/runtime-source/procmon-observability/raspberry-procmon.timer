@@ -1,0 +1,11 @@
+[Unit]
+Description=Process inventory every minute without AI
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=50s
+AccuracySec=1s
+RandomizedDelaySec=0
+Persistent=false
+Unit=raspberry-procmon.service
+[Install]
+WantedBy=timers.target

@@ -35,7 +35,7 @@ class PostBudgetTests(unittest.TestCase):
    stack.enter_context(patch('builtins.print'));c.main()
   return writes,loader,runtime,correlation
  def test_seventh_appends_exactly_six_original_capture_dates(self):
-  self.assertEqual(c.SCHEDULE,(*OLD,SIXTH))
+  self.assertEqual(c.SCHEDULE[:7],(*OLD,SIXTH))
  def test_capture_not_due_before27Oct23_preserves_previous_receipt_without_collecting(self):
   writes,loader,runtime,correlation=self.run_capture(AT-1)
   self.assertEqual(writes,[]);loader.assert_not_called();runtime.assert_not_called();correlation.assert_not_called();self.assertFalse((self.state/'window-2300.json').exists());self.unchanged()
@@ -69,7 +69,7 @@ class PostBudgetTests(unittest.TestCase):
   for raw in [report(AT+10),{**report(),'scheduled_for':'2026-10-27T20:00:00Z'}]:self.assertEqual(h.project_acceptance_report(raw,AT)['state'],'unknown')
  def test_timer_preserves_six_original_dates_and_adds_one_fixed_readonly_capture(self):
   text=(P/'raspberry-procmon-acceptance.timer').read_text()
-  self.assertEqual(text.count('OnCalendar='),7)
+  self.assertEqual(text.count('OnCalendar='),len(c.SCHEDULE))
   for when in (*OLD,SIXTH):self.assertIn('OnCalendar='+when.replace('T',' ').replace('Z',' UTC'),text)
   for field in ['AccuracySec=1s','RandomizedDelaySec=0','Persistent=true','Unit=raspberry-procmon-acceptance.service']:self.assertIn(field,text)
 if __name__=='__main__':unittest.main()

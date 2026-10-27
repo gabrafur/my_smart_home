@@ -65,7 +65,8 @@ Um novo intervalo de 112 segundos entre conclusões bem-sucedidas foi analisado
 separadamente: havia amostra durável no ciclo intermediário que falhou depois,
 com intervalos de amostragem de 55–56 segundos nesse trecho. Isso não elimina a
 lacuna histórica real de 112,01 segundos. Aumentar a frequência sem orçamento
-de retenção reduziria a janela preservada; a agenda original foi mantida.
+de retenção reduziria a janela preservada; naquela auditoria, a agenda original
+foi mantida.
 
 Os testes isolados cobrem handlers e limites originais, isolamento dos
 adaptadores, interrupção propagada, tamanho do quadro, correlação, coleta
@@ -83,7 +84,7 @@ O wrapper agora chama os limites originais uma vez, preserva seus handlers e
 rearma explicitamente o alarme de parede de 5 para 15 segundos. A unidade
 existente passa de `TimeoutStartSec=7` para `20`. CPU por invocação de 2 segundos,
 quota de 15%, memória, descritores, durabilidade, locks e timer de 55 segundos
-permanecem. O coletor original continua com os mesmos bytes e alarme de cinco
+foram preservados nessa aplicação. O coletor original continua com os mesmos bytes e alarme de cinco
 segundos; o novo envelope pertence ao wrapper. Não existe retry automático.
 
 A aplicação às 22:22 UTC carregou a unidade sem iniciar o coletor ou reiniciar
@@ -109,3 +110,41 @@ recarrega apenas a unidade ou o timer correspondente; edição externa ou
 política posterior exige reconciliação antes. Os testes usam diretórios e
 fronteiras sintéticos para falha parcial, resultado incerto, recusa de
 repetição e reversão, sem serviço residencial.
+
+## Margem do timer e janela posterior
+
+A leitura posterior encontrou um intervalo durável de 60,109 segundos e
+60,220 segundos entre ativações nativas do processo, excedendo o aceite de
+60 segundos. O resultado `started` do job systemd ocorre após a conclusão
+do oneshot; não é o início do processo. A correlação de ativação usa
+`ExecMainStartTimestampMonotonic`. Essa evidência confirma a violação, sem
+atribuir causa ao scheduler, disco ou hardware.
+
+O [timer canônico](../runtime-source/procmon-observability/raspberry-procmon.timer)
+agora tem alvo nominal de 50 segundos, com maior margem para o mesmo aceite
+de 60 segundos. Permanecem boot de 30s, precisão de 1s, atraso aleatório zero,
+código, quota e limites do coletor. Uma tarefa MCP aplicou somente essa linha,
+parando e reativando apenas o timer. Não iniciou o coletor diretamente nem
+reescreveu amostras. A reversão anterior está preparada, sem execução rotineira.
+
+Quatro amostras naturais distintas confirmaram intervalos aproximados de
+50,84s, 51,08s e 50,00s, sem erro ou mudança de boot. É aceite curto, não 24h.
+O cap de histórico continua em 128MiB. A média da leitura de 654 amostras
+projeta cerca de 91MiB para 24h na nova frequência; é estimativa de retenção,
+não prova de completude. Reutiliza-se a evidência anterior de CPU/RSS no código
+e envelope medidos; a soma de custo da nova frequência requer a janela própria.
+
+A captura existente de 27/10/2026 às 23:00 UTC permanece e ainda incluirá a
+violação histórica. Foi acrescentada 28/10/2026 às 10:00 UTC ao mesmo job
+somente de leitura, para uma janela inteira posterior à mudança. A tarefa MCP
+preservou as sete datas anteriores, os seis relatórios e o apontador atual;
+fez apenas reload do gerenciador, mantendo próxima ativação e último disparo.
+Não houve execução antecipada nem reinício de timer ou serviço. O job lê os
+mesmos dados fixos e não amplia admissão administrativa, credenciais ou acesso.
+
+Ao vencer a nova data, o MCP seleciona `window-1000.json`; relatório ausente
+ou incompleto permanece desconhecido, sem usar sucesso antigo. Testes isolados
+verificam a seleção anterior e posterior, imutabilidade, ausência de efeitos
+e recusa de alterações fora da data e dos hashes existentes. O
+[aceite sanitizado](../procmon-cadence-headroom.acceptance.json) separa configuração,
+ciclos curtos e execução futura pendente. Não repetir IDs ou operações consumidas.

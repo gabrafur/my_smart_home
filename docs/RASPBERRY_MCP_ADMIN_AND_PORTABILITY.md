@@ -1356,3 +1356,27 @@ host. O builtin `perf_hooks` reutiliza a configuração Function já existente;
 não exige instalação npm ou mudança de segurança. O leitor continua fechado
 no relatório protegido e acrescenta apenas a leitura do identificador público
 do boot para verificar o relógio do próprio host.
+
+## Margem da cadência e captura observacional posterior
+
+O [timer do procmon](../scripts/raspberry-mcp/runtime-source/procmon-observability/raspberry-procmon.timer)
+usa alvo nominal de 50s depois de uma violação medida com o alvo anterior de
+55s; o aceite continua em 60s. Código, envelope e histórico foram preservados.
+Uma tarefa MCP alterou somente o parâmetro do timer, com verificação de hash,
+intent imutável e início dos sete serviços preservado. Amostras naturais
+posteriores passaram no teste curto; a causa do atraso anterior continua
+desconhecida. A margem nova não apaga a falha nem comprova 24h por configuração.
+
+Outra tarefa MCP acrescentou 28/10/2026 às 10:00 UTC ao job de captura somente
+de leitura. Mantém 27/10 às 23:00 UTC como próxima ativação e todas as datas e
+recibos anteriores. Atualizou apenas a data fixa, a seleção correspondente e
+hashes existentes de fonte/dependências, com reload sem reinícios. Nenhuma
+captura foi antecipada; a validade administrativa permanece igual. A execução
+observacional futura usa o escopo já existente e não admite reparos depois
+de expirar a autorização administrativa.
+
+O [runbook e os limites de retenção](../scripts/raspberry-mcp/procmon-observability/README.md#margem-do-timer-e-janela-posterior)
+e o [aceite sanitizado](../scripts/raspberry-mcp/procmon-cadence-headroom.acceptance.json)
+distinguem configuração ativa, janela curta e captura futura. Outro servidor
+exige revisão do período, capacidade de retenção, datas e autorização local;
+os selos e operações consumidos deste host não são transferíveis.
