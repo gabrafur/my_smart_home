@@ -39,14 +39,20 @@ class NotificationState {
   // Initial current state is a baseline, never a recovery or backlog notification.
   for(const change of changes){
    this.sequence++;const id=digest([change.object_id,change.revision,change.phase]);
-   this.events.push({...change,id,sequence:this.sequence,observed_at:observedAt,source:'ha_persistent_notification',topic:'ha_notification',recovery_proven:false});
+   const notice=candidate.get(change.object_id);
+   // Retain this revision's source clock before another update replaces it.
+   // The subscription protocol supplies no occurrence timestamp for removal.
+   const source_timing={schema_version:1,frame_kind:event.type,
+    source_occurred_at:change.phase==='removed'?null:notice.created_or_updated_at,
+    collector_received_at:new Date(receivedAt).toISOString(),collector_observed_at:observedAt};
+   this.events.push({...change,id,sequence:this.sequence,observed_at:observedAt,source:'ha_persistent_notification',topic:'ha_notification',recovery_proven:false,source_timing});
   }
   while(this.events.length>MAX_EVENTS){this.events.shift();this.dropped++;}
   this.current=candidate;this.initialized=true;this.connected=true;this.error=null;
   this.lastEvent=now;this.lastPong=now;this.latencyMs=now-receivedAt;
   return changes.length;
  }
- snapshot(now){const output={schema_version:1,source:'HA WebSocket persistent_notification/subscribe',observed_at:new Date(now).toISOString(),
+ snapshot(now){const output={schema_version:1,source_timing_schema_version:1,source:'HA WebSocket persistent_notification/subscribe',observed_at:new Date(now).toISOString(),
   collection_error:this.error,connection_state:this.connected?'subscribed':'unknown',last_transport_confirmation_at:this.lastPong===null?null:new Date(this.lastPong).toISOString(),
   last_source_event_received_at:this.lastEvent===null?null:new Date(this.lastEvent).toISOString(),last_processing_latency_ms:this.latencyMs,
   coverage:['persistent_notifications_only','no_raw_title_or_body','not_phone_delivery','removal_is_not_recovery','processing_latency_not_end_to_end_latency'],

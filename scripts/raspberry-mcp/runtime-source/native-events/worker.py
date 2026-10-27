@@ -85,11 +85,16 @@ class Engine:
                 at=timestamp(event.get('observed_at'))
                 if at<max(now-86400,self.activation_epoch):continue
                 if event.get('phase') not in ('added','updated','removed') or any(not isinstance(event.get(k),str) or not re.fullmatch('[a-f0-9]{64}',event[k]) for k in ('object_id','revision')):raise Refused('invalid_event_envelope')
-                events.append((event['topic'],event['source'],event['phase'],event['object_id'],event['revision'],at))
+                events.append(((event['topic'],event['source'],event['phase'],event['object_id'],event['revision'],at),event.get('source_timing')))
             # Validate current IDs/revisions without persisting diagnostic bodies.
             self.registry.observe_current(row.get('notifications'),observed)
-            for event in events:self.registry.enqueue(*event)
+            timing_rows=[]
+            for event,timing in events:
+                result=self.registry.enqueue(*event)
+                timing_rows.append((result['id'],timing,event[2],event[5],self.clock()))
+            self.registry.source_timing.record_many(timing_rows)
             self.source_health={'state':'observed','observed_at':row['observed_at'],'age_seconds':round(now-observed,3),'collection_error':None,
+                                'source_timing_schema_version':1 if type(row.get('source_timing_schema_version')) is int and row['source_timing_schema_version']==1 else None,
                                 'source_dropped_events':row.get('dropped') if type(row.get('dropped')) is int else None,
                                 'coverage':['sanitized_HA_notification_events','not_all_household_events','initial_snapshot_not_recovery']}
             return True

@@ -135,6 +135,10 @@ local schema and an accepted webhook do not establish the remote catalog or
 an assistant run; correlate the destination's actual execution and result.
 Notification source, collector observation and processing timestamps describe
 different stages and must not be substituted for end-to-end latency.
+The notification collector can retain those clocks per revision in an optional,
+immutable SQLite receipt, separate from signed event data. Missing history,
+removals, reconnect snapshots and uncertain clock ordering remain unknown;
+wall-clock differences do not establish continuous 24-hour coverage.
 
 [Codex tasks and authorized threads](RASPBERRY_CODEX_TASKS.md) documents the
 prepared `codex_threads_list` extension, strict input schemas, read-only

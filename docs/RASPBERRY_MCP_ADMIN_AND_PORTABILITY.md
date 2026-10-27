@@ -866,6 +866,43 @@ retido e declare quais relógios e etapas foram observados. Ausência de horári
 de origem ou de registro correspondente permanece desconhecida. Nem a idade
 do aviso nem `last_processing_latency_ms` comprovam chegada ou execução na Eva.
 
+### Horários por revisão dos avisos
+
+O coletor acrescenta `source_timing` a cada mudança nova no seu cache
+sanitizado: horário de origem da revisão, entrada no callback, observação pelo
+redutor e tipo do frame. O cache mantém schema 1; o marcador
+`source_timing_schema_version=1` identifica o produtor que oferece esses
+metadados. Eventos anteriores permanecem sem horário adicional. Nenhum desses
+campos altera IDs, revisões, payload assinado, assinatura ou orçamento de envio.
+
+O worker registra a primeira observação em `event_source_timing`, no SQLite já
+existente. A escrita opcional ocorre em um único savepoint por snapshot, depois
+do enqueue canônico. Duplicatas não reescrevem o recibo; falha desse diagnóstico
+não autoriza repetir uma entrega nem bloquear a fila original. O limite é 4.352
+recibos, correspondente aos limites existentes de eventos e arquivo. Registros
+anteriores não são apagados para abrir espaço.
+
+`events_status.ha_notification_source_timing` separa registros retidos, recibos,
+fontes medidas e fontes desconhecidas na seleção das últimas 24 horas. Ausência
+de metadados, remoção, fotografia de reconexão, ordem dos relógios não confirmada
+e recibo inválido têm razões distintas. A seleção de 24 horas não comprova uma
+observação contínua dessa duração. Os intervalos civis reportados não têm uma
+prova monotônica do relógio de origem: `full24h_proven`,
+`all_HA_MQTT_latency_proven` e `assistant_execution_proven` permanecem falsos.
+Nem zero excedentes reportados nem a presença do marcador do produtor substituem
+as evidências que faltam.
+
+A instalação revisada inclui `notification_state.cjs`, `registry.py`,
+`worker.py` e `source_timing.py`. Atualize somente o pin do state nas políticas
+admin/repair e o pin transitivo da política admin na repair; preserve todas as
+autorizações e a validade. Recarregue apenas `raspberry-ha-notices.service` e
+`raspberry-mcp-events.service`. Confira o marcador pela chamada MCP real, os
+contadores e o ledger anterior, e aguarde mudanças naturais para comprovar os
+novos recibos. Home Assistant, Node-RED, observador do host, procmon e heartbeat
+não precisam reiniciar. Reversão exige comparação dos arquivos com os hashes
+aplicados, restauração dos módulos/pins anteriores e preservação da tabela
+aditiva; não restaure um banco antigo nem remova eventos ou intents.
+
 `category`, `summary` e `content_withheld` são campos legados de deduplicação.
 Uma categoria legada `unclassified` não invalida os novos campos diagnósticos.
 `content_withheld=true` indica retenção do conteúdo bruto. IDs, revisão e

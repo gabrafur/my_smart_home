@@ -15,6 +15,7 @@ import sqlite3
 import stat
 import time
 from delivery_summary import group_events, make_batch, opportunity, VERSION
+from source_timing import SourceTiming
 from webhook import Refused, callback_parts, key_bytes, signed_headers, verify_callback, post
 
 PROJECT = '/mnt/data/docker'
@@ -101,6 +102,7 @@ class Registry:
             self.transport_observation_error = 'transport_observation_schema_unavailable'
         self.high_clock = None
         self.current_evidence = None
+        self.source_timing = SourceTiming(self.db)
 
     def now(self):
         now = self.clock()
@@ -419,6 +421,7 @@ class Registry:
                 'active_subscriptions':self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>?',(now,)).fetchone()[0],
                 **self.event_counts(now), **self.delivery_diagnostics(now),
                 'webhook_transport_timing': self.transport_diagnostics(),
+                'ha_notification_source_timing': self.source_timing.diagnostics(now),
                 'dispatch_states':states,'attempts_last_24h':self.db.execute('SELECT count(*) FROM dispatch WHERE at>?',(now-86400,)).fetchone()[0],
                 'maximum_attempts_per_day':6,'minimum_attempt_spacing_seconds':600,
                 'assistant_run_confirmed':False,'automatic_retry':False,
