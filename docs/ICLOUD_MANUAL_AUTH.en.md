@@ -6,17 +6,42 @@
 preserving its domain, config entry, services, platforms and session storage in
 `/config/.storage/icloud`. It does not create another account or replace user data.
 
-Startup and polling can only reuse the saved session. Credential login, renewal
-requiring authentication and code delivery require an explicit submission. The
-client uses `pause_2fa=True` and blocks automatic `request_2fa_code()`, including
-the library's fallback. Opening a form, restoring an entry or entering an invalid
-code never requests another OTP.
+Startup and polling first try the saved session. When it expires or is waiting
+for recovery, the integration can make one normal login attempt using the
+configured credentials, without requesting a code. The config entry option
+`automatic_session_recovery` is a boolean defaulting to `true`; `false` keeps
+recovery manual. The attempt calls native SRP directly with the saved password
+instead of trying the expired token first. A challenge from that attempt, an
+unknown outcome or an authentication failure waits for the user.
+
+The client uses `pause_2fa=True` and blocks automatic `request_2fa_code()` and SMS
+fallbacks. A login completed without another challenge allows normal session
+use. Additional confirmation waits for the user. Opening a form, restoring an
+entry or entering an invalid code never requests another OTP. Diagnostics do
+not contain credentials or codes.
+
+Silent recovery persists a checkpoint before contacting the provider. Transport
+failure or an unknown response preserves uncertainty across restarts without
+repeating login. The authentication state format remains unchanged. A separate
+`icloud_silent_recovery.<entry_id>` Store contains only its version and a
+`primary_attempted` boolean, saved before the effect. Only a confirmed expiry
+of a previously valid session resets it; restarts do not. Rollback preserves
+both files. Native cached-session transport backoff is
+independent of this login attempt.
 
 Typed transport failures reaching setup, including wrapped DNS, connection and
 timeout errors, become `ConfigEntryNotReady` for Home Assistant's backoff. Errors
 without a transport cause are not classified by message text. Retry does not
-authorize login or delivery. Failure to load the persisted guard stops setup
+repeat login or authorize code delivery. Failure to load the persisted guard stops setup
 before creating a client.
+
+The authentication repair is closed only after full setup, loaded platforms,
+a valid session and no challenge. Only reauthentication flows for that exact
+entry are closed; other repairs are preserved.
+
+If token validation succeeds but the device service rejects authentication
+during setup, the same single saved-password attempt is used. After success,
+native setup runs once more; another rejection waits for the user.
 
 When reauthentication is needed:
 
@@ -60,7 +85,10 @@ scripts/run-resource-safe.sh python3 -m unittest discover -s homeassistant/tests
 Tests load the real local package with simulated HA/pyicloud boundaries and
 block external sockets. They cover persisted state, display-only forms,
 preparation without delivery, single delivery, invalid codes, uncertain outcomes,
-wiring and transport retry. They run on the host without installing Home Assistant
+wiring and transport retry. `test_icloud_silent_recovery.py` covers saved-password
+recovery, the restart-persistent marker, later expiry and service rejection after
+token validation. Repair tests reject cleanup before full setup or for another
+entry. They run on the host without installing Home Assistant
 or pyicloud and do not replace native compatibility checks: after version updates,
 also validate in the pinned image, isolated, without network or private mounts.
 `NativeRuntimeContractTest` retains real compatibility cases; it is skipped only
@@ -127,8 +155,10 @@ This path performs no primary login, authenticated renewal or OTP delivery.
 The gate serializes validation and provides other consumers a locked state
 snapshot. Contention defers work instead of interpreting a temporary checkpoint
 as expired authentication. The validating and manual contexts avoid relocking
-their own operation. Actual expiration, challenges, unknown failures and uncertain
-delivery remain blocked; old blocked states are never reopened automatically.
+their own operation. Confirmed expiry allows the single saved-password attempt
+described above. A challenge from that attempt, unknown failure or uncertain
+delivery stays blocked. A legacy primary-authentication state may receive one
+attempt only when no persisted attempt marker exists.
 `test_icloud_cached_transport.py` covers these boundaries and deterministic
 interleavings. Its public provider model supplements the isolated native-library
 check. A loaded-code proof establishes the version, not Apple recovery.

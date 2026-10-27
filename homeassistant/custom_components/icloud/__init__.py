@@ -14,7 +14,8 @@ from homeassistant.components.icloud.const import (
     PLATFORMS, STORAGE_KEY, STORAGE_VERSION)
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, __version__ as core_version
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.config_entries import HANDLERS
+from homeassistant.config_entries import HANDLERS, SOURCE_REAUTH
+from homeassistant.helpers import issue_registry
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from .auth_gate import AuthGate, State
@@ -61,7 +62,9 @@ def proof_functions():
     functions={'setup':async_setup,'emit_proof':emit_proof,
             'cached_transport_classifier':is_transport_failure,
             'collect_loaded_contract':collect_loaded_contract,
-            'setup_entry':async_setup_entry,'auth_gate_effect':AuthGate._effect,
+            'setup_entry':async_setup_entry,'finish_recovered_reauth':finish_recovered_reauth,
+            'load_native_gate':load_native_gate,
+            'auth_gate_effect':AuthGate._effect,
             'account_setup':GuardedAccount.setup,'account_keep_alive':GuardedAccount.keep_alive,
             'device_owner':core_account.IcloudDevice.__init__,
             'authenticate':GuardedService.authenticate,'primary_auth':GuardedService._authenticate,
@@ -112,8 +115,34 @@ async def async_setup(hass, config):
     await emit_proof(hass)
     return result
 
+def finish_recovered_reauth(hass, entry):
+    """Close this entry's stale repair only after fully authenticated setup."""
+    account=entry.runtime_data
+    gate=GATES.get(entry.entry_id)
+    if (PHASES.get(entry.entry_id) != 'entry_ready'
+            or not isinstance(account,GuardedAccount)
+            or not isinstance(getattr(account,'api',None),GuardedService)
+            or account.api.auth_gate is not gate
+            or not getattr(account,'_manual_platforms_loaded',False)
+            or gate.snapshot_state().reason != 'state_observed'
+            or gate.state != State.VALID
+            or account.api.requires_2fa or account.api.requires_2sa):
+        return False
+    flows=list(entry.async_get_active_flows(hass,{SOURCE_REAUTH}))
+    if len(flows)>16:return False
+    if any(flow.get('handler')!='icloud'
+           or flow.get('context',{}).get('entry_id')!=entry.entry_id
+           or flow.get('context',{}).get('source')!=SOURCE_REAUTH
+           or type(flow.get('flow_id')) is not str for flow in flows):
+        return False
+    for flow in flows:hass.config_entries.flow.async_abort(flow['flow_id'])
+    issue_registry.async_delete_issue(hass,'homeassistant',
+        'config_entry_reauth_icloud_'+entry.entry_id)
+    return True
+
 async def async_setup_entry(hass, entry):
-    try:GATES[entry.entry_id]=await load_native_gate(hass,entry.entry_id,Store)
+    try:GATES[entry.entry_id]=await load_native_gate(hass,entry.entry_id,Store,
+        automatic_recovery=getattr(entry,'options',{}).get('automatic_session_recovery',True) is True)
     except Exception:
         raise ConfigEntryNotReady('iCloud manual authentication state unavailable') from None
     PHASES[entry.entry_id]='entry_initializing'
@@ -145,6 +174,7 @@ async def async_setup_entry(hass, entry):
             raise ConfigEntryNotReady('iCloud transport unavailable during setup') from None
         raise
     PHASES[entry.entry_id]='entry_ready'
+    finish_recovered_reauth(hass,entry)
     await emit_proof(hass)
     return True
 

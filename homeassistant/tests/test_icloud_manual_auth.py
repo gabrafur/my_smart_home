@@ -37,6 +37,13 @@ class FakeService:
 
     def _update_state(self): pass
 
+    def _srp_authentication(self, *, pause_2fa):
+        assert pause_2fa is True
+        self.primary_calls += 1
+        self._requires_mfa = self.challenge
+        self.request_2fa_code()
+        return False
+
     def authenticate(self, **kwargs):
         self.primary_calls += 1
         self.authentication_options = kwargs
@@ -68,7 +75,7 @@ def loaded_adapter():
              'homeassistant.components.icloud.config_flow', 'homeassistant.const',
              'homeassistant.exceptions', 'homeassistant.config_entries',
              'homeassistant.helpers', 'homeassistant.helpers.event',
-             'homeassistant.helpers.storage', 'probatio']
+             'homeassistant.helpers.storage', 'homeassistant.helpers.issue_registry', 'probatio']
     modules = {name: ModuleType(name) for name in names}
     core = modules['homeassistant.components.icloud']
     account = modules['homeassistant.components.icloud.account']
@@ -76,6 +83,8 @@ def loaded_adapter():
         if not name.startswith('__'): setattr(account, name, getattr(icloud_native_fixture, name))
     handlers = {}
     modules['homeassistant.config_entries'].HANDLERS = handlers
+    modules['homeassistant.config_entries'].SOURCE_REAUTH = 'reauth'
+    modules['homeassistant.helpers.issue_registry'].async_delete_issue = Mock()
     modules['pyicloud'].PyiCloudService = FakeService
     modules['pyicloud.exceptions'].PyiCloudAuthRequiredException = type('AuthRequired', (Exception,), {})
     modules['requests.exceptions'].ConnectionError = type('RequestConnectionError', (ConnectionError,), {})
@@ -156,9 +165,9 @@ def synthetic_hass_entry():
     entry = SimpleNamespace(entry_id='synthetic_entry', unique_id='synthetic',
                             data={'username': 'synthetic@example.invalid', 'password': 'synthetic-only',
                                   'with_family': False, 'max_interval': 30, 'gps_accuracy': 100},
-                            async_start_reauth=Mock())
+                            async_start_reauth=Mock(),async_get_active_flows=Mock(return_value=[]))
     hass = SimpleNamespace(stores={}, async_add_executor_job=executor,
-                           config_entries=SimpleNamespace(async_update_entry=Mock(),
+                           config_entries=SimpleNamespace(flow=SimpleNamespace(async_abort=Mock()), async_update_entry=Mock(),
                                async_reload=AsyncMock(return_value=True),
                                async_forward_entry_setups=AsyncMock()))
     return hass, entry
@@ -228,15 +237,22 @@ class NativeFlowTest(unittest.IsolatedAsyncioTestCase):
         self.flow._get_reauth_entry = lambda: self.entry
         await self.flow.async_step_reauth(self.entry.data)
         self.api = self.flow.api
+        self.initial_primary_calls = self.api.primary_calls
 
     async def prepared(self):
         result = await self.flow.async_step_manual_reauth({})
         self.assertEqual(result['step_id'], 'verification_code')
         self.assertEqual(self.api.deliveries, 0)
 
+    async def test_default_setup_attempts_silent_login_but_never_delivers_OTP(self):
+        self.assertEqual(self.initial_primary_calls, 1)
+        self.assertTrue(self.api.auth_gate.automatic_recovery)
+        self.assertEqual(self.api.auth_gate.state, self.env.sut.State.PRIMARY)
+        self.assertEqual(self.api.deliveries, 0)
+
     async def test_opening_repair_empty_submit_and_invalid_code_do_not_deliver(self):
         await self.flow.async_step_manual_reauth()
-        self.assertEqual(self.api.primary_calls, 0)
+        self.assertEqual(self.api.primary_calls, self.initial_primary_calls)
         await self.prepared()
         for user_input in (None, {}, {'verification_code': 'synthetic-invalid'}):
             result = await self.flow.async_step_verification_code(user_input)
@@ -356,9 +372,10 @@ class NativeRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         self.hass.config_entries = ConfigEntries(self.hass, {})
         await self.hass.config_entries.async_initialize()
         self.entry = SimpleNamespace(entry_id='synthetic_entry', unique_id='synthetic',
+            options={'automatic_session_recovery':False},
             data={'username': 'synthetic@example.invalid', 'password': 'synthetic-only',
                   CONF_WITH_FAMILY: DEFAULT_WITH_FAMILY, CONF_MAX_INTERVAL: DEFAULT_MAX_INTERVAL,
-                  CONF_GPS_ACCURACY_THRESHOLD: DEFAULT_GPS_ACCURACY_THRESHOLD}, async_start_reauth=Mock())
+                  CONF_GPS_ACCURACY_THRESHOLD: DEFAULT_GPS_ACCURACY_THRESHOLD}, async_start_reauth=Mock(),async_get_active_flows=Mock(return_value=[]))
         self.enterContext(patch('requests.sessions.Session.request', side_effect=AssertionError('network_forbidden')))
         self.enterContext(patch.object(self.hass.config_entries, 'async_get_entry', return_value=self.entry))
         self.enterContext(patch.object(sut, 'emit_proof', new_callable=AsyncMock))
@@ -436,3 +453,45 @@ class NativeRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class RecoveredRepairTest(unittest.TestCase):
+    def setUp(self):
+        self.env=self.enterContext(loaded_adapter())
+        self.hass,self.entry=synthetic_hass_entry()
+        gate=self.env.sut.AuthGate(lambda row:None)
+        with self.env.bridge.bind_gate(gate):client=self.env.sut.GuardedService()
+        gate.record(self.env.sut.State.VALID);client.challenge=False
+        account=self.env.sut.GuardedAccount.__new__(self.env.sut.GuardedAccount)
+        account.api=client;account._manual_platforms_loaded=True
+        self.entry.runtime_data=account
+        self.env.sut.GATES[self.entry.entry_id]=gate
+        self.env.sut.PHASES[self.entry.entry_id]='entry_ready'
+        self.delete=sys.modules['homeassistant.helpers.issue_registry'].async_delete_issue
+
+    def test_full_setup_closes_only_exact_entry_reauth(self):
+        self.entry.async_get_active_flows.return_value=[{'handler':'icloud','flow_id':'synthetic_flow',
+            'context':{'entry_id':self.entry.entry_id,'source':'reauth'}}]
+        self.assertTrue(self.env.sut.finish_recovered_reauth(self.hass,self.entry))
+        self.hass.config_entries.flow.async_abort.assert_called_once_with('synthetic_flow')
+        self.delete.assert_called_once_with(self.hass,'homeassistant',
+            'config_entry_reauth_icloud_'+self.entry.entry_id)
+
+    def test_waiting_entry_never_clears_repair(self):
+        self.env.sut.PHASES[self.entry.entry_id]='entry_waiting_user'
+        self.assertFalse(self.env.sut.finish_recovered_reauth(self.hass,self.entry))
+        self.delete.assert_not_called()
+
+    def test_challenge_and_incomplete_platforms_keep_repair(self):
+        self.entry.runtime_data.api.challenge=True
+        self.assertFalse(self.env.sut.finish_recovered_reauth(self.hass,self.entry))
+        self.entry.runtime_data.api.challenge=False
+        self.entry.runtime_data._manual_platforms_loaded=False
+        self.assertFalse(self.env.sut.finish_recovered_reauth(self.hass,self.entry))
+        self.delete.assert_not_called()
+
+    def test_other_entry_flow_is_never_aborted(self):
+        self.entry.async_get_active_flows.return_value=[{'handler':'icloud','flow_id':'other',
+            'context':{'entry_id':'other','source':'reauth'}}]
+        self.assertFalse(self.env.sut.finish_recovered_reauth(self.hass,self.entry))
+        self.hass.config_entries.flow.async_abort.assert_not_called();self.delete.assert_not_called()

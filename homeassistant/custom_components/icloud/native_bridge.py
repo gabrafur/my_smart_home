@@ -1,8 +1,4 @@
-"""Candidate native adapters. Imported by tests only; no installation entrypoint.
-
-Factories wrap the reviewed native interfaces without storing account data.
-Home Assistant wiring and translations must be reviewed before deployment.
-"""
+"""Reviewed native adapters with cached reuse and guarded silent session recovery."""
 import asyncio
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -27,21 +23,26 @@ def bind_gate(gate):
     try: yield
     finally: BOUND_GATE.reset(token)
 
-async def load_native_gate(hass, entry_id, store_factory):
+async def load_native_gate(hass, entry_id, store_factory, *, automatic_recovery=False):
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', entry_id):
         raise ValueError('invalid_entry_key')
     store = store_factory(hass, 1, 'icloud_manual_reauth.' + entry_id)
     saved = await store.async_load()
+    recovery_store = store_factory(hass, 1, 'icloud_silent_recovery.' + entry_id)
+    recovery_saved = await recovery_store.async_load()
     loop = asyncio.get_running_loop()
-    def persist(row):
+    def persist_to(target, row):
         try: current = asyncio.get_running_loop()
         except RuntimeError: current = None
         if current is loop: raise RuntimeError('auth_effect_requires_executor')
-        pending = asyncio.run_coroutine_threadsafe(store.async_save(row), loop)
+        pending = asyncio.run_coroutine_threadsafe(target.async_save(row), loop)
         try: pending.result(timeout=10)
         except BaseException:
             pending.cancel(); raise
-    return AuthGate(persist, saved)
+    return AuthGate(lambda row: persist_to(store, row), saved,
+                    automatic_recovery=automatic_recovery,
+                    persist_recovery=lambda row: persist_to(recovery_store, row),
+                    recovery_saved=recovery_saved)
 
 def service_adapter(base, *, transport_errors=()):
     class GuardedService(base):
@@ -49,6 +50,7 @@ def service_adapter(base, *, transport_errors=()):
             self.auth_gate = BOUND_GATE.get()
             if self.auth_gate is None: raise ManualActionRequired('gate_not_loaded')
             self._explicit_auth = ContextVar('explicit_icloud_auth', default=False)
+            self._silent_primary = ContextVar('silent_icloud_primary', default=False)
             self._cached_validation = ContextVar('cached_icloud_validation', default=False)
             self._manual_context_ready = False
             kwargs.update(authenticate=False, pause_2fa=True)
@@ -59,6 +61,10 @@ def service_adapter(base, *, transport_errors=()):
 
         @property
         def requires_2fa(self):
+            if self._silent_primary.get():
+                # The provider is completing a login under our owned gate.
+                # Pending is a durable replay guard, not a provider challenge.
+                return super().requires_2fa
             # Makes native setup/update_devices stop before private service access.
             if not self._explicit_auth.get() and not self._cached_validation.get():
                 snapshot = self.auth_gate.snapshot_state()
@@ -102,6 +108,11 @@ def service_adapter(base, *, transport_errors=()):
                 finally:
                     self._cached_validation.reset(token)
             result = self.auth_gate.cached_session(cached_only)
+            if (self.auth_gate.automatic_recovery
+                    and result.reason != 'operation_in_progress'
+                    and result.state in (State.USER, State.PRIMARY)):
+                result = self.auth_gate.recover_silently(
+                    lambda: self._recover_without_delivery(service))
             if result.reason == 'operation_in_progress':
                 raise CachedSessionBusyError('cached_session_operation_in_progress')
             if result.reason == Outcome.TRANSPORT:
@@ -109,20 +120,43 @@ def service_adapter(base, *, transport_errors=()):
             if result.state != State.VALID:
                 raise ManualActionRequired(result.reason)
 
+        def _recover_without_delivery(self, service):
+            token = self._silent_primary.set(True)
+            try:
+                try:
+                    # force_refresh still tries the expired token first in
+                    # pyicloud 2.7.0. Use its normal saved-password SRP path
+                    # directly, preserving native trust tokens and cookies.
+                    paused_login = super()._srp_authentication(pause_2fa=True)
+                    if self._requires_mfa:
+                        return Outcome.CHALLENGE
+                    if not paused_login:
+                        super()._authenticate_with_token(require_trust=False)
+                    super()._update_state()
+                    if super().requires_2fa or super().requires_2sa:
+                        return Outcome.CHALLENGE
+                    return Outcome.VALID
+                except Exception as exc:
+                    if isinstance(exc, transport_errors) or is_transport_failure(exc):
+                        return Outcome.TRANSPORT
+                    raise
+            finally:
+                self._silent_primary.reset(token)
+
         def _authenticate(self, *args, **kwargs):
-            if not self._explicit_auth.get(): raise ManualActionRequired('primary_auth_requires_user')
+            if not (self._explicit_auth.get() or self._silent_primary.get()): raise ManualActionRequired('primary_auth_requires_user')
             return super()._authenticate(*args, **kwargs)
 
         def _try_service_one_factor_login(self, *args, **kwargs):
-            if not self._explicit_auth.get(): return False
+            if not (self._explicit_auth.get() or self._silent_primary.get()): return False
             return super()._try_service_one_factor_login(*args, **kwargs)
 
         def _srp_authentication(self, *args, **kwargs):
-            if not self._explicit_auth.get(): raise ManualActionRequired('primary_auth_requires_user')
+            if not (self._explicit_auth.get() or self._silent_primary.get()): raise ManualActionRequired('primary_auth_requires_user')
             return super()._srp_authentication(*args, **kwargs)
 
         def _authenticate_with_credentials_service(self, *args, **kwargs):
-            if not self._explicit_auth.get(): raise ManualActionRequired('primary_auth_requires_user')
+            if not (self._explicit_auth.get() or self._silent_primary.get()): raise ManualActionRequired('primary_auth_requires_user')
             return super()._authenticate_with_credentials_service(*args, **kwargs)
 
         def _login_with_paused_token(self):
@@ -246,23 +280,39 @@ def account_adapter(base, gates, client_factory, *, auth_required_errors=()):
             snapshot = gate.snapshot_state()
             if snapshot.reason == 'operation_in_progress':
                 raise CachedSessionBusyError('cached_session_operation_in_progress')
-            if snapshot.state not in (State.PROBE, State.VALID):
+            can_recover = (gate.automatic_recovery and not gate.primary_attempted
+                           and snapshot.state in (State.USER, State.PRIMARY))
+            if snapshot.state not in (State.PROBE, State.VALID) and not can_recover:
                 with bind_gate(gate):
                     self.api = client_factory(self._username, self._password, self._icloud_dir.path, with_family=self._with_family)
                 self._require_reauth(); return
             with bind_gate(gate):
-                try: return super().setup()
+                try:
+                    try:
+                        return super().setup()
+                    except auth_required_errors:
+                        # Token validation can succeed while the device service
+                        # rejects it. Give that incident the same single saved-
+                        # password attempt, then run native setup once more.
+                        gate.record(State.USER)
+                        if (gate.automatic_recovery and not gate.primary_attempted
+                                and self.api is not None):
+                            self.api.authenticate()
+                            if gate.state == State.VALID:
+                                return super().setup()
+                        self._require_reauth()
                 except auth_required_errors:
-                    # A cached session can pass validation but fail at devices.
-                    # Persist the manual gate before offering reauthentication.
-                    gate.record(State.USER)
+                    # A fresh login did not restore service access. Never loop.
+                    gate.record(State.PRIMARY)
                     self._require_reauth()
                 except ManualActionRequired:
                     self._require_reauth()
 
         def keep_alive(self, now=None):
             gate = gates[self._config_entry.entry_id]
-            if gate.state not in (State.PROBE, State.VALID): return
+            if gate.state not in (State.PROBE, State.VALID) and not (
+                    gate.automatic_recovery and not gate.primary_attempted
+                    and gate.state in (State.USER, State.PRIMARY)): return
             with bind_gate(gate):
                 try: return super().keep_alive(now)
                 except (CachedSessionTransportError, CachedSessionBusyError):

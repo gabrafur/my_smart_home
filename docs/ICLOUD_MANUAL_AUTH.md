@@ -6,17 +6,42 @@
 seu domínio, config entry, serviços, plataformas e armazenamento de sessão em
 `/config/.storage/icloud`. Não cria outra conta nem substitui dados do usuário.
 
-Inicialização e polling só podem reutilizar a sessão salva. Login com credenciais,
-renovação que exija autenticação e envio de código precisam de submissão explícita.
-O cliente usa `pause_2fa=True` e bloqueia `request_2fa_code()` automático, inclusive
-quando a biblioteca tenta esse fallback. Abrir um formulário, restaurar a entrada
-ou informar um código inválido não solicita outro OTP.
+Inicialização e polling tentam reutilizar a sessão salva. Quando ela expira ou
+aguarda recuperação, a integração pode fazer uma tentativa de login normal com
+as credenciais já configuradas, sem solicitar código. A opção da config entry
+`automatic_session_recovery` é booleana e tem padrão `true`; `false` mantém a
+recuperação somente manual. A tentativa usa diretamente o SRP nativo com a senha
+salva, sem repetir primeiro o token expirado. Um desafio identificado nessa
+tentativa, resultado desconhecido ou falha de autenticação aguarda o usuário.
+
+O cliente usa `pause_2fa=True` e bloqueia `request_2fa_code()` e fallback SMS
+automáticos. Se o login terminar sem desafio adicional, a sessão volta a ser
+usada normalmente. Se exigir confirmação adicional, o fluxo aguarda o usuário.
+Abrir formulário, restaurar a entrada ou informar código inválido não solicita
+outro OTP. Credenciais e códigos não entram nos diagnósticos.
+
+A tentativa silenciosa grava um checkpoint antes do acesso ao provedor. Falha
+de transporte ou resposta desconhecida preserva a incerteza através de restart,
+sem repetir o login. O estado de autenticação mantém seu formato; um Store
+separado `icloud_silent_recovery.<entry_id>` registra somente versão e o booleano
+`primary_attempted`. O marcador é gravado antes do efeito e só é liberado quando
+uma sessão anteriormente válida expira de forma confirmada. Reiniciar não o
+libera; rollback preserva os dois arquivos. O backoff nativo de transporte do cache é
+independente dessa tentativa de login.
 
 Falhas tipadas de transporte que chegam ao setup, incluindo DNS, conexão e timeout
 encapsulados, viram `ConfigEntryNotReady` para o backoff do Home Assistant. Erros
 sem causa de transporte não são classificados pelo texto da mensagem. O retry
-não autoriza login nem envio de código. Falha ao carregar a proteção persistida
+não repete login nem autoriza envio de código. Falha ao carregar a proteção persistida
 interrompe o setup antes de criar um cliente.
+
+O reparo de autenticação só é encerrado após setup completo, plataformas
+carregadas, sessão válida e ausência de desafio. Apenas os fluxos de
+reautenticação dessa mesma entrada são encerrados; outros reparos são preservados.
+
+Se o token passar pela validação e o serviço de dispositivos rejeitar a
+autenticação durante o setup, a mesma tentativa única com senha salva é usada.
+Após sucesso, o setup nativo é repetido uma vez; nova rejeição aguarda o usuário.
 
 Quando for necessário reautenticar:
 
@@ -61,7 +86,10 @@ scripts/run-resource-safe.sh python3 -m unittest discover -s homeassistant/tests
 Os testes carregam o pacote local real com fronteiras HA/pyicloud simuladas e
 bloqueiam sockets externos. Exercitam estado persistido, abertura sem efeito,
 preparação sem envio, entrega única, código inválido, resultado incerto, wiring e
-retry de transporte. Rodam no host sem instalar Home Assistant ou pyicloud e não
+retry de transporte. `test_icloud_silent_recovery.py` cobre a tentativa com senha,
+o marcador através de restart, expiração posterior e rejeição do serviço após
+validação do token. Os testes de reparo impedem encerramento antes do setup
+completo ou para outra entrada. Rodam no host sem instalar Home Assistant ou pyicloud e não
 substituem a compatibilidade nativa: após atualizar versões, valide também na
 imagem fixada, isolada, sem rede e sem mounts de dados privados.
 A classe `NativeRuntimeContractTest` mantém os casos de compatibilidade real;
@@ -133,8 +161,10 @@ consumidores. Uma validação concorrente adia o trabalho em vez de interpretar
 o checkpoint temporário como sessão expirada. O contexto da própria validação
 e a submissão manual não tentam adquirir novamente o mesmo lock.
 
-Expiração real, desafio, causa desconhecida e entrega incerta continuam
-bloqueados. Estados bloqueados de antes da correção não são reabertos. O teste
+Expiração confirmada permite a única tentativa com senha salva descrita acima.
+Desafio após essa tentativa, causa desconhecida e entrega incerta continuam
+bloqueados. Um estado legado de autenticação primária pode receber essa tentativa
+somente se ainda não existir o marcador; códigos já solicitados são preservados. O teste
 `test_icloud_cached_transport.py` cobre transporte encapsulado, recuperação no
 próximo ciclo, expiração, concorrência e preservação do OTP manual. O modelo do
 provider no teste público não substitui o ensaio isolado da biblioteca nativa.

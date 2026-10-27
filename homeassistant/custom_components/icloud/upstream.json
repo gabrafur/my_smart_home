@@ -32,7 +32,7 @@
     },
     {
       "file": "__init__.py",
-      "change": "bind reviewed device subclass while preserving manual OTP factories and setup retry"
+      "change": "bind reviewed native adapter and device subclass; automatic_session_recovery boolean defaults true; preserve setup retry and manual OTP delivery; close exact-entry reauth repair only after complete authenticated setup"
     },
     {
       "file": "loaded_contract.py",
@@ -40,11 +40,11 @@
     },
     {
       "file": "auth_gate.py",
-      "change": "preserve PROBE/VALID only for classified cached-session transport;all actual auth challenges and uncertain OTP remain manual;no old blocked-state reopening"
+      "change": "one saved-password primary attempt per confirmed session expiry; separate durable attempt marker; challenges and uncertainty stop; manual OTP and original auth-state schema preserved"
     },
     {
       "file": "native_bridge.py",
-      "change": "typed chained transport classification before permanent manual state;existing natural setup/keep-alive retry only;no primary login,OTP or extra provider request"
+      "change": "direct native paused SRP with configured password and preserved trust tokens; no token-first fallback or automatic OTP/SMS; restart-safe recovery marker; one native setup retry after typed device-service auth rejection, without a primary-login loop"
     }
   ],
   "validated_compatibility": [
@@ -56,7 +56,7 @@
       "core_account_sha256": "bf670a14deb0815900ec0ca76dae45ae67ec4dfb48a2f77daedbc6e57d3c6537",
       "reviewed_constructor_sha256": "69eacf8342e90c7c3f46b775fb60ef324c70835d5a353850be335f2ceed3ed17",
       "pyicloud": "2.7.0",
-      "review": "explicit compatibility allowlist; constructor hash remains enforced; manual authentication unchanged"
+      "review": "explicit compatibility allowlist and constructor hash remain enforced; silent primary recovery reviewed in local overlay; OTP delivery remains manual"
     }
   ]
 }

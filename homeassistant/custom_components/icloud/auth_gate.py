@@ -1,7 +1,6 @@
-"""Offline candidate policy. Not wired to Home Assistant or installed.
+"""Persisted authentication policy; challenge delivery always needs user action.
 
-The integration adapter must persist this metadata across restarts and pass only
-typed outcomes. No credentials, provider responses or OTP values belong here.
+Only typed outcomes belong here, never credentials, provider responses or OTPs.
 """
 from dataclasses import dataclass
 from enum import Enum
@@ -17,6 +16,7 @@ _DIAGNOSTIC_STAGES = frozenset({
     'prepare_session', 'request_challenge', 'verify_code',
     'persist_before', 'persist_after',
     'delivery_context',
+    'silent_session_recovery',
 })
 _DIAGNOSTIC_CATEGORIES = frozenset({
     'submitted', 'started', 'created', 'manual_form', 'code_form',
@@ -119,7 +119,22 @@ class Decision:
     effect_attempted: bool
 
 class AuthGate:
-    def __init__(self, persist: Callable[[dict], None], saved=None):
+    def __init__(self, persist: Callable[[dict], None], saved=None, *, automatic_recovery=False,
+                 persist_recovery=None, recovery_saved=None):
+        if type(automatic_recovery) is not bool:
+            raise ValueError('invalid_automatic_recovery_policy')
+        self.automatic_recovery = automatic_recovery
+        if automatic_recovery and not callable(persist_recovery):
+            raise ValueError('recovery_persistence_required')
+        if recovery_saved is not None and (
+                type(recovery_saved) is not dict
+                or set(recovery_saved) != {'schema_version', 'primary_attempted'}
+                or type(recovery_saved['schema_version']) is not int
+                or recovery_saved['schema_version'] != 1
+                or type(recovery_saved['primary_attempted']) is not bool):
+            raise ValueError('invalid_recovery_metadata')
+        self.persist_recovery = persist_recovery
+        self.primary_attempted = recovery_saved['primary_attempted'] if recovery_saved is not None else False
         self.persist = persist
         self.state = State.PROBE if saved is None else State(saved['state'])
         if saved is not None and (set(saved) != {'schema_version','state'} or saved['schema_version'] != 1):
@@ -152,6 +167,34 @@ class AuthGate:
         # An unlocked busy/state precheck could mistake transient USER for expiry.
         # Caller must validate ONLY the saved token, with no login fallback.
         return self._effect(validate_cached_token, background=True)
+
+    def recover_silently(self, authenticate_without_delivery):
+        """One persisted primary-login attempt; challenges never authorize delivery."""
+        if not self._lock.acquire(blocking=False):
+            return self.result('operation_in_progress')
+        self.busy = True
+        try:
+            if (not self.automatic_recovery or self.primary_attempted
+                    or self.state not in (State.USER, State.PRIMARY)):
+                return self.result('automatic_recovery_not_permitted')
+            # A restart or unknown response must not repeat a primary login.
+            self.persist_recovery({'schema_version': 1, 'primary_attempted': True})
+            self.primary_attempted = True
+            self.record(State.UNCERTAIN)
+            try:
+                outcome = Outcome(authenticate_without_delivery())
+            except Exception as exc:
+                diagnostic_exception('silent_session_recovery', exc)
+                outcome = Outcome.UNKNOWN
+            state = (State.VALID if outcome == Outcome.VALID else
+                     State.UNCERTAIN if outcome in (Outcome.TRANSPORT, Outcome.UNKNOWN) else
+                     State.PRIMARY)
+            self.record(state)
+            diagnostic('silent_session_recovery', outcome.value)
+            return self.result(outcome.value, True)
+        finally:
+            self.busy = False
+            self._lock.release()
 
     def submit(self, action, callback, *, explicit_submission=False):
         if not explicit_submission: return self.result('explicit_submission_required')
@@ -194,6 +237,8 @@ class AuthGate:
                 if not background: diagnostic_exception(action, exc)
                 outcome = Outcome.UNKNOWN
             if outcome == Outcome.VALID: state = State.VALID
+            elif background and self.automatic_recovery and outcome == Outcome.UNKNOWN: state = State.UNCERTAIN
+            elif background and self.automatic_recovery and outcome == Outcome.CHALLENGE: state = State.PRIMARY
             elif outcome == Outcome.CHALLENGE and not background: state = State.READY
             elif outcome == Outcome.SENT and not background: state = State.CODE
             elif outcome == Outcome.INVALID_CODE and prior == State.CODE: state = State.CODE
@@ -203,6 +248,12 @@ class AuthGate:
             elif action in ('request_challenge', 'verify_code') and outcome in (Outcome.TRANSPORT, Outcome.UNKNOWN): state = State.UNCERTAIN
             else: state = State.USER
             stage = 'persist_after'
+            # A confirmed expiry of a previously valid session starts a new
+            # incident. Restarts, challenges and ambiguous failures never do.
+            if (background and self.automatic_recovery and prior == State.VALID
+                    and outcome == Outcome.EXPIRED):
+                self.persist_recovery({'schema_version': 1, 'primary_attempted': False})
+                self.primary_attempted = False
             self.record(state)
             if not background: diagnostic(action, outcome.value)
             return self.result(outcome.value, True)
