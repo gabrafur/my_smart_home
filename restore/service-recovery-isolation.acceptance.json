@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "scope": "neutral_isolation_probe_only",
+  "state": "verified_and_cleaned",
+  "observed_at": "2026-10-27T00:15:13.211Z",
+  "memory_backend": "python_rlimit_as",
+  "source_sha256": {
+    "scripts/service-recovery-isolation-probe.mjs": "0716e957312e8dd3add37bf2b1213acc7e84a9a011c548d990c33174f9cad35e",
+    "restore/service-recovery-contract.mjs": "71c8dd8e0c29e5a86f047283a27ee95184421c0fbac723322e888d49e921586e"
+  },
+  "native_assertions": {
+    "loopback_http": true,
+    "interfaces_only_lo": true,
+    "outgoing_routes": 0,
+    "logical_role_aliases_verified": 7,
+    "capabilities_zero": true,
+    "no_new_privileges": true,
+    "hard_address_space_bytes_per_program": 67108864,
+    "oversized_allocation_rejected": true,
+    "cpu_limit_per_container": 0.05,
+    "pids_limit_per_container": 16,
+    "private_mounts": 0,
+    "physical_devices": 0,
+    "published_ports": 0,
+    "household_service_start_times_unchanged": true,
+    "probe_containers_removed": 2
+  },
+  "historical_failures": {
+    "source_mode_admission_rejected": true,
+    "memory_cgroup_unavailable_rejected_before_start": true,
+    "docker_cli_address_space_ulimit_rejected_before_creation": true,
+    "failures_preserved_privately": true
+  },
+  "limits": {
+    "restored_services_started": 0,
+    "service_recovery_proven": false,
+    "extra_key_reads": 0,
+    "backup_downloads": 0,
+    "physical_coordinator_access": false,
+    "new_authority": false,
+    "automatic_backend_fallback": false,
+    "replay_authorized": false
+  }
+}

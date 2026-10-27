@@ -75,3 +75,10 @@ candidatos e zero remoções. A série ativa é estimada em 38,4 GB, sem lixeira
 30 dias nela podem acrescentar temporariamente 12,8 GB. Quota insuficiente ou
 divergência deve preservar cópias e bloquear os updates. Kit de emergência e
 senha ficam guardados fora do destino.
+
+<!-- memory-record {"id":"ensaio-neutro-nao-comprova-recuperacao-de-servicos","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-10-27","evidence":[{"file":"restore/service-recovery-contract.mjs","sha256":"71c8dd8e0c29e5a86f047283a27ee95184421c0fbac723322e888d49e921586e"},{"file":"scripts/service-recovery-isolation-probe.mjs","sha256":"0716e957312e8dd3add37bf2b1213acc7e84a9a011c548d990c33174f9cad35e"},{"file":"scripts/service-recovery-contract.test.mjs","sha256":"3c518fd1bb856f5c6b2aea06605b8de2e0a82ccbb01c6aca4d1d07767330e0b7"},{"file":"restore/service-recovery-isolation.acceptance.json","sha256":"5b32e4c8a022eda4bb2d3a171232b9eeb52a94ec7b8540d96d4db4ba3cd1af73"},{"file":"docs/RESTORE_CONTRACT.md","sha256":"289e9c8297e5351766e8f9ba27b9a52ee73d18ea0d171af5954caeeb55c163dc"}]} -->
+## Isolamento neutro e prontidão restaurada têm evidências separadas
+
+O contrato de prontidão preserva os critérios canônicos dos sete serviços; seu avaliador puro recebe observações e não coleta nem comprova recuperação. O ensaio neutro executa somente dois programas Python fixos, sem backup, mounts ou dispositivos, em namespace sem rotas e com comunicação por loopback. O aceite sanitizado registra prova e limpeza reais, com zero serviços restaurados. O backend padrão exige cgroup de memória; python_rlimit_as é uma preparação explícita limitada ao programa fixo, com limite hard verificado e rejeição de alocação maior, sem fallback automático nem extensão para aplicações restauradas. A CLI Docker rejeita ulimit as. O chamador deve selar fontes, conferir autoridade e recursos e persistir intents exclusivos; efeitos incertos não são repetidos. Chave consumida, rádio físico e restauração funcional continuam exigindo os respectivos escopos e provas.
+
+<!-- /memory-record -->

@@ -151,6 +151,50 @@ Leia e execute integralmente prompts/restore-smart-home.prompt.md
 If a CLI is later installed, verify its own `--help` and `--version` before
 documenting a one-line invocation. Never put secrets in argv.
 
+## Service readiness and neutral isolation probe
+
+[`restore/service-recovery-contract.mjs`](../restore/service-recovery-contract.mjs)
+preserves all seven roles and the `offsite-backup.mjs::serviceReady` criteria.
+Every process must be running without restarting. Home Assistant additionally
+requires native healthy status; Node-RED requires a fresh `Started flows` and
+HTTP 200 from `/auth/login`; Mosquitto requires an authenticated MQTT connection
+using restored credentials. Portainer, AppDaemon and Matter Server require TCP
+9000, 5050 and 5580 respectively. Zigbee2MQTT requires a fresh startup marker
+and an `online` MQTT bridge.
+
+These observations must come from restored processes. The pure evaluator does
+not collect them; supplied boolean values do not prove recovery. Planning
+requires authenticated HA decryption including Recorder, the canonical Compose
+bundle, identity verification across both surfaces, and specific key and
+coordinator scopes. Approval or verified files do not establish functional
+recovery.
+
+[`service-recovery-isolation-probe.mjs`](../scripts/service-recovery-isolation-probe.mjs)
+runs two fixed Python programs without restored data. One container uses
+`network none`, and the other shares that namespace exclusively. The probe
+checks loopback, zero routes, aliases for all seven roles, zero capabilities,
+`no-new-privileges`, 0.05 CPU and 16 processes per container. It refuses mounts,
+devices, published ports, images declaring volumes and image downloads. The
+root filesystem is read-only; each program expires within 120 seconds.
+Creation and cleanup use exclusive intents, exact identity and an inventory
+confirming absence. Uncertain results require reconciliation.
+
+The default backend requires a 64 MiB memory cgroup. Where that controller is
+unavailable, a separately prepared `python_rlimit_as` probe lowers soft and hard
+`RLIMIT_AS` to 64 MiB as the fixed program's first command, before other imports.
+The process verifies the limit and rejects a larger allocation. This mode also
+requires the exact program and entrypoint; it bounds only the probe's Python
+programs, not restored application containers. Backend selection is never
+automatic. Docker CLI rejects `--ulimit as`; that option cannot establish a
+limit.
+
+The module neither installs an executor nor grants root access. Its reviewed
+caller must validate current authority, seal sources, acquire locks, check
+resources and persist receipts. The [sanitized acceptance record](../restore/service-recovery-isolation.acceptance.json)
+reports the real neutral probe and cleanup. No restored service was started.
+This proof does not authorize another key read, transfer, radio access,
+household shutdown or operation after authority expires.
+
 ## Limitations
 
 - The real external backup and isolated structural restore were completed;

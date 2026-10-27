@@ -214,6 +214,54 @@ Plano para ensaio real, sujeito a autorização antes de transferir dados:
    publicar somente conclusão sanitizada. Definir descarte seguro das cópias de
    ensaio. Sucesso sintético e existência do arquivo nunca substituem esse recibo.
 
+## Prontidão dos serviços e ensaio neutro de isolamento
+
+O contrato em [`restore/service-recovery-contract.mjs`](../restore/service-recovery-contract.mjs)
+mantém os sete papéis e os critérios de `offsite-backup.mjs::serviceReady`:
+
+| Serviço | Evidência adicional a processo em execução, sem restart |
+| --- | --- |
+| Home Assistant | Healthcheck nativo saudável |
+| Node-RED | Novo `Started flows` e HTTP 200 em `/auth/login` |
+| Mosquitto | Conexão MQTT autenticada com credenciais restauradas |
+| Portainer | TCP 9000 |
+| AppDaemon | TCP 5050 |
+| Matter Server | TCP 5580 |
+| Zigbee2MQTT | Novo `Zigbee2MQTT started!` e bridge MQTT `online` |
+
+Essas observações devem vir dos processos restaurados. O avaliador puro não as
+coleta e não comprova recuperação por receber valores booleanos. O planejamento
+exige decriptação autenticada do HA com Recorder, bundle Compose canônico,
+verificação das identidades entre as superfícies e os escopos específicos de
+chave e coordenador. Aprovação e verificação de arquivos não são recibo de
+recuperação funcional.
+
+[`service-recovery-isolation-probe.mjs`](../scripts/service-recovery-isolation-probe.mjs)
+executa somente dois programas Python fixos, sem dados restaurados. Um container
+usa `network none`; o outro compartilha exclusivamente esse namespace. O ensaio
+verifica loopback, ausência de rotas, aliases dos sete papéis, capabilities
+zeradas, `no-new-privileges`, CPU de 0,05 e limite de 16 processos por container.
+Não admite mounts, dispositivos, portas publicadas, imagem com volumes declarados
+ou download de imagem. A raiz é somente leitura e cada programa expira em
+120 segundos. Criação e limpeza usam intents exclusivos, identidade exata e
+inventário para confirmar ausência; resultado incerto exige reconciliação.
+
+O backend padrão exige cgroup de memória de 64 MiB. Quando esse controlador não
+existe, o ensaio pode ser preparado separadamente com `python_rlimit_as`: o
+primeiro comando do programa fixo reduz os limites soft/hard de `RLIMIT_AS` a
+64 MiB, antes dos demais imports. O processo verifica o limite e rejeita uma
+alocação maior. Esse modo exige conferir o programa e o entrypoint exatos e
+restringe somente os programas Python do ensaio; não limita containers de
+aplicações restauradas. Não há seleção automática de backend. A CLI Docker
+não aceita `--ulimit as`; não use essa opção como garantia.
+
+O módulo não instala executor nem concede acesso root: o chamador revisado deve
+validar autorização vigente, selar fontes, adquirir locks, conferir recursos e
+persistir recibos. O [aceite sanitizado](../restore/service-recovery-isolation.acceptance.json)
+registra a prova neutra e limpeza reais. Nenhum dos sete serviços restaurados foi
+iniciado. O ensaio não autoriza nova leitura de chave, transferência, acesso a
+rádio, parada residencial ou operação após expirar a autoridade.
+
 ## Preparação de backup externo no OneDrive
 
 O exemplo público desativado fica em
