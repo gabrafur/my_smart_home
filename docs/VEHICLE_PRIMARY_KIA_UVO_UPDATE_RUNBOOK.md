@@ -188,9 +188,34 @@ anterior e iniciada novamente. O estado final fica `rollback` com a causa.
 Recibo `applying`, ilegível ou desconhecido bloqueia aplicação antes de fetch e
 extração. Uma candidata diferente também não pode sobrescrever `runtime_applied`,
 `applied_pending_git` ou `main_published`: reconcilie a operação anterior primeiro.
-Um `failed` anterior não comprova rollback. Outra candidata só pode avançar se a
-etapa e o efeito registrados demonstrarem `runtime_not_attempted`. A mesma
-candidata terminal continua deduplicada, sem reinstalação.
+Um `failed` anterior não comprova rollback. Outra candidata pode avançar quando a
+etapa e o efeito registrados demonstrarem `runtime_not_attempted`, ou após a
+reconciliação explícita do estado atual descrita abaixo. A mesma candidata
+terminal continua deduplicada, sem reinstalação.
+
+Para um `failed` com efeito desconhecido, a reconciliação exige atestado Root
+em `/var/lib/raspberry-kia-promotion-reconciliation/current.json`, diretório
+0750 e arquivo 0640, com grupo do executor. O atestado vale no máximo 24 horas,
+é vinculado ao checkout, hash exato do recibo antigo, commit da candidata
+diferente, alvo, inventário SHA-256 da base restaurada, versão instalada e
+commit do HACS. O recibo antigo deve ser preservado integralmente no subdiretório
+Root `history`, nomeado por seu SHA-256, antes de emitir o atestado. Não existe
+emissão automática nem renovação pelo promotor.
+
+A revisão administrativa deve comparar todos os arquivos com o backup
+preservado, verificar HACS e loader atual, auditar licença, proveniência e
+deltas da candidata e conservar a evidência anterior. O promotor relê arquivos,
+HACS e loader imediatamente antes de registrar a nova aplicação; qualquer
+divergência bloqueia. Atestado ausente, vencido, alterado ou sem arquivo histórico
+também bloqueia. Estados `applying`, publicação ou cleanup pendentes continuam
+exigindo sua própria reconciliação. Adiamento por host ocupado, checkout alterado
+ou erro anterior ao novo `applying` preserva o recibo antigo.
+
+Essa prova descreve apenas a base atual e permite o caminho normal da nova
+candidata, com seus testes, backup e rollback. O resultado e a causa históricos
+permanecem desconhecidos; não são convertidos em sucesso nem em
+`runtime_not_attempted`. A reconciliação não aciona serviços ou veículo. Os
+testes usam arquivos, recibos e WebSocket sintéticos, sem acessar a residência.
 
 O promotor publica `failure_stage` e `effect_state` em enumerações fechadas.
 Falha em `runtime_apply` permanece `runtime_outcome_unknown`; publicação Git e

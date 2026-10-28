@@ -11,21 +11,22 @@ assert(helperStart>=0&&promoteStart>helperStart&&end>promoteStart);
 const code=source.slice(helperStart,end).replaceAll('export function ','function ').replace('export async function ','async function ')+ '\nglobalThis.invoke = promote; globalThis.guard = promotionRequiresReconciliation;';
 new vm.Script(code); // Compile the actual candidate control flow before scenarios.
 const SHA='a'.repeat(40),OTHER='b'.repeat(40);
-function harness(promotion,{exists=true,corrupt=false,failAt=null}={}){
+function harness(promotion,{exists=true,corrupt=false,failAt=null,reconciled=false,baselineResults=null,dirty=false,busyStage=null}={}){
  let stored=promotion;
  const before=structuredClone(promotion);
- const effects={apply:0,deploy:0,restarts:0,cleanup:0,run:0,privateWrites:[],publicWrites:0,fetch:[]};
+ const effects={apply:0,deploy:0,restarts:0,cleanup:0,run:0,privateWrites:[],publicWrites:0,fetch:[],baselineChecks:0};
  const candidate={target:'v3.20.0',branch:'codex/kia-uvo-3.20.0-20261026t030000z',commit:SHA};
  const context={
   configureGitHubSshTransport(){},workerStatusPath:'worker',promotionStatusPath:'promotion',
+  currentBaselineReconciled:async()=>{effects.baselineChecks++;return baselineResults?baselineResults.shift()??false:reconciled;},
   dailyUpdateTriggerDir:'trigger',repoRoot:'repo',safeUpdater:'safe-updater',checkOnly:false,
-  fs:{existsSync(p){return p==='worker'||p==='promotion'&&exists;},mkdtempSync(){return '/synthetic';},rmSync(){effects.cleanup++;}},
+  fs:{existsSync(p){return p==='worker'||p==='promotion'&&exists;},readFileSync(){return JSON.stringify(stored);},mkdtempSync(){return '/synthetic';},rmSync(){effects.cleanup++;}},
   readJson(p){if(p==='worker')return {state:'success',pushed:true,...candidate};if(corrupt)throw Error('synthetic invalid JSON');if(!exists&&stored===null)throw Error('synthetic missing receipt');return stored;},
   normalizeCandidateStatus(v){return v;},
   shouldResumeCandidateCleanup(p,c){return p?.state==='main_published'&&p.source_commit===c.commit;},
   writePublicStatus(){effects.publicWrites++;},
   writeStatus(row){effects.privateWrites.push(row);stored={...stored,...row};},
-  findActiveHostUpdateStage(){return null;},workingTreePaths(){return [];},
+  findActiveHostUpdateStage(){return busyStage;},workingTreePaths(){return dirty?['unrelated']:[];},
   fetchAndValidate(c,o){effects.fetch.push(o.resumeGit);if(failAt==='candidate_validation')throw Error('PRIVATE_TOKEN=password');return ['fixed-path'];},
   extractCandidate(){if(failAt==='candidate_extract')throw Error('PRIVATE_TOKEN=password');},readHaToken(){return 'SYNTHETIC_NOT_SECRET';},
   run(cmd,args){effects.run++;if(args.includes('apply-candidate'))effects.apply++;if(args.includes('apply-candidate')&&failAt==='runtime_apply'||args.includes('check-candidate')&&failAt==='candidate_preflight')throw Error('PRIVATE_TOKEN=password');},
@@ -99,4 +100,25 @@ for (const failure of [{},{failure_stage:'runtime_apply',effect_state:'runtime_o
 });
 for (const failure_stage of ['candidate_validation','candidate_extract','candidate_preflight']) test('new candidate allowed only after positively recorded no runtime attempt '+failure_stage,async()=>{
  const h=harness({state:'failed',source_commit:OTHER,failure_stage,effect_state:'runtime_not_attempted'});assert.equal(await h.context.invoke(),true);assert.equal(h.effects.apply,1);assert.deepEqual(h.effects.fetch,[false]);
+});
+
+test('Root current baseline permits only a different candidate and rechecks before apply',async()=>{
+ const h=harness({state:'failed',source_commit:OTHER},{reconciled:true});
+ assert.equal(await h.context.invoke(),true);assert.equal(h.effects.baselineChecks,2);assert.equal(h.effects.apply,1);
+ assert.equal(h.effects.privateWrites[0].state,'applying');
+});
+for(const mode of ['dirty','busy','drift','validation','extract'])test('reconciliation preserves original receipt when blocked before apply: '+mode,async()=>{
+ const h=harness({state:'failed',source_commit:OTHER,reason:'preserved unknown'},
+  {reconciled:true,dirty:mode==='dirty',busyStage:mode==='busy'?'dietpi':null,
+   baselineResults:mode==='drift'?[true,false]:null,failAt:mode==='validation'?'candidate_validation':mode==='extract'?'candidate_extract':null});
+ if(['validation','extract'].includes(mode))await assert.rejects(h.context.invoke());else assert.equal(await h.context.invoke(),false);
+ assert.equal(h.effects.apply,0);assert.equal(h.effects.privateWrites.length,0);assert.deepEqual(h.promotion,h.before);
+});
+for(const state of ['applying','applied_pending_git','main_published'])test('attestation cannot waive pending transaction '+state,async()=>{
+ const h=harness({state,source_commit:OTHER},{reconciled:true});assert.equal(await h.context.invoke(),false);
+ assert.equal(h.effects.baselineChecks,0);uncertainEffects(h.effects);
+});
+test('attestation cannot retry the same failed candidate',async()=>{
+ const h=harness({state:'failed',source_commit:SHA},{reconciled:true});assert.equal(await h.context.invoke(),false);
+ assert.equal(h.effects.baselineChecks,0);uncertainEffects(h.effects);
 });

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { currentBaselineReconciled } from "./kia-uvo-baseline-reconciliation.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
@@ -394,7 +395,21 @@ export async function promote({ checkOnly = false } = {}) {
     try { promotion = readJson(promotionStatusPath); }
     catch { return false; } // Existing unreadable receipt is uncertain, not first run.
   }
-  if (promotionRequiresReconciliation(promotion, promotionExists, candidate.commit)) return false;
+  const requiresReconciliation = promotionRequiresReconciliation(promotion, promotionExists, candidate.commit);
+  let reconciledBaseline = false;
+  const verifyBaseline = async () => {
+    try {
+      return await currentBaselineReconciled({ repoRoot, candidate,
+        previousRaw: fs.readFileSync(promotionStatusPath), readToken: readHaToken });
+    } catch { return false; }
+  };
+  if (requiresReconciliation) {
+    // Only a different candidate after a terminal failed attempt can use a
+    // Root-attested current baseline. Applying/publication/cleanup stay blocked.
+    if (promotion.state !== "failed" || promotion.source_commit === candidate.commit ||
+        !(await verifyBaseline())) return false;
+    reconciledBaseline = true;
+  }
   if (shouldResumeCandidateCleanup(promotion, candidate)) {
     try {
       const candidateBranchDeleted = deleteCandidateBranch(candidate);
@@ -435,6 +450,7 @@ export async function promote({ checkOnly = false } = {}) {
     ["runtime_applied", "applied_pending_git"].includes(promotion.state);
   const busyStage = findActiveHostUpdateStage(dailyUpdateTriggerDir);
   if (busyStage) {
+    if (reconciledBaseline) return false; // Keep the original uncertain receipt.
     if (promotion.source_commit !== candidate.commit ||
         promotion.state !== (resumeGit ? "applied_pending_git" : "deferred") ||
         promotion.reason !== `host_update_in_progress:${busyStage}`) {
@@ -451,8 +467,10 @@ export async function promote({ checkOnly = false } = {}) {
   let expectedPaths;
   let candidateRoot;
   let failureStage = "candidate_validation";
+  let newRuntimeAttemptRecorded = false;
   try {
     if (!checkOnly && !resumeGit && workingTreePaths().length) {
+      if (reconciledBaseline) return false;
       writeStatus({ state: "deferred", source_commit: candidate.commit, target: candidate.target, reason: "working_tree_not_clean", reason_code: "working_tree_changed" });
       return false;
     }
@@ -475,7 +493,11 @@ export async function promote({ checkOnly = false } = {}) {
       candidateRoot = temporaryRoot;
       failureStage = "candidate_extract";
       extractCandidate(candidate, candidateRoot);
+      // Recheck the exact archive, old receipt, current files, HACS installed
+      // metadata and live loader after candidate preparation, before any apply.
+      if (reconciledBaseline && !(await verifyBaseline())) return false;
       writeStatus({ state: "applying", source_commit: candidate.commit, target: candidate.target, branch: candidate.branch, reason: null });
+      newRuntimeAttemptRecorded = true;
       failureStage = "runtime_apply";
       run("node", [safeUpdater, "apply-candidate", "--target", candidate.target, "--candidate-root", candidateRoot], {
         inherit: true,
@@ -495,6 +517,10 @@ export async function promote({ checkOnly = false } = {}) {
     log(`Kia UVO candidate promoted target=${candidate.target} commit=${commit.slice(0, 12)}`);
     return true;
   } catch (error) {
+    if (reconciledBaseline && !newRuntimeAttemptRecorded) {
+      log(`Kia UVO reconciled candidate preflight deferred target=${candidate.target} stage=${failureStage}`);
+      throw error; // The original failed receipt and its Root archive survive.
+    }
     const current = (() => { try { return readJson(promotionStatusPath); } catch { return {}; } })();
     if (error instanceof PromotionDeferred) {
       writeStatus({

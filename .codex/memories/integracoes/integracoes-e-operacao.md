@@ -71,9 +71,10 @@ stale, readiness incompleto e wake aceito sem telemetria nova não provam essa
 classe de falha.
 
 Atualizações usam `scripts/kia-uvo-safe-update.mjs`: `check` prepara e verifica
-a nova versão em staging; `apply` é explícito, faz backup, usa o instalador
-HACS, reaplica o delta versionado e possui rollback. A rotina automática pode
-detectar e analisar, mas nunca instala esse componente cegamente.
+a nova versão em staging. O ciclo autorizado do Node-RED pode encaminhar uma
+candidata mesclada e auditada ao promotor; a instalação exige checkout limpo,
+backup, preservação dos deltas locais, validação de runtime e rollback.
+Veja o [runbook de atualização](../../../docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md).
 
 ## Moni Mobile / security_panel
 
@@ -169,5 +170,12 @@ Na integração vendorizada, AmazonKidsState centraliza polling por conta a cada
 ## Compatibilidade iCloud antes de promover imagem
 
 O adaptador iCloud exige allowlist de versões Core e hash do construtor nativo. Antes de promover imagem, o atualizador testa compatibilidade e pyicloud isolados, sem configuração residencial; versão desconhecida bloqueia a promoção e dry-run retorna not_checked. O verificador fixa limites próprios quando cgroup de memória está ausente. Após restart, a prova exige nonce e revisão atuais e HA em execução. entry_waiting_user informa setup incompleto: não prova necessidade de OTP, recuperação Apple ou sincronização. O guard admite a tentativa normal com senha configurada quando permitida; OTP permanece manual. Preservar upstream, licença, confiança e validated_compatibility.
+
+<!-- /memory-record -->
+
+<!-- memory-record {"id":"kia-restored-baseline-after-uncertain-promotion","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-10-28","evidence":[{"file":"scripts/kia-uvo-baseline-reconciliation.mjs","sha256":"221551712a0cf193f5a2c220034136527dfd1ae8a85df5505a468293ca35a17e"},{"file":"docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md","sha256":"ee41ea95a2ce46f33b5a253aee24e05acad51b9a5298382492366e8535fab4d8"}]} -->
+## Base restaurada após promoção Kia incerta
+
+Uma promoção failed sem efeito conhecido não comprova rollback. Uma candidata diferente pode seguir somente com atestado Root temporário do estado atual, arquivo histórico exato do recibo e nova verificação de arquivos, HACS e loader antes de aplicar. O atestado não altera o resultado histórico, não libera applying/publicação/cleanup pendentes e não repete a candidata terminal. Adiamentos anteriores à nova aplicação preservam o recibo antigo. A instalação continua no promotor normal com backup e rollback.
 
 <!-- /memory-record -->

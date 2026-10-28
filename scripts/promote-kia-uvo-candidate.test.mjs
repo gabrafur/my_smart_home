@@ -197,6 +197,7 @@ test("runtime promotion waits for unrelated work and resumes Git without reinsta
     git("init", "-b", "main"); git("config", "user.email", "test@example.invalid"); git("config", "user.name", "Fixture");
     fs.mkdirSync(path.join(work, "scripts"));
     fs.copyFileSync(promotionScript, path.join(work, "scripts/promote-kia-uvo-candidate.mjs"));
+    fs.copyFileSync(path.join(scriptDir, "kia-uvo-baseline-reconciliation.mjs"), path.join(work, "scripts/kia-uvo-baseline-reconciliation.mjs"));
     fs.writeFileSync(path.join(work, "scripts/commit-message-check.mjs"), "// fixture: commit message is asserted below\n");
     const component = "homeassistant/custom_components/kia_uvo/coordinator.py";
     fs.mkdirSync(path.dirname(path.join(work, component)), { recursive: true });
