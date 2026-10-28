@@ -10,7 +10,7 @@ RUN mkdir /artifacts && \
     cc -std=c11 -Wall -Wextra -Werror -O2 -fPIC -fstack-protector-strong \
       -D_FORTIFY_SOURCE=2 -shared -Wl,-z,relro,-z,now -Isdk/include \
       native_sender_authorized.c -o /artifacts/observer.so && \
-    cc -std=c11 -Wall -Wextra -Werror -O2 -fstack-protector-strong \
+    cc -std=c11 -Wall -Wextra -Werror -O2 -pthread -fstack-protector-strong \
       -D_FORTIFY_SOURCE=2 -Wl,-z,relro,-z,now -Isdk/include \
       fault_harness_authorized.c -o /artifacts/fault-harness
 

@@ -45,9 +45,9 @@ verificação, outra tarefa, ausência do descritor ou troca do leitor deixam o
 vínculo desconhecido. O cache é somente em memória e não reconstitui alterações
 de código posteriores à última verificação. Uma falha de identidade descarta o
 vínculo guardado; somente uma nova verificação com a origem viva pode recriá-lo.
-Descritores recebidos são fechados
-também nas mensagens inválidas ou truncadas. Essa identificação não comprova o
-fim da origem: o protocolo atual ainda mantém a cauda anterior desconhecida.
+Descritores recebidos são fechados também nas mensagens inválidas ou truncadas.
+Essa identificação permite verificar uma mensagem terminal que permaneceu na
+fila depois da saída do processo; a identidade sozinha não prova encerramento.
 
 Referências primárias: [UAPI de sockets do Linux](https://github.com/torvalds/linux/blob/v6.18/include/uapi/asm-generic/socket.h),
 [identidade de tarefas no pidfs](https://github.com/torvalds/linux/blob/v6.18/fs/pidfs.c)
@@ -57,6 +57,29 @@ O gerenciador conserva o socket enquanto o processo leitor é substituído.
 O novo processo abre o mesmo SQLite, preserva a fila e acrescenta a falha
 `reader_restart`; reiniciar não apaga incerteza histórica. A fila é finita:
 esse mecanismo não promete ausência de perdas em uma parada arbitrariamente longa.
+
+O protocolo de origem `v: 2` acrescenta o booleano `final`. O plugin só tenta
+enviá-lo como verdadeiro depois de fechar a coleta, desregistrar todos os
+callbacks, adquirir o lock sem esperar e confirmar que nenhum callback anterior
+continua em andamento. Um contador atômico de entradas e a ordem do gate evitam
+que um callback pausado antes do lock pareça ausente. Uma entrada posterior ao
+fechamento não coleta eventos. Falha no desregistro, disputa, revogação, relógio
+ausente ou datagrama perdido deixam o encerramento sem comprovação; o broker
+nunca espera pelo leitor ou pelo ACK.
+
+O estado contábil `version: 3` aceita os registros anteriores de versão 2 e
+preserva contadores, falhas e caudas desconhecidas. `source_closed` registra
+somente o fechamento aceito daquela origem. A próxima origem não acrescenta
+uma cauda desconhecida quando a anterior foi comprovadamente encerrada; as
+incertezas mais antigas permanecem. Uma duplicata exata do terminal é idempotente;
+outra mensagem da mesma origem após o terminal é recusada. O leitor ainda aceita
+o protocolo de origem `v: 1`, que não comprova fechamento, e recusa downgrade de
+versão dentro da mesma origem. O fechamento cobre os callbacks da coleta, sem
+estender a cobertura a todo o broker, ao Home Assistant ou ao assistente.
+
+O fechamento não comprova ausência de perdas nem uma janela de 24 horas. Essas
+decisões continuam dependendo dos contadores, domínios temporais, recibos
+duráveis do consumidor e da política canônica no Node-RED.
 
 O tab `observacao_mqtt_nativa` contém configuração, normalização, autorização,
 idade do leitor, decisões de integridade e latência, dedupe e gate final.

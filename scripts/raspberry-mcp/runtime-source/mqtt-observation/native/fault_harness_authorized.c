@@ -16,11 +16,15 @@
 #undef lstat
 #undef close
 #include <assert.h>
+#include <pthread.h>
 
 static uint64_t fake_now=UINT64_C(1000000000);
 static int authorization_mode;
 static int clock_bad,random_bad,socket_bad,revoke_mode,send_error,short_send;
-static int reg_fail_at,register_calls,unregister_calls,close_calls,send_calls;
+static int reg_fail_at,unregister_fail,register_calls,unregister_calls,close_calls,send_calls;
+static int final_send_calls;
+static pthread_barrier_t callback_arrived,callback_release;
+static _Atomic bool pause_next_clock;
 static unsigned nonce;
 static const char *test_name="unset";
 static void *owner;
@@ -28,6 +32,10 @@ static MOSQ_FUNC_generic_callback registered_callback;
 
 int probe_clock_gettime(clockid_t id,struct timespec *out){
     assert(id==CLOCK_BOOTTIME);
+    if(atomic_exchange(&pause_next_clock,false)){
+        int rc=pthread_barrier_wait(&callback_arrived);assert(rc==0||rc==PTHREAD_BARRIER_SERIAL_THREAD);
+        rc=pthread_barrier_wait(&callback_release);assert(rc==0||rc==PTHREAD_BARRIER_SERIAL_THREAD);
+    }
     if(clock_bad){errno=EIO;return -1;}
     out->tv_sec=(time_t)(fake_now/UINT64_C(1000000000));
     out->tv_nsec=(long)(fake_now%UINT64_C(1000000000));return 0;
@@ -64,6 +72,7 @@ ssize_t probe_sendto(int fd,const void *buffer,size_t bytes,int flags,const stru
     assert(size==sizeof(struct sockaddr_un) && address->sa_family==AF_UNIX);
     assert(strcmp(((const struct sockaddr_un*)address)->sun_path,SOURCE_SOCKET)==0);
     assert(bytes<FRAME_LIMIT);send_calls++;
+    if(strstr(buffer,"\"final\":true"))final_send_calls++;
     if(send_error){errno=send_error;return -1;}
     if(short_send)return (ssize_t)bytes-1;
     printf("{\"type\":\"frame\",\"case\":\"%s\",\"arrived_ns\":\"%"PRIu64"\",\"wire\":",test_name,fake_now+1000);
@@ -79,12 +88,13 @@ int mosquitto_callback_register(mosquitto_plugin_id_t *identifier,int event,MOSQ
 int mosquitto_callback_unregister(mosquitto_plugin_id_t *identifier,int event,MOSQ_FUNC_generic_callback cb,const void *data){
     assert(identifier==(mosquitto_plugin_id_t*)(uintptr_t)1 && cb==metadata_callback && data==NULL);
     bool allowed=false;for(unsigned i=0;i<CLASSES+1;i++)if(event==hooks[i])allowed=true;
-    assert(allowed);unregister_calls++;return MOSQ_ERR_SUCCESS;
+    assert(allowed);unregister_calls++;return unregister_fail?MOSQ_ERR_NOT_SUPPORTED:MOSQ_ERR_SUCCESS;
 }
 static void begin(const char *name){
     /* Each previous lifecycle has already returned from cleanup. */
     test_name=name;authorization_mode=0;clock_bad=random_bad=socket_bad=revoke_mode=send_error=short_send=0;
-    reg_fail_at=register_calls=unregister_calls=close_calls=send_calls=0;
+    reg_fail_at=unregister_fail=register_calls=unregister_calls=close_calls=send_calls=final_send_calls=0;
+    atomic_store(&pause_next_clock,false);
     fake_now=UINT64_C(1000000000);owner=NULL;registered_callback=NULL;
 }
 static void start(void){
@@ -94,11 +104,15 @@ static void event(int hook){
     assert(registered_callback!=NULL);
     /* Invalid native-object pointers catch any attempt to dereference payload/client data. */
     assert(registered_callback(hook,(void*)(uintptr_t)1,(void*)(uintptr_t)2)==MOSQ_ERR_SUCCESS);
+    assert(atomic_load(&s.callbacks)==0);
 }
 static void tick(void){fake_now+=SEND_INTERVAL_NS;event(MOSQ_EVT_TICK);}
 static void finish(void){
     assert(mosquitto_plugin_cleanup(owner,NULL,0)==MOSQ_ERR_SUCCESS);
     printf("{\"type\":\"case_passed\",\"case\":\"%s\",\"production_changes\":false}\n",test_name);
+}
+static void *concurrent_callback(void *unused){
+    (void)unused;event(MOSQ_EVT_CONNECT);return NULL;
 }
 int main(void){
     begin("all_seven");
@@ -203,9 +217,37 @@ int main(void){
     start();authorization_before=send_calls;authorization_mode=1;tick();authorization_mode=0;tick();event(MOSQ_EVT_CONNECT);
     assert(disabled() && send_calls==authorization_before && s.total[2]==0);finish();
 
+    begin("terminal_clean");
+    start();assert(!s.final);finish();assert(s.final && final_send_calls==1 && s.frame_seq==2);
+
+    begin("cleanup_unregistration_failure");
+    start();unregister_fail=1;finish();assert(disabled() && !s.final && final_send_calls==0);
+
+    begin("cleanup_callback_active");
+    start();
+    assert(pthread_barrier_init(&callback_arrived,NULL,2)==0);
+    assert(pthread_barrier_init(&callback_release,NULL,2)==0);
+    atomic_store(&pause_next_clock,true);pthread_t thread;
+    assert(pthread_create(&thread,NULL,concurrent_callback,NULL)==0);
+    int rc=pthread_barrier_wait(&callback_arrived);assert(rc==0||rc==PTHREAD_BARRIER_SERIAL_THREAD);
+    assert(atomic_load(&s.callbacks)==1);finish();assert(disabled() && !s.final && final_send_calls==0);
+    rc=pthread_barrier_wait(&callback_release);assert(rc==0||rc==PTHREAD_BARRIER_SERIAL_THREAD);
+    assert(pthread_join(thread,NULL)==0);assert(atomic_load(&s.callbacks)==0);
+    assert(pthread_barrier_destroy(&callback_arrived)==0 && pthread_barrier_destroy(&callback_release)==0);
+
+    begin("cleanup_final_send_failed");
+    start();send_error=EAGAIN;finish();assert(s.final && s.frame_seq==1 && s.send_failures==1);
+
+    begin("cleanup_final_clock_failed");
+    start();clock_bad=1;finish();assert(s.final && final_send_calls==0 && s.frame_seq==1);
+
+    begin("callback_after_cleanup");
+    start();finish();int closed_send_calls=send_calls;
+    event(MOSQ_EVT_CONNECT);assert(s.total[2]==0 && send_calls==closed_send_calls && atomic_load(&s.callbacks)==0);
+
     assert(mosquitto_plugin_version(1,(int[]){5})==5);
     assert(mosquitto_plugin_version(1,(int[]){4})==-1);
     assert(mosquitto_plugin_version(1,NULL)==-1);
-    puts("{\"type\":\"suite_passed\",\"cases\":29,\"real_syscalls_injected\":true,\"household_effects\":false}");
+    puts("{\"type\":\"suite_passed\",\"cases\":35,\"real_syscalls_injected\":true,\"household_effects\":false}");
     return 0;
 }

@@ -42,7 +42,11 @@ def validate_state(state):
           'last_source_dropped','last_reader_ns','last_emitted_ns','clock_faults',
           'send_failures','report_gaps','stats','last_batch','full24h_proven',
           'past_stats','past_report_gaps','past_clock_faults','past_send_failures','unknown_epoch_tails'}
-    need(type(state)is dict and keys<=set(state)<=keys|{'previous_epoch_summary'},'accounting_state_invalid')
+    need(type(state)is dict,'accounting_state_invalid')
+    version=state.get('version')
+    need(type(version)is int and version in(2,3),'accounting_state_invalid')
+    if version==3:keys|={'source_closed','last_source_wire_version'}
+    need(keys<=set(state)<=keys|{'previous_epoch_summary'},'accounting_state_invalid')
     def count(value):
         return type(value)is int and 0<=value<2**128
     def stats(value):
@@ -55,14 +59,27 @@ def validate_state(state):
                  and row['missing']==row['source_dropped']+row['transport_missing'],'accounting_state_invalid')
             maximum=row['max_source_to_reader_ns']
             need((maximum is None and row['timed']==0)or(count(maximum)and row['timed']>0),'accounting_state_invalid')
-    need(state['version']==2 and type(state['version'])is int and state['full24h_proven']is False,'accounting_state_invalid')
+    need(state['full24h_proven']is False,'accounting_state_invalid')
+    if version==3:
+        need(type(state['source_closed'])is bool
+             and type(state['last_source_wire_version'])is int
+             and state['last_source_wire_version']in(1,2)
+             and(not state['source_closed']or state['last_source_wire_version']==2),'accounting_state_invalid')
     need(type(state['instance'])is str and re.fullmatch('[a-f0-9]{32}',state['instance'])is not None,'accounting_state_invalid')
     need(type(state['last_frame_hash'])is str and re.fullmatch('[a-f0-9]{64}',state['last_frame_hash'])is not None,'accounting_state_invalid')
     for name in ['epoch','last_frame_seq','last_event_seq','last_reader_ns','clock_faults',
                  'send_failures','report_gaps','past_report_gaps','past_clock_faults','past_send_failures','unknown_epoch_tails']:
         need(count(state[name]),'accounting_state_invalid')
-    need(state['epoch']>0 and state['last_frame_seq']>0 and state['unknown_epoch_tails']==state['epoch']-1,'accounting_state_invalid')
-    need(type(state['previous_epoch_tail_unknown'])is bool and state['previous_epoch_tail_unknown']==(state['epoch']>1),'accounting_state_invalid')
+    need(state['epoch']>0 and state['last_frame_seq']>0,'accounting_state_invalid')
+    need(type(state['previous_epoch_tail_unknown'])is bool,'accounting_state_invalid')
+    if version==2:
+        need(state['unknown_epoch_tails']==state['epoch']-1
+             and state['previous_epoch_tail_unknown']==(state['epoch']>1),'accounting_state_invalid')
+    else:
+        need(0<=state['unknown_epoch_tails']<=state['epoch']-1,'accounting_state_invalid')
+        if state['epoch']==1:need(state['previous_epoch_tail_unknown']is False,'accounting_state_invalid')
+        elif state['previous_epoch_tail_unknown']:need(state['unknown_epoch_tails']>0,'accounting_state_invalid')
+        else:need(state['unknown_epoch_tails']<=state['epoch']-2,'accounting_state_invalid')
     for name in ['started_ns','last_emitted_ns']:
         need(state[name]is None or count(state[name]),'accounting_state_invalid')
     for name in ['last_totals','last_source_dropped']:
@@ -77,7 +94,9 @@ def validate_state(state):
     if 'previous_epoch_summary'in state:
         summary=state['previous_epoch_summary']
         closed(summary,{'epoch','stats','report_gaps','clock_faults','send_failures','tail_unknown'})
-        need(count(summary['epoch'])and 0<summary['epoch']<state['epoch']and count(summary['report_gaps'])and summary['tail_unknown']is True,'accounting_state_invalid')
+        need(count(summary['epoch'])and 0<summary['epoch']<state['epoch']and count(summary['report_gaps'])
+             and type(summary['tail_unknown'])is bool
+             and summary['tail_unknown']==state['previous_epoch_tail_unknown'],'accounting_state_invalid')
         stats(summary['stats'])
         need(count(summary['clock_faults'])and summary['clock_faults']<=state['past_clock_faults']
              and count(summary['send_failures'])and summary['send_failures']<=state['past_send_failures'],'accounting_state_invalid')
@@ -96,10 +115,11 @@ def decode(raw):
         value=json.loads(raw.decode('ascii'),object_pairs_hook=pairs)
     except (UnicodeError,ValueError,RecursionError):
         raise Invalid('frame_encoding_invalid') from None
-    closed(value,FIELDS)
-    need(type(value['v'])is int and value['v']==1,'schema_invalid')
+    need(type(value)is dict and type(value.get('v'))is int and value['v']in(1,2),'schema_invalid')
+    version=value['v'];closed(value,FIELDS|({'final'}if version==2 else set()))
+    if version==2:need(type(value['final'])is bool,'schema_invalid')
     need(type(value['instance'])is str and re.fullmatch('[a-f0-9]{32}',value['instance']) is not None,'instance_invalid')
-    out={'instance':value['instance']}
+    out={'instance':value['instance'],'wire_version':version,'final':value['final']if version==2 else False}
     for key in ['frame_seq','event_seq','clock_faults','send_failures']:
         out[key]=uint(value[key])
     need(out['frame_seq']>0,'counter_invalid')
@@ -148,6 +168,8 @@ def accept(previous, raw, arrived_ns, *, source_binding_verified):
             need(digest==previous['last_frame_hash'],'frame_reuse_conflict')
             return {'status':'duplicate','reason':None,'state':copy.deepcopy(previous),'full_goal_proven':False}
         prior=previous if same else None
+        need(not prior or not prior.get('source_closed',False),'source_already_closed')
+        need(not prior or f['wire_version']>=prior.get('last_source_wire_version',1),'source_wire_downgrade')
         oldseq=prior['last_event_seq']if prior else 0
         oldframe=prior['last_frame_seq']if prior else 0
         need(f['frame_seq']>oldframe and f['event_seq']>=oldseq,'counter_reversed')
@@ -197,8 +219,10 @@ def accept(previous, raw, arrived_ns, *, source_binding_verified):
             values=[v for v in [stats[k]['max_source_to_reader_ns'],batch[k]['max_source_to_reader_ns']]if v is not None]
             stats[k]['max_source_to_reader_ns']=max(values)if values else None
         epoch=previous['epoch']if same else (previous['epoch']+1 if previous else 1)
-        state={'version':2,'instance':f['instance'],'epoch':epoch,'started_ns':f['started_ns'],
-               'previous_epoch_tail_unknown':bool(previous is not None and not same)or bool(prior and prior['previous_epoch_tail_unknown']),
+        transition_tail_unknown=bool(previous is not None and not same and not previous.get('source_closed',False))
+        state={'version':3,'instance':f['instance'],'epoch':epoch,'started_ns':f['started_ns'],
+               'source_closed':f['final'],'last_source_wire_version':f['wire_version'],
+               'previous_epoch_tail_unknown':transition_tail_unknown or bool(prior and prior['previous_epoch_tail_unknown']),
                'last_frame_seq':f['frame_seq'],'last_event_seq':f['event_seq'],'last_frame_hash':digest,
                'last_totals':f['totals'],'last_source_dropped':f['source_dropped'],
                'last_reader_ns':arrived_ns,'last_emitted_ns':f['emitted_ns'],
@@ -218,11 +242,11 @@ def accept(previous, raw, arrived_ns, *, source_binding_verified):
         state['past_report_gaps']=(previous.get('past_report_gaps',0)if previous else 0)+(previous['report_gaps']if previous is not None and not same else 0)
         for field in ['clock_faults','send_failures']:
             state['past_'+field]=(previous['past_'+field]if previous else 0)+(previous[field]if previous is not None and not same else 0)
-        state['unknown_epoch_tails']=(previous.get('unknown_epoch_tails',0)if previous else 0)+(1 if previous is not None and not same else 0)
+        state['unknown_epoch_tails']=(previous.get('unknown_epoch_tails',0)if previous else 0)+int(transition_tail_unknown)
         if previous is not None and not same:
             state['previous_epoch_summary']={'epoch':previous['epoch'],'stats':copy.deepcopy(previous['stats']),
                                              'report_gaps':previous['report_gaps'],'clock_faults':previous['clock_faults'],
-                                             'send_failures':previous['send_failures'],'tail_unknown':True}
+                                             'send_failures':previous['send_failures'],'tail_unknown':transition_tail_unknown}
         elif prior and 'previous_epoch_summary'in prior:
             state['previous_epoch_summary']=copy.deepcopy(prior['previous_epoch_summary'])
         validate_state(state)

@@ -33,8 +33,9 @@ struct item {uint64_t seq,at;unsigned kind;bool known;};
 static struct {
     atomic_flag lock;
     _Atomic bool disabled,active;
+    _Atomic unsigned callbacks;
     _Atomic uint64_t pending_drop[CLASSES],pending_faults;
-    bool started_known;
+    bool started_known,final;
     int fd,registered;
     mosquitto_plugin_id_t *identifier;
     uint64_t started,event_seq,frame_seq,total[CLASSES],dropped[CLASSES];
@@ -106,7 +107,7 @@ static void emit(bool force){
     s.last_attempt=now;
     if(s.frame_seq==UINT64_MAX){disable();return;}
     size_t used=0;
-    if(!append(&used,"{\"v\":1,\"instance\":\"%s\",\"started_ns\":",s.instance)
+    if(!append(&used,"{\"v\":2,\"final\":%s,\"instance\":\"%s\",\"started_ns\":",s.final?"true":"false",s.instance)
        ||!stamp(&used,s.started,s.started_known)
        ||!append(&used,",\"frame_seq\":\"%"PRIu64"\",\"event_seq\":\"%"PRIu64"\",\"totals\":",s.frame_seq+1,s.event_seq)
        ||!counters(&used,s.total)||!append(&used,",\"source_dropped\":")||!counters(&used,s.dropped)
@@ -127,16 +128,21 @@ static void emit(bool force){
 static int metadata_callback(int event,void *event_data,void *userdata){
     /* No client, topic, payload, properties, password or native object access. */
     (void)event_data;(void)userdata;
-    if(disabled()||!atomic_load_explicit(&s.active,memory_order_acquire))return MOSQ_ERR_SUCCESS;
+    /* Count entry BEFORE checking the gate. The sequentially consistent gate
+     * and counter order make cleanup distinguish a pre-close callback from a
+     * later entry that must not collect. This counts concurrent threads only,
+     * not lifetime events; Linux task limits fit in unsigned. Never wait. */
+    atomic_fetch_add_explicit(&s.callbacks,1,memory_order_seq_cst);
+    if(disabled()||!atomic_load_explicit(&s.active,memory_order_seq_cst))goto leave;
     int kind=-1;
     for(unsigned k=0;k<CLASSES;k++)if(event==hooks[k]){kind=(int)k;break;}
-    if(kind<0&&event!=MOSQ_EVT_TICK)return MOSQ_ERR_SUCCESS;
-    if(event==MOSQ_EVT_TICK&&(revoke_present()||!authorized())){disable();return MOSQ_ERR_SUCCESS;}
+    if(kind<0&&event!=MOSQ_EVT_TICK)goto leave;
+    if(event==MOSQ_EVT_TICK&&(revoke_present()||!authorized())){disable();goto leave;}
     uint64_t occurred=0;bool known=clock_ns(&occurred);
     if(atomic_flag_test_and_set_explicit(&s.lock,memory_order_acquire)){
         if(kind>=0)atomic_increment(&s.pending_drop[kind]);
         if(!known)atomic_increment(&s.pending_faults);
-        return MOSQ_ERR_SUCCESS;
+        goto leave;
     }
     if(!drain_drops())goto done;
     if(!known&&!add(&s.clock_faults,1))goto done;
@@ -148,6 +154,8 @@ static int metadata_callback(int event,void *event_data,void *userdata){
     emit(false);
 done:
     atomic_flag_clear_explicit(&s.lock,memory_order_release);
+leave:
+    atomic_fetch_sub_explicit(&s.callbacks,1,memory_order_seq_cst);
     return MOSQ_ERR_SUCCESS;
 }
 
@@ -164,9 +172,11 @@ int mosquitto_plugin_init(mosquitto_plugin_id_t *identifier,void **userdata,stru
     if(atomic_load_explicit(&s.active,memory_order_acquire))return MOSQ_ERR_SUCCESS;
     memset(&s,0,sizeof(s));s.fd=-1;atomic_flag_clear(&s.lock);
     atomic_init(&s.disabled,false);atomic_init(&s.active,false);atomic_init(&s.pending_faults,0);
+    atomic_init(&s.callbacks,0);
     for(unsigned k=0;k<CLASSES;k++)atomic_init(&s.pending_drop[k],0);
     /* Unsupported configuration disables telemetry, preserving broker service. */
-    if(!identifier||count!=0||revoke_present()||!authorized()||!atomic_is_lock_free(&s.pending_faults)){disable();return MOSQ_ERR_SUCCESS;}
+    if(!identifier||count!=0||revoke_present()||!authorized()||!atomic_is_lock_free(&s.pending_faults)
+       ||!atomic_is_lock_free(&s.callbacks)){disable();return MOSQ_ERR_SUCCESS;}
     unsigned char random[16];
     if(getrandom(random,sizeof(random),GRND_NONBLOCK)!=(ssize_t)sizeof(random)){disable();return MOSQ_ERR_SUCCESS;}
     for(unsigned i=0;i<sizeof(random);i++)(void)snprintf(s.instance+2*i,3,"%02x",random[i]);
@@ -182,7 +192,7 @@ int mosquitto_plugin_init(mosquitto_plugin_id_t *identifier,void **userdata,stru
         s.registered++;
     }
     s.started_known=clock_ns(&s.started);if(!s.started_known)s.clock_faults=1;
-    atomic_store_explicit(&s.active,true,memory_order_release);
+    atomic_store_explicit(&s.active,true,memory_order_seq_cst);
     if(!atomic_flag_test_and_set_explicit(&s.lock,memory_order_acquire)){
         (void)drain_drops();emit(true);
         atomic_flag_clear_explicit(&s.lock,memory_order_release);
@@ -192,10 +202,16 @@ int mosquitto_plugin_init(mosquitto_plugin_id_t *identifier,void **userdata,stru
 int mosquitto_plugin_cleanup(void *userdata,struct mosquitto_opt *options,int count){
     (void)options;(void)count;
     if(userdata!=&s)return MOSQ_ERR_SUCCESS;
-    atomic_store_explicit(&s.active,false,memory_order_release);
-    for(int i=s.registered-1;i>=0;i--)(void)mosquitto_callback_unregister(s.identifier,hooks[i],metadata_callback,NULL);
+    atomic_store_explicit(&s.active,false,memory_order_seq_cst);
+    bool unregistered=true;
+    for(int i=s.registered-1;i>=0;i--)
+        if(mosquitto_callback_unregister(s.identifier,hooks[i],metadata_callback,NULL)!=MOSQ_ERR_SUCCESS)unregistered=false;
     if(!atomic_flag_test_and_set_explicit(&s.lock,memory_order_acquire)){
-        (void)drain_drops();emit(true);disable();
+        if(unregistered&&atomic_load_explicit(&s.callbacks,memory_order_seq_cst)==0){
+            s.final=true;
+            if(drain_drops())emit(true);
+        }
+        disable();
         if(s.fd>=0)close(s.fd);
         s.fd=-1;
         atomic_flag_clear_explicit(&s.lock,memory_order_release);
