@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "scope": "bounded_immutable_maintenance_history_and_incremental_backup_input",
+  "verified_on": "2026-10-28",
+  "static_file_transaction_targets": 46,
+  "Root_static_modules": 27,
+  "production_installed": false,
+  "source_or_restore_access_activated": false,
+  "residential_services_restarted": 0,
+  "full24h_proven": false,
+  "isolated_Root_units": {
+    "tests": 337,
+    "failures": 0,
+    "skipped": 0,
+    "network": "none",
+    "residential_mounts_or_secrets": false,
+    "source_hashes_revalidated_after_run": true,
+    "owned_container_removed": true,
+    "AS_soft_hard_bytes": 134217728,
+    "CPU_quota": 0.25,
+    "CPU_seconds_soft_hard": 20
+  },
+  "history_contract": {
+    "active_operations": 16,
+    "archived_operations_limit": 4096,
+    "maximum_archived_operation_bytes": 65536,
+    "terminal_phases_eligible_for_retirement": ["complete", "cancelled", "rescued"],
+    "failed_and_uncertain_operations_not_retired": true,
+    "immutable_record_and_index_before_active_retirement": true,
+    "active_v2_anchors_index_prefix_hash_and_count": true,
+    "old_active_v1_remains_readable": true,
+    "archived_ID_cannot_begin_again_after_restart_or_approval_rotation": true,
+    "missing_or_rolled_back_index_blocks_new_admissions": true,
+    "archive_capacity_behavior": "fail_closed_without_deletion_or_counter_reset",
+    "existing_active_recovery_facts_remain_recordable_if_older_archive_is_unavailable": true
+  },
+  "new_fault_fixture_coverage": [
+    "archive_record_fsync_then_interruption",
+    "archive_index_fsync_then_interruption",
+    "active_retirement_fsync_then_interruption",
+    "new_begin_fsync_then_interruption",
+    "consumed_ID_and_terminal_chain_preserved",
+    "immutable_file_conflict_symlink_hardlink_wrong_mode",
+    "invalid_request_and_capacity_before_retirement",
+    "controller_cannot_hide_failed_or_uncertain_operation",
+    "incremental_history_includes_active_archived_and_linked_receipts",
+    "current_authority_files_excluded",
+    "historical_policy_receipt_is_data_not_current_authority",
+    "missing_archive_file_or_corrupt_receipt_rejects_export",
+    "unfinished_or_changed_history_export_is_not_a_verified_backup"
+  ],
+  "pending": [
+    "protected_complete_snapshot_transport_into_the_verified_external_backup_manifest",
+    "restore_historical_maintenance_as_data_without_replaying_old_authority",
+    "continued_daily_backup_in_explicit_closed_metadata_mode",
+    "approved_outage_budget_alignment_and_complete_installed_helper_contract",
+    "container_update_coordination_and_consumer_CID_recreation",
+    "full_install_revoke_rollback_and_specific_scope_approval",
+    "production_source_coverage_latency_and_natural24h",
+    "PC_off_autonomy_and_seven_application_restores"
+  ]
+}

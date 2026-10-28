@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 45 destinos: 26 módulos Root, nove
+do pacote. Seu catálogo fechado contém 46 destinos: 27 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -327,10 +327,34 @@ projeção MCP ainda exigem integração e validação próprias no pacote.
 `maintenance_journal.py` mantém fatos tipados em um snapshot Root com modo
 `0600`, protegido pelo mesmo lock de transação, escrita atômica e fsync.
 Cada operação vincula aprovação, ID, domínio BOOTTIME, sequência e hash do
-registro anterior. O limite de 16 operações preserva todos os registros;
-capacidade esgotada bloqueia a escrita, sem descarte automático. Uma repetição
-exata devolve o mesmo recibo, sem repetir efeito. Divergência, sequência fora
-de ordem ou continuação de operação terminada são recusadas.
+registro anterior. O conjunto ativo mantém até 16 operações. Ao precisar de
+espaço, `maintenance_archive.py` preserva uma operação encerrada como
+`complete`, `cancelled` ou `rescued` em arquivo Root imutável, confirma seus
+bytes e publica o índice antes de retirá-la do conjunto ativo. Operações
+incertas ou `failed` não são arquivadas para liberar outra manutenção.
+O arquivo ativo v2 ancora o hash e o tamanho do prefixo do índice; ausência ou
+regressão do índice bloqueia novos IDs. Um índice publicado antes de uma
+interrupção só pode ser reconciliado com uma cópia ativa exatamente igual.
+
+Os IDs e cadeias completas continuam consultáveis depois do reinício e de
+rotação de aprovação. Um ID arquivado não pode iniciar outra operação. O limite
+de 4.096 operações arquivadas bloqueia novas admissões quando atingido, sem
+excluir histórico nem redefinir contadores. Cada arquivo arquivado tem limite
+de 64 KiB. Uma repetição exata ativa devolve o mesmo recibo, sem repetir efeito.
+Divergência, sequência fora de ordem ou continuação de operação terminada são
+recusadas. Danos no arquivo histórico não devem impedir o registro de fatos de
+uma operação ativa necessária para restaurar a disponibilidade da casa.
+
+`Journal.history_files()` fornece o snapshot ativo, o índice, cada cadeia
+arquivada e os recibos existentes de plano, recuperação, vínculo e política
+ligados aos respectivos IDs. A leitura é incremental, sob o mesmo lock, sem
+recarregar todo o histórico a cada arquivo. O consumidor precisa esgotar o
+gerador e conferir seu sucesso antes de publicar o backup: uma lista parcial
+não é snapshot verificado. Autorizações, políticas atuais, pedidos preparados,
+locks e fontes livres ficam fora dessa saída. Recibos históricos podem conter
+bytes de políticas antigas como evidência; esses bytes nunca são autorização
+para restaurar uma política ou reabrir coleta. Essa interface ainda precisa do
+transporte protegido e do restore de histórico separados do restore de dados.
 
 O registro inclui a janela armada, intents anteriores aos efeitos, parada e
 fechamento da origem, corte confirmado por ACK, parada e início do consumidor,

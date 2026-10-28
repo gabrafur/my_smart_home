@@ -101,8 +101,13 @@ def validate_operation(op):
         previous=row['sha256']
     return op
 def validate_snapshot(value):
-    closed(value,['body','sha256']);body=value['body'];closed(body,['schema_version','revision','operations'])
-    need(type(body['schema_version'])is int and body['schema_version']==1);uint(body['revision'],64)
+    closed(value,['body','sha256']);body=value['body']
+    need(type(body)is dict and type(body.get('schema_version'))is int and body['schema_version']in(1,2))
+    closed(body,['schema_version','revision','operations']+(['archived_operations','archive_sha256']if body['schema_version']==2 else []))
+    uint(body['revision'],64)
+    if body['schema_version']==2:
+        count=uint(body['archived_operations'],64)
+        need((count==0 and body['archive_sha256']is None)or(count>0 and hex64(body['archive_sha256'])))
     need(type(body['operations'])is list and len(body['operations'])<=MAX_OPERATIONS)
     need(len({op['operation_id']for op in body['operations']})==len(body['operations']))
     for op in body['operations']:validate_operation(op)
@@ -129,12 +134,74 @@ class Journal:
             raise MaintenanceUnavailable('maintenance_snapshot_invalid')from None
     def status(self):
         value=self._read();return copy.deepcopy(value)
+    def find(self,operation_id):
+        value=self._read()
+        op=next((v for v in(value['body']['operations']if value else[])if v['operation_id']==operation_id),None)
+        if op is not None:return copy.deepcopy(op)
+        from maintenance_archive import Archive
+        archive=Archive(self.tx);archive.checked(value)
+        return archive.find(operation_id)
+    def _retire_one(self,old):
+        from maintenance_archive import Archive,TERMINAL
+        op=next((v for v in old['body']['operations']if v['records'][-1]['body']['phase']in TERMINAL),None)
+        need(op is not None,'maintenance_capacity_reached')
+        # Preserve and verify the complete operation before reducing the active
+        # set. A crash at either boundary cannot free a consumed operation ID.
+        archive=Archive(self.tx);archive.checked(old);archive.preserve(op)
+        body=copy.deepcopy(old['body']);body['operations'].remove(op)
+        index=archive.index()[1]
+        body.update(schema_version=2,archived_operations=str(len(index['body']['operations'])),archive_sha256=index['sha256'])
+        body['revision']=str(uint(body['revision'],64)+1)
+        value={'body':body,'sha256':digest(body)};validate_snapshot(value)
+        try:
+            need(self._read()==old,'maintenance_concurrent_change')
+            self.tx._anchors();self.tx._atomic(self.tx.state_fd,'maintenance.json',canonical(value),0o600)
+        except (OSError,DeploymentUnavailable):raise MaintenanceUnavailable('maintenance_write_uncertain')from None
+        return self._read()
+    def history_files(self):
+        """Yield bounded historical data; exhaust before publishing a backup.
+
+        These bytes include old policy receipts as evidence, never authority.
+        No current grant, policy, prepared request, lock or source secret is
+        exported. The separately reviewed backup transport owns the destination.
+        """
+        from maintenance_archive import Archive,MAX_OPERATION_BYTES
+        snapshot=self._read();archive=Archive(self.tx);index=archive.checked(snapshot)
+        active=snapshot['body']['operations']if snapshot else []
+        if snapshot is not None:yield 'maintenance.json',canonical(snapshot)
+        if index is not None:yield 'maintenance-archive.json',index[0]
+        def operations():
+            for op in active:yield op,None
+            for row in index[1]['body']['operations']if index else []:
+                raw,op=archive.load(row)
+                yield op,raw
+        seen=set()
+        for op,raw in operations():
+            identity=op['operation_id']
+            if raw is not None:yield 'maintenance-archive-'+identity+'.json',raw
+            if identity in seen:continue
+            seen.add(identity)
+            for prefix in ('backup-plan-','backup-rescue-','binding-','source-policy-seal-'):
+                name=prefix+identity+'.json'
+                try:receipt,value=archive._read(name)
+                except FileNotFoundError:continue
+                closed(value,['body','sha256']);body=value['body']
+                need(type(body)is dict and body.get('operation_id')==identity
+                  and body.get('approval_sha256')==op['approval_sha256']and value['sha256']==digest(body)
+                  and len(receipt)<=MAX_OPERATION_BYTES,'maintenance_history_receipt_invalid')
+                yield name,receipt
+        need(self._read()==snapshot and archive.index()==index,'maintenance_history_changed')
     def append(self,operation_id,phase,facts,*,at_ns,clock_domain_sha256,expected_previous_sha256):
         need(not self.read_only,'maintenance_read_only');old=self._read()
         body=copy.deepcopy(old['body'])if old else {'schema_version':1,'revision':'0','operations':[]}
         op=next((v for v in body['operations']if v['operation_id']==operation_id),None)
         if op is None:
             need(phase=='begin'and expected_previous_sha256 is None,'maintenance_parent_changed')
+            # Validate new input and the historical ID before storage changes.
+            record_body(operation_id,self.approval,phase,facts,at_ns,clock_domain_sha256,1,None)
+            need(self.find(operation_id)is None,'maintenance_operation_archived')
+            if len(body['operations'])>=MAX_OPERATIONS:
+                old=self._retire_one(old);body=copy.deepcopy(old['body'])
             need(len(body['operations'])<MAX_OPERATIONS,'maintenance_capacity_reached')
             op={'operation_id':operation_id,'approval_sha256':self.approval,'records':[]};body['operations'].append(op)
         need(op['approval_sha256']==self.approval,'maintenance_approval_changed')

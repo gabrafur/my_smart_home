@@ -59,8 +59,7 @@ class Controller:
     def __init__(self,journal,backend):
         self.journal=journal;self.backend=backend
     def _operation(self,operation_id):
-        value=self.journal.status()
-        op=next((v for v in(value['body']['operations']if value else[])if v['operation_id']==operation_id),None)
+        op=self.journal.find(operation_id)
         if op is not None:validate_operation(op)
         return op
     def _clock(self,op):
