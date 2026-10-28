@@ -137,6 +137,21 @@ um ciclo nativo. O leitor não aceita outro contêiner por semelhança de nome n
 reconfigura automaticamente esse vínculo. A integração dessa etapa no atualizador
 e o instalador selado ainda são pendências da ativação.
 
+O componente `deployment_files.py` prepara a transação dos arquivos estáticos
+do pacote. Seu catálogo fechado contém 24 destinos de código, units,
+configuração e licenças; não inclui credenciais, autorização, vínculo de origem
+ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
+confere os hashes anteriores e posteriores e recusa repetir uma aplicação
+interrompida. Um recibo antigo é apresentado separadamente da conferência dos
+arquivos atuais. A reversão preserva edições concorrentes e mantém os backups.
+O handle de observação não cria lock ausente nem aceita mutações.
+
+Esse componente não executa Docker ou systemd e não é um instalador completo.
+A orquestração aprovada precisa fechar a coleta, parar o leitor novo e restaurar
+o broker antes de reverter os arquivos estáticos. Montagens somente leitura,
+recriação do broker, novo vínculo antes da partida, ativação do canvas e
+projeção MCP ainda exigem integração e validação próprias no pacote.
+
 ## Revogação, reversão e recuperação
 
 Revogação fecha a autorização e remove o marcador positivo. O plugin verifica
