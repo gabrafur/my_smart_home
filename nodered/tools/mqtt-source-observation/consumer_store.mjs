@@ -141,6 +141,7 @@ export class ConsumerStore{
       acknowledged_counts:result.state.acked_counts,receipt_facts:result.receipt_facts,
       canvas_checkpoint:old?.body.canvas_checkpoint??null,
       canvas_checkpoint_sha256:old?.body.canvas_checkpoint?digest(old.body.canvas_checkpoint):null,
+      checkpoint_only:old===null?null:this._checkpointPlan(old),
       clock_domain_changes:result.state.clock_domain_changes,ack_intended:result.ack!==null,full24h_proven:false};
   }
   commit(proposalSha,checkpoint=null){
@@ -170,6 +171,9 @@ export class ConsumerStore{
   }
   prepareCheckpoint(){
     const old=this._state();need(old!==null,'consumer_history_missing');
+    return this._checkpointPlan(old);
+  }
+  _checkpointPlan(old){
     const proposal=digest({schema_version:1,operation:'canvas_checkpoint_only',base_state_sha:old.sha256});
     return {state:'checkpoint_prepared',proposal_sha:proposal,base_state_sha:old.sha256,
       receipt_id:old.body.last_receipt,acknowledged_counts:structuredClone(old.body.acked_counts),

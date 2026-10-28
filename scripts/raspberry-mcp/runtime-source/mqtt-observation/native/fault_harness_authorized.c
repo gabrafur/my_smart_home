@@ -23,6 +23,8 @@ static int authorization_mode;
 static int clock_bad,random_bad,socket_bad,revoke_mode,send_error,short_send;
 static int reg_fail_at,unregister_fail,register_calls,unregister_calls,close_calls,send_calls;
 static int final_send_calls;
+static bool last_wire_covered;
+static uint64_t last_covered,clock_step;
 static pthread_barrier_t callback_arrived,callback_release;
 static _Atomic bool pause_next_clock;
 static unsigned nonce;
@@ -32,13 +34,14 @@ static MOSQ_FUNC_generic_callback registered_callback;
 
 int probe_clock_gettime(clockid_t id,struct timespec *out){
     assert(id==CLOCK_BOOTTIME);
+    if(clock_bad){errno=EIO;return -1;}
+    out->tv_sec=(time_t)(fake_now/UINT64_C(1000000000));
+    out->tv_nsec=(long)(fake_now%UINT64_C(1000000000));fake_now+=clock_step;
     if(atomic_exchange(&pause_next_clock,false)){
         int rc=pthread_barrier_wait(&callback_arrived);assert(rc==0||rc==PTHREAD_BARRIER_SERIAL_THREAD);
         rc=pthread_barrier_wait(&callback_release);assert(rc==0||rc==PTHREAD_BARRIER_SERIAL_THREAD);
     }
-    if(clock_bad){errno=EIO;return -1;}
-    out->tv_sec=(time_t)(fake_now/UINT64_C(1000000000));
-    out->tv_nsec=(long)(fake_now%UINT64_C(1000000000));return 0;
+    return 0;
 }
 ssize_t probe_getrandom(void *buffer,size_t bytes,unsigned flags){
     assert(bytes==16 && flags==GRND_NONBLOCK);
@@ -73,6 +76,9 @@ ssize_t probe_sendto(int fd,const void *buffer,size_t bytes,int flags,const stru
     assert(strcmp(((const struct sockaddr_un*)address)->sun_path,SOURCE_SOCKET)==0);
     assert(bytes<FRAME_LIMIT);send_calls++;
     if(strstr(buffer,"\"final\":true"))final_send_calls++;
+    const char *frontier=strstr(buffer,"\"covered_before_ns\":");assert(frontier);
+    last_wire_covered=strncmp(frontier+20,"null",4)!=0;
+    if(last_wire_covered)assert(sscanf(frontier,"\"covered_before_ns\":\"%"SCNu64"\"",&last_covered)==1);
     if(send_error){errno=send_error;return -1;}
     if(short_send)return (ssize_t)bytes-1;
     printf("{\"type\":\"frame\",\"case\":\"%s\",\"arrived_ns\":\"%"PRIu64"\",\"wire\":",test_name,fake_now+1000);
@@ -95,6 +101,7 @@ static void begin(const char *name){
     test_name=name;authorization_mode=0;clock_bad=random_bad=socket_bad=revoke_mode=send_error=short_send=0;
     reg_fail_at=unregister_fail=register_calls=unregister_calls=close_calls=send_calls=final_send_calls=0;
     atomic_store(&pause_next_clock,false);
+    clock_step=0;last_wire_covered=false;last_covered=0;
     fake_now=UINT64_C(1000000000);owner=NULL;registered_callback=NULL;
 }
 static void start(void){
@@ -245,9 +252,28 @@ int main(void){
     start();finish();int closed_send_calls=send_calls;
     event(MOSQ_EVT_CONNECT);assert(s.total[2]==0 && send_calls==closed_send_calls && atomic_load(&s.callbacks)==0);
 
+    begin("frontier_paused_old_callback");
+    start();assert(last_wire_covered);fake_now+=SEND_INTERVAL_NS/2;
+    assert(pthread_barrier_init(&callback_arrived,NULL,2)==0 && pthread_barrier_init(&callback_release,NULL,2)==0);
+    atomic_store(&pause_next_clock,true);assert(pthread_create(&thread,NULL,concurrent_callback,NULL)==0);
+    rc=pthread_barrier_wait(&callback_arrived);assert(rc==0||rc==PTHREAD_BARRIER_SERIAL_THREAD);
+    fake_now+=SEND_INTERVAL_NS;assert(!atomic_flag_test_and_set(&s.lock));emit(true);atomic_flag_clear(&s.lock);
+    assert(!last_wire_covered && s.total[2]==0);
+    rc=pthread_barrier_wait(&callback_release);assert(rc==0||rc==PTHREAD_BARRIER_SERIAL_THREAD);
+    assert(pthread_join(thread,NULL)==0);tick();assert(last_wire_covered && s.total[2]==1 && s.used==0);
+    assert(pthread_barrier_destroy(&callback_arrived)==0 && pthread_barrier_destroy(&callback_release)==0);finish();
+
+    begin("frontier_drains_pending_drops");
+    start();atomic_store(&s.pending_drop[2],1);fake_now+=SEND_INTERVAL_NS;
+    assert(!atomic_flag_test_and_set(&s.lock));emit(true);atomic_flag_clear(&s.lock);
+    assert(last_wire_covered && s.total[2]==1 && s.dropped[2]==1 && atomic_load(&s.pending_drop[2])==0);finish();
+
+    begin("final_frontier_precedes_send");
+    start();clock_step=1;finish();assert(last_wire_covered && last_covered==s.close_before && last_covered<s.last_attempt);
+
     assert(mosquitto_plugin_version(1,(int[]){5})==5);
     assert(mosquitto_plugin_version(1,(int[]){4})==-1);
     assert(mosquitto_plugin_version(1,NULL)==-1);
-    puts("{\"type\":\"suite_passed\",\"cases\":35,\"real_syscalls_injected\":true,\"household_effects\":false}");
+    puts("{\"type\":\"suite_passed\",\"cases\":38,\"real_syscalls_injected\":true,\"household_effects\":false}");
     return 0;
 }

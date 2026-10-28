@@ -60,3 +60,31 @@ test('noncanonical, duplicate, oversized or nonascii status bytes fail closed',(
 test('actual local namespace has a valid clock domain and monotonic sample',()=>{
  const v=localClock();assert.match(v.domain,/^[a-f0-9]{64}$/);assert.ok(v.nowNs>0n);
 });
+function modern(){return {...fixture(),schema_version:2,source_facts:{epoch:'2',instance_sha256:'b'.repeat(64),
+ wire_version:3,started_boottime_ns:'100',emitted_boottime_ns:'99998',covered_before_ns:'99997',closed:false,identity_state:'verified_live'}};}
+test('source horizon and task existence stay factual, with legacy horizon explicitly absent',()=>{
+ const old=decodeReaderStatus(raw(fixture()),{domain,nowNs:20000n});assert.equal(old.source_facts,null);
+ const v=decodeReaderStatus(raw(modern()),{domain,nowNs:20000n});
+ assert.equal(v.reader_status_schema,2);assert.equal(v.clock_domain_sha256,domain);
+ assert.equal(v.reader_observed_boottime_ns,'100000');assert.equal(v.source_facts.emitted_boottime_ns,'99998');
+ assert.equal(v.source_facts.covered_before_ns,'99997');
+ assert.equal(v.source_facts.identity_state,'verified_live');assert.equal('fresh'in v.source_facts,false);
+ const closed=modern();closed.source_facts.closed=true;closed.source_facts.identity_state='verified_exited';
+ assert.equal(decodeReaderStatus(raw(closed),{domain,nowNs:20000n}).source_facts.closed,true);
+});
+test('schema2 cold reader and unknown source clocks cannot manufacture a horizon',()=>{
+ const v={...fixture(),schema_version:2,source_facts:null,last_intake_state:'waiting',last_successful_intake_completed_boottime_ns:null};
+ assert.equal(decodeReaderStatus(raw(v),{domain,nowNs:20000n}).source_facts,null);
+ const unknown=modern();unknown.source_facts.started_boottime_ns=null;unknown.source_facts.emitted_boottime_ns=null;
+ assert.equal(decodeReaderStatus(raw(unknown),{domain,nowNs:20000n}).source_facts.emitted_boottime_ns,null);
+});
+test('unbound, future, malformed or private source facts fail closed',()=>{
+ for(const mutate of [v=>v.source_facts.extra='PRIVATE_CANARY',v=>v.source_facts.epoch='0',
+  v=>v.source_facts.identity_state='unknown',v=>v.source_facts.wire_version=1.5,
+  v=>{v.source_facts.wire_version=1;v.source_facts.closed=true;},
+  v=>v.source_facts.emitted_boottime_ns='100001',v=>v.source_facts.started_boottime_ns='99999',
+  v=>v.source_facts.covered_before_ns='99999',v=>v.source_facts.covered_before_ns='99',
+  v=>v.last_successful_intake_completed_boottime_ns=null,v=>v.accepted_frames='0']){
+  const v=modern();mutate(v);assert.throws(()=>decodeReaderStatus(raw(v),{domain,nowNs:20000n}),ReaderStatusInvalid);
+ }
+});

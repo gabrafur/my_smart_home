@@ -1,6 +1,8 @@
 """Root fixture worker lifecycle, not a service installation."""
 from pathlib import Path
 import json,os,socket,sys,tempfile,unittest
+from unittest.mock import patch
+from test_protocol import frame
 sys.path.insert(0,str(Path(__file__).parent))
 from authorization_gate import SCOPE,GateInvalid
 from activated_reader import ActivatedSocketReader
@@ -67,6 +69,23 @@ class Tests(unittest.TestCase):
   self.write(self.paths.authorization,{**self.auth,"enabled":False})
   with self.assertRaises(GateInvalid):bootstrap_approved(self.paths)
   self.assertFalse(self.paths.ledger.exists())
+ def test_new_status_reports_no_historical_source_horizon_after_reader_restart(self):
+  bootstrap_approved(self.paths);w=self.make()
+  w.ledger.frame(json.dumps(frame(v=2,final=False)).encode(),300,source_binding_verified=True)
+  w.close();w=self.make();w.write_status()
+  value=json.loads((self.paths.report/'reader-status.json').read_text())
+  self.assertEqual(value['schema_version'],2);self.assertIsNone(value['source_facts'])
+ def test_status_exposes_source_horizon_only_after_current_verified_intake(self):
+  bootstrap_approved(self.paths);w=self.make()
+  w.ledger.frame(json.dumps(frame(v=2,final=True)).encode(),300,source_binding_verified=True)
+  from worker import boottime
+  w.last_source_completed=boottime();w.last_intake='accepted'
+  with patch.object(w.source_verifier,'sender_state',return_value='verified_exited'):
+   w.write_status();value=json.loads((self.paths.report/'reader-status.json').read_text())
+   self.assertEqual(value['source_facts']['emitted_boottime_ns'],'201')
+   self.assertTrue(value['source_facts']['closed']);self.assertEqual(value['source_facts']['identity_state'],'verified_exited')
+   w.last_intake='unknown';w.write_status()
+   self.assertIsNone(json.loads((self.paths.report/'reader-status.json').read_text())['source_facts'])
 if __name__=="__main__":
  assert os.getuid()==os.getgid()==0
  unittest.main()

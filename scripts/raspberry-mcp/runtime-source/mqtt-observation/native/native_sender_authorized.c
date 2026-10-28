@@ -35,7 +35,8 @@ static struct {
     _Atomic bool disabled,active;
     _Atomic unsigned callbacks;
     _Atomic uint64_t pending_drop[CLASSES],pending_faults;
-    bool started_known,final;
+    bool started_known,final,close_known;
+    uint64_t close_before;
     int fd,registered;
     mosquitto_plugin_id_t *identifier;
     uint64_t started,event_seq,frame_seq,total[CLASSES],dropped[CLASSES];
@@ -97,17 +98,29 @@ static bool drain_drops(void){
     return add(&s.clock_faults,atomic_exchange_explicit(&s.pending_faults,0,memory_order_relaxed));
 }
 /* Caller holds the single-try lock. Never waits for a peer or socket space. */
-static void emit(bool force){
+static void emit_frame(bool force,unsigned caller_callbacks){
     if(disabled()||s.fd<0)return;
     uint64_t now;
     if(!clock_ns(&now)){(void)add(&s.clock_faults,1);return;}
     if(!force&&s.last_attempt&&now>=s.last_attempt&&now-s.last_attempt<SEND_INTERVAL_NS)return;
     if(now<s.last_attempt){disable();return;}
     if(revoke_present()||!authorized()){disable();return;}
+    /* A send timestamp alone is not a callback frontier. Drain pending drops
+     * after sampling the clock, then acquire the callback count before reading
+     * pending atomics. An older paused callback prevents a new frontier; one
+     * entering after this check has a timestamp >= now. No wait or spin. */
+    if(!drain_drops())return;
+    bool covered=atomic_load_explicit(&s.callbacks,memory_order_seq_cst)==caller_callbacks;
+    for(unsigned k=0;k<CLASSES;k++)if(atomic_load_explicit(&s.pending_drop[k],memory_order_acquire))covered=false;
+    if(atomic_load_explicit(&s.pending_faults,memory_order_acquire))covered=false;
+    uint64_t before=now;
+    if(s.final){covered=covered&&s.close_known&&s.close_before<=now;before=s.close_before;}
     s.last_attempt=now;
     if(s.frame_seq==UINT64_MAX){disable();return;}
     size_t used=0;
-    if(!append(&used,"{\"v\":2,\"final\":%s,\"instance\":\"%s\",\"started_ns\":",s.final?"true":"false",s.instance)
+    if(!append(&used,"{\"v\":3,\"final\":%s,\"covered_before_ns\":",s.final?"true":"false")
+       ||!stamp(&used,before,covered)
+       ||!append(&used,",\"instance\":\"%s\",\"started_ns\":",s.instance)
        ||!stamp(&used,s.started,s.started_known)
        ||!append(&used,",\"frame_seq\":\"%"PRIu64"\",\"event_seq\":\"%"PRIu64"\",\"totals\":",s.frame_seq+1,s.event_seq)
        ||!counters(&used,s.total)||!append(&used,",\"source_dropped\":")||!counters(&used,s.dropped)
@@ -125,6 +138,7 @@ static void emit(bool force){
     else if(sent<0){(void)add(&s.send_failures,1);}
     else{disable();}
 }
+static void emit(bool force){emit_frame(force,0);}
 static int metadata_callback(int event,void *event_data,void *userdata){
     /* No client, topic, payload, properties, password or native object access. */
     (void)event_data;(void)userdata;
@@ -151,7 +165,7 @@ static int metadata_callback(int event,void *event_data,void *userdata){
         if(s.used<CAPACITY){s.pending[s.used++]=(struct item){.seq=s.event_seq,.at=occurred,.kind=(unsigned)kind,.known=known};}
         else if(!add(&s.dropped[kind],1))goto done;
     }
-    emit(false);
+    emit_frame(false,1);
 done:
     atomic_flag_clear_explicit(&s.lock,memory_order_release);
 leave:
@@ -202,13 +216,15 @@ int mosquitto_plugin_init(mosquitto_plugin_id_t *identifier,void **userdata,stru
 int mosquitto_plugin_cleanup(void *userdata,struct mosquitto_opt *options,int count){
     (void)options;(void)count;
     if(userdata!=&s)return MOSQ_ERR_SUCCESS;
+    uint64_t before_close=0;bool close_known=clock_ns(&before_close);
     atomic_store_explicit(&s.active,false,memory_order_seq_cst);
     bool unregistered=true;
     for(int i=s.registered-1;i>=0;i--)
         if(mosquitto_callback_unregister(s.identifier,hooks[i],metadata_callback,NULL)!=MOSQ_ERR_SUCCESS)unregistered=false;
     if(!atomic_flag_test_and_set_explicit(&s.lock,memory_order_acquire)){
         if(unregistered&&atomic_load_explicit(&s.callbacks,memory_order_seq_cst)==0){
-            s.final=true;
+            s.final=true;s.close_known=close_known;s.close_before=before_close;
+            if(!close_known)(void)add(&s.clock_faults,1);
             if(drain_drops())emit(true);
         }
         disable();

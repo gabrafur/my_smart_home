@@ -53,7 +53,7 @@ def bootstrap_approved(paths):
     finally:gate.close()
 class Worker:
     def __init__(self,paths,*,reader_factory=from_systemd,notifier=notify):
-        self.paths=paths;self.gate=None;self.ledger=None;self.bridge=None;self.reader=None
+        self.paths=paths;self.gate=None;self.ledger=None;self.bridge=None;self.reader=None;self.source_verifier=None
         self.notifier=notifier;self.stop=False;self.last_source_completed=None;self.last_intake="waiting"
         self.instance=hashlib.sha256(os.urandom(32)).hexdigest();self.started=boottime();self.domain=local_clock_domain()
         try:
@@ -64,7 +64,8 @@ class Worker:
             self.ledger=HandoffLedger(paths.ledger,create=False,clock_domain_id=self.domain,started_ns=self.started)
             self.bridge=FileBridge(paths.report,paths.consumer,consumer_uid=1000,consumer_gid=1000)
             self.status_writer=StatusWriter(self.bridge)
-            intake=PacketIntake(self.ledger,SourceVerifier(policy),require_sender_pidfd=True)
+            self.source_verifier=SourceVerifier(policy)
+            intake=PacketIntake(self.ledger,self.source_verifier,require_sender_pidfd=True)
             self.reader=reader_factory(paths.source_socket,intake=intake)
             self.authorization=self.gate.refresh()
             self.bridge.publish(self.ledger,boottime());self.write_status()
@@ -74,7 +75,17 @@ class Worker:
                 except BaseException:pass
             self.close();raise
     def write_status(self):
-        self.status_writer.write({"schema_version":1,"source":"fixed_mqtt_metadata_reader",
+        source=None;state=self.ledger.body['state'];identity=self.source_verifier.sender_state()
+        if (state is not None and self.last_source_completed is not None
+            and self.last_intake in('accepted','duplicate')and identity!='unknown'):
+            source={'epoch':str(state['epoch']),
+                'instance_sha256':hashlib.sha256(state['instance'].encode('ascii')).hexdigest(),
+                'wire_version':state.get('last_source_wire_version',1),
+                'started_boottime_ns':None if state['started_ns']is None else str(state['started_ns']),
+                'emitted_boottime_ns':None if state['last_emitted_ns']is None else str(state['last_emitted_ns']),
+                'covered_before_ns':None if state.get('last_covered_before_ns')is None else str(state['last_covered_before_ns']),
+                'closed':state.get('source_closed',False),'identity_state':identity}
+        self.status_writer.write({"schema_version":2,"source":"fixed_mqtt_metadata_reader",
             "reader_instance_sha256":self.instance,"clock_domain_sha256":self.domain,
             "reader_started_boottime_ns":str(self.started),"reader_observed_boottime_ns":str(boottime()),
             "reader_observed_monotonic_ns":str(time.monotonic_ns()),
@@ -84,6 +95,7 @@ class Worker:
                 None if self.last_source_completed is None else str(self.last_source_completed),
             "accepted_frames":str(self.ledger.body["accepted_frames"]),
             "reader_sessions":str(self.ledger.body["reader_sessions"]),
+            "source_facts":source,
             "faults":{k:str(v)for k,v in self.ledger.body["faults"].items()},
             "full24h_proven":False,"all_event_latency_proven":False})
     def refresh_authority(self):
@@ -116,7 +128,7 @@ class Worker:
     def close(self):
         # Socket belongs to the manager; an ordinary reader restart preserves
         # its path/queue and the existing owner-approved authorization marker.
-        for key in ["reader","bridge","ledger","gate"]:
+        for key in ["reader","source_verifier","bridge","ledger","gate"]:
             value=getattr(self,key,None)
             if value is not None:value.close();setattr(self,key,None)
 def main():

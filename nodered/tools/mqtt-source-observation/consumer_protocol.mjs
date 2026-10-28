@@ -136,6 +136,7 @@ export function receiptFacts(receivedPacket,observedReceipt){
         source_to_consumer_upper_ns:upper,source_to_consumer_upper_ms:upperMs};
     }
     return {bucket_id:body.bucket_id,clock_ordered:ordered,by_kind:facts,
+      ack_at_ns:observedReceipt.ack_at_ns,clock_domain_sha256:observedReceipt.ack_clock_domain_id,
       full24h_proven:false,all_event_latency_proven:false};
   }catch(error){
     if(error instanceof ProtocolInvalid)throw error;

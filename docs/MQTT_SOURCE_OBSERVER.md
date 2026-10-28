@@ -58,7 +58,8 @@ O novo processo abre o mesmo SQLite, preserva a fila e acrescenta a falha
 `reader_restart`; reiniciar não apaga incerteza histórica. A fila é finita:
 esse mecanismo não promete ausência de perdas em uma parada arbitrariamente longa.
 
-O protocolo de origem `v: 2` acrescenta o booleano `final`. O plugin só tenta
+O booleano `final`, introduzido no protocolo de origem `v: 2`, permanece em
+`v: 3`. O plugin só tenta
 enviá-lo como verdadeiro depois de fechar a coleta, desregistrar todos os
 callbacks, adquirir o lock sem esperar e confirmar que nenhum callback anterior
 continua em andamento. Um contador atômico de entradas e a ordem do gate evitam
@@ -67,19 +68,43 @@ fechamento não coleta eventos. Falha no desregistro, disputa, revogação, rel�
 ausente ou datagrama perdido deixam o encerramento sem comprovação; o broker
 nunca espera pelo leitor ou pelo ACK.
 
-O estado contábil `version: 3` aceita os registros anteriores de versão 2 e
+O protocolo `v: 3` acrescenta `covered_before_ns`. Esse marco afirma que os
+callbacks com horário anterior ao seu valor já estão contabilizados. O horário
+de envio sozinho não faz essa afirmação: outro callback pode ter obtido seu
+horário e ainda estar pausado antes de registrar o evento. O produtor drena os
+descartes pendentes após ler o relógio e confere o contador de entradas antes
+dos acumuladores atômicos. Concorrência não resolvida emite um marco ausente,
+sem esperar. No encerramento, o marco é lido antes de fechar a coleta, sem
+estender a cobertura até o horário posterior de envio.
+
+O estado contábil `version: 4` aceita os registros anteriores de versões 2 e 3 e
 preserva contadores, falhas e caudas desconhecidas. `source_closed` registra
 somente o fechamento aceito daquela origem. A próxima origem não acrescenta
 uma cauda desconhecida quando a anterior foi comprovadamente encerrada; as
 incertezas mais antigas permanecem. Uma duplicata exata do terminal é idempotente;
 outra mensagem da mesma origem após o terminal é recusada. O leitor ainda aceita
-o protocolo de origem `v: 1`, que não comprova fechamento, e recusa downgrade de
-versão dentro da mesma origem. O fechamento cobre os callbacks da coleta, sem
+os protocolos de origem `v: 1` e `v: 2`, sem inventar seus marcos de cobertura,
+e recusa downgrade de versão dentro da mesma origem. O último marco conhecido
+permanece válido quando outro quadro da mesma origem não traz avanço; ele
+nunca atravessa a troca de origem. O fechamento cobre os callbacks da coleta, sem
 estender a cobertura a todo o broker, ao Home Assistant ou ao assistente.
 
 O fechamento não comprova ausência de perdas nem uma janela de 24 horas. Essas
 decisões continuam dependendo dos contadores, domínios temporais, recibos
 duráveis do consumidor e da política canônica no Node-RED.
+
+O status do leitor de versão 2 publica a origem atual, seu marco de cobertura
+e a existência da tarefa verificada pelo kernel. Depois de reiniciar o leitor,
+os dados carregados do SQLite não são apresentados como origem atual até uma
+nova entrada verificada. A versão anterior do status continua sendo aceita
+com horizonte ausente. Os recibos do consumidor incluem o horário BOOTTIME do
+ACK e seu domínio; a idade e os limiares continuam sendo decisões do canvas.
+
+No [upstream fixado](https://github.com/eclipse-mosquitto/mosquitto/blob/99fa50f30e325609394c324c8ff71cfbbe95d8ab/src/mosquitto.c),
+`post_shutdown_cleanup` limpa clientes e banco antes de descarregar os plugins.
+Isso não estende a prova a reload em execução, outro binário ou processos que
+possam ter existido entre duas origens. Uma troca sem recibo de manutenção
+correlacionado continua sem comprovação de cobertura contínua.
 
 O tab `observacao_mqtt_nativa` contém configuração, normalização, autorização,
 idade do leitor, decisões de integridade e latência, dedupe e gate final.
@@ -143,6 +168,12 @@ criar, repetir ou atualizar ACK. Suas propostas têm domínio e comparação de
 estado-base separados da confirmação do produtor. Não criam histórico ausente.
 Essa gravação de metadados não concede acesso novo à origem nem permissão para
 um efeito residencial.
+
+Se a preparação da fonte falhar, o CLI pode devolver uma proposta separada
+do histórico do próprio consumidor, quando esse histórico ainda for válido.
+Esse fallback não lê a fonte, não cria histórico ausente e não confirma dados
+novos do produtor. Ele permite ao canvas persistir a incerteza em sua rota
+de efeito final apropriada.
 
 `no_events`, `no_new_receipt`, `busy`, `disabled` e `unknown` são resultados
 distintos. Silêncio não significa recuperação. A idade usa correlação explícita

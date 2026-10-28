@@ -34,16 +34,38 @@ const keys=['schema_version','source','reader_instance_sha256','clock_domain_sha
 export function decodeReaderStatus(input,clock){
  try{
   need(Buffer.isBuffer(input)&&input.length<=8192&&input.every(n=>n<128));
-  const text=input.toString('ascii'),v=JSON.parse(text);need(canonical(v)===text);closed(v,keys);
-  need(v.schema_version===1&&v.source==='fixed_mqtt_metadata_reader'&&hex(v.reader_instance_sha256)&&hex(v.clock_domain_sha256));
+  const text=input.toString('ascii'),v=JSON.parse(text);need(canonical(v)===text);
+  need(v.schema_version===1||v.schema_version===2);closed(v,[...keys,...(v.schema_version===2?['source_facts']:[])]);
+  need(v.source==='fixed_mqtt_metadata_reader'&&hex(v.reader_instance_sha256)&&hex(v.clock_domain_sha256));
   need(['active','disabled','expired','revoked','invalid'].includes(v.authorization_state));
   need(v.source_authorized===true||v.source_authorized===false||v.source_authorized===null);
   need((v.authorization_state==='active')===(v.source_authorized===true));
   need(['waiting','accepted','duplicate','unknown'].includes(v.last_intake_state));
   const started=uint(v.reader_started_boottime_ns,64),observed=uint(v.reader_observed_boottime_ns,64),mono=uint(v.reader_observed_monotonic_ns,64);
   need(started<=observed);
-  if(v.last_successful_intake_completed_boottime_ns!==null)need(uint(v.last_successful_intake_completed_boottime_ns,64)<=observed);
+  if(v.last_successful_intake_completed_boottime_ns!==null){
+    const complete=uint(v.last_successful_intake_completed_boottime_ns,64);need(started<=complete&&complete<=observed);
+  }
   uint(v.accepted_frames);uint(v.reader_sessions);
+  const source=v.schema_version===2?v.source_facts:null;
+  if(source!==null){
+    closed(source,['epoch','instance_sha256','wire_version','started_boottime_ns','emitted_boottime_ns','covered_before_ns','closed','identity_state']);
+    need(uint(source.epoch)>0n&&hex(source.instance_sha256)&&[1,2,3].includes(source.wire_version));
+    need(typeof source.closed==='boolean'&&(!source.closed||source.wire_version>=2));
+    need(['verified_live','verified_exited'].includes(source.identity_state));
+    need(v.last_successful_intake_completed_boottime_ns!==null&&uint(v.accepted_frames)>0n);
+    const complete=uint(v.last_successful_intake_completed_boottime_ns,64);
+    if(source.started_boottime_ns!==null)need(uint(source.started_boottime_ns,64)<=complete);
+    if(source.emitted_boottime_ns!==null){
+      const emitted=uint(source.emitted_boottime_ns,64);need(emitted<=complete);
+      if(source.started_boottime_ns!==null)need(uint(source.started_boottime_ns,64)<=emitted);
+    }
+    if(source.covered_before_ns!==null){
+      const before=uint(source.covered_before_ns,64);need(source.wire_version===3&&before<=complete);
+      if(source.emitted_boottime_ns!==null)need(before<=uint(source.emitted_boottime_ns,64));
+      if(source.started_boottime_ns!==null)need(before>=uint(source.started_boottime_ns,64));
+    }
+  }
   closed(v.faults,schema.faults);schema.faults.forEach(k=>uint(v.faults[k]));
   need(v.full24h_proven===false&&v.all_event_latency_proven===false);
   const local=clock??localClock();
@@ -53,6 +75,9 @@ export function decodeReaderStatus(input,clock){
   return {schema_version:1,reader_instance_sha256:v.reader_instance_sha256,authorization_state:v.authorization_state,
    source_authorized:v.source_authorized,clock_domain_matches:same,clock_ordered:ordered,
    status_age_ns:age===null?null:age.toString(),status_age_ms:age===null?null:Number((age+999999n)/1000000n),
-   faults:{...v.faults},last_intake_state:v.last_intake_state,accepted_frames:v.accepted_frames,reader_sessions:v.reader_sessions};
+   faults:{...v.faults},last_intake_state:v.last_intake_state,accepted_frames:v.accepted_frames,reader_sessions:v.reader_sessions,
+   reader_status_schema:v.schema_version,clock_domain_sha256:v.clock_domain_sha256,
+   reader_observed_boottime_ns:v.reader_observed_boottime_ns,
+   source_facts:source===null?null:structuredClone(source)};
  }catch(error){if(error instanceof ReaderStatusInvalid)throw error;throw new ReaderStatusInvalid();}
 }

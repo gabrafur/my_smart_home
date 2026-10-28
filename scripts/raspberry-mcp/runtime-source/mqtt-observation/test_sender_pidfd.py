@@ -100,8 +100,10 @@ class SenderTests(unittest.TestCase):
             self.assertEqual(len(os.listdir('/proc/self/fd')),before+1)
         self.assertEqual(len(self.calls),4)  # Live tasks are re-attested each time.
         self.assertTrue(self.verifier.sender_binding.kernel_sender_bound)
+        self.assertEqual(self.verifier.sender_state(),'verified_live')
         self.assertFalse(self.verifier.sender_binding.retained_after_exit)
         self.reader.close();self.assertEqual(len(os.listdir('/proc/self/fd')),before-1)
+        self.assertEqual(self.verifier.sender_state(),'unknown')
 
     def test_queued_frame_after_exit_and_reap_reuses_only_same_verified_kernel_task(self):
         pid=self.child();self.command(pid,b'a')
@@ -109,6 +111,7 @@ class SenderTests(unittest.TestCase):
         key=self.verifier.sender_key;held=self.verifier.sender_fd
         self.command(pid,b'b');self.reap(pid)
         self.assertEqual(sender_pidfd_pid(held),-1)
+        self.assertEqual(self.verifier.sender_state(),'verified_exited')
         self.assertEqual(sender_pidfd_key(held),key)
         self.assertEqual(self.receive()['status'],'accepted')
         self.assertEqual(len(self.calls),1)

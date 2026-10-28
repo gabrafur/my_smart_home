@@ -36,8 +36,11 @@ function core(w){
   closed(w.policy,['event_latency_ms','window_duration_ns']);
   uint(w.policy.event_latency_ms,64);uint(w.policy.window_duration_ns,64);
   if(w.cut!==null){
-    closed(w.cut,['accepted_frames','source_emitted_at_ns']);uint(w.cut.accepted_frames);
-    const source=uint(w.cut.source_emitted_at_ns,64);
+    // Legacy emission-only cuts remain readable, without being relabelled as
+    // callback coverage. The canonical window must require covered_before_ns.
+    const field=Object.hasOwn(w.cut,'covered_before_ns')?'covered_before_ns':'source_emitted_at_ns';
+    closed(w.cut,['accepted_frames',field]);uint(w.cut.accepted_frames);
+    const source=uint(w.cut[field],64);
     need(source>=uint(w.started_at_ns,64)&&source<=uint(w.observed_at_ns,64));
   }
 }

@@ -44,8 +44,9 @@ def validate_state(state):
           'past_stats','past_report_gaps','past_clock_faults','past_send_failures','unknown_epoch_tails'}
     need(type(state)is dict,'accounting_state_invalid')
     version=state.get('version')
-    need(type(version)is int and version in(2,3),'accounting_state_invalid')
-    if version==3:keys|={'source_closed','last_source_wire_version'}
+    need(type(version)is int and version in(2,3,4),'accounting_state_invalid')
+    if version>=3:keys|={'source_closed','last_source_wire_version'}
+    if version==4:keys|={'last_covered_before_ns'}
     need(keys<=set(state)<=keys|{'previous_epoch_summary'},'accounting_state_invalid')
     def count(value):
         return type(value)is int and 0<=value<2**128
@@ -60,11 +61,17 @@ def validate_state(state):
             maximum=row['max_source_to_reader_ns']
             need((maximum is None and row['timed']==0)or(count(maximum)and row['timed']>0),'accounting_state_invalid')
     need(state['full24h_proven']is False,'accounting_state_invalid')
-    if version==3:
+    if version>=3:
         need(type(state['source_closed'])is bool
              and type(state['last_source_wire_version'])is int
-             and state['last_source_wire_version']in(1,2)
-             and(not state['source_closed']or state['last_source_wire_version']==2),'accounting_state_invalid')
+             and state['last_source_wire_version']in((1,2,3)if version==4 else(1,2))
+             and(not state['source_closed']or state['last_source_wire_version']>=2),'accounting_state_invalid')
+    if version==4:
+        covered=state['last_covered_before_ns']
+        need(covered is None or(count(covered)and covered<2**64 and state['last_source_wire_version']==3
+             and covered<=state['last_reader_ns']
+             and(state['last_emitted_ns']is None or covered<=state['last_emitted_ns'])
+             and(state['started_ns']is None or state['started_ns']<=covered)),'accounting_state_invalid')
     need(type(state['instance'])is str and re.fullmatch('[a-f0-9]{32}',state['instance'])is not None,'accounting_state_invalid')
     need(type(state['last_frame_hash'])is str and re.fullmatch('[a-f0-9]{64}',state['last_frame_hash'])is not None,'accounting_state_invalid')
     for name in ['epoch','last_frame_seq','last_event_seq','last_reader_ns','clock_faults',
@@ -115,16 +122,20 @@ def decode(raw):
         value=json.loads(raw.decode('ascii'),object_pairs_hook=pairs)
     except (UnicodeError,ValueError,RecursionError):
         raise Invalid('frame_encoding_invalid') from None
-    need(type(value)is dict and type(value.get('v'))is int and value['v']in(1,2),'schema_invalid')
-    version=value['v'];closed(value,FIELDS|({'final'}if version==2 else set()))
-    if version==2:need(type(value['final'])is bool,'schema_invalid')
+    need(type(value)is dict and type(value.get('v'))is int and value['v']in(1,2,3),'schema_invalid')
+    version=value['v'];closed(value,FIELDS|({'final'}if version>=2 else set())|({'covered_before_ns'}if version==3 else set()))
+    if version>=2:need(type(value['final'])is bool,'schema_invalid')
     need(type(value['instance'])is str and re.fullmatch('[a-f0-9]{32}',value['instance']) is not None,'instance_invalid')
-    out={'instance':value['instance'],'wire_version':version,'final':value['final']if version==2 else False}
+    out={'instance':value['instance'],'wire_version':version,'final':value['final']if version>=2 else False,
+         'covered_before_ns':optional_uint(value['covered_before_ns'])if version==3 else None}
     for key in ['frame_seq','event_seq','clock_faults','send_failures']:
         out[key]=uint(value[key])
     need(out['frame_seq']>0,'counter_invalid')
     for key in ['started_ns','emitted_ns']:
         out[key]=optional_uint(value[key])
+    if out['covered_before_ns']is not None:
+        need(out['emitted_ns']is not None and out['covered_before_ns']<=out['emitted_ns']
+             and(out['started_ns']is None or out['started_ns']<=out['covered_before_ns']),'source_coverage_invalid')
     for key in ['totals','source_dropped']:
         closed(value[key],KINDS)
         out[key]={kind:uint(value[key][kind])for kind in KINDS}
@@ -178,6 +189,8 @@ def accept(previous, raw, arrived_ns, *, source_binding_verified):
             need(f['clock_faults']>=prior['clock_faults'] and f['send_failures']>=prior['send_failures'],'counter_reversed')
             if f['emitted_ns']is not None and prior['last_emitted_ns']is not None:
                 need(f['emitted_ns']>=prior['last_emitted_ns'],'source_clock_reversed')
+            if f['covered_before_ns']is not None and prior.get('last_covered_before_ns')is not None:
+                need(f['covered_before_ns']>=prior['last_covered_before_ns'],'source_coverage_reversed')
         if f['emitted_ns']is not None:
             need(f['emitted_ns']<=arrived_ns,'source_clock_future')
         if f['started_ns']is not None:
@@ -229,6 +242,10 @@ def accept(previous, raw, arrived_ns, *, source_binding_verified):
                'clock_faults':f['clock_faults'],'send_failures':f['send_failures'],
                'report_gaps':(prior['report_gaps']if prior else 0)+f['frame_seq']-oldframe-1,
                'stats':stats,'last_batch':batch,'full24h_proven':False}
+        if f['wire_version']==3 or(previous and previous['version']==4):
+            state['version']=4
+            state['last_covered_before_ns']=(f['covered_before_ns']if f['covered_before_ns']is not None
+                else(prior.get('last_covered_before_ns')if prior else None))
         past=copy.deepcopy(previous.get('past_stats'))if previous else None
         if past is None:
             past={k:{**dict.fromkeys(columns,0),'max_source_to_reader_ns':None}for k in KINDS}

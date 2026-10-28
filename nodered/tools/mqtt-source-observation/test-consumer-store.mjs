@@ -359,3 +359,16 @@ test('producer and checkpoint-only proposal domains cannot authorize each other'
     assert.deepEqual(store.snapshot(),before);assert.deepEqual(fs.readFileSync(path.join(env.own,'ack.json')),ack);
   }finally{env.cleanup();}
 });
+test('coverage cut remains distinct from a legacy emission-only timestamp',()=>{
+  const env=setup();try{
+    const store=env.open(),p=store.prepare(),c=checkpoint(p);
+    c.window.cut={accepted_frames:'1',covered_before_ns:'100'};validateCheckpoint(c);
+    const legacy=structuredClone(c);legacy.window.cut={accepted_frames:'1',source_emitted_at_ns:'100'};
+    validateCheckpoint(legacy);assert.equal('covered_before_ns'in legacy.window.cut,false);
+    const ambiguous=structuredClone(c);ambiguous.window.cut.source_emitted_at_ns='100';
+    assert.throws(()=>validateCheckpoint(ambiguous),CheckpointInvalid);
+    store.commit(p.proposal_sha,c);const nextPlan=store.prepare(),next=checkpoint(nextPlan,c);
+    next.window.cut=legacy.window.cut;
+    assert.throws(()=>store.commit(nextPlan.proposal_sha,next),CheckpointInvalid);
+  }finally{env.cleanup();}
+});

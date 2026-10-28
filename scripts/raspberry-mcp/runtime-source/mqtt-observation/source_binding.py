@@ -281,3 +281,12 @@ class SourceVerifier:
     def close(self):
         if self.sender_fd is not None:os.close(self.sender_fd)
         self.sender_fd=None;self.sender_key=None;self.sender_peer=None;self.sender_binding=None
+
+    def sender_state(self):
+        """Current kernel task existence, without refreshing a code attestation."""
+        try:
+            if (self.sender_fd is None or self.sender_binding is None
+                or sender_pidfd_key(self.sender_fd)!=self.sender_key
+                or self.sender_binding.clock_domain_id!=local_clock_domain()):return 'unknown'
+            return 'verified_exited'if sender_pidfd_exited(self.sender_fd)else'verified_live'
+        except(OSError,BindingUnavailable):return 'unknown'
