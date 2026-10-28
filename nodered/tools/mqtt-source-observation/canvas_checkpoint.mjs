@@ -44,11 +44,28 @@ function core(w){
     need(source>=uint(w.started_at_ns,64)&&source<=uint(w.observed_at_ns,64));
   }
 }
+function observation(v){
+  if(v===null)return;
+  closed(v,['consumer_instance_sha256','reader_instance_sha256','clock_domain_sha256','observed_boottime_ns',
+    'source_epoch','source_instance_sha256','source_identity_state','source_closed','covered_before_ns','accepted_frames']);
+  for(const k of ['consumer_instance_sha256','reader_instance_sha256','clock_domain_sha256','source_instance_sha256'])need(hex(v[k]));
+  need(['verified_live','verified_exited'].includes(v.source_identity_state)&&typeof v.source_closed==='boolean');
+  need(uint(v.source_epoch)>0n);uint(v.accepted_frames);
+  need(uint(v.covered_before_ns,64)<=uint(v.observed_boottime_ns,64));
+}
 export function validateCheckpoint(c){
   try{
+    need(c?.schema_version===1||c?.schema_version===2);
     closed(c,['schema_version','sequence','previous_sha256','proposal_sha','receipt_id',
-      'acknowledged_counts_sha256','window','history']);
-    need(c.schema_version===1&&uint(c.sequence,64)>0n&&hex(c.proposal_sha)&&hex(c.acknowledged_counts_sha256));
+      'acknowledged_counts_sha256','window','history',...(c.schema_version===2?['reader_observation','window_request']:[])]);
+    if(c.schema_version===2){
+      observation(c.reader_observation);
+      if(c.window_request!==null){
+        closed(c.window_request,['id_sha256','state']);
+        need(hex(c.window_request.id_sha256)&&['waiting','capacity','started'].includes(c.window_request.state));
+      }
+    }
+    need(uint(c.sequence,64)>0n&&hex(c.proposal_sha)&&hex(c.acknowledged_counts_sha256));
     uint(c.receipt_id,64);need(uint(c.sequence,64)===1n?c.previous_sha256===null:hex(c.previous_sha256));
     core(c.window);need(uint(c.window.last_receipt_id,64)<=uint(c.receipt_id,64));
     need(Array.isArray(c.history)&&c.history.length<=MAX_WINDOW_HISTORY);
@@ -68,12 +85,14 @@ export function bindCheckpoint(candidate,previous,state,proposal){
     validateCheckpointAnchor(candidate,state);need(candidate.proposal_sha===proposal);
     if(previous===null){need(candidate.sequence==='1'&&candidate.previous_sha256===null&&candidate.history.length===0);return candidate;}
     validateCheckpoint(previous);
+    need(candidate.schema_version>=previous.schema_version);
     need(uint(candidate.sequence,64)===uint(previous.sequence,64)+1n&&candidate.previous_sha256===digest(previous));
     const a=candidate.window,b=previous.window;
     if(a.id_sha256!==b.id_sha256){
       need(equal(candidate.history,[...previous.history,b]));
     }else{
       need(equal(candidate.history,previous.history));
+      if(['passed','failed','unknown'].includes(b.phase))need(equal(a,b));
       for(const key of ['clock_domain_sha256','started_at_ns','first_receipt_id','baseline_counts','policy'])need(equal(a[key],b[key]));
       need(uint(a.observed_at_ns,64)>=uint(b.observed_at_ns,64)&&uint(a.last_receipt_id,64)>=uint(b.last_receipt_id,64));
       need(notLess(a.acknowledged_counts,b.acknowledged_counts));

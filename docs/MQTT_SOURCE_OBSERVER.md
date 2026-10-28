@@ -174,8 +174,31 @@ A projeção durável só recebe o resultado após o CLI confirmar o hash exato 
 checkpoint da leitura ainda em andamento. Uma resposta atrasada ou outro hash
 não publica uma janela aprovada. Resultados terminados ficam preservados;
 `callback_window` representa aquela janela e seu escopo, enquanto a classificação
-do recibo atual continua separada. A integração de manutenção e o controle de
-início de uma próxima janela ainda exigem implementação e validação próprias.
+do recibo atual continua separada.
+
+O grupo 9 recebe a intenção explícita de iniciar outra janela, sem apagar
+contadores, falhas ou recibos do protocolo. Ele espera uma nova fronteira ACK
+verificada da origem atual, arquiva integralmente o registro anterior e só
+consome a intenção após a confirmação do checkpoint exato. Uma retomada após
+fsync, antes de limpar a intenção local, não cria outra janela com o mesmo ID.
+Com oito registros anteriores, a intenção fica em `capacity`, preservando
+todos os dados. Sem fronteira válida, fica em `waiting` e pode ser atendida por
+uma leitura posterior. O padrão desligado continua valendo para essa leitura.
+
+O envelope de checkpoint de versão 2 acrescenta `reader_observation` e
+`window_request`. Os registros de versão 1 continuam legíveis; uma confirmação
+nova não pode rebaixar um envelope já migrado. A observação atual inclui o
+relógio e a origem verificados pelo leitor, além de um identificador aleatório
+do processo consumidor mantido somente em memória. Ela pode avançar sem
+modificar o resultado congelado de uma janela. Quando a fonte não pôde ser
+verificada, a observação é explicitamente `null`; não reutiliza o horário antigo
+como sinal de funcionamento atual.
+
+Um novo identificador ou uma sequência maior, isoladamente, não comprova
+retomada. A coordenação de manutenção precisa correlacionar a parada e o início
+reais do consumidor, a observação Root posterior ao início, o checkpoint durável
+e o broker comprovadamente parado. Os recibos de manutenção, sua integração
+com backup e atualização e a ativação desse pacote ainda precisam de aceite.
 O adaptador mantém `full24h_proven: false`, inclusive quando armazena a decisão
 do canvas. Uma janela do componente não comprova latência de todos os eventos
 residenciais, execução da Eva, disponibilidade do provedor ou autonomia do PC.
@@ -205,6 +228,12 @@ compartilhado, com `simulated: true` e `dispatched: false`. Os fatos sintéticos
 avançam 24 horas; o contrato de duração permanece intacto. O replay não constitui
 uma observação real de 24 horas. A serialização usa somente o módulo nativo
 `crypto` do Node.js, sem instalação npm ou chamada de rede.
+
+Depois de reset → start → pending → drain, use `restart` para conferir o
+arquivamento da janela concluída. Use `restart_wait` para deixar a intenção
+pendente e depois `drain` para fornecer a próxima fronteira ACK. Use `capacity`
+para simular o histórico completo e confirmar sua preservação. Esses controles
+usam a mesma entrada de intenção do grupo 9 em namespace de teste.
 
 `no_events`, `no_new_receipt`, `busy`, `disabled` e `unknown` são resultados
 distintos. Silêncio não significa recuperação. A idade usa correlação explícita

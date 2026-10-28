@@ -12,7 +12,7 @@ const src=name=>{
 };
 export function installMqttNative(flows){
  const owned=n=>n.id===TAB||n.z===TAB&&!n.id.startsWith('global_observer_coverage__');
- const nodes=[{id:TAB,type:'tab',label:'observacao_mqtt_nativa',mqtt_native_layout_version:3,disabled:flows.find(n=>n.id===TAB)?.disabled===true,
+ const nodes=[{id:TAB,type:'tab',label:'observacao_mqtt_nativa',mqtt_native_layout_version:4,disabled:flows.find(n=>n.id===TAB)?.disabled===true,
   info:'Metadados sem tópicos/payloads/clientes. Fonte root → normalização → limite visual → persistência → ACK. Desligado até escopo/instalação aprovados; não comprova sozinho todos os eventos HA/MQTT nem24h.',env:[]}];
  const add=n=>{nodes.push(n);if(n.g)nodes.find(g=>g.id===n.g).nodes.push(n.id);return n.id;};
  const group=(id,name,x,y,w,h)=>{if(['decision_group','result_group','effect_group','test_group'].includes(id))y+=500;return add({id:'mq_native_'+id,type:'group',z:TAB,name,style:{label:true,color:'#2563eb'},nodes:[],x,y,w,h});};
@@ -24,8 +24,9 @@ export function installMqttNative(flows){
   effect:group('effect_group','5. Gate final: persistir / confirmar ou simular',64,2340,2660,580),
   test:group('test_group','6. Replay manual completo sem efeitos residenciais',64,2960,2660,900),
   window:group('window_group','7. Janela de 24h: cobertura → corte fixo → recibos confirmados',64,4400,2660,1880),
-  windowTest:group('window_test_group','8. Replay da janela: avançar fatos sintéticos, duração real preservada',64,6320,2660,700)};
- const node=(id,type,group,name,x,y,rest={})=>add({id:'mq_native_'+id,type,z:TAB,g:group,name,x,y:y+(group===g.test?600:[g.decision,g.result,g.effect].includes(group)?500:0),wires:[],...rest});
+  windowTest:group('window_test_group','8. Replay da janela: avançar fatos sintéticos, duração real preservada',64,6320,2660,920),
+  request:group('window_request_group','9. Nova janela: intenção explícita, fronteira ACK e histórico preservado',64,7280,2660,740)};
+ const node=(id,type,group,name,x,y,rest={})=>add({id:'mq_native_'+id,type,z:TAB,g:group,name,x,y:y+(group===g.test?600:group===g.request?200:[g.decision,g.result,g.effect].includes(group)?500:0),wires:[],...rest});
  const fn=(id,group,name,file,x,y,wires,outputs=1)=>node(id,'function',group,name,x,y,{func:src(file),outputs,timeout:0,noerr:0,initialize:'',finalize:'',libs:[],wires});
  const inj=(id,group,name,payload,x,y,target,extra={})=>node(id,'inject',group,name,x,y,{props:[{p:'payload',v:payload,vt:'str'}],repeat:'',crontab:'',once:false,onceDelay:.1,topic:'',payload,payloadType:'str',wires:[[target]],...extra});
  const change=(id,group,name,property,value,kind,x,y,target,extra={})=>node(id,'change',group,name,x,y,{rules:[{t:'set',p:property,pt:'msg',to:value,tot:kind}],action:'',property:'',from:'',to:'',reg:false,wires:[[target]],...extra});
@@ -151,7 +152,9 @@ export function installMqttNative(flows){
   {rules:[{t:'set',p:'payload',pt:'msg',to:JSON.stringify(POLICY),tot:'json'},{t:'set',p:'payload.enabled',pt:'msg',to:'_mqtt_test_enabled',tot:'msg'}]});
  out('test_policy_out',g.test,'TESTE → validador',['mq_native_policy_test_in'],2170,3660);
  input('window_in',g.window,'Receber proposta e histórico',['mq_native_window_out'],'mq_native_window_contract',100,4480);
- change('window_contract',g.window,'CONTRATO: 86.400s; ≤ 10.000ms','_mqtt_window_contract',JSON.stringify(WINDOW_CONTRACT),'json',350,4480,'mq_native_window_facts');
+ change('window_contract',g.window,'CONTRATO: 86.400s; ≤ 10.000ms','_mqtt_window_contract',JSON.stringify(WINDOW_CONTRACT),'json',350,4480,'mq_native_window_request_out');
+ out('window_request_out',g.window,'Proposta → intenção / histórico',['mq_native_window_request_in'],530,4560);
+ input('window_facts_in',g.window,'Receber intenção decidida',[],'mq_native_window_facts',510,4480);
  fn('window_facts',g.window,'Validar fatos / calcular deltas','window-facts',690,4480,[['mq_native_window_possible']]);
  const wout=(id,label,x,y,target)=>{out('window_'+id,g.window,label,['mq_native_window_'+target],x,y);return 'mq_native_window_'+id;};
  const outcome=(id,label,x,y)=>wout(id+'_out',label,x,y,id+'_in');
@@ -205,23 +208,53 @@ export function installMqttNative(flows){
  input('checkpoint_result_in',g.effect,'Receber persistência sem ACK',['mq_native_checkpoint_result_out'],'mq_native_commit_result',1220,2880);
  input('checkpoint_complete_in',g.effect,'Receber retorno sem ACK',['mq_native_checkpoint_complete_out'],'mq_native_commit_complete',870,2880);
  node('window_test_info','comment',g.windowTest,'ORDEM: reset → iniciar → corte com ACK pendente → drenar; repetir reset para cada falha',1500,6370,{info:'Fatos sintéticos avançam24h; contrato permanece86.400s/10.000ms. Mesmo canvas, gate final dry-run e namespace em memória. Nenhum exec/ACK/dispositivo/push. Resultado simulado não comprova24h real.'});
- const windowScenarios=['start','pending','drain','source_unknown','epoch','clock','policy','gap','over','fault','legacy','missing','timing_unknown','reader_denied','reader_stale'];
+ const windowScenarios=['start','pending','drain','source_unknown','epoch','clock','policy','gap','over','fault','legacy','missing','timing_unknown','reader_denied','reader_stale','restart','restart_wait','capacity'];
  for(const[i,value]of windowScenarios.entries()){
   const x=240+(i%4)*600,y=6460+Math.floor(i/4)*110;
   inj('test_window_'+value,g.windowTest,'TESTE janela: '+value,value,x,y,'mq_native_window_test_'+value+'_out',
    {props:[{p:'payload',v:value,vt:'str'},{p:'test_mode',v:'true',vt:'bool'},{p:'_mqtt_test_source',v:'true',vt:'bool'}]});
   out('window_test_'+value+'_out',g.windowTest,'TESTE '+value+' → mesma janela',['mq_native_window_test_build_in'],x+180,y);
  }
- input('window_test_build_in',g.windowTest,'Receber replay da janela',windowScenarios.map(v=>'mq_native_window_test_'+v+'_out'),'mq_native_window_test_build',1460,6880);
- fn('window_test_build',g.windowTest,'Preparar somente fatos da janela','window-test-build',1640,6880,[['mq_native_window_test_source_out']]);
- out('window_test_source_out',g.windowTest,'TESTE → mesma política e fonte',['mq_native_test_policy_return_in'],1820,6880);
- const result=reconcileGeneratedFlows(flows,[...flows.filter(n=>!owned(n)),...nodes],{isOwned:owned,preserveLayout:flows.find(n=>n.id===TAB)?.mqtt_native_layout_version===3});
+ input('window_test_build_in',g.windowTest,'Receber replay da janela',windowScenarios.map(v=>'mq_native_window_test_'+v+'_out'),'mq_native_window_test_build',1460,7100);
+ fn('window_test_build',g.windowTest,'Preparar somente fatos da janela','window-test-build',1640,7100,[['mq_native_window_test_request']]);
+ nodes.find(n=>n.id==='mq_native_window_test_build').libs=[{var:'mqtt_crypto',module:'crypto'}];
+ sw('window_test_request',g.windowTest,'TESTE pede nova janela?','_mqtt_request_window',[{t:'true'},{t:'else'}],1990,7100,[['mq_native_window_test_request_out'],['mq_native_window_test_source_out']]);
+ out('window_test_request_out',g.windowTest,'TESTE → mesma intenção',['mq_native_window_request_test_in'],2170,7020);
+ out('window_test_source_out',g.windowTest,'TESTE → mesma política e fonte',['mq_native_test_policy_return_in'],2170,7180);
+ node('window_request_info','comment',g.request,'Nova janela preserva a anterior; máximo de oito registros, sem descarte',1500,7130,{info:'Intenção explícita, sem reset de protocolo. Espera uma fronteira ACK da origem atual; já atendida é idempotente. Capacidade cheia conserva os dados e a intenção. Consumir somente após commit exato; observação atual separada da prova congelada.'});
+ inj('window_new_request',g.request,'INTENÇÃO: iniciar outra janela','',240,7200,'mq_native_window_request');
+ input('window_request_test_in',g.request,'Receber intenção TESTE',['mq_native_window_test_request_out'],'mq_native_window_request',410,7280);
+ fn('window_request',g.request,'Registrar identificador da intenção','window-request',590,7200,[['mq_native_window_request_tick_out']]);
+ nodes.find(n=>n.id==='mq_native_window_request').libs=[{var:'mqtt_crypto',module:'crypto'}];
+ out('window_request_tick_out',g.request,'Intenção → mesma leitura serial',['mq_native_window_request_tick_in'],770,7200);
+ input('window_request_tick_in',g.source,'Receber intenção de nova janela',['mq_native_window_request_tick_out'],'mq_native_read_policy',420,610);
+ input('window_request_in',g.request,'Receber proposta e intenção',['mq_native_window_request_out'],'mq_native_window_history_limit',100,7420);
+ change('window_history_limit',g.request,'LIMITE: oito janelas anteriores','_mqtt_window_history_limit','8','num',350,7420,'mq_native_window_request_facts');
+ fn('window_request_facts',g.request,'Normalizar intenção / fronteira','window-request-facts',690,7420,[['mq_native_window_requested']]);
+ sw('window_requested',g.request,'Há intenção explícita?','_mqtt_window_request_present',[{t:'true'},{t:'else'}],1030,7420,[['mq_native_window_request_duplicate'],['mq_native_window_request_none_out']]);
+ out('window_request_none_out',g.request,'Sem intenção → janela atual',['mq_native_window_facts_in'],1210,7500);
+ sw('window_request_duplicate',g.request,'Identificador já foi atendido?','_mqtt_window_request_duplicate',[{t:'true'},{t:'else'}],1370,7420,[['mq_native_window_request_duplicate_out'],['mq_native_window_request_capacity']]);
+ out('window_request_duplicate_out',g.request,'Duplicata → manter resultado',['mq_native_window_request_duplicate_in'],1550,7500);
+ sw('window_request_capacity',g.request,'Histórico atingiu o limite?','_mqtt_window_history_count',[{t:'gte',v:'_mqtt_window_history_limit',vt:'msg'},{t:'else'}],1710,7420,[['mq_native_window_request_capacity_out'],['mq_native_window_request_boundary']]);
+ out('window_request_capacity_out',g.request,'Capacidade → preservar tudo',['mq_native_window_request_capacity_in'],1890,7500);
+ sw('window_request_boundary',g.request,'ACK da origem atual verificado?','_mqtt_window_request_boundary',[{t:'true'},{t:'else'}],2050,7420,[['mq_native_window_request_start_out'],['mq_native_window_request_wait_out']]);
+ out('window_request_start_out',g.request,'Fronteira → arquivar anterior',['mq_native_window_request_start_in'],2230,7340);
+ out('window_request_wait_out',g.request,'Sem fronteira → aguardar',['mq_native_window_request_wait_in'],2230,7500);
+ for(const[i,[id,state,restart]]of [['duplicate','started',false],['capacity','capacity',false],['start','started',true],['wait','waiting',false]].entries()){
+  const x=350+i*600;
+  input('window_request_'+id+'_in',g.request,'Receber '+state,[],'mq_native_window_request_'+id+'_set',x-180,7660);
+  node('window_request_'+id+'_set','change',g.request,state+(restart?': nova baseline':''),x,7660,{rules:[
+   {t:'set',p:'_mqtt_window_request_state',pt:'msg',to:state,tot:'str'},
+   {t:'set',p:'_mqtt_window_restart',pt:'msg',to:String(restart),tot:'bool'}],wires:[['mq_native_window_request_'+id+'_return']]});
+  out('window_request_'+id+'_return',g.request,'Decisão → mesma janela',['mq_native_window_facts_in'],x+180,7660);
+ }
+ const result=reconcileGeneratedFlows(flows,[...flows.filter(n=>!owned(n)),...nodes],{isOwned:owned,preserveLayout:flows.find(n=>n.id===TAB)?.mqtt_native_layout_version===4});
  const byId=new Map(result.map(n=>[n.id,n]));
  for(const n of result.filter(n=>n.z===TAB&&n.type==='link out'))for(const target of n.links??[]){
   const peer=byId.get(target);if(peer?.type==='link in'&&!peer.links.includes(n.id))peer.links.push(n.id);
  }
  return reconcileGeneratedFlows(flows,routeCanvasWires(result,[TAB]),{
-  isOwned:owned,preserveLayout:flows.find(n=>n.id===TAB)?.mqtt_native_layout_version===3});
+  isOwned:owned,preserveLayout:flows.find(n=>n.id===TAB)?.mqtt_native_layout_version===4});
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const source=process.argv[2],output=process.argv[3]??source;

@@ -17,6 +17,11 @@ if(matched){
     previous.callback_window_scope="seven_native_MQTT_callback_classes";
     previous.callback_window_checkpoint_sha256=msg._mqtt_window_checkpoint_sha;
     previous.callback_window_durable=true;
+    previous.callback_reader_observation=msg._mqtt_window_candidate.reader_observation??null;
+    previous.callback_window_request=msg._mqtt_window_candidate.window_request??null;
+    const request=msg._mqtt_window_candidate.window_request;
+    if(request?.state==="started"&&flow.get(msg._mqtt_window_request_key,msg._mqtt_store)?.id_sha256===request.id_sha256)
+        flow.set(msg._mqtt_window_request_key,null,msg._mqtt_store);
 }
 previous.last_commit_state = state;
 flow.set(msg._mqtt_key,previous,msg._mqtt_store);

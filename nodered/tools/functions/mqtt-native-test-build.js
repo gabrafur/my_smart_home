@@ -3,7 +3,8 @@ const scenario = String(msg.payload);
 if (scenario === "reset") {
     for (const key of ["mqtt_native_observer_v1__test","mqtt_native_fixture_v1__test","mqtt_native_last_dry_run_v1__test",
         "mqtt_native_inflight_v1__test","mqtt_native_inflight_v1__test_sequence",
-        "mqtt_native_canvas_checkpoint_v1__test","mqtt_native_canvas_checkpoint_sha_v1__test"]) flow.set(key,undefined,"memoryOnly");
+        "mqtt_native_canvas_checkpoint_v1__test","mqtt_native_canvas_checkpoint_sha_v1__test",
+        "mqtt_native_consumer_instance_v1__test","mqtt_native_window_request_v1__test"]) flow.set(key,undefined,"memoryOnly");
     return null;
 }
 const previous = flow.get("mqtt_native_fixture_v1__test","memoryOnly");

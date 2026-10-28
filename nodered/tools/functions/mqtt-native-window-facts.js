@@ -24,7 +24,7 @@ try {
         ...MQTT_NATIVE_SCHEMA.faults.map(k=>c.faults[k]),
         ...MQTT_NATIVE_SCHEMA.kinds.flatMap(k=>MQTT_NATIVE_SCHEMA.stats.map(s=>c.stats[k][s]))];
     leaves(counts).forEach(v=>uint(v));
-    if (old !== null && (!hex(plan.canvas_checkpoint_sha256) || old.schema_version !== 1
+    if (old !== null && (!hex(plan.canvas_checkpoint_sha256) || ![1,2].includes(old.schema_version)
         || !hex(old.window?.id_sha256) || !Array.isArray(old.history))) return msg;
     const reader = source ? value.reader_facts : null;
     const origin = reader?.source_facts;
@@ -41,7 +41,8 @@ try {
     const knownClock = hex(reader?.clock_domain_sha256) && reader.clock_domain_matches === true
         && reader.clock_ordered === true && (receipt == null || receipt.clock_ordered === true
             && receipt.clock_domain_sha256 === reader.clock_domain_sha256);
-    const start = old?.window.started_at_ns ?? receipt?.ack_at_ns;
+    const fresh=old===null || msg._mqtt_window_restart===true;
+    const start = fresh?receipt?.ack_at_ns:old.window.started_at_ns;
     if (start !== undefined) uint(start,64);
     const validBoundary = receipt != null && uint(receiptId,64)>0n && knownClock
         && start !== undefined && uint(start,64)<=uint(now,64) && knownOrigin
@@ -49,21 +50,28 @@ try {
         && origin.started_boottime_ns !== null && uint(origin.started_boottime_ns,64)<=uint(start,64)
         && uint(origin.covered_before_ns,64)>=uint(start,64);
     // No clock/start is fabricated for a missing first verified ACK boundary.
-    if (old === null && !validBoundary) return msg;
+    if (fresh && !validBoundary) return msg;
     const policy = {event_latency_ms:String(msg._mqtt_policy.event_latency_ms),
         window_duration_ns:(BigInt(msg._mqtt_window_contract.duration_ms)*1000000n).toString()};
-    const w = old === null ? {
-        id_sha256:plan.proposal_sha,phase:"tracking",reason:"collecting",
+    const w = fresh ? {
+        id_sha256:msg._mqtt_window_restart===true?msg._mqtt_window_request_id:plan.proposal_sha,phase:"tracking",reason:"collecting",
         clock_domain_sha256:reader.clock_domain_sha256,started_at_ns:start,observed_at_ns:now,
         first_receipt_id:receiptId,last_receipt_id:receiptId,baseline_counts:copy(counts),
         acknowledged_counts:copy(counts),max_upper_ns_by_kind:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,null])),
         violations:Object.fromEntries(["missing","timing_unknown","integrity_faults","receipt_gaps",
             "clock_conflicts","over_contract_receipts","reader_unknown_observations"].map(k=>[k,"0"])),policy,cut:null
     } : copy(old.window);
-    const next = {schema_version:1,sequence:(uint(old?.sequence ?? "0",64)+1n).toString(),
+    const next = {schema_version:2,sequence:(uint(old?.sequence ?? "0",64)+1n).toString(),
         previous_sha256:old === null ? null : plan.canvas_checkpoint_sha256,
         proposal_sha:plan.proposal_sha,receipt_id:receiptId,acknowledged_counts_sha256:null,
-        window:w,history:copy(old?.history ?? [])};
+        window:w,history:copy(old?.history ?? []),reader_observation:null,
+        window_request:msg._mqtt_window_request_present?{id_sha256:msg._mqtt_window_request_id,state:msg._mqtt_window_request_state}:copy(old?.window_request??null)};
+    if(msg._mqtt_window_restart===true&&old!==null)next.history.push(copy(old.window));
+    msg._mqtt_window_reader_observation=source&&knownOrigin&&knownClock?{
+        reader_instance_sha256:reader.reader_instance_sha256,clock_domain_sha256:reader.clock_domain_sha256,
+        observed_boottime_ns:now,source_epoch:origin.epoch,source_instance_sha256:origin.instance_sha256,
+        source_identity_state:origin.identity_state,source_closed:origin.closed,
+        covered_before_ns:origin.covered_before_ns,accepted_frames:reader.accepted_frames}:null;
     msg._mqtt_window_candidate=next;
     msg._mqtt_window_counts=copy(counts);
     msg._mqtt_window_mode=source ? "commit" : "checkpoint-commit";
@@ -76,7 +84,7 @@ try {
     msg._mqtt_window_policy_same=policy.event_latency_ms===w.policy.event_latency_ms
         && policy.window_duration_ns===w.policy.window_duration_ns;
     msg._mqtt_window_epoch_equal=knownOrigin && origin.epoch===counts.source_epochs
-        && (old===null || counts.source_epochs===w.baseline_counts.source_epochs);
+        && (fresh || counts.source_epochs===w.baseline_counts.source_epochs);
     const current = source ? value.received_counts : counts;
     const prior=leaves(w.baseline_counts),currentLeaves=leaves(current),ackLeaves=leaves(counts),lastLeaves=leaves(w.acknowledged_counts);
     const monotonic=currentLeaves.every((v,i)=>uint(v)>=uint(prior[i]))
@@ -97,9 +105,9 @@ try {
         const delivered=uint(current.faults[k]),live=reader?uint(reader.faults[k]):delivered;
         faults+=delta((live>delivered?live:delivered).toString(),w.baseline_counts.faults[k]);
     }
-    const oldReceipt=uint(old?.window.last_receipt_id ?? receiptId,64),id=uint(receiptId,64);
+    const oldReceipt=uint(fresh?receiptId:old.window.last_receipt_id,64),id=uint(receiptId,64);
     msg._mqtt_window_receipt_contiguous=id===oldReceipt && receipt==null || receipt!=null
-        && (old===null || id===oldReceipt+1n);
+        && (fresh || id===oldReceipt+1n);
     msg._mqtt_window_missing=missing.toString();msg._mqtt_window_unknown=unknown.toString();
     msg._mqtt_window_faults=faults.toString();
     const maxima=Object.values(w.max_upper_ns_by_kind).filter(v=>v!==null).map(v=>uint(v,64));

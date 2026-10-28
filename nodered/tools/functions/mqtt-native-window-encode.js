@@ -6,6 +6,14 @@ try {
         : "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canonical(v[k])).join(",")+"}";
     const digest = v => mqtt_crypto.createHash("sha256").update(canonical(v),"ascii").digest("hex");
     const c=msg._mqtt_window_candidate;
+    const suffix=msg.test_mode===true?"__test":"";
+    const instanceKey="mqtt_native_consumer_instance_v1"+suffix;
+    let instance=flow.get(instanceKey,"memoryOnly");
+    if(!/^[a-f0-9]{64}$/.test(instance??"")){
+        instance=mqtt_crypto.randomBytes(32).toString("hex");flow.set(instanceKey,instance,"memoryOnly");
+    }
+    c.reader_observation=msg._mqtt_window_reader_observation===null?null:
+        {...msg._mqtt_window_reader_observation,consumer_instance_sha256:instance};
     if(msg._mqtt_window_terminal!==true){
         c.window.phase=msg._mqtt_window_phase;c.window.reason=msg._mqtt_window_reason;
         const violation=msg._mqtt_window_violation;

@@ -260,3 +260,47 @@ test('only an exact committed checkpoint from the current read may publish a dur
  const result=h.context(TAB).get(msg._mqtt_key,'memoryOnly');assert.deepEqual(result.callback_window,candidate.window);
  assert.equal(result.callback_window_durable,true);assert.equal(result.full24h_proven,false);
 });
+
+test('an explicit next-window intent archives the exact frozen proof and consumes only its own request',()=>{
+ const h=harness();h.scenario('reset');h.scenario('window_start');h.scenario('window_pending');h.scenario('window_drain');
+ const prior=h.receipt().checkpoint;assert.equal(prior.window.phase,'passed');
+ h.scenario('window_restart');const result=h.receipt(),c=result.checkpoint;
+ assert.equal(c.schema_version,2);assert.equal(c.window.phase,'tracking');
+ assert.deepEqual(c.history,[prior.window]);assert.equal(c.window_request.state,'started');
+ assert.equal(c.window.id_sha256,c.window_request.id_sha256);assert.notEqual(c.window.started_at_ns,prior.window.started_at_ns);
+ assert.equal(h.context(TAB).get('mqtt_native_window_request_v1__test','memoryOnly'),null);
+ bindCheckpoint(c,prior,{last_receipt:c.receipt_id,acked_counts:c.window.acknowledged_counts},result.proposal_sha);
+ // A crash after fsync but before clearing the local intent must not open it again.
+ h.context(TAB).set('mqtt_native_window_request_v1__test',{id_sha256:c.window_request.id_sha256},'memoryOnly');
+ h.scenario('window_pending');assert.equal(h.receipt().checkpoint.window.id_sha256,c.window.id_sha256);
+ assert.deepEqual(h.receipt().checkpoint.history,c.history);
+ assert.equal(h.context(TAB).get('mqtt_native_window_request_v1__test','memoryOnly'),null);
+ assert.deepEqual(h.effects,[]);
+});
+
+test('a new-window intent waits for a real ACK boundary and capacity refusal preserves all eight records',()=>{
+ const h=harness();h.scenario('reset');h.scenario('window_start');h.scenario('window_pending');h.scenario('window_drain');
+ const frozen=structuredClone(h.receipt().callback_window);
+ h.scenario('window_restart_wait');let c=h.receipt().checkpoint;
+ assert.deepEqual(c.window,frozen);assert.equal(c.window_request.state,'waiting');
+ const pending=h.context(TAB).get('mqtt_native_window_request_v1__test','memoryOnly');assert.equal(pending.id_sha256,c.window_request.id_sha256);
+ h.scenario('window_drain');c=h.receipt().checkpoint;
+ assert.equal(c.window.id_sha256,pending.id_sha256);assert.equal(c.window.phase,'tracking');assert.deepEqual(c.history,[frozen]);
+ h.scenario('reset');h.scenario('window_start');h.scenario('window_pending');h.scenario('window_drain');
+ const old=structuredClone(h.receipt().callback_window);h.scenario('window_capacity');c=h.receipt().checkpoint;
+ assert.deepEqual(c.window,old);assert.equal(c.history.length,8);assert.equal(c.window_request.state,'capacity');
+ assert.notEqual(h.context(TAB).get('mqtt_native_window_request_v1__test','memoryOnly'),null);
+ validateCheckpoint(c);assert.deepEqual(h.effects,[]);
+});
+
+test('fresh reader observations have their own envelope and never rewrite a frozen window',()=>{
+ const h=harness();h.scenario('reset');h.scenario('window_start');h.scenario('window_pending');h.scenario('window_drain');
+ const old=structuredClone(h.receipt().checkpoint),nonce=old.reader_observation.consumer_instance_sha256;
+ h.context(TAB).set('mqtt_native_consumer_instance_v1__test',undefined,'memoryOnly');
+ h.scenario('window_over');const c=h.receipt().checkpoint;
+ assert.deepEqual(c.window,old.window);assert.notEqual(c.reader_observation.consumer_instance_sha256,nonce);
+ assert.equal(c.reader_observation.clock_domain_sha256,old.reader_observation.clock_domain_sha256);
+ validateCheckpoint(c);
+ h.scenario('window_source_unknown');assert.equal(h.receipt().checkpoint.reader_observation,null);
+ assert.deepEqual(h.receipt().callback_window,old.window);
+});

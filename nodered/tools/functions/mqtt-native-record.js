@@ -23,6 +23,8 @@ const snapshot = {
     callback_window_scope:previous.callback_window_scope ?? null,
     callback_window_checkpoint_sha256:previous.callback_window_checkpoint_sha256 ?? null,
     callback_window_durable:previous.callback_window_durable ?? false,
+    callback_reader_observation:previous.callback_reader_observation ?? null,
+    callback_window_request:previous.callback_window_request ?? null,
     full24h_proven:false,all_event_latency_proven:false
 };
 flow.set(msg._mqtt_key,snapshot,msg._mqtt_store);

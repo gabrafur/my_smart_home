@@ -4,6 +4,9 @@ if (["commit","checkpoint-commit"].includes(msg._mqtt_operation)) previous.last_
 if(msg._mqtt_window_encoded===true){
     flow.set("mqtt_native_canvas_checkpoint_v1__test",JSON.parse(JSON.stringify(msg._mqtt_window_candidate)),"memoryOnly");
     flow.set("mqtt_native_canvas_checkpoint_sha_v1__test",msg._mqtt_window_checkpoint_sha,"memoryOnly");
+    const request=msg._mqtt_window_candidate.window_request;
+    if(request?.state==="started"&&flow.get(msg._mqtt_window_request_key,"memoryOnly")?.id_sha256===request.id_sha256)
+        flow.set(msg._mqtt_window_request_key,null,"memoryOnly");
 }
 previous.last_commit_state = "simulated";
 flow.set(msg._mqtt_key,previous,"memoryOnly");

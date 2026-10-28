@@ -1,5 +1,6 @@
 if(msg.test_mode!==true || msg._mqtt_test_source!==true)return null;
 const scenario=String(msg.payload);
+msg._mqtt_request_window=["restart","restart_wait","capacity"].includes(scenario);
 const copy=v=>JSON.parse(JSON.stringify(v));
 const old=copy(flow.get("mqtt_native_canvas_checkpoint_v1__test","memoryOnly")??null);
 const oldSha=flow.get("mqtt_native_canvas_checkpoint_sha_v1__test","memoryOnly")??null;
@@ -58,6 +59,15 @@ if(scenario==="timing_unknown"){
 if(scenario==="reader_denied"){reader.source_authorized=false;reader.authorization_state="revoked";}
 if(scenario==="reader_stale"){reader.status_age_ns="10000000001";reader.status_age_ms=10001;}
 if(scenario==="legacy")reader.source_facts.wire_version=2;
+if(scenario==="restart_wait"){
+    cli.receipt_facts=[];cli.received_counts=copy(previous.acknowledged_counts);
+    cli.acknowledged_counts=copy(previous.acknowledged_counts);
+}
+if(scenario==="capacity"&&old){
+    old.history=Array.from({length:8},(_,i)=>({...copy(old.window),id_sha256:(i+2000).toString(16).padStart(64,"0")}));
+    const canonical=v=>v===null||typeof v!=="object"?JSON.stringify(v):Array.isArray(v)?"["+v.map(canonical).join(",")+"]":"{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canonical(v[k])).join(",")+"}";
+    cli.canvas_checkpoint_sha256=mqtt_crypto.createHash("sha256").update(canonical(old),"ascii").digest("hex");
+}
 flow.set("mqtt_native_policy_v1__test",{enabled:true,event_latency_ms:scenario==="policy"?11000:10000},"memoryOnly");
 flow.set("mqtt_native_fixture_v1__test",cli,"memoryOnly");
 msg._mqtt_synthetic_cli=cli;

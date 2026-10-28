@@ -88845,7 +88845,7 @@
         "id": "mqtt_native_observer_tab",
         "type": "tab",
         "label": "observacao_mqtt_nativa",
-        "mqtt_native_layout_version": 3,
+        "mqtt_native_layout_version": 4,
         "disabled": false,
         "info": "Metadados sem tópicos/payloads/clientes. Fonte root → normalização → limite visual → persistência → ACK. Desligado até escopo/instalação aprovados; não comprova sozinho todos os eventos HA/MQTT nem24h.",
         "env": []
@@ -88937,7 +88937,8 @@
             "mq_native_valid_out",
             "mq_native_busy_source",
             "mq_native_source_busy_out",
-            "mq_native_source_unknown_out"
+            "mq_native_source_unknown_out",
+            "mq_native_window_request_tick_in"
         ],
         "x": 64,
         "y": 400,
@@ -89302,7 +89303,7 @@
                 "mq_native_enabled"
             ]
         ],
-        "func": "const test = msg.test_mode === true;\nmsg._mqtt_store = test ? \"memoryOnly\" : \"persistent\";\nmsg._mqtt_key = \"mqtt_native_observer_v1\" + (test ? \"__test\" : \"\");\nmsg._mqtt_policy = flow.get(\"mqtt_native_policy_v1\" + (test ? \"__test\" : \"\"), msg._mqtt_store);\nmsg._mqtt_enabled = msg._mqtt_policy?.enabled === true;\nreturn msg;",
+        "func": "const test = msg.test_mode === true;\nmsg._mqtt_store = test ? \"memoryOnly\" : \"persistent\";\nmsg._mqtt_key = \"mqtt_native_observer_v1\" + (test ? \"__test\" : \"\");\nmsg._mqtt_policy = flow.get(\"mqtt_native_policy_v1\" + (test ? \"__test\" : \"\"), msg._mqtt_store);\nmsg._mqtt_enabled = msg._mqtt_policy?.enabled === true;\nmsg._mqtt_window_request_key=\"mqtt_native_window_request_v1\"+(test?\"__test\":\"\");\nmsg._mqtt_window_request_id=flow.get(msg._mqtt_window_request_key,msg._mqtt_store)?.id_sha256??null;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -90940,7 +90941,7 @@
                 "mq_native_window_out"
             ]
         ],
-        "func": "const previous = flow.get(msg._mqtt_key, msg._mqtt_store) ?? {};\nconst snapshot = {\n    version:1,\n    classification:msg._mqtt_classification,\n    reader_authorized:msg._mqtt_reader_authorized ?? null,\n    reader_clock_domain_matches:msg._mqtt_reader_domain ?? null,\n    reader_clock_ordered:msg._mqtt_reader_ordered ?? null,\n    reader_status_age_ms:msg._mqtt_reader_age_ms ?? null,\n    source_state:msg._mqtt_source_state ?? \"unknown\",\n    received_counts:msg._mqtt_received_counts ?? previous.received_counts ?? null,\n    acknowledged_counts:msg._mqtt_acked_counts ?? previous.acknowledged_counts ?? null,\n    last_receipt_id:msg._mqtt_receipt_id ?? previous.last_receipt_id ?? null,\n    observed_total:msg._mqtt_observed_total ?? null,\n    timing_unknown_total:msg._mqtt_unknown_total ?? null,\n    receipt_timing_unknown_total:msg._mqtt_receipt_unknown_total ?? null,\n    integrity_faults_total:msg._mqtt_integrity_faults_total ?? previous.integrity_faults_total ?? null,\n    classification_scope:\"latest_receipt_with_cumulative_integrity_gates\",\n    missing_total:msg._mqtt_missing_total ?? previous.missing_total ?? null,\n    max_source_to_consumer_upper_ms:msg._mqtt_max_upper_ms ?? null,\n    last_committed_proposal_sha:previous.last_committed_proposal_sha ?? null,\n    last_commit_state:previous.last_commit_state ?? null,\n    callback_window:previous.callback_window ?? null,\n    callback_window_scope:previous.callback_window_scope ?? null,\n    callback_window_checkpoint_sha256:previous.callback_window_checkpoint_sha256 ?? null,\n    callback_window_durable:previous.callback_window_durable ?? false,\n    full24h_proven:false,all_event_latency_proven:false\n};\nflow.set(msg._mqtt_key,snapshot,msg._mqtt_store);\nreturn msg;",
+        "func": "const previous = flow.get(msg._mqtt_key, msg._mqtt_store) ?? {};\nconst snapshot = {\n    version:1,\n    classification:msg._mqtt_classification,\n    reader_authorized:msg._mqtt_reader_authorized ?? null,\n    reader_clock_domain_matches:msg._mqtt_reader_domain ?? null,\n    reader_clock_ordered:msg._mqtt_reader_ordered ?? null,\n    reader_status_age_ms:msg._mqtt_reader_age_ms ?? null,\n    source_state:msg._mqtt_source_state ?? \"unknown\",\n    received_counts:msg._mqtt_received_counts ?? previous.received_counts ?? null,\n    acknowledged_counts:msg._mqtt_acked_counts ?? previous.acknowledged_counts ?? null,\n    last_receipt_id:msg._mqtt_receipt_id ?? previous.last_receipt_id ?? null,\n    observed_total:msg._mqtt_observed_total ?? null,\n    timing_unknown_total:msg._mqtt_unknown_total ?? null,\n    receipt_timing_unknown_total:msg._mqtt_receipt_unknown_total ?? null,\n    integrity_faults_total:msg._mqtt_integrity_faults_total ?? previous.integrity_faults_total ?? null,\n    classification_scope:\"latest_receipt_with_cumulative_integrity_gates\",\n    missing_total:msg._mqtt_missing_total ?? previous.missing_total ?? null,\n    max_source_to_consumer_upper_ms:msg._mqtt_max_upper_ms ?? null,\n    last_committed_proposal_sha:previous.last_committed_proposal_sha ?? null,\n    last_commit_state:previous.last_commit_state ?? null,\n    callback_window:previous.callback_window ?? null,\n    callback_window_scope:previous.callback_window_scope ?? null,\n    callback_window_checkpoint_sha256:previous.callback_window_checkpoint_sha256 ?? null,\n    callback_window_durable:previous.callback_window_durable ?? false,\n    callback_reader_observation:previous.callback_reader_observation ?? null,\n    callback_window_request:previous.callback_window_request ?? null,\n    full24h_proven:false,all_event_latency_proven:false\n};\nflow.set(msg._mqtt_key,snapshot,msg._mqtt_store);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -91286,7 +91287,7 @@
                 "mq_native_test_global_out"
             ]
         ],
-        "func": "if (msg.test_mode !== true) return null;\nconst previous = flow.get(msg._mqtt_key,\"memoryOnly\") ?? {};\nif ([\"commit\",\"checkpoint-commit\"].includes(msg._mqtt_operation)) previous.last_committed_proposal_sha = msg._mqtt_proposal_sha;\nif(msg._mqtt_window_encoded===true){\n    flow.set(\"mqtt_native_canvas_checkpoint_v1__test\",JSON.parse(JSON.stringify(msg._mqtt_window_candidate)),\"memoryOnly\");\n    flow.set(\"mqtt_native_canvas_checkpoint_sha_v1__test\",msg._mqtt_window_checkpoint_sha,\"memoryOnly\");\n}\nprevious.last_commit_state = \"simulated\";\nflow.set(msg._mqtt_key,previous,\"memoryOnly\");\nflow.set(\"mqtt_native_last_dry_run_v1__test\",{\n    version:1,simulated:true,dispatched:false,external_call_sent:false,\n    operation:msg._mqtt_operation,classification:msg._mqtt_classification,\n    proposal_sha:msg._mqtt_proposal_sha ?? null,\n    receipt_id:msg._mqtt_receipt_id ?? null,\n    callback_window:msg._mqtt_window_encoded===true?JSON.parse(JSON.stringify(msg._mqtt_window_candidate.window)):null,\n    checkpoint:msg._mqtt_window_encoded===true?JSON.parse(JSON.stringify(msg._mqtt_window_candidate)):null,\n    commit_token:msg._mqtt_window_encoded===true?msg._mqtt_window_commit_token:null\n},\"memoryOnly\");\nif (msg._mqtt_owns_flight === true && typeof msg._mqtt_flight_token === \"string\"\n    && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token === msg._mqtt_flight_token)\n    flow.set(msg._mqtt_flight_key,false,\"memoryOnly\");\nmsg._global_observer_test = true;\nmsg.payload = {test_mode:true,observer_kind:\"metadata_observation\",flow_id:\"mqtt_native_observer_tab\",source_id:\"metadata_fixture\"};\nreturn msg;",
+        "func": "if (msg.test_mode !== true) return null;\nconst previous = flow.get(msg._mqtt_key,\"memoryOnly\") ?? {};\nif ([\"commit\",\"checkpoint-commit\"].includes(msg._mqtt_operation)) previous.last_committed_proposal_sha = msg._mqtt_proposal_sha;\nif(msg._mqtt_window_encoded===true){\n    flow.set(\"mqtt_native_canvas_checkpoint_v1__test\",JSON.parse(JSON.stringify(msg._mqtt_window_candidate)),\"memoryOnly\");\n    flow.set(\"mqtt_native_canvas_checkpoint_sha_v1__test\",msg._mqtt_window_checkpoint_sha,\"memoryOnly\");\n    const request=msg._mqtt_window_candidate.window_request;\n    if(request?.state===\"started\"&&flow.get(msg._mqtt_window_request_key,\"memoryOnly\")?.id_sha256===request.id_sha256)\n        flow.set(msg._mqtt_window_request_key,null,\"memoryOnly\");\n}\nprevious.last_commit_state = \"simulated\";\nflow.set(msg._mqtt_key,previous,\"memoryOnly\");\nflow.set(\"mqtt_native_last_dry_run_v1__test\",{\n    version:1,simulated:true,dispatched:false,external_call_sent:false,\n    operation:msg._mqtt_operation,classification:msg._mqtt_classification,\n    proposal_sha:msg._mqtt_proposal_sha ?? null,\n    receipt_id:msg._mqtt_receipt_id ?? null,\n    callback_window:msg._mqtt_window_encoded===true?JSON.parse(JSON.stringify(msg._mqtt_window_candidate.window)):null,\n    checkpoint:msg._mqtt_window_encoded===true?JSON.parse(JSON.stringify(msg._mqtt_window_candidate)):null,\n    commit_token:msg._mqtt_window_encoded===true?msg._mqtt_window_commit_token:null\n},\"memoryOnly\");\nif (msg._mqtt_owns_flight === true && typeof msg._mqtt_flight_token === \"string\"\n    && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token === msg._mqtt_flight_token)\n    flow.set(msg._mqtt_flight_key,false,\"memoryOnly\");\nmsg._global_observer_test = true;\nmsg.payload = {test_mode:true,observer_kind:\"metadata_observation\",flow_id:\"mqtt_native_observer_tab\",source_id:\"metadata_fixture\"};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -91400,7 +91401,7 @@
                 "mq_native_release"
             ]
         ],
-        "func": "if (msg._mqtt_owns_flight === true && typeof msg._mqtt_flight_token === \"string\"\n    && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token !== msg._mqtt_flight_token) return null;\nlet result;\ntry {result = typeof msg.payload === \"string\" ? JSON.parse(msg.payload) : msg.payload;} catch {result = null;}\nconst previous = flow.get(msg._mqtt_key,msg._mqtt_store) ?? {};\nlet state = [\"committed\",\"checkpoint_committed\",\"stale_prepare\",\"unknown\"].includes(result?.state) ? result.state : \"unknown\";\nconst matched=msg._mqtt_owns_flight===true && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token===msg._mqtt_flight_token\n    && msg._mqtt_window_encoded===true && result?.canvas_checkpoint_sha256===msg._mqtt_window_checkpoint_sha\n    && (msg._mqtt_window_mode===\"commit\" && state===\"committed\"\n        || msg._mqtt_window_mode===\"checkpoint-commit\" && state===\"checkpoint_committed\"\n        && result.ack_written===false && result.ack_intended===false);\nif(msg._mqtt_window_encoded===true && !matched)state=\"unknown\";\nif ((state === \"committed\" || state === \"checkpoint_committed\") && /^[a-f0-9]{64}$/.test(msg._mqtt_proposal_sha ?? \"\"))\n    previous.last_committed_proposal_sha = msg._mqtt_proposal_sha;\nif(matched){\n    previous.callback_window=JSON.parse(JSON.stringify(msg._mqtt_window_candidate.window));\n    previous.callback_window_scope=\"seven_native_MQTT_callback_classes\";\n    previous.callback_window_checkpoint_sha256=msg._mqtt_window_checkpoint_sha;\n    previous.callback_window_durable=true;\n}\nprevious.last_commit_state = state;\nflow.set(msg._mqtt_key,previous,msg._mqtt_store);\nreturn msg;",
+        "func": "if (msg._mqtt_owns_flight === true && typeof msg._mqtt_flight_token === \"string\"\n    && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token !== msg._mqtt_flight_token) return null;\nlet result;\ntry {result = typeof msg.payload === \"string\" ? JSON.parse(msg.payload) : msg.payload;} catch {result = null;}\nconst previous = flow.get(msg._mqtt_key,msg._mqtt_store) ?? {};\nlet state = [\"committed\",\"checkpoint_committed\",\"stale_prepare\",\"unknown\"].includes(result?.state) ? result.state : \"unknown\";\nconst matched=msg._mqtt_owns_flight===true && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token===msg._mqtt_flight_token\n    && msg._mqtt_window_encoded===true && result?.canvas_checkpoint_sha256===msg._mqtt_window_checkpoint_sha\n    && (msg._mqtt_window_mode===\"commit\" && state===\"committed\"\n        || msg._mqtt_window_mode===\"checkpoint-commit\" && state===\"checkpoint_committed\"\n        && result.ack_written===false && result.ack_intended===false);\nif(msg._mqtt_window_encoded===true && !matched)state=\"unknown\";\nif ((state === \"committed\" || state === \"checkpoint_committed\") && /^[a-f0-9]{64}$/.test(msg._mqtt_proposal_sha ?? \"\"))\n    previous.last_committed_proposal_sha = msg._mqtt_proposal_sha;\nif(matched){\n    previous.callback_window=JSON.parse(JSON.stringify(msg._mqtt_window_candidate.window));\n    previous.callback_window_scope=\"seven_native_MQTT_callback_classes\";\n    previous.callback_window_checkpoint_sha256=msg._mqtt_window_checkpoint_sha;\n    previous.callback_window_durable=true;\n    previous.callback_reader_observation=msg._mqtt_window_candidate.reader_observation??null;\n    previous.callback_window_request=msg._mqtt_window_candidate.window_request??null;\n    const request=msg._mqtt_window_candidate.window_request;\n    if(request?.state===\"started\"&&flow.get(msg._mqtt_window_request_key,msg._mqtt_store)?.id_sha256===request.id_sha256)\n        flow.set(msg._mqtt_window_request_key,null,msg._mqtt_store);\n}\nprevious.last_commit_state = state;\nflow.set(msg._mqtt_key,previous,msg._mqtt_store);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -92388,7 +92389,7 @@
                 "mq_native_test_policy_config"
             ]
         ],
-        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nif (msg.test_mode !== true || msg._mqtt_test_source !== true) return null;\nconst scenario = String(msg.payload);\nif (scenario === \"reset\") {\n    for (const key of [\"mqtt_native_observer_v1__test\",\"mqtt_native_fixture_v1__test\",\"mqtt_native_last_dry_run_v1__test\",\n        \"mqtt_native_inflight_v1__test\",\"mqtt_native_inflight_v1__test_sequence\",\n        \"mqtt_native_canvas_checkpoint_v1__test\",\"mqtt_native_canvas_checkpoint_sha_v1__test\"]) flow.set(key,undefined,\"memoryOnly\");\n    return null;\n}\nconst previous = flow.get(\"mqtt_native_fixture_v1__test\",\"memoryOnly\");\nlet cli;\nif (scenario === \"duplicate\" && previous) cli = JSON.parse(JSON.stringify(previous));\nelse {\n    const index = (previous?._fixture_sequence ?? 0) + 1;\n    const counts = {...Object.fromEntries(MQTT_NATIVE_SCHEMA.headers.map(k=>[k,\"0\"])),\n        faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n        stats:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,Object.fromEntries(MQTT_NATIVE_SCHEMA.stats.map(s=>[s,\"0\"]))]))};\n    counts.frames = \"1\"; counts.sessions = \"1\"; counts.source_epochs = \"1\";\n    const row = counts.stats.publish_in; row.expected = \"1\"; row.observed = \"1\"; row.timed = \"1\";\n    const by_kind = Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,{observed:\"0\",timed:\"0\",timing_unknown:\"0\",\n        source_to_consumer_upper_ns:null,source_to_consumer_upper_ms:null}]));\n    by_kind.publish_in = {observed:\"1\",timed:\"1\",timing_unknown:\"0\",source_to_consumer_upper_ns:\"1000000000\",source_to_consumer_upper_ms:1000};\n    cli = {state:\"prepared\",proposal_sha:index.toString(16).padStart(64,\"0\"),\n        reader_facts:{schema_version:1,reader_instance_sha256:\"a\".repeat(64),source_authorized:true,authorization_state:\"active\",faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),clock_domain_matches:true,clock_ordered:true,status_age_ns:\"1000000\",status_age_ms:1},received_counts:counts,acknowledged_counts:JSON.parse(JSON.stringify(counts)),\n        receipt_facts:[{bucket_id:String(index),clock_ordered:true,by_kind}],_fixture_sequence:index};\n    if (scenario === \"reader_denied\") {cli.reader_facts.source_authorized=false;cli.reader_facts.authorization_state=\"revoked\";}\n    if (scenario === \"reader_clock\" || scenario === \"reader_future\") {\n        cli.reader_facts.clock_domain_matches=scenario!==\"reader_clock\";cli.reader_facts.clock_ordered=false;\n        cli.reader_facts.status_age_ns=null;cli.reader_facts.status_age_ms=null;\n    }\n    if (scenario === \"reader_stale\") {cli.reader_facts.status_age_ns=\"10000000001\";cli.reader_facts.status_age_ms=10001;}\n    if (scenario === \"reader_missing\") delete cli.reader_facts;\n    if (scenario === \"over\") {\n        by_kind.publish_in.source_to_consumer_upper_ns = \"10000000001\"; by_kind.publish_in.source_to_consumer_upper_ms = 10001;\n    } else if (scenario === \"unknown\") {\n        cli.receipt_facts[0].clock_ordered = false;\n        row.timed = \"0\"; row.timing_unknown = \"1\";\n        by_kind.publish_in.timed = \"0\"; by_kind.publish_in.timing_unknown = \"1\";\n        by_kind.publish_in.source_to_consumer_upper_ns = null; by_kind.publish_in.source_to_consumer_upper_ms = null;\n    } else if (scenario === \"missing\") {\n        row.expected = \"2\"; row.missing = \"1\"; row.source_dropped = \"1\";\n    } else if (scenario === \"no_events\") {\n        for (const k of MQTT_NATIVE_SCHEMA.stats) row[k] = \"0\";\n        by_kind.publish_in = {observed:\"0\",timed:\"0\",timing_unknown:\"0\",source_to_consumer_upper_ns:null,source_to_consumer_upper_ms:null};\n    } else if (scenario === \"unavailable\") cli = {state:\"unknown\",collection_error:\"producer_report_invalid\",_fixture_sequence:index};\n    else if (scenario === \"busy\") cli = {state:\"busy\",_fixture_sequence:index};\n    else if (scenario === \"malformed\") cli = \"invalid_synthetic_metadata\";\n}\nif (typeof cli === \"object\") flow.set(\"mqtt_native_fixture_v1__test\",cli,\"memoryOnly\");\nmsg._mqtt_synthetic_cli = cli;\nmsg._mqtt_test_enabled = scenario !== \"disabled\";\nreturn msg;",
+        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nif (msg.test_mode !== true || msg._mqtt_test_source !== true) return null;\nconst scenario = String(msg.payload);\nif (scenario === \"reset\") {\n    for (const key of [\"mqtt_native_observer_v1__test\",\"mqtt_native_fixture_v1__test\",\"mqtt_native_last_dry_run_v1__test\",\n        \"mqtt_native_inflight_v1__test\",\"mqtt_native_inflight_v1__test_sequence\",\n        \"mqtt_native_canvas_checkpoint_v1__test\",\"mqtt_native_canvas_checkpoint_sha_v1__test\",\n        \"mqtt_native_consumer_instance_v1__test\",\"mqtt_native_window_request_v1__test\"]) flow.set(key,undefined,\"memoryOnly\");\n    return null;\n}\nconst previous = flow.get(\"mqtt_native_fixture_v1__test\",\"memoryOnly\");\nlet cli;\nif (scenario === \"duplicate\" && previous) cli = JSON.parse(JSON.stringify(previous));\nelse {\n    const index = (previous?._fixture_sequence ?? 0) + 1;\n    const counts = {...Object.fromEntries(MQTT_NATIVE_SCHEMA.headers.map(k=>[k,\"0\"])),\n        faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n        stats:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,Object.fromEntries(MQTT_NATIVE_SCHEMA.stats.map(s=>[s,\"0\"]))]))};\n    counts.frames = \"1\"; counts.sessions = \"1\"; counts.source_epochs = \"1\";\n    const row = counts.stats.publish_in; row.expected = \"1\"; row.observed = \"1\"; row.timed = \"1\";\n    const by_kind = Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,{observed:\"0\",timed:\"0\",timing_unknown:\"0\",\n        source_to_consumer_upper_ns:null,source_to_consumer_upper_ms:null}]));\n    by_kind.publish_in = {observed:\"1\",timed:\"1\",timing_unknown:\"0\",source_to_consumer_upper_ns:\"1000000000\",source_to_consumer_upper_ms:1000};\n    cli = {state:\"prepared\",proposal_sha:index.toString(16).padStart(64,\"0\"),\n        reader_facts:{schema_version:1,reader_instance_sha256:\"a\".repeat(64),source_authorized:true,authorization_state:\"active\",faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),clock_domain_matches:true,clock_ordered:true,status_age_ns:\"1000000\",status_age_ms:1},received_counts:counts,acknowledged_counts:JSON.parse(JSON.stringify(counts)),\n        receipt_facts:[{bucket_id:String(index),clock_ordered:true,by_kind}],_fixture_sequence:index};\n    if (scenario === \"reader_denied\") {cli.reader_facts.source_authorized=false;cli.reader_facts.authorization_state=\"revoked\";}\n    if (scenario === \"reader_clock\" || scenario === \"reader_future\") {\n        cli.reader_facts.clock_domain_matches=scenario!==\"reader_clock\";cli.reader_facts.clock_ordered=false;\n        cli.reader_facts.status_age_ns=null;cli.reader_facts.status_age_ms=null;\n    }\n    if (scenario === \"reader_stale\") {cli.reader_facts.status_age_ns=\"10000000001\";cli.reader_facts.status_age_ms=10001;}\n    if (scenario === \"reader_missing\") delete cli.reader_facts;\n    if (scenario === \"over\") {\n        by_kind.publish_in.source_to_consumer_upper_ns = \"10000000001\"; by_kind.publish_in.source_to_consumer_upper_ms = 10001;\n    } else if (scenario === \"unknown\") {\n        cli.receipt_facts[0].clock_ordered = false;\n        row.timed = \"0\"; row.timing_unknown = \"1\";\n        by_kind.publish_in.timed = \"0\"; by_kind.publish_in.timing_unknown = \"1\";\n        by_kind.publish_in.source_to_consumer_upper_ns = null; by_kind.publish_in.source_to_consumer_upper_ms = null;\n    } else if (scenario === \"missing\") {\n        row.expected = \"2\"; row.missing = \"1\"; row.source_dropped = \"1\";\n    } else if (scenario === \"no_events\") {\n        for (const k of MQTT_NATIVE_SCHEMA.stats) row[k] = \"0\";\n        by_kind.publish_in = {observed:\"0\",timed:\"0\",timing_unknown:\"0\",source_to_consumer_upper_ns:null,source_to_consumer_upper_ms:null};\n    } else if (scenario === \"unavailable\") cli = {state:\"unknown\",collection_error:\"producer_report_invalid\",_fixture_sequence:index};\n    else if (scenario === \"busy\") cli = {state:\"busy\",_fixture_sequence:index};\n    else if (scenario === \"malformed\") cli = \"invalid_synthetic_metadata\";\n}\nif (typeof cli === \"object\") flow.set(\"mqtt_native_fixture_v1__test\",cli,\"memoryOnly\");\nmsg._mqtt_synthetic_cli = cli;\nmsg._mqtt_test_enabled = scenario !== \"disabled\";\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -92642,7 +92643,9 @@
             "mq_native_checkpoint_result_out",
             "mq_native_checkpoint_complete_out",
             "notification_hub_wire_out_4bd7da674b44",
-            "notification_hub_wire_in_4bd7da674b44"
+            "notification_hub_wire_in_4bd7da674b44",
+            "mq_native_window_request_out",
+            "mq_native_window_facts_in"
         ],
         "x": 64,
         "y": 4400,
@@ -92692,12 +92695,20 @@
             "mq_native_test_window_reader_denied",
             "mq_native_window_test_reader_denied_out",
             "mq_native_test_window_reader_stale",
-            "mq_native_window_test_reader_stale_out"
+            "mq_native_window_test_reader_stale_out",
+            "mq_native_test_window_restart",
+            "mq_native_window_test_restart_out",
+            "mq_native_test_window_restart_wait",
+            "mq_native_window_test_restart_wait_out",
+            "mq_native_test_window_capacity",
+            "mq_native_window_test_capacity_out",
+            "mq_native_window_test_request",
+            "mq_native_window_test_request_out"
         ],
         "x": 64,
         "y": 6320,
         "w": 2660,
-        "h": 700
+        "h": 920
     },
     {
         "id": "mq_native_window_policy_info",
@@ -92782,7 +92793,7 @@
         "y": 4480,
         "wires": [
             [
-                "mq_native_window_facts"
+                "mq_native_window_request_out"
             ]
         ],
         "rules": [
@@ -92813,7 +92824,7 @@
                 "mq_native_window_possible"
             ]
         ],
-        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\n// Shape validation and exact arithmetic only. Switches choose every outcome.\nmsg._mqtt_window_possible = false;\nmsg._mqtt_window_candidate = null;\ntry {\n    const uint = (v,bits=128) => {\n        if (typeof v !== \"string\" || !/^(?:0|[1-9][0-9]{0,38})$/.test(v)) throw Error(\"integer\");\n        const n=BigInt(v); if(n>=2n**BigInt(bits))throw Error(\"integer\"); return n;\n    };\n    const hex = v => typeof v === \"string\" && /^[a-f0-9]{64}$/.test(v);\n    const copy = v => JSON.parse(JSON.stringify(v));\n    const value = msg._mqtt_envelope;\n    if (!value || value.state === \"busy\") return msg;\n    const own = value.checkpoint_only;\n    const source = msg._mqtt_valid === true && msg._mqtt_commit_allowed === true;\n    const plan = source ? value : own;\n    if (!plan || !hex(plan.proposal_sha)) return msg;\n    const old = plan.canvas_checkpoint ?? null;\n    if (!source && old === null) return msg;\n    const receipt = source ? value.receipt_facts[0] : null;\n    const receiptId = source ? (receipt?.bucket_id ?? own?.receipt_id ?? \"0\") : plan.receipt_id;\n    uint(receiptId,64);\n    const counts = plan.acknowledged_counts;\n    const leaves = c => [...MQTT_NATIVE_SCHEMA.headers.map(k=>c[k]),\n        ...MQTT_NATIVE_SCHEMA.faults.map(k=>c.faults[k]),\n        ...MQTT_NATIVE_SCHEMA.kinds.flatMap(k=>MQTT_NATIVE_SCHEMA.stats.map(s=>c.stats[k][s]))];\n    leaves(counts).forEach(v=>uint(v));\n    if (old !== null && (!hex(plan.canvas_checkpoint_sha256) || old.schema_version !== 1\n        || !hex(old.window?.id_sha256) || !Array.isArray(old.history))) return msg;\n    const reader = source ? value.reader_facts : null;\n    const origin = reader?.source_facts;\n    const now = reader?.reader_observed_boottime_ns ?? old?.window.observed_at_ns;\n    if (now === undefined) return msg;\n    uint(now,64);\n    const knownOrigin = origin != null && origin.wire_version === 3 && hex(origin.instance_sha256)\n        && [\"verified_live\",\"verified_exited\"].includes(origin.identity_state)\n        && typeof origin.closed === \"boolean\" && origin.covered_before_ns !== null;\n    if (knownOrigin) {\n        uint(origin.epoch);uint(origin.covered_before_ns,64);\n        if(uint(origin.covered_before_ns,64)>uint(now,64))return msg;\n    }\n    const knownClock = hex(reader?.clock_domain_sha256) && reader.clock_domain_matches === true\n        && reader.clock_ordered === true && (receipt == null || receipt.clock_ordered === true\n            && receipt.clock_domain_sha256 === reader.clock_domain_sha256);\n    const start = old?.window.started_at_ns ?? receipt?.ack_at_ns;\n    if (start !== undefined) uint(start,64);\n    const validBoundary = receipt != null && uint(receiptId,64)>0n && knownClock\n        && start !== undefined && uint(start,64)<=uint(now,64) && knownOrigin\n        && counts.source_epochs===origin.epoch && uint(counts.frames)>0n\n        && origin.started_boottime_ns !== null && uint(origin.started_boottime_ns,64)<=uint(start,64)\n        && uint(origin.covered_before_ns,64)>=uint(start,64);\n    // No clock/start is fabricated for a missing first verified ACK boundary.\n    if (old === null && !validBoundary) return msg;\n    const policy = {event_latency_ms:String(msg._mqtt_policy.event_latency_ms),\n        window_duration_ns:(BigInt(msg._mqtt_window_contract.duration_ms)*1000000n).toString()};\n    const w = old === null ? {\n        id_sha256:plan.proposal_sha,phase:\"tracking\",reason:\"collecting\",\n        clock_domain_sha256:reader.clock_domain_sha256,started_at_ns:start,observed_at_ns:now,\n        first_receipt_id:receiptId,last_receipt_id:receiptId,baseline_counts:copy(counts),\n        acknowledged_counts:copy(counts),max_upper_ns_by_kind:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,null])),\n        violations:Object.fromEntries([\"missing\",\"timing_unknown\",\"integrity_faults\",\"receipt_gaps\",\n            \"clock_conflicts\",\"over_contract_receipts\",\"reader_unknown_observations\"].map(k=>[k,\"0\"])),policy,cut:null\n    } : copy(old.window);\n    const next = {schema_version:1,sequence:(uint(old?.sequence ?? \"0\",64)+1n).toString(),\n        previous_sha256:old === null ? null : plan.canvas_checkpoint_sha256,\n        proposal_sha:plan.proposal_sha,receipt_id:receiptId,acknowledged_counts_sha256:null,\n        window:w,history:copy(old?.history ?? [])};\n    msg._mqtt_window_candidate=next;\n    msg._mqtt_window_counts=copy(counts);\n    msg._mqtt_window_mode=source ? \"commit\" : \"checkpoint-commit\";\n    msg._mqtt_window_proposal=plan.proposal_sha;\n    msg._mqtt_window_terminal=[\"passed\",\"failed\",\"unknown\"].includes(w.phase);\n    msg._mqtt_window_current_phase=w.phase;\n    msg._mqtt_window_reader_good=source && knownOrigin;\n    msg._mqtt_window_clock_good=knownClock && reader.clock_domain_sha256===w.clock_domain_sha256\n        && uint(now,64)>=uint(w.observed_at_ns,64);\n    msg._mqtt_window_policy_same=policy.event_latency_ms===w.policy.event_latency_ms\n        && policy.window_duration_ns===w.policy.window_duration_ns;\n    msg._mqtt_window_epoch_equal=knownOrigin && origin.epoch===counts.source_epochs\n        && (old===null || counts.source_epochs===w.baseline_counts.source_epochs);\n    const current = source ? value.received_counts : counts;\n    const prior=leaves(w.baseline_counts),currentLeaves=leaves(current),ackLeaves=leaves(counts),lastLeaves=leaves(w.acknowledged_counts);\n    const monotonic=currentLeaves.every((v,i)=>uint(v)>=uint(prior[i]))\n        &&ackLeaves.every((v,i)=>uint(v)>=uint(lastLeaves[i]));\n    msg._mqtt_window_monotonic=monotonic;\n    const delta = (a,b) => uint(a)>=uint(b) ? uint(a)-uint(b) : 0n;\n    let missing=0n,unknown=0n,faults=0n;\n    for(const kind of MQTT_NATIVE_SCHEMA.kinds){\n        missing+=delta(current.stats[kind].missing,w.baseline_counts.stats[kind].missing);\n        unknown+=delta(current.stats[kind].timing_unknown,w.baseline_counts.stats[kind].timing_unknown);\n        const upper=receipt?.by_kind[kind].source_to_consumer_upper_ns;\n        if(upper!=null && (w.max_upper_ns_by_kind[kind]===null || uint(upper,64)>uint(w.max_upper_ns_by_kind[kind],64)))\n            w.max_upper_ns_by_kind[kind]=upper;\n    }\n    for(const k of [\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"ack_clock_conflicts\"])\n        faults+=delta(current[k],w.baseline_counts[k]);\n    for(const k of MQTT_NATIVE_SCHEMA.faults){\n        const delivered=uint(current.faults[k]),live=reader?uint(reader.faults[k]):delivered;\n        faults+=delta((live>delivered?live:delivered).toString(),w.baseline_counts.faults[k]);\n    }\n    const oldReceipt=uint(old?.window.last_receipt_id ?? receiptId,64),id=uint(receiptId,64);\n    msg._mqtt_window_receipt_contiguous=id===oldReceipt && receipt==null || receipt!=null\n        && (old===null || id===oldReceipt+1n);\n    msg._mqtt_window_missing=missing.toString();msg._mqtt_window_unknown=unknown.toString();\n    msg._mqtt_window_faults=faults.toString();\n    const maxima=Object.values(w.max_upper_ns_by_kind).filter(v=>v!==null).map(v=>uint(v,64));\n    const max=maxima.reduce((a,b)=>a>b?a:b,0n);\n    msg._mqtt_window_max_upper_ms=Number((max+999999n)/1000000n);\n    const before=knownOrigin?uint(origin.covered_before_ns,64):0n;\n    msg._mqtt_window_elapsed_ms=before>=uint(w.started_at_ns,64)?Number((before-uint(w.started_at_ns,64))/1000000n):0;\n    msg._mqtt_window_has_cut=w.cut!==null;\n    msg._mqtt_window_cut_is_coverage=w.cut===null || Object.hasOwn(w.cut,\"covered_before_ns\");\n    msg._mqtt_window_cut_facts=knownOrigin?{accepted_frames:reader.accepted_frames,covered_before_ns:origin.covered_before_ns}:null;\n    msg._mqtt_window_unacked_cut_frames=w.cut===null?\"0\":(uint(w.cut.accepted_frames)>uint(counts.frames)?uint(w.cut.accepted_frames)-uint(counts.frames):0n).toString();\n    if(!msg._mqtt_window_terminal){\n        if(uint(now,64)>=uint(w.observed_at_ns,64))w.observed_at_ns=now;\n        w.last_receipt_id=receiptId;w.acknowledged_counts=copy(counts);\n        for(const [key,n]of [[\"missing\",missing],[\"timing_unknown\",unknown],[\"integrity_faults\",faults]])\n            if(n>uint(w.violations[key]))w.violations[key]=n.toString();\n    } else next.window=copy(old.window);\n    msg._mqtt_window_possible=true;\n} catch { /* Invalid metadata never authorizes a new ACK or positive window. */ }\nreturn msg;",
+        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\n// Shape validation and exact arithmetic only. Switches choose every outcome.\nmsg._mqtt_window_possible = false;\nmsg._mqtt_window_candidate = null;\ntry {\n    const uint = (v,bits=128) => {\n        if (typeof v !== \"string\" || !/^(?:0|[1-9][0-9]{0,38})$/.test(v)) throw Error(\"integer\");\n        const n=BigInt(v); if(n>=2n**BigInt(bits))throw Error(\"integer\"); return n;\n    };\n    const hex = v => typeof v === \"string\" && /^[a-f0-9]{64}$/.test(v);\n    const copy = v => JSON.parse(JSON.stringify(v));\n    const value = msg._mqtt_envelope;\n    if (!value || value.state === \"busy\") return msg;\n    const own = value.checkpoint_only;\n    const source = msg._mqtt_valid === true && msg._mqtt_commit_allowed === true;\n    const plan = source ? value : own;\n    if (!plan || !hex(plan.proposal_sha)) return msg;\n    const old = plan.canvas_checkpoint ?? null;\n    if (!source && old === null) return msg;\n    const receipt = source ? value.receipt_facts[0] : null;\n    const receiptId = source ? (receipt?.bucket_id ?? own?.receipt_id ?? \"0\") : plan.receipt_id;\n    uint(receiptId,64);\n    const counts = plan.acknowledged_counts;\n    const leaves = c => [...MQTT_NATIVE_SCHEMA.headers.map(k=>c[k]),\n        ...MQTT_NATIVE_SCHEMA.faults.map(k=>c.faults[k]),\n        ...MQTT_NATIVE_SCHEMA.kinds.flatMap(k=>MQTT_NATIVE_SCHEMA.stats.map(s=>c.stats[k][s]))];\n    leaves(counts).forEach(v=>uint(v));\n    if (old !== null && (!hex(plan.canvas_checkpoint_sha256) || ![1,2].includes(old.schema_version)\n        || !hex(old.window?.id_sha256) || !Array.isArray(old.history))) return msg;\n    const reader = source ? value.reader_facts : null;\n    const origin = reader?.source_facts;\n    const now = reader?.reader_observed_boottime_ns ?? old?.window.observed_at_ns;\n    if (now === undefined) return msg;\n    uint(now,64);\n    const knownOrigin = origin != null && origin.wire_version === 3 && hex(origin.instance_sha256)\n        && [\"verified_live\",\"verified_exited\"].includes(origin.identity_state)\n        && typeof origin.closed === \"boolean\" && origin.covered_before_ns !== null;\n    if (knownOrigin) {\n        uint(origin.epoch);uint(origin.covered_before_ns,64);\n        if(uint(origin.covered_before_ns,64)>uint(now,64))return msg;\n    }\n    const knownClock = hex(reader?.clock_domain_sha256) && reader.clock_domain_matches === true\n        && reader.clock_ordered === true && (receipt == null || receipt.clock_ordered === true\n            && receipt.clock_domain_sha256 === reader.clock_domain_sha256);\n    const fresh=old===null || msg._mqtt_window_restart===true;\n    const start = fresh?receipt?.ack_at_ns:old.window.started_at_ns;\n    if (start !== undefined) uint(start,64);\n    const validBoundary = receipt != null && uint(receiptId,64)>0n && knownClock\n        && start !== undefined && uint(start,64)<=uint(now,64) && knownOrigin\n        && counts.source_epochs===origin.epoch && uint(counts.frames)>0n\n        && origin.started_boottime_ns !== null && uint(origin.started_boottime_ns,64)<=uint(start,64)\n        && uint(origin.covered_before_ns,64)>=uint(start,64);\n    // No clock/start is fabricated for a missing first verified ACK boundary.\n    if (fresh && !validBoundary) return msg;\n    const policy = {event_latency_ms:String(msg._mqtt_policy.event_latency_ms),\n        window_duration_ns:(BigInt(msg._mqtt_window_contract.duration_ms)*1000000n).toString()};\n    const w = fresh ? {\n        id_sha256:msg._mqtt_window_restart===true?msg._mqtt_window_request_id:plan.proposal_sha,phase:\"tracking\",reason:\"collecting\",\n        clock_domain_sha256:reader.clock_domain_sha256,started_at_ns:start,observed_at_ns:now,\n        first_receipt_id:receiptId,last_receipt_id:receiptId,baseline_counts:copy(counts),\n        acknowledged_counts:copy(counts),max_upper_ns_by_kind:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,null])),\n        violations:Object.fromEntries([\"missing\",\"timing_unknown\",\"integrity_faults\",\"receipt_gaps\",\n            \"clock_conflicts\",\"over_contract_receipts\",\"reader_unknown_observations\"].map(k=>[k,\"0\"])),policy,cut:null\n    } : copy(old.window);\n    const next = {schema_version:2,sequence:(uint(old?.sequence ?? \"0\",64)+1n).toString(),\n        previous_sha256:old === null ? null : plan.canvas_checkpoint_sha256,\n        proposal_sha:plan.proposal_sha,receipt_id:receiptId,acknowledged_counts_sha256:null,\n        window:w,history:copy(old?.history ?? []),reader_observation:null,\n        window_request:msg._mqtt_window_request_present?{id_sha256:msg._mqtt_window_request_id,state:msg._mqtt_window_request_state}:copy(old?.window_request??null)};\n    if(msg._mqtt_window_restart===true&&old!==null)next.history.push(copy(old.window));\n    msg._mqtt_window_reader_observation=source&&knownOrigin&&knownClock?{\n        reader_instance_sha256:reader.reader_instance_sha256,clock_domain_sha256:reader.clock_domain_sha256,\n        observed_boottime_ns:now,source_epoch:origin.epoch,source_instance_sha256:origin.instance_sha256,\n        source_identity_state:origin.identity_state,source_closed:origin.closed,\n        covered_before_ns:origin.covered_before_ns,accepted_frames:reader.accepted_frames}:null;\n    msg._mqtt_window_candidate=next;\n    msg._mqtt_window_counts=copy(counts);\n    msg._mqtt_window_mode=source ? \"commit\" : \"checkpoint-commit\";\n    msg._mqtt_window_proposal=plan.proposal_sha;\n    msg._mqtt_window_terminal=[\"passed\",\"failed\",\"unknown\"].includes(w.phase);\n    msg._mqtt_window_current_phase=w.phase;\n    msg._mqtt_window_reader_good=source && knownOrigin;\n    msg._mqtt_window_clock_good=knownClock && reader.clock_domain_sha256===w.clock_domain_sha256\n        && uint(now,64)>=uint(w.observed_at_ns,64);\n    msg._mqtt_window_policy_same=policy.event_latency_ms===w.policy.event_latency_ms\n        && policy.window_duration_ns===w.policy.window_duration_ns;\n    msg._mqtt_window_epoch_equal=knownOrigin && origin.epoch===counts.source_epochs\n        && (fresh || counts.source_epochs===w.baseline_counts.source_epochs);\n    const current = source ? value.received_counts : counts;\n    const prior=leaves(w.baseline_counts),currentLeaves=leaves(current),ackLeaves=leaves(counts),lastLeaves=leaves(w.acknowledged_counts);\n    const monotonic=currentLeaves.every((v,i)=>uint(v)>=uint(prior[i]))\n        &&ackLeaves.every((v,i)=>uint(v)>=uint(lastLeaves[i]));\n    msg._mqtt_window_monotonic=monotonic;\n    const delta = (a,b) => uint(a)>=uint(b) ? uint(a)-uint(b) : 0n;\n    let missing=0n,unknown=0n,faults=0n;\n    for(const kind of MQTT_NATIVE_SCHEMA.kinds){\n        missing+=delta(current.stats[kind].missing,w.baseline_counts.stats[kind].missing);\n        unknown+=delta(current.stats[kind].timing_unknown,w.baseline_counts.stats[kind].timing_unknown);\n        const upper=receipt?.by_kind[kind].source_to_consumer_upper_ns;\n        if(upper!=null && (w.max_upper_ns_by_kind[kind]===null || uint(upper,64)>uint(w.max_upper_ns_by_kind[kind],64)))\n            w.max_upper_ns_by_kind[kind]=upper;\n    }\n    for(const k of [\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"ack_clock_conflicts\"])\n        faults+=delta(current[k],w.baseline_counts[k]);\n    for(const k of MQTT_NATIVE_SCHEMA.faults){\n        const delivered=uint(current.faults[k]),live=reader?uint(reader.faults[k]):delivered;\n        faults+=delta((live>delivered?live:delivered).toString(),w.baseline_counts.faults[k]);\n    }\n    const oldReceipt=uint(fresh?receiptId:old.window.last_receipt_id,64),id=uint(receiptId,64);\n    msg._mqtt_window_receipt_contiguous=id===oldReceipt && receipt==null || receipt!=null\n        && (fresh || id===oldReceipt+1n);\n    msg._mqtt_window_missing=missing.toString();msg._mqtt_window_unknown=unknown.toString();\n    msg._mqtt_window_faults=faults.toString();\n    const maxima=Object.values(w.max_upper_ns_by_kind).filter(v=>v!==null).map(v=>uint(v,64));\n    const max=maxima.reduce((a,b)=>a>b?a:b,0n);\n    msg._mqtt_window_max_upper_ms=Number((max+999999n)/1000000n);\n    const before=knownOrigin?uint(origin.covered_before_ns,64):0n;\n    msg._mqtt_window_elapsed_ms=before>=uint(w.started_at_ns,64)?Number((before-uint(w.started_at_ns,64))/1000000n):0;\n    msg._mqtt_window_has_cut=w.cut!==null;\n    msg._mqtt_window_cut_is_coverage=w.cut===null || Object.hasOwn(w.cut,\"covered_before_ns\");\n    msg._mqtt_window_cut_facts=knownOrigin?{accepted_frames:reader.accepted_frames,covered_before_ns:origin.covered_before_ns}:null;\n    msg._mqtt_window_unacked_cut_frames=w.cut===null?\"0\":(uint(w.cut.accepted_frames)>uint(counts.frames)?uint(w.cut.accepted_frames)-uint(counts.frames):0n).toString();\n    if(!msg._mqtt_window_terminal){\n        if(uint(now,64)>=uint(w.observed_at_ns,64))w.observed_at_ns=now;\n        w.last_receipt_id=receiptId;w.acknowledged_counts=copy(counts);\n        for(const [key,n]of [[\"missing\",missing],[\"timing_unknown\",unknown],[\"integrity_faults\",faults]])\n            if(n>uint(w.violations[key]))w.violations[key]=n.toString();\n    } else next.window=copy(old.window);\n    msg._mqtt_window_possible=true;\n} catch { /* Invalid metadata never authorizes a new ACK or positive window. */ }\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -94795,7 +94806,7 @@
                 "mq_native_window_encoded"
             ]
         ],
-        "func": "// Serialization and digest binding only; all outcomes came from visual nodes.\nmsg._mqtt_window_encoded=false;\ntry {\n    const canonical = v => v === null || typeof v !== \"object\" ? JSON.stringify(v)\n        : Array.isArray(v) ? \"[\"+v.map(canonical).join(\",\")+\"]\"\n        : \"{\"+Object.keys(v).sort().map(k=>JSON.stringify(k)+\":\"+canonical(v[k])).join(\",\")+\"}\";\n    const digest = v => mqtt_crypto.createHash(\"sha256\").update(canonical(v),\"ascii\").digest(\"hex\");\n    const c=msg._mqtt_window_candidate;\n    if(msg._mqtt_window_terminal!==true){\n        c.window.phase=msg._mqtt_window_phase;c.window.reason=msg._mqtt_window_reason;\n        const violation=msg._mqtt_window_violation;\n        if(violation && c.window.violations[violation]!==undefined)\n            c.window.violations[violation]=(BigInt(c.window.violations[violation])+1n).toString();\n    }\n    c.acknowledged_counts_sha256=digest(msg._mqtt_window_counts);\n    const raw=canonical({proposal_sha:msg._mqtt_window_proposal,checkpoint:c});\n    if(Buffer.byteLength(canonical(c),\"ascii\")>65536 || Buffer.byteLength(raw,\"ascii\")>65664)return msg;\n    msg._mqtt_window_commit_token=\"c1_\"+Buffer.from(raw,\"ascii\").toString(\"base64url\");\n    msg._mqtt_window_checkpoint_sha=digest(c);\n    msg._mqtt_window_encoded=true;\n} catch { /* Encoding failure is an explicit no-effect branch. */ }\nreturn msg;",
+        "func": "// Serialization and digest binding only; all outcomes came from visual nodes.\nmsg._mqtt_window_encoded=false;\ntry {\n    const canonical = v => v === null || typeof v !== \"object\" ? JSON.stringify(v)\n        : Array.isArray(v) ? \"[\"+v.map(canonical).join(\",\")+\"]\"\n        : \"{\"+Object.keys(v).sort().map(k=>JSON.stringify(k)+\":\"+canonical(v[k])).join(\",\")+\"}\";\n    const digest = v => mqtt_crypto.createHash(\"sha256\").update(canonical(v),\"ascii\").digest(\"hex\");\n    const c=msg._mqtt_window_candidate;\n    const suffix=msg.test_mode===true?\"__test\":\"\";\n    const instanceKey=\"mqtt_native_consumer_instance_v1\"+suffix;\n    let instance=flow.get(instanceKey,\"memoryOnly\");\n    if(!/^[a-f0-9]{64}$/.test(instance??\"\")){\n        instance=mqtt_crypto.randomBytes(32).toString(\"hex\");flow.set(instanceKey,instance,\"memoryOnly\");\n    }\n    c.reader_observation=msg._mqtt_window_reader_observation===null?null:\n        {...msg._mqtt_window_reader_observation,consumer_instance_sha256:instance};\n    if(msg._mqtt_window_terminal!==true){\n        c.window.phase=msg._mqtt_window_phase;c.window.reason=msg._mqtt_window_reason;\n        const violation=msg._mqtt_window_violation;\n        if(violation && c.window.violations[violation]!==undefined)\n            c.window.violations[violation]=(BigInt(c.window.violations[violation])+1n).toString();\n    }\n    c.acknowledged_counts_sha256=digest(msg._mqtt_window_counts);\n    const raw=canonical({proposal_sha:msg._mqtt_window_proposal,checkpoint:c});\n    if(Buffer.byteLength(canonical(c),\"ascii\")>65536 || Buffer.byteLength(raw,\"ascii\")>65664)return msg;\n    msg._mqtt_window_commit_token=\"c1_\"+Buffer.from(raw,\"ascii\").toString(\"base64url\");\n    msg._mqtt_window_checkpoint_sha=digest(c);\n    msg._mqtt_window_encoded=true;\n} catch { /* Encoding failure is an explicit no-effect branch. */ }\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -95591,7 +95602,7 @@
         "g": "mq_native_window_test_group",
         "name": "Receber replay da janela",
         "x": 1460,
-        "y": 6880,
+        "y": 7100,
         "wires": [
             [
                 "mq_native_window_test_build"
@@ -95612,7 +95623,10 @@
             "mq_native_window_test_missing_out",
             "mq_native_window_test_timing_unknown_out",
             "mq_native_window_test_reader_denied_out",
-            "mq_native_window_test_reader_stale_out"
+            "mq_native_window_test_reader_stale_out",
+            "mq_native_window_test_restart_out",
+            "mq_native_window_test_restart_wait_out",
+            "mq_native_window_test_capacity_out"
         ]
     },
     {
@@ -95622,19 +95636,24 @@
         "g": "mq_native_window_test_group",
         "name": "Preparar somente fatos da janela",
         "x": 1640,
-        "y": 6880,
+        "y": 7100,
         "wires": [
             [
-                "mq_native_window_test_source_out"
+                "mq_native_window_test_request"
             ]
         ],
-        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nif(msg.test_mode!==true || msg._mqtt_test_source!==true)return null;\nconst scenario=String(msg.payload);\nconst copy=v=>JSON.parse(JSON.stringify(v));\nconst old=copy(flow.get(\"mqtt_native_canvas_checkpoint_v1__test\",\"memoryOnly\")??null);\nconst oldSha=flow.get(\"mqtt_native_canvas_checkpoint_sha_v1__test\",\"memoryOnly\")??null;\nconst previous=flow.get(\"mqtt_native_fixture_v1__test\",\"memoryOnly\");\nconst index=(previous?._fixture_sequence??0)+1;\nconst counts=old?copy(previous?.acknowledged_counts??old.window.acknowledged_counts):{\n    ...Object.fromEntries(MQTT_NATIVE_SCHEMA.headers.map(k=>[k,\"0\"])),\n    faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n    stats:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,Object.fromEntries(MQTT_NATIVE_SCHEMA.stats.map(s=>[s,\"0\"]))]))\n};\ncounts.frames=old?(BigInt(counts.frames)+1n).toString():\"10\";\ncounts.sessions=\"1\";counts.source_epochs=\"1\";\nif(scenario===\"drain\" && old?.window.cut?.accepted_frames\n    && BigInt(counts.frames)<BigInt(old.window.cut.accepted_frames))counts.frames=old.window.cut.accepted_frames;\nfor(const kind of MQTT_NATIVE_SCHEMA.kinds){\n    for(const key of [\"expected\",\"observed\",\"timed\"])counts.stats[kind][key]=(BigInt(counts.stats[kind][key])+1n).toString();\n}\nconst now=old?(BigInt(old.window.started_at_ns)+86402000000000n).toString():\"2000000000\";\nconst id=old?(BigInt(old.receipt_id)+1n).toString():\"1\";\nconst by_kind=Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,{observed:\"1\",timed:\"1\",timing_unknown:\"0\",\n    source_to_consumer_upper_ns:\"1000000000\",source_to_consumer_upper_ms:1000}]));\nconst reader={schema_version:1,reader_status_schema:2,reader_instance_sha256:\"a\".repeat(64),\n    source_authorized:true,authorization_state:\"active\",clock_domain_matches:true,clock_ordered:true,\n    clock_domain_sha256:\"b\".repeat(64),reader_observed_boottime_ns:now,\n    status_age_ns:\"1000000\",status_age_ms:1,faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n    accepted_frames:scenario===\"pending\"?(BigInt(counts.frames)+2n).toString():counts.frames,\n    source_facts:{epoch:\"1\",instance_sha256:\"c\".repeat(64),wire_version:3,started_boottime_ns:\"100\",\n        emitted_boottime_ns:now,covered_before_ns:now,closed:false,identity_state:\"verified_live\"}};\nconst own=old?{state:\"checkpoint_prepared\",proposal_sha:(index+1000).toString(16).padStart(64,\"0\"),\n    receipt_id:old.receipt_id,acknowledged_counts:copy(previous?.acknowledged_counts??old.window.acknowledged_counts),\n    canvas_checkpoint:copy(old),canvas_checkpoint_sha256:oldSha,ack_intended:false}:null;\nlet cli={state:\"prepared\",proposal_sha:(index+100).toString(16).padStart(64,\"0\"),\n    received_counts:counts,acknowledged_counts:copy(counts),reader_facts:reader,\n    receipt_facts:[{bucket_id:id,ack_at_ns:old?now:\"1000000000\",clock_domain_sha256:reader.clock_domain_sha256,clock_ordered:true,by_kind}],\n    canvas_checkpoint:old,canvas_checkpoint_sha256:oldSha,checkpoint_only:own,_fixture_sequence:index};\nif(scenario===\"source_unknown\")cli={state:\"unknown\",collection_error:\"producer_report_invalid\",checkpoint_only:own,_fixture_sequence:index};\nif(scenario===\"epoch\")reader.source_facts.epoch=\"2\";\nif(scenario===\"clock\"){\n    reader.clock_domain_sha256=\"d\".repeat(64);cli.receipt_facts[0].clock_domain_sha256=reader.clock_domain_sha256;\n}\nif(scenario===\"gap\")cli.receipt_facts[0].bucket_id=(BigInt(id)+1n).toString();\nif(scenario===\"over\"){\n    by_kind.publish_in.source_to_consumer_upper_ns=\"10000000001\";\n    by_kind.publish_in.source_to_consumer_upper_ms=10001;\n}\nif(scenario===\"fault\")reader.faults.source_identity_lost=\"1\";\nif(scenario===\"missing\"){\n    const row=counts.stats.publish_in;row.expected=(BigInt(row.expected)+1n).toString();\n    row.missing=\"1\";row.source_dropped=\"1\";\n}\nif(scenario===\"timing_unknown\"){\n    const row=counts.stats.publish_in;\n    for(const key of [\"expected\",\"observed\"])row[key]=(BigInt(row[key])+1n).toString();\n    row.timing_unknown=\"1\";\n}\nif(scenario===\"reader_denied\"){reader.source_authorized=false;reader.authorization_state=\"revoked\";}\nif(scenario===\"reader_stale\"){reader.status_age_ns=\"10000000001\";reader.status_age_ms=10001;}\nif(scenario===\"legacy\")reader.source_facts.wire_version=2;\nflow.set(\"mqtt_native_policy_v1__test\",{enabled:true,event_latency_ms:scenario===\"policy\"?11000:10000},\"memoryOnly\");\nflow.set(\"mqtt_native_fixture_v1__test\",cli,\"memoryOnly\");\nmsg._mqtt_synthetic_cli=cli;\nreturn msg;",
+        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nif(msg.test_mode!==true || msg._mqtt_test_source!==true)return null;\nconst scenario=String(msg.payload);\nmsg._mqtt_request_window=[\"restart\",\"restart_wait\",\"capacity\"].includes(scenario);\nconst copy=v=>JSON.parse(JSON.stringify(v));\nconst old=copy(flow.get(\"mqtt_native_canvas_checkpoint_v1__test\",\"memoryOnly\")??null);\nconst oldSha=flow.get(\"mqtt_native_canvas_checkpoint_sha_v1__test\",\"memoryOnly\")??null;\nconst previous=flow.get(\"mqtt_native_fixture_v1__test\",\"memoryOnly\");\nconst index=(previous?._fixture_sequence??0)+1;\nconst counts=old?copy(previous?.acknowledged_counts??old.window.acknowledged_counts):{\n    ...Object.fromEntries(MQTT_NATIVE_SCHEMA.headers.map(k=>[k,\"0\"])),\n    faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n    stats:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,Object.fromEntries(MQTT_NATIVE_SCHEMA.stats.map(s=>[s,\"0\"]))]))\n};\ncounts.frames=old?(BigInt(counts.frames)+1n).toString():\"10\";\ncounts.sessions=\"1\";counts.source_epochs=\"1\";\nif(scenario===\"drain\" && old?.window.cut?.accepted_frames\n    && BigInt(counts.frames)<BigInt(old.window.cut.accepted_frames))counts.frames=old.window.cut.accepted_frames;\nfor(const kind of MQTT_NATIVE_SCHEMA.kinds){\n    for(const key of [\"expected\",\"observed\",\"timed\"])counts.stats[kind][key]=(BigInt(counts.stats[kind][key])+1n).toString();\n}\nconst now=old?(BigInt(old.window.started_at_ns)+86402000000000n).toString():\"2000000000\";\nconst id=old?(BigInt(old.receipt_id)+1n).toString():\"1\";\nconst by_kind=Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,{observed:\"1\",timed:\"1\",timing_unknown:\"0\",\n    source_to_consumer_upper_ns:\"1000000000\",source_to_consumer_upper_ms:1000}]));\nconst reader={schema_version:1,reader_status_schema:2,reader_instance_sha256:\"a\".repeat(64),\n    source_authorized:true,authorization_state:\"active\",clock_domain_matches:true,clock_ordered:true,\n    clock_domain_sha256:\"b\".repeat(64),reader_observed_boottime_ns:now,\n    status_age_ns:\"1000000\",status_age_ms:1,faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n    accepted_frames:scenario===\"pending\"?(BigInt(counts.frames)+2n).toString():counts.frames,\n    source_facts:{epoch:\"1\",instance_sha256:\"c\".repeat(64),wire_version:3,started_boottime_ns:\"100\",\n        emitted_boottime_ns:now,covered_before_ns:now,closed:false,identity_state:\"verified_live\"}};\nconst own=old?{state:\"checkpoint_prepared\",proposal_sha:(index+1000).toString(16).padStart(64,\"0\"),\n    receipt_id:old.receipt_id,acknowledged_counts:copy(previous?.acknowledged_counts??old.window.acknowledged_counts),\n    canvas_checkpoint:copy(old),canvas_checkpoint_sha256:oldSha,ack_intended:false}:null;\nlet cli={state:\"prepared\",proposal_sha:(index+100).toString(16).padStart(64,\"0\"),\n    received_counts:counts,acknowledged_counts:copy(counts),reader_facts:reader,\n    receipt_facts:[{bucket_id:id,ack_at_ns:old?now:\"1000000000\",clock_domain_sha256:reader.clock_domain_sha256,clock_ordered:true,by_kind}],\n    canvas_checkpoint:old,canvas_checkpoint_sha256:oldSha,checkpoint_only:own,_fixture_sequence:index};\nif(scenario===\"source_unknown\")cli={state:\"unknown\",collection_error:\"producer_report_invalid\",checkpoint_only:own,_fixture_sequence:index};\nif(scenario===\"epoch\")reader.source_facts.epoch=\"2\";\nif(scenario===\"clock\"){\n    reader.clock_domain_sha256=\"d\".repeat(64);cli.receipt_facts[0].clock_domain_sha256=reader.clock_domain_sha256;\n}\nif(scenario===\"gap\")cli.receipt_facts[0].bucket_id=(BigInt(id)+1n).toString();\nif(scenario===\"over\"){\n    by_kind.publish_in.source_to_consumer_upper_ns=\"10000000001\";\n    by_kind.publish_in.source_to_consumer_upper_ms=10001;\n}\nif(scenario===\"fault\")reader.faults.source_identity_lost=\"1\";\nif(scenario===\"missing\"){\n    const row=counts.stats.publish_in;row.expected=(BigInt(row.expected)+1n).toString();\n    row.missing=\"1\";row.source_dropped=\"1\";\n}\nif(scenario===\"timing_unknown\"){\n    const row=counts.stats.publish_in;\n    for(const key of [\"expected\",\"observed\"])row[key]=(BigInt(row[key])+1n).toString();\n    row.timing_unknown=\"1\";\n}\nif(scenario===\"reader_denied\"){reader.source_authorized=false;reader.authorization_state=\"revoked\";}\nif(scenario===\"reader_stale\"){reader.status_age_ns=\"10000000001\";reader.status_age_ms=10001;}\nif(scenario===\"legacy\")reader.source_facts.wire_version=2;\nif(scenario===\"restart_wait\"){\n    cli.receipt_facts=[];cli.received_counts=copy(previous.acknowledged_counts);\n    cli.acknowledged_counts=copy(previous.acknowledged_counts);\n}\nif(scenario===\"capacity\"&&old){\n    old.history=Array.from({length:8},(_,i)=>({...copy(old.window),id_sha256:(i+2000).toString(16).padStart(64,\"0\")}));\n    const canonical=v=>v===null||typeof v!==\"object\"?JSON.stringify(v):Array.isArray(v)?\"[\"+v.map(canonical).join(\",\")+\"]\":\"{\"+Object.keys(v).sort().map(k=>JSON.stringify(k)+\":\"+canonical(v[k])).join(\",\")+\"}\";\n    cli.canvas_checkpoint_sha256=mqtt_crypto.createHash(\"sha256\").update(canonical(old),\"ascii\").digest(\"hex\");\n}\nflow.set(\"mqtt_native_policy_v1__test\",{enabled:true,event_latency_ms:scenario===\"policy\"?11000:10000},\"memoryOnly\");\nflow.set(\"mqtt_native_fixture_v1__test\",cli,\"memoryOnly\");\nmsg._mqtt_synthetic_cli=cli;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
-        "libs": []
+        "libs": [
+            {
+                "var": "mqtt_crypto",
+                "module": "crypto"
+            }
+        ]
     },
     {
         "id": "mq_native_window_test_source_out",
@@ -95642,8 +95661,8 @@
         "z": "mqtt_native_observer_tab",
         "g": "mq_native_window_test_group",
         "name": "TESTE → mesma política e fonte",
-        "x": 1820,
-        "y": 6880,
+        "x": 2170,
+        "y": 7180,
         "wires": [],
         "mode": "link",
         "links": [
@@ -95887,6 +95906,901 @@
         "mode": "link",
         "links": [
             "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_group",
+        "type": "group",
+        "z": "mqtt_native_observer_tab",
+        "name": "9. Nova janela: intenção explícita, fronteira ACK e histórico preservado",
+        "style": {
+            "label": true,
+            "color": "#2563eb"
+        },
+        "nodes": [
+            "mq_native_window_request_info",
+            "mq_native_window_new_request",
+            "mq_native_window_request_test_in",
+            "mq_native_window_request",
+            "mq_native_window_request_tick_out",
+            "mq_native_window_request_in",
+            "mq_native_window_history_limit",
+            "mq_native_window_request_facts",
+            "mq_native_window_requested",
+            "mq_native_window_request_none_out",
+            "mq_native_window_request_duplicate",
+            "mq_native_window_request_duplicate_out",
+            "mq_native_window_request_capacity",
+            "mq_native_window_request_capacity_out",
+            "mq_native_window_request_boundary",
+            "mq_native_window_request_start_out",
+            "mq_native_window_request_wait_out",
+            "mq_native_window_request_duplicate_in",
+            "mq_native_window_request_duplicate_set",
+            "mq_native_window_request_duplicate_return",
+            "mq_native_window_request_capacity_in",
+            "mq_native_window_request_capacity_set",
+            "mq_native_window_request_capacity_return",
+            "mq_native_window_request_start_in",
+            "mq_native_window_request_start_set",
+            "mq_native_window_request_start_return",
+            "mq_native_window_request_wait_in",
+            "mq_native_window_request_wait_set",
+            "mq_native_window_request_wait_return"
+        ],
+        "x": 64,
+        "y": 7280,
+        "w": 2660,
+        "h": 740
+    },
+    {
+        "id": "mq_native_window_request_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Proposta → intenção / histórico",
+        "x": 530,
+        "y": 4560,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_request_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_facts_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber intenção decidida",
+        "x": 510,
+        "y": 4480,
+        "wires": [
+            [
+                "mq_native_window_facts"
+            ]
+        ],
+        "links": [
+            "mq_native_window_request_none_out",
+            "mq_native_window_request_duplicate_return",
+            "mq_native_window_request_capacity_return",
+            "mq_native_window_request_start_return",
+            "mq_native_window_request_wait_return"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_restart",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: restart",
+        "x": 2040,
+        "y": 6790,
+        "wires": [
+            [
+                "mq_native_window_test_restart_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "restart",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "restart",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_restart_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE restart → mesma janela",
+        "x": 2220,
+        "y": 6790,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_restart_wait",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: restart_wait",
+        "x": 240,
+        "y": 6900,
+        "wires": [
+            [
+                "mq_native_window_test_restart_wait_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "restart_wait",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "restart_wait",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_restart_wait_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE restart_wait → mesma janela",
+        "x": 420,
+        "y": 6900,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_capacity",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: capacity",
+        "x": 840,
+        "y": 6900,
+        "wires": [
+            [
+                "mq_native_window_test_capacity_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "capacity",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "capacity",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_capacity_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE capacity → mesma janela",
+        "x": 1020,
+        "y": 6900,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_test_request",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE pede nova janela?",
+        "x": 1990,
+        "y": 7100,
+        "wires": [
+            [
+                "mq_native_window_test_request_out"
+            ],
+            [
+                "mq_native_window_test_source_out"
+            ]
+        ],
+        "property": "_mqtt_request_window",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_test_request_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE → mesma intenção",
+        "x": 2170,
+        "y": 7020,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_request_test_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_info",
+        "type": "comment",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Nova janela preserva a anterior; máximo de oito registros, sem descarte",
+        "x": 1500,
+        "y": 7330,
+        "wires": [],
+        "info": "Intenção explícita, sem reset de protocolo. Espera uma fronteira ACK da origem atual; já atendida é idempotente. Capacidade cheia conserva os dados e a intenção. Consumir somente após commit exato; observação atual separada da prova congelada."
+    },
+    {
+        "id": "mq_native_window_new_request",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "INTENÇÃO: iniciar outra janela",
+        "x": 240,
+        "y": 7400,
+        "wires": [
+            [
+                "mq_native_window_request"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_request_test_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Receber intenção TESTE",
+        "x": 410,
+        "y": 7480,
+        "wires": [
+            [
+                "mq_native_window_request"
+            ]
+        ],
+        "links": [
+            "mq_native_window_test_request_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_request",
+        "type": "function",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Registrar identificador da intenção",
+        "x": 590,
+        "y": 7400,
+        "wires": [
+            [
+                "mq_native_window_request_tick_out"
+            ]
+        ],
+        "func": "// Record an explicit metadata intent. The visual gates decide when it can start.\nconst suffix=msg.test_mode===true?\"__test\":\"\";\nconst store=msg.test_mode===true?\"memoryOnly\":\"persistent\";\nconst id=mqtt_crypto.randomBytes(32).toString(\"hex\");\nflow.set(\"mqtt_native_window_request_v1\"+suffix,{id_sha256:id},store);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "mqtt_crypto",
+                "module": "crypto"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_request_tick_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Intenção → mesma leitura serial",
+        "x": 770,
+        "y": 7400,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_request_tick_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_tick_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_source_group",
+        "name": "Receber intenção de nova janela",
+        "x": 420,
+        "y": 610,
+        "wires": [
+            [
+                "mq_native_read_policy"
+            ]
+        ],
+        "links": [
+            "mq_native_window_request_tick_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Receber proposta e intenção",
+        "x": 100,
+        "y": 7620,
+        "wires": [
+            [
+                "mq_native_window_history_limit"
+            ]
+        ],
+        "links": [
+            "mq_native_window_request_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_history_limit",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "LIMITE: oito janelas anteriores",
+        "x": 350,
+        "y": 7620,
+        "wires": [
+            [
+                "mq_native_window_request_facts"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_history_limit",
+                "pt": "msg",
+                "to": "8",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "mq_native_window_request_facts",
+        "type": "function",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Normalizar intenção / fronteira",
+        "x": 690,
+        "y": 7620,
+        "wires": [
+            [
+                "mq_native_window_requested"
+            ]
+        ],
+        "func": "msg._mqtt_window_restart=false;\nmsg._mqtt_window_request_state=\"waiting\";\nmsg._mqtt_window_request_present=/^[a-f0-9]{64}$/.test(msg._mqtt_window_request_id??\"\");\nmsg._mqtt_window_request_duplicate=false;\nmsg._mqtt_window_history_count=0;\nmsg._mqtt_window_request_boundary=false;\ntry{\n    const v=msg._mqtt_envelope,old=v?.canvas_checkpoint??v?.checkpoint_only?.canvas_checkpoint??null;\n    if(old){\n        msg._mqtt_window_history_count=old.history.length;\n        msg._mqtt_window_request_duplicate=[old.window,...old.history].some(w=>w.id_sha256===msg._mqtt_window_request_id)\n            || old.window_request?.id_sha256===msg._mqtt_window_request_id&&old.window_request.state===\"started\";\n    }\n    const r=v?.reader_facts,s=r?.source_facts,ack=v?.receipt_facts?.[0];\n    const uint=x=>{if(typeof x!==\"string\"||! /^(?:0|[1-9][0-9]{0,19})$/.test(x))throw Error(\"integer\");const n=BigInt(x);if(n>=2n**64n)throw Error(\"integer\");return n;};\n    msg._mqtt_window_request_boundary=msg._mqtt_valid===true&&msg._mqtt_commit_allowed===true\n        && s?.wire_version===3&&[\"verified_live\",\"verified_exited\"].includes(s.identity_state)\n        &&ack?.clock_ordered===true&&ack.clock_domain_sha256===r.clock_domain_sha256\n        &&r.clock_domain_matches===true&&r.clock_ordered===true\n        &&v.acknowledged_counts.source_epochs===s.epoch&&BigInt(v.acknowledged_counts.frames)>0n\n        &&uint(s.started_boottime_ns)<=uint(ack.ack_at_ns)&&uint(ack.ack_at_ns)<=uint(s.covered_before_ns)\n        &&uint(s.covered_before_ns)<=uint(r.reader_observed_boottime_ns);\n}catch{ /* Missing or malformed facts keep the intent waiting. */ }\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "mq_native_window_requested",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Há intenção explícita?",
+        "x": 1030,
+        "y": 7620,
+        "wires": [
+            [
+                "mq_native_window_request_duplicate"
+            ],
+            [
+                "mq_native_window_request_none_out"
+            ]
+        ],
+        "property": "_mqtt_window_request_present",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_request_none_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Sem intenção → janela atual",
+        "x": 1210,
+        "y": 7700,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_facts_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_duplicate",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Identificador já foi atendido?",
+        "x": 1370,
+        "y": 7620,
+        "wires": [
+            [
+                "mq_native_window_request_duplicate_out"
+            ],
+            [
+                "mq_native_window_request_capacity"
+            ]
+        ],
+        "property": "_mqtt_window_request_duplicate",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_request_duplicate_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Duplicata → manter resultado",
+        "x": 1550,
+        "y": 7700,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_request_duplicate_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_capacity",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Histórico atingiu o limite?",
+        "x": 1710,
+        "y": 7620,
+        "wires": [
+            [
+                "mq_native_window_request_capacity_out"
+            ],
+            [
+                "mq_native_window_request_boundary"
+            ]
+        ],
+        "property": "_mqtt_window_history_count",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "_mqtt_window_history_limit",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_request_capacity_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Capacidade → preservar tudo",
+        "x": 1890,
+        "y": 7700,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_request_capacity_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_boundary",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "ACK da origem atual verificado?",
+        "x": 2050,
+        "y": 7620,
+        "wires": [
+            [
+                "mq_native_window_request_start_out"
+            ],
+            [
+                "mq_native_window_request_wait_out"
+            ]
+        ],
+        "property": "_mqtt_window_request_boundary",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_request_start_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Fronteira → arquivar anterior",
+        "x": 2230,
+        "y": 7540,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_request_start_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_wait_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Sem fronteira → aguardar",
+        "x": 2230,
+        "y": 7700,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_request_wait_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_duplicate_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Receber started",
+        "x": 170,
+        "y": 7860,
+        "wires": [
+            [
+                "mq_native_window_request_duplicate_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_request_duplicate_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_duplicate_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "started",
+        "x": 350,
+        "y": 7860,
+        "wires": [
+            [
+                "mq_native_window_request_duplicate_return"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_request_state",
+                "pt": "msg",
+                "to": "started",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_restart",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_request_duplicate_return",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Decisão → mesma janela",
+        "x": 530,
+        "y": 7860,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_facts_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_capacity_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Receber capacity",
+        "x": 770,
+        "y": 7860,
+        "wires": [
+            [
+                "mq_native_window_request_capacity_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_request_capacity_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_capacity_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "capacity",
+        "x": 950,
+        "y": 7860,
+        "wires": [
+            [
+                "mq_native_window_request_capacity_return"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_request_state",
+                "pt": "msg",
+                "to": "capacity",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_restart",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_request_capacity_return",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Decisão → mesma janela",
+        "x": 1130,
+        "y": 7860,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_facts_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_start_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Receber started",
+        "x": 1370,
+        "y": 7860,
+        "wires": [
+            [
+                "mq_native_window_request_start_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_request_start_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_start_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "started: nova baseline",
+        "x": 1550,
+        "y": 7860,
+        "wires": [
+            [
+                "mq_native_window_request_start_return"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_request_state",
+                "pt": "msg",
+                "to": "started",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_restart",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_request_start_return",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Decisão → mesma janela",
+        "x": 1730,
+        "y": 7860,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_facts_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_wait_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Receber waiting",
+        "x": 1970,
+        "y": 7860,
+        "wires": [
+            [
+                "mq_native_window_request_wait_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_request_wait_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_request_wait_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "waiting",
+        "x": 2150,
+        "y": 7860,
+        "wires": [
+            [
+                "mq_native_window_request_wait_return"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_request_state",
+                "pt": "msg",
+                "to": "waiting",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_restart",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_request_wait_return",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_request_group",
+        "name": "Decisão → mesma janela",
+        "x": 2330,
+        "y": 7860,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_facts_in"
         ]
     },
     {

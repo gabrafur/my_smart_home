@@ -348,6 +348,45 @@ test('checkpoint-only preparation cannot invent missing consumer history',()=>{
     assert.deepEqual(fs.readdirSync(env.own),['lock']);
   }finally{env.cleanup();}
 });
+
+function readerObservation(at='200'){
+ return {consumer_instance_sha256:'1'.repeat(64),reader_instance_sha256:'2'.repeat(64),clock_domain_sha256:'d'.repeat(64),
+  observed_boottime_ns:at,source_epoch:'1',source_instance_sha256:'3'.repeat(64),source_identity_state:'verified_exited',
+  source_closed:true,covered_before_ns:'150',accepted_frames:'1'};
+}
+test('schema2 upgrades preserve a frozen schema1 proof while persisting fresh reader observations without ACK',()=>{
+ const env=setup();try{
+  const store=env.open(),p=store.prepare(),c=checkpoint(p);c.window.phase='passed';c.window.reason='complete';store.commit(p.proposal_sha,c);
+  const ack=fs.readFileSync(path.join(env.own,'ack.json'));
+  const own=store.prepareCheckpoint(),next=checkpoint({...own,receipt_facts:[]},c);
+  next.window=structuredClone(c.window);next.schema_version=2;next.reader_observation=readerObservation();next.window_request=null;
+  const result=store.commitCheckpoint(own.proposal_sha,next);assert.equal(result.ack_intended,false);
+  assert.deepEqual(store.snapshot().canvas_checkpoint.window,c.window);
+  const own2=store.prepareCheckpoint(),fresh={...structuredClone(next),sequence:'3',previous_sha256:digest(next),proposal_sha:own2.proposal_sha,reader_observation:readerObservation('300')};
+  fresh.reader_observation.consumer_instance_sha256='4'.repeat(64);
+  store.commitCheckpoint(own2.proposal_sha,fresh);assert.deepEqual(store.snapshot().canvas_checkpoint.window,c.window);
+  assert.deepEqual(fs.readFileSync(path.join(env.own,'ack.json')),ack);
+  const own3=store.prepareCheckpoint(),downgrade=structuredClone(fresh);
+  delete downgrade.reader_observation;delete downgrade.window_request;downgrade.schema_version=1;
+  downgrade.sequence='4';downgrade.previous_sha256=digest(fresh);downgrade.proposal_sha=own3.proposal_sha;
+  assert.throws(()=>store.commitCheckpoint(own3.proposal_sha,downgrade),CheckpointInvalid);
+  const altered={...structuredClone(fresh),sequence:'4',previous_sha256:digest(fresh),proposal_sha:own3.proposal_sha};
+  altered.window.observed_at_ns='999';assert.throws(()=>store.commitCheckpoint(own3.proposal_sha,altered),CheckpointInvalid);
+ }finally{env.cleanup();}
+});
+test('reader observation and request fields are closed, bounded and explicitly unknown when absent',()=>{
+ const env=setup();try{
+  const c=checkpoint(env.open().prepare());Object.assign(c,{schema_version:2,reader_observation:readerObservation(),window_request:{id_sha256:'5'.repeat(64),state:'waiting'}});
+  validateCheckpoint(c);
+  for(const mutate of [v=>v.reader_observation.password='PRIVATE_CANARY',v=>v.reader_observation.covered_before_ns='201',
+   v=>v.reader_observation.observed_boottime_ns='18446744073709551616',v=>v.reader_observation.source_epoch='0',
+   v=>v.reader_observation.source_identity_state='healthy',v=>v.reader_observation.source_closed='true',
+   v=>v.reader_observation.consumer_instance_sha256='x',v=>v.window_request.state='PRIVATE_CANARY',v=>v.window_request.extra=true]){
+   const bad=structuredClone(c);mutate(bad);assert.throws(()=>validateCheckpoint(bad),CheckpointInvalid);
+  }
+  c.reader_observation=null;c.window_request=null;validateCheckpoint(c);
+ }finally{env.cleanup();}
+});
 test('producer and checkpoint-only proposal domains cannot authorize each other',()=>{
   const env=setup();try{
     const store=env.open(),producer=store.prepare();store.commit(producer.proposal_sha);
