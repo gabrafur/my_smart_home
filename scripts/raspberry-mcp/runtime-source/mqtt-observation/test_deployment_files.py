@@ -18,9 +18,21 @@ class FileDeploymentTests(unittest.TestCase):
         if self.tx:self.tx.close();self.tx=None
     def tearDown(self):self.close();self.temp.cleanup()
     def path(self,key):return self.root/TARGETS[key][0]
+    def safe_fixture_path(self,key):
+        path=self.path(key);directory=self.root
+        # Positive fixtures must satisfy the real guard even when cron inherits
+        # a group-writable umask. Do not relax the deployment guard itself.
+        for part in path.parent.relative_to(self.root).parts:
+            directory=directory/part;directory.mkdir(mode=0o700,exist_ok=True)
+        return path
     def existing(self,key,raw=b'PRIVACY_TEST_FIXTURE_before'):
-        path=self.path(key);path.parent.mkdir(parents=True,exist_ok=True)
+        path=self.safe_fixture_path(key)
         path.write_bytes(raw);path.chmod(TARGETS[key][1]);self.spec[key]['before_sha256']=digest(raw)
+    def test_existing_fixture_transaction_is_independent_of_cron_umask(self):
+        previous=os.umask(0o002)
+        try:self.existing('code/worker.py')
+        finally:os.umask(previous)
+        self.assertEqual(self.open().apply_approved(self.spec,self.artifacts)['state'],'applied')
     def test_closed_target_set_excludes_grants_bindings_credentials_and_backup_data(self):
         self.assertEqual(len(TARGETS),25)
         for path,_mode in TARGETS.values():
@@ -50,7 +62,7 @@ class FileDeploymentTests(unittest.TestCase):
         with self.assertRaisesRegex(DeploymentUnavailable,'artifact_digest_mismatch'):tx.apply_approved(self.spec,bad)
         self.assertEqual(list(self.root.iterdir()),[])
     def test_target_symlink_and_hardlink_are_never_followed(self):
-        key='code/worker.py';p=self.path(key);p.parent.mkdir(parents=True)
+        key='code/worker.py';p=self.safe_fixture_path(key)
         preserve=self.base/'outside';preserve.write_bytes(b'PRIVACY_TEST_FIXTURE_preserve');preserve.chmod(0o644)
         p.symlink_to(preserve)
         with self.assertRaises((OSError,DeploymentUnavailable)):self.open().apply_approved(self.spec,self.artifacts)
