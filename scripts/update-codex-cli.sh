@@ -93,6 +93,18 @@ fi
   exit 65
 }
 
+# The updater cannot install or restart while work is active. Observe that
+# gate before a registry request, so an unrelated lookup failure cannot turn
+# already-deferred maintenance into a new execution-error alert.
+set +e
+preflight_restart
+early_preflight_status=$?
+set -e
+if [ "$early_preflight_status" -eq 75 ]; then
+  echo "codex-cli-update status=deferred failure_stage=active-work"
+  exit 75
+fi
+
 set +e
 latest_version=$($npm_bin view "$package" version --loglevel=error 2>/dev/null)
 lookup_status=$?

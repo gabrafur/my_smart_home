@@ -12,10 +12,11 @@ function fixture(t, { installed = false, race = false } = {}) {
   fs.mkdirSync(bin, { recursive: true });
   const codex = path.join(bin, "codex"), npm = path.join(root, "npm");
   const restart = path.join(root, "restart"), calls = path.join(root, "installs");
+  const lookups = path.join(root, "lookups");
   const busy = path.join(root, "busy"), marker = path.join(prefix, ".codex-cli-restart-required");
   fs.writeFileSync(codex, `#!/bin/sh\necho 'codex-cli ${installed ? "0.2.0" : "0.1.0"}'\n`);
   fs.writeFileSync(npm, `#!/bin/sh
-if [ "$1" = view ]; then echo 0.2.0; exit 0; fi
+if [ "$1" = view ]; then printf 'lookup\\n' >> '${lookups}'; echo 0.2.0; exit 0; fi
 printf 'install\\n' >> '${calls}'
 printf '#!/bin/sh\\necho codex-cli 0.2.0\\n' > '${codex}'
 chmod 0755 '${codex}'
@@ -33,7 +34,7 @@ exit 75
   const env = { ...process.env, CODEX_CLI_NPM_BIN: npm, CODEX_CLI_BIN: codex,
     CODEX_CLI_PREFIX: prefix, CODEX_CLI_REMOTE_RESTART_BIN: restart,
     CODEX_CLI_RESTART_MARKER: marker };
-  return { codex, calls, busy, marker,
+  return { codex, calls, busy, marker, lookups, npm,
     run: () => spawnSync("sh", ["scripts/update-codex-cli.sh"], { env, encoding: "utf8" }) };
 }
 
@@ -44,6 +45,16 @@ test("busy daemon defers before binary installation, marker creation or restart"
   assert.deepEqual(fs.readFileSync(f.codex), before);
   assert.equal(fs.existsSync(f.calls), false); assert.equal(fs.existsSync(f.marker), false);
   assert.equal(fs.existsSync(f.busy), false);
+  assert.equal(fs.existsSync(f.lookups), false);
+});
+
+test("busy work defers even when the registry would fail", t => {
+  const f = fixture(t);
+  fs.writeFileSync(f.npm, `#!/bin/sh\ntouch '${f.lookups}'\nexit 69\n`);
+  const result = f.run();
+  assert.equal(result.status, 75);
+  assert.match(result.stdout, /status=deferred failure_stage=active-work/);
+  assert.equal(fs.existsSync(f.lookups), false);
 });
 
 test("deferred pending restart preserves the installed binary and marker", t => {

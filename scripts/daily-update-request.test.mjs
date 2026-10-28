@@ -476,7 +476,7 @@ chmod 0755 "${codex}"
   assert.match(updated.stdout, /status=success action=updated from=0\.151\.0 to=0\.155\.1/);
   assert.match(updated.stdout, /remote_restart=completed/);
   assert.match(fs.readFileSync(calls, "utf8"), /install --global --prefix .* @openai\/codex@0\.155\.1/);
-  assert.deepEqual(fs.readFileSync(restartCalls, "utf8").trim().split("\n"), ["--preflight-restart", "--restart"]);
+  assert.deepEqual(fs.readFileSync(restartCalls, "utf8").trim().split("\n"), ["--preflight-restart", "--preflight-restart", "--restart"]);
   assert.equal(fs.existsSync(restartMarker), false);
 
   fs.writeFileSync(calls, "");

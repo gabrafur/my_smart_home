@@ -57,6 +57,11 @@ class NotificationState {
   last_source_event_received_at:this.lastEvent===null?null:new Date(this.lastEvent).toISOString(),last_processing_latency_ms:this.latencyMs,
   coverage:['persistent_notifications_only','no_raw_title_or_body','not_phone_delivery','removal_is_not_recovery','processing_latency_not_end_to_end_latency'],
   notifications:[...this.current.values()].sort((a,b)=>a.id.localeCompare(b.id)),events:this.events,sequence:this.sequence,dropped:this.dropped};
+  output.event_retention={schema_version:1,kind:'rolling_source_cache',capacity:MAX_EVENTS,
+   evicted_records:this.dropped,retained_records:this.events.length,
+   first_sequence:this.events.length?this.events[0].sequence:null,
+   last_sequence:this.events.length?this.events.at(-1).sequence:null,
+   counter_semantics:'cache_evictions_not_confirmed_delivery_loss'};
   output.coverage.push('sanitized_content_tokens_only_no_raw_title_or_body');
   output.diagnostic_content_enabled=true;output.content_budget_omissions=0;
   const pending=output.notifications.map(n=>n.diagnostics);

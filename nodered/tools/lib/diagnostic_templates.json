@@ -1,12 +1,14 @@
 {
   "context_flows": {
     "ea0a6aa0d24ff863": "localizacao_pessoas",
-    "host_observer_tab": "observacao_host"
+    "host_observer_tab": "observacao_host",
+    "daily_host_updates_tab": "atualizacoes_diarias"
   },
   "context_nodes": {
     "host_obs_resource_age": "Idade dos recursos dispon\u00edvel?",
     "people_visual_primary_icloud_update": "EFEITO: atualizar localiza\u00e7\u00e3o iCloud primary",
-    "people_visual_secondary_icloud_update": "EFEITO: atualizar localiza\u00e7\u00e3o iCloud secondary"
+    "people_visual_secondary_icloud_update": "EFEITO: atualizar localiza\u00e7\u00e3o iCloud secondary",
+    "daily_update_codex_cli_parse_result": "Normalizar resultado Codex CLI"
   },
   "error_types": [
     "Error",
@@ -69,7 +71,10 @@
     "timeout": "Tempo limite excedido",
     "unavailable": "Indisponibilidade",
     "unsupported_icloud_core": "unsupported_icloud_core_version",
-    "zigbee": "Zigbee2MQTT"
+    "zigbee": "Zigbee2MQTT",
+    "flow_updates": "Fluxo atualizacoes_diarias",
+    "node_codex_result": "N\u00f3 Normalizar resultado Codex CLI",
+    "codex_registry_lookup_failed": "Atualiza\u00e7\u00e3o do Codex: falha ao consultar o registro de pacotes; causa de rede n\u00e3o registrada"
   },
   "redaction_fields": [
     "title",

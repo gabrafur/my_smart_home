@@ -1,5 +1,6 @@
 """Fixed subscription service; no HA token, shell, model invocation or public listener."""
 import datetime
+import hashlib
 import fcntl
 import json
 import os
@@ -14,7 +15,7 @@ import stat
 import struct
 import time
 
-from registry import Registry
+from registry import Registry, PROJECT, canonical
 from webhook import Refused
 
 ROOT=Path('/var/lib/raspberry-mcp-events')
@@ -70,6 +71,39 @@ class Engine:
             return {**self.registry.status(),'source_health':self.source_health,'last_dispatch':self.last_dispatch}
         raise Refused('method_refused')
 
+    def retention_status(self, row):
+        """Describe the bounded cache and current durable coverage, never delivery."""
+        unknown={'state':'unknown','reason':'retention_metadata_unavailable',
+                 'historical_delivery_proven':False,'historical_sequence_coverage':'unknown'}
+        metadata=row.get('event_retention')
+        if not isinstance(metadata,dict):return unknown
+        events=row['events'];sequence=row.get('sequence');evicted=row.get('dropped')
+        if (type(sequence) is not int or type(evicted) is not int or evicted<0 or
+            metadata!={'schema_version':1,'kind':'rolling_source_cache','capacity':256,
+                       'evicted_records':evicted,'retained_records':len(events),
+                       'first_sequence':sequence-len(events)+1 if events else None,
+                       'last_sequence':sequence if events else None,
+                       'counter_semantics':'cache_evictions_not_confirmed_delivery_loss'} or
+            sequence!=evicted+len(events) or
+            any(type(e.get('sequence')) is not int or e['sequence']!=sequence-len(events)+i+1
+                for i,e in enumerate(events))):
+            return {**unknown,'reason':'retention_metadata_invalid'}
+        durable={r[0] for r in self.registry.db.execute('SELECT id FROM events UNION SELECT id FROM event_archive')}
+        missing=0
+        for event in events:
+            if event.get('phase') not in ('added','updated','removed') or any(
+                not isinstance(event.get(k),str) or not re.fullmatch('[a-f0-9]{64}',event[k])
+                for k in ('object_id','revision')):
+                return {**unknown,'reason':'retention_metadata_invalid'}
+            identity={'project':PROJECT,'topic':event['topic'],'source':event['source'],
+                      'phase':event['phase'],'object_id':event['object_id'],'revision':event['revision']}
+            missing+=hashlib.sha256(canonical(identity).encode()).hexdigest() not in durable
+        return {**unknown,'state':'observed','reason':None,'kind':'rolling_source_cache',
+                'capacity':256,'cache_evictions':evicted,'retained_records':len(events),
+                'retained_records_persisted':len(events)-missing,'retained_records_not_persisted':missing,
+                'counter_semantics':'cache_evictions_not_confirmed_delivery_loss',
+                'coverage':'current_cache_only;older_records_and_webhook_receipts_require_separate_evidence'}
+
     def ingest(self):
         now=self.clock()
         try:
@@ -96,6 +130,8 @@ class Engine:
             self.source_health={'state':'observed','observed_at':row['observed_at'],'age_seconds':round(now-observed,3),'collection_error':None,
                                 'source_timing_schema_version':1 if type(row.get('source_timing_schema_version')) is int and row['source_timing_schema_version']==1 else None,
                                 'source_dropped_events':row.get('dropped') if type(row.get('dropped')) is int else None,
+                                'source_dropped_events_semantics':'legacy_cache_eviction_counter_not_delivery_loss',
+                                'event_retention':self.retention_status(row),
                                 'coverage':['sanitized_HA_notification_events','not_all_household_events','initial_snapshot_not_recovery']}
             return True
         except (OSError,ValueError,TypeError,KeyError,OverflowError) as error:
