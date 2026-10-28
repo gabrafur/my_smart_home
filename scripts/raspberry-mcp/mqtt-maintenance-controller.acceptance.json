@@ -46,7 +46,6 @@
     "ACK_receipts": 12,
     "source_epochs": 2,
     "unknown_epoch_tails": 0,
-    "maximum_source_to_ACK_upper_ms": 3531.213056,
     "all_seven_metadata_classes_measured": true,
     "owned_containers_removed": 3,
     "combined_active_container_CPU_quota": 0.35,
@@ -61,7 +60,8 @@
     "Node_RSS_hard_limit_proven": false,
     "fixed_policy_Issuer_used": true,
     "prior_policy_exact_bytes_preserved": true,
-    "policy_approval_expiry_code_and_consumer_preserved": true
+    "policy_approval_expiry_code_and_consumer_preserved": true,
+    "maximum_source_to_ACK_upper_ns": "3531213056"
   },
   "prior_terminal_fixture_failure": "final_cut_observation_deadline;preserved_and_owned_containers_removed;not_replayed",
   "policy_binding_boundary": "fixed_Issuer_consumes_Root_private_audit_receipt_and_verifies_candidate_identity_image_and_state;production_audit_producer_pending",
@@ -77,7 +77,7 @@
     "static_targets": 39,
     "verified_frames": 67,
     "ACK_receipts": 12,
-    "maximum_source_to_ACK_upper_ms": 3531.09494,
-    "binding_preparation": "fixture_Root_policy_transition"
+    "binding_preparation": "fixture_Root_policy_transition",
+    "maximum_source_to_ACK_upper_ns": "3531094940"
   }
 }
