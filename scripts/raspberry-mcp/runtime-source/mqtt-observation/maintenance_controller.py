@@ -140,3 +140,10 @@ class Controller:
         dispatch_invariants(op,'start_source')
         try:return self.backend.prepare_replacement(self.journal.tx,copy.deepcopy(op))
         except ObservationUnavailable:return self._result(op,'awaiting_replacement_observation')
+    def audit_replacement(self,operation_id,expected_head):
+        op=self._operation(operation_id)
+        need(op is not None and op['records'][-1]['sha256']==expected_head,'maintenance_parent_changed')
+        need(op['records'][-1]['body']['phase']=='consumer_ready','maintenance_phase_changed')
+        dispatch_invariants(op,'start_source')
+        try:return self.backend.audit_replacement(self.journal.tx,copy.deepcopy(op))
+        except ObservationUnavailable:return self._result(op,'awaiting_audit_observation')

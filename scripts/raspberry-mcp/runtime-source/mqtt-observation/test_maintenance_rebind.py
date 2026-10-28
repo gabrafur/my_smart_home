@@ -32,7 +32,7 @@ class Tests(unittest.TestCase):
         consumer_binding=self.backend.inspect('consumer')['binding_sha256']
         for i,phase in enumerate(j.PHASES[:10]):
             f=facts(phase)
-            if phase=='begin':f.update(consumer_binding_sha256=consumer_binding,source_instance_sha256='e'*64)
+            if phase=='begin':f.update(code_manifest_sha256=self.backend.policy['code_manifest_sha256'],consumer_binding_sha256=consumer_binding,source_instance_sha256='e'*64)
             if phase=='source_stopped':f['source_instance_sha256']='e'*64
             if phase=='source_drained':f.update(source_instance_sha256='e'*64,accepted_frames='4',acknowledged_frames='4',protocol_counts_sha256=m.digest(self.consumer['acked_counts']))
             if phase in('consumer_stop_intent','consumer_stopped','consumer_start_intent','consumer_started','consumer_ready'):f['binding_sha256']=consumer_binding

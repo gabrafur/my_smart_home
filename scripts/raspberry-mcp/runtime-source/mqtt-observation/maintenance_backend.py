@@ -10,7 +10,8 @@ from maintenance_journal import canonical,digest,closed,hex64,uint,MaintenanceUn
 from maintenance_controller import ObservationUnavailable,BoundaryRejected,dispatch_invariants,records,facts,COMMANDS
 from source_binding import ProcHandle,start_ticks,local_clock_domain,credentials_from_status,Peer
 from authorization_gate import SCOPE as SOURCE_SCOPE
-from handoff import HEADERS,FAULTS,KINDS,STAT_COLUMNS,validate_totals
+from handoff import HEADERS,FAULTS,KINDS,STAT_COLUMNS,validate_totals,add_totals
+from receiver_ledger import stringify
 
 SCOPE='mqtt_metadata_maintenance_v1'
 @dataclass(frozen=True)
@@ -57,10 +58,37 @@ def counts(value):
         closed(value['stats'][kind],STAT_COLUMNS);result['stats'][kind]={k:uint(value['stats'][kind][k],128)for k in STAT_COLUMNS}
     validate_totals(result);return value
 
+def confirmed_cut(metadata,consumer):
+    """An exact shared receipt, or its Root-attested one-packet prefix.
+
+    Consumer persistence and Root ACK advance asynchronously. The pending
+    packet binds its previous receipt and exact counter delta; its hash must
+    equal the packet already acknowledged by Root. No numeric-only subset.
+    """
+    def reject():raise ObservationUnavailable('final_ACK_cut_unconfirmed')
+    try:
+        root=metadata['ack_receipt'];closed(root,['bucket_id','packet_sha256','receipt_sha256'])
+        need(all(hex64(root[k])for k in ['packet_sha256','receipt_sha256']))
+        current=uint(root['bucket_id'],64);old=uint(consumer['last_receipt'],64)
+        acked=counts(consumer['acked_counts']);native=counts(metadata['acknowledged_counts'])
+        if current==old:
+            if root['receipt_sha256']!=consumer['last_receipt_sha']or native!=acked:reject()
+            return acked
+        packet=consumer['pending']
+        if current!=old+1 or packet is None or packet['body']['bucket_id']!=root['bucket_id']:reject()
+        if(digest(packet['body'])!=packet['sha256']or packet['sha256']!=root['packet_sha256']
+          or digest(packet['body']['previous_ack'])!=consumer['last_receipt_sha']):reject()
+        delta=counts(packet['body']['aggregate']['counts'])
+        def integers(v):return {k:integers(x)for k,x in v.items()}if type(v)is dict else int(v)
+        total=integers(acked);add_totals(total,integers(delta))
+        if stringify(total)!=native or counts(consumer['received_counts'])!=native:reject()
+        return acked
+    except(KeyError,TypeError,ValueError,MaintenanceUnavailable):reject()
+
 class Backend:
-    def __init__(self,paths=Paths(),*,run=subprocess.run):
+    def __init__(self,paths=Paths(),*,run=subprocess.run,audit_paths=None):
         need(os.geteuid()==0 and os.getegid()==0,'maintenance_role_invalid')
-        self.paths=paths;self.run=run;directory(paths.policy.parent,0,0,0o700)
+        self.paths=paths;self.run=run;self.audit_paths=audit_paths;directory(paths.policy.parent,0,0,0o700)
         raw=read(paths.policy,0,0,0o600,8192);self.policy_sha=hashlib.sha256(raw).hexdigest();p=decode(raw)
         closed(p,['schema_version','scope','enabled','expires_at','approval_sha256','code_manifest_sha256',
                   'source','consumer','source_definition','root_files','consumer_files'])
@@ -92,7 +120,9 @@ class Backend:
               and source['enabled']is True and source['approval_id']==p['approval_sha256']
               and(source['expires_at']is None or type(source['expires_at'])in(int,float)and time.time()<source['expires_at']),
               'maintenance_source_authorization_closed')
-        if op is not None:need(op['approval_sha256']==p['approval_sha256'],'maintenance_approval_changed')
+        if op is not None:
+            need(op['approval_sha256']==p['approval_sha256'],'maintenance_approval_changed')
+            need(facts(op,'begin')['code_manifest_sha256']==p['code_manifest_sha256'],'maintenance_code_manifest_changed')
         # Paths are fixed by the installed entrypoint, names by this allowlist.
         for group,parent in [('root_files',self.paths.root_code),('consumer_files',self.paths.consumer_code)]:
             directory(parent,0,0,0o755)
@@ -124,17 +154,20 @@ class Backend:
         state={key:v[3][key]for key in('Running','Paused','Restarting','Dead','Pid','StartedAt','FinishedAt','ExitCode')}
         need(all(type(state[k])is bool for k in('Running','Paused','Restarting','Dead'))
           and all(type(state[k])is int for k in('Pid','ExitCode'))and all(type(state[k])is str for k in('StartedAt','FinishedAt')))
-        return {'binding_sha256':target['identity_sha256'],'state':state,'state_sha256':digest(state),'image_id':v[1]}
+        return {'binding_sha256':target['identity_sha256'],'state':state,'state_sha256':digest(state),'image_id':v[1],'mounts':v[4]}
     def snapshot(self):
         directory(self.paths.reader_state,0,0,0o700)
         raw=read(self.paths.reader_state/'maintenance-status.json',0,0,0o600,16384);v=decode(raw)
         closed(v,['body','sha256']);need(v['sha256']==digest(v['body'])and raw==canonical(v));m=v['body']
         closed(m,['schema_version','source','reader_pid','reader_start_ticks','source_policy_sha256','reader','accepted_frames','acknowledged_frames',
-          'acknowledged_counts','pending_packet','active_counts_nonempty','unknown_epoch_tails','full24h_proven','effect_executed'])
+          'acknowledged_counts','ack_receipt','pending_packet','active_counts_nonempty','unknown_epoch_tails','full24h_proven','effect_executed'])
         need(type(m['schema_version'])is int and m['schema_version']==1 and m['source']=='fixed_live_mqtt_maintenance_facts')
         need(hex64(m['source_policy_sha256']))
         for key in ['accepted_frames','acknowledged_frames','unknown_epoch_tails']:uint(m[key],128)
         counts(m['acknowledged_counts']);need(m['acknowledged_frames']==m['acknowledged_counts']['frames'])
+        if m['ack_receipt']is not None:
+            closed(m['ack_receipt'],['bucket_id','packet_sha256','receipt_sha256']);uint(m['ack_receipt']['bucket_id'],64)
+            need(all(hex64(m['ack_receipt'][k])for k in ['packet_sha256','receipt_sha256']))
         need(m['full24h_proven']is False and m['effect_executed']is False
           and type(m['pending_packet'])is bool and type(m['active_counts_nonempty'])is bool)
         reader=m['reader'];now,domain=self.clock()
@@ -193,9 +226,12 @@ class Backend:
         from maintenance_policy import Issuer
         result=Issuer(tx,self,op).run()
         if result['state']=='replacement_policy_ready':
-            fresh=Backend(self.paths,run=self.run);fresh.authorize(op,mutation=False)
+            fresh=Backend(self.paths,run=self.run,audit_paths=self.audit_paths);fresh.authorize(op,mutation=False)
             self.policy,self.policy_sha=fresh.policy,fresh.policy_sha
         return result
+    def audit_replacement(self,tx,op):
+        from source_image_audit import Producer
+        return Producer(tx,self,op,**({'paths':self.audit_paths}if self.audit_paths is not None else{})).run()
     def preflight(self,command,op):
         need(command in COMMANDS,'maintenance_command_invalid')
         dispatch_invariants(op,command);m,c=self.snapshot();s=self._same_context(op,m)
@@ -315,14 +351,15 @@ class Backend:
               'started_ns':s['started_boottime_ns'],'covered_before_ns':s['covered_before_ns'],'accepted_frames':m['accepted_frames'],
               'reader_instance_sha256':r['reader_instance_sha256']}
         if phase=='complete':
-            if checkpoint is None or c['acked_counts']!=m['acknowledged_counts']:raise ObservationUnavailable('final_ACK_cut_unconfirmed')
+            if checkpoint is None:raise ObservationUnavailable('final_ACK_cut_unconfirmed')
+            cut=confirmed_cut(m,c)
             new=facts(op,'new_source_verified');ready=facts(op,'consumer_ready')
             if(s['epoch']!=new['source_epoch']or s['instance_sha256']!=new['source_instance_sha256']
               or s['closed']or s['identity_state']!='verified_live'or not self.inspect('source')['state']['Running']
-              or uint(m['acknowledged_frames'],128)<uint(new['accepted_frames'],128)
+              or uint(cut['frames'],128)<uint(new['accepted_frames'],128)
               or uint(checkpoint['sequence'],64)<=uint(ready['consumer_checkpoint_sequence'],64)):
                 raise ObservationUnavailable('new_source_ACK_unconfirmed')
             return {'source_epoch':s['epoch'],'source_instance_sha256':s['instance_sha256'],'binding_sha256':self.inspect('source')['binding_sha256'],
-              'acknowledged_frames':m['acknowledged_frames'],'consumer_checkpoint_sha256':sha,'consumer_checkpoint_sequence':checkpoint['sequence'],
-              'protocol_counts_sha256':digest(c['acked_counts'])}
+              'acknowledged_frames':cut['frames'],'consumer_checkpoint_sha256':sha,'consumer_checkpoint_sequence':checkpoint['sequence'],
+              'protocol_counts_sha256':digest(cut)}
         raise MaintenanceUnavailable('maintenance_fact_phase_invalid')

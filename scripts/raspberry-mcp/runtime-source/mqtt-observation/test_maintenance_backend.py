@@ -48,7 +48,7 @@ class Tests(unittest.TestCase):
         body={'schema_version':1,'source':'fixed_live_mqtt_maintenance_facts','reader_pid':str(os.getpid()),
           'reader_start_ticks':str(m.start_ticks(Path('/proc/self/stat').read_text(),os.getpid())),
           'source_policy_sha256':m.digest(self.policy['source_definition']),
-          'reader':reader,'accepted_frames':'4','acknowledged_frames':'4','acknowledged_counts':cs,
+          'reader':reader,'accepted_frames':'4','acknowledged_frames':'4','acknowledged_counts':cs,'ack_receipt':None,
           'pending_packet':False,'active_counts_nonempty':False,'unknown_epoch_tails':'0','full24h_proven':False,'effect_executed':False}
         self.write(self.paths.reader_state/'maintenance-status.json',{'body':body,'sha256':m.digest(body)})
         self.consumer={'acked_counts':cs,'canvas_checkpoint':{'schema_version':2,'sequence':'7',

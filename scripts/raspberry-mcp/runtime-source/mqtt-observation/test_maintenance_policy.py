@@ -25,7 +25,7 @@ class Tests(unittest.TestCase):
         parent=None;self.opid='c'*32
         for i,phase in enumerate(j.PHASES[:10]):
             f=facts(phase)
-            if phase=='begin':f.update(purpose='container_update',source_binding_sha256=old_binding,consumer_binding_sha256=consumer_binding,source_instance_sha256='e'*64)
+            if phase=='begin':f.update(purpose='container_update',code_manifest_sha256=self.backend.policy['code_manifest_sha256'],source_binding_sha256=old_binding,consumer_binding_sha256=consumer_binding,source_instance_sha256='e'*64)
             if phase in('source_stop_intent','source_stopped'):f['binding_sha256']=old_binding
             if phase in('source_stopped','source_drained'):f['source_instance_sha256']='e'*64
             if phase=='source_drained':f.update(accepted_frames='4',acknowledged_frames='4',protocol_counts_sha256=m.digest(self.consumer['acked_counts']))

@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 40 destinos: 21 módulos Root, nove
+do pacote. Seu catálogo fechado contém 42 destinos: 23 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -359,7 +359,13 @@ dos dois contêineres. A inspeção seleciona campos de lifecycle antes de receb
 os bytes; não solicita ambiente ou logs de healthcheck. O consumidor parado é
 validado pelo codec offline fixo, sem iniciá-lo para obter um checkpoint.
 O arquivo privado `maintenance-status.json` mantém fatos do leitor separados
-do contrato público de observação.
+do contrato público de observação. Inclui o identificador e os hashes do último
+ACK. Como a persistência do consumidor e o ACK Root avançam separadamente,
+o corte final aceita o mesmo recibo ou o prefixo durável comprovado pelo pacote
+pendente exato já confirmado pelo Root. Nesse segundo caso, o hash do pacote,
+o recibo anterior e o delta integral dos contadores precisam coincidir. Contadores
+numericamente menores, sem essa prova, não bastam. O prefixo ainda precisa
+cobrir a nova origem verificada; não se exige silêncio do tráfego para concluir.
 
 `maintenance_rebind.py` registra a intenção e os bytes anteriores antes de
 trocar somente o vínculo da origem. O leitor aceita a mudança em processo
@@ -380,19 +386,36 @@ Um recibo durável guarda os bytes anteriores antes da escrita. Conflitos de
 política durante a inspeção final são preservados; repetir a solicitação
 apenas observa a política, mesmo após falha anterior à escrita.
 
-Esse preparador consome um recibo Root; não produz a auditoria. O instalador ou
-atualizador aprovado ainda deve verificar ABI, configuração, proveniência e
-licenças da imagem candidata antes de emitir esse arquivo. O chamador do
-controlador não fornece caminhos, contêineres nem uma política arbitrária.
+`source_image_audit.py` produz esse recibo a partir do job Root fixo
+`/etc/raspberry-mqtt-maintenance/source-audit-job.json`. O job vincula imagem,
+configuração e contêiner parado à mesma operação e ao head atual. O produtor
+confere a origem oficial da imagem ARM64 já disponível, o binário ELF, o plugin,
+as licenças/notices fixadas e os hashes e montagens da configuração. Não baixa
+imagens nem executa a configuração residencial no teste.
+
+A prova de ABI executa um broker próprio sem rede e sem dados residenciais,
+com configuração sintética e um leitor Root limitado. Verifica as sete classes,
+o fechamento da origem e o PIDFD após a saída do emissor. Cada efeito tem intent
+anterior; o probe é removido antes da emissão do candidato. O Docker usa uma
+configuração Root vazia e o socket local fixo. Um retorno de criação perdido só
+permite reconciliar o nome, label, imagem e montagem exatos da operação. Recibos
+incertos são preservados e não disparam uma segunda auditoria.
+
+O atualizador aprovado ainda precisa emitir esse job a partir do candidato
+real e preservar a configuração residencial. O chamador do controlador fornece
+somente operação e head, sem caminhos, contêineres ou política arbitrária.
 
 O [aceite isolado do controlador](../scripts/raspberry-mcp/mqtt-maintenance-controller.acceptance.json)
 comprova os quatro efeitos em contêineres próprios, recriação do identificador
 da origem, retomada do consumidor e preservação do leitor. Uma tentativa anterior
-encerrou sem confirmar o corte final e permanece preservada; o teste posterior
-alcançou o corte exato sem relaxar seus critérios. Isso não instala nem autoriza
-a superfície de produção. Permanecem pendentes o produtor Root do recibo de
-auditoria, os gates visuais de backup/update, o pacote completo de implantação,
-revogação/reversão, projeção MCP e a aprovação específica de acesso permanente.
+encerrou sem confirmar o corte final e permanece preservada. O teste integrado
+posterior executou o produtor nativo, o preparador de política e o corte comum
+comprovado por recibo. Isso não instala nem autoriza a superfície de produção.
+Permanecem pendentes a emissão do job pelo atualizador real, os gates visuais
+de backup/update e o plano Root finito durante a parada do Node-RED, a recriação
+do próprio consumidor, o arquivamento seguro antes do limite de 16 operações,
+o pacote completo de implantação, revogação/reversão, projeção MCP e a aprovação
+específica de acesso permanente.
 
 ## Revogação, reversão e recuperação
 

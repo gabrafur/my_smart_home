@@ -5,7 +5,7 @@
   "production_changes": false,
   "permanent_source_or_maintenance_access_activated": false,
   "full24h_proven": false,
-  "static_file_transaction_targets": 40,
+  "static_file_transaction_targets": 42,
   "isolated_Root_units": {
     "full_pre_consumer_pin_expansion": {
       "tests": 265,
@@ -19,6 +19,11 @@
     },
     "affected_after_fixed_policy_issuer": {
       "tests": 70,
+      "failures": 0,
+      "skipped": 0
+    },
+    "full_after_native_image_audit_producer": {
+      "tests": 291,
       "failures": 0,
       "skipped": 0
     }
@@ -42,12 +47,12 @@
     "new_source_live_and_cut_ACKed_before_completion": true,
     "journal_records": 14,
     "correlation_checks_passed": 16,
-    "verified_frames": 59,
-    "ACK_receipts": 12,
+    "verified_frames": 75,
+    "ACK_receipts": 14,
     "source_epochs": 2,
     "unknown_epoch_tails": 0,
     "all_seven_metadata_classes_measured": true,
-    "owned_containers_removed": 3,
+    "owned_containers_removed": 4,
     "combined_active_container_CPU_quota": 0.35,
     "Root_reader_hard_AS_bytes": 134217728,
     "Root_reader_capabilities": [
@@ -61,13 +66,18 @@
     "fixed_policy_Issuer_used": true,
     "prior_policy_exact_bytes_preserved": true,
     "policy_approval_expiry_code_and_consumer_preserved": true,
-    "maximum_source_to_ACK_upper_ns": "3531213056"
+    "maximum_source_to_ACK_upper_ns": "4006999515",
+    "actual_Root_native_image_audit_producer": true,
+    "Root_image_audit_job_fixture_only": true,
+    "exact_shared_ACK_prefix_verified": true
   },
   "prior_terminal_fixture_failure": "final_cut_observation_deadline;preserved_and_owned_containers_removed;not_replayed",
-  "policy_binding_boundary": "fixed_Issuer_consumes_Root_private_audit_receipt_and_verifies_candidate_identity_image_and_state;production_audit_producer_pending",
+  "policy_binding_boundary": "fixed_Root_native_auditor_produces_candidate_from_sealed_job;fixed_Issuer_verifies_stopped_target_and_preserves_approval_expiry_code_and_consumer",
   "pending": [
-    "production_Root_audit_receipt_producer",
-    "canonical_NodeRED_backup_update_gates",
+    "production_updater_emits_fixed_Root_audit_job",
+    "canonical_NodeRED_backup_update_gates_and_finite_Root_plan",
+    "NodeRED_consumer_container_recreation",
+    "safe_archive_before_journal_operation_capacity",
     "complete_install_revoke_rollback_and_MCP_projection_package",
     "specific_permanent_source_access_approval",
     "actual_household_runtime_and_24h_acceptance"
@@ -79,5 +89,34 @@
     "ACK_receipts": 12,
     "binding_preparation": "fixture_Root_policy_transition",
     "maximum_source_to_ACK_upper_ns": "3531094940"
-  }
+  },
+  "historical_fixture_with_fixed_policy_issuer": {
+    "verified_frames": 59,
+    "ACK_receipts": 12,
+    "owned_containers_removed": 3,
+    "maximum_source_to_ACK_upper_ns": "3531213056",
+    "static_targets": 40
+  },
+  "Root_static_modules": 23,
+  "native_image_audit": {
+    "image_already_cached": true,
+    "architecture": "arm64",
+    "official_repository_digest_checked": true,
+    "binary_ELF_and_plugin_checked": true,
+    "configuration_hash_and_mounts_checked": true,
+    "residential_configuration_executed": false,
+    "SDK_license_bundle_verified": true,
+    "all_seven_metadata_classes_observed": true,
+    "source_closed_after_sender_exit": true,
+    "unknown_epoch_tails": 0,
+    "owned_probe_removed": true,
+    "Root_candidate_written": true,
+    "Docker_credential_configuration": "empty_Root_directory",
+    "automatic_retry": false
+  },
+  "additional_terminal_fixture_failures_preserved": [
+    "Unix_socket_path_bound_before_probe_start",
+    "consumer_final_receipt_not_persisted_before_fixture_reader_exit",
+    "asynchronous_Root_and_consumer_ACK_snapshot_cut"
+  ]
 }

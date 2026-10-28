@@ -7,6 +7,7 @@ import hashlib,json,os,secrets,stat
 from pathlib import Path
 from handoff import nonempty
 from worker_config import policy_document
+from receiver_ledger import stringify
 
 LIMIT=16384
 class StatusUnavailable(RuntimeError):pass
@@ -18,11 +19,14 @@ def digest(v):return hashlib.sha256(canonical(v)).hexdigest()
 def facts(worker,reader_status):
     body=worker.ledger.body;handoff=body['handoff'];state=body['state']
     counts=worker.ledger.report()['accounting']['handoff']['acked_counts']
+    receipt=None if handoff['last_ack']is None else stringify(handoff['last_ack'])
     value={'schema_version':1,'source':'fixed_live_mqtt_maintenance_facts',
       'reader_pid':str(worker.pid),'reader_start_ticks':str(worker.process_start_ticks),
       'source_policy_sha256':digest(policy_document(worker.source_verifier.policy,worker.approval_id)),
       'reader':reader_status,'accepted_frames':str(body['accepted_frames']),
       'acknowledged_frames':counts['frames'],'acknowledged_counts':counts,
+      'ack_receipt':None if receipt is None else {'bucket_id':receipt['bucket_id'],
+        'packet_sha256':receipt['sha256'],'receipt_sha256':digest(receipt)},
       'pending_packet':handoff['published']is not None,'active_counts_nonempty':nonempty(handoff['active']),
       'unknown_epoch_tails':str(state['unknown_epoch_tails'])if state is not None else'0',
       'full24h_proven':False,'effect_executed':False}
