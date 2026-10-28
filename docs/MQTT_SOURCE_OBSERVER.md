@@ -31,6 +31,26 @@ executável, identidade do arquivo de plugin mapeado e domínio temporal.
 Isso verifica arquivos e vínculos de processo; não atesta todas as instruções
 executadas na memória do broker.
 
+O leitor de produção exige `SO_PASSPIDFD` e um único `SCM_PIDFD` fornecido pelo
+kernel junto das credenciais. Exige Linux de 64 bits com `pidfs`; um kernel
+incompatível impede a partida, sem reduzir a verificação a um PID numérico.
+Enquanto o remetente está vivo, cada mensagem repete a verificação de processo,
+arquivos e relógio e compara o identificador do pidfd recebido com o do processo
+aberto. O leitor conserva apenas um pidfd da última origem verificada.
+
+Após a saída do remetente, uma mensagem já enfileirada pode usar esse vínculo
+somente se o pidfd identificar a mesma tarefa previamente verificada, com as
+mesmas credenciais e domínio temporal. Uma origem encerrada antes da primeira
+verificação, outra tarefa, ausência do descritor ou troca do leitor deixam o
+vínculo desconhecido. O cache é somente em memória e não reconstitui alterações
+de código posteriores à última verificação. Descritores recebidos são fechados
+também nas mensagens inválidas ou truncadas. Essa identificação não comprova o
+fim da origem: o protocolo atual ainda mantém a cauda anterior desconhecida.
+
+Referências primárias: [UAPI de sockets do Linux](https://github.com/torvalds/linux/blob/v6.18/include/uapi/asm-generic/socket.h),
+[identidade de tarefas no pidfs](https://github.com/torvalds/linux/blob/v6.18/fs/pidfs.c)
+e [entrega de SCM_PIDFD](https://github.com/torvalds/linux/blob/v6.18/net/core/scm.c).
+
 O gerenciador conserva o socket enquanto o processo leitor é substituído.
 O novo processo abre o mesmo SQLite, preserva a fila e acrescenta a falha
 `reader_restart`; reiniciar não apaga incerteza histórica. A fila é finita:

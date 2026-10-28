@@ -4,8 +4,14 @@ Reads bounded proc metadata and hashes executable files, never process memory,
 environ, cmdline, configuration, topics or payloads. No Docker socket is used.
 Kernel proc documentation: https://docs.kernel.org/filesystems/proc.html
 """
-from dataclasses import dataclass
-import hashlib,json,os,re,select,stat
+from dataclasses import dataclass,replace
+import ctypes,hashlib,json,os,re,select,stat,struct
+
+# Linux UAPI v6.18: asm-generic/socket.h and linux/magic.h. No sender JSON flag
+# substitutes for SCM_PIDFD, and anonymous-inode kernels are not accepted.
+SO_PASSPIDFD=76
+SCM_PIDFD=4
+PID_FS_MAGIC=0x50494446
 
 class BindingUnavailable(RuntimeError):pass
 def reject(reason):
@@ -42,6 +48,41 @@ class VerifiedBinding:
     kernel_peer_verified:bool=True
     mapped_file_identity_verified:bool=True
     same_clock_domain:bool=True
+    kernel_sender_bound:bool=False
+    retained_after_exit:bool=False
+
+def sender_pidfd_key(fd):
+    if type(fd)is not int or fd<0 or struct.calcsize('P')!=8 or ctypes.sizeof(ctypes.c_long)!=8:
+        reject('sender_pidfd_unsupported')
+    try:
+        info=os.fstat(fd)
+        libc=ctypes.CDLL(None);call=libc.fstatfs
+        call.argtypes=[ctypes.c_int,ctypes.c_void_p];call.restype=ctypes.c_int
+        buffer=ctypes.create_string_buffer(256)
+        if call(fd,buffer)!=0 or ctypes.c_long.from_buffer(buffer).value!=PID_FS_MAGIC:
+            reject('sender_pidfd_filesystem_invalid')
+        if info.st_ino<=1 or os.get_inheritable(fd):reject('sender_pidfd_invalid')
+        return info.st_dev,info.st_ino
+    except(OSError,AttributeError,TypeError):reject('sender_pidfd_invalid')
+
+def sender_pidfd_pid(fd):
+    try:
+        with open('/proc/self/fdinfo/'+str(fd),'rb')as file:raw=file.read(4097)
+        if len(raw)>4096:reject('sender_pidfd_metadata_invalid')
+        rows=[line.split(b':',1)[1].strip()for line in raw.splitlines()if line.startswith(b'Pid:')]
+        if len(rows)!=1 or re.fullmatch(rb'-1|[1-9][0-9]*',rows[0])is None:
+            reject('sender_pidfd_metadata_invalid')
+        return int(rows[0])
+    except(OSError,ValueError):reject('sender_pidfd_metadata_invalid')
+
+def sender_pidfd_exited(fd):
+    poll=select.poll();poll.register(fd,select.POLLIN|select.POLLHUP|select.POLLERR)
+    return bool(poll.poll(0))
+
+def require_sender_pidfd_support():
+    fd=os.pidfd_open(os.getpid(),0)
+    try:sender_pidfd_key(fd)
+    finally:os.close(fd)
 
 def start_ticks(raw,pid):
     prefix=str(pid)+' ('
@@ -138,7 +179,8 @@ def local_clock_domain():
 class SourceVerifier:
     def __init__(self,policy):
         if type(policy)is not SourcePolicy:reject('source_policy_invalid')
-        self.policy=policy;self.cache={}
+        self.policy=policy;self.cache={};self.sender_fd=None;self.sender_key=None
+        self.sender_peer=None;self.sender_binding=None
 
     def _code(self,proc,name,expected_hash,owner,limit):
         fd=proc.open(name)
@@ -160,12 +202,44 @@ class SourceVerifier:
             return before
         finally:os.close(fd)
 
-    def verify(self,peer):
+    def verify(self,peer):return self._verify_live(peer)
+
+    def _peer(self,peer):
         p=self.policy
         if type(peer)is not Peer or type(peer.pid)is not int or not 0<peer.pid<2**31 or type(peer.uid)is not int or type(peer.gid)is not int or (peer.uid,peer.gid)!=(p.peer_uid,p.peer_gid):reject('source_peer_mismatch')
+
+    def verify_sender(self,peer,sender_fd):
+        self._peer(peer);key=sender_pidfd_key(sender_fd)
+        pid=sender_pidfd_pid(sender_fd)
+        if pid not in(-1,peer.pid):reject('sender_pidfd_peer_mismatch')
+        if sender_pidfd_exited(sender_fd):
+            # Only a kernel-supplied descriptor of the exact task that was
+            # already verified live can reuse that task's prior file binding.
+            # A new numeric PID, cold cache or different task cannot do so.
+            if (self.sender_fd is None or key!=self.sender_key or peer!=self.sender_peer
+                or self.sender_binding is None or sender_pidfd_key(self.sender_fd)!=key
+                or self.sender_binding.clock_domain_id!=local_clock_domain()):
+                reject('exited_sender_not_previously_verified')
+            return replace(self.sender_binding,retained_after_exit=True)
+        if pid!=peer.pid:reject('sender_pidfd_peer_mismatch')
+        binding=self._verify_live(peer,key)
+        binding=replace(binding,kernel_sender_bound=True,retained_after_exit=False)
+        copied=os.dup(sender_fd)
+        try:
+            if sender_pidfd_key(copied)!=key:reject('sender_pidfd_changed')
+            self.close();self.sender_fd=copied;copied=None
+            self.sender_key=key;self.sender_peer=peer;self.sender_binding=binding
+        finally:
+            if copied is not None:os.close(copied)
+        return binding
+
+    def _verify_live(self,peer,expected_sender_key=None):
+        self._peer(peer);p=self.policy
         proc=None
         try:
             proc=ProcHandle(peer.pid)
+            if expected_sender_key is not None and sender_pidfd_key(proc.pidfd)!=expected_sender_key:
+                reject('sender_pidfd_process_changed')
             start=start_ticks(proc.text('stat',8192),peer.pid)
             if proc.text('comm',128)!='mosquitto\n':reject('source_process_invalid')
             credentials_from_status(proc.text('status',32768),peer)
@@ -195,3 +269,7 @@ class SourceVerifier:
             reject('source_identity_unknown')
         finally:
             if proc:proc.close()
+
+    def close(self):
+        if self.sender_fd is not None:os.close(self.sender_fd)
+        self.sender_fd=None;self.sender_key=None;self.sender_peer=None;self.sender_binding=None

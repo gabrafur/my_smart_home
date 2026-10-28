@@ -2,6 +2,7 @@
 from pathlib import Path
 import os,socket,stat
 from socket_reader import SocketReader,ReaderUnavailable,fail
+from source_binding import SO_PASSPIDFD
 
 class ActivatedSocketReader(SocketReader):
     def __init__(self,path,*,fd,intake,group_gid=1883):
@@ -30,6 +31,8 @@ class ActivatedSocketReader(SocketReader):
             else:fail("activated_socket_connected")
             if self.sock.getsockopt(socket.SOL_SOCKET,socket.SO_PASSCRED)!=1:
                 fail("activated_socket_credentials_missing")
+            if getattr(self.intake,'require_sender_pidfd',False):
+                self.sock.setsockopt(socket.SOL_SOCKET,SO_PASSPIDFD,1)
             if os.get_inheritable(self.sock.fileno()):fail("activated_socket_descriptor_inheritable")
             self.sock.setblocking(False)
             self.identity=(info.st_dev,info.st_ino)
@@ -44,6 +47,8 @@ class ActivatedSocketReader(SocketReader):
     def close(self):
         if self.sock is not None:self.sock.close();self.sock=None
         self.identity=None
+        closer=getattr(self.intake,'close',None)
+        if callable(closer):closer()
 
 def from_systemd(path,*,intake,environ=None):
     env=os.environ if environ is None else environ

@@ -64,7 +64,7 @@ class Worker:
             self.ledger=HandoffLedger(paths.ledger,create=False,clock_domain_id=self.domain,started_ns=self.started)
             self.bridge=FileBridge(paths.report,paths.consumer,consumer_uid=1000,consumer_gid=1000)
             self.status_writer=StatusWriter(self.bridge)
-            intake=PacketIntake(self.ledger,SourceVerifier(policy))
+            intake=PacketIntake(self.ledger,SourceVerifier(policy),require_sender_pidfd=True)
             self.reader=reader_factory(paths.source_socket,intake=intake)
             self.authorization=self.gate.refresh()
             self.bridge.publish(self.ledger,boottime());self.write_status()

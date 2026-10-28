@@ -1,10 +1,11 @@
 """Actual Unix datagrams; disposable Root fixtures only."""
 from pathlib import Path
-import os,socket,struct,sys,tempfile,unittest
+import array,os,socket,struct,sys,tempfile,unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).parent))
 from activated_reader import ActivatedSocketReader,from_systemd
 from socket_reader import ReaderUnavailable
+from source_binding import SCM_PIDFD,sender_pidfd_key
 class Intake:
  def __init__(self):self.rows=[]
  def packet(self,raw,ancillary,flags,at):
@@ -31,6 +32,20 @@ class Tests(unittest.TestCase):
   first=self.reader();inode=self.path.stat().st_ino;first.close()
   self.sender.sendto(b"during_restart",str(self.path));second=self.reader()
   self.assertEqual(second.receive()["raw"],b"during_restart");self.assertEqual(self.path.stat().st_ino,inode)
+ def test_strong_sender_option_applies_to_preexisting_manager_queue(self):
+  self.intake.require_sender_pidfd=True
+  self.sender.sendto(b"queued_before_reader",str(self.path))
+  before=len(os.listdir('/proc/self/fd'));r=self.reader()
+  value=r.receive();fds=[]
+  try:
+   for level,kind,data in value['ancillary']:
+    if level==socket.SOL_SOCKET and kind==SCM_PIDFD:
+     row=array.array('i');row.frombytes(data);fds.extend(row)
+   self.assertEqual(len(fds),1);sender_pidfd_key(fds[0])
+   self.assertEqual(value['raw'],b'queued_before_reader')
+  finally:
+   for fd in fds:os.close(fd)
+  r.close();self.assertEqual(len(os.listdir('/proc/self/fd')),before)
  def test_close_does_not_close_manager_descriptor(self):
   r=self.reader();r.close();os.fstat(self.owner.fileno());self.assertTrue(self.path.exists())
  def test_nonblocking_and_cloexec(self):
