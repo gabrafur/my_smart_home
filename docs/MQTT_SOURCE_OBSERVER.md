@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 44 destinos: 25 módulos Root, nove
+do pacote. Seu catálogo fechado contém 45 destinos: 26 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -428,8 +428,15 @@ O orçamento começa no recibo inicial e não é renovado quando o worker retoma
 Mudança no perfil ou esgotamento do prazo bloqueiam novos efeitos e preservam
 o histórico para recuperação revisada.
 
-O helper candidato `backup_cli.py` aceita somente `prepare`, `resume` e
-`status`, com um ID de operação. Usa caminhos e alvos fixos e roda fora do
+Antes do primeiro efeito, o plano também sela a recuperação independente de
+`backup_rescue.py`. O perfil Root `backup-rescue-policy.json` declara escopo,
+aprovação, código, `maximum_recovery_ns` e `observation_interval_ns`. Seu prazo
+é calculado uma única vez a partir do início do plano e dos dois orçamentos;
+a autorização principal precisa cobrir essa duração. Nova chamada não amplia
+o prazo nem renova a autorização de leitura.
+
+O helper candidato `backup_cli.py` aceita somente `prepare`, `resume`,
+`status` e `rescue`, com um ID de operação. Usa caminhos e alvos fixos e roda fora do
 Node-RED. `prepare` para a origem, confirma fechamento e ACKs e só então para
 o consumidor. `resume` inicia o consumidor, exige observação nova do mesmo
 leitor com a origem ainda parada e então inicia e verifica a origem. As
@@ -459,13 +466,46 @@ Para o replay manual, solicite o TESTE 0A do backup externo, depois execute
 sucesso, falha ou adiamento e confira o terminal dry-run compartilhado. O teste
 não invoca o helper nem para serviços reais.
 
+### Retomada após falha ou vencimento do plano
+
+Se a retomada normal falhar, a ponte solicita uma única recuperação do mesmo
+plano. Esse caminho fecha a nova telemetria com o marcador Root persistente
+`revoked` e remove o marcador positivo; não altera a autorização armazenada.
+Confere a imagem/vínculo e as montagens originais, o SHA do plugin e os arquivos
+de código antes de iniciar somente o consumidor e a origem. Não para serviços,
+reconfigura contêineres, reinicia host/stack, escolhe novos alvos ou reabre a
+telemetria. O trabalho não depende do leitor de metadados nem de sua autorização
+de leitura ainda estar ativa; a autorização principal de manutenção continua
+obrigatória e pode revogar a recuperação.
+
+Cada partida tem intent durável e nova comparação do estado imediatamente
+antes do efeito. Intents da retomada normal também são consumidos: criar outro
+ator não permite repetir uma partida incerta. Um stop ainda incerto, com o
+serviço em execução, exige observação posterior; não é tratado como retomada
+confirmada. Esgotamento do orçamento, mudança de alvo/código ou resultado
+irresolúvel exigem recuperação manual e continuam registrados.
+
+O journal conserva o prefixo original e aceita dois terminais separados:
+`cancelled`, somente antes de qualquer intent de efeito, e `rescued`, ligado
+ao recibo de recuperação com telemetria fechada. Nenhum fornece as comparações
+de uma manutenção normal concluída nem um aceite de 24 horas. O consumidor
+preserva seus contadores/ACKs e publica integridade desconhecida. O worker
+confere a saúde dos serviços restaurados e reporta
+`house_restored_metadata_disabled`, bloqueando upload/retenção daquele ciclo.
+
+O [aceite isolado da recuperação](../scripts/raspberry-mcp/mqtt-backup-rescue.acceptance.json)
+inclui vencimento real do prazo, retomada dos dois contêineres, entrega MQTT
+posterior e ausência de novos frames de telemetria após a revogação. Não ativa
+essa superfície na casa nem comprova as permissões do helper instalado.
+
 O [aceite isolado do plano de backup](../scripts/raspberry-mcp/mqtt-backup-plan.acceptance.json)
 comprova os quatro comandos reais em dois contêineres próprios, preservação do
 leitor e do vínculo, snapshot dos metadados e retomada após falha sintética na
 captura da aplicação. Não comprova o restore dos sete serviços nem a execução
 do helper com permissões instaladas em produção. Antes de ativar, faltam o
-transporte protegido do snapshot Root ao backup externo, o acordo de prazos
-com o orçamento de indisponibilidade, a recuperação de plano expirado e o
+transporte protegido do snapshot Root ao backup externo, a continuidade dos
+backups com telemetria fechada, o acordo de prazos com o orçamento de
+indisponibilidade e o
 pacote completo de instalação/revogação/reversão com aprovação específica.
 
 ## Revogação, reversão e recuperação

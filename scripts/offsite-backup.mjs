@@ -1105,7 +1105,8 @@ export async function runDailyCycleCommand({
     const reason = ["EACCES", "EPERM"].includes(error?.code)
       ? "authentication_or_access"
       : error?.code === "MQTT_METADATA_BACKUP_UNCONFIRMED"
-        ? "metadata_coordination_unconfirmed" : "unknown_failure";
+        ? "metadata_coordination_unconfirmed" : error?.code === "MQTT_METADATA_BACKUP_RESCUED"
+          ? "house_restored_metadata_disabled" : "unknown_failure";
     write(`reason=${reason}\n`);
     return 1;
   }

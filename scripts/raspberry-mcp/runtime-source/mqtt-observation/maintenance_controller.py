@@ -82,7 +82,7 @@ class Controller:
             need(phase=='begin'and expected_head is None,'maintenance_parent_changed')
             state=self.journal.status()
             # No new ID can sidestep an unresolved effect or failed recovery.
-            need(not state or all(x['records'][-1]['body']['phase']=='complete'
+            need(not state or all(x['records'][-1]['body']['phase']in('complete','cancelled','rescued')
                  for x in state['body']['operations']),'maintenance_prior_operation_unresolved')
             need(purpose in('backup_snapshot','container_update','integration_update'),'maintenance_purpose_invalid')
         else:

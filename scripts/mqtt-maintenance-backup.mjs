@@ -53,18 +53,23 @@ export function loadBackupMaintenance({readRoot=rootFile,exists=present,invoke=s
       env:{PATH:'/usr/bin:/bin',LC_ALL:'C'},stdio:['ignore','pipe','pipe']});
     if(r.error||r.status!==0)fail();
     const result=JSON.parse(r.stdout);
+    const accepted=action==='rescue'?['backup_rescue_not_required','backup_rescue_house_running_metadata_disabled']:
+      [action==='prepare'?'backup_plan_capture_ready':'backup_plan_complete'];
     if(result.operation_id!==id||result.automatic_retry!==false||result.full24h_proven!==false||
-      result.state!==(action==='prepare'?'backup_plan_capture_ready':'backup_plan_complete'))fail();
+      !accepted.includes(result.state)||action==='rescue'&&(result.metadata_integrity!=='unknown'||
+        result.metadata_disabled!==(result.state==='backup_rescue_house_running_metadata_disabled')))fail();
     return result;
   }
-  return {operation_id:id,prepare:()=>call('prepare'),resume:()=>call('resume')};
+  return {operation_id:id,prepare:()=>call('prepare'),resume:()=>{
+    try {return call('resume');}catch {return call('rescue');}
+  }};
 }
 
 export async function captureWithOrderedStops({services,maintenance=null,stop,start,capture,wait}) {
   const coordinated=maintenance?['mosquitto','nodered']:[];
   if(maintenance&&coordinated.some(s=>!services.includes(s)))fail();
   const ordinary=services.filter(s=>!coordinated.includes(s));
-  let prepareRequested=false,ordinaryStopRequested=false,value,captureError=null,restorationError=null;
+  let prepareRequested=false,ordinaryStopRequested=false,value,captureError=null,restorationError=null,coordinationError=null;
   try {
     if(maintenance) {prepareRequested=true;maintenance.prepare();}
     if(ordinary.length) {ordinaryStopRequested=true;stop(ordinary);}
@@ -74,9 +79,13 @@ export async function captureWithOrderedStops({services,maintenance=null,stop,st
     // Restore both independent participants even if the other start fails.
     // The fixed helper validates the journal before either coordinated start.
     if(ordinaryStopRequested)try {start(ordinary);}catch(error) {restorationError=error;}
-    if(prepareRequested)try {maintenance.resume();}catch(error) {restorationError??=error;}
+    if(prepareRequested)try {
+      if(maintenance.resume()?.metadata_disabled===true)
+        coordinationError=Object.assign(new Error('Services restored with metadata observation disabled'),
+          {code:'MQTT_METADATA_BACKUP_RESCUED'});
+    }catch(error) {restorationError??=error;}
     if(!restorationError&&(ordinaryStopRequested||prepareRequested))
       try {await wait(services);}catch(error) {restorationError=error;}
   }
-  return {capture:value,captureError,restorationError};
+  return {capture:value,captureError,restorationError:restorationError??coordinationError};
 }

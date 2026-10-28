@@ -56,6 +56,8 @@ class BackupPlan:
         begin=op['records'][0];now,domain=self.controller._clock(op)
         deadline=uint(begin['body']['at_ns'],64)+uint(p['maximum_duration_ns'],64)
         need(deadline<2**64 and uint(now,64)<deadline,'backup_plan_deadline_reached')
+        from backup_rescue import Rescue
+        Rescue(self.controller).seal(operation_id,p['maximum_duration_ns'])
         body={'schema_version':1,'scope':SCOPE,'operation_id':operation_id,
           'approval_sha256':op['approval_sha256'],'begin_sha256':begin['sha256'],
           'clock_domain_sha256':domain,'profile_sha256':digest(p),
@@ -84,11 +86,13 @@ class BackupPlan:
     def status(self,operation_id):
         op=self._operation(operation_id);v,now=self._checked(op)
         if op['records'][-1]['body']['phase']=='complete':return self._result(op,'backup_plan_complete')
+        if op['records'][-1]['body']['phase']in('cancelled','rescued'):return self._result(op,'backup_plan_'+op['records'][-1]['body']['phase'])
         return self._result(op,'backup_plan_deadline_reached'if now>=uint(v['deadline_ns'],64)else'backup_plan_active')
     def step(self,operation_id,action):
         need(action in('prepare','resume'),'backup_plan_action_invalid')
         op=self._operation(operation_id);v,now=self._checked(op);phase=op['records'][-1]['body']['phase']
         if phase=='complete':return self._result(op,'backup_plan_complete')
+        if phase in('cancelled','rescued'):return self._result(op,'backup_plan_'+phase)
         if now>=uint(v['deadline_ns'],64):return self._result(op,'backup_plan_deadline_reached')
         if action=='prepare'and phase=='consumer_stopped':
             try:

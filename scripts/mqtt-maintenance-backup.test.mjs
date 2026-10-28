@@ -93,3 +93,25 @@ test('Root response must bind the current request and never claims a full-day ac
     operation_id:'b'.repeat(32),automatic_retry:false,full24h_proven:false})});
   assert.throws(()=>loadBackupMaintenance(f.options).prepare());
 });
+test('one failed normal resume delegates to the separately sealed rescue without repeating resume',()=>{
+  const f=bridge(),original=f.options.invoke;
+  f.options.invoke=(command,args,options)=>{
+    const action=args.at(-2);
+    if(action==='resume'){f.calls.push({command,args,options});return {status:1,stdout:'{}'};}
+    if(action==='rescue'){
+      f.calls.push({command,args,options});return {status:0,stdout:JSON.stringify({operation_id:'a'.repeat(32),
+        state:'backup_rescue_house_running_metadata_disabled',metadata_disabled:true,metadata_integrity:'unknown',
+        automatic_retry:false,full24h_proven:false})};
+    }
+    return original(command,args,options);
+  };
+  const b=loadBackupMaintenance(f.options);b.prepare();const r=b.resume();
+  assert.equal(r.metadata_disabled,true);assert.deepEqual(f.calls.map(c=>c.args.at(-2)),['prepare','resume','rescue']);
+});
+test('rescued services are health-checked but cannot become a successful metadata backup',async()=>{
+  const f=fixture(),resume=f.options.maintenance.resume;
+  f.options.maintenance.resume=()=>{resume();return {metadata_disabled:true};};
+  const r=await captureWithOrderedStops(f.options);
+  assert.deepEqual(f.running,new Set(services));assert(f.events.some(e=>e[0]==='wait'));
+  assert.equal(r.restorationError.code,'MQTT_METADATA_BACKUP_RESCUED');
+});

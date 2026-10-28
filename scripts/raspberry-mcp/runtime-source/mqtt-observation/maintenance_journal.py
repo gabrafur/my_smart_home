@@ -43,6 +43,8 @@ FACTS={
  'complete':{'source_epoch':'u128','source_instance_sha256':'h','binding_sha256':'h','acknowledged_frames':'u128',
   'consumer_checkpoint_sha256':'h','consumer_checkpoint_sequence':'u64','protocol_counts_sha256':'h'},
  'failed':{'reason':'reason'},
+ 'cancelled':{'reason':'reason','no_effects_dispatched':'b'},
+ 'rescued':{'reason':'reason','rescue_receipt_sha256':'h','metadata_disabled':'b'},
 }
 class MaintenanceUnavailable(RuntimeError):pass
 def need(ok,code='maintenance_record_invalid'):
@@ -84,12 +86,18 @@ def validate_operation(op):
         expected=record_body(op['operation_id'],op['approval_sha256'],b['phase'],b['facts'],b['at_ns'],
                              b['clock_domain_sha256'],i+1,previous)
         need(b==expected and row['sha256']==digest(b))
-        if b['phase']=='failed':need(i>0 and i==len(rows)-1)
+        if b['phase']in('failed','cancelled','rescued'):
+            need(i>0 and i==len(rows)-1)
+            if b['phase']=='cancelled':need(i<=2 and b['facts']['no_effects_dispatched']is True)
+            if b['phase']=='rescued':need(i>=3 and b['facts']['metadata_disabled']is True)
+            if b['phase']!='failed':
+                need(b['clock_domain_sha256']==rows[0]['body']['clock_domain_sha256']
+                  and uint(b['at_ns'],64)>=uint(rows[i-1]['body']['at_ns'],64))
         else:
             need(i<len(PHASES)and b['phase']==PHASES[i])
             need(b['clock_domain_sha256']==rows[0]['body']['clock_domain_sha256'])
             if i:need(uint(b['at_ns'],64)>=uint(rows[i-1]['body']['at_ns'],64))
-        if i:need(rows[i-1]['body']['phase']not in ('complete','failed'))
+        if i:need(rows[i-1]['body']['phase']not in ('complete','failed','cancelled','rescued'))
         previous=row['sha256']
     return op
 def validate_snapshot(value):

@@ -134,6 +134,18 @@ class Backend:
         except (OSError,subprocess.TimeoutExpired):raise ObservationUnavailable('fixed_subprocess_unconfirmed')from None
         if r.returncode or len(r.stdout)>limit or len(r.stderr)>65536:raise ObservationUnavailable('fixed_subprocess_unconfirmed')
         return r.stdout
+    def authorize_rescue(self,op):
+        # Separate, initially sealed restore scope. It never re-enables the
+        # metadata grant and cannot outlive the master maintenance authority.
+        self.authorize(op,mutation=False);p=self.policy;b=facts(op,'begin')
+        need(p['enabled']and(p['expires_at']is None or time.time()<p['expires_at']),
+             'maintenance_authorization_closed')
+        need(b['purpose']=='backup_snapshot'and all(p[role]['identity_sha256']==b[role+'_binding_sha256']
+             for role in('source','consumer')),'rescue_binding_changed')
+    def validate_rescue_duration(self,duration_ns):
+        expires=self.policy['expires_at']
+        need(expires is None or time.time()+duration_ns/1_000_000_000<expires,
+             'rescue_authority_too_short')
     def inspect(self,role):
         need(role in('source','consumer'));target=self.policy[role]
         return self._inspect_target(target)

@@ -8,6 +8,8 @@ from test_maintenance_controller import Backend
 from test_maintenance_journal import H,OP
 
 class LiveClockBackend(Backend):
+    def validate_rescue_duration(self,_duration):pass
+    def authorize_rescue(self,op):self.authorize(op,mutation=True)
     def facts(self,phase,op,**kwargs):
         v=super().facts(phase,op,**kwargs)
         if phase in('consumer_started','source_started'):
@@ -27,6 +29,10 @@ class Tests(unittest.TestCase):
           'code_manifest_sha256':self.op()['records'][0]['body']['facts']['code_manifest_sha256'],
           'maximum_duration_ns':'10000','observation_interval_ns':'1'}
         self.write('backup-plan-policy.json',self.profile)
+        from backup_rescue import SCOPE as RESCUE_SCOPE
+        self.write('backup-rescue-policy.json',{'schema_version':1,'scope':RESCUE_SCOPE,'enabled':True,
+          'approval_sha256':H,'code_manifest_sha256':self.profile['code_manifest_sha256'],
+          'maximum_recovery_ns':'10000','observation_interval_ns':'1'})
     def tearDown(self):self.j.close();self.temp.cleanup()
     def op(self):return self.j.status()['body']['operations'][0]
     def write(self,name,value):

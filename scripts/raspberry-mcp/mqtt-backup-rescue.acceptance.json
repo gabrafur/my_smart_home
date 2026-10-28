@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "scope": "initially_sealed_fixed_backup_rescue_owned_isolated_fixture",
+  "verified_on": "2026-10-28",
+  "static_file_transaction_targets": 45,
+  "Root_static_modules": 26,
+  "source_or_restore_scope_activated_in_house": false,
+  "full24h_proven": false,
+  "isolated_Root_units": {
+    "tests": 321,
+    "failures": 0,
+    "skipped": 0
+  },
+  "native_fixture": {
+    "network": "none",
+    "residential_mounts_or_secrets": false,
+    "actual_primary_plan_deadline_elapsed": true,
+    "actual_Root_rescue_library": true,
+    "Root_reader_instance_preserved": true,
+    "source_and_consumer_container_IDs_preserved": true,
+    "metadata_revoked_before_starts": true,
+    "metadata_authorization_file_unchanged": true,
+    "exact_rescue_effects": [
+      "start_consumer",
+      "start_source"
+    ],
+    "residential_services_restarted": 0,
+    "MQTT_payload_delivery_after_restart": true,
+    "canonical_NodeRED_graph_loaded": true,
+    "consumer_counts_and_ACK_preserved": true,
+    "consumer_reader_observation": null,
+    "NodeRED_external_effects": 0,
+    "NodeRED_errors": 0,
+    "verified_frames_before_revocation": 27,
+    "ACK_receipts_before_revocation": 6,
+    "no_frames_after_revocation": true,
+    "metadata_integrity": "unknown",
+    "journal_terminal": "rescued",
+    "journal_records": 8,
+    "normal_maintenance_comparisons_not_claimed": true,
+    "owned_containers_removed": 2,
+    "Root_reader_hard_AS_bytes": 134217728,
+    "Root_reader_capabilities": [
+      "CHOWN",
+      "DAC_READ_SEARCH",
+      "SYS_PTRACE"
+    ],
+    "Root_reader_no_new_privileges": true,
+    "combined_active_container_CPU_quota": 0.35,
+    "Node_old_space_MiB": 128,
+    "Node_RSS_hard_limit_proven": false,
+    "installed_helper_permissions_proven": false,
+    "no_readable_datagrams_after_revocation": true,
+    "kernel_socket_readiness_checked_without_reading_contents": true
+  },
+  "safety_boundaries": [
+    "initially_sealed_expiry_not_reset_on_retry",
+    "master_authority_and_original_targets_required",
+    "no_stops_or_metadata_reenable",
+    "original_and_rescue_uncertain_start_intents_not_reissued",
+    "closed_metadata_scope_does_not_renew_a_read_grant",
+    "no_effect_prefix_cancelled_only_before_any_effect_intent",
+    "unknown_integrity_and_failed_backup_preserved_after_rescue"
+  ],
+  "pending": [
+    "protected_transport_of_Root_snapshot_and_complete_maintenance_receipts_into_external_backup",
+    "continued_daily_backup_in_explicit_closed_metadata_mode",
+    "approved_outage_budget_alignment_and_complete_installed_helper_contract",
+    "journal_archive_preserving_consumed_operations",
+    "container_update_coordination_and_consumer_CID_recreation",
+    "complete_installer_revoke_rollback_and_MCP_projection",
+    "specific_source_and_restore_scope_approval",
+    "actual_household_natural_cycle_and_full24h_acceptance",
+    "seven_isolated_application_restores"
+  ],
+  "private_runtime_or_credentials_exported": false,
+  "directed_JS_tests": {
+    "tests": 69,
+    "failures": 0
+  },
+  "historical_native_fixture": {
+    "verified_frames_before_revocation": 29,
+    "functional_restoration_proven": true,
+    "silence_evidence": "ledger_only;superseded_by_explicit_kernel_socket_check"
+  }
+}

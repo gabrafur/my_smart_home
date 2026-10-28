@@ -98,6 +98,24 @@ class Tests(unittest.TestCase):
         self.open();self.complete();before=self.j.status()
         with self.assertRaises(m.MaintenanceUnavailable):self.append('failed',values={'reason':'effect_uncertain'},at=200)
         self.assertEqual(self.j.status(),before)
+    def test_cancelled_prefix_is_terminal_only_before_any_effect_intent(self):
+        self.open();self.append('begin');self.append('armed')
+        self.append('cancelled',values={'reason':'deadline','no_effects_dispatched':True},at=103)
+        self.assertEqual(m.correlation_facts(self.j.status()['body']['operations'][0])['phase'],'cancelled')
+        with self.assertRaises(m.MaintenanceUnavailable):self.append('source_stop_intent',at=104)
+    def test_cancelled_cannot_erase_an_uncertain_effect_or_reverse_the_clock(self):
+        self.open();self.append('begin');self.append('armed');self.append('source_stop_intent')
+        before=self.j.status()
+        with self.assertRaises(m.MaintenanceUnavailable):
+            self.append('cancelled',values={'reason':'deadline','no_effects_dispatched':True},at=104)
+        self.assertEqual(self.j.status(),before)
+    def test_rescue_is_terminal_unknown_evidence_and_preserves_original_intents(self):
+        self.open();self.append('begin');self.append('armed');self.append('source_stop_intent')
+        self.append('rescued',values={'reason':'deadline','rescue_receipt_sha256':H,'metadata_disabled':True},at=103)
+        v=self.j.status()['body']['operations'][0];r=m.correlation_facts(v)
+        self.assertEqual(r['phase'],'rescued');self.assertFalse(r['full24h_proven']);self.assertNotIn('comparisons',r)
+        self.assertEqual(v['records'][2]['body']['phase'],'source_stop_intent')
+        with self.assertRaises(m.MaintenanceUnavailable):self.append('source_stopped',at=104)
     def test_broken_source_readiness_binding_or_cut_is_visible_in_comparison_facts(self):
         self.open();op=self.complete()
         cases=[('source_drained','source_closed',False,'old_source_closed'),
