@@ -1,0 +1,682 @@
+{
+  "done": {
+    "body": {
+      "acked_buckets": "1",
+      "acked_counts": {
+        "ack_clock_conflicts": "0",
+        "ack_rejections": "0",
+        "duplicates": "0",
+        "faults": {
+          "clock_domain_changed": "0",
+          "reader_restart": "0",
+          "source_binding_unverified": "0",
+          "source_frame_rejected": "1",
+          "source_identity_lost": "0",
+          "transport_ancillary_invalid": "0",
+          "transport_truncated": "0"
+        },
+        "frames": "1",
+        "report_gaps": "1",
+        "sessions": "1",
+        "source_clock_faults": "0",
+        "source_epochs": "1",
+        "source_send_failures": "0",
+        "stats": {
+          "client_offline": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "connect": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "disconnect": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "publish_in": {
+            "expected": "2",
+            "missing": "0",
+            "observed": "2",
+            "source_dropped": "0",
+            "timed": "2",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "publish_out": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "subscribe": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "unsubscribe": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          }
+        },
+        "unknown_epoch_tails": "0"
+      },
+      "last_ack": {
+        "ack_at_ns": "500",
+        "ack_clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "bucket_id": "1",
+        "clock_ordered": true,
+        "publication_to_ack_ns": "100",
+        "sha256": "a219b6a7936846db29401158e1191a2af671b5961765ea589a895a9af440221f",
+        "source_to_ack": {
+          "client_offline": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "connect": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "disconnect": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "publish_in": {
+            "observed": "2",
+            "timed": "2",
+            "timing_unknown": "0",
+            "upper_ns": "350"
+          },
+          "publish_out": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "subscribe": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "unsubscribe": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          }
+        }
+      },
+      "packet": null,
+      "source_clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "schema_version": 1,
+    "sha256": "95161bbd7358742ef9c30ca7e702532ea6bad2c431ad5892d652a0c1df65c896"
+  },
+  "first": {
+    "body": {
+      "acked_buckets": "0",
+      "acked_counts": {
+        "ack_clock_conflicts": "0",
+        "ack_rejections": "0",
+        "duplicates": "0",
+        "faults": {
+          "clock_domain_changed": "0",
+          "reader_restart": "0",
+          "source_binding_unverified": "0",
+          "source_frame_rejected": "0",
+          "source_identity_lost": "0",
+          "transport_ancillary_invalid": "0",
+          "transport_truncated": "0"
+        },
+        "frames": "0",
+        "report_gaps": "0",
+        "sessions": "0",
+        "source_clock_faults": "0",
+        "source_epochs": "0",
+        "source_send_failures": "0",
+        "stats": {
+          "client_offline": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "connect": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "disconnect": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "publish_in": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "publish_out": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "subscribe": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "unsubscribe": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          }
+        },
+        "unknown_epoch_tails": "0"
+      },
+      "last_ack": null,
+      "packet": {
+        "body": {
+          "aggregate": {
+            "clock_domain_conflict": false,
+            "clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "counts": {
+              "ack_clock_conflicts": "0",
+              "ack_rejections": "0",
+              "duplicates": "0",
+              "faults": {
+                "clock_domain_changed": "0",
+                "reader_restart": "0",
+                "source_binding_unverified": "0",
+                "source_frame_rejected": "1",
+                "source_identity_lost": "0",
+                "transport_ancillary_invalid": "0",
+                "transport_truncated": "0"
+              },
+              "frames": "1",
+              "report_gaps": "1",
+              "sessions": "1",
+              "source_clock_faults": "0",
+              "source_epochs": "1",
+              "source_send_failures": "0",
+              "stats": {
+                "client_offline": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "connect": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "disconnect": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "publish_in": {
+                  "expected": "2",
+                  "missing": "0",
+                  "observed": "2",
+                  "source_dropped": "0",
+                  "timed": "2",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "publish_out": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "subscribe": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "unsubscribe": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                }
+              },
+              "unknown_epoch_tails": "0"
+            },
+            "first_reader_ns": "100",
+            "last_reader_ns": "300",
+            "max_socket_ns": {
+              "client_offline": null,
+              "connect": null,
+              "disconnect": null,
+              "publish_in": "150",
+              "publish_out": null,
+              "subscribe": null,
+              "unsubscribe": null
+            },
+            "oldest_source_ns": {
+              "client_offline": null,
+              "connect": null,
+              "disconnect": null,
+              "publish_in": "150",
+              "publish_out": null,
+              "subscribe": null,
+              "unsubscribe": null
+            }
+          },
+          "bucket_id": "1",
+          "previous_ack": null,
+          "published_at_ns": "400",
+          "publisher_clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        },
+        "schema_version": 1,
+        "sha256": "a219b6a7936846db29401158e1191a2af671b5961765ea589a895a9af440221f"
+      },
+      "source_clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "schema_version": 1,
+    "sha256": "c66dbcca022aa859d45e0d604864d05d399648661865c12146e5adb31ff930e6"
+  },
+  "scope": "synthetic_metadata_no_household_data",
+  "second": {
+    "body": {
+      "acked_buckets": "1",
+      "acked_counts": {
+        "ack_clock_conflicts": "0",
+        "ack_rejections": "0",
+        "duplicates": "0",
+        "faults": {
+          "clock_domain_changed": "0",
+          "reader_restart": "0",
+          "source_binding_unverified": "0",
+          "source_frame_rejected": "1",
+          "source_identity_lost": "0",
+          "transport_ancillary_invalid": "0",
+          "transport_truncated": "0"
+        },
+        "frames": "1",
+        "report_gaps": "1",
+        "sessions": "1",
+        "source_clock_faults": "0",
+        "source_epochs": "1",
+        "source_send_failures": "0",
+        "stats": {
+          "client_offline": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "connect": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "disconnect": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "publish_in": {
+            "expected": "2",
+            "missing": "0",
+            "observed": "2",
+            "source_dropped": "0",
+            "timed": "2",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "publish_out": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "subscribe": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          },
+          "unsubscribe": {
+            "expected": "0",
+            "missing": "0",
+            "observed": "0",
+            "source_dropped": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "transport_missing": "0"
+          }
+        },
+        "unknown_epoch_tails": "0"
+      },
+      "last_ack": {
+        "ack_at_ns": "500",
+        "ack_clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "bucket_id": "1",
+        "clock_ordered": true,
+        "publication_to_ack_ns": "100",
+        "sha256": "a219b6a7936846db29401158e1191a2af671b5961765ea589a895a9af440221f",
+        "source_to_ack": {
+          "client_offline": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "connect": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "disconnect": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "publish_in": {
+            "observed": "2",
+            "timed": "2",
+            "timing_unknown": "0",
+            "upper_ns": "350"
+          },
+          "publish_out": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "subscribe": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          },
+          "unsubscribe": {
+            "observed": "0",
+            "timed": "0",
+            "timing_unknown": "0",
+            "upper_ns": null
+          }
+        }
+      },
+      "packet": {
+        "body": {
+          "aggregate": {
+            "clock_domain_conflict": false,
+            "clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "counts": {
+              "ack_clock_conflicts": "0",
+              "ack_rejections": "0",
+              "duplicates": "0",
+              "faults": {
+                "clock_domain_changed": "0",
+                "reader_restart": "0",
+                "source_binding_unverified": "0",
+                "source_frame_rejected": "0",
+                "source_identity_lost": "0",
+                "transport_ancillary_invalid": "0",
+                "transport_truncated": "0"
+              },
+              "frames": "1",
+              "report_gaps": "0",
+              "sessions": "0",
+              "source_clock_faults": "0",
+              "source_epochs": "0",
+              "source_send_failures": "0",
+              "stats": {
+                "client_offline": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "connect": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "disconnect": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "publish_in": {
+                  "expected": "1",
+                  "missing": "0",
+                  "observed": "1",
+                  "source_dropped": "0",
+                  "timed": "1",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "publish_out": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "subscribe": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                },
+                "unsubscribe": {
+                  "expected": "0",
+                  "missing": "0",
+                  "observed": "0",
+                  "source_dropped": "0",
+                  "timed": "0",
+                  "timing_unknown": "0",
+                  "transport_missing": "0"
+                }
+              },
+              "unknown_epoch_tails": "0"
+            },
+            "first_reader_ns": "700",
+            "last_reader_ns": "700",
+            "max_socket_ns": {
+              "client_offline": null,
+              "connect": null,
+              "disconnect": null,
+              "publish_in": "530",
+              "publish_out": null,
+              "subscribe": null,
+              "unsubscribe": null
+            },
+            "oldest_source_ns": {
+              "client_offline": null,
+              "connect": null,
+              "disconnect": null,
+              "publish_in": "170",
+              "publish_out": null,
+              "subscribe": null,
+              "unsubscribe": null
+            }
+          },
+          "bucket_id": "2",
+          "previous_ack": {
+            "ack_at_ns": "500",
+            "ack_clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bucket_id": "1",
+            "clock_ordered": true,
+            "publication_to_ack_ns": "100",
+            "sha256": "a219b6a7936846db29401158e1191a2af671b5961765ea589a895a9af440221f",
+            "source_to_ack": {
+              "client_offline": {
+                "observed": "0",
+                "timed": "0",
+                "timing_unknown": "0",
+                "upper_ns": null
+              },
+              "connect": {
+                "observed": "0",
+                "timed": "0",
+                "timing_unknown": "0",
+                "upper_ns": null
+              },
+              "disconnect": {
+                "observed": "0",
+                "timed": "0",
+                "timing_unknown": "0",
+                "upper_ns": null
+              },
+              "publish_in": {
+                "observed": "2",
+                "timed": "2",
+                "timing_unknown": "0",
+                "upper_ns": "350"
+              },
+              "publish_out": {
+                "observed": "0",
+                "timed": "0",
+                "timing_unknown": "0",
+                "upper_ns": null
+              },
+              "subscribe": {
+                "observed": "0",
+                "timed": "0",
+                "timing_unknown": "0",
+                "upper_ns": null
+              },
+              "unsubscribe": {
+                "observed": "0",
+                "timed": "0",
+                "timing_unknown": "0",
+                "upper_ns": null
+              }
+            }
+          },
+          "published_at_ns": "800",
+          "publisher_clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        },
+        "schema_version": 1,
+        "sha256": "79cd44bd1698e8660ea1179d4929aa360abf798f005861548c72332d5fabce5f"
+      },
+      "source_clock_domain_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "schema_version": 1,
+    "sha256": "01951bfa4e8d873c25e7feb9424a122951389720c19b9eedcf4ae27a7931f0e9"
+  }
+}

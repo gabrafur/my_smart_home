@@ -148,6 +148,8 @@ appdaemon/appdaemon.yaml
 appdaemon/secrets.yaml
 # Fixed runtime host observations; publish only reviewed sanitized receipts.
 /nodered/.host-health-observer/
+/nodered/.mqtt-source-observer-report/
+/nodered/.mqtt-source-observer-consumer/
 
 # Sanitized operational diagnostics remain local runtime, never source
 nodered/.notification-diagnostics.json

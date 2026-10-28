@@ -9,6 +9,7 @@ import { NOTIFICATION_HUBS, installNotificationHubs, refreshNotificationWireRout
 import { installStartupReadiness } from "./install-startup-readiness.mjs";
 import { installGlobalDiagnostics } from "./install-global-diagnostics.mjs";
 import { installHostObserver } from "./install-host-observer-flow.mjs";
+import { installMqttNative } from "./install-mqtt-native-observer-flow.mjs";
 import { installOperationalAlerts } from "./install-operational-alerts.mjs";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
@@ -30,8 +31,9 @@ const externalEventOutIds = [
   "notification_hub_mobile_observer_out",
   "notification_hub_alexa_observer_out",
   "notification_hub_persistent_observer_out",
+  "mq_native_test_global_out",
 ];
-const parsedFlows = installHostObserver(installStartupReadiness(installOperationalAlerts(JSON.parse(fs.readFileSync(sourcePath, "utf8")))));
+const parsedFlows = installMqttNative(installHostObserver(installStartupReadiness(installOperationalAlerts(JSON.parse(fs.readFileSync(sourcePath, "utf8"))))));
 const notificationHubTabs = Object.values(NOTIFICATION_HUBS).map(({ tab }) => tab);
 const hasNotificationHubs = notificationHubTabs.every((tabId) =>
   parsedFlows.some((node) => node.id === tabId && node.type === "tab")

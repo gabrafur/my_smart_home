@@ -42,6 +42,17 @@ vendored in this repository. The exact release archive and SHA-256 are pinned
 in `local-ai-integration/local-ai-rtx.lock.json`; its MIT text accompanies the
 upstream release.
 
+## Mosquitto SDK build inputs
+
+The opt-in MQTT metadata observer builds against the official Mosquitto 2.1.2
+SDK, commit `99fa50f30e325609394c324c8ff71cfbbe95d8ab`, under
+`EPL-2.0 OR BSD-3-Clause`. Its headers are fetched by exact Git object and
+SHA-256, rather than vendored. Unmodified SDK license texts and the source
+manifest are preserved in
+[`mqtt-observation/native`](scripts/raspberry-mcp/runtime-source/mqtt-observation/native/sdk-manifest.json).
+Build exports include these notices and the original project's license.
+See the [observer contract](docs/MQTT_SOURCE_OBSERVER.md).
+
 ## Repository-level license status
 
 The root [LICENSE](LICENSE) applies to original project work under

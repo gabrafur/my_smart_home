@@ -1,0 +1,16 @@
+[Unit]
+Description=Verified MQTT metadata input
+Before=raspberry-mqtt-observation.service
+
+[Socket]
+ListenDatagram=/run/raspberry-mqtt-observation/source.sock
+SocketUser=root
+SocketGroup=1883
+SocketMode=0620
+DirectoryMode=0755
+PassCredentials=yes
+FileDescriptorName=source
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

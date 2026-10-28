@@ -27,6 +27,7 @@ placeholders.
 | [Monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md) | Queda e recuperação de Zigbee, Tuya e Internet no Node-RED | [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
 | [Recuperação do acesso remoto ao Codex](CODEX_REMOTE_RECOVERY.md) | Detecção de SSH/App Server, recuperação automática idempotente e separação do Tailscale | Português |
 | [MCP Raspberry: administração e portabilidade](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) | Autoridade delegada, catálogo, instalação, conexão com outros clientes e revogação | resumo no índice em inglês |
+| [Observação nativa MQTT](MQTT_SOURCE_OBSERVER.md) | Candidato desligado por padrão: metadados, política visual, build, autorização e recuperação | resumo no índice em inglês |
 | [Notificações globais de falha do Node-RED](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Erros de fluxos, indisponibilidade do runtime e teste obrigatório de entrega ao celular | Resumo em inglês abaixo |
 | [Hubs canônicos de notificação](NODERED_NOTIFICATION_HUBS.md) | Contratos móveis, Alexa e HA persistente, destinatários fail-closed e matriz de equivalência | Resumo em inglês abaixo |
 | [Motor de layout ELK do Node-RED](node-red/ELK_LAYOUT_ENGINE.md) | Dry-run, allowlist visual, métricas, idempotência e rollback seguro | Resumo em inglês abaixo |

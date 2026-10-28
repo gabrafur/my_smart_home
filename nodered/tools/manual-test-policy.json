@@ -588,6 +588,33 @@
             ],
             "automated_test": "test-host-observer.mjs",
             "reason": "Replay completo da fonte sanitizada,validade,thresholds visuais,dedupe/cursor/lifecycle e gate global;contexto sint\u00e9tico separado;sem exec,HA,MQTT ou dispositivos."
+        },
+        "mqtt_native_observer_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "mq_native_test_group",
+                "mq_native_test_reset",
+                "mq_native_test_within",
+                "mq_native_test_duplicate",
+                "mq_native_test_over",
+                "mq_native_test_unknown",
+                "mq_native_test_missing",
+                "mq_native_test_no_events",
+                "mq_native_test_unavailable",
+                "mq_native_test_busy",
+                "mq_native_test_malformed",
+                "mq_native_test_disabled",
+                "mq_native_test_reader_denied",
+                "mq_native_test_reader_clock",
+                "mq_native_test_reader_future",
+                "mq_native_test_reader_stale",
+                "mq_native_test_reader_missing"
+            ],
+            "automated_test": "test-mqtt-native-observer-flow.mjs",
+            "dry_run_terminal_ids": [
+                "global_observer_dry_run_terminal"
+            ],
+            "reason": "Replay nominal, negativo, reset, perda, duplicata, autoriza\u00e7\u00e3o, dom\u00ednio temporal e leitor antigo atravessa a mesma normaliza\u00e7\u00e3o, pol\u00edtica visual, dedupe e gate final. Em test_mode, nenhum exec, arquivo, ACK, servi\u00e7o, MQTT ou push \u00e9 executado; o terminal compartilhado recebe simulated:true e dispatched:false. Aus\u00eancia de eventos n\u00e3o comprova recupera\u00e7\u00e3o."
         }
     }
 }

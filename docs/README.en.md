@@ -26,6 +26,7 @@ physical identifiers must appear only as placeholders.
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee, Tuya, and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Codex remote access recovery](CODEX_REMOTE_RECOVERY.md) | Portuguese runbook for SSH/App Server detection, idempotent automatic recovery, and Tailscale separation | Portuguese source |
 | [Raspberry MCP administration and portability](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) | Delegated server administration, schemas, installation, client connections and revocation; current acceptance and deployment limits are explicit | Portuguese runbook |
+| [Native MQTT metadata observation](MQTT_SOURCE_OBSERVER.md) | Opt-in source candidate: fixed seven-class metadata, visual policy, verified SDK build and data-only recovery; installation and permanent access remain separately approved | Portuguese runbook |
 | [Global Node-RED failure notifications](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Portuguese runbook for flow errors, runtime unavailability, and the mandatory mobile delivery test | Portuguese source |
 | [Canonical Node-RED notification hubs](NODERED_NOTIFICATION_HUBS.md) | Portuguese contracts for mobile, Alexa, and HA persistent hubs, fail-closed recipients, and the migration equivalence matrix | Portuguese source |
 | [Node-RED ELK layout engine](node-red/ELK_LAYOUT_ENGINE.md) | Portuguese runbook for dry-run planning, the visual-only allowlist, quality gates, idempotency, and safe rollback | Portuguese source |

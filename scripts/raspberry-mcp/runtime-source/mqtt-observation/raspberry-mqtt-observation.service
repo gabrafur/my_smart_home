@@ -1,0 +1,47 @@
+[Unit]
+Description=Verified metadata-only MQTT reader
+Requires=raspberry-mqtt-observation.socket
+After=local-fs.target raspberry-mqtt-observation.socket
+Before=docker.service
+RequiresMountsFor=/mnt/data/docker/nodered /var/lib/raspberry-mqtt-observation
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I -S -B /opt/raspberry-mqtt-observation/worker.py
+Restart=on-failure
+RestartSec=2
+TimeoutStartSec=5
+TimeoutStopSec=5
+WatchdogSec=15
+RuntimeDirectory=raspberry-mqtt-observation
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+StateDirectory=raspberry-mqtt-observation
+StateDirectoryMode=0700
+UMask=0077
+LimitAS=134217728
+CPUQuota=10%
+CPUAccounting=yes
+Nice=19
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+ReadWritePaths=/mnt/data/docker/nodered/.mqtt-source-observer-report
+ReadOnlyPaths=/mnt/data/docker/nodered/.mqtt-source-observer-consumer
+
+[Install]
+WantedBy=multi-user.target

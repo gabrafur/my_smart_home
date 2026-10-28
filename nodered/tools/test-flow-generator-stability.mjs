@@ -114,6 +114,7 @@ for (const [name, script] of [
   ["arrival", "install-arrival-context-flow.mjs"],
   ["location", "install-location-lifecycle-flow.mjs"],
   ["security", "install-security-light-visual-policy.mjs"],
+  ["mqtt metadata", "install-mqtt-native-observer-flow.mjs"],
   ["observer", "install-global-flow-observer.mjs"],
 ]) {
   const target = path.join(temporaryDirectory, `${name}.json`);

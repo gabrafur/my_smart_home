@@ -1,0 +1,10 @@
+const key = msg._mqtt_flight_key;
+const current = flow.get(key,"memoryOnly");
+if (current !== undefined && current !== false) return null;
+const sequence = flow.get(key + "_sequence","memoryOnly") ?? 0;
+if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence >= Number.MAX_SAFE_INTEGER) return null;
+msg._mqtt_flight_token = String(sequence + 1);
+flow.set(key + "_sequence",sequence + 1,"memoryOnly");
+flow.set(key,{token:msg._mqtt_flight_token},"memoryOnly");
+msg._mqtt_owns_flight = true;
+return msg;

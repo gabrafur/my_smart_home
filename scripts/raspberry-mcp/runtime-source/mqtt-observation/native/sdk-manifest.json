@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/eclipse-mosquitto/mosquitto",
+  "version": "2.1.2",
+  "commit": "99fa50f30e325609394c324c8ff71cfbbe95d8ab",
+  "tag_object": "691eab38b43c16235251bf4a4c83b2b29195ba76",
+  "license": "EPL-2.0 OR BSD-3-Clause",
+  "files": [
+    {
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "aae2e8ccf529cef6b058f98ede72090f6ae92721",
+      "sha256": "33d1851e40fddba7eff95bcc01d1a178a87340a1126893012892913d5e6fdfa6",
+      "bytes": 204,
+      "url": "https://raw.githubusercontent.com/eclipse-mosquitto/mosquitto/99fa50f30e325609394c324c8ff71cfbbe95d8ab/LICENSE.txt"
+    },
+    {
+      "path": "edl-v10",
+      "git_blob_sha1": "bc03db03a5926e411b81af79772ad7cd817c6b77",
+      "sha256": "86fc4a3f97cb769c04e8da557036c1066eb8bb22b2d0a5dd31464990fe84047c",
+      "bytes": 1568,
+      "url": "https://raw.githubusercontent.com/eclipse-mosquitto/mosquitto/99fa50f30e325609394c324c8ff71cfbbe95d8ab/edl-v10"
+    },
+    {
+      "path": "epl-v20",
+      "git_blob_sha1": "e48e0963459bf4c4e175956b657a8f4a91967880",
+      "sha256": "8c349f80764d0648e645f41ef23772a70c995a0924b5235f735f4a3d09df127c",
+      "bytes": 14197,
+      "url": "https://raw.githubusercontent.com/eclipse-mosquitto/mosquitto/99fa50f30e325609394c324c8ff71cfbbe95d8ab/epl-v20"
+    },
+    {
+      "path": "include/mosquitto/broker.h",
+      "git_blob_sha1": "9a4cd1f19c62bf3857908bbf784784fef8a493a1",
+      "sha256": "59b6c38135b88534a77d762ea629d44a059dbbd844af0d8c9d762e91abad7024",
+      "bytes": 43105,
+      "url": "https://raw.githubusercontent.com/eclipse-mosquitto/mosquitto/99fa50f30e325609394c324c8ff71cfbbe95d8ab/include/mosquitto/broker.h"
+    },
+    {
+      "path": "include/mosquitto/broker_plugin.h",
+      "git_blob_sha1": "95d9ec43266132f3b66039f97262b0d9eb997d3e",
+      "sha256": "5d0f299c0c19473abdca66c8e15e85b55dee8836adcdebb2032ca64aeeb86e7d",
+      "bytes": 16056,
+      "url": "https://raw.githubusercontent.com/eclipse-mosquitto/mosquitto/99fa50f30e325609394c324c8ff71cfbbe95d8ab/include/mosquitto/broker_plugin.h"
+    },
+    {
+      "path": "include/mosquitto/defs.h",
+      "git_blob_sha1": "8af79a28493c948ae003d2c6e9d78474015368a5",
+      "sha256": "619f5b36d518f74c9810d65ab93be8c5049530359ee7de4121b8f0a9f2365e3e",
+      "bytes": 4271,
+      "url": "https://raw.githubusercontent.com/eclipse-mosquitto/mosquitto/99fa50f30e325609394c324c8ff71cfbbe95d8ab/include/mosquitto/defs.h"
+    },
+    {
+      "path": "include/mosquitto/mqtt_protocol.h",
+      "git_blob_sha1": "b67b0dfb35fe2d3fc7bc85dbf3f84b4eb6049e66",
+      "sha256": "b3e7fe7bae549e318605146a4e54f723c683af08878eb9057858467b72937855",
+      "bytes": 13291,
+      "url": "https://raw.githubusercontent.com/eclipse-mosquitto/mosquitto/99fa50f30e325609394c324c8ff71cfbbe95d8ab/include/mosquitto/mqtt_protocol.h"
+    }
+  ]
+}
