@@ -30,18 +30,18 @@ class LedgerTests(unittest.TestCase):
 
     def test_invalid_frame_and_unverified_peer_are_durable_without_raw_data(self):
         obj=self.baseline();old=copy.deepcopy(obj.body['state'])
-        secret='PRIVATE_PAYLOAD_CANARY_not_metadata'
-        obj.frame(secret.encode(),350,source_binding_verified=True)
-        data=frame();data['private']=secret
+        canary='PRIVACY_TEST_FIXTURE_payload_not_metadata'
+        obj.frame(canary.encode(),350,source_binding_verified=True)
+        data=frame();data['private']=canary
         obj.frame(wire(data),360,source_binding_verified=True)
-        obj.frame(secret.encode(),370,source_binding_verified=False)
+        obj.frame(canary.encode(),370,source_binding_verified=False)
         self.assertEqual(obj.body['state'],old)
         self.assertEqual(obj.body['faults']['source_frame_rejected'],2)
         self.assertEqual(obj.body['faults']['source_binding_unverified'],1)
         obj.close();obj=self.open(started_ns=400)
         self.assertEqual(obj.body['faults']['source_frame_rejected'],2)
         for path in self.root.iterdir():
-            if path.is_file():self.assertNotIn(secret.encode(),path.read_bytes())
+            if path.is_file():self.assertNotIn(canary.encode(),path.read_bytes())
 
     def test_duplicate_is_idempotent_and_counted_without_source_counter_reset(self):
         obj=self.baseline();state=copy.deepcopy(obj.body['state'])
