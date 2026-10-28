@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "scope": "existing_native_Events_delivery_cadence",
+  "verified_on": "2026-10-28",
+  "delivery_cadence_version": "grouped_minimum_spacing_v2",
+  "actual_MCP_reads": {
+    "events_status": "144_attempt_limit_and_minimum_spacing_observed",
+    "maintenance_capabilities": "same_loaded_closed_summary_observed"
+  },
+  "delivery_limits": {
+    "previous_maximum_attempts_per_24h": 6,
+    "maximum_attempts_per_24h": 144,
+    "minimum_spacing_seconds": 600,
+    "limit_derived_from_spacing": true,
+    "counters_reset": false
+  },
+  "natural_delivery": {
+    "seventh_attempt_in_rolling_24h": "webhook_accepted",
+    "notification_groups_before": 11,
+    "notification_groups_after_first_batch": 3,
+    "prior_dispatch_records_preserved": 27,
+    "post_delivery_dispatch_records": 28,
+    "agent_generated_test_events": 0,
+    "manual_callback_calls": 0
+  },
+  "preservation": {
+    "database_inode_schema_and_activation_epoch": true,
+    "all_prior_events_batches_members_and_transport_receipts": true,
+    "existing_subscription_identity_and_lifetime": true,
+    "household_service_start_times_unchanged": 7,
+    "administrative_authority_lifetimes_and_task_budgets_unchanged": true,
+    "Healthchecks_heartbeat_unchanged": true,
+    "new_MCP_tools_accounts_or_API_billing_path": false
+  },
+  "runtime_reload": {
+    "Events_service": true,
+    "existing_tunnel_reconnected": true,
+    "household_services_restarted": false
+  },
+  "rollback": "fixed_code_and_dependency_pins_only_preserving_live_ledger_and_subscription",
+  "assistant_execution": "confirmed_by_owner_at_destination",
+  "whole_goal_complete": false,
+  "private_runtime_or_credentials_exported": false,
+  "limits": [
+    "server_webhook_acceptance_alone_not_assistant_execution",
+    "spacing_does_not_guarantee_delivery",
+    "subscription_lifetime_remains_separate",
+    "platform_limits_unchanged"
+  ],
+  "assistant_execution_coverage": [
+    "owner_confirmed_destination_receipt_and_summary_analysis",
+    "correlated_to_natural_webhook_delivery",
+    "server_does_not_expose_assistant_run_receipt"
+  ]
+}

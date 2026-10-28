@@ -606,13 +606,18 @@ e motivo explícitos, sem descarte silencioso; arquivo cheio falha fechado.
 contagens de arquivo e vínculos duráveis. `delivery_opportunity` calcula o
 bloqueio, próximo slot e compatibilidade com a validade da assinatura. Os mesmos
 agregados estão em `maintenance_capabilities` no campo `delivery.summary`.
-São projeções fechadas; coleta falha não vira zero. Os limites continuam em
-seis tentativas por 24h e intervalo mínimo de dez minutos, sem reset.
+São projeções fechadas; coleta falha não vira zero. A cadência
+`grouped_minimum_spacing_v2` admite até 144 tentativas em 24h, limite derivado
+do intervalo mínimo preservado de dez minutos. O teto local anterior de seis
+foi removido; tentativas antigas continuam contando, sem reset ou replay.
+Isso não renova a assinatura, não altera limites da plataforma e não modifica
+o heartbeat externo do Healthchecks.
 
 Foi comprovada a leitura dos novos campos pelo cliente MCP real; a entrega de
 um resumo no ciclo natural e a execução do assistente exigem recibos separados.
 Confira o [contrato e procedimento](../scripts/raspberry-mcp/runtime-source/native-events/README.md),
-o [aceite parcial](../scripts/raspberry-mcp/event-summary.acceptance.json) e
+o [aceite histórico do resumo](../scripts/raspberry-mcp/event-summary.acceptance.json),
+o [aceite da cadência atual](../scripts/raspberry-mcp/event-cadence.acceptance.json) e
 os [testes de resumo](../scripts/raspberry-mcp/event-summary.test.mjs).
 
 Atualizar um módulo ESM no disco não muda o import já carregado no frontend
@@ -1023,7 +1028,8 @@ não instala nem autoriza essa ampliação.
 o evento individual legado e `notification_summary_v1`. O schema completo
 está em `scripts/raspberry-mcp/runtime-source/frontend/events-server.mjs`,
 exportado como `eventPayloadSchema`. `inputSchema`, identidade autenticada,
-assinatura, transporte, seis tentativas/24h e intervalo de 600s permanecem.
+assinatura, transporte e intervalo de 600s permanecem; o limite local atual
+é de 144 tentativas/24h pela cadência `grouped_minimum_spacing_v2`.
 
 O resumo contém `project`, `topic`, `source`, `delivery_kind`,
 `source_observed_at`, `summary_as_of`, `notifications`, `covered_event_records`,
@@ -1056,8 +1062,9 @@ somente o recebimento do webhook, processado assincronamente pelo ChatGPT.
 servidor, não uma resposta de falha emitida pela plataforma. Permissão para
 usar ferramentas também não comprova que a tarefa de evento está ativa.
 Não use ausência de linhas em um journal indisponível ou truncado como prova
-de que a descoberta ou execução não aconteceu. Preserve os seis envios por
-24h, o intervalo de 600s, IDs e resultados incertos durante essa conferência.
+de que a descoberta ou execução não aconteceu. Preserve o limite derivado de
+144 tentativas/24h, o intervalo de 600s, IDs e resultados incertos durante essa
+conferência.
 
 Uma entrega agrupada natural foi observada no MCP e no ledger: há batch e
 vínculos duráveis dos eventos cobertos, com webhook aceito. O contrato antigo

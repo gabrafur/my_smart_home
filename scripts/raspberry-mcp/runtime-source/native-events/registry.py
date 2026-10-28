@@ -14,7 +14,8 @@ import re
 import sqlite3
 import stat
 import time
-from delivery_summary import group_events, make_batch, opportunity, VERSION
+from delivery_summary import (group_events, make_batch, opportunity, VERSION,
+    CADENCE_VERSION, MAXIMUM_ATTEMPTS_PER_DAY, MINIMUM_ATTEMPT_SPACING_SECONDS)
 from source_timing import SourceTiming
 from webhook import Refused, callback_parts, key_bytes, signed_headers, verify_callback, post
 
@@ -423,7 +424,9 @@ class Registry:
                 'webhook_transport_timing': self.transport_diagnostics(),
                 'ha_notification_source_timing': self.source_timing.diagnostics(now),
                 'dispatch_states':states,'attempts_last_24h':self.db.execute('SELECT count(*) FROM dispatch WHERE at>?',(now-86400,)).fetchone()[0],
-                'maximum_attempts_per_day':6,'minimum_attempt_spacing_seconds':600,
+                'delivery_cadence_version':CADENCE_VERSION,
+                'maximum_attempts_per_day':MAXIMUM_ATTEMPTS_PER_DAY,
+                'minimum_attempt_spacing_seconds':MINIMUM_ATTEMPT_SPACING_SECONDS,
                 'assistant_run_confirmed':False,'automatic_retry':False,
                 'subscription_attempts':diagnostics,'subscription_diagnostic_error':diagnostic_error,
                 'subscription_diagnostic_coverage':['worker_received_only','not_platform_or_frontend_arrival','last_32_stages_max_8192_bytes'],
@@ -499,7 +502,7 @@ class Registry:
         try:
             now=self.now()
             recent=self.db.execute('SELECT count(*),max(at) FROM dispatch WHERE at>?',(now-86400,)).fetchone()
-            if recent[0]>=6 or recent[1] is not None and now-recent[1]<600:
+            if recent[0]>=MAXIMUM_ATTEMPTS_PER_DAY or recent[1] is not None and now-recent[1]<MINIMUM_ATTEMPT_SPACING_SECONDS:
                 self.db.execute('COMMIT')
                 return {'state':'budget_held'}
             sub,rows,groups=self.summary_plan(now)

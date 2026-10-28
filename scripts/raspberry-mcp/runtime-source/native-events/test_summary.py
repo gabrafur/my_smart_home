@@ -124,15 +124,33 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(self.reg.dispatch_one()['state'],'idle')
         self.assertEqual(self.reg.event_counts(self.now)['eligible_pending_event_records'],0)
 
-    def test_six_attempts_and_spacing_unchanged(self):
-        for i in range(6):
+    def test_seventh_summary_is_allowed_but_minimum_spacing_remains(self):
+        for i in range(7):
             self.add(index=i)
             self.assertEqual(self.reg.dispatch_one()['state'],'webhook_accepted')
             self.assertEqual(self.reg.dispatch_one()['state'],'budget_held')
             self.now+=600
-        self.add(index=7)
+        self.now-=1
+        self.add(index=8)
         self.assertEqual(self.reg.dispatch_one()['state'],'budget_held')
-        self.assertEqual(len(self.calls),6)
+        self.assertEqual(len(self.calls),7)
+
+    def test_legacy_six_attempts_are_preserved_without_reset_or_replay(self):
+        old=[('sub','legacy-'+str(i),'uncertain',self.now-5000+i*600)for i in range(6)]
+        self.reg.db.executemany('INSERT INTO dispatch VALUES(?,?,?,?)',old)
+        self.add(index=7)
+        self.assertEqual(self.reg.dispatch_one()['state'],'webhook_accepted')
+        actual=[tuple(r)for r in self.reg.db.execute("SELECT subscription,event,state,at FROM dispatch WHERE event LIKE 'legacy-%' ORDER BY event")]
+        self.assertEqual(actual,old);self.assertEqual(len(self.calls),1)
+        self.assertEqual(self.reg.status()['attempts_last_24h'],7)
+
+    def test_derived_144_attempt_bound_still_protects_the_sender(self):
+        self.reg.db.executemany('INSERT INTO dispatch VALUES(?,?,?,?)',
+            [('sub',str(i),'uncertain',self.now-1000)for i in range(144)])
+        self.add();before=self.reg.db.execute('SELECT count(*) FROM dispatch').fetchone()[0]
+        self.assertEqual(self.reg.dispatch_one()['state'],'budget_held')
+        self.assertEqual(self.reg.db.execute('SELECT count(*) FROM dispatch').fetchone()[0],before)
+        self.assertEqual(self.calls,[])
 
     def test_expired_subscription_sends_nothing(self):
         self.add()
@@ -141,22 +159,22 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(self.calls,[])
 
     def test_opportunity_after_budget_and_before_lease(self):
-        for i in range(6):
-            self.reg.db.execute('INSERT INTO dispatch VALUES(?,?,?,?)',('sub',str(i),'uncertain',self.now-1000+i*100))
+        for i in range(144):
+            self.reg.db.execute('INSERT INTO dispatch VALUES(?,?,?,?)',('sub',str(i),'uncertain',self.now-2000+i*5))
         self.add()
         result=self.reg.status()['delivery_opportunity']
-        self.assertEqual(result['next_opportunity_at'],s.iso(self.now-1000+86400))
+        self.assertEqual(result['next_opportunity_at'],s.iso(self.now-2000+86400))
         self.assertTrue(result['within_subscription_validity'])
         self.reg.db.execute('UPDATE subscriptions SET expires=?',(self.now+100,))
         self.assertTrue(self.reg.status()['delivery_opportunity']['requires_subscription_renewal'])
 
     def test_opportunity_exact_boundary_is_not_valid_lease(self):
-        result=s.opportunity([self.now]*6,self.now,self.now+86400,1)
+        result=s.opportunity([self.now]*144,self.now,self.now+86400,1)
         self.assertFalse(result['within_subscription_validity'])
 
-    def test_more_than_six_old_attempts_get_correct_release(self):
-        result=s.opportunity([self.now-10+i for i in range(8)],self.now,self.now+86400,1)
-        self.assertEqual(result['next_opportunity_at'],s.iso(self.now-8+86400))
+    def test_more_than_144_old_attempts_get_correct_release(self):
+        result=s.opportunity([self.now-146+i for i in range(146)],self.now,self.now+86400,1)
+        self.assertEqual(result['next_opportunity_at'],s.iso(self.now-144+86400))
 
     def test_collect_failure_keeps_unknown(self):
         self.reg.db.execute('DROP TABLE delivery_members')

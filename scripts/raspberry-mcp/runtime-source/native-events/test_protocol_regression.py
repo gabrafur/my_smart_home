@@ -83,12 +83,14 @@ class Events(unittest.TestCase):
         p={k:v for k,v in self.params.items() if k in ['name','arguments','delivery']};p['delivery']={k:v for k,v in p['delivery'].items() if k!='secret'}
         self.assertEqual(self.reg.unsubscribe(p),{});self.assertEqual(self.reg.unsubscribe(p),{})
         self.assertEqual(self.reg.dispatch_one()['state'],'idle')
-    def test_six_attempt_budget_persistent(self):
+    def test_seventh_attempt_permitted_after_six_without_losing_spacing(self):
         self.reg.subscribe(self.params)
         for index in range(6):
             self.t+=601;self.add(index)
             self.assertEqual(self.reg.dispatch_one()['state'],'webhook_accepted')
         self.t+=601;self.add(7)
+        self.assertEqual(self.reg.dispatch_one()['state'],'webhook_accepted')
+        self.add(8)
         self.assertEqual(self.reg.dispatch_one()['state'],'budget_held')
     def test_unknown_text_never_accepted_into_payload(self):
         with self.assertRaises(w.Refused):self.reg.enqueue('incident','secret password','opened','a'*64,'b'*64,self.t)

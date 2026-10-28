@@ -28,7 +28,8 @@ export function projectSummary(status, now=Date.now()) {
   return unknown('summary_time_unconfirmed');
  const reasons=['subscription_inactive','no_eligible_events','rolling_daily_attempt_limit_reached','minimum_spacing','ready'];
  if(!reasons.includes(op.block_reason)||!integer(op.attempts_last_24h)||
-  op.maximum_attempts_per_day!==6||op.minimum_attempt_spacing_seconds!==600||
+  ![6,144].includes(op.maximum_attempts_per_day)||op.minimum_attempt_spacing_seconds!==600||
+  op.maximum_attempts_per_day===144&&op.delivery_cadence_version!=='grouped_minimum_spacing_v2'||
   op.poll_allowance_seconds!==2||op.opportunity_is_not_delivery_guarantee!==true||
   typeof op.within_subscription_validity!=='boolean'||typeof op.requires_subscription_renewal!=='boolean')
   return unknown('delivery_opportunity_unconfirmed');
@@ -48,7 +49,9 @@ export function projectSummary(status, now=Date.now()) {
   budget_available_at:op.budget_available_at,spacing_available_at:op.spacing_available_at,
   next_opportunity_at:next,subscription_expires_at:expiry,
   within_subscription_validity:op.within_subscription_validity,requires_subscription_renewal:op.requires_subscription_renewal,
-  poll_allowance_seconds:2,opportunity_is_not_delivery_guarantee:true,maximum_attempts_per_day:6,minimum_attempt_spacing_seconds:600};
+  poll_allowance_seconds:2,opportunity_is_not_delivery_guarantee:true,
+  delivery_cadence_version:op.maximum_attempts_per_day===144?'grouped_minimum_spacing_v2':'legacy_six_attempts_v1',
+  maximum_attempts_per_day:op.maximum_attempts_per_day,minimum_attempt_spacing_seconds:600};
  return {state:'observed',version:'notification_summary_v1',queue:cleanQueue,opportunity:cleanOp};
 }
 

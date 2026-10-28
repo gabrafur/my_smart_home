@@ -31,6 +31,14 @@ test('next opportunity beyond subscription requires renewal',()=>{
  x.delivery_opportunity.within_subscription_validity=false;x.delivery_opportunity.requires_subscription_renewal=true;
  const p=projectSummary(x,now);assert.equal(p.state,'observed');assert.equal(p.opportunity.requires_subscription_renewal,true);
 });
+test('reviewed cadence lifts the old six-attempt hold without inventing assistant execution',()=>{
+ const x=good();Object.assign(x.delivery_opportunity,{maximum_attempts_per_day:144,
+  delivery_cadence_version:'grouped_minimum_spacing_v2',block_reason:'ready',budget_available_at:iso(now),
+  next_opportunity_at:iso(now)});
+ const p=projectSummary(x,now);assert.equal(p.state,'observed');assert.equal(p.opportunity.maximum_attempts_per_day,144);
+ assert.equal(p.opportunity.minimum_attempt_spacing_seconds,600);assert.equal(p.opportunity.block_reason,'ready');
+ delete x.delivery_opportunity.delivery_cadence_version;assert.equal(projectSummary(x,now).state,'unknown');
+});
 test('stale/future observed status rejected',()=>{
  for(const at of [now-20001,now+1001]){const x=good();x.observed_at=iso(at);assert.equal(projectSummary(x,now).state,'unknown');}
 });
@@ -46,5 +54,5 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 test('native event grouping keeps protocol and uncertain intents in synthetic SQLite',()=>{
  const r=spawnSync('python3',['-I','-S','-B','-m','unittest','discover','-s',fileURLToPath(new URL('./runtime-source/native-events/',import.meta.url)),'-p','test_*.py'],{encoding:'utf8',timeout:30000,maxBuffer:131072});
- assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);assert.match(r.stderr,/Ran 82 tests/);
+ assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);assert.match(r.stderr,/Ran 84 tests/);
 });

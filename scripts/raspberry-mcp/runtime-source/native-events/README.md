@@ -4,7 +4,12 @@ Código exportado do serviço ativo. Não contém banco, callback, chaves,
 assinaturas, políticas privadas ou autorização de implantação. O catálogo e os
 parâmetros MCP existentes não mudam; `events_status` recebe host raspberry.
 Não execute o worker ou transporte para testar a instalação: aguarde o ciclo
-natural e preserve o orçamento de seis tentativas por 24h e intervalo de 600s.
+natural e preserve o intervalo mínimo de 600s. A política atual
+`grouped_minimum_spacing_v2` deriva o teto de 144 tentativas por janela móvel
+de 24h dessa cadência, substituindo o limite local anterior de seis. Tentativas
+históricas, inclusive incertas, continuam contadas; não há reset nem replay.
+Cada tentativa pode conter até oito grupos. A mudança não renova a inscrição,
+não aciona modelo/API paga e não altera o heartbeat externo do Healthchecks.
 
 `notification_summary_v1` agrupa todas as revisões elegíveis por notificação,
 até oito notificações por tentativa. Estado atual vem do snapshot fresco;
@@ -43,7 +48,7 @@ não mudam, e a tabela adicional permanece. Essa compatibilidade foi validada
 com reversão/reaplicação pelo MCP; não vale para qualquer versão anterior. Não reaplicar manifestos de base antiga sobre
 políticas atualizadas nem substituir arquivos que outra operação modificou.
 
-Os 69 testes Python e os testes de projeção são sintéticos: não enviam webhook,
+Os testes Python e os testes de projeção são sintéticos: não enviam webhook,
 criam assinatura real, executam assistente ou comandam dispositivo. Participam
 da validação pública. Instalação, leitura MCP, entrega natural e execução do
 assistente exigem evidências separadas; testes ou catálogo não as substituem.

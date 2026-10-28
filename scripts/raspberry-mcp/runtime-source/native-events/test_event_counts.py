@@ -87,12 +87,12 @@ class EventCountTests(unittest.TestCase):
 
     def test_budget_hold_is_separate_and_does_not_consume_pending_work(self):
         self.event('pending')
-        for index in range(6):
-            self.reg.db.execute('INSERT INTO dispatch VALUES(?,?,?,?)', ('owned', str(index), 'uncertain', self.now-1))
+        for index in range(144):
+            self.reg.db.execute('INSERT INTO dispatch VALUES(?,?,?,?)', ('owned', str(index), 'uncertain', self.now-1000))
         self.reg.approved = True
         self.assertEqual(self.reg.dispatch_one()['state'], 'budget_held')
         self.assertEqual(self.reg.event_counts(self.now)['eligible_pending_event_records'], 1)
-        self.assertEqual(self.reg.db.execute('SELECT count(*) FROM dispatch').fetchone()[0], 6)
+        self.assertEqual(self.reg.db.execute('SELECT count(*) FROM dispatch').fetchone()[0], 144)
 
     def test_collection_failure_stays_unknown(self):
         self.reg.db.execute('DROP TABLE events')

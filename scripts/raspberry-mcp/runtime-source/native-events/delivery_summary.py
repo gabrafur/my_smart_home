@@ -7,6 +7,11 @@ import re
 
 VERSION = 'notification_summary_v1'
 MAX_GROUPS = 8
+CADENCE_VERSION = 'grouped_minimum_spacing_v2'
+ATTEMPT_WINDOW_SECONDS = 86400
+MINIMUM_ATTEMPT_SPACING_SECONDS = 600
+# The daily bound is derived from spacing, not an additional six-send cap.
+MAXIMUM_ATTEMPTS_PER_DAY = ATTEMPT_WINDOW_SECONDS // MINIMUM_ATTEMPT_SPACING_SECONDS
 PHASES = ('added', 'updated', 'removed')
 
 
@@ -102,9 +107,9 @@ def opportunity(attempt_times, now, expires, pending):
             or any(not finite(at) or at > now+1 for at in attempt_times)
             or type(pending) is not int or pending < 0):
         raise ValueError('delivery_opportunity_unconfirmed')
-    recent = sorted(at for at in attempt_times if at > now-86400)
-    budget_at = recent[-6]+86400 if len(recent) >= 6 else now
-    spacing_at = recent[-1]+600 if recent else now
+    recent = sorted(at for at in attempt_times if at > now-ATTEMPT_WINDOW_SECONDS)
+    budget_at = recent[-MAXIMUM_ATTEMPTS_PER_DAY]+ATTEMPT_WINDOW_SECONDS if len(recent) >= MAXIMUM_ATTEMPTS_PER_DAY else now
+    spacing_at = recent[-1]+MINIMUM_ATTEMPT_SPACING_SECONDS if recent else now
     next_at = max(now, budget_at, spacing_at)
     active = expires is not None and expires > now
     reason = ('subscription_inactive' if not active else 'no_eligible_events' if pending == 0
@@ -118,4 +123,6 @@ def opportunity(attempt_times, now, expires, pending):
             'within_subscription_validity': next_at < expires if active and pending else False,
             'requires_subscription_renewal': bool(pending and (not active or next_at >= expires)),
             'poll_allowance_seconds': 2, 'opportunity_is_not_delivery_guarantee': True,
-            'maximum_attempts_per_day': 6, 'minimum_attempt_spacing_seconds': 600}
+            'delivery_cadence_version': CADENCE_VERSION,
+            'maximum_attempts_per_day': MAXIMUM_ATTEMPTS_PER_DAY,
+            'minimum_attempt_spacing_seconds': MINIMUM_ATTEMPT_SPACING_SECONDS}

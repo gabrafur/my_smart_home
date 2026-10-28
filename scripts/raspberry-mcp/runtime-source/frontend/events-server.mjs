@@ -76,7 +76,7 @@ export function makeEventRoute(legacy,call=eventCall){return async request=>{
   }
   result.result.tools.push(statusDescriptor);
  }
- if(method==='events/list'&&result?.result?.events)for(const event of result.result.events)if(event.name==='smart_home.observation'){event.payloadSchema=eventPayloadSchema;event.description='Sanitized HA persistent-notification changes for /mnt/data/docker. One active subscription, signed HTTPS callback verification, six delivery attempts per rolling day and at least ten minutes between attempts. No automatic retry after uncertain delivery. Removal is not proof of recovery. Subscription activation requires the installed approved event service.';}
+ if(method==='events/list'&&result?.result?.events)for(const event of result.result.events)if(event.name==='smart_home.observation'){event.payloadSchema=eventPayloadSchema;event.description='Sanitized HA persistent-notification changes for /mnt/data/docker. One active subscription, signed HTTPS callback verification, grouped delivery at least ten minutes apart, at most 144 attempts per rolling day. No automatic retry after uncertain delivery. Removal is not proof of recovery. Subscription activation requires the installed approved event service.';}
  return result;
 };}
 
