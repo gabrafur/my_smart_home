@@ -106,6 +106,9 @@ class Backend:
         return r.stdout
     def inspect(self,role):
         need(role in('source','consumer'));target=self.policy[role]
+        return self._inspect_target(target)
+    def _inspect_target(self,target):
+        closed(target,['container_id','identity_sha256']);need(all(hex64(v)for v in target.values()))
         # Never request Config.Env, logs, payloads or arbitrary Docker objects.
         # State.Health.Log contains application log output. Select only the
         # process lifecycle fields in Docker's template, before receiving bytes.
@@ -121,7 +124,7 @@ class Backend:
         state={key:v[3][key]for key in('Running','Paused','Restarting','Dead','Pid','StartedAt','FinishedAt','ExitCode')}
         need(all(type(state[k])is bool for k in('Running','Paused','Restarting','Dead'))
           and all(type(state[k])is int for k in('Pid','ExitCode'))and all(type(state[k])is str for k in('StartedAt','FinishedAt')))
-        return {'binding_sha256':target['identity_sha256'],'state':state,'state_sha256':digest(state)}
+        return {'binding_sha256':target['identity_sha256'],'state':state,'state_sha256':digest(state),'image_id':v[1]}
     def snapshot(self):
         directory(self.paths.reader_state,0,0,0o700)
         raw=read(self.paths.reader_state/'maintenance-status.json',0,0,0o600,16384);v=decode(raw)
@@ -186,6 +189,13 @@ class Backend:
         from maintenance_rebind import Transaction
         self.authorize(op,mutation=False)
         return Transaction(tx,self,op).run()
+    def prepare_replacement(self,tx,op):
+        from maintenance_policy import Issuer
+        result=Issuer(tx,self,op).run()
+        if result['state']=='replacement_policy_ready':
+            fresh=Backend(self.paths,run=self.run);fresh.authorize(op,mutation=False)
+            self.policy,self.policy_sha=fresh.policy,fresh.policy_sha
+        return result
     def preflight(self,command,op):
         need(command in COMMANDS,'maintenance_command_invalid')
         dispatch_invariants(op,command);m,c=self.snapshot();s=self._same_context(op,m)

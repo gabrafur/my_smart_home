@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 39 destinos: 20 módulos Root, nove
+do pacote. Seu catálogo fechado contém 40 destinos: 21 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -369,13 +369,29 @@ atestado novo; a mudança não inicia contêiner, renova acesso ou zera históri
 Resultado de escrita incerto é reconciliado por leitura, sem completar escritas
 automaticamente nem iniciar outro leitor para contornar a prova.
 
+`maintenance_policy.py` prepara a política do próximo vínculo a partir somente
+de `/etc/raspberry-mqtt-maintenance/source-candidate.json`, privado e Root.
+O candidato precisa de recibo de auditoria da imagem, binário e plugin,
+vinculado à aprovação, operação, head do journal e domínio BOOTTIME atuais.
+O preparador confere a imagem e identidade do contêiner parado, o encerramento
+da origem anterior e a prontidão do consumidor. Ele altera somente a origem e
+sua definição; aprovação, validade, código e consumidor ficam preservados.
+Um recibo durável guarda os bytes anteriores antes da escrita. Conflitos de
+política durante a inspeção final são preservados; repetir a solicitação
+apenas observa a política, mesmo após falha anterior à escrita.
+
+Esse preparador consome um recibo Root; não produz a auditoria. O instalador ou
+atualizador aprovado ainda deve verificar ABI, configuração, proveniência e
+licenças da imagem candidata antes de emitir esse arquivo. O chamador do
+controlador não fornece caminhos, contêineres nem uma política arbitrária.
+
 O [aceite isolado do controlador](../scripts/raspberry-mcp/mqtt-maintenance-controller.acceptance.json)
 comprova os quatro efeitos em contêineres próprios, recriação do identificador
 da origem, retomada do consumidor e preservação do leitor. Uma tentativa anterior
 encerrou sem confirmar o corte final e permanece preservada; o teste posterior
 alcançou o corte exato sem relaxar seus critérios. Isso não instala nem autoriza
-a superfície de produção. Permanecem pendentes o emissor selado de política de
-produção, os gates visuais de backup/update, o pacote completo de implantação,
+a superfície de produção. Permanecem pendentes o produtor Root do recibo de
+auditoria, os gates visuais de backup/update, o pacote completo de implantação,
 revogação/reversão, projeção MCP e a aprovação específica de acesso permanente.
 
 ## Revogação, reversão e recuperação

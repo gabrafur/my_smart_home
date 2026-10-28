@@ -5,7 +5,7 @@
   "production_changes": false,
   "permanent_source_or_maintenance_access_activated": false,
   "full24h_proven": false,
-  "static_file_transaction_targets": 39,
+  "static_file_transaction_targets": 40,
   "isolated_Root_units": {
     "full_pre_consumer_pin_expansion": {
       "tests": 265,
@@ -14,6 +14,11 @@
     },
     "affected_after_39_target_expansion": {
       "tests": 47,
+      "failures": 0,
+      "skipped": 0
+    },
+    "affected_after_fixed_policy_issuer": {
+      "tests": 70,
       "failures": 0,
       "skipped": 0
     }
@@ -37,11 +42,11 @@
     "new_source_live_and_cut_ACKed_before_completion": true,
     "journal_records": 14,
     "correlation_checks_passed": 16,
-    "verified_frames": 67,
+    "verified_frames": 59,
     "ACK_receipts": 12,
     "source_epochs": 2,
     "unknown_epoch_tails": 0,
-    "maximum_source_to_ACK_upper_ms": 3531.09494,
+    "maximum_source_to_ACK_upper_ms": 3531.213056,
     "all_seven_metadata_classes_measured": true,
     "owned_containers_removed": 3,
     "combined_active_container_CPU_quota": 0.35,
@@ -53,16 +58,26 @@
     ],
     "Root_reader_no_new_privileges": true,
     "Node_old_space_MiB": 128,
-    "Node_RSS_hard_limit_proven": false
+    "Node_RSS_hard_limit_proven": false,
+    "fixed_policy_Issuer_used": true,
+    "prior_policy_exact_bytes_preserved": true,
+    "policy_approval_expiry_code_and_consumer_preserved": true
   },
   "prior_terminal_fixture_failure": "final_cut_observation_deadline;preserved_and_owned_containers_removed;not_replayed",
-  "policy_binding_boundary": "Root_sealed_policy_transition_in_owned_fixture_only;production_issuer_unimplemented",
+  "policy_binding_boundary": "fixed_Issuer_consumes_Root_private_audit_receipt_and_verifies_candidate_identity_image_and_state;production_audit_producer_pending",
   "pending": [
-    "production_sealed_policy_issuer",
+    "production_Root_audit_receipt_producer",
     "canonical_NodeRED_backup_update_gates",
     "complete_install_revoke_rollback_and_MCP_projection_package",
     "specific_permanent_source_access_approval",
     "actual_household_runtime_and_24h_acceptance"
   ],
-  "private_runtime_or_credentials_exported": false
+  "private_runtime_or_credentials_exported": false,
+  "historical_controller_fixture_before_fixed_policy_issuer": {
+    "static_targets": 39,
+    "verified_frames": 67,
+    "ACK_receipts": 12,
+    "maximum_source_to_ACK_upper_ms": 3531.09494,
+    "binding_preparation": "fixture_Root_policy_transition"
+  }
 }

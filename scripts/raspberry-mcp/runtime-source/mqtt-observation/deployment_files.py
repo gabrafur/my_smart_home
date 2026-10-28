@@ -9,7 +9,7 @@ import fcntl,hashlib,json,os,re,stat
 
 CORE=('activated_reader.py','authorization_gate.py','deployment_files.py',
       'file_bridge.py','handoff.py','handoff_ledger.py','maintenance_backend.py',
-      'maintenance_controller.py','maintenance_journal.py','maintenance_rebind.py','maintenance_status.py','protocol.py',
+      'maintenance_controller.py','maintenance_journal.py','maintenance_policy.py','maintenance_rebind.py','maintenance_status.py','protocol.py',
       'receiver_ledger.py','recovery_data.py','socket_reader.py','source_binding.py','source_rebind.py',
       'status_writer.py','worker.py','worker_config.py')
 CONSUMER=('canvas_checkpoint.mjs','consumer_protocol.mjs','handoff_schema.json','consumer_state.mjs',
