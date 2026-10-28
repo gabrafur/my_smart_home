@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import jsonata from 'jsonata';
 import { installOperationalAlerts } from './install-operational-alerts.mjs';
 
-const flows = JSON.parse(fs.readFileSync(new URL('../flows.json', import.meta.url)));
+const flows = JSON.parse(fs.readFileSync(process.argv[2] ?? new URL('../flows.json', import.meta.url)));
 const byId = new Map(flows.map(n => [n.id, n]));
 const stores = { memory: new Map(), memoryOnly: new Map(), persistent: new Map() };
 const flow = { get: (k, s = 'memory') => stores[s].get(k), set: (k, v, s = 'memory') => stores[s].set(k, structuredClone(v)) };
@@ -61,6 +61,18 @@ for (const [start, input] of [
   await replay(start, structuredClone(input));
   assert.equal(observed.length, before + 1, `${start}: duplicate suppressed`);
 }
+const beforeFirmwareAutomatic = observed.length;
+await replay('operations_daily_firmware_automatic', {
+  _ha_updates_test: true,
+  payload: { entity_id: 'update.synthetic_firmware', latest_version: '2', test_mode: true },
+});
+assert.equal(observed.length, beforeFirmwareAutomatic + 1,
+  'automatic policy closes the existing firmware approval incident without a success push');
+await replay('operations_daily_firmware_automatic', {
+  _ha_updates_test: true,
+  payload: { entity_id: 'update.synthetic_firmware', latest_version: '2', test_mode: true },
+});
+assert.equal(observed.length, beforeFirmwareAutomatic + 1, 'approval cleanup is deduplicated');
 const pressure = { _host_memory_guardian_test: true, payload: { status: 'pressure_no_safe_candidate', request_id: 'synthetic-pressure', checked_at: '2026-01-01T00:00:00Z', test_mode: true } };
 const beforePressure = observed.length;
 await replay('host_memory_guardian_result_in', structuredClone(pressure));

@@ -328,9 +328,12 @@ validation. Alexa and Bluelink workers share a lock so two versioned HACS
 integrations are never changed concurrently.
 
 Other versioned integrations remain `audit_only` and never receive a generic
-`update.install`. Physical firmware is observed and deduplicated but defaults
-to automatic installation off; its production button consumes only a candidate
-observed during the last 40 minutes. Unknown sources fail closed. Synthetic
+`update.install`. Physical firmware automatically installs the latest version offered by its
+integration in the configured channel. The 30-minute inventory uses the shared
+40-minute freshness, in-progress and per-entity/version dedupe gates. The
+installation command does not pin an old version. Enabling automatic updates
+closes only the approval request; it does not prove installation. Failures
+remain visible through the global observer. Unknown sources fail closed. Synthetic
 tests follow the same gates and end in dry-run before the effect boundary.
 
 The hidden `docker-auto-update.mjs ha-updates` mode was retired. The bridge

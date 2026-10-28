@@ -152,9 +152,8 @@ classificação, autorização, dedupe e escolha do efeito pertencem ao Node-RED
 Integrações presentes em `homeassistant/custom_components/` nunca podem receber
 `update.install` genérico: a atualização exige auditoria contra o upstream,
 preservação de licença/proveniência, reaplicação mínima dos deltas locais,
-testes e validação do runtime. Firmware físico deve permanecer com instalação
-automática desligada por padrão e exigir gate explícito, candidato recente e
-dry-run integral. O modo compatível `docker-auto-update.mjs daily` pode existir
+testes e validação do runtime. Firmware físico instala a última versão automaticamente, com gate de
+frescor, dedupe, bloqueio em andamento e dry-run; sem aprovação por versão. O modo compatível `docker-auto-update.mjs daily` pode existir
 para rollback operacional, mas a agenda normal deve usar as etapas visuais
 separadas.
 

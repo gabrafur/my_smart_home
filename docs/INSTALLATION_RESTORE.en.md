@@ -366,12 +366,13 @@ upstream release notes for database or protocol migrations. Do
 not replace the legacy Matter Server with the matter.js successor without a
 specific fabric migration plan.
 
-The same tab scans Home Assistant `update.*` entities every 30 minutes without
-authorizing effects. At 03:00, or from the explicit production button, a single
+The same tab scans Home Assistant `update.*` entities every 30 minutes. Physical
+firmware is authorized automatically; other update classes retain their gates. At 03:00, or from the explicit production button, a single
 inventory receives an ephemeral apply authorization. Alexa Media Player and
 Kia UVO use dedicated exact-version staging, provenance, backup, rollback, and
 runtime validation paths. Other versioned HACS integrations remain audit-only,
-physical firmware remains automatic-off, and unknown sources fail closed.
+physical firmware automatically installs the latest offered version through
+freshness, in-progress, dedupe and dry-run gates; unknown sources fail closed.
 
 ## 16. Troubleshooting
 

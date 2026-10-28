@@ -288,10 +288,13 @@ hub móvel. Conclusões bem-sucedidas e intervenções normais não geram avisos
 
 - **Atualizações:** falhas de execução, inclusive saída não zero das pontes,
   seguem o observador de erros. Decisões canônicas de auditoria HACS,
-  classificação de fonte desconhecida, firmware manual e dependência bloqueada
+  classificação de fonte desconhecida, firmware com automação explicitamente
+  desabilitada e dependência bloqueada
   geram um aviso por item/versão. A observação de um item já atualizado remove
   seu aviso persistente, sem push de recuperação. A confirmação de atualização
-  de uma dependência também encerra sua pendência.
+  de uma dependência também encerra sua pendência. Firmware usa automação ligada
+  por padrão; essa decisão encerra um pedido antigo de aprovação, sem declarar
+  a instalação concluída. Erros reais de instalação continuam observáveis.
 - **Revisão semanal:** `falha`, `indisponível`, o estado nativo `unavailable` e
   worker `parado` abrem um incidente. `unknown` não confirma recuperação.
   Estados conhecidos de funcionamento encerram o incidente sem push.

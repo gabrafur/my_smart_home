@@ -544,7 +544,9 @@ const updates = states
             state_class: state === "on" ? "pending" : state === "off" ? "current" : "unavailable",
             installed_version: entity.attributes?.installed_version ?? null,
             latest_version: entity.attributes?.latest_version ?? null,
-            search_key: (entity.entity_id + " " + friendlyName).toLowerCase(),
+            device_class: entity.attributes?.device_class ?? null,
+            in_progress: entity.attributes?.in_progress === true || typeof entity.attributes?.in_progress === "number",
+            search_key: (entity.entity_id + " " + friendlyName + (entity.attributes?.device_class === "firmware" ? " firmware" : "")).toLowerCase(),
             observed_at: observedAt,
             test_mode: TEST_MODE
         };
@@ -554,6 +556,7 @@ const updates = states
 const messages = updates.map((payload) => ({
     payload,
     topic: payload.entity_id,
+    firmware_dedupe_topic: (TEST_MODE ? "test:" : "production:") + payload.entity_id,
     update_policy: msg.update_policy,
     _update_apply_authorized: msg._update_apply_authorized === true,
     _ha_updates_test: TEST_MODE,
@@ -1187,15 +1190,15 @@ const nodes = [
       "daily_update_inventory_test_snapshot_out", "daily_update_inventory_real_snapshot_out", "daily_update_inventory_snapshot_in",
       "daily_update_inventory_state", "daily_update_inventory_classify", "daily_update_inventory_record",
       "daily_update_inventory_current", "daily_update_inventory_unavailable", "daily_update_inventory_nonpending_test_out",
-      "daily_update_inventory_summary_test_out", "daily_update_inventory_kia_out", "daily_update_inventory_firmware_out",
+      "daily_update_inventory_summary_test_out", "daily_update_firmware_test_inventory_in", "daily_update_inventory_kia_out", "daily_update_inventory_firmware_out",
       "daily_update_inventory_core_out", "daily_update_inventory_alexa_out", "daily_update_inventory_hacs_out", "daily_update_inventory_unknown_out",
     ],
     x: 44, y: 2240, w: 1582, h: 702,
   },
   {
     id: "daily_update_inventory_architecture", type: "comment", z: TAB, g: inventoryGroup,
-    name: "PARÂMETROS: scan 30 min; Alexa/Kia auto=true só na janela 03:00; firmware auto=false; candidato 40 min",
-    info: "A varredura periódica apenas detecta. A agenda diária das 03:00 ou o botão de produção concedem autorização efêmera. Alexa Media e Kia passam por auditoria, staging, backup, rollback e validação antes da instalação; demais HACS versionados continuam audit_only, Core usa stable e firmware físico permanece manual.",
+    name: "PARÂMETROS: scan 30 min; Alexa/Kia auto=true só na janela 03:00; firmware auto=true; candidato 40 min",
+    info: "A varredura periódica detecta e instala firmware automaticamente. Para Alexa/Kia, a agenda diária das 03:00 ou o botão de produção concedem autorização efêmera. Alexa Media e Kia passam por auditoria, staging, backup, rollback e validação antes da instalação; demais HACS versionados continuam audit_only, Core usa stable e firmware físico instala automaticamente a versão mais recente oferecida pela integração.",
     x: 800, y: 2280, wires: [],
   },
   {
@@ -1238,10 +1241,15 @@ const nodes = [
     payload: "", payloadType: "date", x: 210, y: 2620, wires: [["daily_update_inventory_parameters"]],
   },
   {
+    id: "daily_update_firmware_test_inventory_in", type: "link in", z: TAB, g: inventoryGroup,
+    name: "Firmware TESTE: política e inventário reais", links: ["daily_update_firmware_test_effect_out"],
+    x: 548, y: 2400, wires: [["daily_update_inventory_parameters"]],
+  },
+  {
     id: "daily_update_inventory_parameters", type: "change", z: TAB, g: inventoryGroup,
     name: "PARÂMETROS visuais de updates", rules: [{
       t: "set", p: "update_policy", pt: "msg",
-      to: '{"version":1,"scan_interval_minutes":30,"device_firmware_auto":false,"versioned_hacs_auto_apply":true,"kia_uvo_auto_apply":true,"manual_candidate_max_age_minutes":40}', tot: "json",
+      to: '{"version":1,"scan_interval_minutes":30,"device_firmware_auto":true,"versioned_hacs_auto_apply":true,"kia_uvo_auto_apply":true,"manual_candidate_max_age_minutes":40}', tot: "json",
     }], action: "", property: "", from: "", to: "", reg: false,
     x: 500, y: 2440, wires: [["daily_update_inventory_validate_policy"]],
   },
@@ -1321,7 +1329,7 @@ const nodes = [
       { t: "regex", v: "alexa_media_player_update|alexa media player update", vt: "str", case: false },
       { t: "regex", v: "\\bhacs\\b|local_tuya|local tuya|moni_mobile|moni mobile|tuya_vacuum_maps|tuya vacuum maps", vt: "str", case: false },
       { t: "else" },
-    ], checkall: "true", repair: false, outputs: 6, x: 1040, y: 2580,
+    ], checkall: "false", repair: false, outputs: 6, x: 1040, y: 2580,
     wires: [["daily_update_inventory_kia_out"], ["daily_update_inventory_firmware_out"], ["daily_update_inventory_core_out"], ["daily_update_inventory_alexa_out"], ["daily_update_inventory_hacs_out"], ["daily_update_inventory_unknown_out"]],
   },
   functionNode("daily_update_inventory_record", inventoryGroup, "Publicar resumo canônico", recordUpdateInventory, 1, 450, 2700, [["daily_update_inventory_summary_test_out"]]),
@@ -1525,7 +1533,7 @@ const nodes = [
   },
   {
     id: firmwareGroup, type: "group", z: TAB,
-    name: "11. SUBFLUXO firmware físico: automático desligado; aplicação manual explícita",
+    name: "11. SUBFLUXO firmware físico: versão mais recente automática; dry-run no gate final",
     style: { label: true, color: "#c45a50" },
     nodes: [
       "daily_update_firmware_architecture", "daily_update_firmware_in", "daily_update_firmware_state",
@@ -1534,7 +1542,7 @@ const nodes = [
       "daily_update_firmware_manual", "daily_update_firmware_take_candidate", "daily_update_firmware_fresh",
       "daily_update_firmware_test_auto", "daily_update_firmware_final_test_gate", "daily_update_firmware_install",
       "daily_update_firmware_installed", "daily_update_firmware_test_out", "daily_update_firmware_invalid",
-      "daily_update_firmware_auto_effect_out", "daily_update_firmware_manual_effect_out",
+      "daily_update_firmware_auto_effect_out", "daily_update_firmware_candidate_in", "daily_update_firmware_dispatch_rbe", "daily_update_firmware_dedupe_in", "daily_update_firmware_dedupe_out", "daily_update_firmware_manual_effect_out",
       "daily_update_firmware_test_effect_out", "daily_update_firmware_effect_in", "daily_update_firmware_queue_test_out",
     ],
     x: 44, y: 3180, w: 1582, h: 522,
@@ -1542,7 +1550,7 @@ const nodes = [
   {
     id: "daily_update_firmware_architecture", type: "comment", z: TAB, g: firmwareGroup,
     name: "Firmware pode interromper Zigbee/Z-Wave; padrão auto=false. Botão consome candidato visto há no máximo 40 min",
-    info: "O inventário gerencia e deduplica firmware, mas não confunde equipamento físico com update de software. Para habilitar automação, edite o parâmetro visual; o gate final continua separando produção e TESTE.",
+    info: "O inventário gerencia e deduplica firmware, mas não confunde equipamento físico com update de software. A automação está habilitada no parâmetro visual. Produção e TESTE compartilham frescor, versão e dedupe; o gate final bloqueia efeitos do TESTE.",
     x: 800, y: 3220, wires: [],
   },
   {
@@ -1587,33 +1595,54 @@ const nodes = [
   functionNode("daily_update_firmware_take_candidate", firmwareGroup, "Consumir próximo candidato uma vez", takeFirmwareCandidate, 1, 540, 3580, [["daily_update_firmware_fresh"]]),
   {
     id: "daily_update_firmware_fresh", type: "switch", z: TAB, g: firmwareGroup,
-    name: "Candidato existe e tem ≤ 40 min?", property: "$exists(payload.entity_id) and $number(payload.observed_at) >= $millis() - (update_policy.manual_candidate_max_age_minutes * 60000)", propertyType: "jsonata",
+    name: "Versão recente e ainda não em instalação?", property: "$exists(payload.entity_id) and $contains(payload.entity_id, /^update\\.[a-z0-9_]+$/) and payload.state_class = 'pending' and $type(payload.latest_version) = 'string' and payload.latest_version != '' and payload.latest_version != 'unknown' and payload.latest_version != 'unavailable' and payload.latest_version != payload.installed_version and payload.in_progress = false and $number(payload.observed_at) <= $millis() and $number(payload.observed_at) >= $millis() - (update_policy.manual_candidate_max_age_minutes * 60000)", propertyType: "jsonata",
     rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
     x: 850, y: 3580, wires: [["daily_update_firmware_manual_effect_out"], ["daily_update_firmware_invalid"]],
   },
   {
     id: "daily_update_firmware_test_auto", type: "inject", z: TAB, g: firmwareGroup,
     name: "TESTE: auto chega ao gate final", props: [
-      { p: "payload", v: '{"entity_id":"update.synthetic_slzb_firmware","observed_at":4102444800000,"state_class":"pending","latest_version":"2","test_mode":true}', vt: "json" },
+      { p: "payload", v: '[{"entity_id":"update.synthetic_slzb_firmware","state":"on","attributes":{"device_class":"firmware","installed_version":"1","latest_version":"2","in_progress":false}}]', vt: "json" },
       { p: "_ha_updates_test", v: "true", vt: "bool" },
     ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
     x: 260, y: 3640, wires: [["daily_update_firmware_test_effect_out"]],
   },
   {
     id: "daily_update_firmware_auto_effect_out", type: "link out", z: TAB, g: firmwareGroup,
-    name: "Automático habilitado → gate final", mode: "link", links: ["daily_update_firmware_effect_in"], x: 900, y: 3280, wires: [],
+    name: "Automático → validar candidato", mode: "link", links: ["daily_update_firmware_candidate_in"], x: 900, y: 3280, wires: [],
+  },
+  {
+    id: "daily_update_firmware_candidate_in", type: "link in", z: TAB, g: firmwareGroup,
+    name: "Automático: mesmo gate de candidato", links: ["daily_update_firmware_auto_effect_out"],
+    x: 625, y: 3520, wires: [["daily_update_firmware_fresh"]],
+  },
+  {
+    id: "daily_update_firmware_dedupe_in", type: "link in", z: TAB, g: firmwareGroup,
+    name: "Candidato válido: deduplicar instalação", links: ["daily_update_firmware_manual_effect_out"],
+    x: 1140, y: 3420, wires: [["daily_update_firmware_dispatch_rbe"]],
+  },
+  {
+    id: "daily_update_firmware_dedupe_out", type: "link out", z: TAB, g: firmwareGroup,
+    name: "Versão nova → gate final", mode: "link", links: ["daily_update_firmware_effect_in"],
+    x: 1550, y: 3420, wires: [],
+  },
+  {
+    id: "daily_update_firmware_dispatch_rbe", type: "rbe", z: TAB, g: firmwareGroup,
+    name: "Deduplicar entidade e versão", func: "rbe", gap: "", start: "", inout: "out",
+    septopics: true, property: "payload.signature", topi: "firmware_dedupe_topic", x: 1340, y: 3420,
+    wires: [["daily_update_firmware_dedupe_out"]],
   },
   {
     id: "daily_update_firmware_manual_effect_out", type: "link out", z: TAB, g: firmwareGroup,
-    name: "Manual válido → gate final", mode: "link", links: ["daily_update_firmware_effect_in"], x: 1070, y: 3560, wires: [],
+    name: "Candidato válido → dedupe", mode: "link", links: ["daily_update_firmware_dedupe_in"], x: 1070, y: 3560, wires: [],
   },
   {
     id: "daily_update_firmware_test_effect_out", type: "link out", z: TAB, g: firmwareGroup,
-    name: "Efeito TESTE → gate final", mode: "link", links: ["daily_update_firmware_effect_in"], x: 520, y: 3640, wires: [],
+    name: "Firmware TESTE → inventário canônico", mode: "link", links: ["daily_update_firmware_test_inventory_in"], x: 520, y: 3640, wires: [],
   },
   {
     id: "daily_update_firmware_effect_in", type: "link in", z: TAB, g: firmwareGroup,
-    name: "Receber intenção de instalar", links: ["daily_update_firmware_auto_effect_out", "daily_update_firmware_manual_effect_out", "daily_update_firmware_test_effect_out"],
+    name: "Receber intenção de instalar", links: ["daily_update_firmware_dedupe_out"],
     x: 1095, y: 3520, wires: [["daily_update_firmware_final_test_gate"]],
   },
   {
@@ -1635,7 +1664,7 @@ const nodes = [
     x: 1480, y: 3580, wires: [["daily_update_firmware_installed"]],
   },
   functionNode("daily_update_firmware_installed", firmwareGroup, "Registrar comando aceito", `node.status({fill:"green",shape:"dot",text:"comando enviado ao HA"}); return null;`, 0, 1460, 3640, []),
-  functionNode("daily_update_firmware_invalid", firmwareGroup, "Rejeitar candidato ausente/antigo", `node.status({fill:"yellow",shape:"ring",text:"inventarie novamente"}); return null;`, 0, 870, 3660, []),
+  functionNode("daily_update_firmware_invalid", firmwareGroup, "Rejeitar candidato ausente/antigo", `node.status({fill:"yellow",shape:"ring",text:"aguarde instalação ou inventário válido"}); return null;`, 0, 870, 3660, []),
   {
     id: "daily_update_firmware_test_out", type: "link out", z: TAB, g: firmwareGroup,
     name: "Firmware TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"], x: 1510, y: 3500, wires: [],

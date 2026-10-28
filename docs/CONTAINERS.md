@@ -347,9 +347,12 @@ rollback, polling nativo e validação do runtime. Os workers Alexa e Bluelink
 compartilham um lock para nunca alterar duas integrações HACS ao mesmo tempo.
 
 As demais integrações versionadas continuam em `audit_only`: não recebem
-`update.install` genérico. Firmware físico é acompanhado e deduplicado, mas tem
-automação desligada por padrão; o botão de produção consome apenas um candidato
-observado nos últimos 40 minutos. Fontes desconhecidas falham fechadas. Todo
+`update.install` genérico. Firmware físico instala automaticamente a versão mais recente anunciada pela
+integração, no canal já configurado. Inventários a cada 30 minutos passam pelos
+mesmos gates de candidato recente (40 minutos), instalação em andamento e
+dedupe por entidade/versão. O comando não fixa uma versão antiga. Ativar a
+automação encerra somente o pedido de aprovação; não comprova instalação.
+Falhas continuam no observador global. Fontes desconhecidas falham fechadas. Todo
 teste sintético atravessa os mesmos gates e termina em dry-run antes do efeito.
 
 O modo legado `docker-auto-update.mjs ha-updates` foi aposentado porque escondia

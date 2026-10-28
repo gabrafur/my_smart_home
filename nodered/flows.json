@@ -1351,7 +1351,8 @@
             "notification_hub_wire_out_b1b5fd6c16a7",
             "notification_hub_wire_out_894ca3cdbfda",
             "notification_hub_wire_in_c43c40fbee8f",
-            "notification_hub_wire_in_4fa7c5408756"
+            "notification_hub_wire_in_4fa7c5408756",
+            "daily_update_firmware_test_inventory_in"
         ],
         "x": 102,
         "y": 2880,
@@ -1408,7 +1409,7 @@
         "id": "daily_update_firmware_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "11. SUBFLUXO firmware físico: automático desligado; aplicação manual explícita",
+        "name": "11. SUBFLUXO firmware físico: versão mais recente automática; dry-run no gate final",
         "style": {
             "label": true,
             "color": "#c45a50"
@@ -1438,7 +1439,12 @@
             "daily_update_firmware_test_effect_out",
             "daily_update_firmware_effect_in",
             "daily_update_firmware_queue_test_out",
-            "notification_hub_wire_out_a44665fb1d48"
+            "notification_hub_wire_out_a44665fb1d48",
+            "daily_update_firmware_candidate_in",
+            "daily_update_firmware_dispatch_rbe",
+            "daily_update_firmware_dedupe_in",
+            "daily_update_firmware_dedupe_out",
+            "notification_hub_wire_out_bab755e11aef"
         ],
         "x": 102,
         "y": 4600,
@@ -28824,8 +28830,8 @@
         "type": "comment",
         "z": "daily_host_updates_tab",
         "g": "daily_update_inventory_group",
-        "name": "PARÂMETROS: scan 30 min; Alexa/Kia auto=true só na janela 03:00; firmware auto=false; candidato 40 min",
-        "info": "A varredura periódica apenas detecta. A agenda diária das 03:00 ou o botão de produção concedem autorização efêmera. Alexa Media e Kia passam por auditoria, staging, backup, rollback e validação antes da instalação; demais HACS versionados continuam audit_only, Core usa stable e firmware físico permanece manual.",
+        "name": "PARÂMETROS: scan 30 min; Alexa/Kia auto=true só na janela 03:00; firmware auto=true; candidato 40 min",
+        "info": "A varredura periódica detecta e instala firmware automaticamente. Para Alexa/Kia, a agenda diária das 03:00 ou o botão de produção concedem autorização efêmera. Alexa Media e Kia passam por auditoria, staging, backup, rollback e validação antes da instalação; demais HACS versionados continuam audit_only, Core usa stable e firmware físico instala automaticamente a versão mais recente oferecida pela integração.",
         "x": 868,
         "y": 2921,
         "wires": []
@@ -28940,7 +28946,7 @@
                 "t": "set",
                 "p": "update_policy",
                 "pt": "msg",
-                "to": "{\"version\":1,\"scan_interval_minutes\":30,\"device_firmware_auto\":false,\"versioned_hacs_auto_apply\":true,\"kia_uvo_auto_apply\":true,\"manual_candidate_max_age_minutes\":40}",
+                "to": "{\"version\":1,\"scan_interval_minutes\":30,\"device_firmware_auto\":true,\"versioned_hacs_auto_apply\":true,\"kia_uvo_auto_apply\":true,\"manual_candidate_max_age_minutes\":40}",
                 "tot": "json"
             }
         ],
@@ -29092,7 +29098,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_inventory_group",
         "name": "Adaptar estrutura update.*",
-        "func": "const TEST_MODE = msg._ha_updates_test === true || msg.payload?.test_mode === true;\nconst states = Array.isArray(msg.ha_update_states) ? msg.ha_update_states : Array.isArray(msg.payload) ? msg.payload : null;\nif (!states) {\n    if (!TEST_MODE) node.error(\"home_assistant_update_inventory_invalid\", msg);\n    return [null, null];\n}\nconst observedAt = Number(msg.update_observed_at ?? Date.now());\nconst updates = states\n    .filter((entity) => typeof entity?.entity_id === \"string\" && entity.entity_id.startsWith(\"update.\"))\n    .map((entity) => {\n        const state = String(entity.state ?? \"unknown\").toLowerCase();\n        const friendlyName = String(entity.attributes?.friendly_name ?? entity.entity_id).slice(0, 160);\n        const item = {\n            version: 1,\n            entity_id: entity.entity_id,\n            friendly_name: friendlyName,\n            state,\n            state_class: state === \"on\" ? \"pending\" : state === \"off\" ? \"current\" : \"unavailable\",\n            installed_version: entity.attributes?.installed_version ?? null,\n            latest_version: entity.attributes?.latest_version ?? null,\n            search_key: (entity.entity_id + \" \" + friendlyName).toLowerCase(),\n            observed_at: observedAt,\n            test_mode: TEST_MODE\n        };\n        item.signature = [item.entity_id, item.state_class, item.installed_version, item.latest_version].join(\":\");\n        return item;\n    });\nconst messages = updates.map((payload) => ({\n    payload,\n    topic: payload.entity_id,\n    update_policy: msg.update_policy,\n    _update_apply_authorized: msg._update_apply_authorized === true,\n    _ha_updates_test: TEST_MODE,\n    _kia_update_test: TEST_MODE\n}));\nconst summary = {\n    version: 1,\n    total: updates.length,\n    pending: updates.filter((item) => item.state_class === \"pending\").length,\n    unavailable: updates.filter((item) => item.state_class === \"unavailable\").length,\n    observed_at: observedAt,\n    test_mode: TEST_MODE,\n    apply_authorized: msg._update_apply_authorized === true\n};\nreturn [messages.length ? messages : null, { payload: summary, _ha_updates_test: TEST_MODE }];",
+        "func": "const TEST_MODE = msg._ha_updates_test === true || msg.payload?.test_mode === true;\nconst states = Array.isArray(msg.ha_update_states) ? msg.ha_update_states : Array.isArray(msg.payload) ? msg.payload : null;\nif (!states) {\n    if (!TEST_MODE) node.error(\"home_assistant_update_inventory_invalid\", msg);\n    return [null, null];\n}\nconst observedAt = Number(msg.update_observed_at ?? Date.now());\nconst updates = states\n    .filter((entity) => typeof entity?.entity_id === \"string\" && entity.entity_id.startsWith(\"update.\"))\n    .map((entity) => {\n        const state = String(entity.state ?? \"unknown\").toLowerCase();\n        const friendlyName = String(entity.attributes?.friendly_name ?? entity.entity_id).slice(0, 160);\n        const item = {\n            version: 1,\n            entity_id: entity.entity_id,\n            friendly_name: friendlyName,\n            state,\n            state_class: state === \"on\" ? \"pending\" : state === \"off\" ? \"current\" : \"unavailable\",\n            installed_version: entity.attributes?.installed_version ?? null,\n            latest_version: entity.attributes?.latest_version ?? null,\n            device_class: entity.attributes?.device_class ?? null,\n            in_progress: entity.attributes?.in_progress === true || typeof entity.attributes?.in_progress === \"number\",\n            search_key: (entity.entity_id + \" \" + friendlyName + (entity.attributes?.device_class === \"firmware\" ? \" firmware\" : \"\")).toLowerCase(),\n            observed_at: observedAt,\n            test_mode: TEST_MODE\n        };\n        item.signature = [item.entity_id, item.state_class, item.installed_version, item.latest_version].join(\":\");\n        return item;\n    });\nconst messages = updates.map((payload) => ({\n    payload,\n    topic: payload.entity_id,\n    firmware_dedupe_topic: (TEST_MODE ? \"test:\" : \"production:\") + payload.entity_id,\n    update_policy: msg.update_policy,\n    _update_apply_authorized: msg._update_apply_authorized === true,\n    _ha_updates_test: TEST_MODE,\n    _kia_update_test: TEST_MODE\n}));\nconst summary = {\n    version: 1,\n    total: updates.length,\n    pending: updates.filter((item) => item.state_class === \"pending\").length,\n    unavailable: updates.filter((item) => item.state_class === \"unavailable\").length,\n    observed_at: observedAt,\n    test_mode: TEST_MODE,\n    apply_authorized: msg._update_apply_authorized === true\n};\nreturn [messages.length ? messages : null, { payload: summary, _ha_updates_test: TEST_MODE }];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -29194,7 +29200,7 @@
                 "t": "else"
             }
         ],
-        "checkall": "true",
+        "checkall": "false",
         "repair": false,
         "outputs": 6,
         "x": 1300,
@@ -29661,7 +29667,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_firmware_group",
         "name": "Firmware pode interromper Zigbee/Z-Wave; padrão auto=false. Botão consome candidato visto há no máximo 40 min",
-        "info": "O inventário gerencia e deduplica firmware, mas não confunde equipamento físico com update de software. Para habilitar automação, edite o parâmetro visual; o gate final continua separando produção e TESTE.",
+        "info": "O inventário gerencia e deduplica firmware, mas não confunde equipamento físico com update de software. A automação está habilitada no parâmetro visual. Produção e TESTE compartilham frescor, versão e dedupe; o gate final bloqueia efeitos do TESTE.",
         "x": 868,
         "y": 4641,
         "wires": []
@@ -29746,7 +29752,8 @@
         "y": 4721,
         "wires": [
             [
-                "daily_update_firmware_auto_effect_out"
+                "daily_update_firmware_auto_effect_out",
+                "notification_hub_wire_out_bab755e11aef"
             ],
             [
                 "daily_update_firmware_manual_test_gate",
@@ -29931,8 +29938,8 @@
         "type": "switch",
         "z": "daily_host_updates_tab",
         "g": "daily_update_firmware_group",
-        "name": "Candidato existe e tem ≤ 40 min?",
-        "property": "$exists(payload.entity_id) and $number(payload.observed_at) >= $millis() - (update_policy.manual_candidate_max_age_minutes * 60000)",
+        "name": "Versão recente e ainda não em instalação?",
+        "property": "$exists(payload.entity_id) and $contains(payload.entity_id, /^update\\.[a-z0-9_]+$/) and payload.state_class = 'pending' and $type(payload.latest_version) = 'string' and payload.latest_version != '' and payload.latest_version != 'unknown' and payload.latest_version != 'unavailable' and payload.latest_version != payload.installed_version and payload.in_progress = false and $number(payload.observed_at) <= $millis() and $number(payload.observed_at) >= $millis() - (update_policy.manual_candidate_max_age_minutes * 60000)",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -29965,7 +29972,7 @@
         "props": [
             {
                 "p": "payload",
-                "v": "{\"entity_id\":\"update.synthetic_slzb_firmware\",\"observed_at\":4102444800000,\"state_class\":\"pending\",\"latest_version\":\"2\",\"test_mode\":true}",
+                "v": "[{\"entity_id\":\"update.synthetic_slzb_firmware\",\"state\":\"on\",\"attributes\":{\"device_class\":\"firmware\",\"installed_version\":\"1\",\"latest_version\":\"2\",\"in_progress\":false}}]",
                 "vt": "json"
             },
             {
@@ -29994,10 +30001,10 @@
         "type": "link out",
         "z": "daily_host_updates_tab",
         "g": "daily_update_firmware_group",
-        "name": "Automático habilitado → gate final",
+        "name": "Automático → validar candidato",
         "mode": "link",
         "links": [
-            "daily_update_firmware_effect_in"
+            "daily_update_firmware_candidate_in"
         ],
         "x": 968,
         "y": 4701,
@@ -30008,10 +30015,10 @@
         "type": "link out",
         "z": "daily_host_updates_tab",
         "g": "daily_update_firmware_group",
-        "name": "Manual válido → gate final",
+        "name": "Candidato válido → dedupe",
         "mode": "link",
         "links": [
-            "daily_update_firmware_effect_in"
+            "daily_update_firmware_dedupe_in"
         ],
         "x": 1138,
         "y": 4981,
@@ -30022,10 +30029,10 @@
         "type": "link out",
         "z": "daily_host_updates_tab",
         "g": "daily_update_firmware_group",
-        "name": "Efeito TESTE → gate final",
+        "name": "Firmware TESTE → inventário canônico",
         "mode": "link",
         "links": [
-            "daily_update_firmware_effect_in"
+            "daily_update_firmware_test_inventory_in"
         ],
         "x": 588,
         "y": 5061,
@@ -30038,9 +30045,7 @@
         "g": "daily_update_firmware_group",
         "name": "Receber intenção de instalar",
         "links": [
-            "daily_update_firmware_auto_effect_out",
-            "daily_update_firmware_manual_effect_out",
-            "daily_update_firmware_test_effect_out"
+            "daily_update_firmware_dedupe_out"
         ],
         "x": 1163,
         "y": 4941,
@@ -30149,7 +30154,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_firmware_group",
         "name": "Rejeitar candidato ausente/antigo",
-        "func": "node.status({fill:\"yellow\",shape:\"ring\",text:\"inventarie novamente\"}); return null;",
+        "func": "node.status({fill:\"yellow\",shape:\"ring\",text:\"aguarde instalação ou inventário válido\"}); return null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -65378,7 +65383,9 @@
             "notification_hub_wire_in_b1b5fd6c16a7",
             "notification_hub_wire_in_f4bcb9b7815b",
             "notification_hub_wire_in_a44665fb1d48",
-            "notification_hub_wire_in_34e7741686b0"
+            "notification_hub_wire_in_34e7741686b0",
+            "operations_daily_firmware_automatic",
+            "notification_hub_wire_in_bab755e11aef"
         ],
         "x": 64,
         "y": 7741,
@@ -82623,7 +82630,7 @@
             "notification_hub_wire_in_a44665fb1d48"
         ],
         "x": 898,
-        "y": 4821,
+        "y": 4921,
         "wires": []
     },
     {
@@ -82697,8 +82704,8 @@
         "links": [
             "notification_hub_wire_out_34e7741686b0"
         ],
-        "x": 184,
-        "y": 8211,
+        "x": 104,
+        "y": 8111,
         "wires": [
             [
                 "operations_daily_resolved"
@@ -96801,6 +96808,151 @@
         "mode": "link",
         "links": [
             "mq_native_window_facts_in"
+        ]
+    },
+    {
+        "id": "daily_update_firmware_test_inventory_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_inventory_group",
+        "name": "Firmware TESTE: política e inventário reais",
+        "links": [
+            "daily_update_firmware_test_effect_out"
+        ],
+        "x": 568,
+        "y": 3020,
+        "wires": [
+            [
+                "daily_update_inventory_parameters"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_firmware_candidate_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_firmware_group",
+        "name": "Automático: mesmo gate de candidato",
+        "links": [
+            "daily_update_firmware_auto_effect_out"
+        ],
+        "x": 645,
+        "y": 4960,
+        "wires": [
+            [
+                "daily_update_firmware_fresh"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_firmware_dedupe_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_firmware_group",
+        "name": "Candidato válido: deduplicar instalação",
+        "links": [
+            "daily_update_firmware_manual_effect_out"
+        ],
+        "x": 1160,
+        "y": 4860,
+        "wires": [
+            [
+                "daily_update_firmware_dispatch_rbe"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_firmware_dedupe_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_firmware_group",
+        "name": "Versão nova → gate final",
+        "mode": "link",
+        "links": [
+            "daily_update_firmware_effect_in"
+        ],
+        "x": 1570,
+        "y": 4860,
+        "wires": []
+    },
+    {
+        "id": "daily_update_firmware_dispatch_rbe",
+        "type": "rbe",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_firmware_group",
+        "name": "Deduplicar entidade e versão",
+        "func": "rbe",
+        "gap": "",
+        "start": "",
+        "inout": "out",
+        "septopics": true,
+        "property": "payload.signature",
+        "topi": "firmware_dedupe_topic",
+        "x": 1360,
+        "y": 4860,
+        "wires": [
+            [
+                "daily_update_firmware_dedupe_out"
+            ]
+        ]
+    },
+    {
+        "id": "operations_daily_firmware_automatic",
+        "type": "change",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Automático habilitado: sem aprovação pendente",
+        "x": 364,
+        "y": 8181,
+        "wires": [
+            [
+                "operations_daily_adapt"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "operational_alert",
+                "pt": "msg",
+                "to": "{\"source\":\"atualizacoes_diarias\",\"active\":false,\"reason\":\"firmware_automatic_enabled\",\"title\":\"Atualização exige ação\",\"message\":\"O firmware seguirá a atualização automática; não há aprovação pendente.\"}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "notification_hub_wire_out_bab755e11aef",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_firmware_group",
+        "name": "Encurtar: PARÂMETRO firmware automático?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_bab755e11aef"
+        ],
+        "x": 898,
+        "y": 4821,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_bab755e11aef",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "operations_daily_group",
+        "name": "Continuar: Automático habilitado: sem aprovação pendente",
+        "links": [
+            "notification_hub_wire_out_bab755e11aef"
+        ],
+        "x": 184,
+        "y": 8181,
+        "wires": [
+            [
+                "operations_daily_firmware_automatic"
+            ]
         ]
     },
     {

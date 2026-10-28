@@ -69,7 +69,9 @@ resultado fica em `/config/.storage/kia_uvo_safe_update` e e exibido por
 
 As demais entidades seguem subfluxos próprios: Core é reconciliado pelo digest
 do container, integrações HACS versionadas exigem auditoria, firmware físico
-tem automação desligada por padrão e fontes desconhecidas falham fechadas. O
+instala automaticamente a versão mais recente oferecida pela integração, com
+candidato recente, bloqueio durante instalação, dedupe e dry-run. Fontes
+desconhecidas falham fechadas. O
 modo direto `docker-auto-update.mjs ha-updates` foi aposentado. Sem autorização,
 o resultado Kia é apenas registrado. Em uma janela autorizada, `compatible` e
 `conflict` encaminham o alvo exato ao worker Codex; ele cria uma candidata

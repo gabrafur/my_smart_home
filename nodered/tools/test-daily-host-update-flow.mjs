@@ -363,7 +363,7 @@ assert.deepEqual(node("daily_update_inventory_classify").wires, [
 ]);
 const policyValue = JSON.parse(node("daily_update_inventory_parameters").rules[0].to);
 assert.equal(policyValue.scan_interval_minutes, 30);
-assert.equal(policyValue.device_firmware_auto, false);
+assert.equal(policyValue.device_firmware_auto, true);
 assert.equal(policyValue.versioned_hacs_auto_apply, true);
 assert.equal(policyValue.kia_uvo_auto_apply, true);
 assert.equal(policyValue.manual_candidate_max_age_minutes, 40);

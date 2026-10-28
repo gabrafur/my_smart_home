@@ -79,11 +79,13 @@ export function installOperationalAlerts(flows) {
       const hacs = entry('hacs', 'Decisão recebida: auditoria HACS necessária', 0, true, 'hacs_audit_required', 'Uma integração aguarda auditoria antes da atualização.');
       const unknown = entry('unknown', 'Decisão recebida: fonte não classificada', 1, true, 'update_classification_required', 'Uma atualização foi bloqueada e precisa ser classificada.');
       const firmware = entry('firmware', 'Decisão recebida: firmware manual pendente', 2, true, 'firmware_approval_required', 'Um firmware aguarda sua decisão de instalação.');
+      const firmwareAutomatic = entry('firmware_automatic', 'Automático habilitado: sem aprovação pendente', 5, false, 'firmware_automatic_enabled', 'O firmware seguirá a atualização automática; não há aprovação pendente.');
       const dependency = entry('dependency', 'Decisão recebida: dependência bloqueada', 3, true, 'dependency_policy_blocked', 'Uma dependência vulnerável não pôde ser atualizada automaticamente. Revise o candidato e a política.');
       const resolved = entry('resolved', 'Estado canônico atual: encerrar aviso', 4, false, 'update_current', 'A pendência de atualização foi resolvida.');
       branch('daily_update_hacs_state', 0, hacs);
       branch('daily_update_unknown_in', 0, unknown);
       branch('daily_update_firmware_auto', 1, firmware);
+      branch('daily_update_firmware_auto', 0, firmwareAutomatic);
       branch('daily_update_dependency_blocked_in', 0, dependency);
       branch('daily_update_inventory_state', 2, resolved);
       branch('daily_update_dependency_parse_result', 1, resolved);
