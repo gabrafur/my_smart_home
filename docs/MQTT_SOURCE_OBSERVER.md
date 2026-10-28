@@ -111,6 +111,39 @@ os fatos e solicita o commit exato. O CLI usa `flock` e comparação do estado-b
 persiste e sincroniza o estado antes de publicar o ACK. O leitor mede o limite
 superior até observar esse ACK durável. O resultado não mede processamento da Eva.
 
+O adaptador também aceita um checkpoint fechado produzido pelo canvas para a
+futura janela de observação. Ele é gravado no mesmo `state.json` dos contadores,
+com sincronização do arquivo e do diretório antes do ACK. A preparação devolve
+o último checkpoint durável; ela não o reconstrói a partir do tempo decorrido.
+O checkpoint se vincula à proposta exata, ao recibo e aos totais confirmados,
+com sequência e hash do registro anterior. Contadores, violações, máximas e o
+limite de encerramento de uma mesma janela não podem retroceder. Iniciar outra
+janela preserva integralmente a anterior no histórico limitado a oito registros;
+capacidade esgotada recusa o novo registro, sem descarte silencioso.
+
+O estado do consumidor passa à versão 2 somente quando recebe esse checkpoint.
+Uma confirmação legada de proposta em hexadecimal continua disponível no estado
+de versão 1; ela é recusada depois da migração para evitar apagar o checkpoint.
+O novo argumento `c1_…` contém JSON canônico em base64url, com alfabeto seguro
+para o comando fixo e tamanho limitado. Não aceita caminhos, comandos, campos
+extras ou texto livre. A instalação precisa incluir `canvas_checkpoint.mjs`
+junto dos demais módulos do consumidor. Uma reversão que use código antigo
+deve preservar o estado migrado; não o converta nem o substitua silenciosamente.
+
+Essa é a persistência da decisão, não a decisão de aceite. A lógica visual da
+janela, os fatos de horizonte temporal e a prova de manutenção ainda precisam
+ser integrados. O adaptador mantém `full24h_proven: false`, inclusive quando
+armazena uma afirmação do canvas; esse campo não comprova a janela nem amplia
+a cobertura para outros produtores.
+
+Os modos fixos `checkpoint-prepare` e `checkpoint-commit` acessam somente o
+estado do próprio consumidor. Eles permitem guardar uma decisão de incerteza
+após revogação ou indisponibilidade, sem ler o relatório do produtor e sem
+criar, repetir ou atualizar ACK. Suas propostas têm domínio e comparação de
+estado-base separados da confirmação do produtor. Não criam histórico ausente.
+Essa gravação de metadados não concede acesso novo à origem nem permissão para
+um efeito residencial.
+
 `no_events`, `no_new_receipt`, `busy`, `disabled` e `unknown` são resultados
 distintos. Silêncio não significa recuperação. A idade usa correlação explícita
 entre o domínio de boot do leitor e `CLOCK_MONOTONIC` do Node.js; domínio

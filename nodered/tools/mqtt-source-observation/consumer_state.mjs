@@ -1,5 +1,6 @@
 /* Durable source-protocol accounting. No house policy or latency thresholds. */
 import {canonical,digest,decodeEnvelope,ackFor,receiptFacts,sumCounts,zeroCounts,uint,schema} from './consumer_protocol.mjs';
+import {validateCheckpoint} from './canvas_checkpoint.mjs';
 export class ConsumerInvalid extends Error {
   constructor(code='consumer_state_invalid'){super(code);this.name='ConsumerInvalid';this.code=code;}
 }
@@ -13,9 +14,18 @@ export function initialState(){
 }
 export function validateState(state){
   try{
+    need(state?.version===1||state?.version===2);
     closed(state,['version','last_packet','last_packet_sha','last_receipt','last_receipt_sha','pending',
-      'received_counts','acked_counts','report_clock_domain_id','clock_domain_changes','timing']);
-    need(state.version===1);const sent=uint(state.last_packet,64),done=uint(state.last_receipt,64);
+      'received_counts','acked_counts','report_clock_domain_id','clock_domain_changes','timing',
+      ...(state.version===2?['canvas_checkpoint']:[])]);
+    // During a pure protocol transition the previous canvas record may lag
+    // the new receipt. The store requires an exact anchor on disk and binds
+    // its replacement before the combined state can be persisted or ACKed.
+    if(state.version===2){
+      validateCheckpoint(state.canvas_checkpoint);
+      need(uint(state.canvas_checkpoint.receipt_id,64)<=uint(state.last_receipt,64));
+    }
+    const sent=uint(state.last_packet,64),done=uint(state.last_receipt,64);
     need(done<=sent&&sent<=done+1n);
     need((sent===0n&&state.last_packet_sha===null)||(sent>0n&&hex(state.last_packet_sha)));
     need((done===0n&&state.last_receipt_sha===null)||(done>0n&&hex(state.last_receipt_sha)));
