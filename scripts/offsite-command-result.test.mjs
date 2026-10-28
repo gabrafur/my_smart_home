@@ -7,7 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { runDailyCycleCommand } from "./offsite-backup.mjs";
 
-for (const code of ["EACCES", "EPERM", "OTHER"]) {
+for (const code of ["EACCES", "EPERM", "OTHER", "MQTT_METADATA_BACKUP_UNCONFIRMED"]) {
   test(`daily failure ${code} reports a safe reason without false verification claims`, async () => {
     let calls = 0;
     let output = "";
@@ -20,7 +20,9 @@ for (const code of ["EACCES", "EPERM", "OTHER"]) {
     });
     assert.equal(calls, 1);
     assert.equal(status, 1);
-    assert.equal(output, `reason=${code === "OTHER" ? "unknown_failure" : "authentication_or_access"}\n`);
+    const reason = code === "OTHER" ? "unknown_failure" : code === "MQTT_METADATA_BACKUP_UNCONFIRMED"
+      ? "metadata_coordination_unconfirmed" : "authentication_or_access";
+    assert.equal(output, `reason=${reason}\n`);
     assert.doesNotMatch(output, /private|capture_verified|remote_verified|protected|components/);
   });
 }
@@ -29,12 +31,12 @@ test("daily success preserves the canonical receipt fields", async () => {
   let output = "";
   const status = await runDailyCycleCommand({
     cycle: async () => ({ ready: true, components: 13, capture_verified: true,
-      remote_verified: true, protected: true, reason: "completed", retention_mode: "observe_only" }),
+      remote_verified: true, protected: true, reason: "completed", retention_mode: "observe_only", mqtt_coordination: "verified" }),
     write: text => { output += text; },
   });
   assert.equal(status, 0);
   assert.match(output, /^components=13 capture_verified=true remote_verified=true protected=true reason=completed /);
-  assert.match(output, /retention_pruned=0 retention_mode=observe_only\n$/);
+  assert.match(output, /retention_pruned=0 retention_mode=observe_only mqtt_coordination=verified\n$/);
 });
 
 test("inactive daily policy preserves deferred exit 75", async () => {

@@ -10,6 +10,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { probeService } from "./container-readiness.mjs";
 import { applyRestore, loadManifest, verifyBundle } from "./restore.mjs";
+import { loadBackupMaintenance, captureWithOrderedStops } from "./mqtt-maintenance-backup.mjs";
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const defaultPolicyFile = path.join(repoRoot, ".local-secrets/offsite-backup-policy.json");
@@ -1103,11 +1104,12 @@ export async function runDailyCycleCommand({
   } catch (error) {
     const reason = ["EACCES", "EPERM"].includes(error?.code)
       ? "authentication_or_access"
-      : "unknown_failure";
+      : error?.code === "MQTT_METADATA_BACKUP_UNCONFIRMED"
+        ? "metadata_coordination_unconfirmed" : "unknown_failure";
     write(`reason=${reason}\n`);
     return 1;
   }
-  write(`components=${result.components} capture_verified=${result.capture_verified} remote_verified=${result.remote_verified} protected=${result.protected} reason=${result.reason} outage_seconds=${result.outage_seconds ?? 0} backup_timestamp=${result.backup_timestamp ?? "none"} retention_eligible=${result.retention_eligible ?? 0} retention_pruned=${result.retention_pruned ?? 0} retention_mode=${result.retention_mode ?? "not_run"}\n`);
+  write(`components=${result.components} capture_verified=${result.capture_verified} remote_verified=${result.remote_verified} protected=${result.protected} reason=${result.reason} outage_seconds=${result.outage_seconds ?? 0} backup_timestamp=${result.backup_timestamp ?? "none"} retention_eligible=${result.retention_eligible ?? 0} retention_pruned=${result.retention_pruned ?? 0} retention_mode=${result.retention_mode ?? "not_run"} mqtt_coordination=${result.mqtt_coordination ?? "unknown"}\n`);
   return result.ready ? 0 : 75;
 }
 
@@ -1129,6 +1131,9 @@ export async function runDailyCycle({
   if (servicesToRestore.length !== services.length) {
     fail("all protected services must be running before the daily snapshot");
   }
+  // No installed observer keeps the existing backup path. An installed
+  // observer without its reviewed Root coordinator blocks before any stop.
+  const metadataMaintenance = loadBackupMaintenance();
 
   const stamp = now.toISOString().replace(/[-:.]/g, "").replace("Z", "Z");
   const temporaryRoot = path.join(os.tmpdir(), `offsite-bundle-${stamp}`);
@@ -1137,32 +1142,19 @@ export async function runDailyCycle({
   const containerStagingDir = `/config/backups/${path.basename(stagingDir)}`;
   const outageStartedAt = Date.now();
   const outageDeadline = outageStartedAt + Number(policy.daily_orchestration.maximum_service_outage_seconds) * 1000;
-  let servicesStopped = false;
-  let capture;
-  let captureError = null;
-  let restorationError = null;
-
-  try {
-    servicesStopped = true;
-    runChecked("docker", ["compose", "stop", "--timeout", "30", ...servicesToRestore], { timeout: 180_000 });
-    capture = captureOffsiteBundle(bundleDir, {
+  const {capture,captureError,restorationError} = await captureWithOrderedStops({
+    services: servicesToRestore,
+    maintenance: metadataMaintenance,
+    stop: selected => runChecked("docker", ["compose", "stop", "--timeout", "30", ...selected], { timeout: 180_000 }),
+    start: selected => runChecked("docker", ["compose", "start", ...selected], { timeout: 180_000 }),
+    wait: selected => waitForServices(selected, outageDeadline),
+    capture: () => captureOffsiteBundle(bundleDir, {
       manifestFile,
       policyFile,
       runningServices: new Set(),
       createdAt: now.toISOString(),
-    });
-  } catch (error) {
-    captureError = error;
-  } finally {
-    if (servicesStopped) {
-      try {
-        runChecked("docker", ["compose", "start", ...servicesToRestore], { timeout: 180_000 });
-        await waitForServices(servicesToRestore, outageDeadline);
-      } catch (error) {
-        restorationError = error;
-      }
-    }
-  }
+    }),
+  });
   if (restorationError) {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
     throw restorationError;
@@ -1270,6 +1262,7 @@ export async function runDailyCycle({
     remote_verified: true,
     protected: true,
     outage_seconds: outageSeconds,
+    mqtt_coordination: metadataMaintenance ? "verified" : "not_installed",
     backup_timestamp: remoteBackup.date,
     retention_eligible: retention.eligible,
     retention_pruned: retention.pruned,

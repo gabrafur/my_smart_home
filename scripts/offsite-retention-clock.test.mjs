@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 import { applyComposeRetention, planComposeRetention, runDailyCycleCommand, COMPOSE_RETENTION_SERIES } from "./offsite-backup.mjs";
+import { captureWithOrderedStops } from "./mqtt-maintenance-backup.mjs";
 
 const source = fs.readFileSync(new URL("./offsite-backup.mjs", import.meta.url), "utf8");
 const begin = "export async function runDailyCycle(";
@@ -38,6 +39,7 @@ function cycleHarness(options = {}) {
   let created;
   const events = [];
   let retentionCalls = 0;
+  const fixtureServices = options.metadataMaintenance ? ["homeassistant", "mosquitto", "nodered"] : ["synthetic-service"];
   class FixedDate extends Date {
     constructor(...args) { super(...(args.length ? args : [tick])); }
     static now() { return tick; }
@@ -46,9 +48,17 @@ function cycleHarness(options = {}) {
     Date: FixedDate, Set, Map, Number, Object, JSON, Math, path,
     repoRoot: "/synthetic-only", defaultPolicyFile: "/synthetic-policy", os: { tmpdir: () => "/synthetic-tmp" },
     dailyCycleReadiness: () => ({ ready: true }),
-    loadManifest: () => ({ items: [{ logical_name: "synthetic", service_must_be_stopped: ["synthetic-service"] }] }),
+    loadManifest: () => ({ items: [{ logical_name: "synthetic", service_must_be_stopped: fixtureServices }] }),
     readPolicy: () => policy, validateOffsitePolicy: p => p,
-    defaultRunningServices: () => new Set(["synthetic-service"]),
+    defaultRunningServices: () => new Set(fixtureServices),
+    captureWithOrderedStops,
+    loadBackupMaintenance: () => options.metadataMaintenance ? {
+      prepare: () => events.push("mqtt-prepare"),
+      resume: () => {
+        events.push("mqtt-resume");
+        if (options.metadataRestoreFailure) throw new Error("synthetic metadata restoration failed");
+      },
+    } : null,
     fail: message => { throw new Error(message); },
     runChecked: (_command, args) => {
       if (args[0] === "compose") { events.push(args[1]); if (args[1] === "stop") tick += 10_000; }
@@ -107,9 +117,24 @@ function cycleHarness(options = {}) {
 test("cycle uses post-verification time for retention and preserves capture start time", async () => {
   const h = cycleHarness(); const result = await h.run();
   assert.equal(result.remote_verified, true); assert.equal(result.outage_seconds, 90);
+  assert.equal(result.mqtt_coordination, "not_installed");
   assert.equal(result.retention_pruned, 0); assert.equal(result.retention_mode, "observe_only"); assert.equal(h.retentionCalls(), 1);
   assert.deepEqual(h.events.filter(e => e !== "cleanup"), ["stop", "capture", "start", "services-ready", "generate", "remote-receipt-checked", "retention"]);
   assert.equal(h.time(), start + 210_000);
+});
+
+test("actual cycle body verifies coordinated resume before generating or retaining the remote backup", async () => {
+  const h = cycleHarness({ metadataMaintenance: true }); const result = await h.run();
+  assert.equal(result.mqtt_coordination, "verified");
+  assert(h.events.indexOf("mqtt-prepare") < h.events.indexOf("capture"));
+  assert(h.events.indexOf("capture") < h.events.indexOf("mqtt-resume"));
+  assert(h.events.indexOf("mqtt-resume") < h.events.indexOf("generate"));
+});
+
+test("unconfirmed metadata resume prevents remote generation and retention in the actual cycle body", async () => {
+  const h = cycleHarness({ metadataMaintenance: true, metadataRestoreFailure: true });
+  await assert.rejects(h.run(), /metadata restoration failed/);
+  assert(!h.events.includes("generate"));assert.equal(h.retentionCalls(), 0);
 });
 
 for (const [name, option, error] of [
@@ -203,7 +228,7 @@ test("cycle completes verified capture with eligible copies but no prune or remo
   const summary = await dailyOutput(result);
   assert.equal(summary.exitCode, 0);
   assert.match(summary.output, /capture_verified=true remote_verified=true protected=true reason=completed/);
-  assert.match(summary.output, /retention_eligible=1 retention_pruned=0 retention_mode=observe_only\n$/);
+  assert.match(summary.output, /retention_eligible=1 retention_pruned=0 retention_mode=observe_only mqtt_coordination=not_installed\n$/);
 });
 
 test("not-ready cycle result never claims verified capture or observation", async () => {
@@ -211,7 +236,7 @@ test("not-ready cycle result never claims verified capture or observation", asyn
     remote_verified: false, protected: false, reason: "daily-offsite-backup-not-active" });
   assert.equal(summary.exitCode, 75);
   assert.match(summary.output, /capture_verified=false remote_verified=false protected=false/);
-  assert.match(summary.output, /retention_mode=not_run\n$/);
+  assert.match(summary.output, /retention_mode=not_run mqtt_coordination=unknown\n$/);
 });
 
 test("observation preserves old entries and registering the same receipt does not duplicate it", async t => {

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "scope": "fixed_backup_plan_and_existing_offsite_worker_owned_isolated_fixture",
+  "verified_on": "2026-10-28",
+  "static_file_transaction_targets": 44,
+  "Root_static_modules": 25,
+  "permanent_source_or_maintenance_access_activated": false,
+  "runtime_NodeRED_flow_reloaded": false,
+  "full24h_proven": false,
+  "isolated_Root_units": {
+    "tests": 304,
+    "failures": 0,
+    "skipped": 0
+  },
+  "directed_JS_tests": {
+    "backup_and_bridge": 38,
+    "summary_retention_and_actual_cycle_body": 28,
+    "failures": 0
+  },
+  "canonical_NodeRED_gate": {
+    "accepts": [
+      "verified",
+      "not_installed"
+    ],
+    "missing_or_unknown_coordination_blocks_updates": true,
+    "manual_full_dry_run_preserved": true,
+    "global_failure_observer_preserved": true,
+    "layout_geometry_and_wires_unchanged": true,
+    "long_or_return_wires": 0
+  },
+  "native_fixture": {
+    "network": "none",
+    "residential_mounts_or_secrets": false,
+    "Node_version": "v24.22.1",
+    "actual_Root_reader": true,
+    "actual_finite_backup_plan": true,
+    "actual_effects": [
+      "stop_source",
+      "stop_consumer",
+      "start_consumer",
+      "start_source"
+    ],
+    "reader_instance_preserved": true,
+    "source_container_ID_preserved": true,
+    "fresh_consumer_checkpoint_before_source_restart": true,
+    "Root_metadata_snapshot_verified": true,
+    "authorization_or_source_policy_in_snapshot": false,
+    "application_capture_failure_injected": true,
+    "application_restores_proven": false,
+    "verified_frames": 63,
+    "ACK_receipts": 12,
+    "source_epochs": 2,
+    "unknown_epoch_tails": 0,
+    "correlation_checks_passed": 16,
+    "all_seven_metadata_classes_measured": true,
+    "maximum_source_to_ACK_upper_ns": "3305179818",
+    "owned_containers_removed": 2,
+    "combined_active_container_CPU_quota": 0.35,
+    "Root_reader_hard_AS_bytes": 134217728,
+    "Root_reader_capabilities": [
+      "CHOWN",
+      "DAC_READ_SEARCH",
+      "SYS_PTRACE"
+    ],
+    "Root_reader_no_new_privileges": true,
+    "Node_old_space_MiB": 128,
+    "Node_RSS_hard_limit_proven": false,
+    "plan_profile_fixture_only": true,
+    "production_changes": false
+  },
+  "prior_terminal_fixture_failure": "expected_immediate_fresh_checkpoint;no_controller_effect;two_owned_containers_removed;preserved_not_replayed",
+  "pending": [
+    "complete_installed_helper_contract_and_specific_source_maintenance_approval",
+    "protected_Root_metadata_snapshot_transport_into_external_backup",
+    "approved_outage_budget_alignment_and_expired_plan_recovery",
+    "container_update_coordination_and_consumer_CID_recreation",
+    "journal_archive_preserving_consumed_operations",
+    "complete_install_revoke_rollback_and_actual_MCP_projection",
+    "actual_household_natural_cycle_and_24h_acceptance",
+    "seven_isolated_application_restores"
+  ],
+  "private_runtime_or_credentials_exported": false
+}

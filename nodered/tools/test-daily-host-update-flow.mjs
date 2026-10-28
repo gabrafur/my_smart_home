@@ -262,10 +262,21 @@ assert.equal(offsiteRequest.payload.event, "offsite_backup_requested");
 assert.equal(offsiteRequest.payload.source, "git_backup");
 const parseOffsite = new Function("msg", "node", "flow", node("daily_update_offsite_parse_result").func);
 const offsiteSuccess = parseOffsite({
-  payload: "offsite-backup status=success request_id=prod-ok components=13 capture_verified=true remote_verified=true protected=true",
+  payload: "offsite-backup status=success request_id=prod-ok components=13 capture_verified=true remote_verified=true protected=true mqtt_coordination=not_installed",
 }, offsiteRuntimeNode, flow);
 assert.equal(offsiteSuccess[0], null);
 assert.equal(offsiteSuccess[1].payload.event, "offsite_backup_completed");
+assert.equal(offsiteSuccess[1].payload.mqtt_coordination, "not_installed");
+for (const state of ["verified", "failed", "unknown", ""]) {
+  const sample = parseOffsite({ _offsite_backup_test: true,
+    payload: "offsite-backup status=success request_id=coordination-" + (state || "missing")
+      + " components=13 capture_verified=true remote_verified=true protected=true"
+      + (state ? " mqtt_coordination=" + state : ""),
+  }, offsiteRuntimeNode, flow);
+  assert.equal(sample[0].payload.status, state === "verified" ? "success" : "failed");
+  assert.equal(sample[0].payload.mqtt_coordination, state || "unknown");
+  assert.equal(sample[1], null, "manual result follows the shared dry-run path");
+}
 const offsiteFailureCount = offsiteErrors.length;
 assert.deepEqual(parseOffsite({
   payload: "offsite-backup status=failed request_id=prod-fail components=13 capture_verified=true remote_verified=false protected=true",
@@ -273,7 +284,7 @@ assert.deepEqual(parseOffsite({
 assert.equal(offsiteErrors.length, offsiteFailureCount + 1);
 const offsiteSynthetic = parseOffsite({
   _offsite_backup_test: true,
-  payload: "offsite-backup status=success request_id=test-ok components=13 capture_verified=true remote_verified=true protected=true",
+  payload: "offsite-backup status=success request_id=test-ok components=13 capture_verified=true remote_verified=true protected=true mqtt_coordination=verified",
 }, offsiteRuntimeNode, flow);
 assert.equal(offsiteSynthetic[0].payload.test_mode, true);
 assert.equal(offsiteSynthetic[1], null);

@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 42 destinos: 23 módulos Root, nove
+do pacote. Seu catálogo fechado contém 44 destinos: 25 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -411,11 +411,62 @@ da origem, retomada do consumidor e preservação do leitor. Uma tentativa anter
 encerrou sem confirmar o corte final e permanece preservada. O teste integrado
 posterior executou o produtor nativo, o preparador de política e o corte comum
 comprovado por recibo. Isso não instala nem autoriza a superfície de produção.
-Permanecem pendentes a emissão do job pelo atualizador real, os gates visuais
-de backup/update e o plano Root finito durante a parada do Node-RED, a recriação
+Permanecem pendentes a emissão do job pelo atualizador real, sua coordenação
+com o plano de manutenção e a recriação
 do próprio consumidor, o arquivamento seguro antes do limite de 16 operações,
 o pacote completo de implantação, revogação/reversão, projeção MCP e a aprovação
 específica de acesso permanente.
+
+### Delegação finita do backup
+
+`maintenance_plan.py` coordena o backup a partir da operação `backup_snapshot`
+já observada pelo controlador. Antes de parar os serviços, sela um plano Root
+ligado ao primeiro recibo, aprovação, código e domínio BOOTTIME. Seu perfil
+privado `backup-plan-policy.json`, no diretório do journal, precisa declarar
+`maximum_duration_ns` e `observation_interval_ns`; não há prazos implícitos.
+O orçamento começa no recibo inicial e não é renovado quando o worker retoma.
+Mudança no perfil ou esgotamento do prazo bloqueiam novos efeitos e preservam
+o histórico para recuperação revisada.
+
+O helper candidato `backup_cli.py` aceita somente `prepare`, `resume` e
+`status`, com um ID de operação. Usa caminhos e alvos fixos e roda fora do
+Node-RED. `prepare` para a origem, confirma fechamento e ACKs e só então para
+o consumidor. `resume` inicia o consumidor, exige observação nova do mesmo
+leitor com a origem ainda parada e então inicia e verifica a origem. As
+consultas de espera são limitadas pelo plano; intents existentes nunca
+autorizam repetir comandos de resultado incerto.
+
+O worker existente `offsite-backup.mjs` usa essa fronteira por meio de
+`mqtt-maintenance-backup.mjs`. Os demais serviços continuam no snapshot
+consistente já existente. A retomada coordenada também é solicitada quando a
+captura falha, e sua confirmação antecede o upload e a retenção. Nenhum restart
+genérico inclui novamente os dois serviços coordenados. Sem observador
+instalado, o worker conserva o caminho anterior. Observador instalado sem
+contrato Root válido bloqueia o backup antes da parada.
+
+O contrato Root público `/run/raspberry-mqtt-observation/backup-contract.json`
+precisa ter modo `0444`, versão, escopo, `enabled`, SHA do helper e
+`maximum_command_ms`; o código Root permanece `0644` e imutável para o worker.
+A ponte valida diretórios, owners, modos, hashes e respostas vinculadas à
+operação e invoca somente o helper Python fixo, sem ambiente herdado. Esse
+contrato não concede acesso por si só: sudoers, perfil Root, autorização de
+origem e política de manutenção precisam integrar o pacote aprovado.
+
+O canvas `atualizacoes_diarias` conserva a decisão: só libera os updates após
+backup protegido e remoto verificado e `mqtt_coordination=verified` ou
+`not_installed`. Campo ausente, desconhecido ou falho bloqueia a sequência.
+Para o replay manual, solicite o TESTE 0A do backup externo, depois execute
+sucesso, falha ou adiamento e confira o terminal dry-run compartilhado. O teste
+não invoca o helper nem para serviços reais.
+
+O [aceite isolado do plano de backup](../scripts/raspberry-mcp/mqtt-backup-plan.acceptance.json)
+comprova os quatro comandos reais em dois contêineres próprios, preservação do
+leitor e do vínculo, snapshot dos metadados e retomada após falha sintética na
+captura da aplicação. Não comprova o restore dos sete serviços nem a execução
+do helper com permissões instaladas em produção. Antes de ativar, faltam o
+transporte protegido do snapshot Root ao backup externo, o acordo de prazos
+com o orçamento de indisponibilidade, a recuperação de plano expirado e o
+pacote completo de instalação/revogação/reversão com aprovação específica.
 
 ## Revogação, reversão e recuperação
 

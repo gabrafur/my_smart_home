@@ -43,13 +43,15 @@ const components = Number(text.match(/\\bcomponents=(\\d+)\\b/)?.[1] ?? NaN);
 const captureVerified = text.match(/\\bcapture_verified=(true|false)\\b/)?.[1] === "true";
 const remoteVerified = text.match(/\\bremote_verified=(true|false)\\b/)?.[1] === "true";
 const protectedBackup = text.match(/\\bprotected=(true|false)\\b/)?.[1] === "true";
+const mqttCoordination = text.match(/\\bmqtt_coordination=(verified|not_installed|failed|unknown)\\b/)?.[1] ?? "unknown";
 if (!status) {
     if (!TEST_MODE) node.error("offsite_backup_result_unrecognized", msg);
     return [null, null];
 }
-const validSuccess = status === "success" && components === 13 && captureVerified && remoteVerified && protectedBackup;
+const validSuccess = status === "success" && components === 13 && captureVerified && remoteVerified && protectedBackup
+    && ["verified", "not_installed"].includes(mqttCoordination);
 const normalizedStatus = status === "success" && !validSuccess ? "failed" : status;
-const signature = [requestId, normalizedStatus, components, captureVerified, remoteVerified, protectedBackup].join(":");
+const signature = [requestId, normalizedStatus, components, captureVerified, remoteVerified, protectedBackup, mqttCoordination].join(":");
 const key = TEST_MODE ? "offsite_backup_last_result_v1__test" : "offsite_backup_last_result_v1";
 const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
 if (!TEST_MODE && previous?.signature === signature) return [null, null];
@@ -57,7 +59,7 @@ const result = {
     version: 1, signature, status: normalizedStatus, request_id: requestId,
     components: Number.isFinite(components) ? components : null,
     capture_verified: captureVerified, remote_verified: remoteVerified,
-    protected: protectedBackup, test_mode: TEST_MODE, observed_at: Date.now()
+    protected: protectedBackup, mqtt_coordination: mqttCoordination, test_mode: TEST_MODE, observed_at: Date.now()
 };
 if (TEST_MODE) flow.set(key, result); else flow.set(key, result, "persistent");
 msg.payload = result;
@@ -70,7 +72,7 @@ if (TEST_MODE) return [msg, null];
 if (validSuccess) {
     msg.payload = {
         version: 1, event: "offsite_backup_completed", status: "success",
-        finished_at: new Date().toISOString(), test_mode: false
+        finished_at: new Date().toISOString(), mqtt_coordination: mqttCoordination, test_mode: false
     };
     return [null, msg];
 }
@@ -2272,7 +2274,7 @@ const nodes = [
   {
     id: "daily_update_offsite_architecture", type: "comment", z: TAB, g: offsiteBackupGroup,
     name: "Backup Git → snapshot consistente → OneDrive protegido → updates",
-    info: "Produção falha fechada. O worker do host deve confirmar 13 componentes, checksums, proteção e presença remota. Falha, adiamento ou ausência de janela bloqueiam todos os updates. Testes terminam no dry-run compartilhado.",
+    info: "Produção falha fechada. O worker do host confirma 13 componentes, checksums, proteção, presença remota e mqtt_coordination. Sem observador instalado, o estado é not_installed. Com ele instalado, o plano Root fixo e limitado para MQTT → drena ACKs → para Node-RED → captura → retoma Node-RED → confirma checkpoint novo → retoma MQTT → confirma a nova origem, sem depender do Node-RED durante sua parada. Somente verified ou not_installed liberam updates; estado ausente, falha ou adiamento bloqueiam. O perfil Root precisa preservar o orçamento de indisponibilidade aprovado. TESTE 0A solicita; depois use sucesso ou falha e confira o terminal dry-run compartilhado. Nenhum teste aciona serviços residenciais.",
     x: 690, y: 8560, wires: [],
   },
   {
@@ -2345,7 +2347,7 @@ const nodes = [
   {
     id: "daily_update_offsite_test_success", type: "inject", z: TAB, g: offsiteBackupGroup,
     name: "TESTE 0B: sucesso verificável", props: [
-      { p: "payload", v: "offsite-backup status=success request_id=test-success components=13 capture_verified=true remote_verified=true protected=true", vt: "str" },
+      { p: "payload", v: "offsite-backup status=success request_id=test-success components=13 capture_verified=true remote_verified=true protected=true mqtt_coordination=verified", vt: "str" },
       { p: "_offsite_backup_test", v: "true", vt: "bool" },
     ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
     x: 230, y: 8970, wires: [["daily_update_offsite_parse_result"]],
@@ -2353,7 +2355,7 @@ const nodes = [
   {
     id: "daily_update_offsite_test_failure", type: "inject", z: TAB, g: offsiteBackupGroup,
     name: "TESTE 0C: falha bloqueia", props: [
-      { p: "payload", v: "offsite-backup status=failed request_id=test-failed components=13 capture_verified=true remote_verified=false protected=true", vt: "str" },
+      { p: "payload", v: "offsite-backup status=failed request_id=test-failed components=13 capture_verified=true remote_verified=false protected=true mqtt_coordination=failed", vt: "str" },
       { p: "_offsite_backup_test", v: "true", vt: "bool" },
     ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
     x: 500, y: 8970, wires: [["daily_update_offsite_parse_result"]],
