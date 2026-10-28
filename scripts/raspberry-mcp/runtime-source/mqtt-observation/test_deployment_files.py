@@ -1,7 +1,7 @@
 """Real isolated filesystem transactions, interruption and concurrent-edit cases."""
 from pathlib import Path
 import json,os,tempfile,unittest
-from deployment_files import FileTransaction,DeploymentUnavailable,TARGETS,digest,manifest_hash
+from deployment_files import FileTransaction,DeploymentUnavailable,TARGETS,CONSUMER,digest,manifest_hash
 
 class FileDeploymentTests(unittest.TestCase):
     def setUp(self):
@@ -34,7 +34,8 @@ class FileDeploymentTests(unittest.TestCase):
         finally:os.umask(previous)
         self.assertEqual(self.open().apply_approved(self.spec,self.artifacts)['state'],'applied')
     def test_closed_target_set_excludes_grants_bindings_credentials_and_backup_data(self):
-        self.assertEqual(len(TARGETS),25)
+        self.assertEqual(len(TARGETS),39)
+        self.assertEqual({n.removeprefix('consumer/')for n in TARGETS if n.startswith('consumer/')},set(CONSUMER))
         for path,_mode in TARGETS.values():
             self.assertTrue(path.startswith(('opt/raspberry-mqtt-observation/','etc/systemd/system/raspberry-mqtt-observation.','etc/raspberry-mqtt-observation/')))
             self.assertNotIn('authorization',Path(path).name if not path.endswith('authorization_gate.py')else'code-only')

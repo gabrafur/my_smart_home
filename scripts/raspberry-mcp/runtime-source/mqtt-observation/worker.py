@@ -6,11 +6,13 @@ sys.path.insert(0,str(Path(__file__).parent))
 from activated_reader import from_systemd
 from authorization_gate import AuthorizationGate,GateInvalid
 from worker_config import load_source_policy
-from source_binding import SourceVerifier,local_clock_domain
+from source_binding import SourceVerifier,local_clock_domain,start_ticks
 from socket_reader import PacketIntake
 from handoff_ledger import HandoffLedger
 from file_bridge import FileBridge
 from status_writer import StatusWriter
+from maintenance_status import Writer as MaintenanceStatusWriter,facts as maintenance_facts
+from source_rebind import apply_request as apply_source_rebind,RebindUnavailable
 AS_LIMIT=134217728
 @dataclass(frozen=True)
 class Paths:
@@ -18,6 +20,7 @@ class Paths:
     runtime:Path=Path("/run/raspberry-mqtt-observation")
     report:Path=Path("/mnt/data/docker/nodered/.mqtt-source-observer-report")
     consumer:Path=Path("/mnt/data/docker/nodered/.mqtt-source-observer-consumer")
+    maintenance:Path=Path('/var/lib/raspberry-mqtt-maintenance')
     @property
     def authorization(self):return self.state/"authorization.json"
     @property
@@ -53,9 +56,10 @@ def bootstrap_approved(paths):
     finally:gate.close()
 class Worker:
     def __init__(self,paths,*,reader_factory=from_systemd,notifier=notify):
-        self.paths=paths;self.gate=None;self.ledger=None;self.bridge=None;self.reader=None;self.source_verifier=None
+        self.paths=paths;self.gate=None;self.ledger=None;self.bridge=None;self.reader=None;self.source_verifier=None;self.maintenance_writer=None
         self.notifier=notifier;self.stop=False;self.last_source_completed=None;self.last_intake="waiting"
         self.instance=hashlib.sha256(os.urandom(32)).hexdigest();self.started=boottime();self.domain=local_clock_domain()
+        self.pid=os.getpid();self.process_start_ticks=start_ticks(Path('/proc/self/stat').read_text(),self.pid)
         try:
             if os.geteuid()!=0:raise GateInvalid("reader_role_invalid")
             self.gate=AuthorizationGate(paths.runtime,paths.authorization)
@@ -64,6 +68,7 @@ class Worker:
             self.ledger=HandoffLedger(paths.ledger,create=False,clock_domain_id=self.domain,started_ns=self.started)
             self.bridge=FileBridge(paths.report,paths.consumer,consumer_uid=1000,consumer_gid=1000)
             self.status_writer=StatusWriter(self.bridge)
+            self.maintenance_writer=MaintenanceStatusWriter(paths.state)
             self.source_verifier=SourceVerifier(policy)
             intake=PacketIntake(self.ledger,self.source_verifier,require_sender_pidfd=True)
             self.reader=reader_factory(paths.source_socket,intake=intake)
@@ -85,7 +90,7 @@ class Worker:
                 'emitted_boottime_ns':None if state['last_emitted_ns']is None else str(state['last_emitted_ns']),
                 'covered_before_ns':None if state.get('last_covered_before_ns')is None else str(state['last_covered_before_ns']),
                 'closed':state.get('source_closed',False),'identity_state':identity}
-        self.status_writer.write({"schema_version":2,"source":"fixed_mqtt_metadata_reader",
+        value={"schema_version":2,"source":"fixed_mqtt_metadata_reader",
             "reader_instance_sha256":self.instance,"clock_domain_sha256":self.domain,
             "reader_started_boottime_ns":str(self.started),"reader_observed_boottime_ns":str(boottime()),
             "reader_observed_monotonic_ns":str(time.monotonic_ns()),
@@ -97,11 +102,23 @@ class Worker:
             "reader_sessions":str(self.ledger.body["reader_sessions"]),
             "source_facts":source,
             "faults":{k:str(v)for k,v in self.ledger.body["faults"].items()},
-            "full24h_proven":False,"all_event_latency_proven":False})
+            "full24h_proven":False,"all_event_latency_proven":False}
+        self.status_writer.write(value)
+        self.maintenance_writer.write(maintenance_facts(self,value))
     def refresh_authority(self):
         self.authorization=self.gate.refresh()
         if self.authorization["source_authorized"]is True:
-            try:matching_authority(self.gate,self.approval_id)
+            try:
+                matching_authority(self.gate,self.approval_id)
+                policy,approval=load_source_policy(self.paths.source_policy)
+                if approval!=self.approval_id:raise RebindUnavailable('source_rebind_unconfirmed')
+                if policy!=self.source_verifier.policy:
+                    apply_source_rebind(self,policy,approval)
+            except(RebindUnavailable,ValueError,OSError):
+                # A failed binding transaction disables telemetry in place;
+                # restarting would cold-load the new file without its proof.
+                self.gate._remove_marker()
+                self.authorization={'state':'invalid','source_authorized':False}
             except BaseException:
                 self.gate._remove_marker();raise
     def step(self,timeout=0.1):
@@ -128,7 +145,7 @@ class Worker:
     def close(self):
         # Socket belongs to the manager; an ordinary reader restart preserves
         # its path/queue and the existing owner-approved authorization marker.
-        for key in ["reader","source_verifier","bridge","ledger","gate"]:
+        for key in ["reader","source_verifier","maintenance_writer","bridge","ledger","gate"]:
             value=getattr(self,key,None)
             if value is not None:value.close();setattr(self,key,None)
 def main():

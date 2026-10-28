@@ -8,10 +8,14 @@ from pathlib import Path
 import fcntl,hashlib,json,os,re,stat
 
 CORE=('activated_reader.py','authorization_gate.py','deployment_files.py',
-      'file_bridge.py','handoff.py','handoff_ledger.py','maintenance_journal.py','protocol.py',
-      'receiver_ledger.py','recovery_data.py','socket_reader.py','source_binding.py',
+      'file_bridge.py','handoff.py','handoff_ledger.py','maintenance_backend.py',
+      'maintenance_controller.py','maintenance_journal.py','maintenance_rebind.py','maintenance_status.py','protocol.py',
+      'receiver_ledger.py','recovery_data.py','socket_reader.py','source_binding.py','source_rebind.py',
       'status_writer.py','worker.py','worker_config.py')
+CONSUMER=('canvas_checkpoint.mjs','consumer_protocol.mjs','handoff_schema.json','consumer_state.mjs',
+          'consumer_store.mjs','consumer_cli.mjs','consumer-command.sh','reader_status.mjs','maintenance_checkpoint.mjs')
 TARGETS={**{'code/'+n:('opt/raspberry-mqtt-observation/'+n,0o644)for n in CORE},
+ **{'consumer/'+n:('opt/raspberry-mqtt-observation/consumer/'+n,0o644)for n in CONSUMER},
  'reader_service':('etc/systemd/system/raspberry-mqtt-observation.service',0o644),
  'reader_socket':('etc/systemd/system/raspberry-mqtt-observation.socket',0o644),
  'plugin':('opt/raspberry-mqtt-observation/native/observer.so',0o444),

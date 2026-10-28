@@ -307,8 +307,9 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 25 destinos de código, units,
-configuração e licenças; não inclui credenciais, autorização, vínculo de origem
+do pacote. Seu catálogo fechado contém 39 destinos: 20 módulos Root, nove
+módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
+Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
 confere os hashes anteriores e posteriores e recusa repetir uma aplicação
 interrompida. Um recibo antigo é apresentado separadamente da conferência dos
@@ -343,8 +344,39 @@ JSON e hashes, isoladamente, não atestam uma parada real nem autenticam a fonte
 O executor aprovado deve observar os processos e arquivos reais e registrar o
 intent antes de enviar cada efeito. O Node-RED continua responsável pelos gates
 operacionais. Esse módulo não contém CLI, Docker, controle de serviços, agenda
-ou retries; o controlador fixo, a integração de backup/update, sua ativação e a
-aceitação em produção continuam pendentes.
+ou retries.
+
+O controlador candidato `maintenance_controller.py` aceita somente quatro
+comandos fixos: parar origem, parar consumidor, iniciar consumidor e iniciar
+origem. Cada efeito exige intent durável, vínculo selado e releitura da
+identidade/estado na fronteira final. Repetir uma solicitação com intent já
+existente permite somente observar o resultado; trocar o ID não contorna uma
+operação anterior inconclusiva. O controlador não oferece CLI ou agenda.
+
+`maintenance_backend.py` verifica hashes do código Root e do consumidor,
+aprovação e validade, processo vivo do leitor com PID/start ticks e identidades
+dos dois contêineres. A inspeção seleciona campos de lifecycle antes de receber
+os bytes; não solicita ambiente ou logs de healthcheck. O consumidor parado é
+validado pelo codec offline fixo, sem iniciá-lo para obter um checkpoint.
+O arquivo privado `maintenance-status.json` mantém fatos do leitor separados
+do contrato público de observação.
+
+`maintenance_rebind.py` registra a intenção e os bytes anteriores antes de
+trocar somente o vínculo da origem. O leitor aceita a mudança em processo
+apenas após conferir o journal, a mesma instância do leitor, o processo antigo
+com saída comprovada e todos os ACKs do corte. O próximo emissor precisa de
+atestado novo; a mudança não inicia contêiner, renova acesso ou zera histórico.
+Resultado de escrita incerto é reconciliado por leitura, sem completar escritas
+automaticamente nem iniciar outro leitor para contornar a prova.
+
+O [aceite isolado do controlador](../scripts/raspberry-mcp/mqtt-maintenance-controller.acceptance.json)
+comprova os quatro efeitos em contêineres próprios, recriação do identificador
+da origem, retomada do consumidor e preservação do leitor. Uma tentativa anterior
+encerrou sem confirmar o corte final e permanece preservada; o teste posterior
+alcançou o corte exato sem relaxar seus critérios. Isso não instala nem autoriza
+a superfície de produção. Permanecem pendentes o emissor selado de política de
+produção, os gates visuais de backup/update, o pacote completo de implantação,
+revogação/reversão, projeção MCP e a aprovação específica de acesso permanente.
 
 ## Revogação, reversão e recuperação
 
