@@ -22,7 +22,7 @@ class FileDeploymentTests(unittest.TestCase):
         path=self.path(key);path.parent.mkdir(parents=True,exist_ok=True)
         path.write_bytes(raw);path.chmod(TARGETS[key][1]);self.spec[key]['before_sha256']=digest(raw)
     def test_closed_target_set_excludes_grants_bindings_credentials_and_backup_data(self):
-        self.assertEqual(len(TARGETS),24)
+        self.assertEqual(len(TARGETS),25)
         for path,_mode in TARGETS.values():
             self.assertTrue(path.startswith(('opt/raspberry-mqtt-observation/','etc/systemd/system/raspberry-mqtt-observation.','etc/raspberry-mqtt-observation/')))
             self.assertNotIn('authorization',Path(path).name if not path.endswith('authorization_gate.py')else'code-only')

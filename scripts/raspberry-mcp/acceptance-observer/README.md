@@ -93,6 +93,36 @@ recibos mesmo quando saem da janela móvel. `full_goal_accepted` permanece falso
 
 ## Validação e revogação
 
+### Auditoria offline dos relógios preservados
+
+`monotonic_cadence.py::assess` recebe somente fatos sanitizados já coletados;
+não lê histórico residencial, executa coletor, adquire locks ou muda estado.
+O chamador deve verificar separadamente a origem e o hash do arquivo de fatos.
+O hash informado no JSON não autentica sua própria origem.
+
+O auditor conserva o limite de 60 segundos e exige 86.400 segundos no mesmo
+boot, com âncora anterior ao início, cobertura da última fronteira e par de
+relógios da leitura. Recusa duplicatas antes de selecionar a âncora, inclusive
+quando ambas estão imediatamente antes da janela. A idade conservadora da
+saúde atual inclui a largura desse par de relógios. Os campos são fechados;
+no máximo 2.000 amostras podem ser fornecidas.
+
+Um salto civil é reportado separadamente dos intervalos monotônicos. Um aceite
+físico não altera o relatório UTC anterior, não reconstrói a saúde de outra
+captura e não identifica quem ajustou o relógio. O fim da janela é o instante
+dos fatos fornecidos, não o horário de execução do auditor. Os contadores de
+cobertura e o número de amostras parciais continuam visíveis: cadência não prova
+cobertura de todos os processos, latência de eventos ou autonomia do PC.
+
+```sh
+python3 -B scripts/raspberry-mcp/acceptance-observer/test_monotonic_cadence.py -q
+```
+
+Esse módulo offline não integra a instalação ou o timer já aprovado e não
+autoriza novas capturas nem altera os critérios do auditor UTC existente.
+
+### Captura instalada
+
 ```sh
 python3 -B scripts/raspberry-mcp/acceptance-observer/test_capture.py -q
 python3 -B scripts/raspberry-mcp/runtime-source/repair-control/test_health_summary.py -q

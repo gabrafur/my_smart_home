@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 24 destinos de código, units,
+do pacote. Seu catálogo fechado contém 25 destinos de código, units,
 configuração e licenças; não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
 confere os hashes anteriores e posteriores e recusa repetir uma aplicação
@@ -320,6 +320,31 @@ A orquestração aprovada precisa fechar a coleta, parar o leitor novo e restaur
 o broker antes de reverter os arquivos estáticos. Montagens somente leitura,
 recriação do broker, novo vínculo antes da partida, ativação do canvas e
 projeção MCP ainda exigem integração e validação próprias no pacote.
+
+### Recibos de manutenção
+
+`maintenance_journal.py` mantém fatos tipados em um snapshot Root com modo
+`0600`, protegido pelo mesmo lock de transação, escrita atômica e fsync.
+Cada operação vincula aprovação, ID, domínio BOOTTIME, sequência e hash do
+registro anterior. O limite de 16 operações preserva todos os registros;
+capacidade esgotada bloqueia a escrita, sem descarte automático. Uma repetição
+exata devolve o mesmo recibo, sem repetir efeito. Divergência, sequência fora
+de ordem ou continuação de operação terminada são recusadas.
+
+O registro inclui a janela armada, intents anteriores aos efeitos, parada e
+fechamento da origem, corte confirmado por ACK, parada e início do consumidor,
+observação Root posterior ao início e a nova origem com seu vínculo e época.
+O arquivo conserva intents após uma falha de retorno. Resultado incerto exige
+reconciliação; uma autorização nova não permite continuar uma operação antiga.
+
+`correlation_facts` expõe comparações de vínculos, épocas, relógios, contadores,
+ACKs e observações do consumidor. Esses fatos não são um aceite de continuidade:
+JSON e hashes, isoladamente, não atestam uma parada real nem autenticam a fonte.
+O executor aprovado deve observar os processos e arquivos reais e registrar o
+intent antes de enviar cada efeito. O Node-RED continua responsável pelos gates
+operacionais. Esse módulo não contém CLI, Docker, controle de serviços, agenda
+ou retries; o controlador fixo, a integração de backup/update, sua ativação e a
+aceitação em produção continuam pendentes.
 
 ## Revogação, reversão e recuperação
 

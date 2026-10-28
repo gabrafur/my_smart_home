@@ -8,7 +8,7 @@ from pathlib import Path
 import fcntl,hashlib,json,os,re,stat
 
 CORE=('activated_reader.py','authorization_gate.py','deployment_files.py',
-      'file_bridge.py','handoff.py','handoff_ledger.py','protocol.py',
+      'file_bridge.py','handoff.py','handoff_ledger.py','maintenance_journal.py','protocol.py',
       'receiver_ledger.py','recovery_data.py','socket_reader.py','source_binding.py',
       'status_writer.py','worker.py','worker_config.py')
 TARGETS={**{'code/'+n:('opt/raspberry-mqtt-observation/'+n,0o644)for n in CORE},
