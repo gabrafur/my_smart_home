@@ -58,7 +58,10 @@ válida. O scanner cobre identidades em entidades, campos contextuais de nome,
 e-mail e telefone, identificadores de conta, hostnames/SSIDs privados, rede
 privada, endereços, coordenadas, MACs/BSSIDs, VIN/serial, tópicos residenciais,
 timestamps associados a eventos, artefatos de estado/backup, imagens fora da
-área pública e metadados de imagem. Valores sintéticos e papéis lógicos têm
+área pública e metadados de imagem. Os ícones públicos Kia auditados contra um
+commit upstream exato possuem exceção restrita a caminho e SHA-256 no scanner;
+outros arquivos, bytes alterados e cópias em outro caminho continuam bloqueados.
+Os metadados públicos originais desses bytes são preservados. Valores sintéticos e papéis lógicos têm
 fixtures negativas explícitas para evitar exceções implícitas.
 
 Uma denylist privada pode ser fornecida por `PRIVACY_DENYLIST_FILE`. Ela é

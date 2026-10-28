@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const allowedRoles = "(?:resident_(?:primary|secondary)|mobile_(?:primary|secondary)|vehicle_primary|garage_gate|exterior_light|security_panel|example_[a-z0-9_]+)";
@@ -36,6 +37,14 @@ const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\
 const frozenSyntheticQualityDataset = /^local-ai-research\/benchmarks\/quality-bakeoff-v1\/(?:dataset\.jsonl|inputs\.json)$/;
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
+// Public brand assets audited byte-for-byte against upstream v3.21.0,
+// commit 3693952d537858a36cc688c8d6ffdb6d8aeae7c9. Their existing public XMP
+// and creation metadata must remain intact for upstream provenance. A changed
+// byte, another path or another brand asset requires a fresh review.
+const auditedUpstreamImages = new Map([
+  ["homeassistant/custom_components/kia_uvo/brand/icon.png", "3bb0ce350e5f577205c273ef9dcef012805a354638f166e7abbb702b712a42ae"],
+  ["homeassistant/custom_components/kia_uvo/brand/icon@2x.png", "6715d92c7287433febf874885aada7a20ee24d75371277f929d0214428a9a8ed"],
+]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;
 const privateCodexPath = /^\.codex\/(?!(?:hooks\.json$|instructions\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$|memories(?:\/|$)))/;
 const sensitiveArtifactPath = /(?:^|\/)(?:secrets\.ya?ml|password\.txt|coordinator_backup\.json|\.env)(?:$|\/)|\.(?:bak|backup|db|sqlite\d*|log|tar|tgz|zip)$/i;
@@ -96,8 +105,10 @@ export function scanEntries(entries, { denylist = [] } = {}) {
     }
     const extension = path.extname(file).toLowerCase();
     if (imageExtensions.has(extension)) {
-      if (!file.startsWith("docs/assets/generated/") && !allowedSyntheticImages.has(file)) report("image-location", file, 0, "image");
-      if (hasImageMetadata(buffer, extension)) report("image-metadata", file, 0, "metadata");
+      const audited = auditedUpstreamImages.has(file) &&
+        createHash("sha256").update(buffer).digest("hex") === auditedUpstreamImages.get(file);
+      if (!file.startsWith("docs/assets/generated/") && !allowedSyntheticImages.has(file) && !audited) report("image-location", file, 0, "image");
+      if (hasImageMetadata(buffer, extension) && !audited) report("image-metadata", file, 0, "metadata");
       continue;
     }
     if (buffer.includes(0) || ignoredText.some((pattern) => pattern.test(file))) continue;

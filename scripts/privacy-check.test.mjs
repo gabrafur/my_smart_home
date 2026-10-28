@@ -96,6 +96,19 @@ test("allows the canonical synthetic social preview but rejects arbitrary image 
   assert.equal(result[0].rule, "image-location");
 });
 
+test("accepts only exact audited public upstream Kia brand bytes at their original paths", () => {
+  for (const name of ["icon.png", "icon@2x.png"]) {
+    const file = `homeassistant/custom_components/kia_uvo/brand/${name}`;
+    const buffer = fs.readFileSync(new URL(`../${file}`, import.meta.url));
+    assert.deepEqual(scanEntries([{ file, buffer }]), []);
+    for (const changed of [Buffer.concat([buffer, Buffer.from("iTXt private")]), Buffer.from("synthetic replacement")]) {
+      assert.ok(scanEntries([{ file, buffer: changed }]).some(row => row.rule === "image-location"));
+    }
+    assert.ok(scanEntries([{ file: "docs/assets/copied-upstream.png", buffer }]).some(row => row.rule === "image-metadata"));
+    assert.ok(scanEntries([{ file: "homeassistant/custom_components/kia_uvo/brand/unreviewed.png", buffer }]).some(row => row.rule === "image-location"));
+  }
+});
+
 test("does not treat SVG drawing coordinates as household coordinates", () => {
   const result = scanEntries([entry("docs/assets/architecture.svg", "<svg><path d=\"M 10.123456 20.123456\"/></svg>")]);
   assert.deepEqual(result, []);

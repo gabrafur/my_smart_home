@@ -117,6 +117,14 @@ O token nao e gravado pelo script. O fluxo:
 No caminho normal, o promotor versiona e publica a sincronização somente depois
 dessas confirmações. Nunca use force push.
 
+Os dois ícones públicos no diretório `brand/` da v3.21.0 foram
+comparados com o commit upstream
+`3693952d537858a36cc688c8d6ffdb6d8aeae7c9`, incluindo os metadados públicos de
+origem. O verificador de privacidade aceita apenas esses caminhos e seus hashes
+SHA-256 exatos, preservando os bytes upstream. Alteração de conteúdo, outro
+caminho ou novo ícone continua bloqueado e exige revisão. Uma rejeição nesse
+gate depois do runtime aplicado permite somente a retomada Git, sem reinstalar.
+
 Se o runtime já foi validado e a publicação falhar antes do commit, a retomada
 aceita somente os caminhos exatos da candidata e compara todos os bytes antes
 de continuar. Remoções upstream exigem ausência do arquivo local; symlinks,

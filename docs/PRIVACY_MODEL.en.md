@@ -56,7 +56,11 @@ covers identity-bearing entities, contextual name, email and phone fields,
 account identifiers, private hostnames/SSIDs, private networks, addresses,
 coordinates, MACs/BSSIDs, VIN/serial patterns, residential topics,
 event-related timestamps, state/backup artifacts, images outside the public
-asset area, and image metadata. Synthetic values and logical roles have explicit
+asset area, and image metadata. Public Kia icons audited against an exact
+upstream commit have a scanner exception restricted to their paths and SHA-256
+hashes; other files, changed bytes and copies at other paths remain blocked.
+The original public metadata of these exact bytes is preserved.
+Synthetic values and logical roles have explicit
 negative fixtures instead of implicit exceptions.
 
 An optional private denylist may be supplied through `PRIVACY_DENYLIST_FILE`.
