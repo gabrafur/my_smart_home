@@ -167,6 +167,17 @@ async def async_setup_entry(hass, entry):
         await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
         account._manual_platforms_loaded=True
         await native.async_setup_photo_cache(hass,account)
+        # A manual or silent login can leave yesterday's primary attempt
+        # consumed. Close it only after native account setup, coordinators,
+        # platforms and photo setup have all completed without a challenge.
+        if isinstance(account.api,GuardedService):
+            gate=GATES[entry.entry_id]
+            if (account.api.auth_gate is not gate
+                    or account.api.requires_2fa or account.api.requires_2sa):
+                raise ConfigEntryNotReady('iCloud authenticated setup incomplete')
+            ready=await hass.async_add_executor_job(gate.confirm_account_ready)
+            if ready.reason=='operation_in_progress' or ready.state!=State.VALID:
+                raise ConfigEntryNotReady('iCloud authenticated setup unconfirmed')
     except Exception as error:
         if isinstance(error,CachedSessionBusyError):
             raise ConfigEntryNotReady('iCloud cached session validation in progress') from None

@@ -24,9 +24,13 @@ Silent recovery persists a checkpoint before contacting the provider. Transport
 failure or an unknown response preserves uncertainty across restarts without
 repeating login. The authentication state format remains unchanged. A separate
 `icloud_silent_recovery.<entry_id>` Store contains only its version and a
-`primary_attempted` boolean, saved before the effect. Only a confirmed expiry
-of a previously valid session resets it; restarts do not. Rollback preserves
-both files. Native cached-session transport backoff is
+`primary_attempted` boolean, saved before the effect. A confirmed expiry of a
+previously valid session resets it. Completing authenticated native account,
+coordinator, platform and photo-cache setup without a pending challenge also
+closes the recovered incident, including recovery through the UI. Token
+acceptance alone does not reset it. Any incomplete setup preserves the consumed
+attempt. Restoring persisted state or restarting alone does not reset it.
+Rollback preserves both files. Native cached-session transport backoff is
 independent of this login attempt.
 
 Typed transport failures reaching setup, including wrapped DNS, connection and

@@ -24,9 +24,14 @@ A tentativa silenciosa grava um checkpoint antes do acesso ao provedor. Falha
 de transporte ou resposta desconhecida preserva a incerteza através de restart,
 sem repetir o login. O estado de autenticação mantém seu formato; um Store
 separado `icloud_silent_recovery.<entry_id>` registra somente versão e o booleano
-`primary_attempted`. O marcador é gravado antes do efeito e só é liberado quando
-uma sessão anteriormente válida expira de forma confirmada. Reiniciar não o
-libera; rollback preserva os dois arquivos. O backoff nativo de transporte do cache é
+`primary_attempted`. O marcador é gravado antes do efeito. Ele é liberado quando
+uma sessão anteriormente válida expira de forma confirmada ou quando o incidente
+é encerrado após setup autenticado completo: conta nativa, coordenadores,
+plataformas e cache de fotos carregados, sem desafio pendente. Isso também vale
+para recuperação pela interface; aceitar apenas o token não libera o marcador.
+Falha em qualquer etapa preserva a tentativa consumida. Restaurar o estado ou
+reiniciar, por si só, não o libera; rollback preserva os dois arquivos.
+O backoff nativo de transporte do cache é
 independente dessa tentativa de login.
 
 Falhas tipadas de transporte que chegam ao setup, incluindo DNS, conexão e timeout

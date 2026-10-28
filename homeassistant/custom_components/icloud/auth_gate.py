@@ -196,6 +196,26 @@ class AuthGate:
             self.busy = False
             self._lock.release()
 
+    def confirm_account_ready(self):
+        """Close a recovered incident only after the caller verifies full setup.
+
+        Token acceptance alone is insufficient: the device service can still
+        reject it. Neither loading persisted state nor opening a repair calls
+        this method. The marker format stays rollback-compatible.
+        """
+        if not self._lock.acquire(blocking=False):
+            return self.result('operation_in_progress')
+        try:
+            if self.state != State.VALID:
+                return self.result('authenticated_setup_required')
+            if not self.automatic_recovery or not self.primary_attempted:
+                return self.result('account_ready')
+            self.persist_recovery({'schema_version': 1, 'primary_attempted': False})
+            self.primary_attempted = False
+            return self.result('recovered_incident_closed')
+        finally:
+            self._lock.release()
+
     def submit(self, action, callback, *, explicit_submission=False):
         if not explicit_submission: return self.result('explicit_submission_required')
         if self.busy: return self.result('operation_in_progress')

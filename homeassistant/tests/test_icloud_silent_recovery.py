@@ -246,6 +246,55 @@ class SilentRecovery(unittest.TestCase):
         self.client(gate)
         self.assertTrue(gate.primary_attempted)
 
+    def test_completed_recovery_allows_one_later_device_rejection_after_restart(self):
+        # Yesterday's primary attempt and subsequent manual authentication.
+        gate=self.gate(self.g.State.USER);self.client(gate)
+        gate.submit('prepare_session',lambda:self.g.Outcome.VALID,explicit_submission=True)
+        self.assertTrue(gate.primary_attempted)  # Token-only success is not setup.
+        gate.confirm_account_ready()
+        self.assertFalse(gate.primary_attempted)
+        restored=self.g.AuthGate(self.saved.append,self.saved[-1],automatic_recovery=True,
+            persist_recovery=self.recovery.append,recovery_saved=self.recovery[-1])
+        class AuthRequired(Exception):pass
+        class LaterServiceAccount(FakeAccount):
+            calls=0
+            def setup(account):
+                LaterServiceAccount.calls+=1
+                super().setup()
+                if LaterServiceAccount.calls==1:raise AuthRequired('synthetic')
+        SilentProvider.primary=0;SilentProvider.cached=True
+        Account=self.b.account_adapter(LaterServiceAccount,{'synthetic':restored},self.Client,
+                                      auth_required_errors=(AuthRequired,))
+        Account().setup()
+        self.assertEqual(SilentProvider.primary,1)
+        self.assertEqual(LaterServiceAccount.calls,2)
+        self.assertTrue(restored.primary_attempted)
+        self.assertEqual(SilentProvider.deliveries,0)
+
+    def test_incomplete_or_uncertain_recovery_never_rearms(self):
+        for state in (self.g.State.USER,self.g.State.PRIMARY,self.g.State.READY,
+                      self.g.State.CODE,self.g.State.UNCERTAIN,self.g.State.LIMITED):
+            gate=self.g.AuthGate(self.saved.append,{'schema_version':1,'state':state.value},
+                automatic_recovery=True,persist_recovery=self.recovery.append,
+                recovery_saved={'schema_version':1,'primary_attempted':True})
+            self.assertEqual(gate.confirm_account_ready().reason,'authenticated_setup_required')
+            self.assertTrue(gate.primary_attempted)
+        self.assertFalse(self.recovery)
+
+    def test_ready_marker_write_failure_preserves_consumed_attempt(self):
+        gate=self.gate();self.client(gate)
+        gate.persist_recovery=lambda row:(_ for _ in ()).throw(OSError('synthetic'))
+        with self.assertRaises(OSError):gate.confirm_account_ready()
+        self.assertTrue(gate.primary_attempted)
+        self.assertEqual(gate.state,self.g.State.VALID)
+
+    def test_ready_confirmation_does_not_interleave_with_authentication(self):
+        gate=self.gate();self.client(gate)
+        gate._lock.acquire()
+        try:self.assertEqual(gate.confirm_account_ready().reason,'operation_in_progress')
+        finally:gate._lock.release()
+        self.assertTrue(gate.primary_attempted)
+
     def test_marker_write_failure_prevents_provider(self):
         gate=self.gate(self.g.State.USER)
         gate.persist_recovery=lambda row:(_ for _ in ()).throw(OSError('synthetic'))

@@ -32,7 +32,7 @@
     },
     {
       "file": "__init__.py",
-      "change": "bind reviewed native adapter and device subclass; automatic_session_recovery boolean defaults true; preserve setup retry and manual OTP delivery; close exact-entry reauth repair only after complete authenticated setup"
+      "change": "bind reviewed native adapter and device subclass; automatic_session_recovery boolean defaults true; preserve setup retry and manual OTP delivery; close recovered primary-attempt incident and exact-entry reauth repair only after complete authenticated setup"
     },
     {
       "file": "loaded_contract.py",
@@ -40,7 +40,7 @@
     },
     {
       "file": "auth_gate.py",
-      "change": "one saved-password primary attempt per confirmed session expiry; separate durable attempt marker; challenges and uncertainty stop; manual OTP and original auth-state schema preserved"
+      "change": "one saved-password primary attempt per confirmed session expiry; separate durable attempt marker; complete authenticated setup closes a recovered incident; token-only success, challenges and uncertainty never rearm; manual OTP and original auth-state schema preserved"
     },
     {
       "file": "native_bridge.py",

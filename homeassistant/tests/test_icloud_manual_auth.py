@@ -310,6 +310,30 @@ class NativeFlowTest(unittest.IsolatedAsyncioTestCase):
 
 
 class SetupRetryTest(unittest.IsolatedAsyncioTestCase):
+    async def test_only_complete_authenticated_setup_releases_previous_attempt(self):
+        env=self.enterContext(loaded_adapter())
+        hass,entry=synthetic_hass_entry()
+        self.enterContext(patch.object(env.sut,'emit_proof',new_callable=AsyncMock))
+        auth_key='icloud_manual_reauth.'+entry.entry_id
+        recovery_key='icloud_silent_recovery.'+entry.entry_id
+        hass.stores[auth_key]={'schema_version':1,'state':'session_valid'}
+        hass.stores[recovery_key]={'schema_version':1,'primary_attempted':True}
+        self.enterContext(patch.object(FakeService,'_try_reuse_cached_session',return_value=True))
+        self.enterContext(patch.object(FakeService,'requires_2fa',new=property(lambda self:False)))
+        hass.config_entries.async_forward_entry_setups.side_effect=RuntimeError('synthetic platform failure')
+        with self.assertRaises(RuntimeError):await env.sut.async_setup_entry(hass,entry)
+        self.assertTrue(hass.stores[recovery_key]['primary_attempted'])
+        self.assertNotEqual(env.sut.PHASES[entry.entry_id],'entry_ready')
+        hass.config_entries.async_forward_entry_setups.side_effect=None
+        async def photo_setup(*args):
+            self.assertTrue(hass.stores[recovery_key]['primary_attempted'])
+        env.core.async_setup_photo_cache.side_effect=photo_setup
+        self.assertTrue(await env.sut.async_setup_entry(hass,entry))
+        self.assertFalse(hass.stores[recovery_key]['primary_attempted'])
+        self.assertEqual(env.sut.PHASES[entry.entry_id],'entry_ready')
+        self.assertEqual(entry.runtime_data.api.primary_calls,0)
+        self.assertEqual(entry.runtime_data.api.deliveries,0)
+
     async def test_wrapped_dns_failure_retries_then_native_setup_recovers(self):
         env = self.enterContext(loaded_adapter())
         hass, entry = synthetic_hass_entry()
