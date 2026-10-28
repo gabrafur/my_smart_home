@@ -191,6 +191,15 @@ class SenderTests(unittest.TestCase):
             self.sender.sendto(self.raw(seq=2),str(self.reader.path))
             self.assertEqual(self.receive()['status'],'unknown')
 
+    def test_observed_identity_failure_invalidates_later_exited_sender_cache(self):
+        pid=self.child();self.command(pid,b'a');self.receive()
+        with patch.object(self.verifier,'_verify_live',side_effect=BindingUnavailable('changed')):
+            self.command(pid,b'b');self.assertEqual(self.receive()['status'],'unknown')
+        self.assertIsNone(self.verifier.sender_fd)
+        self.command(pid,b'b');self.reap(pid)
+        self.assertEqual(self.receive()['status'],'unknown')
+        self.assertEqual(self.ledger.body['accepted_frames'],1)
+
     def test_real_executable_verifier_still_rejects_python_and_retains_nothing(self):
         verifier=SourceVerifier(policy(peer_uid=os.geteuid(),peer_gid=os.getegid()))
         fd=os.pidfd_open(os.getpid(),0)

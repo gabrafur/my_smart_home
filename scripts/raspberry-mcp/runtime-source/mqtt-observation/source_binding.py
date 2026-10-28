@@ -209,6 +209,14 @@ class SourceVerifier:
         if type(peer)is not Peer or type(peer.pid)is not int or not 0<peer.pid<2**31 or type(peer.uid)is not int or type(peer.gid)is not int or (peer.uid,peer.gid)!=(p.peer_uid,p.peer_gid):reject('source_peer_mismatch')
 
     def verify_sender(self,peer,sender_fd):
+        try:return self._verify_sender(peer,sender_fd)
+        except BaseException:
+            # An observed failure must never resurrect an older successful
+            # binding when the task later exits. A fresh live attestation is
+            # required to populate the cache again.
+            self.close();raise
+
+    def _verify_sender(self,peer,sender_fd):
         self._peer(peer);key=sender_pidfd_key(sender_fd)
         pid=sender_pidfd_pid(sender_fd)
         if pid not in(-1,peer.pid):reject('sender_pidfd_peer_mismatch')

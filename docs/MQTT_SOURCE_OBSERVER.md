@@ -43,7 +43,9 @@ somente se o pidfd identificar a mesma tarefa previamente verificada, com as
 mesmas credenciais e domínio temporal. Uma origem encerrada antes da primeira
 verificação, outra tarefa, ausência do descritor ou troca do leitor deixam o
 vínculo desconhecido. O cache é somente em memória e não reconstitui alterações
-de código posteriores à última verificação. Descritores recebidos são fechados
+de código posteriores à última verificação. Uma falha de identidade descarta o
+vínculo guardado; somente uma nova verificação com a origem viva pode recriá-lo.
+Descritores recebidos são fechados
 também nas mensagens inválidas ou truncadas. Essa identificação não comprova o
 fim da origem: o protocolo atual ainda mantém a cauda anterior desconhecida.
 
