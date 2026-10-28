@@ -128,6 +128,14 @@ mutação. O script não reinicia IP Helper, Tailscale, SSH, WSL nem outro servi
 e não altera firewall ou outros proxies. O timeout da tarefa é quatro minutos,
 com instância única e sem despertar o computador.
 
+Se a regra exata já existe mas perdeu o listener, o hook remove e recria somente
+essa regra. Repetir `add` sobre a mesma configuração pode retornar sucesso e
+deixar a porta ausente. Uma falha ao remover interrompe o reparo; se a inclusão
+falhar depois da remoção, o hook tenta restaurar a regra anterior uma vez,
+somente se ela continuar ausente. Conflitos nunca são sobrescritos. Os testes
+simulam esse comportamento de `add`, a restauração e seus limites sem executar
+comandos nativos.
+
 Execute o instalador em PowerShell elevado, fornecendo `-ListenAddress`,
 `-ClientAddress` e `-FirewallRuleName` a partir da configuração privada atual.
 Ele copia o script para `%ProgramData%\LocalAiRtx`, restringe a pasta a SYSTEM
@@ -1111,7 +1119,7 @@ segundos.
 | Sintoma | Verificações seguras |
 | --- | --- |
 | `11435` não conecta | listener e regra de firewall do Windows; rota LAN; teste `curl /api/tags` |
-| Regra do portproxy existe, mas `11435` continua em timeout | confirme o listener Windows em `:11435`; uma regra exibida por `netsh interface portproxy show` não prova que ela está ativa. Use `local_ai_status` pelo MCP para acionar somente a recuperação revisada (IP Helper e o proxy exato); não recrie regras manualmente nem exponha `11434`. |
+| Regra do portproxy existe, mas `11435` continua em timeout | confirme o listener Windows em `:11435`; uma regra exibida por `netsh interface portproxy show` não prova que ela está ativa. O hook nativo e o reparo restrito do Node-RED podem recriar somente a regra exata, sem reiniciar IP Helper ou dependentes da VPN. Preserve o orçamento por incidente; uma observação recente de recuperação encerra o ciclo, sem reset manual de tentativas. Não exponha `11434`. |
 | Recuperação do MCP falha | confirme o CI e os testes da release fixada de `local-ai-rtx`; revise a configuração privada sem expor MAC, endpoint, usuário, chave ou `known_hosts` |
 | `11434` conecta pela LAN | desabilite a exposição direta e mantenha somente o portproxy restrito |
 | Ollama responde mas sem GPU | `ollama ps`, `nvidia-smi`, driver NVIDIA/WSL e tamanho/quantização do modelo |

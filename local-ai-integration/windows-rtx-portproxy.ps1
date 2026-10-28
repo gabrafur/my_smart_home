@@ -54,11 +54,34 @@ function Get-ProxyTarget {
     return $value.PSObject.Properties["$ListenAddress/11435"].Value
 }
 
+function Invoke-ProxyCommand([string[]]$Arguments) {
+    & "$env:SystemRoot\System32\netsh.exe" @Arguments | Out-Null
+    return $LASTEXITCODE
+}
+
 function Repair-ExactProxy {
-    # Re-publish only this endpoint; leave IP Helper and its VPN dependents alone.
-    & "$env:SystemRoot\System32\netsh.exe" interface portproxy add v4tov4 `
-        "listenaddress=$ListenAddress" listenport=11435 connectaddress=127.0.0.1 connectport=11434 protocol=tcp | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'portproxy_add_failed' }
+    # Adding an unchanged rule can leave its missing listener absent after resume.
+    # Remove only the already verified endpoint before re-publishing it.
+    $target = Get-ProxyTarget
+    if ($null -ne $target -and $target -ne '127.0.0.1/11434') { throw 'proxy_target_conflict' }
+    $hadRule = $target -eq '127.0.0.1/11434'
+    if ($hadRule) {
+        $code = Invoke-ProxyCommand @('interface', 'portproxy', 'delete', 'v4tov4',
+            "listenaddress=$ListenAddress", 'listenport=11435', 'protocol=tcp')
+        if ($code -ne 0) { throw 'portproxy_delete_failed' }
+    }
+    $add = @('interface', 'portproxy', 'add', 'v4tov4', "listenaddress=$ListenAddress",
+        'listenport=11435', 'connectaddress=127.0.0.1', 'connectport=11434', 'protocol=tcp')
+    $code = Invoke-ProxyCommand $add
+    if ($code -ne 0) {
+        # Restore the original exact rule if the failed add left it absent.
+        # Never restore over a concurrent change or touch another endpoint.
+        if ($hadRule -and $null -eq (Get-ProxyTarget)) {
+            $restored = Invoke-ProxyCommand $add
+            if ($restored -ne 0) { throw 'portproxy_restore_failed' }
+        }
+        throw 'portproxy_add_failed'
+    }
 }
 
 function Invoke-StartupProxy {
@@ -99,7 +122,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         exit 0
     } catch {
         $known = @('private_addresses_required', 'firewall_rule_invalid', 'firewall_scope_invalid',
-            'proxy_target_conflict', 'network_not_ready', 'loopback_not_ready', 'listener_absent', 'portproxy_add_failed')
+            'proxy_target_conflict', 'network_not_ready', 'loopback_not_ready', 'listener_absent',
+            'portproxy_delete_failed', 'portproxy_add_failed', 'portproxy_restore_failed')
         $reason = if ($known -contains $_.Exception.Message) { $_.Exception.Message } else { 'unexpected_error' }
         @{ state = 'failed'; reason = $reason; timestamp = [DateTime]::UtcNow.ToString('o') } |
             ConvertTo-Json -Compress | Set-Content $statusPath -Encoding UTF8
