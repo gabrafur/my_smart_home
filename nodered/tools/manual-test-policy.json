@@ -608,13 +608,29 @@
                 "mq_native_test_reader_clock",
                 "mq_native_test_reader_future",
                 "mq_native_test_reader_stale",
-                "mq_native_test_reader_missing"
+                "mq_native_test_reader_missing",
+                "mq_native_window_test_group",
+                "mq_native_test_window_start",
+                "mq_native_test_window_pending",
+                "mq_native_test_window_drain",
+                "mq_native_test_window_source_unknown",
+                "mq_native_test_window_epoch",
+                "mq_native_test_window_clock",
+                "mq_native_test_window_policy",
+                "mq_native_test_window_gap",
+                "mq_native_test_window_over",
+                "mq_native_test_window_fault",
+                "mq_native_test_window_legacy",
+                "mq_native_test_window_missing",
+                "mq_native_test_window_timing_unknown",
+                "mq_native_test_window_reader_denied",
+                "mq_native_test_window_reader_stale"
             ],
             "automated_test": "test-mqtt-native-observer-flow.mjs",
             "dry_run_terminal_ids": [
                 "global_observer_dry_run_terminal"
             ],
-            "reason": "Replay nominal, negativo, reset, perda, duplicata, autoriza\u00e7\u00e3o, dom\u00ednio temporal e leitor antigo atravessa a mesma normaliza\u00e7\u00e3o, pol\u00edtica visual, dedupe e gate final. Em test_mode, nenhum exec, arquivo, ACK, servi\u00e7o, MQTT ou push \u00e9 executado; o terminal compartilhado recebe simulated:true e dispatched:false. Aus\u00eancia de eventos n\u00e3o comprova recupera\u00e7\u00e3o."
+            "reason": "Replay nominal, negativo, reset, perda, duplicata, autoriza\u00e7\u00e3o, dom\u00ednio temporal e leitor antigo atravessa a mesma normaliza\u00e7\u00e3o, pol\u00edtica visual, dedupe e gate final. Em test_mode, nenhum exec, arquivo, ACK, servi\u00e7o, MQTT ou push \u00e9 executado; o terminal compartilhado recebe simulated:true e dispatched:false. Aus\u00eancia de eventos n\u00e3o comprova recupera\u00e7\u00e3o. Janela do componente: reset \u2192 in\u00edcio \u2192 corte com ACK pendente \u2192 drenar. Reset antes de cada falha. Tempo sint\u00e9tico avan\u00e7a 24h sem reduzir contrato; mudan\u00e7a de origem sem manuten\u00e7\u00e3o fica unknown; fonte desconhecida usa somente hist\u00f3rico pr\u00f3prio, sem ACK. O resultado passa pela mesma codifica\u00e7\u00e3o e gate final dry-run."
         }
     }
 }

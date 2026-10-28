@@ -19,6 +19,10 @@ const snapshot = {
     max_source_to_consumer_upper_ms:msg._mqtt_max_upper_ms ?? null,
     last_committed_proposal_sha:previous.last_committed_proposal_sha ?? null,
     last_commit_state:previous.last_commit_state ?? null,
+    callback_window:previous.callback_window ?? null,
+    callback_window_scope:previous.callback_window_scope ?? null,
+    callback_window_checkpoint_sha256:previous.callback_window_checkpoint_sha256 ?? null,
+    callback_window_durable:previous.callback_window_durable ?? false,
     full24h_proven:false,all_event_latency_proven:false
 };
 flow.set(msg._mqtt_key,snapshot,msg._mqtt_store);

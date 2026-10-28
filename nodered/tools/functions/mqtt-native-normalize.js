@@ -1,4 +1,5 @@
 msg._mqtt_valid = false;
+msg._mqtt_envelope = null;
 msg._mqtt_commit_allowed = false;
 msg._mqtt_reader_authorized = null;
 msg._mqtt_reader_domain = false;
@@ -21,6 +22,7 @@ try {
         value = JSON.parse(value);
     }
     if (!value || typeof value !== "object" || Array.isArray(value)) return msg;
+    msg._mqtt_envelope = value;
     if (["busy","unknown"].includes(value.state)) {
         msg._mqtt_source_state = value.state;
         return msg;

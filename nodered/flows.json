@@ -88845,7 +88845,7 @@
         "id": "mqtt_native_observer_tab",
         "type": "tab",
         "label": "observacao_mqtt_nativa",
-        "mqtt_native_layout_version": 2,
+        "mqtt_native_layout_version": 3,
         "disabled": false,
         "info": "Metadados sem tópicos/payloads/clientes. Fonte root → normalização → limite visual → persistência → ACK. Desligado até escopo/instalação aprovados; não comprova sozinho todos os eventos HA/MQTT nem24h.",
         "env": []
@@ -88865,12 +88865,13 @@
             "mq_native_policy_config",
             "mq_native_policy_store",
             "mq_native_policy_test_in",
-            "mq_native_policy_return"
+            "mq_native_policy_return",
+            "mq_native_window_policy_info"
         ],
         "x": 64,
         "y": 40,
         "w": 2660,
-        "h": 300
+        "h": 340
     },
     {
         "id": "mq_native_reader_group",
@@ -89024,7 +89025,9 @@
             "mq_native_skip_gate_out",
             "mq_native_noop_in",
             "mq_native_noop_set",
-            "mq_native_noop_gate_out"
+            "mq_native_noop_gate_out",
+            "mq_native_window_out",
+            "mq_native_window_return_in"
         ],
         "x": 64,
         "y": 2100,
@@ -89053,12 +89056,15 @@
             "mq_native_commit_failure_out",
             "mq_native_release_in",
             "mq_native_release",
-            "mq_native_diagnostic"
+            "mq_native_diagnostic",
+            "mq_native_checkpoint_effect_out",
+            "mq_native_checkpoint_result_in",
+            "mq_native_checkpoint_complete_in"
         ],
         "x": 64,
         "y": 2840,
         "w": 2660,
-        "h": 480
+        "h": 580
     },
     {
         "id": "mq_native_test_group",
@@ -89109,7 +89115,7 @@
             "mq_native_test_policy_out"
         ],
         "x": 64,
-        "y": 3360,
+        "y": 3460,
         "w": 2660,
         "h": 900
     },
@@ -89279,7 +89285,8 @@
             ]
         ],
         "links": [
-            "mq_native_policy_return"
+            "mq_native_policy_return",
+            "mq_native_window_test_source_out"
         ]
     },
     {
@@ -89635,7 +89642,7 @@
                 "mq_native_valid"
             ]
         ],
-        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nmsg._mqtt_valid = false;\nmsg._mqtt_commit_allowed = false;\nmsg._mqtt_reader_authorized = null;\nmsg._mqtt_reader_domain = false;\nmsg._mqtt_reader_ordered = false;\nmsg._mqtt_reader_age_ms = null;\nmsg._mqtt_has_receipt = false;\nmsg._mqtt_source_state = \"unknown\";\nmsg._mqtt_observed_total = null;\nmsg._mqtt_unknown_total = null;\nmsg._mqtt_missing_total = null;\nmsg._mqtt_source_clock_faults = null;\nmsg._mqtt_integrity_faults_total = null;\nmsg._mqtt_receipt_unknown_total = null;\nmsg._mqtt_clock_ordered = false;\nmsg._mqtt_max_upper_ms = null;\ntry {\n    let value = msg.payload;\n    if (typeof value === \"string\") {\n        if (value.length > 131072) return msg;\n        value = JSON.parse(value);\n    }\n    if (!value || typeof value !== \"object\" || Array.isArray(value)) return msg;\n    if ([\"busy\",\"unknown\"].includes(value.state)) {\n        msg._mqtt_source_state = value.state;\n        return msg;\n    }\n    if (value.state !== \"prepared\" || !/^[a-f0-9]{64}$/.test(value.proposal_sha ?? \"\")\n        || !Array.isArray(value.receipt_facts) || value.receipt_facts.length > 1) return msg;\n    const uint = value => {\n        if (typeof value !== \"string\" || !/^(?:0|[1-9][0-9]{0,38})$/.test(value)) throw new Error(\"counter\");\n        const n = BigInt(value); if (n >= 2n ** 128n) throw new Error(\"counter\"); return n;\n    };\n    const reader = value.reader_facts;\n    if (!reader || reader.schema_version !== 1 || !/^[a-f0-9]{64}$/.test(reader.reader_instance_sha256 ?? \"\")\n        || ![true,false,null].includes(reader.source_authorized)\n        || typeof reader.clock_domain_matches !== \"boolean\" || typeof reader.clock_ordered !== \"boolean\") return msg;\n    if (reader.status_age_ns === null) {\n        if (reader.status_age_ms !== null || reader.clock_ordered) return msg;\n    } else {\n        const ns = uint(reader.status_age_ns);\n        if (ns >= 2n ** 64n || !reader.clock_domain_matches || !reader.clock_ordered\n            || reader.status_age_ms !== Number((ns + 999999n) / 1000000n)) return msg;\n    }\n    msg._mqtt_reader_authorized = reader.source_authorized;\n    msg._mqtt_reader_domain = reader.clock_domain_matches;\n    msg._mqtt_reader_ordered = reader.clock_ordered;\n    msg._mqtt_reader_age_ms = reader.status_age_ms;\n    const kinds = MQTT_NATIVE_SCHEMA.kinds;\n    const received = value.received_counts, acked = value.acknowledged_counts;\n    const sameKeys = (v,keys) => v && typeof v === \"object\" && !Array.isArray(v)\n        && JSON.stringify(Object.keys(v).sort()) === JSON.stringify([...keys].sort());\n    for (const c of [received,acked]) {\n        if (!sameKeys(c,[...MQTT_NATIVE_SCHEMA.headers,\"faults\",\"stats\"])\n            || !sameKeys(c.stats,kinds) || !sameKeys(c.faults,MQTT_NATIVE_SCHEMA.faults)) return msg;\n        for (const field of MQTT_NATIVE_SCHEMA.faults) uint(c.faults[field]);\n        for (const header of MQTT_NATIVE_SCHEMA.headers) uint(c[header]);\n        for (const kind of kinds) {\n            const row = c.stats[kind]; if (!sameKeys(row,MQTT_NATIVE_SCHEMA.stats)) return msg;\n            for (const field of MQTT_NATIVE_SCHEMA.stats) uint(row[field]);\n            if (uint(row.expected) !== uint(row.observed) + uint(row.missing)\n                || uint(row.observed) !== uint(row.timed) + uint(row.timing_unknown)\n                || uint(row.missing) !== uint(row.source_dropped) + uint(row.transport_missing)) return msg;\n        }\n    }\n    let observed = 0n, unknown = 0n, cumulativeUnknown = 0n, missing = 0n, maximum = null;\n    for (const kind of kinds) {\n        missing += uint(received.stats[kind].missing);\n        cumulativeUnknown += uint(received.stats[kind].timing_unknown);\n    }\n    let integrityFaults = uint(received.source_clock_faults) + uint(received.report_gaps)\n        + uint(received.unknown_epoch_tails) + uint(received.ack_clock_conflicts);\n    if (!sameKeys(reader.faults,MQTT_NATIVE_SCHEMA.faults)) return msg;\n    for (const field of MQTT_NATIVE_SCHEMA.faults) {\n        const delivered = uint(received.faults[field]), current = uint(reader.faults[field]);\n        integrityFaults += current > delivered ? current : delivered;\n    }\n    const receipt = value.receipt_facts[0];\n    if (receipt) {\n        uint(receipt.bucket_id);\n        if (typeof receipt.clock_ordered !== \"boolean\" || !receipt.by_kind) return msg;\n        for (const kind of kinds) {\n            const row = receipt.by_kind[kind]; if (!row) return msg;\n            const n = uint(row.observed), timed = uint(row.timed), u = uint(row.timing_unknown);\n            if (n !== timed + u) return msg;\n            observed += n; unknown += u;\n            if (timed > 0n) {\n                if (typeof row.source_to_consumer_upper_ns !== \"string\") return msg;\n                const ns = uint(row.source_to_consumer_upper_ns);\n                if (ns >= 2n ** 64n) return msg;\n                const ms = Number((ns + 999999n) / 1000000n);\n                if (row.source_to_consumer_upper_ms !== ms) return msg;\n                maximum = maximum === null ? ms : Math.max(maximum, ms);\n            } else if (row.source_to_consumer_upper_ns !== null || row.source_to_consumer_upper_ms !== null) return msg;\n        }\n        msg._mqtt_receipt_id = receipt.bucket_id;\n        msg._mqtt_clock_ordered = receipt.clock_ordered;\n    }\n    msg._mqtt_valid = true; msg._mqtt_source_state = \"prepared\";\n    msg._mqtt_proposal_sha = value.proposal_sha;\n    msg._mqtt_has_receipt = receipt !== undefined;\n    msg._mqtt_observed_total = observed.toString(); msg._mqtt_unknown_total = cumulativeUnknown.toString();\n    msg._mqtt_receipt_unknown_total = unknown.toString();\n    msg._mqtt_integrity_faults_total = integrityFaults.toString();\n    msg._mqtt_missing_total = missing.toString();\n    msg._mqtt_source_clock_faults = received.source_clock_faults;\n    msg._mqtt_max_upper_ms = maximum;\n    msg._mqtt_received_counts = received; msg._mqtt_acked_counts = acked;\n} catch { /* Invalid source stays unknown; never copy untrusted error text. */ }\nreturn msg;",
+        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nmsg._mqtt_valid = false;\nmsg._mqtt_envelope = null;\nmsg._mqtt_commit_allowed = false;\nmsg._mqtt_reader_authorized = null;\nmsg._mqtt_reader_domain = false;\nmsg._mqtt_reader_ordered = false;\nmsg._mqtt_reader_age_ms = null;\nmsg._mqtt_has_receipt = false;\nmsg._mqtt_source_state = \"unknown\";\nmsg._mqtt_observed_total = null;\nmsg._mqtt_unknown_total = null;\nmsg._mqtt_missing_total = null;\nmsg._mqtt_source_clock_faults = null;\nmsg._mqtt_integrity_faults_total = null;\nmsg._mqtt_receipt_unknown_total = null;\nmsg._mqtt_clock_ordered = false;\nmsg._mqtt_max_upper_ms = null;\ntry {\n    let value = msg.payload;\n    if (typeof value === \"string\") {\n        if (value.length > 131072) return msg;\n        value = JSON.parse(value);\n    }\n    if (!value || typeof value !== \"object\" || Array.isArray(value)) return msg;\n    msg._mqtt_envelope = value;\n    if ([\"busy\",\"unknown\"].includes(value.state)) {\n        msg._mqtt_source_state = value.state;\n        return msg;\n    }\n    if (value.state !== \"prepared\" || !/^[a-f0-9]{64}$/.test(value.proposal_sha ?? \"\")\n        || !Array.isArray(value.receipt_facts) || value.receipt_facts.length > 1) return msg;\n    const uint = value => {\n        if (typeof value !== \"string\" || !/^(?:0|[1-9][0-9]{0,38})$/.test(value)) throw new Error(\"counter\");\n        const n = BigInt(value); if (n >= 2n ** 128n) throw new Error(\"counter\"); return n;\n    };\n    const reader = value.reader_facts;\n    if (!reader || reader.schema_version !== 1 || !/^[a-f0-9]{64}$/.test(reader.reader_instance_sha256 ?? \"\")\n        || ![true,false,null].includes(reader.source_authorized)\n        || typeof reader.clock_domain_matches !== \"boolean\" || typeof reader.clock_ordered !== \"boolean\") return msg;\n    if (reader.status_age_ns === null) {\n        if (reader.status_age_ms !== null || reader.clock_ordered) return msg;\n    } else {\n        const ns = uint(reader.status_age_ns);\n        if (ns >= 2n ** 64n || !reader.clock_domain_matches || !reader.clock_ordered\n            || reader.status_age_ms !== Number((ns + 999999n) / 1000000n)) return msg;\n    }\n    msg._mqtt_reader_authorized = reader.source_authorized;\n    msg._mqtt_reader_domain = reader.clock_domain_matches;\n    msg._mqtt_reader_ordered = reader.clock_ordered;\n    msg._mqtt_reader_age_ms = reader.status_age_ms;\n    const kinds = MQTT_NATIVE_SCHEMA.kinds;\n    const received = value.received_counts, acked = value.acknowledged_counts;\n    const sameKeys = (v,keys) => v && typeof v === \"object\" && !Array.isArray(v)\n        && JSON.stringify(Object.keys(v).sort()) === JSON.stringify([...keys].sort());\n    for (const c of [received,acked]) {\n        if (!sameKeys(c,[...MQTT_NATIVE_SCHEMA.headers,\"faults\",\"stats\"])\n            || !sameKeys(c.stats,kinds) || !sameKeys(c.faults,MQTT_NATIVE_SCHEMA.faults)) return msg;\n        for (const field of MQTT_NATIVE_SCHEMA.faults) uint(c.faults[field]);\n        for (const header of MQTT_NATIVE_SCHEMA.headers) uint(c[header]);\n        for (const kind of kinds) {\n            const row = c.stats[kind]; if (!sameKeys(row,MQTT_NATIVE_SCHEMA.stats)) return msg;\n            for (const field of MQTT_NATIVE_SCHEMA.stats) uint(row[field]);\n            if (uint(row.expected) !== uint(row.observed) + uint(row.missing)\n                || uint(row.observed) !== uint(row.timed) + uint(row.timing_unknown)\n                || uint(row.missing) !== uint(row.source_dropped) + uint(row.transport_missing)) return msg;\n        }\n    }\n    let observed = 0n, unknown = 0n, cumulativeUnknown = 0n, missing = 0n, maximum = null;\n    for (const kind of kinds) {\n        missing += uint(received.stats[kind].missing);\n        cumulativeUnknown += uint(received.stats[kind].timing_unknown);\n    }\n    let integrityFaults = uint(received.source_clock_faults) + uint(received.report_gaps)\n        + uint(received.unknown_epoch_tails) + uint(received.ack_clock_conflicts);\n    if (!sameKeys(reader.faults,MQTT_NATIVE_SCHEMA.faults)) return msg;\n    for (const field of MQTT_NATIVE_SCHEMA.faults) {\n        const delivered = uint(received.faults[field]), current = uint(reader.faults[field]);\n        integrityFaults += current > delivered ? current : delivered;\n    }\n    const receipt = value.receipt_facts[0];\n    if (receipt) {\n        uint(receipt.bucket_id);\n        if (typeof receipt.clock_ordered !== \"boolean\" || !receipt.by_kind) return msg;\n        for (const kind of kinds) {\n            const row = receipt.by_kind[kind]; if (!row) return msg;\n            const n = uint(row.observed), timed = uint(row.timed), u = uint(row.timing_unknown);\n            if (n !== timed + u) return msg;\n            observed += n; unknown += u;\n            if (timed > 0n) {\n                if (typeof row.source_to_consumer_upper_ns !== \"string\") return msg;\n                const ns = uint(row.source_to_consumer_upper_ns);\n                if (ns >= 2n ** 64n) return msg;\n                const ms = Number((ns + 999999n) / 1000000n);\n                if (row.source_to_consumer_upper_ms !== ms) return msg;\n                maximum = maximum === null ? ms : Math.max(maximum, ms);\n            } else if (row.source_to_consumer_upper_ns !== null || row.source_to_consumer_upper_ms !== null) return msg;\n        }\n        msg._mqtt_receipt_id = receipt.bucket_id;\n        msg._mqtt_clock_ordered = receipt.clock_ordered;\n    }\n    msg._mqtt_valid = true; msg._mqtt_source_state = \"prepared\";\n    msg._mqtt_proposal_sha = value.proposal_sha;\n    msg._mqtt_has_receipt = receipt !== undefined;\n    msg._mqtt_observed_total = observed.toString(); msg._mqtt_unknown_total = cumulativeUnknown.toString();\n    msg._mqtt_receipt_unknown_total = unknown.toString();\n    msg._mqtt_integrity_faults_total = integrityFaults.toString();\n    msg._mqtt_missing_total = missing.toString();\n    msg._mqtt_source_clock_faults = received.source_clock_faults;\n    msg._mqtt_max_upper_ms = maximum;\n    msg._mqtt_received_counts = received; msg._mqtt_acked_counts = acked;\n} catch { /* Invalid source stays unknown; never copy untrusted error text. */ }\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -90930,10 +90937,10 @@
         "y": 2460,
         "wires": [
             [
-                "mq_native_intent"
+                "mq_native_window_out"
             ]
         ],
-        "func": "const previous = flow.get(msg._mqtt_key, msg._mqtt_store) ?? {};\nconst snapshot = {\n    version:1,\n    classification:msg._mqtt_classification,\n    reader_authorized:msg._mqtt_reader_authorized ?? null,\n    reader_clock_domain_matches:msg._mqtt_reader_domain ?? null,\n    reader_clock_ordered:msg._mqtt_reader_ordered ?? null,\n    reader_status_age_ms:msg._mqtt_reader_age_ms ?? null,\n    source_state:msg._mqtt_source_state ?? \"unknown\",\n    received_counts:msg._mqtt_received_counts ?? previous.received_counts ?? null,\n    acknowledged_counts:msg._mqtt_acked_counts ?? previous.acknowledged_counts ?? null,\n    last_receipt_id:msg._mqtt_receipt_id ?? previous.last_receipt_id ?? null,\n    observed_total:msg._mqtt_observed_total ?? null,\n    timing_unknown_total:msg._mqtt_unknown_total ?? null,\n    receipt_timing_unknown_total:msg._mqtt_receipt_unknown_total ?? null,\n    integrity_faults_total:msg._mqtt_integrity_faults_total ?? previous.integrity_faults_total ?? null,\n    classification_scope:\"latest_receipt_with_cumulative_integrity_gates\",\n    missing_total:msg._mqtt_missing_total ?? previous.missing_total ?? null,\n    max_source_to_consumer_upper_ms:msg._mqtt_max_upper_ms ?? null,\n    last_committed_proposal_sha:previous.last_committed_proposal_sha ?? null,\n    last_commit_state:previous.last_commit_state ?? null,\n    full24h_proven:false,all_event_latency_proven:false\n};\nflow.set(msg._mqtt_key,snapshot,msg._mqtt_store);\nreturn msg;",
+        "func": "const previous = flow.get(msg._mqtt_key, msg._mqtt_store) ?? {};\nconst snapshot = {\n    version:1,\n    classification:msg._mqtt_classification,\n    reader_authorized:msg._mqtt_reader_authorized ?? null,\n    reader_clock_domain_matches:msg._mqtt_reader_domain ?? null,\n    reader_clock_ordered:msg._mqtt_reader_ordered ?? null,\n    reader_status_age_ms:msg._mqtt_reader_age_ms ?? null,\n    source_state:msg._mqtt_source_state ?? \"unknown\",\n    received_counts:msg._mqtt_received_counts ?? previous.received_counts ?? null,\n    acknowledged_counts:msg._mqtt_acked_counts ?? previous.acknowledged_counts ?? null,\n    last_receipt_id:msg._mqtt_receipt_id ?? previous.last_receipt_id ?? null,\n    observed_total:msg._mqtt_observed_total ?? null,\n    timing_unknown_total:msg._mqtt_unknown_total ?? null,\n    receipt_timing_unknown_total:msg._mqtt_receipt_unknown_total ?? null,\n    integrity_faults_total:msg._mqtt_integrity_faults_total ?? previous.integrity_faults_total ?? null,\n    classification_scope:\"latest_receipt_with_cumulative_integrity_gates\",\n    missing_total:msg._mqtt_missing_total ?? previous.missing_total ?? null,\n    max_source_to_consumer_upper_ms:msg._mqtt_max_upper_ms ?? null,\n    last_committed_proposal_sha:previous.last_committed_proposal_sha ?? null,\n    last_commit_state:previous.last_commit_state ?? null,\n    callback_window:previous.callback_window ?? null,\n    callback_window_scope:previous.callback_window_scope ?? null,\n    callback_window_checkpoint_sha256:previous.callback_window_checkpoint_sha256 ?? null,\n    callback_window_durable:previous.callback_window_durable ?? false,\n    full24h_proven:false,all_event_latency_proven:false\n};\nflow.set(msg._mqtt_key,snapshot,msg._mqtt_store);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -90954,7 +90961,7 @@
                 "mq_native_commit_valid"
             ]
         ],
-        "func": "const previous = flow.get(msg._mqtt_key,msg._mqtt_store) ?? {};\nmsg._mqtt_commit_valid = msg._mqtt_valid === true && msg._mqtt_commit_allowed === true && /^[a-f0-9]{64}$/.test(msg._mqtt_proposal_sha ?? \"\");\nmsg._mqtt_ticket_duplicate = msg._mqtt_commit_valid && previous.last_committed_proposal_sha === msg._mqtt_proposal_sha;\nmsg.payload = msg._mqtt_commit_valid ? msg._mqtt_proposal_sha : \"\";\nreturn msg;",
+        "func": "const previous = flow.get(msg._mqtt_key,msg._mqtt_store) ?? {};\nmsg._mqtt_commit_valid = msg._mqtt_valid === true && msg._mqtt_commit_allowed === true && /^[a-f0-9]{64}$/.test(msg._mqtt_proposal_sha ?? \"\");\nif(msg._mqtt_window_encoded===true){\n    msg._mqtt_proposal_sha=msg._mqtt_window_proposal;\n    msg._mqtt_commit_valid=/^[a-f0-9]{64}$/.test(msg._mqtt_proposal_sha ?? \"\")\n        && /^c1_[A-Za-z0-9_-]+$/.test(msg._mqtt_window_commit_token ?? \"\");\n}\nmsg._mqtt_ticket_duplicate = msg._mqtt_commit_valid && previous.last_committed_proposal_sha === msg._mqtt_proposal_sha;\nmsg.payload = msg._mqtt_commit_valid ? (msg._mqtt_window_commit_token ?? msg._mqtt_proposal_sha) : \"\";\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -91052,10 +91059,10 @@
     },
     {
         "id": "mq_native_commit_set",
-        "type": "change",
+        "type": "function",
         "z": "mqtt_native_observer_tab",
         "g": "mq_native_result_group",
-        "name": "Intenção: confirmar metadados",
+        "name": "Intenção: proposta selecionada",
         "x": 2340,
         "y": 2460,
         "wires": [
@@ -91076,7 +91083,14 @@
         "property": "",
         "from": "",
         "to": "",
-        "reg": false
+        "reg": false,
+        "func": "msg._mqtt_operation=msg._mqtt_window_encoded===true?msg._mqtt_window_mode:\"commit\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
     },
     {
         "id": "mq_native_commit_gate_out",
@@ -91272,7 +91286,7 @@
                 "mq_native_test_global_out"
             ]
         ],
-        "func": "if (msg.test_mode !== true) return null;\nconst previous = flow.get(msg._mqtt_key,\"memoryOnly\") ?? {};\nif (msg._mqtt_operation === \"commit\") previous.last_committed_proposal_sha = msg._mqtt_proposal_sha;\nprevious.last_commit_state = \"simulated\";\nflow.set(msg._mqtt_key,previous,\"memoryOnly\");\nflow.set(\"mqtt_native_last_dry_run_v1__test\",{\n    version:1,simulated:true,dispatched:false,external_call_sent:false,\n    operation:msg._mqtt_operation,classification:msg._mqtt_classification,\n    proposal_sha:msg._mqtt_proposal_sha ?? null,\n    receipt_id:msg._mqtt_receipt_id ?? null\n},\"memoryOnly\");\nif (msg._mqtt_owns_flight === true && typeof msg._mqtt_flight_token === \"string\"\n    && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token === msg._mqtt_flight_token)\n    flow.set(msg._mqtt_flight_key,false,\"memoryOnly\");\nmsg._global_observer_test = true;\nmsg.payload = {test_mode:true,observer_kind:\"metadata_observation\",flow_id:\"mqtt_native_observer_tab\",source_id:\"metadata_fixture\"};\nreturn msg;",
+        "func": "if (msg.test_mode !== true) return null;\nconst previous = flow.get(msg._mqtt_key,\"memoryOnly\") ?? {};\nif ([\"commit\",\"checkpoint-commit\"].includes(msg._mqtt_operation)) previous.last_committed_proposal_sha = msg._mqtt_proposal_sha;\nif(msg._mqtt_window_encoded===true){\n    flow.set(\"mqtt_native_canvas_checkpoint_v1__test\",JSON.parse(JSON.stringify(msg._mqtt_window_candidate)),\"memoryOnly\");\n    flow.set(\"mqtt_native_canvas_checkpoint_sha_v1__test\",msg._mqtt_window_checkpoint_sha,\"memoryOnly\");\n}\nprevious.last_commit_state = \"simulated\";\nflow.set(msg._mqtt_key,previous,\"memoryOnly\");\nflow.set(\"mqtt_native_last_dry_run_v1__test\",{\n    version:1,simulated:true,dispatched:false,external_call_sent:false,\n    operation:msg._mqtt_operation,classification:msg._mqtt_classification,\n    proposal_sha:msg._mqtt_proposal_sha ?? null,\n    receipt_id:msg._mqtt_receipt_id ?? null,\n    callback_window:msg._mqtt_window_encoded===true?JSON.parse(JSON.stringify(msg._mqtt_window_candidate.window)):null,\n    checkpoint:msg._mqtt_window_encoded===true?JSON.parse(JSON.stringify(msg._mqtt_window_candidate)):null,\n    commit_token:msg._mqtt_window_encoded===true?msg._mqtt_window_commit_token:null\n},\"memoryOnly\");\nif (msg._mqtt_owns_flight === true && typeof msg._mqtt_flight_token === \"string\"\n    && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token === msg._mqtt_flight_token)\n    flow.set(msg._mqtt_flight_key,false,\"memoryOnly\");\nmsg._global_observer_test = true;\nmsg.payload = {test_mode:true,observer_kind:\"metadata_observation\",flow_id:\"mqtt_native_observer_tab\",source_id:\"metadata_fixture\"};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -91299,12 +91313,15 @@
         "type": "switch",
         "z": "mqtt_native_observer_tab",
         "g": "mq_native_effect_group",
-        "name": "Efeito é confirmação?",
+        "name": "Efeito selecionado?",
         "x": 700,
         "y": 3080,
         "wires": [
             [
                 "mq_native_commit"
+            ],
+            [
+                "mq_native_checkpoint_effect_out"
             ],
             [
                 "mq_native_finish_out"
@@ -91319,12 +91336,17 @@
                 "vt": "str"
             },
             {
+                "t": "eq",
+                "v": "checkpoint-commit",
+                "vt": "str"
+            },
+            {
                 "t": "else"
             }
         ],
         "checkall": "false",
         "repair": false,
-        "outputs": 2
+        "outputs": 3
     },
     {
         "id": "mq_native_finish_out",
@@ -91378,7 +91400,7 @@
                 "mq_native_release"
             ]
         ],
-        "func": "let result;\ntry {result = typeof msg.payload === \"string\" ? JSON.parse(msg.payload) : msg.payload;} catch {result = null;}\nconst previous = flow.get(msg._mqtt_key,msg._mqtt_store) ?? {};\nconst state = [\"committed\",\"stale_prepare\",\"unknown\"].includes(result?.state) ? result.state : \"unknown\";\nif (state === \"committed\" && /^[a-f0-9]{64}$/.test(msg._mqtt_proposal_sha ?? \"\"))\n    previous.last_committed_proposal_sha = msg._mqtt_proposal_sha;\nprevious.last_commit_state = state;\nflow.set(msg._mqtt_key,previous,msg._mqtt_store);\nreturn msg;",
+        "func": "if (msg._mqtt_owns_flight === true && typeof msg._mqtt_flight_token === \"string\"\n    && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token !== msg._mqtt_flight_token) return null;\nlet result;\ntry {result = typeof msg.payload === \"string\" ? JSON.parse(msg.payload) : msg.payload;} catch {result = null;}\nconst previous = flow.get(msg._mqtt_key,msg._mqtt_store) ?? {};\nlet state = [\"committed\",\"checkpoint_committed\",\"stale_prepare\",\"unknown\"].includes(result?.state) ? result.state : \"unknown\";\nconst matched=msg._mqtt_owns_flight===true && flow.get(msg._mqtt_flight_key,\"memoryOnly\")?.token===msg._mqtt_flight_token\n    && msg._mqtt_window_encoded===true && result?.canvas_checkpoint_sha256===msg._mqtt_window_checkpoint_sha\n    && (msg._mqtt_window_mode===\"commit\" && state===\"committed\"\n        || msg._mqtt_window_mode===\"checkpoint-commit\" && state===\"checkpoint_committed\"\n        && result.ack_written===false && result.ack_intended===false);\nif(msg._mqtt_window_encoded===true && !matched)state=\"unknown\";\nif ((state === \"committed\" || state === \"checkpoint_committed\") && /^[a-f0-9]{64}$/.test(msg._mqtt_proposal_sha ?? \"\"))\n    previous.last_committed_proposal_sha = msg._mqtt_proposal_sha;\nif(matched){\n    previous.callback_window=JSON.parse(JSON.stringify(msg._mqtt_window_candidate.window));\n    previous.callback_window_scope=\"seven_native_MQTT_callback_classes\";\n    previous.callback_window_checkpoint_sha256=msg._mqtt_window_checkpoint_sha;\n    previous.callback_window_durable=true;\n}\nprevious.last_commit_state = state;\nflow.set(msg._mqtt_key,previous,msg._mqtt_store);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -91485,7 +91507,7 @@
         "g": "mq_native_test_group",
         "name": "ORDEM: reset → nominal → duplicata → acima → desconhecido → perda → indisponível",
         "x": 1500,
-        "y": 3410,
+        "y": 3510,
         "wires": [],
         "info": "Namespace __test em memória. Mesma política,normalização,decisão,dedupe e gate. Sem exec,arquivos,HA,MQTT ou push. Zero eventos e falta de recibo não provam recuperação. Fonte unknown não declara broker offline."
     },
@@ -91496,7 +91518,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 0 reset",
         "x": 240,
-        "y": 3500,
+        "y": 3600,
         "wires": [
             [
                 "mq_native_test_reset_out"
@@ -91534,7 +91556,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE reset → replay",
         "x": 420,
-        "y": 3500,
+        "y": 3600,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91548,7 +91570,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 1 nominal",
         "x": 590,
-        "y": 3500,
+        "y": 3600,
         "wires": [
             [
                 "mq_native_test_within_out"
@@ -91586,7 +91608,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE within → replay",
         "x": 770,
-        "y": 3500,
+        "y": 3600,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91600,7 +91622,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 2 duplicata",
         "x": 940,
-        "y": 3500,
+        "y": 3600,
         "wires": [
             [
                 "mq_native_test_duplicate_out"
@@ -91638,7 +91660,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE duplicate → replay",
         "x": 1120,
-        "y": 3500,
+        "y": 3600,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91652,7 +91674,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 3 acima10s",
         "x": 1290,
-        "y": 3500,
+        "y": 3600,
         "wires": [
             [
                 "mq_native_test_over_out"
@@ -91690,7 +91712,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE over → replay",
         "x": 1470,
-        "y": 3500,
+        "y": 3600,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91704,7 +91726,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 4 relógio desconhecido",
         "x": 240,
-        "y": 3600,
+        "y": 3700,
         "wires": [
             [
                 "mq_native_test_unknown_out"
@@ -91742,7 +91764,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE unknown → replay",
         "x": 420,
-        "y": 3600,
+        "y": 3700,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91756,7 +91778,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 5 perda",
         "x": 590,
-        "y": 3600,
+        "y": 3700,
         "wires": [
             [
                 "mq_native_test_missing_out"
@@ -91794,7 +91816,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE missing → replay",
         "x": 770,
-        "y": 3600,
+        "y": 3700,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91808,7 +91830,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 6 zero eventos",
         "x": 940,
-        "y": 3600,
+        "y": 3700,
         "wires": [
             [
                 "mq_native_test_no_events_out"
@@ -91846,7 +91868,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE no_events → replay",
         "x": 1120,
-        "y": 3600,
+        "y": 3700,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91860,7 +91882,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 7 fonte indisponível",
         "x": 1290,
-        "y": 3600,
+        "y": 3700,
         "wires": [
             [
                 "mq_native_test_unavailable_out"
@@ -91898,7 +91920,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE unavailable → replay",
         "x": 1470,
-        "y": 3600,
+        "y": 3700,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91912,7 +91934,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 8 ocupado",
         "x": 240,
-        "y": 3700,
+        "y": 3800,
         "wires": [
             [
                 "mq_native_test_busy_out"
@@ -91950,7 +91972,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE busy → replay",
         "x": 420,
-        "y": 3700,
+        "y": 3800,
         "wires": [],
         "mode": "link",
         "links": [
@@ -91964,7 +91986,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 9 inválido",
         "x": 590,
-        "y": 3700,
+        "y": 3800,
         "wires": [
             [
                 "mq_native_test_malformed_out"
@@ -92002,7 +92024,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE malformed → replay",
         "x": 770,
-        "y": 3700,
+        "y": 3800,
         "wires": [],
         "mode": "link",
         "links": [
@@ -92016,7 +92038,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 10 desligado",
         "x": 940,
-        "y": 3700,
+        "y": 3800,
         "wires": [
             [
                 "mq_native_test_disabled_out"
@@ -92054,7 +92076,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE disabled → replay",
         "x": 1120,
-        "y": 3700,
+        "y": 3800,
         "wires": [],
         "mode": "link",
         "links": [
@@ -92068,7 +92090,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 11 escopo fechado",
         "x": 1290,
-        "y": 3700,
+        "y": 3800,
         "wires": [
             [
                 "mq_native_test_reader_denied_out"
@@ -92106,7 +92128,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE reader_denied → replay",
         "x": 1470,
-        "y": 3700,
+        "y": 3800,
         "wires": [],
         "mode": "link",
         "links": [
@@ -92120,7 +92142,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 12 domínio diferente",
         "x": 240,
-        "y": 3800,
+        "y": 3900,
         "wires": [
             [
                 "mq_native_test_reader_clock_out"
@@ -92158,7 +92180,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE reader_clock → replay",
         "x": 420,
-        "y": 3800,
+        "y": 3900,
         "wires": [],
         "mode": "link",
         "links": [
@@ -92172,7 +92194,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 13 relógio futuro",
         "x": 590,
-        "y": 3800,
+        "y": 3900,
         "wires": [
             [
                 "mq_native_test_reader_future_out"
@@ -92210,7 +92232,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE reader_future → replay",
         "x": 770,
-        "y": 3800,
+        "y": 3900,
         "wires": [],
         "mode": "link",
         "links": [
@@ -92224,7 +92246,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 14 leitor antigo",
         "x": 940,
-        "y": 3800,
+        "y": 3900,
         "wires": [
             [
                 "mq_native_test_reader_stale_out"
@@ -92262,7 +92284,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE reader_stale → replay",
         "x": 1120,
-        "y": 3800,
+        "y": 3900,
         "wires": [],
         "mode": "link",
         "links": [
@@ -92276,7 +92298,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE 15 sem metadados",
         "x": 1290,
-        "y": 3800,
+        "y": 3900,
         "wires": [
             [
                 "mq_native_test_reader_missing_out"
@@ -92314,7 +92336,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE reader_missing → replay",
         "x": 1470,
-        "y": 3800,
+        "y": 3900,
         "wires": [],
         "mode": "link",
         "links": [
@@ -92328,7 +92350,7 @@
         "g": "mq_native_test_group",
         "name": "TESTES → mesmo replay",
         "x": 1460,
-        "y": 4160,
+        "y": 4260,
         "wires": [
             [
                 "mq_native_test_build"
@@ -92360,13 +92382,13 @@
         "g": "mq_native_test_group",
         "name": "Construir somente fatos sintéticos",
         "x": 1640,
-        "y": 4160,
+        "y": 4260,
         "wires": [
             [
                 "mq_native_test_policy_config"
             ]
         ],
-        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nif (msg.test_mode !== true || msg._mqtt_test_source !== true) return null;\nconst scenario = String(msg.payload);\nif (scenario === \"reset\") {\n    for (const key of [\"mqtt_native_observer_v1__test\",\"mqtt_native_fixture_v1__test\",\"mqtt_native_last_dry_run_v1__test\",\n        \"mqtt_native_inflight_v1__test\",\"mqtt_native_inflight_v1__test_sequence\"]) flow.set(key,undefined,\"memoryOnly\");\n    return null;\n}\nconst previous = flow.get(\"mqtt_native_fixture_v1__test\",\"memoryOnly\");\nlet cli;\nif (scenario === \"duplicate\" && previous) cli = JSON.parse(JSON.stringify(previous));\nelse {\n    const index = (previous?._fixture_sequence ?? 0) + 1;\n    const counts = {...Object.fromEntries(MQTT_NATIVE_SCHEMA.headers.map(k=>[k,\"0\"])),\n        faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n        stats:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,Object.fromEntries(MQTT_NATIVE_SCHEMA.stats.map(s=>[s,\"0\"]))]))};\n    counts.frames = \"1\"; counts.sessions = \"1\"; counts.source_epochs = \"1\";\n    const row = counts.stats.publish_in; row.expected = \"1\"; row.observed = \"1\"; row.timed = \"1\";\n    const by_kind = Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,{observed:\"0\",timed:\"0\",timing_unknown:\"0\",\n        source_to_consumer_upper_ns:null,source_to_consumer_upper_ms:null}]));\n    by_kind.publish_in = {observed:\"1\",timed:\"1\",timing_unknown:\"0\",source_to_consumer_upper_ns:\"1000000000\",source_to_consumer_upper_ms:1000};\n    cli = {state:\"prepared\",proposal_sha:index.toString(16).padStart(64,\"0\"),\n        reader_facts:{schema_version:1,reader_instance_sha256:\"a\".repeat(64),source_authorized:true,authorization_state:\"active\",faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),clock_domain_matches:true,clock_ordered:true,status_age_ns:\"1000000\",status_age_ms:1},received_counts:counts,acknowledged_counts:JSON.parse(JSON.stringify(counts)),\n        receipt_facts:[{bucket_id:String(index),clock_ordered:true,by_kind}],_fixture_sequence:index};\n    if (scenario === \"reader_denied\") {cli.reader_facts.source_authorized=false;cli.reader_facts.authorization_state=\"revoked\";}\n    if (scenario === \"reader_clock\" || scenario === \"reader_future\") {\n        cli.reader_facts.clock_domain_matches=scenario!==\"reader_clock\";cli.reader_facts.clock_ordered=false;\n        cli.reader_facts.status_age_ns=null;cli.reader_facts.status_age_ms=null;\n    }\n    if (scenario === \"reader_stale\") {cli.reader_facts.status_age_ns=\"10000000001\";cli.reader_facts.status_age_ms=10001;}\n    if (scenario === \"reader_missing\") delete cli.reader_facts;\n    if (scenario === \"over\") {\n        by_kind.publish_in.source_to_consumer_upper_ns = \"10000000001\"; by_kind.publish_in.source_to_consumer_upper_ms = 10001;\n    } else if (scenario === \"unknown\") {\n        cli.receipt_facts[0].clock_ordered = false;\n        row.timed = \"0\"; row.timing_unknown = \"1\";\n        by_kind.publish_in.timed = \"0\"; by_kind.publish_in.timing_unknown = \"1\";\n        by_kind.publish_in.source_to_consumer_upper_ns = null; by_kind.publish_in.source_to_consumer_upper_ms = null;\n    } else if (scenario === \"missing\") {\n        row.expected = \"2\"; row.missing = \"1\"; row.source_dropped = \"1\";\n    } else if (scenario === \"no_events\") {\n        for (const k of MQTT_NATIVE_SCHEMA.stats) row[k] = \"0\";\n        by_kind.publish_in = {observed:\"0\",timed:\"0\",timing_unknown:\"0\",source_to_consumer_upper_ns:null,source_to_consumer_upper_ms:null};\n    } else if (scenario === \"unavailable\") cli = {state:\"unknown\",collection_error:\"producer_report_invalid\",_fixture_sequence:index};\n    else if (scenario === \"busy\") cli = {state:\"busy\",_fixture_sequence:index};\n    else if (scenario === \"malformed\") cli = \"invalid_synthetic_metadata\";\n}\nif (typeof cli === \"object\") flow.set(\"mqtt_native_fixture_v1__test\",cli,\"memoryOnly\");\nmsg._mqtt_synthetic_cli = cli;\nmsg._mqtt_test_enabled = scenario !== \"disabled\";\nreturn msg;",
+        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nif (msg.test_mode !== true || msg._mqtt_test_source !== true) return null;\nconst scenario = String(msg.payload);\nif (scenario === \"reset\") {\n    for (const key of [\"mqtt_native_observer_v1__test\",\"mqtt_native_fixture_v1__test\",\"mqtt_native_last_dry_run_v1__test\",\n        \"mqtt_native_inflight_v1__test\",\"mqtt_native_inflight_v1__test_sequence\",\n        \"mqtt_native_canvas_checkpoint_v1__test\",\"mqtt_native_canvas_checkpoint_sha_v1__test\"]) flow.set(key,undefined,\"memoryOnly\");\n    return null;\n}\nconst previous = flow.get(\"mqtt_native_fixture_v1__test\",\"memoryOnly\");\nlet cli;\nif (scenario === \"duplicate\" && previous) cli = JSON.parse(JSON.stringify(previous));\nelse {\n    const index = (previous?._fixture_sequence ?? 0) + 1;\n    const counts = {...Object.fromEntries(MQTT_NATIVE_SCHEMA.headers.map(k=>[k,\"0\"])),\n        faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n        stats:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,Object.fromEntries(MQTT_NATIVE_SCHEMA.stats.map(s=>[s,\"0\"]))]))};\n    counts.frames = \"1\"; counts.sessions = \"1\"; counts.source_epochs = \"1\";\n    const row = counts.stats.publish_in; row.expected = \"1\"; row.observed = \"1\"; row.timed = \"1\";\n    const by_kind = Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,{observed:\"0\",timed:\"0\",timing_unknown:\"0\",\n        source_to_consumer_upper_ns:null,source_to_consumer_upper_ms:null}]));\n    by_kind.publish_in = {observed:\"1\",timed:\"1\",timing_unknown:\"0\",source_to_consumer_upper_ns:\"1000000000\",source_to_consumer_upper_ms:1000};\n    cli = {state:\"prepared\",proposal_sha:index.toString(16).padStart(64,\"0\"),\n        reader_facts:{schema_version:1,reader_instance_sha256:\"a\".repeat(64),source_authorized:true,authorization_state:\"active\",faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),clock_domain_matches:true,clock_ordered:true,status_age_ns:\"1000000\",status_age_ms:1},received_counts:counts,acknowledged_counts:JSON.parse(JSON.stringify(counts)),\n        receipt_facts:[{bucket_id:String(index),clock_ordered:true,by_kind}],_fixture_sequence:index};\n    if (scenario === \"reader_denied\") {cli.reader_facts.source_authorized=false;cli.reader_facts.authorization_state=\"revoked\";}\n    if (scenario === \"reader_clock\" || scenario === \"reader_future\") {\n        cli.reader_facts.clock_domain_matches=scenario!==\"reader_clock\";cli.reader_facts.clock_ordered=false;\n        cli.reader_facts.status_age_ns=null;cli.reader_facts.status_age_ms=null;\n    }\n    if (scenario === \"reader_stale\") {cli.reader_facts.status_age_ns=\"10000000001\";cli.reader_facts.status_age_ms=10001;}\n    if (scenario === \"reader_missing\") delete cli.reader_facts;\n    if (scenario === \"over\") {\n        by_kind.publish_in.source_to_consumer_upper_ns = \"10000000001\"; by_kind.publish_in.source_to_consumer_upper_ms = 10001;\n    } else if (scenario === \"unknown\") {\n        cli.receipt_facts[0].clock_ordered = false;\n        row.timed = \"0\"; row.timing_unknown = \"1\";\n        by_kind.publish_in.timed = \"0\"; by_kind.publish_in.timing_unknown = \"1\";\n        by_kind.publish_in.source_to_consumer_upper_ns = null; by_kind.publish_in.source_to_consumer_upper_ms = null;\n    } else if (scenario === \"missing\") {\n        row.expected = \"2\"; row.missing = \"1\"; row.source_dropped = \"1\";\n    } else if (scenario === \"no_events\") {\n        for (const k of MQTT_NATIVE_SCHEMA.stats) row[k] = \"0\";\n        by_kind.publish_in = {observed:\"0\",timed:\"0\",timing_unknown:\"0\",source_to_consumer_upper_ns:null,source_to_consumer_upper_ms:null};\n    } else if (scenario === \"unavailable\") cli = {state:\"unknown\",collection_error:\"producer_report_invalid\",_fixture_sequence:index};\n    else if (scenario === \"busy\") cli = {state:\"busy\",_fixture_sequence:index};\n    else if (scenario === \"malformed\") cli = \"invalid_synthetic_metadata\";\n}\nif (typeof cli === \"object\") flow.set(\"mqtt_native_fixture_v1__test\",cli,\"memoryOnly\");\nmsg._mqtt_synthetic_cli = cli;\nmsg._mqtt_test_enabled = scenario !== \"disabled\";\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -92381,7 +92403,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE: mesma definição",
         "x": 1990,
-        "y": 4160,
+        "y": 4260,
         "wires": [
             [
                 "mq_native_test_policy_out"
@@ -92416,7 +92438,7 @@
         "g": "mq_native_test_group",
         "name": "TESTE → validador",
         "x": 2170,
-        "y": 4160,
+        "y": 4260,
         "wires": [],
         "mode": "link",
         "links": [
@@ -92508,6 +92530,3364 @@
         "x": 3445,
         "y": 130,
         "wires": []
+    },
+    {
+        "id": "mq_native_window_group",
+        "type": "group",
+        "z": "mqtt_native_observer_tab",
+        "name": "7. Janela de 24h: cobertura → corte fixo → recibos confirmados",
+        "style": {
+            "label": true,
+            "color": "#2563eb"
+        },
+        "nodes": [
+            "mq_native_window_in",
+            "mq_native_window_contract",
+            "mq_native_window_facts",
+            "mq_native_window_no_plan",
+            "mq_native_window_possible",
+            "mq_native_window_frozen",
+            "mq_native_window_terminal",
+            "mq_native_window_reader_unknown_out",
+            "mq_native_window_reader",
+            "mq_native_window_clock_ready",
+            "mq_native_window_clock_unknown_out",
+            "mq_native_window_clock",
+            "mq_native_window_policy_in",
+            "mq_native_window_limit_invalid_out",
+            "mq_native_window_limit",
+            "mq_native_window_policy_changed_out",
+            "mq_native_window_policy_same",
+            "mq_native_window_epoch_change_out",
+            "mq_native_window_epoch",
+            "mq_native_window_reversed_out",
+            "mq_native_window_monotonic",
+            "mq_native_window_missing_out",
+            "mq_native_window_missing",
+            "mq_native_window_integrity_ready",
+            "mq_native_window_integrity_out",
+            "mq_native_window_faults",
+            "mq_native_window_receipts_in",
+            "mq_native_window_timing_unknown_out",
+            "mq_native_window_unknown",
+            "mq_native_window_receipt_gap_out",
+            "mq_native_window_receipt",
+            "mq_native_window_legacy_cut_out",
+            "mq_native_window_cut_kind",
+            "mq_native_window_latency_out",
+            "mq_native_window_latency",
+            "mq_native_window_cut_existing",
+            "mq_native_window_has_cut",
+            "mq_native_window_tracking_out",
+            "mq_native_window_elapsed",
+            "mq_native_window_cut_captured",
+            "mq_native_window_capture",
+            "mq_native_window_drain_in",
+            "mq_native_window_passed_out",
+            "mq_native_window_draining_out",
+            "mq_native_window_drain",
+            "mq_native_window_reader_unknown_in",
+            "mq_native_window_reader_unknown_set",
+            "mq_native_window_reader_unknown_encode",
+            "mq_native_window_clock_unknown_in",
+            "mq_native_window_clock_unknown_set",
+            "mq_native_window_clock_unknown_encode",
+            "mq_native_window_limit_invalid_in",
+            "mq_native_window_limit_invalid_set",
+            "mq_native_window_limit_invalid_encode",
+            "mq_native_window_policy_changed_in",
+            "mq_native_window_policy_changed_set",
+            "mq_native_window_policy_changed_encode",
+            "mq_native_window_epoch_change_in",
+            "mq_native_window_epoch_change_set",
+            "mq_native_window_epoch_change_encode",
+            "mq_native_window_reversed_in",
+            "mq_native_window_reversed_set",
+            "mq_native_window_reversed_encode",
+            "mq_native_window_missing_in",
+            "mq_native_window_missing_set",
+            "mq_native_window_missing_encode",
+            "mq_native_window_integrity_in",
+            "mq_native_window_integrity_set",
+            "mq_native_window_integrity_encode",
+            "mq_native_window_timing_unknown_in",
+            "mq_native_window_timing_unknown_set",
+            "mq_native_window_timing_unknown_encode",
+            "mq_native_window_receipt_gap_in",
+            "mq_native_window_receipt_gap_set",
+            "mq_native_window_receipt_gap_encode",
+            "mq_native_window_legacy_cut_in",
+            "mq_native_window_legacy_cut_set",
+            "mq_native_window_legacy_cut_encode",
+            "mq_native_window_latency_in",
+            "mq_native_window_latency_set",
+            "mq_native_window_latency_encode",
+            "mq_native_window_tracking_in",
+            "mq_native_window_tracking_set",
+            "mq_native_window_tracking_encode",
+            "mq_native_window_passed_in",
+            "mq_native_window_passed_set",
+            "mq_native_window_passed_encode",
+            "mq_native_window_draining_in",
+            "mq_native_window_draining_set",
+            "mq_native_window_draining_encode",
+            "mq_native_window_encode_in",
+            "mq_native_window_encode",
+            "mq_native_window_encoded",
+            "mq_native_window_encode_failed",
+            "mq_native_window_return_out",
+            "mq_native_window_skip_in",
+            "mq_native_checkpoint_effect_in",
+            "mq_native_checkpoint_commit",
+            "mq_native_checkpoint_result_out",
+            "mq_native_checkpoint_complete_out",
+            "notification_hub_wire_out_4bd7da674b44",
+            "notification_hub_wire_in_4bd7da674b44"
+        ],
+        "x": 64,
+        "y": 4400,
+        "w": 2660,
+        "h": 1880
+    },
+    {
+        "id": "mq_native_window_test_group",
+        "type": "group",
+        "z": "mqtt_native_observer_tab",
+        "name": "8. Replay da janela: avançar fatos sintéticos, duração real preservada",
+        "style": {
+            "label": true,
+            "color": "#2563eb"
+        },
+        "nodes": [
+            "mq_native_window_test_info",
+            "mq_native_test_window_start",
+            "mq_native_window_test_start_out",
+            "mq_native_test_window_pending",
+            "mq_native_window_test_pending_out",
+            "mq_native_test_window_drain",
+            "mq_native_window_test_drain_out",
+            "mq_native_test_window_source_unknown",
+            "mq_native_window_test_source_unknown_out",
+            "mq_native_test_window_epoch",
+            "mq_native_window_test_epoch_out",
+            "mq_native_test_window_clock",
+            "mq_native_window_test_clock_out",
+            "mq_native_test_window_policy",
+            "mq_native_window_test_policy_out",
+            "mq_native_test_window_gap",
+            "mq_native_window_test_gap_out",
+            "mq_native_test_window_over",
+            "mq_native_window_test_over_out",
+            "mq_native_test_window_fault",
+            "mq_native_window_test_fault_out",
+            "mq_native_test_window_legacy",
+            "mq_native_window_test_legacy_out",
+            "mq_native_window_test_build_in",
+            "mq_native_window_test_build",
+            "mq_native_window_test_source_out",
+            "mq_native_test_window_missing",
+            "mq_native_window_test_missing_out",
+            "mq_native_test_window_timing_unknown",
+            "mq_native_window_test_timing_unknown_out",
+            "mq_native_test_window_reader_denied",
+            "mq_native_window_test_reader_denied_out",
+            "mq_native_test_window_reader_stale",
+            "mq_native_window_test_reader_stale_out"
+        ],
+        "x": 64,
+        "y": 6320,
+        "w": 2660,
+        "h": 700
+    },
+    {
+        "id": "mq_native_window_policy_info",
+        "type": "comment",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_policy_group",
+        "name": "CONTRATO da janela: 24h e ≤ 10.000 ms; somente sete classes MQTT",
+        "x": 1500,
+        "y": 310,
+        "wires": [],
+        "info": "O grupo7 publica os parâmetros fixos do aceite. Um limite local maior não satisfaz a janela. Passagem do relógio não substitui covered_before_ns e ACK durável. Falhas antigas são preservadas; nova janela usa deltas de uma fronteira ACK verificada."
+    },
+    {
+        "id": "mq_native_window_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_result_group",
+        "name": "Resultado → janela canônica",
+        "x": 1120,
+        "y": 2400,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_return_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_result_group",
+        "name": "Janela → intenção",
+        "x": 1110,
+        "y": 2530,
+        "wires": [
+            [
+                "mq_native_intent"
+            ]
+        ],
+        "links": [
+            "mq_native_window_return_out"
+        ]
+    },
+    {
+        "id": "mq_native_checkpoint_effect_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_effect_group",
+        "name": "Histórico próprio → sem ACK",
+        "x": 880,
+        "y": 3320,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_checkpoint_effect_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber proposta e histórico",
+        "x": 100,
+        "y": 4480,
+        "wires": [
+            [
+                "mq_native_window_contract"
+            ]
+        ],
+        "links": [
+            "mq_native_window_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_contract",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "CONTRATO: 86.400s; ≤ 10.000ms",
+        "x": 350,
+        "y": 4480,
+        "wires": [
+            [
+                "mq_native_window_facts"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_contract",
+                "pt": "msg",
+                "to": "{\"duration_ms\":86400000,\"event_latency_ms\":10000}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "mq_native_window_facts",
+        "type": "function",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Validar fatos / calcular deltas",
+        "x": 690,
+        "y": 4480,
+        "wires": [
+            [
+                "mq_native_window_possible"
+            ]
+        ],
+        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\n// Shape validation and exact arithmetic only. Switches choose every outcome.\nmsg._mqtt_window_possible = false;\nmsg._mqtt_window_candidate = null;\ntry {\n    const uint = (v,bits=128) => {\n        if (typeof v !== \"string\" || !/^(?:0|[1-9][0-9]{0,38})$/.test(v)) throw Error(\"integer\");\n        const n=BigInt(v); if(n>=2n**BigInt(bits))throw Error(\"integer\"); return n;\n    };\n    const hex = v => typeof v === \"string\" && /^[a-f0-9]{64}$/.test(v);\n    const copy = v => JSON.parse(JSON.stringify(v));\n    const value = msg._mqtt_envelope;\n    if (!value || value.state === \"busy\") return msg;\n    const own = value.checkpoint_only;\n    const source = msg._mqtt_valid === true && msg._mqtt_commit_allowed === true;\n    const plan = source ? value : own;\n    if (!plan || !hex(plan.proposal_sha)) return msg;\n    const old = plan.canvas_checkpoint ?? null;\n    if (!source && old === null) return msg;\n    const receipt = source ? value.receipt_facts[0] : null;\n    const receiptId = source ? (receipt?.bucket_id ?? own?.receipt_id ?? \"0\") : plan.receipt_id;\n    uint(receiptId,64);\n    const counts = plan.acknowledged_counts;\n    const leaves = c => [...MQTT_NATIVE_SCHEMA.headers.map(k=>c[k]),\n        ...MQTT_NATIVE_SCHEMA.faults.map(k=>c.faults[k]),\n        ...MQTT_NATIVE_SCHEMA.kinds.flatMap(k=>MQTT_NATIVE_SCHEMA.stats.map(s=>c.stats[k][s]))];\n    leaves(counts).forEach(v=>uint(v));\n    if (old !== null && (!hex(plan.canvas_checkpoint_sha256) || old.schema_version !== 1\n        || !hex(old.window?.id_sha256) || !Array.isArray(old.history))) return msg;\n    const reader = source ? value.reader_facts : null;\n    const origin = reader?.source_facts;\n    const now = reader?.reader_observed_boottime_ns ?? old?.window.observed_at_ns;\n    if (now === undefined) return msg;\n    uint(now,64);\n    const knownOrigin = origin != null && origin.wire_version === 3 && hex(origin.instance_sha256)\n        && [\"verified_live\",\"verified_exited\"].includes(origin.identity_state)\n        && typeof origin.closed === \"boolean\" && origin.covered_before_ns !== null;\n    if (knownOrigin) {\n        uint(origin.epoch);uint(origin.covered_before_ns,64);\n        if(uint(origin.covered_before_ns,64)>uint(now,64))return msg;\n    }\n    const knownClock = hex(reader?.clock_domain_sha256) && reader.clock_domain_matches === true\n        && reader.clock_ordered === true && (receipt == null || receipt.clock_ordered === true\n            && receipt.clock_domain_sha256 === reader.clock_domain_sha256);\n    const start = old?.window.started_at_ns ?? receipt?.ack_at_ns;\n    if (start !== undefined) uint(start,64);\n    const validBoundary = receipt != null && uint(receiptId,64)>0n && knownClock\n        && start !== undefined && uint(start,64)<=uint(now,64) && knownOrigin\n        && counts.source_epochs===origin.epoch && uint(counts.frames)>0n\n        && origin.started_boottime_ns !== null && uint(origin.started_boottime_ns,64)<=uint(start,64)\n        && uint(origin.covered_before_ns,64)>=uint(start,64);\n    // No clock/start is fabricated for a missing first verified ACK boundary.\n    if (old === null && !validBoundary) return msg;\n    const policy = {event_latency_ms:String(msg._mqtt_policy.event_latency_ms),\n        window_duration_ns:(BigInt(msg._mqtt_window_contract.duration_ms)*1000000n).toString()};\n    const w = old === null ? {\n        id_sha256:plan.proposal_sha,phase:\"tracking\",reason:\"collecting\",\n        clock_domain_sha256:reader.clock_domain_sha256,started_at_ns:start,observed_at_ns:now,\n        first_receipt_id:receiptId,last_receipt_id:receiptId,baseline_counts:copy(counts),\n        acknowledged_counts:copy(counts),max_upper_ns_by_kind:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,null])),\n        violations:Object.fromEntries([\"missing\",\"timing_unknown\",\"integrity_faults\",\"receipt_gaps\",\n            \"clock_conflicts\",\"over_contract_receipts\",\"reader_unknown_observations\"].map(k=>[k,\"0\"])),policy,cut:null\n    } : copy(old.window);\n    const next = {schema_version:1,sequence:(uint(old?.sequence ?? \"0\",64)+1n).toString(),\n        previous_sha256:old === null ? null : plan.canvas_checkpoint_sha256,\n        proposal_sha:plan.proposal_sha,receipt_id:receiptId,acknowledged_counts_sha256:null,\n        window:w,history:copy(old?.history ?? [])};\n    msg._mqtt_window_candidate=next;\n    msg._mqtt_window_counts=copy(counts);\n    msg._mqtt_window_mode=source ? \"commit\" : \"checkpoint-commit\";\n    msg._mqtt_window_proposal=plan.proposal_sha;\n    msg._mqtt_window_terminal=[\"passed\",\"failed\",\"unknown\"].includes(w.phase);\n    msg._mqtt_window_current_phase=w.phase;\n    msg._mqtt_window_reader_good=source && knownOrigin;\n    msg._mqtt_window_clock_good=knownClock && reader.clock_domain_sha256===w.clock_domain_sha256\n        && uint(now,64)>=uint(w.observed_at_ns,64);\n    msg._mqtt_window_policy_same=policy.event_latency_ms===w.policy.event_latency_ms\n        && policy.window_duration_ns===w.policy.window_duration_ns;\n    msg._mqtt_window_epoch_equal=knownOrigin && origin.epoch===counts.source_epochs\n        && (old===null || counts.source_epochs===w.baseline_counts.source_epochs);\n    const current = source ? value.received_counts : counts;\n    const prior=leaves(w.baseline_counts),currentLeaves=leaves(current),ackLeaves=leaves(counts),lastLeaves=leaves(w.acknowledged_counts);\n    const monotonic=currentLeaves.every((v,i)=>uint(v)>=uint(prior[i]))\n        &&ackLeaves.every((v,i)=>uint(v)>=uint(lastLeaves[i]));\n    msg._mqtt_window_monotonic=monotonic;\n    const delta = (a,b) => uint(a)>=uint(b) ? uint(a)-uint(b) : 0n;\n    let missing=0n,unknown=0n,faults=0n;\n    for(const kind of MQTT_NATIVE_SCHEMA.kinds){\n        missing+=delta(current.stats[kind].missing,w.baseline_counts.stats[kind].missing);\n        unknown+=delta(current.stats[kind].timing_unknown,w.baseline_counts.stats[kind].timing_unknown);\n        const upper=receipt?.by_kind[kind].source_to_consumer_upper_ns;\n        if(upper!=null && (w.max_upper_ns_by_kind[kind]===null || uint(upper,64)>uint(w.max_upper_ns_by_kind[kind],64)))\n            w.max_upper_ns_by_kind[kind]=upper;\n    }\n    for(const k of [\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"ack_clock_conflicts\"])\n        faults+=delta(current[k],w.baseline_counts[k]);\n    for(const k of MQTT_NATIVE_SCHEMA.faults){\n        const delivered=uint(current.faults[k]),live=reader?uint(reader.faults[k]):delivered;\n        faults+=delta((live>delivered?live:delivered).toString(),w.baseline_counts.faults[k]);\n    }\n    const oldReceipt=uint(old?.window.last_receipt_id ?? receiptId,64),id=uint(receiptId,64);\n    msg._mqtt_window_receipt_contiguous=id===oldReceipt && receipt==null || receipt!=null\n        && (old===null || id===oldReceipt+1n);\n    msg._mqtt_window_missing=missing.toString();msg._mqtt_window_unknown=unknown.toString();\n    msg._mqtt_window_faults=faults.toString();\n    const maxima=Object.values(w.max_upper_ns_by_kind).filter(v=>v!==null).map(v=>uint(v,64));\n    const max=maxima.reduce((a,b)=>a>b?a:b,0n);\n    msg._mqtt_window_max_upper_ms=Number((max+999999n)/1000000n);\n    const before=knownOrigin?uint(origin.covered_before_ns,64):0n;\n    msg._mqtt_window_elapsed_ms=before>=uint(w.started_at_ns,64)?Number((before-uint(w.started_at_ns,64))/1000000n):0;\n    msg._mqtt_window_has_cut=w.cut!==null;\n    msg._mqtt_window_cut_is_coverage=w.cut===null || Object.hasOwn(w.cut,\"covered_before_ns\");\n    msg._mqtt_window_cut_facts=knownOrigin?{accepted_frames:reader.accepted_frames,covered_before_ns:origin.covered_before_ns}:null;\n    msg._mqtt_window_unacked_cut_frames=w.cut===null?\"0\":(uint(w.cut.accepted_frames)>uint(counts.frames)?uint(w.cut.accepted_frames)-uint(counts.frames):0n).toString();\n    if(!msg._mqtt_window_terminal){\n        if(uint(now,64)>=uint(w.observed_at_ns,64))w.observed_at_ns=now;\n        w.last_receipt_id=receiptId;w.acknowledged_counts=copy(counts);\n        for(const [key,n]of [[\"missing\",missing],[\"timing_unknown\",unknown],[\"integrity_faults\",faults]])\n            if(n>uint(w.violations[key]))w.violations[key]=n.toString();\n    } else next.window=copy(old.window);\n    msg._mqtt_window_possible=true;\n} catch { /* Invalid metadata never authorizes a new ACK or positive window. */ }\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "mq_native_window_no_plan",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Sem janela → protocolo",
+        "x": 1210,
+        "y": 4580,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_skip_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_possible",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Há histórico ou início verificável?",
+        "x": 1030,
+        "y": 4480,
+        "wires": [
+            [
+                "mq_native_window_terminal"
+            ],
+            [
+                "mq_native_window_no_plan"
+            ]
+        ],
+        "property": "_mqtt_window_possible",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_frozen",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Preservar resultado anterior",
+        "x": 1550,
+        "y": 4580,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_terminal",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Fase: passada / falha / incerta?",
+        "x": 1370,
+        "y": 4480,
+        "wires": [
+            [
+                "mq_native_window_frozen"
+            ],
+            [
+                "mq_native_window_frozen"
+            ],
+            [
+                "mq_native_window_frozen"
+            ],
+            [
+                "mq_native_window_reader"
+            ]
+        ],
+        "property": "_mqtt_window_current_phase",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "passed",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "failed",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "unknown",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 4
+    },
+    {
+        "id": "mq_native_window_reader_unknown_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Origem ausente / escopo fechado",
+        "x": 1890,
+        "y": 4580,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_reader_unknown_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_reader",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Origem atual verificada?",
+        "x": 1710,
+        "y": 4480,
+        "wires": [
+            [
+                "mq_native_window_clock"
+            ],
+            [
+                "mq_native_window_reader_unknown_out"
+            ]
+        ],
+        "property": "_mqtt_window_reader_good",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_clock_ready",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Relógio → contrato",
+        "x": 2230,
+        "y": 4480,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_policy_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_clock_unknown_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Relógio incerto",
+        "x": 2230,
+        "y": 4580,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_clock_unknown_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_clock",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Mesmo domínio e ordem?",
+        "x": 2050,
+        "y": 4480,
+        "wires": [
+            [
+                "mq_native_window_clock_ready"
+            ],
+            [
+                "mq_native_window_clock_unknown_out"
+            ]
+        ],
+        "property": "_mqtt_window_clock_good",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_policy_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber domínio verificado",
+        "x": 100,
+        "y": 4740,
+        "wires": [
+            [
+                "mq_native_window_limit"
+            ]
+        ],
+        "links": [
+            "mq_native_window_clock_ready"
+        ]
+    },
+    {
+        "id": "mq_native_window_limit_invalid_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Contrato enfraquecido",
+        "x": 530,
+        "y": 4840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_limit_invalid_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_limit",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Limite local ≤ contrato?",
+        "x": 350,
+        "y": 4740,
+        "wires": [
+            [
+                "mq_native_window_policy_same"
+            ],
+            [
+                "mq_native_window_limit_invalid_out"
+            ]
+        ],
+        "property": "_mqtt_policy.event_latency_ms",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lte",
+                "v": "_mqtt_window_contract.event_latency_ms",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_policy_changed_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Parâmetros alterados",
+        "x": 870,
+        "y": 4840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_policy_changed_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_policy_same",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Parâmetros da janela preservados?",
+        "x": 690,
+        "y": 4740,
+        "wires": [
+            [
+                "mq_native_window_epoch"
+            ],
+            [
+                "mq_native_window_policy_changed_out"
+            ]
+        ],
+        "property": "_mqtt_window_policy_same",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_epoch_change_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Troca sem manutenção comprovada",
+        "x": 1210,
+        "y": 4840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_epoch_change_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_epoch",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Mesma origem no ACK e baseline?",
+        "x": 1030,
+        "y": 4740,
+        "wires": [
+            [
+                "mq_native_window_monotonic"
+            ],
+            [
+                "mq_native_window_epoch_change_out"
+            ]
+        ],
+        "property": "_mqtt_window_epoch_equal",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_reversed_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Contador inconsistente",
+        "x": 1550,
+        "y": 4840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_reversed_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_monotonic",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Contadores preservados?",
+        "x": 1370,
+        "y": 4740,
+        "wires": [
+            [
+                "mq_native_window_missing"
+            ],
+            [
+                "mq_native_window_reversed_out"
+            ]
+        ],
+        "property": "_mqtt_window_monotonic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_missing_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Perda observada",
+        "x": 1890,
+        "y": 4840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_missing_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_missing",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Perdas novas = 0?",
+        "x": 1710,
+        "y": 4740,
+        "wires": [
+            [
+                "mq_native_window_faults"
+            ],
+            [
+                "mq_native_window_missing_out"
+            ]
+        ],
+        "property": "_mqtt_window_missing",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_integrity_ready",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Integridade → recibos",
+        "x": 2230,
+        "y": 4740,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_receipts_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_integrity_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Falha de integridade",
+        "x": 2230,
+        "y": 4840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_integrity_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_faults",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Falhas novas = 0?",
+        "x": 2050,
+        "y": 4740,
+        "wires": [
+            [
+                "mq_native_window_integrity_ready"
+            ],
+            [
+                "mq_native_window_integrity_out"
+            ]
+        ],
+        "property": "_mqtt_window_faults",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_receipts_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber integridade",
+        "x": 100,
+        "y": 5000,
+        "wires": [
+            [
+                "mq_native_window_unknown"
+            ]
+        ],
+        "links": [
+            "mq_native_window_integrity_ready"
+        ]
+    },
+    {
+        "id": "mq_native_window_timing_unknown_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Origem temporal desconhecida",
+        "x": 530,
+        "y": 5100,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_timing_unknown_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_unknown",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Tempos desconhecidos novos = 0?",
+        "x": 350,
+        "y": 5000,
+        "wires": [
+            [
+                "mq_native_window_receipt"
+            ],
+            [
+                "mq_native_window_timing_unknown_out"
+            ]
+        ],
+        "property": "_mqtt_window_unknown",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_receipt_gap_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Recibo ausente",
+        "x": 870,
+        "y": 5100,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_receipt_gap_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_receipt",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Recibos contíguos?",
+        "x": 690,
+        "y": 5000,
+        "wires": [
+            [
+                "mq_native_window_cut_kind"
+            ],
+            [
+                "mq_native_window_receipt_gap_out"
+            ]
+        ],
+        "property": "_mqtt_window_receipt_contiguous",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_legacy_cut_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Envio antigo não prova cobertura",
+        "x": 1210,
+        "y": 5100,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_legacy_cut_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_cut_kind",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Corte é cobertura de callbacks?",
+        "x": 1030,
+        "y": 5000,
+        "wires": [
+            [
+                "mq_native_window_latency"
+            ],
+            [
+                "mq_native_window_legacy_cut_out"
+            ]
+        ],
+        "property": "_mqtt_window_cut_is_coverage",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_latency_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Latência acima de 10s",
+        "x": 1550,
+        "y": 5100,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_latency_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_latency",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Maior latência ≤ contrato?",
+        "x": 1370,
+        "y": 5000,
+        "wires": [
+            [
+                "mq_native_window_has_cut"
+            ],
+            [
+                "mq_native_window_latency_out"
+            ]
+        ],
+        "property": "_mqtt_window_max_upper_ms",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lte",
+                "v": "_mqtt_window_contract.event_latency_ms",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_cut_existing",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Corte fixo → drenar",
+        "x": 1890,
+        "y": 4920,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_drain_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_has_cut",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Corte final já persistido?",
+        "x": 1710,
+        "y": 5000,
+        "wires": [
+            [
+                "mq_native_window_cut_existing"
+            ],
+            [
+                "mq_native_window_elapsed"
+            ]
+        ],
+        "property": "_mqtt_window_has_cut",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_tracking_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Cobertura ainda incompleta",
+        "x": 2230,
+        "y": 5100,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_tracking_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_elapsed",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Cobertura alcançou 24h?",
+        "x": 2050,
+        "y": 5000,
+        "wires": [
+            [
+                "mq_native_window_capture"
+            ],
+            [
+                "mq_native_window_tracking_out"
+            ]
+        ],
+        "property": "_mqtt_window_elapsed_ms",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "_mqtt_window_contract.duration_ms",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_cut_captured",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Novo corte → drenar",
+        "x": 2570,
+        "y": 5000,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_drain_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_capture",
+        "type": "function",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Fixar N e covered_before_ns",
+        "x": 2390,
+        "y": 5000,
+        "wires": [
+            [
+                "mq_native_window_cut_captured"
+            ]
+        ],
+        "func": "// The visual elapsed gate selected this fixed, conservative drain boundary.\nconst w=msg._mqtt_window_candidate.window;\nif(w.cut===null)w.cut=JSON.parse(JSON.stringify(msg._mqtt_window_cut_facts));\nconst a=BigInt(w.cut.accepted_frames),b=BigInt(msg._mqtt_window_counts.frames);\nmsg._mqtt_window_unacked_cut_frames=(a>b?a-b:0n).toString();\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "mq_native_window_drain_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber corte imutável",
+        "x": 100,
+        "y": 5260,
+        "wires": [
+            [
+                "mq_native_window_drain"
+            ]
+        ],
+        "links": [
+            "mq_native_window_cut_existing",
+            "mq_native_window_cut_captured"
+        ]
+    },
+    {
+        "id": "mq_native_window_passed_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Cobertura e recibos completos",
+        "x": 530,
+        "y": 5200,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_passed_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_draining_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Aguardar confirmações restantes",
+        "x": 530,
+        "y": 5320,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_draining_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_drain",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "ACKs cobrem os N quadros?",
+        "x": 350,
+        "y": 5260,
+        "wires": [
+            [
+                "mq_native_window_passed_out"
+            ],
+            [
+                "mq_native_window_draining_out"
+            ]
+        ],
+        "property": "_mqtt_window_unacked_cut_frames",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_reader_unknown_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber reader_unknown",
+        "x": 170,
+        "y": 5480,
+        "wires": [
+            [
+                "mq_native_window_reader_unknown_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_reader_unknown_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_reader_unknown_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: reader_unknown",
+        "x": 350,
+        "y": 5480,
+        "wires": [
+            [
+                "mq_native_window_reader_unknown_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "reader_unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "reader_unknown_observations",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_reader_unknown_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 530,
+        "y": 5480,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_clock_unknown_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber clock_unknown",
+        "x": 770,
+        "y": 5480,
+        "wires": [
+            [
+                "mq_native_window_clock_unknown_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_clock_unknown_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_clock_unknown_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: clock_unknown",
+        "x": 950,
+        "y": 5480,
+        "wires": [
+            [
+                "mq_native_window_clock_unknown_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "clock_unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "clock_conflicts",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_clock_unknown_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 1130,
+        "y": 5480,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_limit_invalid_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber policy_changed",
+        "x": 1370,
+        "y": 5480,
+        "wires": [
+            [
+                "mq_native_window_limit_invalid_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_limit_invalid_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_limit_invalid_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: policy_changed",
+        "x": 1550,
+        "y": 5480,
+        "wires": [
+            [
+                "mq_native_window_limit_invalid_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "policy_changed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_limit_invalid_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 1730,
+        "y": 5480,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_policy_changed_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber policy_changed",
+        "x": 1970,
+        "y": 5480,
+        "wires": [
+            [
+                "mq_native_window_policy_changed_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_policy_changed_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_policy_changed_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: policy_changed",
+        "x": 2150,
+        "y": 5480,
+        "wires": [
+            [
+                "mq_native_window_policy_changed_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "policy_changed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_policy_changed_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 2330,
+        "y": 5480,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_epoch_change_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber source_epoch_change",
+        "x": 170,
+        "y": 5600,
+        "wires": [
+            [
+                "mq_native_window_epoch_change_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_epoch_change_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_epoch_change_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: source_epoch_change",
+        "x": 350,
+        "y": 5600,
+        "wires": [
+            [
+                "mq_native_window_epoch_change_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "source_epoch_change",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_epoch_change_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 530,
+        "y": 5600,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_reversed_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber window_invalid",
+        "x": 770,
+        "y": 5600,
+        "wires": [
+            [
+                "mq_native_window_reversed_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_reversed_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_reversed_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: window_invalid",
+        "x": 950,
+        "y": 5600,
+        "wires": [
+            [
+                "mq_native_window_reversed_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "window_invalid",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_reversed_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 1130,
+        "y": 5600,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_missing_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber integrity_fault",
+        "x": 1370,
+        "y": 5600,
+        "wires": [
+            [
+                "mq_native_window_missing_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_missing_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_missing_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "failed: integrity_fault",
+        "x": 1550,
+        "y": 5600,
+        "wires": [
+            [
+                "mq_native_window_missing_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "failed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "integrity_fault",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_missing_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 1730,
+        "y": 5600,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_integrity_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber integrity_fault",
+        "x": 1970,
+        "y": 5600,
+        "wires": [
+            [
+                "mq_native_window_integrity_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_integrity_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_integrity_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "failed: integrity_fault",
+        "x": 2150,
+        "y": 5600,
+        "wires": [
+            [
+                "mq_native_window_integrity_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "failed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "integrity_fault",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_integrity_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 2330,
+        "y": 5600,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_timing_unknown_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber clock_unknown",
+        "x": 170,
+        "y": 5720,
+        "wires": [
+            [
+                "mq_native_window_timing_unknown_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_timing_unknown_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_timing_unknown_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: clock_unknown",
+        "x": 350,
+        "y": 5720,
+        "wires": [
+            [
+                "mq_native_window_timing_unknown_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "clock_unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_timing_unknown_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 530,
+        "y": 5720,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_receipt_gap_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber receipt_gap",
+        "x": 770,
+        "y": 5720,
+        "wires": [
+            [
+                "mq_native_window_receipt_gap_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_receipt_gap_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_receipt_gap_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: receipt_gap",
+        "x": 950,
+        "y": 5720,
+        "wires": [
+            [
+                "mq_native_window_receipt_gap_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "receipt_gap",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "receipt_gaps",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_receipt_gap_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 1130,
+        "y": 5720,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_legacy_cut_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber window_invalid",
+        "x": 1370,
+        "y": 5720,
+        "wires": [
+            [
+                "mq_native_window_legacy_cut_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_legacy_cut_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_legacy_cut_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "unknown: window_invalid",
+        "x": 1550,
+        "y": 5720,
+        "wires": [
+            [
+                "mq_native_window_legacy_cut_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "unknown",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "window_invalid",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_legacy_cut_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 1730,
+        "y": 5720,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_latency_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber latency_over_contract",
+        "x": 1970,
+        "y": 5720,
+        "wires": [
+            [
+                "mq_native_window_latency_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_latency_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_latency_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "failed: latency_over_contract",
+        "x": 2150,
+        "y": 5720,
+        "wires": [
+            [
+                "mq_native_window_latency_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "failed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "latency_over_contract",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "over_contract_receipts",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_latency_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 2330,
+        "y": 5720,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_tracking_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber duration_pending",
+        "x": 170,
+        "y": 5840,
+        "wires": [
+            [
+                "mq_native_window_tracking_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_tracking_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_tracking_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "tracking: duration_pending",
+        "x": 350,
+        "y": 5840,
+        "wires": [
+            [
+                "mq_native_window_tracking_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "tracking",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "duration_pending",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_tracking_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 530,
+        "y": 5840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_passed_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber complete",
+        "x": 770,
+        "y": 5840,
+        "wires": [
+            [
+                "mq_native_window_passed_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_passed_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_passed_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "passed: complete",
+        "x": 950,
+        "y": 5840,
+        "wires": [
+            [
+                "mq_native_window_passed_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "passed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "complete",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_passed_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 1130,
+        "y": 5840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_draining_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber draining",
+        "x": 1370,
+        "y": 5840,
+        "wires": [
+            [
+                "mq_native_window_draining_set"
+            ]
+        ],
+        "links": [
+            "mq_native_window_draining_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_draining_set",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "draining: draining",
+        "x": 1550,
+        "y": 5840,
+        "wires": [
+            [
+                "mq_native_window_draining_encode"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_window_phase",
+                "pt": "msg",
+                "to": "draining",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_reason",
+                "pt": "msg",
+                "to": "draining",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "_mqtt_window_violation",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_draining_encode",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → codificar",
+        "x": 1730,
+        "y": 5840,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_encode_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_encode_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber decisão final",
+        "x": 100,
+        "y": 6100,
+        "wires": [
+            [
+                "mq_native_window_encode"
+            ]
+        ],
+        "links": [
+            "mq_native_window_frozen",
+            "mq_native_window_reader_unknown_encode",
+            "mq_native_window_clock_unknown_encode",
+            "mq_native_window_limit_invalid_encode",
+            "mq_native_window_policy_changed_encode",
+            "mq_native_window_epoch_change_encode",
+            "mq_native_window_reversed_encode",
+            "mq_native_window_missing_encode",
+            "mq_native_window_integrity_encode",
+            "mq_native_window_timing_unknown_encode",
+            "mq_native_window_receipt_gap_encode",
+            "mq_native_window_legacy_cut_encode",
+            "mq_native_window_latency_encode",
+            "mq_native_window_tracking_encode",
+            "mq_native_window_passed_encode",
+            "mq_native_window_draining_encode"
+        ]
+    },
+    {
+        "id": "mq_native_window_encode",
+        "type": "function",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Codificar e vincular checkpoint",
+        "x": 350,
+        "y": 6100,
+        "wires": [
+            [
+                "mq_native_window_encoded"
+            ]
+        ],
+        "func": "// Serialization and digest binding only; all outcomes came from visual nodes.\nmsg._mqtt_window_encoded=false;\ntry {\n    const canonical = v => v === null || typeof v !== \"object\" ? JSON.stringify(v)\n        : Array.isArray(v) ? \"[\"+v.map(canonical).join(\",\")+\"]\"\n        : \"{\"+Object.keys(v).sort().map(k=>JSON.stringify(k)+\":\"+canonical(v[k])).join(\",\")+\"}\";\n    const digest = v => mqtt_crypto.createHash(\"sha256\").update(canonical(v),\"ascii\").digest(\"hex\");\n    const c=msg._mqtt_window_candidate;\n    if(msg._mqtt_window_terminal!==true){\n        c.window.phase=msg._mqtt_window_phase;c.window.reason=msg._mqtt_window_reason;\n        const violation=msg._mqtt_window_violation;\n        if(violation && c.window.violations[violation]!==undefined)\n            c.window.violations[violation]=(BigInt(c.window.violations[violation])+1n).toString();\n    }\n    c.acknowledged_counts_sha256=digest(msg._mqtt_window_counts);\n    const raw=canonical({proposal_sha:msg._mqtt_window_proposal,checkpoint:c});\n    if(Buffer.byteLength(canonical(c),\"ascii\")>65536 || Buffer.byteLength(raw,\"ascii\")>65664)return msg;\n    msg._mqtt_window_commit_token=\"c1_\"+Buffer.from(raw,\"ascii\").toString(\"base64url\");\n    msg._mqtt_window_checkpoint_sha=digest(c);\n    msg._mqtt_window_encoded=true;\n} catch { /* Encoding failure is an explicit no-effect branch. */ }\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "mqtt_crypto",
+                "module": "crypto"
+            }
+        ]
+    },
+    {
+        "id": "mq_native_window_encoded",
+        "type": "switch",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Checkpoint válido para persistir?",
+        "x": 690,
+        "y": 6100,
+        "wires": [
+            [
+                "mq_native_window_return_out"
+            ],
+            [
+                "mq_native_window_encode_failed"
+            ]
+        ],
+        "property": "_mqtt_window_encoded",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2
+    },
+    {
+        "id": "mq_native_window_encode_failed",
+        "type": "change",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Falha de codificação: sem ACK",
+        "x": 1030,
+        "y": 6180,
+        "wires": [
+            [
+                "notification_hub_wire_out_4bd7da674b44"
+            ]
+        ],
+        "rules": [
+            {
+                "t": "set",
+                "p": "_mqtt_commit_allowed",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false
+    },
+    {
+        "id": "mq_native_window_return_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Janela → mesma intenção / gate",
+        "x": 870,
+        "y": 6100,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_return_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_skip_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Receber protocolo sem janela",
+        "x": 690,
+        "y": 6000,
+        "wires": [
+            [
+                "mq_native_window_return_out"
+            ]
+        ],
+        "links": [
+            "mq_native_window_no_plan"
+        ]
+    },
+    {
+        "id": "mq_native_checkpoint_effect_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Efeito final: somente histórico próprio",
+        "x": 1550,
+        "y": 6100,
+        "wires": [
+            [
+                "mq_native_checkpoint_commit"
+            ]
+        ],
+        "links": [
+            "mq_native_checkpoint_effect_out"
+        ]
+    },
+    {
+        "id": "mq_native_checkpoint_commit",
+        "type": "exec",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Persistir incerteza sem ACK (até 3s)",
+        "x": 1900,
+        "y": 6100,
+        "wires": [
+            [
+                "mq_native_checkpoint_result_out"
+            ],
+            [],
+            [
+                "mq_native_checkpoint_complete_out"
+            ]
+        ],
+        "command": "/bin/sh /data/tools/mqtt-source-observation/consumer-command.sh checkpoint-commit",
+        "addpay": "payload",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "3",
+        "winHide": false,
+        "oldrc": false
+    },
+    {
+        "id": "mq_native_checkpoint_result_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Resultado → mesma validação",
+        "x": 2080,
+        "y": 6040,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_checkpoint_result_in"
+        ]
+    },
+    {
+        "id": "mq_native_checkpoint_complete_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Retorno → mesma validação",
+        "x": 2080,
+        "y": 6180,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_checkpoint_complete_in"
+        ]
+    },
+    {
+        "id": "mq_native_checkpoint_result_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_effect_group",
+        "name": "Receber persistência sem ACK",
+        "x": 1220,
+        "y": 3380,
+        "wires": [
+            [
+                "mq_native_commit_result"
+            ]
+        ],
+        "links": [
+            "mq_native_checkpoint_result_out"
+        ]
+    },
+    {
+        "id": "mq_native_checkpoint_complete_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_effect_group",
+        "name": "Receber retorno sem ACK",
+        "x": 870,
+        "y": 3380,
+        "wires": [
+            [
+                "mq_native_commit_complete"
+            ]
+        ],
+        "links": [
+            "mq_native_checkpoint_complete_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_test_info",
+        "type": "comment",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "ORDEM: reset → iniciar → corte com ACK pendente → drenar; repetir reset para cada falha",
+        "x": 1500,
+        "y": 6370,
+        "wires": [],
+        "info": "Fatos sintéticos avançam24h; contrato permanece86.400s/10.000ms. Mesmo canvas, gate final dry-run e namespace em memória. Nenhum exec/ACK/dispositivo/push. Resultado simulado não comprova24h real."
+    },
+    {
+        "id": "mq_native_test_window_start",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: start",
+        "x": 240,
+        "y": 6460,
+        "wires": [
+            [
+                "mq_native_window_test_start_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "start",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "start",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_start_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE start → mesma janela",
+        "x": 420,
+        "y": 6460,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_pending",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: pending",
+        "x": 840,
+        "y": 6460,
+        "wires": [
+            [
+                "mq_native_window_test_pending_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "pending",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "pending",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_pending_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE pending → mesma janela",
+        "x": 1020,
+        "y": 6460,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_drain",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: drain",
+        "x": 1440,
+        "y": 6460,
+        "wires": [
+            [
+                "mq_native_window_test_drain_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "drain",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "drain",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_drain_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE drain → mesma janela",
+        "x": 1620,
+        "y": 6460,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_source_unknown",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: source_unknown",
+        "x": 2040,
+        "y": 6460,
+        "wires": [
+            [
+                "mq_native_window_test_source_unknown_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "source_unknown",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "source_unknown",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_source_unknown_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE source_unknown → mesma janela",
+        "x": 2220,
+        "y": 6460,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_epoch",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: epoch",
+        "x": 240,
+        "y": 6570,
+        "wires": [
+            [
+                "mq_native_window_test_epoch_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "epoch",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "epoch",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_epoch_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE epoch → mesma janela",
+        "x": 420,
+        "y": 6570,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_clock",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: clock",
+        "x": 840,
+        "y": 6570,
+        "wires": [
+            [
+                "mq_native_window_test_clock_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "clock",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "clock",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_clock_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE clock → mesma janela",
+        "x": 1020,
+        "y": 6570,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_policy",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: policy",
+        "x": 1440,
+        "y": 6570,
+        "wires": [
+            [
+                "mq_native_window_test_policy_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "policy",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "policy",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_policy_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE policy → mesma janela",
+        "x": 1620,
+        "y": 6570,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_gap",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: gap",
+        "x": 2040,
+        "y": 6570,
+        "wires": [
+            [
+                "mq_native_window_test_gap_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "gap",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "gap",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_gap_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE gap → mesma janela",
+        "x": 2220,
+        "y": 6570,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_over",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: over",
+        "x": 240,
+        "y": 6680,
+        "wires": [
+            [
+                "mq_native_window_test_over_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "over",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "over",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_over_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE over → mesma janela",
+        "x": 420,
+        "y": 6680,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_fault",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: fault",
+        "x": 840,
+        "y": 6680,
+        "wires": [
+            [
+                "mq_native_window_test_fault_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "fault",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "fault",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_fault_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE fault → mesma janela",
+        "x": 1020,
+        "y": 6680,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_legacy",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: legacy",
+        "x": 1440,
+        "y": 6680,
+        "wires": [
+            [
+                "mq_native_window_test_legacy_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "legacy",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "legacy",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_legacy_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE legacy → mesma janela",
+        "x": 1620,
+        "y": 6680,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_window_test_build_in",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "Receber replay da janela",
+        "x": 1460,
+        "y": 6880,
+        "wires": [
+            [
+                "mq_native_window_test_build"
+            ]
+        ],
+        "links": [
+            "mq_native_window_test_start_out",
+            "mq_native_window_test_pending_out",
+            "mq_native_window_test_drain_out",
+            "mq_native_window_test_source_unknown_out",
+            "mq_native_window_test_epoch_out",
+            "mq_native_window_test_clock_out",
+            "mq_native_window_test_policy_out",
+            "mq_native_window_test_gap_out",
+            "mq_native_window_test_over_out",
+            "mq_native_window_test_fault_out",
+            "mq_native_window_test_legacy_out",
+            "mq_native_window_test_missing_out",
+            "mq_native_window_test_timing_unknown_out",
+            "mq_native_window_test_reader_denied_out",
+            "mq_native_window_test_reader_stale_out"
+        ]
+    },
+    {
+        "id": "mq_native_window_test_build",
+        "type": "function",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "Preparar somente fatos da janela",
+        "x": 1640,
+        "y": 6880,
+        "wires": [
+            [
+                "mq_native_window_test_source_out"
+            ]
+        ],
+        "func": "const MQTT_NATIVE_SCHEMA={\"ack_limit\":4096,\"faults\":[\"reader_restart\",\"clock_domain_changed\",\"source_frame_rejected\",\"source_binding_unverified\",\"transport_truncated\",\"transport_ancillary_invalid\",\"source_identity_lost\"],\"headers\":[\"frames\",\"duplicates\",\"sessions\",\"source_epochs\",\"report_gaps\",\"unknown_epoch_tails\",\"source_clock_faults\",\"source_send_failures\",\"ack_rejections\",\"ack_clock_conflicts\"],\"kinds\":[\"publish_in\",\"publish_out\",\"connect\",\"disconnect\",\"subscribe\",\"unsubscribe\",\"client_offline\"],\"report_limit\":65536,\"stats\":[\"expected\",\"observed\",\"missing\",\"source_dropped\",\"transport_missing\",\"timed\",\"timing_unknown\"],\"version\":1};\nif(msg.test_mode!==true || msg._mqtt_test_source!==true)return null;\nconst scenario=String(msg.payload);\nconst copy=v=>JSON.parse(JSON.stringify(v));\nconst old=copy(flow.get(\"mqtt_native_canvas_checkpoint_v1__test\",\"memoryOnly\")??null);\nconst oldSha=flow.get(\"mqtt_native_canvas_checkpoint_sha_v1__test\",\"memoryOnly\")??null;\nconst previous=flow.get(\"mqtt_native_fixture_v1__test\",\"memoryOnly\");\nconst index=(previous?._fixture_sequence??0)+1;\nconst counts=old?copy(previous?.acknowledged_counts??old.window.acknowledged_counts):{\n    ...Object.fromEntries(MQTT_NATIVE_SCHEMA.headers.map(k=>[k,\"0\"])),\n    faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n    stats:Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,Object.fromEntries(MQTT_NATIVE_SCHEMA.stats.map(s=>[s,\"0\"]))]))\n};\ncounts.frames=old?(BigInt(counts.frames)+1n).toString():\"10\";\ncounts.sessions=\"1\";counts.source_epochs=\"1\";\nif(scenario===\"drain\" && old?.window.cut?.accepted_frames\n    && BigInt(counts.frames)<BigInt(old.window.cut.accepted_frames))counts.frames=old.window.cut.accepted_frames;\nfor(const kind of MQTT_NATIVE_SCHEMA.kinds){\n    for(const key of [\"expected\",\"observed\",\"timed\"])counts.stats[kind][key]=(BigInt(counts.stats[kind][key])+1n).toString();\n}\nconst now=old?(BigInt(old.window.started_at_ns)+86402000000000n).toString():\"2000000000\";\nconst id=old?(BigInt(old.receipt_id)+1n).toString():\"1\";\nconst by_kind=Object.fromEntries(MQTT_NATIVE_SCHEMA.kinds.map(k=>[k,{observed:\"1\",timed:\"1\",timing_unknown:\"0\",\n    source_to_consumer_upper_ns:\"1000000000\",source_to_consumer_upper_ms:1000}]));\nconst reader={schema_version:1,reader_status_schema:2,reader_instance_sha256:\"a\".repeat(64),\n    source_authorized:true,authorization_state:\"active\",clock_domain_matches:true,clock_ordered:true,\n    clock_domain_sha256:\"b\".repeat(64),reader_observed_boottime_ns:now,\n    status_age_ns:\"1000000\",status_age_ms:1,faults:Object.fromEntries(MQTT_NATIVE_SCHEMA.faults.map(k=>[k,\"0\"])),\n    accepted_frames:scenario===\"pending\"?(BigInt(counts.frames)+2n).toString():counts.frames,\n    source_facts:{epoch:\"1\",instance_sha256:\"c\".repeat(64),wire_version:3,started_boottime_ns:\"100\",\n        emitted_boottime_ns:now,covered_before_ns:now,closed:false,identity_state:\"verified_live\"}};\nconst own=old?{state:\"checkpoint_prepared\",proposal_sha:(index+1000).toString(16).padStart(64,\"0\"),\n    receipt_id:old.receipt_id,acknowledged_counts:copy(previous?.acknowledged_counts??old.window.acknowledged_counts),\n    canvas_checkpoint:copy(old),canvas_checkpoint_sha256:oldSha,ack_intended:false}:null;\nlet cli={state:\"prepared\",proposal_sha:(index+100).toString(16).padStart(64,\"0\"),\n    received_counts:counts,acknowledged_counts:copy(counts),reader_facts:reader,\n    receipt_facts:[{bucket_id:id,ack_at_ns:old?now:\"1000000000\",clock_domain_sha256:reader.clock_domain_sha256,clock_ordered:true,by_kind}],\n    canvas_checkpoint:old,canvas_checkpoint_sha256:oldSha,checkpoint_only:own,_fixture_sequence:index};\nif(scenario===\"source_unknown\")cli={state:\"unknown\",collection_error:\"producer_report_invalid\",checkpoint_only:own,_fixture_sequence:index};\nif(scenario===\"epoch\")reader.source_facts.epoch=\"2\";\nif(scenario===\"clock\"){\n    reader.clock_domain_sha256=\"d\".repeat(64);cli.receipt_facts[0].clock_domain_sha256=reader.clock_domain_sha256;\n}\nif(scenario===\"gap\")cli.receipt_facts[0].bucket_id=(BigInt(id)+1n).toString();\nif(scenario===\"over\"){\n    by_kind.publish_in.source_to_consumer_upper_ns=\"10000000001\";\n    by_kind.publish_in.source_to_consumer_upper_ms=10001;\n}\nif(scenario===\"fault\")reader.faults.source_identity_lost=\"1\";\nif(scenario===\"missing\"){\n    const row=counts.stats.publish_in;row.expected=(BigInt(row.expected)+1n).toString();\n    row.missing=\"1\";row.source_dropped=\"1\";\n}\nif(scenario===\"timing_unknown\"){\n    const row=counts.stats.publish_in;\n    for(const key of [\"expected\",\"observed\"])row[key]=(BigInt(row[key])+1n).toString();\n    row.timing_unknown=\"1\";\n}\nif(scenario===\"reader_denied\"){reader.source_authorized=false;reader.authorization_state=\"revoked\";}\nif(scenario===\"reader_stale\"){reader.status_age_ns=\"10000000001\";reader.status_age_ms=10001;}\nif(scenario===\"legacy\")reader.source_facts.wire_version=2;\nflow.set(\"mqtt_native_policy_v1__test\",{enabled:true,event_latency_ms:scenario===\"policy\"?11000:10000},\"memoryOnly\");\nflow.set(\"mqtt_native_fixture_v1__test\",cli,\"memoryOnly\");\nmsg._mqtt_synthetic_cli=cli;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": []
+    },
+    {
+        "id": "mq_native_window_test_source_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE → mesma política e fonte",
+        "x": 1820,
+        "y": 6880,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_test_policy_return_in"
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_4bd7da674b44",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Encurtar: Falha de codificação: sem ACK",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_4bd7da674b44"
+        ],
+        "x": 1210,
+        "y": 6180,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_4bd7da674b44",
+        "type": "link in",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_group",
+        "name": "Continuar: Janela → mesma intenção / gate",
+        "links": [
+            "notification_hub_wire_out_4bd7da674b44"
+        ],
+        "x": 690,
+        "y": 6200,
+        "wires": [
+            [
+                "mq_native_window_return_out"
+            ]
+        ]
+    },
+    {
+        "id": "mq_native_test_window_missing",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: missing",
+        "x": 2040,
+        "y": 6680,
+        "wires": [
+            [
+                "mq_native_window_test_missing_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "missing",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "missing",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_missing_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE missing → mesma janela",
+        "x": 2220,
+        "y": 6680,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_timing_unknown",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: timing_unknown",
+        "x": 240,
+        "y": 6790,
+        "wires": [
+            [
+                "mq_native_window_test_timing_unknown_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "timing_unknown",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "timing_unknown",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_timing_unknown_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE timing_unknown → mesma janela",
+        "x": 420,
+        "y": 6790,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_reader_denied",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: reader_denied",
+        "x": 840,
+        "y": 6790,
+        "wires": [
+            [
+                "mq_native_window_test_reader_denied_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "reader_denied",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "reader_denied",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_reader_denied_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE reader_denied → mesma janela",
+        "x": 1020,
+        "y": 6790,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
+    },
+    {
+        "id": "mq_native_test_window_reader_stale",
+        "type": "inject",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE janela: reader_stale",
+        "x": 1440,
+        "y": 6790,
+        "wires": [
+            [
+                "mq_native_window_test_reader_stale_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "reader_stale",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_mqtt_test_source",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "reader_stale",
+        "payloadType": "str"
+    },
+    {
+        "id": "mq_native_window_test_reader_stale_out",
+        "type": "link out",
+        "z": "mqtt_native_observer_tab",
+        "g": "mq_native_window_test_group",
+        "name": "TESTE reader_stale → mesma janela",
+        "x": 1620,
+        "y": 6790,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "mq_native_window_test_build_in"
+        ]
     },
     {
         "id": "notification_hub_wire_out_91f75af07cd0",

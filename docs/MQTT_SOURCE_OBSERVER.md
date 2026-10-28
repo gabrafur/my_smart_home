@@ -137,7 +137,7 @@ persiste e sincroniza o estado antes de publicar o ACK. O leitor mede o limite
 superior até observar esse ACK durável. O resultado não mede processamento da Eva.
 
 O adaptador também aceita um checkpoint fechado produzido pelo canvas para a
-futura janela de observação. Ele é gravado no mesmo `state.json` dos contadores,
+janela de observação. Ele é gravado no mesmo `state.json` dos contadores,
 com sincronização do arquivo e do diretório antes do ACK. A preparação devolve
 o último checkpoint durável; ela não o reconstrói a partir do tempo decorrido.
 O checkpoint se vincula à proposta exata, ao recibo e aos totais confirmados,
@@ -155,11 +155,30 @@ extras ou texto livre. A instalação precisa incluir `canvas_checkpoint.mjs`
 junto dos demais módulos do consumidor. Uma reversão que use código antigo
 deve preservar o estado migrado; não o converta nem o substitua silenciosamente.
 
-Essa é a persistência da decisão, não a decisão de aceite. A lógica visual da
-janela, os fatos de horizonte temporal e a prova de manutenção ainda precisam
-ser integrados. O adaptador mantém `full24h_proven: false`, inclusive quando
-armazena uma afirmação do canvas; esse campo não comprova a janela nem amplia
-a cobertura para outros produtores.
+O grupo 7 do canvas decide a janela das sete classes nativas MQTT. O contrato
+visível exige 86.400 segundos e latência de no máximo 10.000 ms; configurar um
+limite local maior não satisfaz esse aceite. O início usa o horário de um ACK
+verificado, no mesmo domínio e na origem atual. Os contadores completos nesse
+instante formam a baseline: falhas anteriores permanecem no histórico, enquanto
+os gates avaliam novos deltas, ordem dos recibos, relógio e latências.
+
+Quando `covered_before_ns` alcança o início mais 24 horas, o canvas fixa o corte
+`{accepted_frames: N, covered_before_ns: T}`. A janela fica em `draining` até os
+contadores confirmados cobrirem os N quadros. O corte não avança enquanto se
+espera; tempo decorrido ou `emitted_boottime_ns` sozinho não encerra a janela.
+Cortes legados baseados somente em envio continuam legíveis, mas ficam sem
+aceite de cobertura. Troca de origem sem manutenção correlacionada fica
+`unknown`, mesmo quando a cauda anterior terminou sem perdas.
+
+A projeção durável só recebe o resultado após o CLI confirmar o hash exato do
+checkpoint da leitura ainda em andamento. Uma resposta atrasada ou outro hash
+não publica uma janela aprovada. Resultados terminados ficam preservados;
+`callback_window` representa aquela janela e seu escopo, enquanto a classificação
+do recibo atual continua separada. A integração de manutenção e o controle de
+início de uma próxima janela ainda exigem implementação e validação próprias.
+O adaptador mantém `full24h_proven: false`, inclusive quando armazena a decisão
+do canvas. Uma janela do componente não comprova latência de todos os eventos
+residenciais, execução da Eva, disponibilidade do provedor ou autonomia do PC.
 
 Os modos fixos `checkpoint-prepare` e `checkpoint-commit` acessam somente o
 estado do próprio consumidor. Eles permitem guardar uma decisão de incerteza
@@ -173,7 +192,19 @@ Se a preparação da fonte falhar, o CLI pode devolver uma proposta separada
 do histórico do próprio consumidor, quando esse histórico ainda for válido.
 Esse fallback não lê a fonte, não cria histórico ausente e não confirma dados
 novos do produtor. Ele permite ao canvas persistir a incerteza em sua rota
-de efeito final apropriada.
+de efeito final apropriada. Essa rota também passa pelo gate de `test_mode`;
+em teste, o comando `checkpoint-commit` não é executado.
+
+Para o replay manual, use `0 reset` antes de cada sequência. No grupo 8, execute
+`start` → `pending` → `drain`: o segundo passo deve continuar aguardando, e o
+terceiro conclui somente a janela sintética. Para cada falha, repita reset →
+start → `source_unknown`, `epoch`, `clock`, `policy`, `gap`, `over`, `fault`
+`legacy`, `missing`, `timing_unknown`, `reader_denied` ou `reader_stale`.
+Os mesmos gates e a mesma codificação chegam ao terminal dry-run
+compartilhado, com `simulated: true` e `dispatched: false`. Os fatos sintéticos
+avançam 24 horas; o contrato de duração permanece intacto. O replay não constitui
+uma observação real de 24 horas. A serialização usa somente o módulo nativo
+`crypto` do Node.js, sem instalação npm ou chamada de rede.
 
 `no_events`, `no_new_receipt`, `busy`, `disabled` e `unknown` são resultados
 distintos. Silêncio não significa recuperação. A idade usa correlação explícita
