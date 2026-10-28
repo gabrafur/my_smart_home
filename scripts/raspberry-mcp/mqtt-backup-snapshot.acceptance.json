@@ -9,6 +9,7 @@
   "full24h_proven": false,
   "isolated_Root_units": {"tests": 346, "failures": 0, "skipped": 0, "owned_container_removed": true},
   "directed_JS_units": {"tests": 48, "failures": 0},
+  "daily_cycle_boundary_fixtures": {"tests": 24, "failures": 0},
   "native_fixture": {
     "network": "none",
     "residential_mounts_or_data": false,

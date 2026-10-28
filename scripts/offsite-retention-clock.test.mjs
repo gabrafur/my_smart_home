@@ -39,7 +39,13 @@ function cycleHarness(options = {}) {
   let created;
   const events = [];
   let retentionCalls = 0;
-  const fixtureServices = options.metadataMaintenance ? ["homeassistant", "mosquitto", "nodered"] : ["synthetic-service"];
+  const fixtureServices = options.metadataMaintenance||options.metadataPolicyOnly ? ["homeassistant", "mosquitto", "nodered"] : ["synthetic-service"];
+  const cyclePolicy=structuredClone(policy),manifest={items:[{logical_name:'synthetic',service_must_be_stopped:fixtureServices}]};
+  if((options.metadataMaintenance&&!options.missingMetadataPolicy)||options.metadataPolicyOnly){
+    cyclePolicy.compose_bundle.mqtt_metadata={schema_version:1,enabled:true,component_manifest_sha256:'a'.repeat(64),restore_authority:'data_only_disabled'};
+    cyclePolicy.compose_bundle.coverage.push('mqtt_observation_metadata');
+    manifest.items.push({logical_name:'mqtt_observation_metadata',service_must_be_stopped:['mosquitto','nodered']});
+  }
   class FixedDate extends Date {
     constructor(...args) { super(...(args.length ? args : [tick])); }
     static now() { return tick; }
@@ -48,11 +54,19 @@ function cycleHarness(options = {}) {
     Date: FixedDate, Set, Map, Number, Object, JSON, Math, path,
     repoRoot: "/synthetic-only", defaultPolicyFile: "/synthetic-policy", os: { tmpdir: () => "/synthetic-tmp" },
     dailyCycleReadiness: () => ({ ready: true }),
-    loadManifest: () => ({ items: [{ logical_name: "synthetic", service_must_be_stopped: fixtureServices }] }),
-    readPolicy: () => policy, validateOffsitePolicy: p => p,
+    configuration:()=>({manifest,policy:cyclePolicy}),
+    loadManifest: () => manifest,
+    readPolicy: () => cyclePolicy, validateOffsitePolicy: p => p,
     defaultRunningServices: () => new Set(fixtureServices),
     captureWithOrderedStops,
     loadBackupMaintenance: () => options.metadataMaintenance ? {
+      operation_id:'a'.repeat(32),snapshot_component_manifest_sha256:options.metadataHashMismatch?'b'.repeat(64):'a'.repeat(64),
+      ...(!options.legacyMetadataContract?{snapshot:async directory=>{
+        events.push('mqtt-export-start');assert(directory.startsWith('/synthetic-tmp/offsite-bundle-'));
+        if(options.snapshotBarrier)await options.snapshotBarrier;
+        if(options.snapshotFailure)throw new Error('synthetic snapshot transport failed');
+        events.push('mqtt-export-complete');return {destination:directory};
+      }}:{}),
       prepare: () => events.push("mqtt-prepare"),
       resume: () => {
         events.push("mqtt-resume");
@@ -66,16 +80,17 @@ function cycleHarness(options = {}) {
     },
     captureOffsiteBundle: (_target, args) => {
       events.push("capture"); assert.equal(args.createdAt, new Date(start).toISOString());
+      if(options.metadataMaintenance){assert(events.includes('mqtt-export-complete'));assert.equal(args.mqttSnapshot.operation_id,'a'.repeat(32));}
       tick += 20_000;
       if (options.captureFailure) throw new Error("synthetic capture failed");
-      return { captured: true, components: 1 };
+      return { captured: true, components: cyclePolicy.compose_bundle.coverage.length };
     },
     waitForServices: async (_services, deadline) => {
       events.push("services-ready"); tick = start + (options.outageTimeout ? 600_001 : 90_000);
       assert.equal(deadline, start + 600_000);
       if (tick > deadline) throw new Error("service readiness deadline exceeded");
     },
-    spawnSync: () => ({ status: 1 }), fs: { rmSync: () => events.push("cleanup") },
+    spawnSync: () => ({ status: 1 }), fs: {mkdirSync:()=>{},rmSync: () => events.push("cleanup") },
     readHomeAssistantToken: () => "synthetic-token", readHomeAssistantBackupCredentials: () => ({ agent_id: agentId, password: "synthetic" }),
     requestBackupGenerationWhenIdle: async args => {
       events.push("generate"); assert.equal(args.timeoutMs, 180_000); tick += 120_000;
@@ -127,8 +142,29 @@ test("actual cycle body verifies coordinated resume before generating or retaini
   const h = cycleHarness({ metadataMaintenance: true }); const result = await h.run();
   assert.equal(result.mqtt_coordination, "verified");
   assert(h.events.indexOf("mqtt-prepare") < h.events.indexOf("capture"));
+  assert(h.events.indexOf('mqtt-export-complete')<h.events.indexOf('capture'));
   assert(h.events.indexOf("capture") < h.events.indexOf("mqtt-resume"));
   assert(h.events.indexOf("mqtt-resume") < h.events.indexOf("generate"));
+});
+
+test('actual cycle refuses an incomplete installed metadata contract before stopping services',async()=>{
+  for(const option of ['missingMetadataPolicy','legacyMetadataContract','metadataHashMismatch']){
+    const h=cycleHarness({metadataMaintenance:true,[option]:true});await assert.rejects(h.run(),/metadata snapshot backup contract/);
+    assert.deepEqual(h.events,[]);assert.equal(h.retentionCalls(),0);
+  }
+  const absent=cycleHarness({metadataPolicyOnly:true});await assert.rejects(absent.run(),/metadata snapshot backup contract/);
+  assert.deepEqual(absent.events,[]);
+});
+test('actual cycle restores services after snapshot transport failure without generating a remote copy',async()=>{
+  const h=cycleHarness({metadataMaintenance:true,snapshotFailure:true});await assert.rejects(h.run(),/snapshot transport failed/);
+  assert(h.events.includes('mqtt-resume'));assert(h.events.includes('services-ready'));
+  assert(!h.events.includes('capture'));assert(!h.events.includes('generate'));assert.equal(h.retentionCalls(),0);
+});
+test('actual cycle waits for metadata export before capture and resume',async()=>{
+  let release;const snapshotBarrier=new Promise(resolve=>{release=resolve;}),h=cycleHarness({metadataMaintenance:true,snapshotBarrier});
+  const running=h.run();await new Promise(resolve=>setImmediate(resolve));
+  assert(h.events.includes('mqtt-export-start'));assert(!h.events.includes('capture'));assert(!h.events.includes('mqtt-resume'));
+  release();assert.equal((await running).remote_verified,true);
 });
 
 test("unconfirmed metadata resume prevents remote generation and retention in the actual cycle body", async () => {
