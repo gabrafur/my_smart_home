@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 46 destinos: 27 módulos Root, nove
+do pacote. Seu catálogo fechado contém 47 destinos: 28 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -437,8 +437,8 @@ posterior executou o produtor nativo, o preparador de política e o corte comum
 comprovado por recibo. Isso não instala nem autoriza a superfície de produção.
 Permanecem pendentes a emissão do job pelo atualizador real, sua coordenação
 com o plano de manutenção e a recriação
-do próprio consumidor, o arquivamento seguro antes do limite de 16 operações,
-o pacote completo de implantação, revogação/reversão, projeção MCP e a aprovação
+do próprio consumidor, o pacote completo de implantação, revogação/reversão,
+projeção MCP e a aprovação
 específica de acesso permanente.
 
 ### Delegação finita do backup
@@ -527,10 +527,62 @@ comprova os quatro comandos reais em dois contêineres próprios, preservação 
 leitor e do vínculo, snapshot dos metadados e retomada após falha sintética na
 captura da aplicação. Não comprova o restore dos sete serviços nem a execução
 do helper com permissões instaladas em produção. Antes de ativar, faltam o
-transporte protegido do snapshot Root ao backup externo, a continuidade dos
-backups com telemetria fechada, o acordo de prazos com o orçamento de
-indisponibilidade e o
+bootstrap da primeira cópia externa real de 14 componentes, o restore do
+histórico sem reaplicar autoridade, a continuidade dos backups com telemetria
+fechada, o acordo de prazos com o orçamento de indisponibilidade e o
 pacote completo de instalação/revogação/reversão com aprovação específica.
+
+### Snapshot protegido do observador no backup
+
+`backup_snapshot.py` combina a cópia consistente de SQLite e estado/ACK do
+consumidor com `Journal.history_files()`. O helper fixo aceita `export` e o
+mesmo ID do plano, sem caminhos recebidos do chamador. Confirma a fronteira
+`consumer_stopped` antes e depois da captura e mantém os locks necessários.
+A cópia SQLite usa a API de backup online, consolida seu próprio journal e é
+relida como imutável: nenhum WAL/SHM auxiliar pode ficar fora do inventário.
+O ledger vivo mantém seu próprio modo de journal e contadores.
+
+A saída é um fluxo de quadros limitados, com chunks de até 32 KiB, SHA-256 de
+cada arquivo, papéis explícitos de dados e manifesto final. O limite total é
+64 MiB e 20.566 arquivos. O receptor exige inventário exato, EOF e saída zero
+do produtor antes de publicar o manifesto local. Truncamento, campos extras,
+caminhos não revisados, mudança do contrato ou divergência de hash recusam a
+captura. O worker aguarda essa captura assíncrona terminar antes de retomar os
+serviços; uma falha segue pelo caminho normal de recuperação.
+
+O exportador tem prazo de 30 segundos, limite de CPU de 20 segundos e espaço
+virtual de 2 GiB. Este último permite executar o validador Node de checkpoint
+com heap de 64 MiB; não é um limite de RSS. O leitor contínuo mantém seu limite
+separado de 128 MiB. Os arquivos são transmitidos incrementalmente. O acordo
+entre esses prazos e o orçamento total de indisponibilidade ainda pertence ao
+pacote de ativação.
+
+O contrato Root v2 fixa os hashes do helper e da definição de componente em
+`restore/mqtt-observation-private-state.json`, além do escopo e prazo do
+snapshot. A política privada precisa declarar explicitamente a inclusão
+opcional; sem ela, o manifesto atual continua com seus 13 componentes de
+Compose. Com ela, `mqtt_observation_metadata` entra como 14º componente no
+manifesto e na mesma lista completa de checksums. Um observador instalado sem
+esse contrato completo é bloqueado antes de qualquer parada. A fonte declarada
+desse componente representa o export gerado na captura, nunca um fallback para
+copiar arquivos atuais de autoridade. Recibos históricos não devem ser
+reescritos para fingir uma cópia externa anterior de 14 componentes: o primeiro
+bootstrap real desse novo conjunto ainda precisa de procedimento próprio.
+
+O restore genérico confere novamente o snapshot e grava somente o artefato em
+`.local-state/mqtt-observation-restored-data`. Ele não instala arquivos no
+journal ativo, restaura autorização, aplica políticas antigas ou inicia coleta.
+Recuperar o histórico sob uma nova autoridade, preservando todos os IDs
+consumidos sem executar os intents antigos, continua sendo uma etapa separada.
+
+O ensaio nativo usou somente broker e Node-RED próprios, sem rede ou dados da
+casa. Exercitou o CLI real com caminhos de fixture, saída zero do produtor,
+transporte, pacote de 14 componentes, restore em staging e igualdade do ledger
+copiado. Os demais payloads de aplicações eram sintéticos. A retomada preservou
+leitor, CIDs, ACKs e comparações do controlador; isso não comprova o restore
+funcional das sete aplicações nem continuidade de 24 horas em produção.
+O [aceite do snapshot e transporte](../scripts/raspberry-mcp/mqtt-backup-snapshot.acceptance.json)
+separa essas provas das pendências de ativação e da primeira cópia externa real.
 
 ## Revogação, reversão e recuperação
 

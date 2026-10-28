@@ -9,11 +9,34 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { probeService } from "./container-readiness.mjs";
-import { applyRestore, loadManifest, verifyBundle } from "./restore.mjs";
+import { applyRestore, loadManifest, validateManifest, verifyBundle } from "./restore.mjs";
 import { loadBackupMaintenance, captureWithOrderedStops } from "./mqtt-maintenance-backup.mjs";
+import { verifyBackupSnapshot } from "./mqtt-backup-snapshot.mjs";
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const defaultPolicyFile = path.join(repoRoot, ".local-secrets/offsite-backup-policy.json");
+export const mqttMetadataComponent = 'mqtt_observation_metadata';
+const mqttMetadataItemFile = path.join(repoRoot,'restore/mqtt-observation-private-state.json');
+export const mqttMetadataItemSha256 = crypto.createHash('sha256').update(fs.readFileSync(mqttMetadataItemFile)).digest('hex');
+
+function requireMetadataPolicy(config) {
+  if(!config||Object.keys(config).sort().join()!==['enabled','schema_version','component_manifest_sha256','restore_authority'].sort().join()||
+    config.schema_version!==1||config.enabled!==true||config.component_manifest_sha256!==mqttMetadataItemSha256||config.restore_authority!=='data_only_disabled')
+    fail('protected MQTT metadata backup policy is unconfirmed');
+}
+export function offsiteManifest(base,policy) {
+  const config=policy?.compose_bundle?.mqtt_metadata;
+  if(config===undefined)return base;
+  requireMetadataPolicy(config);
+  if(base.items.some(i=>i.logical_name===mqttMetadataComponent))fail('duplicate protected MQTT component');
+  const itemRaw=fs.readFileSync(mqttMetadataItemFile);
+  if(crypto.createHash('sha256').update(itemRaw).digest('hex')!==mqttMetadataItemSha256)fail('protected component definition changed');
+  return validateManifest({...base,items:[...base.items,JSON.parse(itemRaw.toString('utf8'))]});
+}
+function configuration(manifestFile,policyFile) {
+  const raw=readPolicy(policyFile),manifest=offsiteManifest(loadManifest(manifestFile),raw);
+  return {manifest,policy:validateOffsitePolicy(raw,manifest)};
+}
 const require = createRequire(import.meta.url);
 const WebSocket = require("../nodered/node_modules/ws");
 export const COMPOSE_RETENTION_SERIES = "daily-offsite-compose-v1";
@@ -528,8 +551,7 @@ export async function retentionDryRun({
   legacyStateFile = stateFile === retentionStateFile ? legacyRetentionStateFile : null,
   now = new Date(),
 } = {}) {
-  const manifest = loadManifest(path.join(repoRoot, "restore/private-state-manifest.yaml"));
-  const policy = validateOffsitePolicy(readPolicy(policyFile), manifest);
+  const {manifest,policy} = configuration(path.join(repoRoot,"restore/private-state-manifest.yaml"),policyFile);
   const token = readHomeAssistantToken();
   const credentials = readHomeAssistantBackupCredentials();
   const info = await homeAssistantWebSocketRequest(token, { type: "backup/info" });
@@ -565,6 +587,11 @@ function assertStringArray(value, label) {
 }
 
 export function validateOffsitePolicy(policy, manifest) {
+  const protectedItem=manifest.items.find(item=>item.logical_name===mqttMetadataComponent);
+  if(Boolean(protectedItem)!==Boolean(policy?.compose_bundle?.mqtt_metadata)||protectedItem&&
+    JSON.stringify(protectedItem)!==JSON.stringify(JSON.parse(fs.readFileSync(mqttMetadataItemFile,'utf8'))))
+    fail('protected MQTT component requires its exact reviewed policy and manifest');
+  if(protectedItem)requireMetadataPolicy(policy.compose_bundle.mqtt_metadata);
   const positive = (value) => Number.isSafeInteger(value) && value > 0;
   const nonnegative = (value) => Number.isSafeInteger(value) && value >= 0;
   const timestamp = (value) => typeof value === "string" && /^\d{4}-\d\d-\d\dT/.test(value)
@@ -789,8 +816,7 @@ export function verifyOffsiteBundle(backupDir, {
   manifestFile = path.join(repoRoot, "restore/private-state-manifest.yaml"),
   policyFile = defaultPolicyFile,
 } = {}) {
-  const manifest = loadManifest(manifestFile);
-  const policy = validateOffsitePolicy(readPolicy(policyFile), manifest);
+  const {manifest,policy} = configuration(manifestFile,policyFile);
   const expected = composeBundleManifest(manifest, policy);
   const result = verifyBundle(backupDir, {
     canonicalManifest: expected,
@@ -801,6 +827,8 @@ export function verifyOffsiteBundle(backupDir, {
   if (JSON.stringify(actual) !== JSON.stringify(required)) {
     fail("off-site bundle must contain the complete approved Compose coverage");
   }
+  if(expected.items.some(i=>i.logical_name===mqttMetadataComponent))
+    verifyBackupSnapshot(path.resolve(backupDir,'components',mqttMetadataComponent,'payload'));
   return {
     operation: "offsite-backup-verify",
     valid: true,
@@ -820,12 +848,17 @@ export function captureOffsiteBundle(outputDir, {
   repositoryBranch = currentGitValue(["branch", "--show-current"], "detached"),
   createdAt = new Date().toISOString(),
   architecture = process.arch,
+  mqttSnapshot = null,
 } = {}) {
-  const manifest = loadManifest(manifestFile);
-  const policy = validateOffsitePolicy(readPolicy(policyFile), manifest);
+  const {manifest,policy} = configuration(manifestFile,policyFile);
   const target = assertSafePrivateOutput(outputDir, root);
   const itemByName = new Map(manifest.items.map((item) => [item.logical_name, item]));
   const items = policy.compose_bundle.coverage.map((name) => itemByName.get(name));
+  const includesMetadata=items.some(i=>i.logical_name===mqttMetadataComponent);
+  if(includesMetadata) {
+    if(!mqttSnapshot||typeof mqttSnapshot.operation_id!=='string')fail('protected MQTT snapshot is required');
+    verifyBackupSnapshot(mqttSnapshot.directory,{operationId:mqttSnapshot.operation_id});
+  } else if(mqttSnapshot!==null)fail('unapproved protected MQTT snapshot');
   const requiredStops = [...new Set(items.flatMap((item) => item.service_must_be_stopped))].sort();
   const activeServices = runningServices ?? defaultRunningServices();
   const stillRunning = requiredStops.filter((service) => activeServices.has(service));
@@ -844,7 +877,11 @@ export function captureOffsiteBundle(outputDir, {
       const relativePayload = `components/${item.logical_name}/payload`;
       const payload = path.join(target, ...relativePayload.split("/"));
       let sourceStat;
-      try {
+      if(item.logical_name===mqttMetadataComponent) {
+        fs.mkdirSync(path.dirname(payload),{recursive:true,mode:0o700});
+        fs.cpSync(mqttSnapshot.directory,payload,{recursive:true,errorOnExist:true,force:false,preserveTimestamps:true});
+        verifyBackupSnapshot(payload,{operationId:mqttSnapshot.operation_id});sourceStat=null;
+      } else try {
         sourceStat = fs.lstatSync(source);
       } catch (error) {
         if (["EACCES", "EPERM"].includes(error?.code) && containerSnapshotSources[item.logical_name]) {
@@ -926,9 +963,10 @@ export function restoreOffsiteBundle(backupDir, destination, {
   policyFile = defaultPolicyFile,
   repositoryRoot = repoRoot,
 } = {}) {
-  const manifest = loadManifest(manifestFile);
-  const policy = validateOffsitePolicy(readPolicy(policyFile), manifest);
+  const {manifest,policy} = configuration(manifestFile,policyFile);
   const expected = composeBundleManifest(manifest, policy);
+  if(expected.items.some(i=>i.logical_name===mqttMetadataComponent))
+    verifyBackupSnapshot(path.resolve(backupDir,'components',mqttMetadataComponent,'payload'));
   const result = applyRestore(backupDir, destination, {
     confirm: "RESTORE_PRIVATE_STATE",
     canonicalManifest: expected,
@@ -1000,16 +1038,15 @@ export function buildOffsitePlan({
   envPath = process.env.PATH ?? "",
 } = {}) {
   const resolvedManifest = manifestFile ?? path.join(root, "restore/private-state-manifest.yaml");
-  const manifest = loadManifest(resolvedManifest);
-  const policy = validateOffsitePolicy(readPolicy(policyFile), manifest);
+  const {manifest,policy} = configuration(resolvedManifest,policyFile);
   const itemByName = new Map(manifest.items.map((item) => [item.logical_name, item]));
   const composeItems = policy.compose_bundle.coverage.map((name) => itemByName.get(name));
   const measurements = measure ? Object.fromEntries(composeItems.map((item) => [
     item.logical_name,
-    measurePath(path.join(root, item.source)),
+    item.logical_name===mqttMetadataComponent?{status:'generated_at_capture',bytes:null}:measurePath(path.join(root, item.source)),
   ])) : null;
   const measured = Object.values(measurements ?? {}).filter((entry) => entry.status === "measured");
-  const missing = Object.entries(measurements ?? {}).filter(([, entry]) => entry.status !== "measured").map(([name]) => name);
+  const missing = Object.entries(measurements ?? {}).filter(([, entry]) => !['measured','generated_at_capture'].includes(entry.status)).map(([name]) => name);
   const homeassistantLocalBackups = measure
     ? measurePath(path.join(root, policy.homeassistant.local_backup_source))
     : null;
@@ -1074,8 +1111,7 @@ export function dailyCycleReadiness({
   manifestFile = path.join(repoRoot, "restore/private-state-manifest.yaml"),
   policyFile = defaultPolicyFile,
 } = {}) {
-  const manifest = loadManifest(manifestFile);
-  const policy = validateOffsitePolicy(readPolicy(policyFile), manifest);
+  const {manifest,policy} = configuration(manifestFile,policyFile);
   const daily = policy.daily_orchestration;
   const ready = policy.active === true
     && daily.status === "active"
@@ -1122,8 +1158,7 @@ export async function runDailyCycle({
   const readiness = dailyCycleReadiness({ manifestFile, policyFile });
   if (!readiness.ready) return readiness;
 
-  const manifest = loadManifest(manifestFile);
-  const policy = validateOffsitePolicy(readPolicy(policyFile), manifest);
+  const {manifest,policy} = configuration(manifestFile,policyFile);
   const itemByName = new Map(manifest.items.map((item) => [item.logical_name, item]));
   const services = [...new Set(policy.compose_bundle.coverage.flatMap((name) =>
     itemByName.get(name).service_must_be_stopped))].sort();
@@ -1135,9 +1170,14 @@ export async function runDailyCycle({
   // No installed observer keeps the existing backup path. An installed
   // observer without its reviewed Root coordinator blocks before any stop.
   const metadataMaintenance = loadBackupMaintenance();
+  const metadataPolicy=policy.compose_bundle.mqtt_metadata;
+  if(Boolean(metadataMaintenance)!==Boolean(metadataPolicy)||metadataPolicy&&
+    (typeof metadataMaintenance.snapshot!=='function'||metadataMaintenance.snapshot_component_manifest_sha256!==metadataPolicy.component_manifest_sha256))
+    fail('installed MQTT observer requires the reviewed metadata snapshot backup contract');
 
   const stamp = now.toISOString().replace(/[-:.]/g, "").replace("Z", "Z");
   const temporaryRoot = path.join(os.tmpdir(), `offsite-bundle-${stamp}`);
+  fs.mkdirSync(temporaryRoot,{recursive:true,mode:0o700});
   const bundleDir = path.join(temporaryRoot, "bundle");
   const stagingDir = path.join(repoRoot, "homeassistant/backups", `offsite-staging-${stamp}`);
   const containerStagingDir = `/config/backups/${path.basename(stagingDir)}`;
@@ -1149,12 +1189,15 @@ export async function runDailyCycle({
     stop: selected => runChecked("docker", ["compose", "stop", "--timeout", "30", ...selected], { timeout: 180_000 }),
     start: selected => runChecked("docker", ["compose", "start", ...selected], { timeout: 180_000 }),
     wait: selected => waitForServices(selected, outageDeadline),
-    capture: () => captureOffsiteBundle(bundleDir, {
-      manifestFile,
-      policyFile,
-      runningServices: new Set(),
-      createdAt: now.toISOString(),
-    }),
+    capture: async () => {
+      let mqttSnapshot=null;
+      if(metadataMaintenance) {
+        const directory=path.join(temporaryRoot,'mqtt-metadata');
+        await metadataMaintenance.snapshot(directory);
+        mqttSnapshot={directory,operation_id:metadataMaintenance.operation_id};
+      }
+      return captureOffsiteBundle(bundleDir,{manifestFile,policyFile,runningServices:new Set(),createdAt:now.toISOString(),mqttSnapshot});
+    },
   });
   if (restorationError) {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });

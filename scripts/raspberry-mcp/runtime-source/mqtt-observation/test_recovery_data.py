@@ -28,6 +28,7 @@ class Tests(unittest.TestCase):
   manifest=snapshot_data(self.source,self.snap)
   self.assertFalse(manifest["authorization_included"]);self.assertFalse(manifest["source_policy_included"])
   self.assertEqual(set(manifest["files"]),{"state.sqlite3","consumer-state.json","consumer-ack.json"})
+  self.assertEqual({p.name for p in self.snap.iterdir()},set(manifest['files'])|{'manifest.json'})
  def test_busy_consumer_refused_without_wait_or_state_change(self):
   fd=os.open(self.source.consumer/"lock",os.O_RDONLY)
   try:

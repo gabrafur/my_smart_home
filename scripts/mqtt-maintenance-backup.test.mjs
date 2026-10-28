@@ -115,3 +115,27 @@ test('rescued services are health-checked but cannot become a successful metadat
   assert.deepEqual(f.running,new Set(services));assert(f.events.some(e=>e[0]==='wait'));
   assert.equal(r.restorationError.code,'MQTT_METADATA_BACKUP_RESCUED');
 });
+test('asynchronous snapshot completion or failure precedes every service resume',async()=>{
+ for(const fail of [false,true]){
+  const f=fixture();let release;
+  f.options.capture=()=>new Promise((resolve,reject)=>{release=()=>fail?reject(new Error('synthetic_stream_failure')):resolve({captured:true});});
+  const running=captureWithOrderedStops(f.options);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.running.size,0);assert(!f.events.some(e=>e[0]==='resume'||e[0]==='start'));
+  release();const result=await running;
+  assert.deepEqual(f.running,new Set(services));assert.equal(!!result.captureError,fail);
+ }
+});
+test('v2 snapshot transport binds its fixed scope and rechecks the Root contract after streaming',async()=>{
+ const f=bridge(),contract={...f.contract,schema_version:2,snapshot_scope:'mqtt_metadata_backup_snapshot_v1',
+   snapshot_maximum_command_ms:30000,snapshot_component_manifest_sha256:'d'.repeat(64)};
+ f.setRaw(Buffer.from(JSON.stringify(contract)));const exported=[];
+ f.options.exportSnapshot=async(destination,options)=>{exported.push({destination,options});return {destination};};
+ const b=loadBackupMaintenance(f.options);assert.equal(b.snapshot_component_manifest_sha256,'d'.repeat(64));
+ await b.snapshot('/tmp/private-test-snapshot');
+ assert.equal(exported[0].options.operationId,'a'.repeat(32));assert.equal(exported[0].options.maximumCommandMs,30000);
+ f.options.exportSnapshot=async()=>{f.setCode(Buffer.from('changed'));return {};};
+ await assert.rejects(loadBackupMaintenance(f.options).snapshot('/tmp/private-test-snapshot-2'));
+ for(const delta of [{snapshot_scope:'unknown'},{snapshot_maximum_command_ms:30001},{snapshot_component_manifest_sha256:'invalid'}])
+   assert.throws(()=>validateBackupContract({...contract,...delta}));
+});

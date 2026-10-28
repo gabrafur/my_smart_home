@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {exportBackupSnapshot,snapshotScope} from './mqtt-backup-snapshot.mjs';
 
 const contractFile='/run/raspberry-mqtt-observation/backup-contract.json';
 const installationFile='/etc/raspberry-mqtt-observation/compose.yml';
@@ -30,24 +31,30 @@ function rootFile(file,mode,limit) {
 }
 
 export function validateBackupContract(v) {
-  const keys=['schema_version','scope','enabled','helper_sha256','maximum_command_ms'];
+  const keys=['schema_version','scope','enabled','helper_sha256','maximum_command_ms',
+    ...(v?.schema_version===2?['snapshot_scope','snapshot_maximum_command_ms','snapshot_component_manifest_sha256']:[])];
   if(!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).sort().join()!==keys.sort().join()||
-    v.schema_version!==1||v.scope!==scope||v.enabled!==true||!/^[a-f0-9]{64}$/.test(v.helper_sha256)||
+    ![1,2].includes(v.schema_version)||v.scope!==scope||v.enabled!==true||!/^[a-f0-9]{64}$/.test(v.helper_sha256)||
     !Number.isSafeInteger(v.maximum_command_ms)||v.maximum_command_ms<1||v.maximum_command_ms>2147483647)fail();
+  if(v.schema_version===2&&(v.snapshot_scope!==snapshotScope||!Number.isSafeInteger(v.snapshot_maximum_command_ms)||
+    v.snapshot_maximum_command_ms<1||v.snapshot_maximum_command_ms>30000||!/^[a-f0-9]{64}$/.test(v.snapshot_component_manifest_sha256)))fail();
   return v;
 }
 
 export function loadBackupMaintenance({readRoot=rootFile,exists=present,invoke=spawnSync,
-  operationId=()=>crypto.randomBytes(16).toString('hex')}={}) {
+  operationId=()=>crypto.randomBytes(16).toString('hex'),exportSnapshot=exportBackupSnapshot}={}) {
   if(!exists(contractFile)) {
     if(exists(installationFile))fail();
     return null;
   }
   const raw=readRoot(contractFile,0o444,4096),v=validateBackupContract(JSON.parse(raw));
   const id=operationId();if(!/^[a-f0-9]{32}$/.test(id))fail();
-  function call(action) {
+  function unchanged() {
     if(!raw.equals(readRoot(contractFile,0o444,4096))||
       crypto.createHash('sha256').update(readRoot(helperFile,0o644,65536)).digest('hex')!==v.helper_sha256)fail();
+  }
+  function call(action) {
+    unchanged();
     const r=invoke('/usr/bin/sudo',['-n','/usr/bin/python3','-I','-S','-B',helperFile,action,id],{
       encoding:'utf8',timeout:v.maximum_command_ms,maxBuffer:4096,
       env:{PATH:'/usr/bin:/bin',LC_ALL:'C'},stdio:['ignore','pipe','pipe']});
@@ -60,7 +67,10 @@ export function loadBackupMaintenance({readRoot=rootFile,exists=present,invoke=s
         result.metadata_disabled!==(result.state==='backup_rescue_house_running_metadata_disabled')))fail();
     return result;
   }
-  return {operation_id:id,prepare:()=>call('prepare'),resume:()=>{
+  return {operation_id:id,...(v.schema_version===2?{
+    snapshot_component_manifest_sha256:v.snapshot_component_manifest_sha256,
+    async snapshot(destination){unchanged();const result=await exportSnapshot(destination,{operationId:id,helperFile,maximumCommandMs:v.snapshot_maximum_command_ms});unchanged();return result;},
+  }:{}),prepare:()=>call('prepare'),resume:()=>{
     try {return call('resume');}catch {return call('rescue');}
   }};
 }
@@ -73,7 +83,7 @@ export async function captureWithOrderedStops({services,maintenance=null,stop,st
   try {
     if(maintenance) {prepareRequested=true;maintenance.prepare();}
     if(ordinary.length) {ordinaryStopRequested=true;stop(ordinary);}
-    value=capture();
+    value=await capture();
   } catch(error) {captureError=error;}
   finally {
     // Restore both independent participants even if the other start fails.

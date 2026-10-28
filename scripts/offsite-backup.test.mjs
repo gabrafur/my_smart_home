@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -20,6 +21,7 @@ import {
   restoreOffsiteBundle,
   verifyOffsiteBundle,
   validateOffsitePolicy,
+  offsiteManifest,mqttMetadataComponent,mqttMetadataItemSha256,
 } from "./offsite-backup.mjs";
 import { createSyntheticBundle, loadManifest } from "./restore.mjs";
 const syntheticPolicyFile = fileURLToPath(new URL("./fixtures/offsite-backup-policy.synthetic.json", import.meta.url));
@@ -661,4 +663,39 @@ test("capture refuses to copy while a required service is running", (t) => {
     runningServices: new Set(["nodered"]),
     repositoryCommit: "0".repeat(40),
   }), /requires stopped services: nodered/);
+});
+
+test('explicit optional MQTT component is checksummed and restored only as private staged data',t=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'offsite-bundle-mqtt-component-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const base=loadManifest(),policy=JSON.parse(fs.readFileSync(syntheticPolicyFile,'utf8'));
+  createSyntheticPrivateSources(root,base,policy.compose_bundle.coverage);
+  policy.compose_bundle.mqtt_metadata={schema_version:1,enabled:true,component_manifest_sha256:mqttMetadataItemSha256,restore_authority:'data_only_disabled'};
+  policy.compose_bundle.coverage.push(mqttMetadataComponent);
+  // Synthetic fixture declarations only. Live historical receipts stay intact.
+  policy.compose_bundle.last_verified_external_backup.components=14;
+  const manifest=offsiteManifest(base,policy);assert.equal(manifest.items.length,base.items.length+1);
+  validateOffsitePolicy(policy,manifest);
+  const policyFile=path.join(root,'policy.json');fs.writeFileSync(policyFile,JSON.stringify(policy),{mode:0o600});
+  const directory=path.join(root,'protected-snapshot');fs.mkdirSync(directory,{mode:0o700});
+  const operation_id='a'.repeat(32),files=[];
+  for(const name of ['data/state.sqlite3','data/consumer-state.json','data/manifest.json','history/maintenance.json']){
+    const file=path.join(directory,name),bytes=Buffer.from('synthetic_'+name);
+    fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700});fs.writeFileSync(file,bytes,{mode:0o600});
+    files.push({path:name,bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),role:name.startsWith('data/')?'observer_data':'historical_maintenance_data_not_authority'});
+  }
+  const stable=v=>Array.isArray(v)?v.map(stable):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,stable(v[k])])):v;
+  const snapshot={schema_version:1,scope:'mqtt_metadata_backup_snapshot_v1',operation_id,captured_at_utc:'2026-10-28T10:00:00+00:00',consistency:'coordinated_metadata_cut',full24h_proven:false,current_authority_included:false,files};
+  fs.writeFileSync(path.join(directory,'backup-snapshot.json'),JSON.stringify(stable(snapshot)),{mode:0o600});
+  const bundle=path.join(root,'bundle'),options={root,policyFile,runningServices:new Set(),repositoryCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),mqttSnapshot:{directory,operation_id}};
+  assert.equal(captureOffsiteBundle(bundle,options).components,14);
+  assert.equal(verifyOffsiteBundle(bundle,{policyFile}).components,14);
+  const restoredRoot=path.join(root,'restore-test-target');const restored=restoreOffsiteBundle(bundle,restoredRoot,{policyFile,repositoryRoot:root});
+  assert.equal(restored.components,14);assert.equal(restored.functional_services_tested,false);
+  const staged=path.join(restoredRoot,'.local-state/mqtt-observation-restored-data');
+  assert.equal(fs.readFileSync(path.join(staged,'backup-snapshot.json'),'utf8'),JSON.stringify(stable(snapshot)));
+  assert.equal(fs.existsSync(path.join(staged,'authorization.json')),false);
+  assert.throws(()=>captureOffsiteBundle(path.join(root,'missing-snapshot'),{...options,mqttSnapshot:null}),/snapshot is required/);
+  assert.throws(()=>captureOffsiteBundle(path.join(root,'unapproved-snapshot'),{...options,policyFile:syntheticPolicyFile}),/unapproved protected/);
+  fs.writeFileSync(path.join(bundle,'components',mqttMetadataComponent,'payload','history','extra.json'),'untracked');
+  assert.throws(()=>verifyOffsiteBundle(bundle,{policyFile}),/checksum|payload|inventory|byte count/);
 });

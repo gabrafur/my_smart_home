@@ -1,0 +1,23 @@
+{
+  "logical_name": "mqtt_observation_metadata",
+  "component": "mqtt_observation",
+  "module": "core",
+  "kind": "directory",
+  "source": ".local-state/mqtt-observation-backup-export",
+  "destination": ".local-state/mqtt-observation-restored-data",
+  "required": true,
+  "required_when_module_enabled": false,
+  "criticality": "high",
+  "owner": "installation_owner",
+  "group": "installation_group",
+  "permissions": "0700",
+  "consistency_mode": "external-snapshot",
+  "service_must_be_stopped": ["mosquitto", "nodered"],
+  "dependencies": ["nodered_context", "mosquitto_persistence"],
+  "restore_order": 170,
+  "fresh_install_behavior": "absent until the separately reviewed Root observer and metadata backup contract are approved and installed",
+  "restore_behavior": "restore the immutable data artifact into private staging only; a separately reviewed Root recovery must preserve consumed IDs with current authorization disabled; never replay historical authority",
+  "checksum_policy": "sha256-every-file",
+  "validation": ["fixed Root producer stream and successful exit", "exact snapshot manifest and payload hashes", "historical receipts are data only", "no current authorization, policy or prepared request"],
+  "git_policy": "ignored-private-state"
+}

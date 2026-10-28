@@ -41,7 +41,9 @@ def syncdir(path):
  finally:os.close(fd)
 def checked_db(path):
  raw=read(path,0,0,0o600,MAX_DB);require(len(raw)>0,"recovery_ledger_invalid")
- db=sqlite3.connect(Path(path).as_uri()+"?mode=ro",uri=True,timeout=0,isolation_level=None)
+ # This is a sealed copy, not the live ledger. Immutable reads cannot create
+ # new WAL/SHM files outside the snapshot's checksummed inventory.
+ db=sqlite3.connect(Path(path).as_uri()+"?mode=ro&immutable=1",uri=True,timeout=0,isolation_level=None)
  try:
   db.execute("PRAGMA trusted_schema=OFF")
   rows=db.execute("SELECT id,body,sha256 FROM snapshot").fetchall()
@@ -76,6 +78,7 @@ def snapshot_data(paths,destination):
   def progress(_status,remaining,total):
    require(time.monotonic()<until and 0<=remaining<=total<=256,"recovery_backup_capacity")
   source.backup(target,pages=16,progress=progress,sleep=0.01)
+  require(target.execute('PRAGMA journal_mode=DELETE').fetchone()[0]=='delete','recovery_backup_journal_unconfirmed')
   target.close();target=None;source.close();source=None
   checked_db(destination/"state.sqlite3")
   fd=os.open(destination/"state.sqlite3",os.O_RDONLY|os.O_NOFOLLOW)
