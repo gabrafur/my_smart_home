@@ -34,7 +34,8 @@ class FileDeploymentTests(unittest.TestCase):
         finally:os.umask(previous)
         self.assertEqual(self.open().apply_approved(self.spec,self.artifacts)['state'],'applied')
     def test_closed_target_set_excludes_grants_bindings_credentials_and_backup_data(self):
-        self.assertEqual(len(TARGETS),49)
+        self.assertEqual(len(TARGETS),50)
+        self.assertEqual(TARGETS['code/bootstrap_dispatch.py'],('opt/raspberry-mqtt-observation/bootstrap_dispatch.py',0o644))
         self.assertEqual({n.removeprefix('consumer/')for n in TARGETS if n.startswith('consumer/')},set(CONSUMER))
         for path,_mode in TARGETS.values():
             self.assertTrue(path.startswith(('opt/raspberry-mqtt-observation/','etc/systemd/system/raspberry-mqtt-observation.','etc/raspberry-mqtt-observation/')))

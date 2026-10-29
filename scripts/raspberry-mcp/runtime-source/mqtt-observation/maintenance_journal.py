@@ -13,10 +13,15 @@ PHASES=('begin','armed','source_stop_intent','source_stopped','source_drained',
         'consumer_started','consumer_ready','source_start_intent','source_started',
         'new_source_verified','complete')
 FROZEN_PHASES=('frozen_begin','frozen_complete')
+BOOTSTRAP_PHASES=('bootstrap_begin','bootstrap_remote_intent','bootstrap_report_recorded')
 REASONS=('authorization_closed','binding_changed','source_unknown','accounting_unknown',
          'consumer_not_ready','clock_changed','deadline','write_failed','effect_uncertain','operator_conflict')
 INTENT={'binding_sha256':'h','expected_state_sha256':'h'}
 FACTS={
+ 'bootstrap_begin':{'profile_sha256':'h','worker_manifest_sha256':'h','bootstrap_approval_sha256':'h',
+  'baseline_policy_sha256':'h','baseline_manifest_sha256':'h','snapshot_operation_sha256':'h','deadline_ns':'u64'},
+ 'bootstrap_remote_intent':{'bundle_sha256':'h','request_sha256':'h','dispatch_completed':'false'},
+ 'bootstrap_report_recorded':{'report_sha256':'h','independent_acceptance':'false'},
  'frozen_begin':{'source_authorization_sha256':'h','source_approval_sha256':'h','source_authorization_state':'closed_source',
   'source_expires_at':'expiry','source_runtime_marker_present':'b','code_manifest_sha256':'h','profile_sha256':'h',
   'deadline_ns':'u64','metadata_integrity':'unknown','effects_dispatched':'false'},
@@ -90,7 +95,8 @@ def validate_operation(op):
     need(type(rows)is list and 1<=len(rows)<=len(PHASES)+1)
     previous=None
     need(type(rows[0])is dict and type(rows[0].get('body'))is dict)
-    phases=FROZEN_PHASES if rows[0].get('body',{}).get('phase')=='frozen_begin'else PHASES
+    first=rows[0].get('body',{}).get('phase')
+    phases=FROZEN_PHASES if first=='frozen_begin'else BOOTSTRAP_PHASES if first=='bootstrap_begin'else PHASES
     for i,row in enumerate(rows):
         closed(row,['body','sha256']);b=row['body']
         closed(b,['schema_version','operation_id','approval_sha256','phase','facts','at_ns',
@@ -100,6 +106,7 @@ def validate_operation(op):
                              b['clock_domain_sha256'],i+1,previous)
         need(b==expected and row['sha256']==digest(b))
         if b['phase']=='frozen_begin':need(uint(b['facts']['deadline_ns'],64)>uint(b['at_ns'],64))
+        if b['phase']=='bootstrap_begin':need(uint(b['facts']['deadline_ns'],64)>uint(b['at_ns'],64))
         if b['phase']=='frozen_complete':need(b['facts']['source_authorization_sha256']==rows[0]['body']['facts']['source_authorization_sha256'])
         if b['phase']in('failed','cancelled','rescued'):
             need(i>0 and i==len(rows)-1)
@@ -112,7 +119,7 @@ def validate_operation(op):
             need(i<len(phases)and b['phase']==phases[i])
             need(b['clock_domain_sha256']==rows[0]['body']['clock_domain_sha256'])
             if i:need(uint(b['at_ns'],64)>=uint(rows[i-1]['body']['at_ns'],64))
-        if i:need(rows[i-1]['body']['phase']not in ('complete','failed','cancelled','rescued','frozen_complete'))
+        if i:need(rows[i-1]['body']['phase']not in ('complete','failed','cancelled','rescued','frozen_complete','bootstrap_report_recorded'))
         previous=row['sha256']
     return op
 def validate_snapshot(value):
@@ -226,7 +233,7 @@ class Journal:
         body=copy.deepcopy(old['body'])if old else {'schema_version':1,'revision':'0','operations':[]}
         op=next((v for v in body['operations']if v['operation_id']==operation_id),None)
         if op is None:
-            need(phase in('begin','frozen_begin')and expected_previous_sha256 is None,'maintenance_parent_changed')
+            need(phase in('begin','frozen_begin','bootstrap_begin')and expected_previous_sha256 is None,'maintenance_parent_changed')
             # Validate new input and the historical ID before storage changes.
             record_body(operation_id,self.approval,phase,facts,at_ns,clock_domain_sha256,1,None)
             need(self.find(operation_id)is None,'maintenance_operation_archived')

@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "scope": "first_metadata_backup_Root_admission_and_consumed_history",
+  "verified_on": "2026-10-29",
+  "production_installed": false,
+  "new_scope_activated": false,
+  "fixed_executor_or_worker_executed": false,
+  "remote_requests_executed": 0,
+  "policy_promoted": false,
+  "profile": {
+    "default_absent": true,
+    "single_operation_and_distinct_snapshot_ID": true,
+    "separate_approval_and_installed_Root_code_binding": true,
+    "maximum_validity_seconds": 86400,
+    "monotonic_deadline_and_clock_domain_bound": true,
+    "worker_inventory_interpreter_policy_and_manifest_hashes_checked": true,
+    "worker_files_and_directories_Root_owned_not_worker_writable": true,
+    "unlisted_files_aliases_and_symlinks_rejected": true
+  },
+  "consumption": {
+    "existing_Root_journal_and_lock_used": true,
+    "remote_intent_durable_before_return": true,
+    "lost_return_repeated_admission_refused": true,
+    "change_or_revocation_after_intent_preserves_consumption": true,
+    "status_readonly_without_live_profile_or_worker": true,
+    "report_reconciliation_after_expiry_is_data_only": true,
+    "identical_report_preserves_bytes_and_inode": true,
+    "report_is_independent_acceptance": false,
+    "report_is_terminal_for_other_cycle_or_archive_gates": false,
+    "new_profile_cannot_bypass_an_unresolved_prior_operation": true,
+    "historical_restore_preserves_consumed_ID_and_current_disabled_grant": true
+  },
+  "isolated_Root_tests": {
+    "total": 409,
+    "new_guard_and_record_cases": 20,
+    "failures": 0,
+    "skipped": 0,
+    "actual_existing_Backend_static_code_check_exercised": true,
+    "actual_metadata_snapshot_and_historical_restore_exercised": true,
+    "worker_and_interpreter": "synthetic_files_not_executed",
+    "protocol_frame": "synthetic_fixture",
+    "owned_container_removed": true,
+    "source_hashes_unchanged_during_run": true,
+    "seven_household_states_and_StartedAt_unchanged": true,
+    "network": "none",
+    "Docker_socket_mounted": false,
+    "production_mounts": 0,
+    "CPU_quota": 0.25,
+    "address_space_soft_and_hard_bytes": 134217728,
+    "CPU_time_soft_and_hard_seconds": 40
+  },
+  "static_installer_catalog": {"targets": 50, "Root_modules": 31},
+  "pending": [
+    "fixed_launcher_actual_process_and_loaded_worker_identity_binding",
+    "capture_and_unique_remote_request_integration",
+    "read_only_reconciliation_and_verified_operational_closure_of_uncertain_dispatch",
+    "real_encrypted_remote_receipt_and_file_restore_canary",
+    "quota_preserving_13_to_14_policy_and_canonical_NodeRED_transition",
+    "full_installation_package_and_specific_owner_approval",
+    "production_source_latency_coverage24h_and_PC_off_autonomy",
+    "seven_isolated_functional_application_restores"
+  ]
+}

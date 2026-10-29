@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 49 destinos: 30 módulos Root, nove
+do pacote. Seu catálogo fechado contém 50 destinos: 31 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -747,6 +747,45 @@ aprovação específica, o registro consumido antes da solicitação remota e a
 reconciliação dessa solicitação sem reenvio. A promoção exige recibo real
 criptografado e restore de arquivos, preservação do recibo anterior, limites de
 quota e transição canônica para 14. O pacote completo permanece sem ativação.
+
+### Admissão Root de uma primeira solicitação remota
+
+`bootstrap_dispatch.py` acrescenta a proteção de admissão ao journal Root
+existente. Ela ainda não é um launcher nem executa HTTP, Docker, serviços ou
+promoção. O perfil `first-backup-policy.json` fica ausente por padrão. Um perfil
+aprovado liga um único ID de operação e outro ID de snapshot ao código Root,
+à política e ao manifesto anteriores, ao interpretador e ao inventário fechado
+dos arquivos do worker. Diretórios e arquivos do worker precisam pertencer a
+Root e impedir escrita por outras contas; aliases e arquivos não listados
+bloqueiam a admissão. A validade é finita, de no máximo 24 horas, com prazo
+monotônico e domínio de relógio vinculados à operação.
+
+O executor futuro deverá chamar essa fronteira depois da captura consistente
+e da retomada dos serviços, antes de qualquer solicitação remota. A transição
+`bootstrap_remote_intent` grava hashes do bundle e da solicitação antes de
+retornar ao chamador. Retorno perdido, revogação ou mudança após a gravação
+conservam o consumo; outra chamada não ganha autorização para reenviar. O
+recibo JSON é um fato do journal, não uma permissão transferível. O mesmo
+executor ainda precisa ligar a transição recém-gravada ao único envio real.
+
+`bootstrap_report_recorded` registra somente o hash do relato do worker, com
+`independent_acceptance: false`. Pode ser reconciliado após o vencimento sem
+reativar o perfil; repetição idêntica não reescreve o journal. Não comprova
+efeito remoto, criptografia, canary ou promoção. Consulta de estado também
+funciona sem perfil ou worker atual. O relato não é fase terminal para os gates
+de outros ciclos nem para o arquivo histórico: a incerteza continua bloqueando
+novas operações. O snapshot e o restore histórico existentes
+preservam essa nova cadeia sem restaurar autorização.
+
+O [aceite da admissão Root](../scripts/raspberry-mcp/offsite-bootstrap-dispatch.acceptance.json)
+registra os 409 testes, incluindo 20 casos novos. Eles usam arquivos e
+interpretador sintéticos em contêiner Root isolado.
+Incluem falha de retorno, mudança entre intent e retorno, expiração, inventário,
+integridade do backend, preservação do bloqueio e um snapshot/restore real de metadados com o
+novo ID consumido. Não executam o worker, envio remoto ou aplicações da casa.
+O vínculo entre o processo efetivamente executado e esses arquivos, o launcher
+imutável, a integração ao worker, o limite de uso e a promoção continuam
+pendentes do pacote completo e da aprovação específica.
 
 ## Revogação, reversão e recuperação
 
