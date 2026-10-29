@@ -370,6 +370,40 @@ Os detalhes de tipos,limites e enums ficam no modelo de esquemas mencionado acim
 | `codex_repair_revoke` | `host` |
 | `codex_repair_capabilities` | `host` |
 
+## Reconciliar `control_socket_changed` sem reiniciar o Codex
+
+O adaptador confere o dispositivo/inode do socket e o PID/UID obtidos por
+`SO_PEERCRED` antes de cada RPC. Um daemon substituído pode publicar outro
+inode no mesmo caminho. O alias continuar válido e o serviço estar online não
+atualizam a autorização Root. O cliente abre uma conexão por consulta; esse
+caso não exige apagar um cache ou reiniciar o daemon.
+
+Compare o listener publicado no perfil autorizado com a origem do bind mount,
+proprietário, modo `0600`, identidade do processo, início do processo e
+executável instalado. Leia somente as referências autorizadas, sem retomar
+threads. A documentação do
+[App Server](https://learn.chatgpt.com/docs/app-server#read-a-stored-thread-without-resuming)
+distingue `thread/read` de `thread/resume`: a leitura de metadados não carrega
+a thread. `notLoaded` não comprova conclusão nem bloqueio. Conserve separados
+o estado atual, o último resultado registrado e falhas de observação.
+
+O helper puro
+[`control_binding_review.py`](../scripts/raspberry-mcp/runtime-source/administrative-recovery/control_binding_review.py)
+planeja somente a substituição revisada de PID/inode e seus pins: política
+legada, hash dessa política na política de tarefas e hashes das duas no
+catálogo de reparos. Ele preserva datas de aprovação, validade, boot, referências,
+limites, código e campos futuros. Não descobre sockets, escreve, envia RPC ou
+renova autorizações. A aplicação exige pacote Root protegido, prévia contra os
+bytes originais, nova conferência do mesmo peer, locks e intent anterior à
+troca. Conserve os backups e consulte o estado após perda de retorno; não
+repita a aplicação nem reenvie operações incertas.
+
+O [aceite da reconciliação](../scripts/raspberry-mcp/control-binding-review.acceptance.json)
+registra duas rodadas de `status`/`read` nas três referências, paginação completa
+do inventário permitido e preservação dos registros de operações. Um registro
+antigo sem metadados confirmados permanece desconhecido. A correção desse
+vínculo não amplia a concessão nem comprova a execução atual de todas as tarefas.
+
 ## Preparar o transporte HTTP opcional
 
 Este pacote estende o transporte de uma instalação MCP existente. Não instala

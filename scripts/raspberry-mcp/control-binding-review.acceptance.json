@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-10-29",
+  "scope": "same_authorized_Codex_listener_reviewed_identity_reconciliation",
+  "initial_failure": "control_socket_changed",
+  "client_error_mapping": "INVALID_ARGUMENT",
+  "diagnosis": {
+    "published_listener_path_unchanged": true,
+    "socket_owner_and_mode_unchanged": true,
+    "daemon_PID_and_socket_inode_changed": true,
+    "prior_daemon_process_no_longer_present": true,
+    "current_process_matches_installed_Codex_executable": true,
+    "adapter_makes_fresh_connections_per_query": true,
+    "stale_reference": "root_policy_pinned_prior_daemon_identity"
+  },
+  "correction": {
+    "policy_files_updated": 3,
+    "identity_and_transitive_policy_pins_only": true,
+    "source_code_files_changed_in_runtime": 0,
+    "bind_mount_configuration_unchanged": true,
+    "authority_approval_times_expiry_scope_threads_and_budgets_preserved": true,
+    "operations_and_audit_rows_unchanged": true,
+    "daemon_identity_stable_during_application": true,
+    "services_or_processes_restarted": 0,
+    "threads_created_or_started": 0,
+    "uncertain_operations_replayed": 0
+  },
+  "actual_MCP_acceptance": {
+    "authorized_existing_references": 3,
+    "rounds": 2,
+    "status_calls": 6,
+    "read_calls": 6,
+    "errors": 0,
+    "reference_runtime_status": "notLoaded",
+    "notLoaded_is_terminal": false,
+    "inventory_pages": 3,
+    "registered_rows_observed": 38,
+    "rows_with_confirmed_metadata": 37,
+    "retained_unknown_row": 1,
+    "unknown_reason": "thread_not_loaded_metadata_unavailable",
+    "global_native_history_enumerated": false,
+    "current_state_and_historical_outcome_kept_separate": true
+  },
+  "pure_helper_tests": 7,
+  "directed_Node_tests": 11,
+  "whole_Eva_goal_complete": false
+}
