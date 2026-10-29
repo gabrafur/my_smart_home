@@ -22,6 +22,8 @@ import {
   verifyOffsiteBundle,
   validateOffsitePolicy,
   offsiteManifest,mqttMetadataComponent,mqttMetadataItemSha256,
+  prepareMetadataBootstrap,captureMetadataBootstrapBundle,verifyMetadataBootstrapBundle,
+  reconcileMetadataBootstrapCapture,restoreMetadataBootstrapBundle,
 } from "./offsite-backup.mjs";
 import { createSyntheticBundle, loadManifest } from "./restore.mjs";
 const syntheticPolicyFile = fileURLToPath(new URL("./fixtures/offsite-backup-policy.synthetic.json", import.meta.url));
@@ -700,4 +702,103 @@ for(const closed of [false,true])test(`explicit optional MQTT component (${close
   assert.throws(()=>captureOffsiteBundle(path.join(root,'unapproved-snapshot'),{...options,policyFile:syntheticPolicyFile}),/unapproved protected/);
   fs.writeFileSync(path.join(bundle,'components',mqttMetadataComponent,'payload','history','extra.json'),'untracked');
   assert.throws(()=>verifyOffsiteBundle(bundle,{policyFile}),/checksum|payload|inventory|byte count/);
+});
+
+function firstMetadataFixture(t) {
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'offsite-bundle-first-metadata-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const policyRaw=fs.readFileSync(syntheticPolicyFile),policy=JSON.parse(policyRaw),manifest=loadManifest();
+  createSyntheticPrivateSources(root,manifest,policy.compose_bundle.coverage);
+  const policyFile=path.join(root,'policy.json');fs.writeFileSync(policyFile,policyRaw,{mode:0o600});
+  const state=path.join(root,'capture-state');fs.mkdirSync(state,{mode:0o700});
+  const operationId='c'.repeat(32),directory=path.join(root,'protected-snapshot');fs.mkdirSync(directory,{mode:0o700});
+  const sha=raw=>crypto.createHash('sha256').update(raw).digest('hex');
+  const sorted=v=>Array.isArray(v)?v.map(sorted):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,sorted(v[k])])):v;
+  const canonical=v=>JSON.stringify(sorted(v)),files=[];
+  for(const name of ['data/state.sqlite3','data/consumer-state.json','data/manifest.json','history/maintenance.json']){
+    const target=path.join(directory,name),raw=Buffer.from('SYNTHETIC_BOOTSTRAP_'+name);fs.mkdirSync(path.dirname(target),{recursive:true,mode:0o700});fs.writeFileSync(target,raw,{mode:0o600});
+    files.push({path:name,bytes:raw.length,sha256:sha(raw),role:name.startsWith('data/')?'observer_data':'historical_maintenance_data_not_authority'});
+  }
+  fs.writeFileSync(path.join(directory,'backup-snapshot.json'),canonical({schema_version:1,scope:'mqtt_metadata_backup_snapshot_v1',operation_id:operationId,
+    captured_at_utc:'2026-10-29T12:00:00Z',consistency:'closed_metadata_unknown_cut',metadata_integrity:'unknown',full24h_proven:false,current_authority_included:false,files}),{mode:0o600});
+  const planOptions={policyFile,operationId,expectedPolicySha256:sha(policyRaw),stateDirectory:state};
+  const plan=prepareMetadataBootstrap(planOptions),repositoryCommit=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+  const options={plan,root,runningServices:new Set(),repositoryCommit,repositoryBranch:'main',mqttSnapshot:{directory,operation_id:operationId}};
+  return {root,policy,policyRaw,policyFile,state,operationId,planOptions,plan,options,sha,canonical,bundle:path.join(root,'bundle')};
+}
+test('first fourteen-component data capture preserves the existing thirteen-component baseline without granting execution',t=>{
+  const f=firstMetadataFixture(t);assert.equal(f.policy.compose_bundle.last_verified_external_backup.components,13);
+  assert.equal(f.plan.baseline_components,13);assert.equal(f.plan.target_components,14);assert.equal(f.plan.live_operations_authorized,false);
+  assert.equal(f.plan.requires_specific_approval,true);assert(Object.isFrozen(f.plan));
+  assert.equal(captureMetadataBootstrapBundle(f.bundle,f.options).components,14);
+  assert.equal(verifyMetadataBootstrapBundle(f.bundle,{plan:f.plan}).components,14);
+  assert.deepEqual(fs.readFileSync(f.policyFile),f.policyRaw);
+  assert.equal(JSON.parse(fs.readFileSync(f.policyFile)).compose_bundle.last_verified_external_backup.components,13);
+  const metadata=JSON.parse(fs.readFileSync(path.join(f.bundle,'bundle.json')));
+  assert.equal(metadata.bootstrap.baseline_receipt_sha256,f.sha(f.canonical(f.policy.compose_bundle.last_verified_external_backup)));
+  assert.equal(metadata.bootstrap.authority_from_artifact,false);
+  assert.throws(()=>verifyOffsiteBundle(f.bundle,{policyFile:f.policyFile}),'ordinary verification must keep its approved thirteen-component contract');
+  const restored=restoreMetadataBootstrapBundle(f.bundle,path.join(f.root,'restore-test-target'),{plan:f.plan,repositoryRoot:f.root});
+  assert.equal(restored.components,14);assert.equal(restored.functional_services_tested,false);
+  const fence=path.join(f.state,fs.readdirSync(f.state)[0]),before=fs.readFileSync(fence),info=fs.statSync(fence);
+  const result=reconcileMetadataBootstrapCapture({plan:f.plan});assert.equal(result.remote_dispatch_authorized,false);assert.equal(result.automatic_retry,false);
+  assert.deepEqual(fs.readFileSync(fence),before);assert.equal(fs.statSync(fence).ino,info.ino);
+  assert.throws(()=>captureMetadataBootstrapBundle(path.join(f.root,'second-bundle'),f.options));
+  assert.equal(fs.existsSync(path.join(f.root,'second-bundle')),false);
+});
+test('bootstrap refuses a forged context, wrong policy pin, changed baseline and snapshot operation mismatch before capture',t=>{
+  const f=firstMetadataFixture(t);
+  assert.throws(()=>captureMetadataBootstrapBundle(f.bundle,{...f.options,plan:structuredClone(f.plan)}));
+  assert.throws(()=>prepareMetadataBootstrap({...f.planOptions,expectedPolicySha256:'0'.repeat(64)}));
+  assert.throws(()=>captureMetadataBootstrapBundle(f.bundle,{...f.options,mqttSnapshot:{...f.options.mqttSnapshot,operation_id:'d'.repeat(32)}}));
+  fs.writeFileSync(f.policyFile,JSON.stringify({...f.policy,active:false}));
+  assert.throws(()=>captureMetadataBootstrapBundle(f.bundle,f.options));assert.deepEqual(fs.readdirSync(f.state),[]);assert.equal(fs.existsSync(f.bundle),false);
+});
+test('bootstrap partial capture is retained and a new context cannot recopy a consumed operation',t=>{
+  const f=firstMetadataFixture(t),item=loadManifest().items.find(i=>i.logical_name===f.policy.compose_bundle.coverage[0]);
+  fs.rmSync(path.join(f.root,item.source),{recursive:true,force:true});
+  assert.throws(()=>captureMetadataBootstrapBundle(f.bundle,f.options));assert(fs.existsSync(f.bundle));
+  const plan=prepareMetadataBootstrap(f.planOptions);
+  assert.throws(()=>captureMetadataBootstrapBundle(path.join(f.root,'retry-bundle'),{...f.options,plan}));
+  assert.equal(fs.existsSync(path.join(f.root,'retry-bundle')),false);
+  assert.throws(()=>reconcileMetadataBootstrapCapture({plan}));assert.deepEqual(fs.readFileSync(f.policyFile),f.policyRaw);
+});
+test('complete bootstrap artifact after lost completion is reconciled without recopy or policy promotion',t=>{
+  const f=firstMetadataFixture(t),original=fs.renameSync;
+  fs.renameSync=(source,destination)=>{if(destination.endsWith(`metadata-bootstrap-${f.operationId}.json`))throw new Error('synthetic lost completion');return original(source,destination);};
+  try{assert.throws(()=>captureMetadataBootstrapBundle(f.bundle,f.options),/synthetic lost completion/);}finally{fs.renameSync=original;}
+  assert.equal(verifyMetadataBootstrapBundle(f.bundle,{plan:f.plan}).components,14);
+  const plan=prepareMetadataBootstrap(f.planOptions),copy=fs.cpSync;fs.cpSync=()=>assert.fail('reconciliation cannot recopy data');
+  try{const result=reconcileMetadataBootstrapCapture({plan});assert.equal(result.state,'bootstrap_data_capture_complete');assert.equal(result.policy_promoted,false);}finally{fs.cpSync=copy;}
+  assert.deepEqual(fs.readFileSync(f.policyFile),f.policyRaw);
+});
+test('bootstrap lineage or authority tampering cannot be verified or restored',t=>{
+  const f=firstMetadataFixture(t);captureMetadataBootstrapBundle(f.bundle,f.options);
+  const file=path.join(f.bundle,'bundle.json'),original=fs.readFileSync(file);
+  for(const change of [{baseline_receipt_sha256:'f'.repeat(64)},{authority_from_artifact:true},{target_components:15}]){
+    const value=JSON.parse(original);Object.assign(value.bootstrap,change);fs.writeFileSync(file,JSON.stringify(value));
+    assert.throws(()=>verifyMetadataBootstrapBundle(f.bundle,{plan:f.plan}));
+    assert.throws(()=>restoreMetadataBootstrapBundle(f.bundle,path.join(f.root,'restore-test-tamper'),{plan:f.plan,repositoryRoot:f.root}));
+    assert.equal(fs.existsSync(path.join(f.root,'restore-test-tamper')),false);
+  }
+  fs.writeFileSync(file,original);assert.equal(verifyMetadataBootstrapBundle(f.bundle,{plan:f.plan}).components,14);
+});
+test('bootstrap preparation rejects public, linked or changing baseline files',t=>{
+  const f=firstMetadataFixture(t);fs.chmodSync(f.policyFile,0o644);
+  assert.throws(()=>prepareMetadataBootstrap(f.planOptions));fs.chmodSync(f.policyFile,0o600);
+  const link=path.join(f.root,'linked-policy.json');fs.linkSync(f.policyFile,link);
+  assert.throws(()=>prepareMetadataBootstrap(f.planOptions));fs.unlinkSync(link);
+  fs.symlinkSync(f.policyFile,link);assert.throws(()=>prepareMetadataBootstrap({...f.planOptions,policyFile:link}));
+  assert.equal(fs.readdirSync(f.state).length,0);
+});
+test('ordinary capture still rereads policy after copying and bootstrap keeps its interrupted artifact',t=>{
+  for(const bootstrap of [false,true]){
+    const f=firstMetadataFixture(t),original=fs.cpSync;let changed=false;
+    fs.cpSync=(...args)=>{const value=original(...args);if(!changed){changed=true;fs.writeFileSync(f.policyFile,JSON.stringify({...f.policy,active:false}));}return value;};
+    try{
+      if(bootstrap)assert.throws(()=>captureMetadataBootstrapBundle(f.bundle,f.options));
+      else assert.throws(()=>captureOffsiteBundle(f.bundle,{root:f.root,policyFile:f.policyFile,runningServices:new Set(),repositoryCommit:f.options.repositoryCommit}));
+    }finally{fs.cpSync=original;}
+    assert(changed);assert.equal(fs.existsSync(f.bundle),bootstrap);
+    if(bootstrap)assert.equal(fs.readdirSync(f.state).length,1);
+  }
 });

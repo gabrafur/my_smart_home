@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "scope": "first_metadata_backup_preparation_capture_and_data_reconciliation",
+  "verified_on": "2026-10-29",
+  "production_installed": false,
+  "new_scope_activated": false,
+  "real_first_encrypted_remote_backup_proven": false,
+  "policy_promoted": false,
+  "full24h_proven": false,
+  "baseline": {
+    "previous_receipt_components": 13,
+    "target_components": 14,
+    "baseline_policy_and_receipt_not_rewritten": true,
+    "ordinary_policy_validation_remains_strict": true,
+    "ordinary_capture_still_revalidates_policy_after_copy": true,
+    "prepared_context_bound_to_exact_policy_manifest_and_receipt_hashes": true,
+    "only_reviewed_metadata_component_and_existing_dependencies_added": true,
+    "prepared_context_does_not_grant_live_authority": true
+  },
+  "capture_fence": {
+    "worker_owned_private_data_not_execution_authority": true,
+    "intent_durable_before_copy": true,
+    "existing_operation_refused_even_with_new_context_or_target": true,
+    "partial_capture_retained_without_recopy": true,
+    "lost_completion_reconciles_existing_complete_artifact": true,
+    "completed_reconciliation_preserves_inode_and_bytes": true,
+    "source_policy_change_during_copy_retains_bootstrap_artifact": true,
+    "remote_dispatch_authorized_by_reconciliation": false,
+    "unsafe_directory_marker_links_and_lineage_tampering_refused": true
+  },
+  "targeted_JS_units": {
+    "offsite_capture_and_bootstrap_cases": 35,
+    "capture_fence_cases": 4,
+    "daily_worker_cases": 25,
+    "total": 64,
+    "failures": 0,
+    "skipped": 0
+  },
+  "isolated_Root_artifact_fixture": {
+    "actual_fixed_Root_export_CLI_with_fixture_bindings": true,
+    "source_frame": "synthetic_valid_protocol_baseline",
+    "application_payloads": "synthetic",
+    "baseline_receipt_components": 13,
+    "actual_capture_and_staged_restore_components": 14,
+    "all_Root_snapshot_bytes_equal_staged_restore": true,
+    "actual_historical_restore_consumed_ID_and_disabled_grant_preserved": true,
+    "Root_source_grant_bytes_unchanged": true,
+    "Root_export_successful_exit": true,
+    "owned_containers_removed": 1,
+    "household_states_and_StartedAt_unchanged": true,
+    "network": "none",
+    "Docker_socket_mounted": false,
+    "service_commands": 0,
+    "remote_calls": 0,
+    "later_current_code_reconciliation": "existing_artifact_read_only_no_Root_helper_or_recopy_or_fence_write",
+    "seven_application_runtime_restores_proven": false
+  },
+  "pending": [
+    "reviewed_Root_one_shot_actor_approval_expiry_and_immutable_worker_binding",
+    "actual_capture_upload_worker_integration_with_consumed_remote_intent",
+    "real_encrypted_remote_receipt_and_file_restore_before_policy_promotion",
+    "approved_quota_preserving_policy_and_canonical_13_to_14_transition",
+    "whole_outage_budget_updater_CID_lifecycle_and_full_installation_package",
+    "specific_owner_approval_before_any_activation",
+    "production_HA_MQTT_coverage_latency24h_and_PC_off_autonomy",
+    "seven_isolated_functional_application_restores"
+  ]
+}

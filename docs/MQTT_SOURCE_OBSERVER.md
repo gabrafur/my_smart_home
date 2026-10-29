@@ -706,6 +706,48 @@ separa a prova em fixtures da implantação. A recuperação não transforma
 hashes em prova de origem autenticada e não comprova as sete aplicações, a
 continuidade residencial de 24 horas nem a primeira cópia externa real.
 
+### Preparo da primeira captura de 14 componentes
+
+O caminho recorrente continua exigindo um recibo compatível com a cobertura
+aprovada. `prepareMetadataBootstrap` prepara outro contexto para a primeira
+captura: valida a política original de 13 componentes e seu SHA esperado, lê
+os bytes privados por descritor e conserva o recibo original. Acrescenta somente
+o item MQTT revisado e as dependências já presentes no manifesto aprovado.
+Não altera a política no disco, não pede backup remoto nem concede autoridade.
+
+`captureMetadataBootstrapBundle` usa o mesmo núcleo de cópia e verificação,
+com o snapshot ligado ao ID planejado. O bundle inclui a origem em
+`bootstrap`: hashes da política, manifesto e recibo anteriores, contagens
+13/14 e `authority_from_artifact: false`. O contexto só vale no processo que o
+preparou; uma cópia JSON não substitui esse preparo. A validação normal não
+ganha flag para aceitar um recibo histórico incompatível. A captura normal
+também conserva a releitura da política depois da cópia.
+
+O módulo `offsite-bootstrap-state.mjs` grava um fence de dados no diretório
+privado do worker antes da cópia. O mesmo ID não inicia outra cópia, inclusive
+em outro contexto ou destino. Uma falha conserva o artefato parcial; um retorno
+perdido pode ser conferido por `reconcileMetadataBootstrapCapture`, que apenas
+valida o artefato completo e seus hashes. Uma conclusão já registrada conserva
+inode e bytes. Essa reconciliação não autoriza upload, retry, retomada de serviço
+ou promoção de política. O fence pertence ao worker e não é recibo privilegiado
+nem autorização de execução.
+
+O [aceite do preparo e captura inicial](../scripts/raspberry-mcp/offsite-first-metadata.acceptance.json)
+separa os testes da operação residencial. Um CLI Root isolado produziu o
+snapshot, e o novo caminho capturou/restaurou 14 componentes sintéticos
+preservando a política e o recibo de 13. Os bytes do snapshot foram preservados
+no staging e o restore histórico manteve o grant desabilitado e o ID consumido.
+O contêiner foi removido, sem comandos de serviço ou rede nem mudança no
+lifecycle residencial. A conferência posterior com o código corrente não
+refez a exportação nem a cópia. Esse ensaio não comprova envio criptografado
+real ou as sete aplicações.
+
+Ainda faltam o ator Root de uso único, seu vínculo ao worker imutável e à
+aprovação específica, o registro consumido antes da solicitação remota e a
+reconciliação dessa solicitação sem reenvio. A promoção exige recibo real
+criptografado e restore de arquivos, preservação do recibo anterior, limites de
+quota e transição canônica para 14. O pacote completo permanece sem ativação.
+
 ## Revogação, reversão e recuperação
 
 Revogação fecha a autorização e remove o marcador positivo. O plugin verifica

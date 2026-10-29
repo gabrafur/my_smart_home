@@ -12,6 +12,7 @@ import { probeService } from "./container-readiness.mjs";
 import { applyRestore, loadManifest, validateManifest, verifyBundle } from "./restore.mjs";
 import { loadBackupMaintenance, captureWithOrderedStops } from "./mqtt-maintenance-backup.mjs";
 import { verifyBackupSnapshot } from "./mqtt-backup-snapshot.mjs";
+import {beginCapture,completeCapture,readCapture,readBootstrapInput} from './offsite-bootstrap-state.mjs';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const defaultPolicyFile = path.join(repoRoot, ".local-secrets/offsite-backup-policy.json");
@@ -36,6 +37,78 @@ export function offsiteManifest(base,policy) {
 function configuration(manifestFile,policyFile) {
   const raw=readPolicy(policyFile),manifest=offsiteManifest(loadManifest(manifestFile),raw);
   return {manifest,policy:validateOffsitePolicy(raw,manifest)};
+}
+const bootstrapPlans=new WeakMap();
+const canonicalBootstrap=value=>JSON.stringify(value&&typeof value==='object'&&!Array.isArray(value)
+  ?Object.fromEntries(Object.keys(value).sort().map(key=>[key,JSON.parse(canonicalBootstrap(value[key]))]))
+  :Array.isArray(value)?value.map(child=>JSON.parse(canonicalBootstrap(child))):value);
+const bootstrapDigest=value=>crypto.createHash('sha256').update(canonicalBootstrap(value)).digest('hex');
+
+// A preparation context is not execution authority. The reviewed one-shot
+// executor must bind this descriptor to its separate approval and intent.
+export function prepareMetadataBootstrap({manifestFile=path.join(repoRoot,'restore/private-state-manifest.yaml'),
+  policyFile=defaultPolicyFile,operationId,expectedPolicySha256,stateDirectory}={}) {
+  if(typeof operationId!=='string'||!/^[a-f0-9]{32}$/.test(operationId)||
+    typeof expectedPolicySha256!=='string'||!/^[a-f0-9]{64}$/.test(expectedPolicySha256))fail('bootstrap identity is unconfirmed');
+  const policyRaw=readBootstrapInput(policyFile,{privatePolicy:true}),manifestRaw=readBootstrapInput(manifestFile);
+  if(crypto.createHash('sha256').update(policyRaw).digest('hex')!==expectedPolicySha256)fail('bootstrap baseline policy changed');
+  const raw=JSON.parse(policyRaw),baseManifest=offsiteManifest(validateManifest(JSON.parse(manifestRaw)),raw);
+  const baseline={manifest:baseManifest,policy:validateOffsitePolicy(raw,baseManifest)};
+  if(baseline.policy.compose_bundle.coverage.length!==13||baseline.policy.compose_bundle.mqtt_metadata!==undefined||
+    baseline.policy.compose_bundle.coverage.includes(mqttMetadataComponent))fail('bootstrap requires the verified thirteen-component baseline');
+  const target=structuredClone(baseline.policy);
+  target.compose_bundle.coverage.push(mqttMetadataComponent);
+  target.compose_bundle.mqtt_metadata={schema_version:1,enabled:true,component_manifest_sha256:mqttMetadataItemSha256,restore_authority:'data_only_disabled'};
+  const manifest=offsiteManifest(baseline.manifest,target);
+  const baselineDependencies=new Set(composeBundleManifest(baseline.manifest,baseline.policy).items.map(item=>item.logical_name));
+  const additionalDependencies=composeBundleManifest(manifest,target).items.filter(item=>!baselineDependencies.has(item.logical_name));
+  if(additionalDependencies.length!==1||additionalDependencies[0].logical_name!==mqttMetadataComponent)
+    fail('bootstrap target dependencies are outside the reviewed coverage');
+  const descriptor={schema_version:1,scope:'mqtt_metadata_first_backup_v1',operation_id:operationId,
+    baseline_policy_sha256:expectedPolicySha256,baseline_manifest_sha256:crypto.createHash('sha256').update(manifestRaw).digest('hex'),
+    baseline_receipt_sha256:bootstrapDigest(baseline.policy.compose_bundle.last_verified_external_backup),
+    metadata_component_manifest_sha256:mqttMetadataItemSha256,baseline_components:13,target_components:14,
+    authority_from_artifact:false};
+  const plan=Object.freeze({...descriptor,requires_specific_approval:true,live_operations_authorized:false});
+  bootstrapPlans.set(plan,{manifest,policy:target,descriptor,manifestFile,policyFile,stateDirectory});return plan;
+}
+function bootstrapConfiguration(plan,{checkBaseline=false}={}) {
+  const config=bootstrapPlans.get(plan);
+  if(!config)fail('bootstrap context was not prepared in this process');
+  if(checkBaseline&&(crypto.createHash('sha256').update(readBootstrapInput(config.policyFile,{privatePolicy:true})).digest('hex')!==plan.baseline_policy_sha256||
+    crypto.createHash('sha256').update(readBootstrapInput(config.manifestFile)).digest('hex')!==plan.baseline_manifest_sha256||sha256File(mqttMetadataItemFile)!==plan.metadata_component_manifest_sha256))
+    fail('bootstrap baseline or component definition changed');
+  return config;
+}
+export function captureMetadataBootstrapBundle(outputDir,{plan,...options}={}) {
+  const config=bootstrapConfiguration(plan,{checkBaseline:true});
+  if(options.mqttSnapshot?.operation_id!==plan.operation_id)fail('bootstrap snapshot operation mismatch');
+  const target=assertSafePrivateOutput(outputDir,options.root??repoRoot);
+  beginCapture(config.stateDirectory,plan.operation_id,bootstrapDigest(config.descriptor),target);
+  const capture=captureConfiguredBundle(target,options,config,{bootstrap:config.descriptor,preserveFailure:true,
+    verifyCompletion:directory=>verifyMetadataBootstrapBundle(directory,{plan})});
+  bootstrapConfiguration(plan,{checkBaseline:true});
+  completeCapture(config.stateDirectory,plan.operation_id,bootstrapDigest(config.descriptor),target);
+  return {...capture,operation:'offsite-metadata-bootstrap-capture',operation_id:plan.operation_id,
+    baseline_components:13,policy_promoted:false,remote_dispatch_authorized:false};
+}
+export function verifyMetadataBootstrapBundle(backupDir,{plan}={}) {
+  const config=bootstrapConfiguration(plan);const result=verifyConfiguredBundle(backupDir,config);
+  const value=JSON.parse(fs.readFileSync(path.join(backupDir,'bundle.json'),'utf8'));
+  if(canonicalBootstrap(value.bootstrap)!==canonicalBootstrap(config.descriptor))fail('bootstrap bundle lineage mismatch');
+  verifyBackupSnapshot(path.resolve(backupDir,'components',mqttMetadataComponent,'payload'),{operationId:plan.operation_id});
+  return result;
+}
+export function reconcileMetadataBootstrapCapture({plan}={}) {
+  const config=bootstrapConfiguration(plan),record=readCapture(config.stateDirectory,plan.operation_id,bootstrapDigest(config.descriptor));
+  verifyMetadataBootstrapBundle(record.target,{plan});
+  completeCapture(config.stateDirectory,plan.operation_id,bootstrapDigest(config.descriptor),record.target);
+  return {state:'bootstrap_data_capture_complete',operation_id:plan.operation_id,components:14,
+    automatic_retry:false,remote_dispatch_authorized:false,policy_promoted:false};
+}
+export function restoreMetadataBootstrapBundle(backupDir,destination,{plan,...options}={}) {
+  const config=bootstrapConfiguration(plan);verifyMetadataBootstrapBundle(backupDir,{plan});
+  return restoreConfiguredBundle(backupDir,destination,options,config);
 }
 const require = createRequire(import.meta.url);
 const WebSocket = require("../nodered/node_modules/ws");
@@ -817,6 +890,9 @@ export function verifyOffsiteBundle(backupDir, {
   policyFile = defaultPolicyFile,
 } = {}) {
   const {manifest,policy} = configuration(manifestFile,policyFile);
+  return verifyConfiguredBundle(backupDir,{manifest,policy});
+}
+function verifyConfiguredBundle(backupDir,{manifest,policy}) {
   const expected = composeBundleManifest(manifest, policy);
   const result = verifyBundle(backupDir, {
     canonicalManifest: expected,
@@ -851,6 +927,14 @@ export function captureOffsiteBundle(outputDir, {
   mqttSnapshot = null,
 } = {}) {
   const {manifest,policy} = configuration(manifestFile,policyFile);
+  return captureConfiguredBundle(outputDir,{root,runningServices,copyUnreadableSource,repositoryCommit,repositoryBranch,createdAt,architecture,mqttSnapshot},
+    {manifest,policy},{verifyCompletion:target=>verifyOffsiteBundle(target,{manifestFile,policyFile})});
+}
+function captureConfiguredBundle(outputDir,{
+  root=repoRoot,runningServices=null,copyUnreadableSource=copyFromStoppedContainer,
+  repositoryCommit=currentGitValue(['rev-parse','HEAD'],''),repositoryBranch=currentGitValue(['branch','--show-current'],'detached'),
+  createdAt=new Date().toISOString(),architecture=process.arch,mqttSnapshot=null,
+}={}, {manifest,policy}, {bootstrap=null,preserveFailure=false,verifyCompletion=null}={}) {
   const target = assertSafePrivateOutput(outputDir, root);
   const itemByName = new Map(manifest.items.map((item) => [item.logical_name, item]));
   const items = policy.compose_bundle.coverage.map((name) => itemByName.get(name));
@@ -940,8 +1024,9 @@ export function captureOffsiteBundle(outputDir, {
       checksums: "checksums.json",
       verification_status: "verified",
       encryption_method: "external-required",
+      ...(bootstrap?{bootstrap}:{}),
     });
-    const verification = verifyOffsiteBundle(target, { manifestFile, policyFile });
+    const verification = verifyCompletion?verifyCompletion(target):verifyConfiguredBundle(target, {manifest,policy});
     return {
       operation: "offsite-backup-capture",
       captured: true,
@@ -953,7 +1038,7 @@ export function captureOffsiteBundle(outputDir, {
       values_printed: false,
     };
   } catch (error) {
-    fs.rmSync(target, { recursive: true, force: true });
+    if(!preserveFailure)fs.rmSync(target, { recursive: true, force: true });
     throw error;
   }
 }
@@ -964,6 +1049,9 @@ export function restoreOffsiteBundle(backupDir, destination, {
   repositoryRoot = repoRoot,
 } = {}) {
   const {manifest,policy} = configuration(manifestFile,policyFile);
+  return restoreConfiguredBundle(backupDir,destination,{repositoryRoot},{manifest,policy});
+}
+function restoreConfiguredBundle(backupDir,destination,{repositoryRoot=repoRoot}={}, {manifest,policy}) {
   const expected = composeBundleManifest(manifest, policy);
   if(expected.items.some(i=>i.logical_name===mqttMetadataComponent))
     verifyBackupSnapshot(path.resolve(backupDir,'components',mqttMetadataComponent,'payload'));
