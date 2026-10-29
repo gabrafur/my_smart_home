@@ -36,6 +36,10 @@ class Tests(unittest.TestCase):
    with self.assertRaisesRegex(RecoveryUnavailable,"consumer_busy"):snapshot_data(self.source,self.snap)
    self.assertEqual((self.source.consumer/"state.json").read_bytes(),b'{"synthetic":1}')
   finally:os.close(fd)
+ def test_unlisted_file_is_not_silently_omitted_from_restore(self):
+  snapshot_data(self.source,self.snap);p=self.snap/'authorization.json';p.write_bytes(b'{}');p.chmod(0o600)
+  with self.assertRaisesRegex(RecoveryUnavailable,'inventory_changed'):restore_data(self.dest,self.snap)
+  self.assertFalse(self.dest.ledger.exists())
  def test_tampered_copy_refused_before_writing_destination(self):
   snapshot_data(self.source,self.snap);(self.snap/"consumer-state.json").write_bytes(b"altered")
   with self.assertRaisesRegex(RecoveryUnavailable,"digest_mismatch"):restore_data(self.dest,self.snap)

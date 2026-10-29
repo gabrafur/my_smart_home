@@ -10,7 +10,7 @@ import fcntl,hashlib,json,os,re,stat
 CORE=('activated_reader.py','authorization_gate.py','backup_cli.py','backup_rescue.py','backup_snapshot.py','deployment_files.py',
       'file_bridge.py','handoff.py','handoff_ledger.py','image_audit_reader.py','maintenance_backend.py',
       'maintenance_archive.py','maintenance_controller.py','maintenance_journal.py','maintenance_plan.py','maintenance_policy.py','maintenance_rebind.py','maintenance_status.py','protocol.py',
-      'receiver_ledger.py','recovery_data.py','socket_reader.py','source_binding.py','source_image_audit.py','source_rebind.py',
+      'receiver_ledger.py','recovery_data.py','restored_history.py','socket_reader.py','source_binding.py','source_image_audit.py','source_rebind.py',
       'status_writer.py','worker.py','worker_config.py')
 CONSUMER=('canvas_checkpoint.mjs','consumer_protocol.mjs','handoff_schema.json','consumer_state.mjs',
           'consumer_store.mjs','consumer_cli.mjs','consumer-command.sh','reader_status.mjs','maintenance_checkpoint.mjs')

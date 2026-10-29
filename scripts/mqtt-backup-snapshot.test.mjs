@@ -10,10 +10,13 @@ import {receiveBackupSnapshot,exportBackupSnapshot,verifyBackupSnapshot,snapshot
 const sorted=v=>Array.isArray(v)?v.map(sorted):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,sorted(v[k])])):v;
 const canonical=v=>JSON.stringify(sorted(v)),sha=v=>crypto.createHash('sha256').update(v).digest('hex');
 const operationId='a'.repeat(32);
-function fixture(t,extra=0) {
+function fixture(t,extra=0,restored=false) {
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'mqtt-snapshot-transport-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const payloads=new Map(['data/state.sqlite3','data/consumer-state.json','data/manifest.json','history/maintenance.json'].map(n=>[n,Buffer.from('SYNTHETIC_'+n)]));
  for(let i=0;i<extra;i++)payloads.set('history/maintenance-archive-'+i.toString(16).padStart(32,'0')+'.json',Buffer.from('{}'));
+ if(restored)for(const name of ['restored-history.json','restored-operation-'+operationId+'.json',
+   ...['backup-plan','backup-rescue','binding','source-policy-seal'].map(kind=>'restored-receipt-'+kind+'-'+operationId+'.json')])
+  payloads.set('history/'+name,Buffer.from('SYNTHETIC_HISTORICAL_DATA'));
  const metadata={schema_version:1,scope:snapshotScope,operation_id:operationId,captured_at_utc:'2026-10-28T10:00:00+00:00',
    consistency:'coordinated_metadata_cut',full24h_proven:false,current_authority_included:false};
  const rows=[...payloads].map(([name,data])=>({path:name,bytes:data.length,sha256:sha(data),role:name.startsWith('data/')?'observer_data':'historical_maintenance_data_not_authority'}));
@@ -69,5 +72,15 @@ test('on-disk verification rejects coercible operation IDs and timestamps withou
  assert.equal(verifyBackupSnapshot(f.destination).files,4);
  for(const delta of [{operation_id:[operationId]},{captured_at_utc:'2026'},{captured_at_utc:'2026-10-28T10:00:00+01:00'}]){
   fs.writeFileSync(file,canonical({...original,...delta}));assert.throws(()=>verifyBackupSnapshot(f.destination));
+ }
+});
+test('restored history survives streaming and verification without admitting live authority paths',async t=>{
+ const f=fixture(t,0,true),invoke=()=>{const child=new EventEmitter();child.stdout=Readable.from([f.encoded()]);child.kill=()=>true;setImmediate(()=>child.emit('close',0,null));return child;};
+ await exportBackupSnapshot(f.destination,{operationId,helperFile:'/opt/raspberry-mqtt-observation/backup_cli.py',maximumCommandMs:1000,invoke});
+ assert.equal(verifyBackupSnapshot(f.destination).files,10);
+ for(const [name,raw]of f.payloads)assert.deepEqual(fs.readFileSync(path.join(f.destination,name)),raw);
+ for(const name of ['history/authorization.json','history/restored-source-policy.json','history/restored-operation-bad.json']){
+  const g=fixture(t,0,true);g.frames[1].path=name;
+  await assert.rejects(receiveBackupSnapshot(Readable.from([g.encoded()]),g.destination,{operationId}));
  }
 });

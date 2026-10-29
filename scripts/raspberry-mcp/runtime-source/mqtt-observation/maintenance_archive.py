@@ -55,7 +55,7 @@ class Archive:
     def checked(self,snapshot):
         """Bind an append-only index to the active file, including crash tails."""
         body=snapshot['body']if snapshot else {'schema_version':1,'operations':[]}
-        count=uint(body['archived_operations'],64)if body['schema_version']==2 else 0
+        count=uint(body['archived_operations'],64)if body['schema_version']>=2 else 0
         anchor=body.get('archive_sha256');index=self.index()
         rows=index[1]['body']['operations']if index else []
         if len(rows)<count or (count==0 and anchor is not None):raise Error('maintenance_archive_anchor_changed')

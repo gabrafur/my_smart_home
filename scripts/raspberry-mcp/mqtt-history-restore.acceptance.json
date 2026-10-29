@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "scope": "historical_only_metadata_restore_and_consumed_ID_fencing",
+  "verified_on": "2026-10-29",
+  "production_installed": false,
+  "source_or_restore_access_activated": false,
+  "full24h_proven": false,
+  "static_file_transaction_targets": 48,
+  "Root_static_modules": 29,
+  "isolated_Root_units": {
+    "tests": 368,
+    "failures": 0,
+    "skipped": 0,
+    "owned_container_removed": true,
+    "source_hashes_unchanged": true
+  },
+  "directed_JS_units": {
+    "tests": 73,
+    "failures": 0,
+    "skipped": 0
+  },
+  "historical_restore": {
+    "original_operation_chains_and_approvals_preserved": true,
+    "old_receipts_installed_only_as_historical_data": true,
+    "old_live_controller_receipt_names_absent": true,
+    "consumed_ID_refused_before_backend_access": true,
+    "current_authorization_disabled_and_bytes_unchanged": true,
+    "pending_fence_published_before_data": true,
+    "incomplete_restore_never_recopied_by_reconciliation": true,
+    "complete_restore_lost_return_reconciled_without_data_rewrite": true,
+    "unsafe_or_missing_index_blocks_new_operations": true,
+    "existing_active_recovery_survives_missing_old_index": true,
+    "second_backup_restore_preserves_older_IDs_and_provenance": true,
+    "maximum_imported_operations": 4112,
+    "maximum_provenance_generations": 64,
+    "maximum_record_bytes": 69632,
+    "maximum_snapshot_files": 41136,
+    "maximum_snapshot_manifest_bytes": 16777216
+  },
+  "native_fixture": {
+    "network": "none",
+    "residential_mounts_or_data": false,
+    "actual_fixed_Root_export_CLI": true,
+    "actual_14_component_capture_and_staged_restore": true,
+    "other_application_payloads": "synthetic",
+    "Root_SQLite_body_equals_snapshot": true,
+    "actual_unprivileged_consumer_CLI_readback_matches": true,
+    "restored_consumer_ACK_frames": "29",
+    "read_only_reconciliation_writes_none": true,
+    "consumed_old_ID_blocked": true,
+    "historical_files": 5,
+    "verified_protocol_frames": 65,
+    "ACK_receipts": 12,
+    "maximum_source_to_consumer_ACK_upper_ns": "4142069701",
+    "all16_maintenance_comparisons": true,
+    "actual_controller_effects": 4,
+    "source_and_consumer_CIDs_preserved": true,
+    "Root_reader_unchanged": true,
+    "owned_containers_removed": 3,
+    "household_services_unchanged": true,
+    "application_runtime_restores_proven": false
+  },
+  "pending": [
+    "fixed_reviewed_restore_executor_and_specific_scope_approval",
+    "continued_household_backup_with_metadata_closed_or_revoked",
+    "real_initial_14_component_encrypted_backup_bootstrap",
+    "whole_outage_budget_alignment_and_container_updater_CID_recreation",
+    "full_installer_scoped_MCP_revoke_and_rollback",
+    "production_HA_MQTT_coverage_latency24h_and_PC_off_autonomy",
+    "all_seven_isolated_application_runtime_restores"
+  ]
+}

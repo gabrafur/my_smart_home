@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 47 destinos: 28 módulos Root, nove
+do pacote. Seu catálogo fechado contém 48 destinos: 29 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -353,8 +353,9 @@ gerador e conferir seu sucesso antes de publicar o backup: uma lista parcial
 não é snapshot verificado. Autorizações, políticas atuais, pedidos preparados,
 locks e fontes livres ficam fora dessa saída. Recibos históricos podem conter
 bytes de políticas antigas como evidência; esses bytes nunca são autorização
-para restaurar uma política ou reabrir coleta. Essa interface ainda precisa do
-transporte protegido e do restore de histórico separados do restore de dados.
+para restaurar uma política ou reabrir coleta. O transporte protegido e a
+restauração em namespace histórico estão descritos abaixo; sua instalação
+e autorização operacional continuam separadas da publicação do código.
 
 O registro inclui a janela armada, intents anteriores aos efeitos, parada e
 fechamento da origem, corte confirmado por ACK, parada e início do consumidor,
@@ -527,8 +528,8 @@ comprova os quatro comandos reais em dois contêineres próprios, preservação 
 leitor e do vínculo, snapshot dos metadados e retomada após falha sintética na
 captura da aplicação. Não comprova o restore dos sete serviços nem a execução
 do helper com permissões instaladas em produção. Antes de ativar, faltam o
-bootstrap da primeira cópia externa real de 14 componentes, o restore do
-histórico sem reaplicar autoridade, a continuidade dos backups com telemetria
+bootstrap da primeira cópia externa real de 14 componentes, a ativação do
+restore histórico revisado, a continuidade dos backups com telemetria
 fechada, o acordo de prazos com o orçamento de indisponibilidade e o
 pacote completo de instalação/revogação/reversão com aprovação específica.
 
@@ -544,7 +545,8 @@ O ledger vivo mantém seu próprio modo de journal e contadores.
 
 A saída é um fluxo de quadros limitados, com chunks de até 32 KiB, SHA-256 de
 cada arquivo, papéis explícitos de dados e manifesto final. O limite total é
-64 MiB e 20.566 arquivos. O receptor exige inventário exato, EOF e saída zero
+64 MiB e 41.136 arquivos, incluindo histórico restaurado; o manifesto tem
+limite de 16 MiB. O receptor exige inventário exato, EOF e saída zero
 do produtor antes de publicar o manifesto local. Truncamento, campos extras,
 caminhos não revisados, mudança do contrato ou divergência de hash recusam a
 captura. O worker aguarda essa captura assíncrona terminar antes de retomar os
@@ -572,8 +574,8 @@ bootstrap real desse novo conjunto ainda precisa de procedimento próprio.
 O restore genérico confere novamente o snapshot e grava somente o artefato em
 `.local-state/mqtt-observation-restored-data`. Ele não instala arquivos no
 journal ativo, restaura autorização, aplica políticas antigas ou inicia coleta.
-Recuperar o histórico sob uma nova autoridade, preservando todos os IDs
-consumidos sem executar os intents antigos, continua sendo uma etapa separada.
+Recuperar o histórico sob uma nova autoridade exige a etapa separada abaixo,
+com destino vazio e autorização atual desabilitada.
 
 O ensaio nativo usou somente broker e Node-RED próprios, sem rede ou dados da
 casa. Exercitou o CLI real com caminhos de fixture, saída zero do produtor,
@@ -583,6 +585,45 @@ leitor, CIDs, ACKs e comparações do controlador; isso não comprova o restore
 funcional das sete aplicações nem continuidade de 24 horas em produção.
 O [aceite do snapshot e transporte](../scripts/raspberry-mcp/mqtt-backup-snapshot.acceptance.json)
 separa essas provas das pendências de ativação e da primeira cópia externa real.
+
+### Restauração histórica sem reutilizar permissões
+
+`restored_history.py` valida o artefato completo, o inventário interno de dados,
+as cadeias ativas/arquivadas e seus recibos antes de escrever no destino.
+Ele recusa arquivos históricos não associados às operações declaradas. Não
+existe uma ferramenta MCP que aceite caminhos livres para esse procedimento:
+a ligação a um executor fixo ainda pertence ao pacote de ativação revisado.
+
+O destino precisa estar vazio, com diretórios e proprietários esperados e
+autorização atual desabilitada. Antes de copiar dados, a restauração publica
+um journal v3 com `history_restore_state=pending`, hash do artefato e hash da
+autorização atual. Esse bloqueio impede admissão, continuação e exportação de
+operações enquanto a cópia estiver incompleta. Os dados e sua autorização
+permanecem separados; não são instalados grants, políticas de origem ou pedidos
+preparados vindos do backup.
+
+As cadeias antigas ficam em `restored-operation-<id>.json` e seus recibos em
+`restored-receipt-<tipo>-<id>.json`, nunca sob os nomes usados pelo controlador
+ativo. `restored-history.json` ancora até 4.112 IDs consumidos e 64 gerações de
+proveniência. O journal v3 ancora esse índice; ID importado é recusado antes
+de acessar o executor de efeitos. Índice ausente, alterado ou inseguro bloqueia
+novas operações. Uma operação atual já admitida pode continuar seu registro
+de recuperação se o índice histórico ficar indisponível. A rotação do conjunto
+ativo preserva os campos v3. Um backup posterior inclui o histórico importado,
+sem substituir sua aprovação original pela atual.
+
+Somente depois da conferência dos arquivos, do SQLite e do estado/ACK do
+consumidor o bloqueio passa a `complete`. Após falha ou perda de retorno,
+`reconcile=True` confere os bytes já existentes: não recopia arquivos, não
+sobrescreve destino, não executa intents e não reabre coleta. Se a cópia está
+incompleta, o bloqueio permanece. Se todos os dados estão duráveis, pode apenas
+concluir o bloqueio; se já concluído, a reconciliação é somente leitura.
+Autorização alterada ou ativada durante esse processo impede a conclusão.
+
+O [aceite da restauração histórica](../scripts/raspberry-mcp/mqtt-history-restore.acceptance.json)
+separa a prova em fixtures da implantação. A recuperação não transforma
+hashes em prova de origem autenticada e não comprova as sete aplicações, a
+continuidade residencial de 24 horas nem a primeira cópia externa real.
 
 ## Revogação, reversão e recuperação
 

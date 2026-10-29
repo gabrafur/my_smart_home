@@ -102,12 +102,18 @@ def validate_operation(op):
     return op
 def validate_snapshot(value):
     closed(value,['body','sha256']);body=value['body']
-    need(type(body)is dict and type(body.get('schema_version'))is int and body['schema_version']in(1,2))
-    closed(body,['schema_version','revision','operations']+(['archived_operations','archive_sha256']if body['schema_version']==2 else []))
+    need(type(body)is dict and type(body.get('schema_version'))is int and body['schema_version']in(1,2,3))
+    closed(body,['schema_version','revision','operations']+(['archived_operations','archive_sha256']if body['schema_version']>=2 else [])+
+      (['restored_operations','restored_history_sha256','history_restore_state','restore_snapshot_sha256','restore_authorization_sha256']if body['schema_version']==3 else []))
     uint(body['revision'],64)
-    if body['schema_version']==2:
+    if body['schema_version']>=2:
         count=uint(body['archived_operations'],64)
         need((count==0 and body['archive_sha256']is None)or(count>0 and hex64(body['archive_sha256'])))
+    if body['schema_version']==3:
+        uint(body['restored_operations'],64)
+        need(all(hex64(body[k])for k in('restored_history_sha256','restore_snapshot_sha256','restore_authorization_sha256')))
+        need(body['history_restore_state']in('pending','complete'))
+        if body['history_restore_state']=='pending':need(body['operations']==[])
     need(type(body['operations'])is list and len(body['operations'])<=MAX_OPERATIONS)
     need(len({op['operation_id']for op in body['operations']})==len(body['operations']))
     for op in body['operations']:validate_operation(op)
@@ -136,8 +142,12 @@ class Journal:
         value=self._read();return copy.deepcopy(value)
     def find(self,operation_id):
         value=self._read()
+        if value and value['body']['schema_version']==3:
+            need(value['body']['history_restore_state']=='complete','maintenance_restore_pending')
         op=next((v for v in(value['body']['operations']if value else[])if v['operation_id']==operation_id),None)
         if op is not None:return copy.deepcopy(op)
+        from restored_history import History
+        need(not History(self.tx).consumed(operation_id,value),'maintenance_historical_operation_consumed')
         from maintenance_archive import Archive
         archive=Archive(self.tx);archive.checked(value)
         return archive.find(operation_id)
@@ -150,7 +160,7 @@ class Journal:
         archive=Archive(self.tx);archive.checked(old);archive.preserve(op)
         body=copy.deepcopy(old['body']);body['operations'].remove(op)
         index=archive.index()[1]
-        body.update(schema_version=2,archived_operations=str(len(index['body']['operations'])),archive_sha256=index['sha256'])
+        body.update(schema_version=max(2,body['schema_version']),archived_operations=str(len(index['body']['operations'])),archive_sha256=index['sha256'])
         body['revision']=str(uint(body['revision'],64)+1)
         value={'body':body,'sha256':digest(body)};validate_snapshot(value)
         try:
@@ -167,6 +177,8 @@ class Journal:
         """
         from maintenance_archive import Archive,MAX_OPERATION_BYTES
         snapshot=self._read();archive=Archive(self.tx);index=archive.checked(snapshot)
+        from restored_history import History
+        restored=History(self.tx);restored.checked(snapshot)
         active=snapshot['body']['operations']if snapshot else []
         if snapshot is not None:yield 'maintenance.json',canonical(snapshot)
         if index is not None:yield 'maintenance-archive.json',index[0]
@@ -190,9 +202,12 @@ class Journal:
                   and body.get('approval_sha256')==op['approval_sha256']and value['sha256']==digest(body)
                   and len(receipt)<=MAX_OPERATION_BYTES,'maintenance_history_receipt_invalid')
                 yield name,receipt
+        yield from restored.files(snapshot)
         need(self._read()==snapshot and archive.index()==index,'maintenance_history_changed')
     def append(self,operation_id,phase,facts,*,at_ns,clock_domain_sha256,expected_previous_sha256):
         need(not self.read_only,'maintenance_read_only');old=self._read()
+        if old and old['body']['schema_version']==3:
+            need(old['body']['history_restore_state']=='complete','maintenance_restore_pending')
         body=copy.deepcopy(old['body'])if old else {'schema_version':1,'revision':'0','operations':[]}
         op=next((v for v in body['operations']if v['operation_id']==operation_id),None)
         if op is None:

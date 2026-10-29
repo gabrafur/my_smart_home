@@ -4,7 +4,7 @@ import path from 'node:path';
 import {spawn} from 'node:child_process';
 
 export const snapshotScope='mqtt_metadata_backup_snapshot_v1';
-const MAX_BYTES=64*1048576,MAX_FILES=20566,MAX_LINE=131072;
+const MAX_BYTES=64*1048576,MAX_FILES=41136,MAX_LINE=131072;
 const fail=()=>{throw Object.assign(new Error('Protected MQTT backup snapshot is unconfirmed'),{code:'MQTT_METADATA_SNAPSHOT_UNCONFIRMED'});};
 const need=value=>{if(!value)fail();};
 const keys=(value,names)=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).sort().join()===names.slice().sort().join();
@@ -19,6 +19,9 @@ function limit(name) {
   if(Object.hasOwn(data,name))return data[name];
   if(/^history\/maintenance(?:-archive)?\.json$/.test(name))return 1048576;
   if(/^history\/(?:maintenance-archive-|backup-plan-|backup-rescue-|binding-|source-policy-seal-)[a-f0-9]{32}\.json$/.test(name))return 65536;
+  if(name==='history/restored-history.json')return 1048576;
+  if(/^history\/restored-operation-[a-f0-9]{32}\.json$/.test(name))return 69632;
+  if(/^history\/restored-receipt-(?:backup-plan|backup-rescue|binding|source-policy-seal)-[a-f0-9]{32}\.json$/.test(name))return 65536;
   fail();
 }
 const role=name=>name.startsWith('data/')?'observer_data':'historical_maintenance_data_not_authority';
@@ -48,7 +51,7 @@ export function verifyBackupSnapshot(directory,{operationId}={}) {
     return info;
   }
   metadata(directory,true);const file=path.join(directory,'backup-snapshot.json');
-  need(metadata(file,false).size<=8*1048576);
+  need(metadata(file,false).size<=16*1048576);
   const raw=fs.readFileSync(file),manifest=JSON.parse(raw.toString('utf8'));need(canonical(manifest)===raw.toString('utf8'));
   const {names,bytes}=checkedManifest(manifest,operationId),actual=new Set();
   for(const folder of fs.readdirSync(directory)) {

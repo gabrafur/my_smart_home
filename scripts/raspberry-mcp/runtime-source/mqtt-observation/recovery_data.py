@@ -97,18 +97,8 @@ def snapshot_data(paths,destination):
   if source is not None:source.close()
   if lock is not None:os.close(lock)
   # Failed snapshots are retained for review; retention is observe-only.
-def restore_data(paths,snapshot):
- require(os.geteuid()==0,"recovery_role_invalid")
- directory(paths.state,0,0,0o700);directory(paths.runtime,0,0,0o755)
- directory(paths.consumer,1000,1000,0o700);snapshot=directory(snapshot,0,0,0o700)
- gate=AuthorizationGate(paths.runtime,paths.authorization)
- try:
-  current,_=gate._read();require(current["enabled"]is False,"restore_requires_disabled_authorization")
-  gate.refresh()
- finally:gate.close()
- before=read(paths.authorization,0,0,0o600,4096)
- require(not paths.ledger.exists()and not any((paths.consumer/n).exists()for n in ["state.json","ack.json","prepared.json","lock"]),
-  "restore_existing_state_refused")
+def validated_data(snapshot):
+ snapshot=directory(snapshot,0,0,0o700)
  manifest=json.loads(read(snapshot/"manifest.json",0,0,0o600,8192),object_pairs_hook=pairs)
  require(type(manifest)is dict and set(manifest)=={"schema_version","authorization_included","source_policy_included","prepared_proposals_included","files"}
   and type(manifest["schema_version"])is int and manifest["schema_version"]==1 and manifest["authorization_included"]is False
@@ -122,6 +112,22 @@ def restore_data(paths,snapshot):
   require(type(metadata["bytes"])is int and len(data)==metadata["bytes"]and hashlib.sha256(data).hexdigest()==metadata["sha256"],
    "recovery_digest_mismatch");content[name]=data
  checked_db(snapshot/"state.sqlite3")
+ require({p.name for p in snapshot.iterdir()}==set(files)|{"manifest.json"},"recovery_inventory_changed")
+ return content
+
+def restore_data(paths,snapshot):
+ require(os.geteuid()==0,"recovery_role_invalid")
+ directory(paths.state,0,0,0o700);directory(paths.runtime,0,0,0o755)
+ directory(paths.consumer,1000,1000,0o700);snapshot=directory(snapshot,0,0,0o700)
+ gate=AuthorizationGate(paths.runtime,paths.authorization)
+ try:
+  current,_=gate._read();require(current["enabled"]is False,"restore_requires_disabled_authorization")
+  gate.refresh()
+ finally:gate.close()
+ before=read(paths.authorization,0,0,0o600,4096)
+ require(not paths.ledger.exists()and not any((paths.consumer/n).exists()for n in ["state.json","ack.json","prepared.json","lock"]),
+  "restore_existing_state_refused")
+ content=validated_data(snapshot)
  put(paths.ledger,content["state.sqlite3"])
  put(paths.consumer/"state.json",content["consumer-state.json"],1000,1000)
  if "consumer-ack.json"in content:put(paths.consumer/"ack.json",content["consumer-ack.json"],1000,1000)

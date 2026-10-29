@@ -10,8 +10,8 @@ from maintenance_journal import canonical,pairs
 
 SCOPE='mqtt_metadata_backup_snapshot_v1'
 MAX_BYTES=64*1048576
-MAX_FILES=20566
-MAX_MANIFEST=8*1048576
+MAX_FILES=41136
+MAX_MANIFEST=16*1048576
 CHUNK_BYTES=32768
 DATA={'state.sqlite3':1048576,'consumer-state.json':131072,'consumer-ack.json':4096,'manifest.json':8192}
 HISTORY=re.compile(r'(?:maintenance(?:-archive)?\.json|maintenance-archive-[a-f0-9]{32}\.json|(?:backup-plan-|backup-rescue-|binding-|source-policy-seal-)[a-f0-9]{32}\.json)')
@@ -24,6 +24,9 @@ def file_limit(name):
     folder,base=name.split('/')
     if folder=='data'and base in DATA:return DATA[base]
     if folder=='history'and HISTORY.fullmatch(base):return 1048576 if base in('maintenance.json','maintenance-archive.json')else 65536
+    if folder=='history'and base=='restored-history.json':return 1048576
+    if folder=='history'and re.fullmatch(r'restored-operation-[a-f0-9]{32}\.json',base):return 69632
+    if folder=='history'and re.fullmatch(r'restored-receipt-(?:backup-plan|backup-rescue|binding|source-policy-seal)-[a-f0-9]{32}\.json',base):return 65536
     raise RecoveryUnavailable('backup_snapshot_path_refused')
 
 def role(name):return 'observer_data'if name.startswith('data/')else'historical_maintenance_data_not_authority'
