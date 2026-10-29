@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-10-29",
+  "scope": "review_existing_notice_dependency_pins_and_transitive_admin_policy_reference",
+  "actual_initial_broker_error": "repair_dependency_changed",
+  "client_initial_error": "INVALID_ARGUMENT",
+  "installed_three_notice_files_equal_reviewed_public_sources": true,
+  "previous_pins_equal_preceding_public_sources": true,
+  "first_application": {
+    "policies_updated": 2,
+    "notice_dependency_pins_updated": 4,
+    "actual_MCP_still_refused": true,
+    "reason": "repair_policy_still_pinned_old_admin_policy_bytes",
+    "preserved_without_replay": true
+  },
+  "separate_final_application": {
+    "policies_updated": 1,
+    "transitive_policy_pin_updated": 1,
+    "plan_derived_from_immutable_original_before_and_reviewed_sources": true,
+    "all_other_dependencies_verified": true
+  },
+  "actual_MCP_acceptance": {
+    "maintenance_capabilities_schema": "1.4.0",
+    "collection_error": null,
+    "host_observation_state": "observed",
+    "existing_administrative_admission_active": true,
+    "authorization_expiry_preserved": true,
+    "read_does_not_prove_task_execution": true
+  },
+  "services_restarted": 0,
+  "seven_household_container_started_at_unchanged": true,
+  "source_files_changed_by_live_reconciliation": 0,
+  "new_access_accounts_sources_or_MCP_tools": 0,
+  "authorization_enabled_expiry_tasks_and_budgets_unchanged": true,
+  "event_history_or_delivery_replayed": false,
+  "pure_helper_tests": 12,
+  "full_goal_complete": false
+}

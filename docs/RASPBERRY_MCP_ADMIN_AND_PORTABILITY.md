@@ -953,6 +953,27 @@ com revisão e hash carregados iguais à base preparada. A fonte geradora usa
 `crypto` usa o módulo embutido; não instala dependências. Revogar o token
 administrativo temporário da API ao terminar.
 
+Antes de alterar módulos compartilhados, confira também cada política que fixa
+seus hashes. Uma atualização do sanitizador pode exigir os três pins do catálogo
+de reparos e o pin de `notification_state.cjs` na política administrativa.
+Como o catálogo também fixa os bytes dessa política, calcule primeiro a nova
+política administrativa e só depois o pin correspondente no catálogo. Não
+adote hashes apenas porque os arquivos estão instalados: compare os bytes com
+as versões públicas anterior e revisada, confira as demais dependências e
+preserve validade, autorização, tarefas, limites e recibos. Divergência mantém
+a recusa; não desative a checagem para recuperar o diagnóstico.
+
+O helper puro
+[`notice_dependency_review.py`](../scripts/raspberry-mcp/runtime-source/administrative-recovery/notice_dependency_review.py)
+planeja somente essas duas políticas e suas referências fixas, sem escrita,
+rede, instalação ou renovação. O operador ainda precisa verificar proprietário,
+modo, baseline e edição concorrente, gravar intent e backups antes da troca
+atômica e conferir o MCP real. Após efeito incerto, consulte os arquivos e
+recibos; não repita a operação. O
+[aceite da reconciliação](../scripts/raspberry-mcp/notice-dependency-review.acceptance.json)
+registra a recusa inicial por pin antigo, a referência transitiva que faltou na
+primeira aplicação e a recuperação posterior sem reinício de serviço.
+
 O índice operacional fixo fica no diretório local de dados do Node-RED,
 com o nome `.notification-diagnostics.json`, UID/GID 1000, modo 0644. É runtime
 ignorado pelo Git. Ele contém apenas tokens técnicos sanitizados e hashes, nunca o erro
