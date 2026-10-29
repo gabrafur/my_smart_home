@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "scope": "existing_MQTT_metadata_backup_with_source_authorization_closed",
+  "verified_on": "2026-10-29",
+  "production_installed": false,
+  "source_or_restore_access_activated": false,
+  "full24h_proven": false,
+  "static_file_transaction_targets": 49,
+  "Root_static_modules": 30,
+  "isolated_Root_units": {
+    "tests": 384,
+    "failures": 0,
+    "skipped": 0,
+    "network": "none",
+    "read_only_public_source_mount_only": true,
+    "address_space_bytes": 134217728,
+    "CPU_quota": 0.25,
+    "CPU_limit_seconds": 40,
+    "owned_container_removed": true,
+    "source_hashes_unchanged": true
+  },
+  "directed_JS_units": {
+    "coordinator_and_stream_tests": 29,
+    "offsite_tests": 28,
+    "failures": 0,
+    "skipped": 0
+  },
+  "closed_mode": {
+    "default_absent_separate_Root_profile_required": true,
+    "profile_and_code_manifest_bound_to_original_approval": true,
+    "disabled_expired_and_revoked_sources_tested": true,
+    "original_source_expiry_and_authorization_bytes_preserved": true,
+    "existing_source_markers_observed_without_refresh_or_writes": true,
+    "existing_positive_marker_is_not_proof_of_a_protocol_cut": true,
+    "integrity_check_does_not_grant_live_authority": true,
+    "helper_service_commands": 0,
+    "ordinary_service_lifecycle_owned_by_existing_backup_worker": true,
+    "asynchronous_capture_precedes_ordinary_service_restoration": true,
+    "snapshot_consistency": "closed_metadata_unknown_cut",
+    "metadata_integrity": "unknown",
+    "transport_rejects_mode_and_manifest_mismatch": true,
+    "original_operation_deadline_not_renewed": true,
+    "changed_source_profile_or_clock_refused": true,
+    "prior_unresolved_household_effect_blocks_admission": true,
+    "partial_capture_retained_without_recopy": true,
+    "complete_capture_lost_return_reconciled_without_recopy": true,
+    "repeated_completed_reconciliation_read_only": true,
+    "closed_operations_cannot_enter_live_controller": true,
+    "consumed_IDs_preserved_after_archive_and_historical_restore": true,
+    "fixed_CLI_dispatch_unit_fixture": "real_dispatch_with_constructor_bindings_and_backend_tripwires",
+    "fixed_CLI_unit_fixture_is_not_native_installation_acceptance": true
+  },
+  "bundle_fixture": {
+    "components": 14,
+    "application_payloads": "synthetic",
+    "capture_checksums_and_staged_restore": true,
+    "closed_snapshot_and_unknown_coverage_preserved": true,
+    "current_authority_restored": false,
+    "application_runtime_restores_proven": false
+  },
+  "pending": [
+    "native_fixed_closed_CLI_and_delegated_daily_worker_lifecycle_acceptance",
+    "specific_installation_and_existing_data_backup_scope_approval",
+    "production_closed_source_household_backup_cycle",
+    "real_initial_14_component_encrypted_backup_bootstrap",
+    "whole_outage_budget_alignment_and_container_updater_CID_recreation",
+    "full_installer_scoped_MCP_revoke_and_rollback",
+    "production_HA_MQTT_coverage_latency24h_and_PC_off_autonomy",
+    "all_seven_isolated_application_runtime_restores"
+  ]
+}

@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 48 destinos: 29 módulos Root, nove
+do pacote. Seu catálogo fechado contém 49 destinos: 30 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -461,7 +461,8 @@ a autorização principal precisa cobrir essa duração. Nova chamada não ampli
 o prazo nem renova a autorização de leitura.
 
 O helper candidato `backup_cli.py` aceita somente `prepare`, `resume`,
-`status` e `rescue`, com um ID de operação. Usa caminhos e alvos fixos e roda fora do
+`status`, `rescue`, `export`, `mode`, `prepare-closed`, `resume-closed` e
+`export-closed`, com um ID de operação. Usa caminhos e alvos fixos e roda fora do
 Node-RED. `prepare` para a origem, confirma fechamento e ACKs e só então para
 o consumidor. `resume` inicia o consumidor, exige observação nova do mesmo
 leitor com a origem ainda parada e então inicia e verifica a origem. As
@@ -529,9 +530,47 @@ leitor e do vínculo, snapshot dos metadados e retomada após falha sintética n
 captura da aplicação. Não comprova o restore dos sete serviços nem a execução
 do helper com permissões instaladas em produção. Antes de ativar, faltam o
 bootstrap da primeira cópia externa real de 14 componentes, a ativação do
-restore histórico revisado, a continuidade dos backups com telemetria
+restore histórico revisado, a validação operacional dos backups com telemetria
 fechada, o acordo de prazos com o orçamento de indisponibilidade e o
 pacote completo de instalação/revogação/reversão com aprovação específica.
+
+### Backup de dados existentes com autorização fechada
+
+O contrato candidato v3 consulta `mode` antes de qualquer parada. Com autorização
+ativa, conserva o plano coordenado. Com autorização desabilitada, vencida ou
+revogada, exige o perfil Root separado `closed-backup-policy.json`, ausente por
+padrão, com modo `0600`. Esse perfil declara `schema_version: 1`, escopo
+`mqtt_metadata_closed_backup_v1`, `enabled: true`, validade própria em
+`expires_at`, aprovação e manifesto de código exatos em `approval_sha256` e
+`code_manifest_sha256`, e duração finita em `maximum_duration_ns`. Ele precisa
+integrar o pacote e a aprovação específica de instalação. Não renova nem
+substitui a autorização de coleta.
+
+`frozen_backup.py` verifica os arquivos instalados e registra `frozen_begin`
+com o hash e o vencimento originais da autorização, o estado observado dos
+marcadores e o prazo fixo da operação. Não executa comandos de serviço,
+consulta ao protocolo, refresh do grant ou escrita de marcadores. O worker
+residencial existente conserva a parada e retomada ordinárias dos sete serviços;
+os helpers fechados só copiam dados já existentes e concluem o journal. A cópia
+assíncrona termina antes da retomada ordinária, inclusive quando falha.
+
+O snapshot declara `consistency: closed_metadata_unknown_cut` e
+`metadata_integrity: unknown`, com `full24h_proven: false`. Verificar checksums
+e SQLite não comprova fechamento do protocolo, entrega integral ou cobertura.
+Um marcador positivo residual é registrado e preservado: autorização fechada
+sozinha não prova que o produtor já parou. Alteração de grant, perfil, marcadores
+ou domínio de relógio durante a captura bloqueia sua conclusão normal. O modo
+do transporte precisa coincidir com o manifesto recebido antes da publicação.
+
+Uma captura parcial permanece preservada e nunca é recopiada com o mesmo ID.
+Após perda de retorno, `resume-closed` pode conferir um artefato completo e
+registrar `frozen_complete`; repetições posteriores só conferem os mesmos bytes.
+Não chama o rescue ativo. Operação residencial anterior inconclusiva bloqueia
+nova admissão. Os IDs fechados continuam consumidos no arquivo histórico e
+após restore; nenhuma permissão anterior é restaurada. O
+[aceite isolado](../scripts/raspberry-mcp/mqtt-closed-backup.acceptance.json)
+registra testes de código e dados sintéticos. Esse modo ainda não está instalado
+e não comprova o ciclo residencial nem a primeira cópia externa de 14 componentes.
 
 ### Snapshot protegido do observador no backup
 

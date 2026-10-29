@@ -139,3 +139,59 @@ test('v2 snapshot transport binds its fixed scope and rechecks the Root contract
  for(const delta of [{snapshot_scope:'unknown'},{snapshot_maximum_command_ms:30001},{snapshot_component_manifest_sha256:'invalid'}])
    assert.throws(()=>validateBackupContract({...contract,...delta}));
 });
+
+function closedBridge(mode='closed') {
+ const f=bridge(),contract={...f.contract,schema_version:3,snapshot_scope:'mqtt_metadata_backup_snapshot_v1',
+   snapshot_maximum_command_ms:30000,snapshot_component_manifest_sha256:'d'.repeat(64),
+   closed_backup_scope:'mqtt_metadata_closed_backup_v1'};
+ f.setRaw(Buffer.from(JSON.stringify(contract)));
+ f.options.invoke=(command,args,options)=>{
+  f.calls.push({command,args,options});const action=args.at(-2);
+  return {status:0,stdout:JSON.stringify({operation_id:args.at(-1),automatic_retry:false,full24h_proven:false,
+   ...(action==='mode'?{state:'backup_mode_selected',mode}:mode==='closed'?{
+    state:action==='prepare-closed'?'backup_closed_capture_ready':'backup_closed_metadata_complete',
+    metadata_integrity:'unknown',source_effects_executed:false,
+   }:{state:action==='prepare'?'backup_plan_capture_ready':'backup_plan_complete'})})};
+ };
+ return f;
+}
+test('v3 selects a fixed mode before any stop and passes closed mode to the bounded snapshot exporter',async()=>{
+ for(const mode of ['live','closed']){
+  const f=closedBridge(mode),exports=[];f.options.exportSnapshot=async(...args)=>exports.push(args);
+  const b=loadBackupMaintenance(f.options);assert.equal(b.mode,mode);
+  assert.deepEqual(f.calls.map(c=>c.args.at(-2)),['mode']);b.prepare();await b.snapshot('/tmp/synthetic-closed');b.resume();
+  assert.deepEqual(f.calls.map(c=>c.args.at(-2)),mode==='closed'?['mode','prepare-closed','resume-closed']:['mode','prepare','resume']);
+  assert.equal(exports[0][1].mode,mode);
+ }
+});
+test('closed metadata helper never owns service effects and waits for snapshot before ordinary restoration',async()=>{
+ for(const fail of [false,true]){
+  const f=fixture(false);let release;
+  f.options.maintenance={mode:'closed',prepare:()=>f.events.push(['prepare_data']),resume:()=>f.events.push(['complete_data'])};
+  f.options.capture=()=>new Promise((resolve,reject)=>{release=()=>fail?reject(new Error('synthetic_copy_failure')):resolve({captured:true});});
+  const pending=captureWithOrderedStops(f.options);await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(f.events,[['prepare_data'],['stop',...services]]);assert.equal(f.running.size,0);
+  release();const r=await pending;assert.equal(!!r.captureError,fail);assert.equal(r.restorationError,null);
+  assert.deepEqual(f.events.slice(2),[['start',...services],['complete_data'],['wait',...services]]);
+  assert.deepEqual(f.running,new Set(services));
+ }
+});
+test('closed resume failure cannot invoke live rescue or repeat the closed action',()=>{
+ const f=closedBridge(),invoke=f.options.invoke;
+ f.options.invoke=(command,args,options)=>{
+  if(args.at(-2)==='resume-closed'){f.calls.push({command,args,options});return {status:1,stdout:'{}'};}
+  return invoke(command,args,options);
+ };
+ const b=loadBackupMaintenance(f.options);b.prepare();assert.throws(()=>b.resume());
+ assert.deepEqual(f.calls.map(c=>c.args.at(-2)),['mode','prepare-closed','resume-closed']);
+});
+test('closed results cannot claim source effects or verified integrity and unknown mode fails before preparation',()=>{
+ for(const delta of [{metadata_integrity:'verified'},{source_effects_executed:true}]){
+  const f=closedBridge(),invoke=f.options.invoke;f.options.invoke=(...args)=>{
+   const r=invoke(...args);if(args[1].at(-2)!=='mode')r.stdout=JSON.stringify({...JSON.parse(r.stdout),...delta});return r;
+  };
+  assert.throws(()=>loadBackupMaintenance(f.options).prepare());
+ }
+ const f=closedBridge('unknown');assert.throws(()=>loadBackupMaintenance(f.options));
+ assert.deepEqual(f.calls.map(c=>c.args.at(-2)),['mode']);
+});

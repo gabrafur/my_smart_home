@@ -123,6 +123,11 @@ class Backend:
         if op is not None:
             need(op['approval_sha256']==p['approval_sha256'],'maintenance_approval_changed')
             need(facts(op,'begin')['code_manifest_sha256']==p['code_manifest_sha256'],'maintenance_code_manifest_changed')
+        self.verify_installed_code()
+    def verify_installed_code(self):
+        """Integrity only; the closed data-backup profile grants its own scope."""
+        p=self.policy
+        need(hashlib.sha256(read(self.paths.policy,0,0,0o600,8192)).hexdigest()==self.policy_sha,'maintenance_policy_changed')
         # Paths are fixed by the installed entrypoint, names by this allowlist.
         for group,parent in [('root_files',self.paths.root_code),('consumer_files',self.paths.consumer_code)]:
             directory(parent,0,0,0o755)

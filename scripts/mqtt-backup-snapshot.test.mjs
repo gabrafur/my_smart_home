@@ -10,7 +10,7 @@ import {receiveBackupSnapshot,exportBackupSnapshot,verifyBackupSnapshot,snapshot
 const sorted=v=>Array.isArray(v)?v.map(sorted):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,sorted(v[k])])):v;
 const canonical=v=>JSON.stringify(sorted(v)),sha=v=>crypto.createHash('sha256').update(v).digest('hex');
 const operationId='a'.repeat(32);
-function fixture(t,extra=0,restored=false) {
+function fixture(t,extra=0,restored=false,closed=false) {
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'mqtt-snapshot-transport-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const payloads=new Map(['data/state.sqlite3','data/consumer-state.json','data/manifest.json','history/maintenance.json'].map(n=>[n,Buffer.from('SYNTHETIC_'+n)]));
  for(let i=0;i<extra;i++)payloads.set('history/maintenance-archive-'+i.toString(16).padStart(32,'0')+'.json',Buffer.from('{}'));
@@ -18,7 +18,8 @@ function fixture(t,extra=0,restored=false) {
    ...['backup-plan','backup-rescue','binding','source-policy-seal'].map(kind=>'restored-receipt-'+kind+'-'+operationId+'.json')])
   payloads.set('history/'+name,Buffer.from('SYNTHETIC_HISTORICAL_DATA'));
  const metadata={schema_version:1,scope:snapshotScope,operation_id:operationId,captured_at_utc:'2026-10-28T10:00:00+00:00',
-   consistency:'coordinated_metadata_cut',full24h_proven:false,current_authority_included:false};
+   consistency:closed?'closed_metadata_unknown_cut':'coordinated_metadata_cut',
+   ...(closed?{metadata_integrity:'unknown'}:{}),full24h_proven:false,current_authority_included:false};
  const rows=[...payloads].map(([name,data])=>({path:name,bytes:data.length,sha256:sha(data),role:name.startsWith('data/')?'observer_data':'historical_maintenance_data_not_authority'}));
  const frames=[{frame:'begin',schema_version:1,scope:snapshotScope,operation_id:operationId,current_authority_included:false,full24h_proven:false}];
  for(const row of rows)frames.push({frame:'file',...row},{frame:'chunk',offset:0,data:payloads.get(row.path).toString('base64')},{frame:'file_end'});
@@ -82,5 +83,28 @@ test('restored history survives streaming and verification without admitting liv
  for(const name of ['history/authorization.json','history/restored-source-policy.json','history/restored-operation-bad.json']){
   const g=fixture(t,0,true);g.frames[1].path=name;
   await assert.rejects(receiveBackupSnapshot(Readable.from([g.encoded()]),g.destination,{operationId}));
+ }
+});
+test('closed stream preserves unknown coverage and uses only the fixed closed export action',async t=>{
+ const f=fixture(t,0,true,true),calls=[];
+ const invoke=(command,args)=>{calls.push({command,args});const child=new EventEmitter();child.stdout=Readable.from([f.encoded()]);child.kill=()=>true;setImmediate(()=>child.emit('close',0,null));return child;};
+ await exportBackupSnapshot(f.destination,{operationId,helperFile:'/opt/raspberry-mqtt-observation/backup_cli.py',maximumCommandMs:1000,mode:'closed',invoke});
+ const verified=verifyBackupSnapshot(f.destination),manifest=JSON.parse(fs.readFileSync(path.join(f.destination,'backup-snapshot.json')));
+ assert.equal(verified.files,10);assert.equal(manifest.consistency,'closed_metadata_unknown_cut');
+ assert.equal(manifest.metadata_integrity,'unknown');assert.equal(manifest.current_authority_included,false);
+ assert.deepEqual(calls[0].args.slice(-2),['export-closed',operationId]);
+});
+test('closed stream cannot omit unknown integrity, report verified integrity or introduce a free export mode',async t=>{
+ for(const mutate of [m=>delete m.metadata_integrity,m=>m.metadata_integrity='verified',m=>m.consistency='coordinated_metadata_cut']){
+  const f=fixture(t,0,false,true);mutate(f.frames.at(-1).metadata);
+  await assert.rejects(receiveBackupSnapshot(Readable.from([f.encoded()]),f.destination,{operationId}));
+ }
+ const f=fixture(t);await assert.rejects(exportBackupSnapshot(f.destination,{operationId,mode:'arbitrary',invoke:()=>assert.fail('must not invoke')}));
+});
+test('the selected live or closed mode must match the returned stream before the manifest is published',async t=>{
+ for(const closed of [false,true]){
+  const f=fixture(t,0,false,closed),invoke=()=>{const child=new EventEmitter();child.stdout=Readable.from([f.encoded()]);child.kill=()=>true;setImmediate(()=>child.emit('close',0,null));return child;};
+  await assert.rejects(exportBackupSnapshot(f.destination,{operationId,helperFile:'/opt/raspberry-mqtt-observation/backup_cli.py',maximumCommandMs:1000,mode:closed?'live':'closed',invoke}));
+  assert.equal(fs.existsSync(path.join(f.destination,'backup-snapshot.json')),false);
  }
 });

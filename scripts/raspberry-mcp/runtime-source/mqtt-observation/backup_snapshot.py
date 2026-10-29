@@ -35,12 +35,14 @@ def artifact(root,operation_id):
     root=directory(root,0,0,0o700)
     raw=read(root/'backup-snapshot.json',0,0,0o600,MAX_MANIFEST)
     value=json.loads(raw,object_pairs_hook=pairs)
+    frozen=type(value)is dict and value.get('consistency')=='closed_metadata_unknown_cut'
     need(canonical(value)==raw and type(value)is dict and set(value)=={'schema_version','scope','operation_id',
-        'captured_at_utc','consistency','full24h_proven','current_authority_included','files'})
+        'captured_at_utc','consistency','full24h_proven','current_authority_included','files'}|({'metadata_integrity'}if frozen else set()))
     need(type(value['schema_version'])is int and value['schema_version']==1 and value['scope']==SCOPE
       and type(operation_id)is str and re.fullmatch('[a-f0-9]{32}',operation_id)
-      and value['operation_id']==operation_id and value['consistency']=='coordinated_metadata_cut'
+      and value['operation_id']==operation_id and value['consistency']in('coordinated_metadata_cut','closed_metadata_unknown_cut')
       and value['full24h_proven']is False and value['current_authority_included']is False)
+    if frozen:need(value['metadata_integrity']=='unknown')
     stamp=value['captured_at_utc']
     need(type(stamp)is str and re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|\+00:00)',stamp))
     need(datetime.datetime.fromisoformat(stamp).utcoffset()==datetime.timedelta(0))
@@ -63,11 +65,11 @@ def artifact(root,operation_id):
         for item in folder.iterdir():actual.add(folder.name+'/'+item.name)
     need(actual==seen,'backup_snapshot_inventory_changed');return value
 
-def prepare(paths,journal,destination,operation_id,boundary):
+def _prepare(paths,journal,destination,operation_id,boundary,*,frozen=False):
     need(os.geteuid()==os.getegid()==0,'backup_snapshot_role_invalid')
     need(type(operation_id)is str and re.fullmatch('[a-f0-9]{32}',operation_id))
     operation=journal.find(operation_id)
-    need(operation is not None and operation['records'][-1]['body']['phase']=='consumer_stopped','backup_snapshot_boundary_changed')
+    need(operation is not None and operation['records'][-1]['body']['phase']==('frozen_begin'if frozen else'consumer_stopped'),'backup_snapshot_boundary_changed')
     boundary()
     root=Path(destination);directory(root.parent,0,0,0o700)
     # An incomplete capture is retained, never overwritten or silently retried.
@@ -85,9 +87,17 @@ def prepare(paths,journal,destination,operation_id,boundary):
         syncdir(root/folder)
     value={'schema_version':1,'scope':SCOPE,'operation_id':operation_id,
       'captured_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
-      'consistency':'coordinated_metadata_cut','full24h_proven':False,'current_authority_included':False,'files':rows}
+      'consistency':'closed_metadata_unknown_cut'if frozen else'coordinated_metadata_cut',
+      **({'metadata_integrity':'unknown'}if frozen else{}),
+      'full24h_proven':False,'current_authority_included':False,'files':rows}
     put(root/'backup-snapshot.json',canonical(value));syncdir(root)
     return artifact(root,operation_id)
+
+def prepare(paths,journal,destination,operation_id,boundary):
+    return _prepare(paths,journal,destination,operation_id,boundary)
+
+def prepare_closed(paths,journal,destination,operation_id,boundary):
+    return _prepare(paths,journal,destination,operation_id,boundary,frozen=True)
 
 def stream(root,operation_id,output):
     value=artifact(root,operation_id);root=Path(root)

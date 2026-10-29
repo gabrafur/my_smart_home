@@ -10,7 +10,7 @@ from maintenance_journal import canonical,digest,closed,hex64,uint,validate_oper
 MAX_ARCHIVED_OPERATIONS=4096
 MAX_OPERATION_BYTES=65536
 INDEX='maintenance-archive.json'
-TERMINAL=('complete','cancelled','rescued')
+TERMINAL=('complete','cancelled','rescued','frozen_complete')
 
 class Archive:
     def __init__(self,transaction):self.tx=transaction

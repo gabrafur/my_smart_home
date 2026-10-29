@@ -82,6 +82,16 @@ class Tests(unittest.TestCase):
         intent=self.intent('stop_source');self.backend.execute('stop_source',intent)
         self.assertEqual([a for a in self.calls if a[1]in('stop','start')],
           [['/usr/bin/docker','stop','--time','30','a'*64]])
+    def test_static_integrity_check_neither_grants_live_authority_nor_runs_commands(self):
+        self.write(self.paths.reader_state/'authorization.json',{'version':1,'scope':m.SOURCE_SCOPE,'enabled':False,
+          'expires_at':1,'approval_id':'c'*64})
+        before=(self.paths.reader_state/'authorization.json').read_bytes()
+        self.backend.verify_installed_code();self.assertEqual(self.calls,[])
+        with self.assertRaises(m.MaintenanceUnavailable):self.backend.authorize(None,mutation=False)
+        self.assertEqual((self.paths.reader_state/'authorization.json').read_bytes(),before)
+        (self.paths.root_code/'worker.py').write_bytes(b'synthetic-code-drift')
+        with self.assertRaisesRegex(m.MaintenanceUnavailable,'code_changed'):self.backend.verify_installed_code()
+        self.assertEqual(self.calls,[])
     def test_revocation_after_intent_stops_before_command(self):
         intent=self.intent('stop_source');self.write(self.paths.policy,{**self.policy,'enabled':False})
         with self.assertRaises(BoundaryRejected):self.backend.execute('stop_source',intent)

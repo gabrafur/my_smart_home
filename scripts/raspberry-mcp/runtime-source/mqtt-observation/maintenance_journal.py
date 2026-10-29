@@ -12,10 +12,16 @@ PHASES=('begin','armed','source_stop_intent','source_stopped','source_drained',
         'consumer_stop_intent','consumer_stopped','consumer_start_intent',
         'consumer_started','consumer_ready','source_start_intent','source_started',
         'new_source_verified','complete')
+FROZEN_PHASES=('frozen_begin','frozen_complete')
 REASONS=('authorization_closed','binding_changed','source_unknown','accounting_unknown',
          'consumer_not_ready','clock_changed','deadline','write_failed','effect_uncertain','operator_conflict')
 INTENT={'binding_sha256':'h','expected_state_sha256':'h'}
 FACTS={
+ 'frozen_begin':{'source_authorization_sha256':'h','source_approval_sha256':'h','source_authorization_state':'closed_source',
+  'source_expires_at':'expiry','source_runtime_marker_present':'b','code_manifest_sha256':'h','profile_sha256':'h',
+  'deadline_ns':'u64','metadata_integrity':'unknown','effects_dispatched':'false'},
+ 'frozen_complete':{'snapshot_manifest_sha256':'h','source_authorization_sha256':'h',
+  'metadata_integrity':'unknown','effects_dispatched':'false'},
  'begin':{'purpose':'purpose','window_id_sha256':'h','code_manifest_sha256':'h',
   'reader_instance_sha256':'h','source_epoch':'u128','source_instance_sha256':'h','source_binding_sha256':'h',
   'consumer_instance_sha256':'h','consumer_binding_sha256':'h','consumer_checkpoint_sequence':'u64','accepted_frames':'u128','unknown_epoch_tails':'u128'},
@@ -61,13 +67,18 @@ def validate_facts(phase,facts):
     for key,rule in FACTS[phase].items():
         v=facts[key]
         if rule=='h':need(hex64(v))
-        elif rule.startswith('u'):uint(v,int(rule[1:]))
+        elif rule in ('u64','u128'):uint(v,int(rule[1:]))
         elif rule=='b':need(type(v)is bool)
         elif rule=='code':need(type(v)is int and 0<=v<=255)
         elif rule=='state':need(v in ('exited','running','paused','unknown'))
         elif rule=='purpose':need(v in ('backup_snapshot','container_update','integration_update'))
         elif rule=='identity':need(v in ('verified_live','verified_exited','unknown'))
         elif rule=='reason':need(v in REASONS)
+        elif rule=='closed_source':need(v in('disabled','expired','revoked'))
+        elif rule=='expiry':
+            if v!='none':uint(v,64)
+        elif rule=='unknown':need(v=='unknown')
+        elif rule=='false':need(v is False)
 def record_body(operation_id,approval,phase,facts,at_ns,domain,sequence,previous):
     need(type(operation_id)is str and re.fullmatch('[a-f0-9]{32}',operation_id)is not None)
     need(hex64(approval)and hex64(domain));validate_facts(phase,facts);uint(at_ns,64)
@@ -78,6 +89,8 @@ def validate_operation(op):
     closed(op,['operation_id','approval_sha256','records']);rows=op['records']
     need(type(rows)is list and 1<=len(rows)<=len(PHASES)+1)
     previous=None
+    need(type(rows[0])is dict and type(rows[0].get('body'))is dict)
+    phases=FROZEN_PHASES if rows[0].get('body',{}).get('phase')=='frozen_begin'else PHASES
     for i,row in enumerate(rows):
         closed(row,['body','sha256']);b=row['body']
         closed(b,['schema_version','operation_id','approval_sha256','phase','facts','at_ns',
@@ -86,6 +99,8 @@ def validate_operation(op):
         expected=record_body(op['operation_id'],op['approval_sha256'],b['phase'],b['facts'],b['at_ns'],
                              b['clock_domain_sha256'],i+1,previous)
         need(b==expected and row['sha256']==digest(b))
+        if b['phase']=='frozen_begin':need(uint(b['facts']['deadline_ns'],64)>uint(b['at_ns'],64))
+        if b['phase']=='frozen_complete':need(b['facts']['source_authorization_sha256']==rows[0]['body']['facts']['source_authorization_sha256'])
         if b['phase']in('failed','cancelled','rescued'):
             need(i>0 and i==len(rows)-1)
             if b['phase']=='cancelled':need(i<=2 and b['facts']['no_effects_dispatched']is True)
@@ -94,10 +109,10 @@ def validate_operation(op):
                 need(b['clock_domain_sha256']==rows[0]['body']['clock_domain_sha256']
                   and uint(b['at_ns'],64)>=uint(rows[i-1]['body']['at_ns'],64))
         else:
-            need(i<len(PHASES)and b['phase']==PHASES[i])
+            need(i<len(phases)and b['phase']==phases[i])
             need(b['clock_domain_sha256']==rows[0]['body']['clock_domain_sha256'])
             if i:need(uint(b['at_ns'],64)>=uint(rows[i-1]['body']['at_ns'],64))
-        if i:need(rows[i-1]['body']['phase']not in ('complete','failed','cancelled','rescued'))
+        if i:need(rows[i-1]['body']['phase']not in ('complete','failed','cancelled','rescued','frozen_complete'))
         previous=row['sha256']
     return op
 def validate_snapshot(value):
@@ -211,7 +226,7 @@ class Journal:
         body=copy.deepcopy(old['body'])if old else {'schema_version':1,'revision':'0','operations':[]}
         op=next((v for v in body['operations']if v['operation_id']==operation_id),None)
         if op is None:
-            need(phase=='begin'and expected_previous_sha256 is None,'maintenance_parent_changed')
+            need(phase in('begin','frozen_begin')and expected_previous_sha256 is None,'maintenance_parent_changed')
             # Validate new input and the historical ID before storage changes.
             record_body(operation_id,self.approval,phase,facts,at_ns,clock_domain_sha256,1,None)
             need(self.find(operation_id)is None,'maintenance_operation_archived')

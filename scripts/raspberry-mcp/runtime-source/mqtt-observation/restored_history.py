@@ -129,7 +129,9 @@ def source_plan(snapshot,manifest):
         output['restored-operation-'+identity+'.json']=raw
     need(len(operations)<=MAX_OPERATIONS,'restored_history_capacity')
     job=operations.get(manifest['operation_id'])
-    need(job is not None and job['records'][-1]['body']['phase']=='consumer_stopped','restored_history_job_missing')
+    frozen=manifest['consistency']=='closed_metadata_unknown_cut'
+    need(job is not None and job['records'][-1]['body']['phase']==('frozen_begin'if frozen else'consumer_stopped'),
+      'restored_history_job_missing')
     sources=copy.deepcopy(imported[1]['body']['sources'])if imported else []
     source_sha=digest(manifest);need(source_sha not in sources,'restored_history_cycle')
     sources.append(source_sha);need(len(sources)<=MAX_GENERATIONS,'restored_history_capacity')

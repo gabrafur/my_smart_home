@@ -26,9 +26,11 @@ function limit(name) {
 }
 const role=name=>name.startsWith('data/')?'observer_data':'historical_maintenance_data_not_authority';
 function checkedManifest(m,operationId) {
-  need(keys(m,['schema_version','scope','operation_id','captured_at_utc','consistency','full24h_proven','current_authority_included','files'])&&
+  const frozen=m?.consistency==='closed_metadata_unknown_cut';
+  need(keys(m,['schema_version','scope','operation_id','captured_at_utc','consistency','full24h_proven','current_authority_included','files',...(frozen?['metadata_integrity']:[])])&&
     m.schema_version===1&&m.scope===snapshotScope&&typeof m.operation_id==='string'&&/^[a-f0-9]{32}$/.test(m.operation_id)&&
-    (operationId===undefined||m.operation_id===operationId)&&m.consistency==='coordinated_metadata_cut'&&
+    (operationId===undefined||m.operation_id===operationId)&&['coordinated_metadata_cut','closed_metadata_unknown_cut'].includes(m.consistency)&&
+    (!frozen||m.metadata_integrity==='unknown')&&
     m.full24h_proven===false&&m.current_authority_included===false&&typeof m.captured_at_utc==='string'&&
     /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|\+00:00)$/.test(m.captured_at_utc)&&Number.isFinite(Date.parse(m.captured_at_utc))&&
     Array.isArray(m.files)&&m.files.length>=4&&m.files.length<=MAX_FILES);
@@ -108,7 +110,8 @@ export async function receiveBackupSnapshot(readable,destination,{operationId}={
     }
     need(message.frame==='complete'&&!current&&keys(message,['frame','metadata','files','bytes','manifest_sha256'])&&
       message.files===rows.length&&message.bytes===total);
-    need(keys(message.metadata,['schema_version','scope','operation_id','captured_at_utc','consistency','full24h_proven','current_authority_included']));
+    need(keys(message.metadata,['schema_version','scope','operation_id','captured_at_utc','consistency','full24h_proven','current_authority_included',
+      ...(message.metadata?.consistency==='closed_metadata_unknown_cut'?['metadata_integrity']:[])]));
     const m={...message.metadata,files:rows};
     checkedManifest(m,operationId);need(sha(canonical(m))===message.manifest_sha256);
     complete=m;
@@ -129,16 +132,18 @@ export async function receiveBackupSnapshot(readable,destination,{operationId}={
   finally {if(current)fs.closeSync(current.fd);}
 }
 
-export async function exportBackupSnapshot(destination,{operationId,helperFile,maximumCommandMs,invoke=spawn}={}) {
+export async function exportBackupSnapshot(destination,{operationId,helperFile,maximumCommandMs,mode='live',invoke=spawn}={}) {
   need(typeof helperFile==='string'&&helperFile==='/opt/raspberry-mqtt-observation/backup_cli.py'&&
     Number.isSafeInteger(maximumCommandMs)&&maximumCommandMs>0&&maximumCommandMs<=30000);
-  const child=invoke('/usr/bin/sudo',['-n','/usr/bin/python3','-I','-S','-B',helperFile,'export',operationId],
+  need(['live','closed'].includes(mode));
+  const child=invoke('/usr/bin/sudo',['-n','/usr/bin/python3','-I','-S','-B',helperFile,mode==='closed'?'export-closed':'export',operationId],
     {stdio:['ignore','pipe','ignore'],env:{PATH:'/usr/bin:/bin',LC_ALL:'C'}});
   const terminal=new Promise(resolve=>{child.once('error',()=>resolve(null));child.once('close',(code,signal)=>resolve({code,signal}));});
   const timer=setTimeout(()=>child.kill('SIGTERM'),maximumCommandMs);
   try {
     need(child.stdout);const result=await receiveBackupSnapshot(child.stdout,destination,{operationId});
     const exit=await terminal;need(exit?.code===0&&exit.signal===null);
+    need(result.manifest.consistency===(mode==='closed'?'closed_metadata_unknown_cut':'coordinated_metadata_cut'));
     const file=path.join(destination,'backup-snapshot.json');
     fs.writeFileSync(file,canonical(result.manifest),{mode:0o600,flag:'wx'});
     const fd=fs.openSync(file,'r');try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}

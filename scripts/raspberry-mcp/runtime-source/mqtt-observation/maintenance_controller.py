@@ -60,7 +60,9 @@ class Controller:
         self.journal=journal;self.backend=backend
     def _operation(self,operation_id):
         op=self.journal.find(operation_id)
-        if op is not None:validate_operation(op)
+        if op is not None:
+            validate_operation(op)
+            need(op['records'][0]['body']['phase']=='begin','maintenance_data_only_operation')
         return op
     def _clock(self,op):
         now,domain=self.backend.clock();uint(now,64);need(hex64(domain),'maintenance_clock_unknown')
@@ -81,7 +83,7 @@ class Controller:
             need(phase=='begin'and expected_head is None,'maintenance_parent_changed')
             state=self.journal.status()
             # No new ID can sidestep an unresolved effect or failed recovery.
-            need(not state or all(x['records'][-1]['body']['phase']in('complete','cancelled','rescued')
+            need(not state or all(x['records'][-1]['body']['phase']in('complete','cancelled','rescued','frozen_complete')
                  for x in state['body']['operations']),'maintenance_prior_operation_unresolved')
             need(purpose in('backup_snapshot','container_update','integration_update'),'maintenance_purpose_invalid')
         else:

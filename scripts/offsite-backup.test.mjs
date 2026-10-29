@@ -665,7 +665,7 @@ test("capture refuses to copy while a required service is running", (t) => {
   }), /requires stopped services: nodered/);
 });
 
-test('explicit optional MQTT component is checksummed and restored only as private staged data',t=>{
+for(const closed of [false,true])test(`explicit optional MQTT component (${closed?'closed unknown cut':'coordinated cut'}) is checksummed and restored only as private staged data`,t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'offsite-bundle-mqtt-component-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
   const base=loadManifest(),policy=JSON.parse(fs.readFileSync(syntheticPolicyFile,'utf8'));
   createSyntheticPrivateSources(root,base,policy.compose_bundle.coverage);
@@ -684,7 +684,9 @@ test('explicit optional MQTT component is checksummed and restored only as priva
     files.push({path:name,bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),role:name.startsWith('data/')?'observer_data':'historical_maintenance_data_not_authority'});
   }
   const stable=v=>Array.isArray(v)?v.map(stable):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,stable(v[k])])):v;
-  const snapshot={schema_version:1,scope:'mqtt_metadata_backup_snapshot_v1',operation_id,captured_at_utc:'2026-10-28T10:00:00+00:00',consistency:'coordinated_metadata_cut',full24h_proven:false,current_authority_included:false,files};
+  const snapshot={schema_version:1,scope:'mqtt_metadata_backup_snapshot_v1',operation_id,captured_at_utc:'2026-10-28T10:00:00+00:00',
+    consistency:closed?'closed_metadata_unknown_cut':'coordinated_metadata_cut',...(closed?{metadata_integrity:'unknown'}:{}),
+    full24h_proven:false,current_authority_included:false,files};
   fs.writeFileSync(path.join(directory,'backup-snapshot.json'),JSON.stringify(stable(snapshot)),{mode:0o600});
   const bundle=path.join(root,'bundle'),options={root,policyFile,runningServices:new Set(),repositoryCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),mqttSnapshot:{directory,operation_id}};
   assert.equal(captureOffsiteBundle(bundle,options).components,14);
