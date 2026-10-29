@@ -9,7 +9,7 @@ import hashlib,json,os,re,stat,subprocess,time
 from maintenance_journal import canonical,digest,closed,hex64,uint,MaintenanceUnavailable
 from maintenance_controller import ObservationUnavailable,BoundaryRejected,dispatch_invariants,records,facts,COMMANDS
 from source_binding import ProcHandle,start_ticks,local_clock_domain,credentials_from_status,Peer
-from authorization_gate import SCOPE as SOURCE_SCOPE
+from authorization_gate import SCOPE as SOURCE_SCOPE,AuthorizationGate,GateInvalid
 from handoff import HEADERS,FAULTS,KINDS,STAT_COLUMNS,validate_totals,add_totals
 from receiver_ledger import stringify
 
@@ -21,6 +21,7 @@ class Paths:
     root_code:Path=Path('/opt/raspberry-mqtt-observation')
     consumer_code:Path=Path('/opt/raspberry-mqtt-observation/consumer')
     consumer_state:Path=Path('/mnt/data/docker/nodered/.mqtt-source-observer-consumer')
+    reader_runtime:Path=Path('/run/raspberry-mqtt-observation')
 
 def need(ok,code='maintenance_backend_unavailable'):
     if not ok:raise MaintenanceUnavailable(code)
@@ -120,10 +121,27 @@ class Backend:
               and source['enabled']is True and source['approval_id']==p['approval_sha256']
               and(source['expires_at']is None or type(source['expires_at'])in(int,float)and time.time()<source['expires_at']),
               'maintenance_source_authorization_closed')
+            self._source_runtime_authority()
         if op is not None:
             need(op['approval_sha256']==p['approval_sha256'],'maintenance_approval_changed')
             need(facts(op,'begin')['code_manifest_sha256']==p['code_manifest_sha256'],'maintenance_code_manifest_changed')
         self.verify_installed_code()
+    def _source_runtime_authority(self):
+        # Fixed entrypoint binding. A live file grant never overrides the
+        # reader's persistent revocation marker; neither is modified here.
+        gate=None
+        try:
+            gate=AuthorizationGate(self.paths.reader_runtime,self.paths.reader_state/'authorization.json')
+            gate._runtime_anchor()
+            try:info=os.stat('revoked',dir_fd=gate.runtime_fd,follow_symlinks=False)
+            except FileNotFoundError:info=None
+            gate._runtime_anchor()
+            if info is not None:
+                need(gate._marker_valid(info),'maintenance_source_revocation_marker_invalid')
+                raise MaintenanceUnavailable('maintenance_source_revoked')
+        except(GateInvalid,OSError):raise MaintenanceUnavailable('maintenance_source_runtime_unconfirmed')from None
+        finally:
+            if gate is not None:gate.close()
     def verify_installed_code(self):
         """Integrity only; the closed data-backup profile grants its own scope."""
         p=self.policy
@@ -288,6 +306,10 @@ class Backend:
         f=intent['body']['facts']
         if current['binding_sha256']!=f['binding_sha256']or current['state_sha256']!=f['expected_state_sha256']:
             raise BoundaryRejected('fixed_boundary_changed')
+        # Inspection can block outside this process. Recheck authority and
+        # installed code after it, at the final command boundary.
+        try:self.authorize(None,mutation=True)
+        except(MaintenanceUnavailable,OSError,ObservationUnavailable):raise BoundaryRejected('fixed_boundary_unavailable')from None
         target=self.policy[role]['container_id']
         if command.startswith('stop_'):self._run(['stop','--time','30',target],timeout=40,limit=1024)
         else:self._run(['start',target],timeout=12,limit=1024)

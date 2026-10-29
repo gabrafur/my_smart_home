@@ -17,7 +17,8 @@ class Tests(unittest.TestCase):
         for name,mode in [('policy',0o700),('reader',0o700),('code',0o755),('consumer-code',0o755),('consumer',0o700)]:
             p=self.base/name;p.mkdir();p.chmod(mode);paths.append(p)
         os.chown(paths[-1],1000,1000)
-        self.paths=m.Paths(paths[0]/'policy.json',paths[1],paths[2],paths[3],paths[4]);self.calls=[]
+        runtime=self.base/'runtime';runtime.mkdir(mode=0o755);runtime.chmod(0o755)
+        self.paths=m.Paths(paths[0]/'policy.json',paths[1],paths[2],paths[3],paths[4],runtime);self.calls=[]
         self.identity={};self.states={}
         for role,letter,user in [('source','a','1883:1883'),('consumer','b','1000:1000')]:
             self.identity[role]={'container_id':letter*64,'image_id':'sha256:'+'d'*64,'user':user,'mounts':[],
@@ -96,6 +97,50 @@ class Tests(unittest.TestCase):
         intent=self.intent('stop_source');self.write(self.paths.policy,{**self.policy,'enabled':False})
         with self.assertRaises(BoundaryRejected):self.backend.execute('stop_source',intent)
         self.assertFalse(any(a[1]in('stop','start')for a in self.calls))
+    def revoke(self):
+        marker=self.paths.reader_runtime/'revoked';marker.write_bytes(b'');marker.chmod(0o444)
+    def test_runtime_revocation_after_intent_stops_before_command(self):
+        intent=self.intent('stop_source');before=(self.paths.reader_state/'authorization.json').read_bytes();self.revoke()
+        with self.assertRaises(BoundaryRejected):self.backend.execute('stop_source',intent)
+        self.assertFalse(any(a[1]in('stop','start')for a in self.calls))
+        self.assertEqual((self.paths.reader_state/'authorization.json').read_bytes(),before)
+        self.assertTrue((self.paths.reader_runtime/'revoked').exists())
+    def test_revocation_during_inspection_is_rechecked_before_dispatch(self):
+        intent=self.intent('stop_source');original=self.backend.inspect
+        def inspect(role):
+            value=original(role);self.revoke();return value
+        with patch.object(self.backend,'inspect',side_effect=inspect),self.assertRaises(BoundaryRejected):
+            self.backend.execute('stop_source',intent)
+        self.assertFalse(any(a[1]in('stop','start')for a in self.calls))
+    def test_policy_change_during_inspection_is_rechecked_before_dispatch(self):
+        intent=self.intent('stop_source');original=self.backend.inspect
+        def inspect(role):
+            value=original(role);self.write(self.paths.policy,{**self.policy,'enabled':False});return value
+        with patch.object(self.backend,'inspect',side_effect=inspect),self.assertRaises(BoundaryRejected):
+            self.backend.execute('stop_source',intent)
+        self.assertFalse(any(a[1]in('stop','start')for a in self.calls))
+    def test_missing_unsafe_runtime_or_malformed_revocation_marker_cannot_grant_authority(self):
+        runtime=self.paths.reader_runtime;runtime.rmdir()
+        with self.assertRaises((OSError,m.MaintenanceUnavailable)):self.backend.authorize(None,mutation=True)
+        runtime.mkdir(mode=0o775);runtime.chmod(0o775)
+        with self.assertRaises(m.MaintenanceUnavailable):self.backend.authorize(None,mutation=True)
+        runtime.chmod(0o755);marker=runtime/'revoked'
+        for mode,data in [(0o644,b''),(0o444,b'not-empty')]:
+            marker.write_bytes(data);marker.chmod(mode)
+            with self.assertRaises(m.MaintenanceUnavailable):self.backend.authorize(None,mutation=True)
+            marker.unlink()
+        marker.symlink_to(self.paths.reader_state/'authorization.json')
+        with self.assertRaises(m.MaintenanceUnavailable):self.backend.authorize(None,mutation=True)
+        self.assertEqual(self.calls,[])
+    def test_runtime_replacement_during_marker_read_cannot_grant_authority(self):
+        original=m.AuthorizationGate._runtime_anchor;calls=[];runtime=self.paths.reader_runtime
+        def anchored(gate):
+            original(gate);calls.append(True)
+            if len(calls)==1:
+                runtime.rename(self.base/'old-runtime');runtime.mkdir(mode=0o755);runtime.chmod(0o755)
+        with patch.object(m.AuthorizationGate,'_runtime_anchor',new=anchored),self.assertRaises(m.MaintenanceUnavailable):
+            self.backend.authorize(None,mutation=True)
+        self.assertEqual(self.calls,[])
     def test_process_change_after_preflight_cannot_apply_old_intent(self):
         intent=self.intent('stop_source');self.states['source']['Pid']+=1
         with self.assertRaises(BoundaryRejected):self.backend.execute('stop_source',intent)

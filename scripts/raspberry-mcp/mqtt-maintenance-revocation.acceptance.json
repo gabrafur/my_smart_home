@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "scope": "normal_metadata_maintenance_revocation_at_final_command_boundary",
+  "verified_on": "2026-10-29",
+  "production_installed": false,
+  "new_authority_activated": false,
+  "full24h_proven": false,
+  "isolated_regression_before_fix": {
+    "source_gate_state": "revoked",
+    "fake_target_commands_dispatched": 1,
+    "actual_subprocesses": 0,
+    "actual_household_effects": 0,
+    "historical_result_preserved": true
+  },
+  "normal_authority": {
+    "reader_runtime_binding": "fixed_by_installed_entrypoint",
+    "runtime_directory_checked_by_pinned_descriptor_before_and_after_marker_read": true,
+    "revoked_marker_blocks_live_authority": true,
+    "missing_or_unsafe_runtime_blocks_live_authority": true,
+    "malformed_revocation_marker_blocks_live_authority": true,
+    "runtime_replacement_during_read_blocks_live_authority": true,
+    "policy_and_code_rechecked_after_external_inspection_before_command": true,
+    "grant_expiry_not_renewed": true,
+    "authorization_and_markers_never_written_by_normal_authority_check": true,
+    "static_integrity_does_not_grant_live_authority": true,
+    "closed_data_backup_keeps_its_separate_profile": true,
+    "separately_authorized_availability_rescue_preserved": true
+  },
+  "isolated_Root_units": {
+    "targeted_backend_rescue_and_closed_backup_tests": 46,
+    "all_subsystem_tests": 389,
+    "failures": 0,
+    "skipped": 0,
+    "network": "none",
+    "read_only_public_source_only": true,
+    "address_space_bytes": 134217728,
+    "CPU_quota": 0.25,
+    "CPU_limit_seconds": 40,
+    "owned_container_removed": true,
+    "source_hashes_unchanged": true
+  },
+  "actual_command_boundary_fixture": {
+    "real_backend_with_fixed_fixture_constructor_bindings": true,
+    "ordinary_targets": "two_owned_guard_containers",
+    "nominal_actual_stop_start_commands": 4,
+    "revocation_after_intent_blocked": true,
+    "revocation_during_external_inspection_blocked": true,
+    "blocked_cases_dispatch_commands": 0,
+    "coordinator_Docker_socket": false,
+    "coordinator_network": "none",
+    "host_pipe_proxy_allowlist": "inspect_stop_start_of_two_owned_CIDs_only",
+    "closed_data_backup_after_revocation": true,
+    "closed_snapshot_integrity": "unknown",
+    "original_grant_bytes_and_revocation_marker_preserved": true,
+    "historical_restore_consumed_ID_and_disabled_current_grant_preserved": true,
+    "owned_containers_removed": 3,
+    "household_states_and_StartedAt_unchanged": true,
+    "public_and_fixture_source_hashes_unchanged": true,
+    "source_frame": "synthetic",
+    "whole_live_controller_and_wire_cycle_proven": false,
+    "seven_application_runtime_restores_proven": false
+  },
+  "pending": [
+    "reviewed_first_real_14_component_encrypted_backup_bootstrap",
+    "approved_13_to_14_component_policy_and_canonical_gate_transition",
+    "whole_outage_budget_and_container_updater_CID_lifecycle",
+    "complete_installer_scoped_MCP_revoke_and_rollback_package_and_specific_approval",
+    "production_source_coverage_latency24h_and_PC_off_autonomy",
+    "seven_isolated_functional_application_restores"
+  ]
+}

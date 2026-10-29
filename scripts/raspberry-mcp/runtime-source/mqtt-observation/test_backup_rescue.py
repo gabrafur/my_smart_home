@@ -13,7 +13,7 @@ class Tests(unittest.TestCase):
     fake_run=fixture.Tests.fake_run
     def setUp(self):
         fixture.Tests.setUp(self);self.journal=None;self.now=1000;self.fail_start=None
-        self.runtime=self.base/'runtime';self.runtime.mkdir();self.runtime.chmod(0o755)
+        self.runtime=self.base/'runtime';self.runtime.mkdir(exist_ok=True);self.runtime.chmod(0o755)
         self.plugin=self.base/'plugin.so';self.plugin.write_bytes(b'SYNTHETIC_PLUGIN');self.plugin.chmod(0o444)
         (self.runtime/'authorized').touch();(self.runtime/'authorized').chmod(0o444)
         self.identity['source']['mounts']=[{'Type':'bind','Source':str(self.runtime),

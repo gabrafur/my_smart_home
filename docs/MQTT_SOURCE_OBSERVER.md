@@ -383,6 +383,27 @@ aprovação e validade, processo vivo do leitor com PID/start ticks e identidade
 dos dois contêineres. A inspeção seleciona campos de lifecycle antes de receber
 os bytes; não solicita ambiente ou logs de healthcheck. O consumidor parado é
 validado pelo codec offline fixo, sem iniciá-lo para obter um checkpoint.
+
+A autorização ativa também confere `revoked` no diretório de runtime fixado
+pelo entrypoint. Usa o descritor do gate Root, confere o vínculo do diretório
+antes e depois da leitura e recusa marcador inválido, diretório ausente ou
+substituído. Não chama `refresh`, não escreve marcadores e não renova o grant.
+Depois da inspeção externa do contêiner, o executor revalida política, grant,
+revogação e código instalado antes de emitir o comando. Isso cobre a revogação
+ocorrida após o intent ou durante a inspeção. A checagem de integridade estática
+continua separada da autoridade ativa: o backup de dados existentes e a
+recuperação de disponibilidade conservam seus perfis próprios.
+
+O [aceite da revogação na fronteira final](../scripts/raspberry-mcp/mqtt-maintenance-revocation.acceptance.json)
+registra 389 testes Root e um ensaio de comandos reais em dois contêineres de
+guarda próprios. Os quatro comandos nominais funcionaram; as duas revogações
+impediram o dispatch. O helper ficou sem rede e sem socket Docker; uma ponte
+de teste permitiu somente inspect/stop/start dos dois IDs próprios. O backup
+fechado posterior preservou o grant e restaurou o histórico com o ID consumido.
+Os três contêineres foram removidos e o lifecycle residencial permaneceu igual.
+Esse ensaio cobre a fronteira do backend; não substitui a prova do controlador
+completo, um ciclo de protocolo em produção ou restore funcional das aplicações.
+
 O arquivo privado `maintenance-status.json` mantém fatos do leitor separados
 do contrato público de observação. Inclui o identificador e os hashes do último
 ACK. Como a persistência do consumidor e o ACK Root avançam separadamente,
