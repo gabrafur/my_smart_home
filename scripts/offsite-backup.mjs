@@ -1306,7 +1306,9 @@ export async function runDailyCycle({
     remote_verified: true,
     protected: true,
     outage_seconds: outageSeconds,
-    mqtt_coordination: metadataMaintenance ? "verified" : "not_installed",
+    mqtt_coordination: metadataMaintenance
+      ? metadataMaintenance.mode === "closed" ? "unknown" : "verified"
+      : "not_installed",
     backup_timestamp: remoteBackup.date,
     retention_eligible: retention.eligible,
     retention_pruned: retention.pruned,

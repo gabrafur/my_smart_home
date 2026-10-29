@@ -562,6 +562,15 @@ sozinha não prova que o produtor já parou. Alteração de grant, perfil, marca
 ou domínio de relógio durante a captura bloqueia sua conclusão normal. O modo
 do transporte precisa coincidir com o manifesto recebido antes da publicação.
 
+O worker também devolve `mqtt_coordination=unknown` nesse modo, mesmo quando a
+captura e os recibos de backup foram verificados. Assim o gate existente do
+Node-RED não libera updates como se houvesse coordenação ativa comprovada.
+`capture_verified` descreve a integridade do artefato; não transforma o corte
+desconhecido em cobertura do protocolo. O contrato residencial atual de 13
+componentes permanece preservado; a transição revisada para 14 e o bootstrap
+da primeira cópia real precisam de pacote e aprovação específicos, sem
+reescrever um recibo histórico de 13 como se já comprovasse 14.
+
 Uma captura parcial permanece preservada e nunca é recopiada com o mesmo ID.
 Após perda de retorno, `resume-closed` pode conferir um artefato completo e
 registrar `frozen_complete`; repetições posteriores só conferem os mesmos bytes.
@@ -571,6 +580,18 @@ após restore; nenhuma permissão anterior é restaurada. O
 [aceite isolado](../scripts/raspberry-mcp/mqtt-closed-backup.acceptance.json)
 registra testes de código e dados sintéticos. Esse modo ainda não está instalado
 e não comprova o ciclo residencial nem a primeira cópia externa de 14 componentes.
+
+O ensaio adicional executou o CLI fixo e os checks Root reais com bindings de
+fixture, nos três estados de autorização. O corpo original do worker rodou em
+VM: parada/retomada alcançaram sete contêineres próprios de processos de guarda,
+e a captura/restauração de 14 componentes usou arquivos sintéticos. O helper
+ficou sem rede e sem socket Docker. Cada caso preservou grants, recusou nova
+captura com ID consumido e restaurou o histórico com a nova autorização
+desabilitada. Os oito contêineres foram removidos e os sete contêineres
+residenciais mantiveram estado e `StartedAt`. Geração, envio e recibos externos
+foram simulados; processos de guarda não comprovam restore funcional das
+aplicações. Falhas anteriores de montagem da fixture foram preservadas sem
+relaxar os gates existentes de manifesto e diretório de saída.
 
 ### Snapshot protegido do observador no backup
 

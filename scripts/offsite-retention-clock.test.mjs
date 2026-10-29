@@ -60,6 +60,7 @@ function cycleHarness(options = {}) {
     defaultRunningServices: () => new Set(fixtureServices),
     captureWithOrderedStops,
     loadBackupMaintenance: () => options.metadataMaintenance ? {
+      mode: options.metadataMode ?? 'live',
       operation_id:'a'.repeat(32),snapshot_component_manifest_sha256:options.metadataHashMismatch?'b'.repeat(64):'a'.repeat(64),
       ...(!options.legacyMetadataContract?{snapshot:async directory=>{
         events.push('mqtt-export-start');assert(directory.startsWith('/synthetic-tmp/offsite-bundle-'));
@@ -136,6 +137,14 @@ test("cycle uses post-verification time for retention and preserves capture star
   assert.equal(result.retention_pruned, 0); assert.equal(result.retention_mode, "observe_only"); assert.equal(h.retentionCalls(), 1);
   assert.deepEqual(h.events.filter(e => e !== "cleanup"), ["stop", "capture", "start", "services-ready", "generate", "remote-receipt-checked", "retention"]);
   assert.equal(h.time(), start + 210_000);
+});
+
+test('closed metadata backup can complete without reporting verified live coordination',async()=>{
+ const h=cycleHarness({metadataMaintenance:true,metadataMode:'closed'}),result=await h.run();
+ assert.equal(result.ready,true);assert.equal(result.capture_verified,true);assert.equal(result.remote_verified,true);
+ assert.equal(result.mqtt_coordination,'unknown');assert.equal(result.retention_mode,'observe_only');
+ assert.deepEqual(h.events.filter(e=>e!=='cleanup'),['mqtt-prepare','stop','mqtt-export-start','mqtt-export-complete',
+  'capture','start','mqtt-resume','services-ready','generate','remote-receipt-checked','retention']);
 });
 
 test("actual cycle body verifies coordinated resume before generating or retaining the remote backup", async () => {
