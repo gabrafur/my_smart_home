@@ -58,12 +58,12 @@ class Projection(unittest.TestCase):
     def test_global_and_agent_retention_include_loaded_and_inactive_configured_agents(self):
         manager, entries = fixture();manager.config.data.retention.copies=4
         manager.config.data.agents['backup.inactive']=NS(protected=False, retention=NS(copies=None, days=7))
-        manager.backup_agents['backup.local']=NS(domain='backup', agent_id='backup.local')
+        manager.backup_agents['backup.fixture_sink']=NS(domain='backup', agent_id='backup.fixture_sink')
         value=projection.project_profile(manager, entries)
         self.assertEqual(value['native_retention']['global'], {'copies':4,'days':None})
         rows={r['agent_id']:r for r in value['native_retention']['agents']}
         self.assertEqual(rows[AID]['copies'],4)
-        self.assertEqual(rows['backup.local']['copies'],4)
+        self.assertEqual(rows['backup.fixture_sink']['copies'],4)
         self.assertEqual(rows['backup.inactive']['days'],7)
 
     def test_nonempty_coverage_and_unsafe_provider_flags_remain_facts_for_consumer_gates(self):
