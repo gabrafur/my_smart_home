@@ -1,0 +1,10 @@
+{
+  "domain": "metadata_backup_profile",
+  "name": "Backup Metadata Profile",
+  "codeowners": [],
+  "dependencies": ["backup", "websocket_api"],
+  "documentation": "https://github.com/gabrafur/my_smart_home/blob/main/docs/MQTT_SOURCE_OBSERVER.md",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "version": "1.0.0"
+}

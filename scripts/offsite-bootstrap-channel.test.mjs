@@ -78,3 +78,8 @@ test('expiry during synchronous source validation is checked before the wire cal
     (_v,s)=>s.write(JSON.stringify(reply())+'\n'));
   assert.equal(r.messages.length,1);assert.deepEqual(r.output,{sent:0,code:'BOOTSTRAP_WALL_EXPIRED'});
 });
+test('expiry during an asynchronous metadata refresh prevents the wire callback',async()=>{
+  const r=await fixture(`let sent=0,code;try{await c.dispatchRemote({...${admission},prepareBeforeSend:async()=>{await Promise.resolve();Date.now=()=>Number.MAX_SAFE_INTEGER},send:()=>{sent++}})}catch(e){code=e.code}c.close();console.log(JSON.stringify({sent,code}));`,
+    (_v,s)=>s.write(JSON.stringify(reply())+'\n'));
+  assert.equal(r.messages.length,1);assert.deepEqual(r.output,{sent:0,code:'BOOTSTRAP_WALL_EXPIRED'});
+});

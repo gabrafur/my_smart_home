@@ -46,9 +46,10 @@ export function connectBootstrapChannel(fd,{operationId}={}) {
   }
   return Object.freeze({
     admitRemote,
-    async dispatchRemote({bundleSha256,requestSha256,beforeSend=()=>{},send}){
-      if(typeof send!=='function'||typeof beforeSend!=='function')throw fail('SEND_INVALID');
+    async dispatchRemote({bundleSha256,requestSha256,prepareBeforeSend=async()=>{},beforeSend=()=>{},send}){
+      if(typeof send!=='function'||typeof beforeSend!=='function'||typeof prepareBeforeSend!=='function')throw fail('SEND_INVALID');
       const result=await admitRemote({bundleSha256,requestSha256});
+      await prepareBeforeSend();
       // Finish synchronous source checks before the final deadline check.
       // The frozen worker's write then has no asynchronous preparation gap.
       if(beforeSend()!==undefined)throw fail('SEND_PREPARATION_INVALID');

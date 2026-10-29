@@ -25,6 +25,13 @@ async function fixture(t,options={}){
         socket.send(JSON.stringify({type:options.authInvalid?'auth_invalid':'auth_ok'}));
         if(options.duplicateAuth)socket.send(JSON.stringify({type:'auth_ok'}));return;
       }
+      if(message.type==='backup/metadata_profile'){
+        const p=profile(),changed=profileChecks++>0;
+        if(options.dropProfileRefresh&&changed){socket.terminate();return;}
+        if(options.retentionEnabled||options.changeProfile&&changed)p.native_retention.global.copies=2;
+        if(options.replaceProfile&&changed){p.agent_id='onedrive.other';p.native_retention.agents[0].agent_id=p.agent_id;}
+        socket.send(JSON.stringify({id:message.id,type:'result',success:true,result:options.invalidProfileRefresh&&changed?null:p}));return;
+      }
       if(message.type==='backup/info'){
         const state=options.busy&&reads++===0?'create_backup':'idle';
         socket.send(JSON.stringify({id:message.id,type:'result',success:true,result:{state,backups:[],agent_errors:{}}}));return;
@@ -45,14 +52,10 @@ async function fixture(t,options={}){
     admissions.push({bundleSha256:value.bundleSha256,requestSha256:value.requestSha256});events.push('root_intent');
     if(options.denyAdmission)throw Error('untrusted-admission-detail');
     if(options.lateAdmission)await new Promise(resolve=>setTimeout(resolve,80));
-    value.beforeSend();value.send();return {operationId:ID,automaticRetry:false};
+    await value.prepareBeforeSend();value.beforeSend();value.send();return {operationId:ID,automaticRetry:false};
   },async recordReport(hash){events.push('root_report');reports.push(hash);}};
   const upload=prepareBootstrapUpload({channel,bundleSha256:H,token:'synthetic-only',WebSocket:OwnedWebSocket,
-    expectedProfileSha256:savedBackupProfileSha256(profile()),readSavedProfile:()=>{
-      const p=profile();const changed=profileChecks++>0;
-      if(options.retentionEnabled||options.changeProfile&&changed)p.native_retention.global.copies=2;
-      if(options.replaceProfile&&changed){p.agent_id='onedrive.other';p.native_retention.agents[0].agent_id=p.agent_id;}return p;
-    },
+    expectedProfileSha256:savedBackupProfileSha256(profile()),
     timeoutMs:options.lateAdmission||options.slowSource?30:1000,readinessTimeoutMs:1000,pollIntervalMs:1,
     validateSource:()=>{sourceChecks++;if(sourceChecks>1&&options.slowSource)Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,80);return sourceChecks===1||!options.changeSource;},
     recordLocalReport:async value=>{events.push('local_report');reports.push(value);return !options.failLocalReport;}});
@@ -62,7 +65,8 @@ test('one automatic-settings request uses the inherited admission and persists d
   const f=await fixture(t,{busy:true});const result=await f.upload.run();
   assert.deepEqual(f.events,['root_intent','generation_received','local_report','root_report']);
   assert.equal(f.admissions.length,1);assert.equal(f.admissions[0].bundleSha256,H);
-  assert.deepEqual(f.wire.map(m=>m.type),['auth','backup/info','backup/info','backup/generate_with_automatic_settings']);
+  assert.deepEqual(f.wire.map(m=>m.type),['auth','backup/metadata_profile','backup/info','backup/info','backup/metadata_profile','backup/generate_with_automatic_settings']);
+  const ids=f.wire.filter(m=>m.id!==undefined).map(m=>m.id);assert.ok(ids.every((id,i)=>i===0||id>ids[i-1]));
   assert.equal(f.reports[1],sha(JSON.stringify(result.report)));
   assert.equal(result.report.backup_job_id_sha256,sha('fixture_job'));
   assert.equal(result.report.independent_acceptance,false);assert.equal(result.report.remote_effect_proven,false);
@@ -77,12 +81,12 @@ test('saved settings reject native cleanup, incomplete coverage, unprotected bac
     const p=profile();change(p);assert.throws(()=>savedBackupProfileSha256(p),{code:'BOOTSTRAP_UPLOAD_PROFILE'});
   }
 });
-test('native retention blocks before authentication and a changed profile blocks before generation',async t=>{
+test('native retention blocks before Root admission and a changed profile blocks before generation',async t=>{
   for(const options of [{retentionEnabled:true},{changeProfile:true},{replaceProfile:true}])await t.test(JSON.stringify(options),async t=>{
     const f=await fixture(t,options);await assert.rejects(f.upload.run());
     assert.equal(f.wire.filter(m=>m.type==='backup/generate_with_automatic_settings').length,0);
     assert.equal(f.admissions.length,options.retentionEnabled?0:1);
-    if(options.retentionEnabled)assert.equal(f.wire.length,0);
+    if(options.retentionEnabled)assert.deepEqual(f.wire.map(m=>m.type),['auth','backup/metadata_profile']);
     assert.equal(f.reports.length,0);
   });
 });
@@ -107,6 +111,13 @@ test('an admission arriving after the response timeout cannot send generation',a
 test('source validation crossing the response deadline cannot send even before the timer callback runs',async t=>{
   const f=await fixture(t,{slowSource:true});await assert.rejects(f.upload.run(),{code:'BOOTSTRAP_UPLOAD_GENERATION_UNCONFIRMED'});
   assert.equal(f.admissions.length,1);assert.equal(f.wire.filter(m=>m.type==='backup/generate_with_automatic_settings').length,0);
+});
+test('a lost or malformed native profile refresh after Root intent cannot generate',async t=>{
+  for(const options of [{dropProfileRefresh:true},{invalidProfileRefresh:true}])await t.test(JSON.stringify(options),async t=>{
+    const f=await fixture(t,options);await assert.rejects(f.upload.run(),{code:'BOOTSTRAP_UPLOAD_GENERATION_UNCONFIRMED'});
+    assert.equal(f.admissions.length,1);assert.equal(f.wire.filter(m=>m.type==='backup/generate_with_automatic_settings').length,0);
+    assert.equal(f.reports.length,0);await assert.rejects(f.upload.run(),{code:'BOOTSTRAP_UPLOAD_CONSUMED'});
+  });
 });
 test('duplicate or invalid authentication never reaches Root admission',async t=>{
   for(const options of [{duplicateAuth:true},{authInvalid:true}])await t.test(JSON.stringify(options),async t=>{

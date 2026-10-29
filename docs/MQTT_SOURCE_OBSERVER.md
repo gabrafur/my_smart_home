@@ -850,7 +850,7 @@ operacional verificado, além de recibo criptografado, canary, quota e promoçã
 ### Geração com as configurações salvas do Home Assistant
 
 `offsite-bootstrap-upload.mjs` prepara uma única sessão autenticada, consulta
-`backup/info` com o gate de prontidão já existente e admite somente
+`backup/metadata_profile` e `backup/info` com o gate de prontidão já existente e admite somente
 `backup/generate_with_automatic_settings` como efeito. Essa
 [API do Home Assistant](https://github.com/home-assistant/core/blob/2026.10.4/homeassistant/components/backup/websocket.py)
 usa a senha salva dentro do produtor; o worker não consulta `backup/config/info`,
@@ -863,11 +863,13 @@ Por isso o transporte exige um perfil sanitizado ligado ao hash esperado:
 senha configurada apenas como booleano, provedor protegido, cobertura limitada
 e retenção global e de todos os agentes sem dias nem quantidade de cópias.
 Perfil ausente, cobertura desconhecida, retenção ativa ou qualquer mudança
-no perfil bloqueiam a geração. O leitor nativo desses fatos ainda precisa
-fazer parte do pacote selado; um callback de teste não comprova os fatos da casa.
+no perfil bloqueiam a geração. O leitor nativo está preparado como fonte
+candidata e ainda precisa fazer parte do pacote selado; dados de teste não
+comprovam os fatos da casa.
 
 O frame completo já serializado é ligado ao hash do bundle na admissão Root.
-Depois da resposta, o cliente conclui a validação síncrona da origem e relê
+Depois da resposta, o cliente consulta novamente o perfil na conexão nativa,
+conclui a validação síncrona da origem e relê
 os prazos antes da escrita. A sessão verifica também seu próprio prazo
 monotônico após essa validação; mesmo um bloqueio que impeça o timer de rodar
 não permite um envio atrasado. Uma resposta perdida, autenticação duplicada,
@@ -886,10 +888,33 @@ opcionais fora da árvore revisada do `ws`. Os testes injetam apenas o
 transporte ao servidor sintético; objetos injetados não comprovam autoridade
 Root. O ensaio nativo deve atravessar o canal herdado e o journal reais.
 O [aceite do transporte](../scripts/raspberry-mcp/offsite-bootstrap-upload.acceptance.json)
-registra 423 testes Python em Root, sem skips, e 27 casos Node, incluindo os
+registra 423 testes Python em Root, sem skips, e 31 casos Node, incluindo os
 subtestes. O caso nativo conecta o filho UID/GID do worker ao journal Root e
 ao servidor WebSocket próprio, faz uma geração, persiste o relato com `fsync`
 e rejeita repetição. Não executa backup residencial nem comprova o perfil salvo.
+
+### Fonte candidata do perfil dentro do Home Assistant
+
+`scripts/raspberry-mcp/runtime-source/ha-backup-profile/` é uma candidata para
+`custom_components/metadata_backup_profile`, fora da pasta ativa de integrações.
+O único método, `backup/metadata_profile`, exige administrador e rejeita campos
+adicionais. O registro requer configuração explícita; importar o código não o
+ativa. Não registra entidades, ações de geração, comandos ou caminhos genéricos.
+
+A projeção lê objetos já carregados pelo produtor, sem abrir arquivos de storage
+nem serializar a configuração inteira. Da senha usa apenas tipo e comprimento
+para produzir `password_configured`; não retorna nem converte seu conteúdo.
+Seleciona a entrada OneDrive correspondente ao agente e agrega as retenções de
+agentes ativos e configurados, incluindo os padrões herdados. Valores inseguros
+continuam fatos para os gates do consumidor; estrutura desconhecida retorna
+erro fixo sem detalhes da exceção.
+
+Dez testes em imagem isolada do Home Assistant exercitam os modelos reais,
+decoradores de administrador, registro da API, rejeição de argumentos extras e
+ausência da senha na resposta. Os diagnósticos nativos já permitem observação
+manual com segredos mascarados, sem instalar a candidata. A instalação e a
+geração condicional, sem limpeza nativa e preservando a série de backups,
+continuam fora deste aceite; nenhuma alteração da retenção existente é implícita.
 
 ## Revogação, reversão e recuperação
 

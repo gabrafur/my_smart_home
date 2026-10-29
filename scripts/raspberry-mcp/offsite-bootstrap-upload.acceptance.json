@@ -1,14 +1,11 @@
 {
   "schema_version": 1,
-  "scope": "first_metadata_automatic_settings_generation_transport",
+  "scope": "first_metadata_generation_transport_and_candidate_native_profile",
   "verified_on": "2026-10-29",
   "production_installed": false,
   "new_scope_activated": false,
   "new_accounts": 0,
   "new_MCP_tools": 0,
-  "production_backup_requests": 0,
-  "production_credential_or_key_reads": 0,
-  "native_saved_settings_read": false,
   "policy_promoted": false,
   "public_API_contract": {
     "version": "2026.10.4",
@@ -28,13 +25,15 @@
     "all_agents_coverage_required": true,
     "database_addons_and_extra_folders_excluded": true,
     "delete_permanently_must_be_false": true,
-    "profile_revalidated_before_authentication_and_after_Root_admission": true,
     "safe_but_changed_profile_also_rejected": true,
-    "native_profile_reader_not_implemented_or_activated": true
+    "authenticated_native_profile_reads_before_and_after_Root_admission": true,
+    "native_profile_source_implemented_as_opt_in_candidate": true,
+    "candidate_installed_or_activated": false
   },
   "wire_gate": {
     "single_authenticated_session": true,
     "methods": [
+      "backup/metadata_profile",
       "backup/info",
       "backup/generate_with_automatic_settings"
     ],
@@ -45,7 +44,10 @@
     "no_reconnect_or_repeat_generation": true,
     "request_contains_password": false,
     "backup_config_info_or_update_called": false,
-    "no_generic_daily_wrapper_or_retention_dispatch": true
+    "no_generic_daily_wrapper_or_retention_dispatch": true,
+    "native_profile_refresh_awaited_before_final_deadline_check": true,
+    "RPC_identifiers_in_actual_send_order": true,
+    "in_process_profile_callback_used": false
   },
   "report": {
     "private_durable_report_callback_required_before_Root_report_hash": true,
@@ -68,7 +70,7 @@
     "Root_suite_failures": 0,
     "Root_suite_skipped": 0,
     "native_Node_process_cases": 10,
-    "Node_channel_and_upload_cases_including_subtests": 27,
+    "Node_channel_and_upload_cases_including_subtests": 31,
     "Node_failures": 0,
     "actual_owned_automatic_settings_generation_requests_in_native_case": 1,
     "actual_Root_begin_worker_binding_remote_intent_and_report": true,
@@ -82,15 +84,41 @@
     "Docker_socket_mounted": false,
     "image_healthcheck_disabled": true,
     "Compose_labels_empty": true,
-    "CPU_quota": 0.25
+    "CPU_quota": 0.25,
+    "actual_native_HA_model_and_registration_cases": 10,
+    "native_HA_cases_skipped": 0,
+    "native_HA_fixture_UID_GID": "1000:1000",
+    "native_HA_fixture_address_space_limit_bytes": 536870912,
+    "native_HA_fixture_CPU_seconds": 40,
+    "native_HA_fixture_memory_cgroup_limit_used": false,
+    "eight_household_states_and_StartedAt_unchanged_in_HA_model_fixture": true
   },
   "pending": [
-    "native_sanitized_profile_producer_and_specific_configuration_scope_review",
+    "specific_native_profile_installation_scope_and_complete_package",
+    "operation_scoped_no_cleanup_generation_preserving_existing_policy_and_backup_series",
     "complete_frozen_worker_entry_and_upstream_verified_dependency_tree",
     "capture_and_staging_integration",
     "readonly_reconciliation_and_verified_operational_closure",
     "real_encrypted_14_component_receipt_canary_and_quota_preserving_promotion",
     "specific_full_installation_approval",
     "seven_isolated_functional_application_restores"
-  ]
+  ],
+  "candidate_profile_activated_in_production": false,
+  "isolated_tests_production_credential_or_key_reads": 0,
+  "candidate_native_profile": {
+    "source": "scripts/raspberry-mcp/runtime-source/ha-backup-profile",
+    "default_not_configured_or_registered": true,
+    "only_method": "backup/metadata_profile",
+    "actual_HA_admin_decorator_verified": true,
+    "extra_request_fields_rejected": true,
+    "reads_loaded_manager_objects_not_storage_files": true,
+    "secret_type_and_length_only_never_coerced_or_returned": true,
+    "no_full_configuration_serialization": true,
+    "unique_selected_OneDrive_entry_and_agent_binding": true,
+    "active_and_inactive_configured_agent_retention_covered": true,
+    "unknown_exceptions_never_returned_or_logged": true,
+    "raw_key_value_read_or_transfer": false,
+    "generation_or_configuration_mutation_methods": false
+  },
+  "production_backup_generation_requests": 0
 }

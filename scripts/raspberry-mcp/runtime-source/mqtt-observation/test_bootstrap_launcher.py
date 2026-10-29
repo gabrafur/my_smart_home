@@ -160,12 +160,19 @@ c.sendall(b'HTTP/1.1 200 OK\\r\\nContent-Length: 2\\r\\nConnection: close\\r\\n\
         shutil.copyfile(PROJECT/'restore/mqtt-observation-private-state.json',restore/'mqtt-observation-private-state.json')
         (restore/'mqtt-observation-private-state.json').chmod(0o644)
         portfile=self.base/'port.json';counter=self.base/'generation.json'
+        saved_profile={'schema_version':1,'scope':'ha_saved_backup_profile_v1','agent_id':'onedrive.fixture',
+          'password_configured':True,'provider_protected':True,'include_database':False,'include_all_addons':False,
+          'include_addons':[],'include_folders':[],'delete_permanently':False,
+          'native_retention':{'all_agents_covered':True,'global':{'copies':None,'days':None},
+            'agents':[{'agent_id':'onedrive.fixture','copies':None,'days':None}]}}
         serverfile=self.base/'server.cjs'
         serverfile.write_text("const fs=require('node:fs');const {WebSocketServer}=require("+json.dumps(str(vendor))+ ");\n"
+          +f"const savedProfile={json.dumps(saved_profile)};\n"
           +"const s=new WebSocketServer({host:'127.0.0.1',port:0});const requests=[];\n"
           +f"s.on('listening',()=>fs.writeFileSync({json.dumps(str(portfile))},JSON.stringify({{port:s.address().port}})));\n"
           +"s.on('connection',c=>{c.send(JSON.stringify({type:'auth_required'}));c.on('message',raw=>{const m=JSON.parse(raw);"
           +"if(m.type==='auth'){c.send(JSON.stringify({type:'auth_ok'}));return}requests.push(m.type);"
+          +"if(m.type==='backup/metadata_profile'){c.send(JSON.stringify({id:m.id,type:'result',success:true,result:savedProfile}));return}"
           +"if(m.type==='backup/info'){c.send(JSON.stringify({id:m.id,type:'result',success:true,result:{state:'idle',backups:[],agent_errors:{}}}));return}"
           +"if(m.type!=='backup/generate_with_automatic_settings'||Object.keys(m).sort().join()!=='id,type')process.exit(2);"
           +f"fs.writeFileSync({json.dumps(str(counter))},JSON.stringify({{requests,generation_requests:requests.filter(t=>t==='backup/generate_with_automatic_settings').length}}));"
@@ -178,20 +185,15 @@ c.sendall(b'HTTP/1.1 200 OK\\r\\nContent-Length: 2\\r\\nConnection: close\\r\\n\
             self.assertIsNone(self.server.poll());time.sleep(0.01)
         self.assertTrue(portfile.exists());port=json.loads(portfile.read_text())['port']
         local=self.data/'upload.json'
-        saved_profile={'schema_version':1,'scope':'ha_saved_backup_profile_v1','agent_id':'onedrive.fixture',
-          'password_configured':True,'provider_protected':True,'include_database':False,'include_all_addons':False,
-          'include_addons':[],'include_folders':[],'delete_permanently':False,
-          'native_retention':{'all_agents_covered':True,'global':{'copies':None,'days':None},
-            'agents':[{'agent_id':'onedrive.fixture','copies':None,'days':None}]}}
         self.install("import{prepareBootstrapUpload,savedBackupProfileSha256}from './scripts/offsite-bootstrap-upload.mjs';\n"
           +f"const savedProfile={json.dumps(saved_profile)};\n"
           +"import{createRequire}from 'node:module';const WS=createRequire(import.meta.url)('./nodered/node_modules/ws');\n"
           +f"class OwnedSocket extends WS{{constructor(url){{if(url!=='ws://127.0.0.1:8123/api/websocket')throw Error('endpoint changed');super('ws://127.0.0.1:{port}')}}}}\n"
-          +f"const upload=prepareBootstrapUpload({{channel,bundleSha256:'{H}',token:'synthetic-only',WebSocket:OwnedSocket,readSavedProfile:()=>savedProfile,expectedProfileSha256:savedBackupProfileSha256(savedProfile),timeoutMs:15000,readinessTimeoutMs:10000,pollIntervalMs:100,validateSource:()=>true,recordLocalReport:async value=>{{const fd=fixtureFs.openSync({json.dumps(str(local))},'wx',0o600);try{{fixtureFs.writeFileSync(fd,JSON.stringify(value));fixtureFs.fsyncSync(fd)}}finally{{fixtureFs.closeSync(fd)}}return true}}}});\n"
+          +f"const upload=prepareBootstrapUpload({{channel,bundleSha256:'{H}',token:'synthetic-only',WebSocket:OwnedSocket,expectedProfileSha256:savedBackupProfileSha256(savedProfile),timeoutMs:15000,readinessTimeoutMs:10000,pollIntervalMs:100,validateSource:()=>true,recordLocalReport:async value=>{{const fd=fixtureFs.openSync({json.dumps(str(local))},'wx',0o600);try{{fixtureFs.writeFileSync(fd,JSON.stringify(value));fixtureFs.fsyncSync(fd)}}finally{{fixtureFs.closeSync(fd)}}return true}}}});\n"
           +"await upload.run();let denied=false;try{await upload.run()}catch{denied=true}if(!denied)throw Error('duplicate worker run');channel.close();\n")
         result=self.launcher.run();self.assertEqual(result['exit_code'],0,(result,(self.data/'child-exit.json').read_text()))
         self.assertEqual(result['state'],'worker_exited_report_unverified');self.assertFalse(result['remote_effect_proven'])
-        self.assertEqual(json.loads(counter.read_text()),{'requests':['backup/info','backup/generate_with_automatic_settings'],'generation_requests':1})
+        self.assertEqual(json.loads(counter.read_text()),{'requests':['backup/metadata_profile','backup/info','backup/metadata_profile','backup/generate_with_automatic_settings'],'generation_requests':1})
         saved=json.loads(local.read_text());self.assertEqual(saved['jobId'],'fixture_job')
         self.assertFalse(saved['report']['independent_acceptance']);self.assertFalse(saved['report']['policy_promoted'])
         records=self.operation()['records'];self.assertEqual([r['body']['phase']for r in records],

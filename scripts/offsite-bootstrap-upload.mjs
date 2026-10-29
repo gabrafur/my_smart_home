@@ -9,6 +9,7 @@ const failure=code=>Object.assign(new Error('first backup generation is unconfir
   {code:`BOOTSTRAP_UPLOAD_${code}`,automaticRetry:false});
 const validHash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const generationType='backup/generate_with_automatic_settings';
+const profileType='backup/metadata_profile';
 const endpoint='ws://127.0.0.1:8123/api/websocket';
 const canonical=value=>JSON.stringify(value&&typeof value==='object'&&!Array.isArray(value)
   ?Object.fromEntries(Object.keys(value).sort().map(k=>[k,JSON.parse(canonical(value[k]))]))
@@ -76,9 +77,10 @@ function session({token,WebSocket,timeoutMs}) {
       }else stop('REPLY_SCHEMA');
     });
   }
-  function reserve(request,budget=timeoutMs){
+  function reserve(request,budget=timeoutMs,explicitId=null){
     if(closed||!authenticated||pending||socket.readyState!==1)throw failure('NOT_READY');
-    const id=++sequence,text=JSON.stringify({id,...request});
+    if(budget<=0)throw failure('NOT_READY');
+    const id=explicitId??++sequence,text=JSON.stringify({id,...request});
     let resolve,reject;
     const response=new Promise((yes,no)=>{resolve=yes;reject=no;});
     // The Root round trip can outlive the response timer. Observe rejection
@@ -100,13 +102,25 @@ function session({token,WebSocket,timeoutMs}) {
   return {
     ready,
     async info(budget){const r=reserve({type:'backup/info'},budget);r.write();return r.response;},
-    async generate({channel,bundleSha256,validateSource}){
+    async profile(){const r=reserve({type:profileType});r.write();return r.response;},
+    async generate({channel,bundleSha256,validateSource,checkProfile}){
       if(generationUsed)throw failure('CONSUMED');generationUsed=true;
-      const r=reserve({type:generationType});
-      const requestSha256=digest(r.text);
+      // Allocate the refresh before the generation ID so actual HA requests
+      // stay ordered while Root binds the exact future generation frame.
+      const refreshId=++sequence,generationId=++sequence;
+      const text=JSON.stringify({id:generationId,type:generationType});
+      const requestSha256=digest(text),deadline=performance.now()+timeoutMs;
+      let r;
       try{
         const admission=await channel.dispatchRemote({bundleSha256,requestSha256,
-          beforeSend:()=>r.validate(validateSource),send:()=>r.write()});
+          prepareBeforeSend:async()=>{
+            const query=reserve({type:profileType},deadline-performance.now(),refreshId);
+            query.write();checkProfile(await query.response);
+          },beforeSend:()=>{
+            validateSource();
+            r=reserve({type:generationType},deadline-performance.now(),generationId);
+            if(r.text!==text)throw failure('FRAME_CHANGED');
+          },send:()=>r.write()});
         const value=await r.response;
         if(!value||typeof value!=='object'||Object.keys(value).join()!=='backup_job_id'||
           typeof value.backup_job_id!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(value.backup_job_id))throw failure('JOB_UNCONFIRMED');
@@ -120,20 +134,21 @@ function session({token,WebSocket,timeoutMs}) {
 // Only the sealed worker supplies these dependencies. A prepared bundle or a
 // caller-provided function never substitutes for the inherited Root channel.
 export function prepareBootstrapUpload({channel,bundleSha256,token,WebSocket,validateSource,recordLocalReport,
-  readSavedProfile,expectedProfileSha256,
+  expectedProfileSha256,
   timeoutMs=30000,readinessTimeoutMs=60000,pollIntervalMs=3000}={}) {
   if(!channel||typeof channel.dispatchRemote!=='function'||typeof channel.recordReport!=='function'||
     !validHash(bundleSha256)||typeof token!=='string'||!token||token.length>8192||
     typeof WebSocket!=='function'||typeof validateSource!=='function'||typeof recordLocalReport!=='function'||
-    typeof readSavedProfile!=='function'||!validHash(expectedProfileSha256)||
+    !validHash(expectedProfileSha256)||
     !Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>30000||
     !Number.isSafeInteger(readinessTimeoutMs)||readinessTimeoutMs<1||readinessTimeoutMs>120000||
     !Number.isSafeInteger(pollIntervalMs)||pollIntervalMs<1||pollIntervalMs>readinessTimeoutMs)throw failure('INPUT');
   let used=false;
   const validate=()=>{
-    if(validateSource()!==true||savedBackupProfileSha256(readSavedProfile())!==expectedProfileSha256)throw failure('SOURCE_CHANGED');
+    if(validateSource()!==true)throw failure('SOURCE_CHANGED');
     return true;
   };
+  const checkProfile=value=>{if(savedBackupProfileSha256(value)!==expectedProfileSha256)throw failure('SOURCE_CHANGED');};
   return Object.freeze({async run(){
     if(used)throw failure('CONSUMED');used=true;
     let connection;
@@ -141,12 +156,13 @@ export function prepareBootstrapUpload({channel,bundleSha256,token,WebSocket,val
       validate();
       connection=session({token,WebSocket,timeoutMs});
       await connection.ready;
+      checkProfile(await connection.profile());
       await waitForBackupManagerIdle({timeoutMs:readinessTimeoutMs,pollIntervalMs,
         request:(_token,request,budget)=>{
           if(request.type!=='backup/info')throw failure('READINESS_METHOD');
           return connection.info(budget);
         }});
-      const {admission,jobId,requestSha256}=await connection.generate({channel,bundleSha256,validateSource:validate});
+      const {admission,jobId,requestSha256}=await connection.generate({channel,bundleSha256,validateSource:validate,checkProfile});
       if(!admission||typeof admission.operationId!=='string'||!/^[a-f0-9]{32}$/.test(admission.operationId)||
         admission.automaticRetry!==false)throw failure('ADMISSION');
       const report=Object.freeze({schema_version:1,state:'generation_response_unverified',operation_id:admission.operationId,
