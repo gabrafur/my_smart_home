@@ -48,6 +48,12 @@ completo de manutenção intencional nem alegação de cobertura universal.
 
 Produção usa o store `persistent`; testes têm chaves separadas `__test`.
 O lifecycle marca o incidente antes de solicitar entrega e suprime repetições.
+Depois dessa marca, uma passagem por `unknown` preserva a primeira detecção,
+a origem e o horário da notificação. Somente um incidente ainda não notificado
+reinicia sua janela de confirmação ao voltar a falhar. Isso mantém a ordem
+`first_seen_at <= notified_at <= last_seen_at`, sem reenviar o mesmo alerta.
+O ajuste não reescreve incidentes históricos com cronologia inválida; esses
+registros continuam exigindo reconciliação e a projeção MCP permanece estrita.
 Essa marca prova intenção local, não confirmação do Home Assistant, do celular ou
 da Eva; falha de entrega deve ser reconciliada pelo canal global, sem replay cego.
 Recuperação remove somente o aviso associado; o histórico de falhas continua.

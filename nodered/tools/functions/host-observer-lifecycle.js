@@ -46,7 +46,9 @@ if (msg._host_signal === "healthy") {
 incident ??= {first_seen_at: now, last_seen_at: now, notified_at: null, kind: fact.kind,
     source_first_observed_at: fact.occurred_at ?? fact.observed_at ?? null,
     source_time_kind: fact.occurred_at ? "producer_occurrence" : fact.observed_at ? "producer_observation" : "unknown"};
-if (incident.current_evidence === "unknown") {
+// Unknown evidence restarts an unconfirmed failure, while an existing
+// notification keeps its incident chronology and dedupe until actual recovery.
+if (incident.current_evidence === "unknown" && incident.notified_at === null) {
     incident.first_seen_at = now; incident.sample_count = 0; incident.last_sample_at = null;
     incident.source_first_observed_at = fact.occurred_at ?? fact.observed_at ?? null;
     incident.source_time_kind = fact.occurred_at ? "producer_occurrence" : fact.observed_at ? "producer_observation" : "unknown";
