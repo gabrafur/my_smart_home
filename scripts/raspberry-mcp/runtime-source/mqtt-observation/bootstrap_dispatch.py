@@ -100,7 +100,7 @@ class BootstrapDispatch:
           and 0<issued<=now<expiry<=issued+86400,'bootstrap_profile_expired')
         need(0<uint(p['maximum_duration_ns'],64)<=DAY_NS,'bootstrap_profile_bounds')
         worker_manifest(self.paths,p['worker_files'])
-        need(file_digest(self.paths.interpreter,uid=0,gid=0,modes=(0o555,0o755),limit=64*1048576)==p['interpreter_sha256'],
+        need(file_digest(self.paths.interpreter,uid=0,gid=0,modes=(0o555,0o755),limit=128*1048576)==p['interpreter_sha256'],
           'bootstrap_interpreter_changed')
         need(file_digest(self.paths.policy,uid=self.paths.worker_uid,gid=self.paths.worker_gid,modes=(0o600,),limit=1048576)
           ==p['baseline_policy_sha256'],'bootstrap_baseline_changed')
@@ -140,10 +140,24 @@ class BootstrapDispatch:
         self.j.append(identity,'bootstrap_begin',facts,at_ns=now,clock_domain_sha256=domain,expected_previous_sha256=None)
         self._live(identity)
         return {**self.status(identity),'newly_recorded':True}
+    def bind_worker(self,identity,witness):
+        """Record a witness collected by the fixed launcher's own live handle."""
+        from maintenance_journal import validate_facts
+        validate_facts('bootstrap_worker_bound',witness);op=self._live(identity)
+        need(op['records'][-1]['body']['phase']=='bootstrap_begin','bootstrap_worker_binding_consumed')
+        p=self.profile()
+        need(uint(witness['pid'],64)>0 and uint(witness['start_ticks'],64)>0
+          and witness['worker_manifest_sha256']==digest(p['worker_files'])
+          and witness['interpreter_sha256']==p['interpreter_sha256'],'bootstrap_worker_binding_invalid')
+        now,domain=self._clock(op)
+        self.j.append(identity,'bootstrap_worker_bound',witness,at_ns=now,clock_domain_sha256=domain,
+          expected_previous_sha256=op['records'][-1]['sha256'])
+        self._live(identity);return self.status(identity)
     def admit_remote(self,identity,*,bundle_sha256,request_sha256):
         need(hex64(bundle_sha256)and hex64(request_sha256))
         op=self._live(identity)
-        need(op['records'][-1]['body']['phase']=='bootstrap_begin','bootstrap_remote_intent_consumed')
+        need(op['records'][-1]['body']['phase']!='bootstrap_begin','bootstrap_worker_unbound')
+        need(op['records'][-1]['body']['phase']=='bootstrap_worker_bound','bootstrap_remote_intent_consumed')
         now,domain=self._clock(op)
         self.j.append(identity,'bootstrap_remote_intent',{'bundle_sha256':bundle_sha256,'request_sha256':request_sha256,
           'dispatch_completed':False},at_ns=now,clock_domain_sha256=domain,expected_previous_sha256=op['records'][-1]['sha256'])
@@ -165,4 +179,5 @@ class BootstrapDispatch:
     def status(self,identity):
         op=self._existing(identity);phase=op['records'][-1]['body']['phase']
         return {'operation_id':identity,'phase':phase,'consumed':True,'automatic_retry':False,
+          'worker_witness_recorded':any(r['body']['phase']=='bootstrap_worker_bound'for r in op['records']),
           'remote_effect_proven':False,'independent_acceptance':False,'policy_promoted':False}

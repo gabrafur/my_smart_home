@@ -13,7 +13,8 @@ PHASES=('begin','armed','source_stop_intent','source_stopped','source_drained',
         'consumer_started','consumer_ready','source_start_intent','source_started',
         'new_source_verified','complete')
 FROZEN_PHASES=('frozen_begin','frozen_complete')
-BOOTSTRAP_PHASES=('bootstrap_begin','bootstrap_remote_intent','bootstrap_report_recorded')
+LEGACY_BOOTSTRAP_PHASES=('bootstrap_begin','bootstrap_remote_intent','bootstrap_report_recorded')
+BOOTSTRAP_PHASES=('bootstrap_begin','bootstrap_worker_bound','bootstrap_remote_intent','bootstrap_report_recorded')
 REASONS=('authorization_closed','binding_changed','source_unknown','accounting_unknown',
          'consumer_not_ready','clock_changed','deadline','write_failed','effect_uncertain','operator_conflict')
 INTENT={'binding_sha256':'h','expected_state_sha256':'h'}
@@ -21,6 +22,8 @@ FACTS={
  'bootstrap_begin':{'profile_sha256':'h','worker_manifest_sha256':'h','bootstrap_approval_sha256':'h',
   'baseline_policy_sha256':'h','baseline_manifest_sha256':'h','snapshot_operation_sha256':'h','deadline_ns':'u64'},
  'bootstrap_remote_intent':{'bundle_sha256':'h','request_sha256':'h','dispatch_completed':'false'},
+ 'bootstrap_worker_bound':{'pid':'u64','start_ticks':'u64','interpreter_dev':'u64','interpreter_ino':'u64',
+  'interpreter_sha256':'h','command_sha256':'h','worker_manifest_sha256':'h'},
  'bootstrap_report_recorded':{'report_sha256':'h','independent_acceptance':'false'},
  'frozen_begin':{'source_authorization_sha256':'h','source_approval_sha256':'h','source_authorization_state':'closed_source',
   'source_expires_at':'expiry','source_runtime_marker_present':'b','code_manifest_sha256':'h','profile_sha256':'h',
@@ -97,6 +100,8 @@ def validate_operation(op):
     need(type(rows[0])is dict and type(rows[0].get('body'))is dict)
     first=rows[0].get('body',{}).get('phase')
     phases=FROZEN_PHASES if first=='frozen_begin'else BOOTSTRAP_PHASES if first=='bootstrap_begin'else PHASES
+    if first=='bootstrap_begin'and len(rows)>1 and rows[1].get('body',{}).get('phase')=='bootstrap_remote_intent':
+        phases=LEGACY_BOOTSTRAP_PHASES  # Historical data never grants a new dispatch.
     for i,row in enumerate(rows):
         closed(row,['body','sha256']);b=row['body']
         closed(b,['schema_version','operation_id','approval_sha256','phase','facts','at_ns',

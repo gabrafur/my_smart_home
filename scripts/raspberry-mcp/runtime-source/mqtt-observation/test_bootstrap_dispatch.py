@@ -12,6 +12,18 @@ DOMAIN='b'*64
 ID='c'*32
 
 class Records(unittest.TestCase):
+    def test_previous_three_phase_chains_remain_valid_historical_data(self):
+        from maintenance_journal import record_body,validate_operation
+        values=[('bootstrap_begin',{'profile_sha256':H,'worker_manifest_sha256':H,'bootstrap_approval_sha256':H,
+          'baseline_policy_sha256':H,'baseline_manifest_sha256':H,'snapshot_operation_sha256':H,'deadline_ns':'1000'}),
+          ('bootstrap_remote_intent',{'bundle_sha256':H,'request_sha256':H,'dispatch_completed':False}),
+          ('bootstrap_report_recorded',{'report_sha256':H,'independent_acceptance':False})]
+        rows=[];previous=None
+        for i,(phase,facts)in enumerate(values):
+            body=record_body(ID,H,phase,facts,str(100+i),DOMAIN,i+1,previous)
+            row={'body':body,'sha256':digest(body)};rows.append(row);previous=row['sha256']
+        op={'operation_id':ID,'approval_sha256':H,'records':rows}
+        self.assertEqual(validate_operation(op),op)
     def test_intent_and_report_cannot_attest_dispatch_or_independent_acceptance(self):
         validate_facts('bootstrap_remote_intent',{'bundle_sha256':H,'request_sha256':H,'dispatch_completed':False})
         validate_facts('bootstrap_report_recorded',{'report_sha256':H,'independent_acceptance':False})
@@ -45,7 +57,13 @@ class Root(unittest.TestCase):
     def verify(self):self.checks+=1
     def save_profile(self):
         p=self.state/'first-backup-policy.json';p.write_bytes(canonical(self.profile));p.chmod(0o600)
-    def begin(self):return self.guard.begin()
+    def begin(self):
+        result=self.guard.begin()
+        if result['newly_recorded']:
+            self.guard.bind_worker(self.profile['operation_id'],{'pid':'42','start_ticks':'1','interpreter_dev':'1',
+              'interpreter_ino':'1','interpreter_sha256':self.profile['interpreter_sha256'],
+              'command_sha256':H,'worker_manifest_sha256':digest(self.profile['worker_files'])})
+        return result
     def admit(self):return self.guard.admit_remote(self.profile['operation_id'],bundle_sha256=H,request_sha256='f'*64)
     def reopen(self,*,read_only=False):
         self.j.close();self.j=Journal(self.state,H,read_only=read_only);self.guard=m.BootstrapDispatch(self.j,self.backend,self.paths,wall=lambda:self.wall)
@@ -88,7 +106,7 @@ class Root(unittest.TestCase):
                 raw=file.read_bytes();file.write_bytes(b'changed')
                 with self.assertRaises(MaintenanceUnavailable):self.admit()
                 file.write_bytes(raw)
-        self.assertEqual(self.guard.status(ID)['phase'],'bootstrap_begin')
+        self.assertEqual(self.guard.status(ID)['phase'],'bootstrap_worker_bound')
     def test_worker_modes_owners_symlinks_hardlinks_and_unsafe_names_fail_closed(self):
         raw=self.entry.read_bytes()
         for kind in ['writable','owner','symlink','hardlink','traversal','directory_symlink']:
@@ -146,8 +164,13 @@ class Root(unittest.TestCase):
             self.profile['code_manifest_sha256']=backend.policy['code_manifest_sha256'];self.save_profile()
             self.begin();(source.paths.root_code/'bootstrap_dispatch.py').write_bytes(b'changed Root code')
             with self.assertRaisesRegex(MaintenanceUnavailable,'code_changed'):self.admit()
-            self.assertEqual(self.guard.status(ID)['phase'],'bootstrap_begin')
+            self.assertEqual(self.guard.status(ID)['phase'],'bootstrap_worker_bound')
         finally:source.tearDown()
+    def test_remote_boundary_requires_a_worker_witness_and_cannot_rebind_it(self):
+        self.guard.begin()
+        with self.assertRaisesRegex(MaintenanceUnavailable,'worker_unbound'):self.admit()
+        self.begin()  # A consumed begin cannot silently bind a different process.
+        self.assertFalse(self.guard.status(ID)['worker_witness_recorded'])
     def test_monotonic_deadline_and_clock_domain_change_block_remote_boundary(self):
         self.begin();self.now=10100
         with self.assertRaisesRegex(MaintenanceUnavailable,'deadline'):self.admit()

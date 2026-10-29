@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "scope": "first_metadata_backup_fixed_Node_launcher_and_inherited_Root_channel",
+  "verified_on": "2026-10-29",
+  "production_installed": false,
+  "new_scope_activated": false,
+  "production_remote_requests": 0,
+  "policy_promoted": false,
+  "fixed_launcher": {
+    "entry_without_arguments_and_only_sealed_path": true,
+    "Root_role_and_protected_entry_required": true,
+    "durable_begin_before_spawn": true,
+    "only_own_Popen_handle_can_be_bound": true,
+    "pidfd_birth_executable_command_and_role_verified": true,
+    "Root_worker_file_identities_preserved_through_admission": true,
+    "worker_UID_GID_and_empty_supplementary_groups": true,
+    "clean_environment_no_inherited_Node_configuration": true,
+    "journal_lock_released_while_worker_runs": true,
+    "spawn_failure_consumes_operation": true,
+    "timeout_closes_channel_without_killing_or_relaunching_worker": true
+  },
+  "channel": {
+    "private_AF_UNIX_socketpair_no_network_listener": true,
+    "kernel_credentials_match_original_child_on_each_frame": true,
+    "descendant_frame_rejected": true,
+    "maximum_requests": 2,
+    "maximum_frame_bytes": 4096,
+    "payloads": "admission_bundle_and_request_hashes_then_report_hash_only",
+    "live_child_verified_before_and_after_durable_remote_intent": true,
+    "wall_and_boottime_deadlines_checked_before_client_accepts_reply": true,
+    "fixed_error_codes_do_not_include_reply_or_transport_details": true,
+    "lost_or_invalid_reply_consumes_local_attempt": true,
+    "already_authenticated_report_may_be_recorded_after_child_exit": true,
+    "reset_is_EOF_not_a_new_frame_or_permission": true,
+    "report_is_independent_acceptance": false,
+    "report_is_terminal": false,
+    "automatic_retry": false
+  },
+  "limits": {
+    "worker_address_space_soft_and_hard_bytes": 2147483648,
+    "worker_heap_MiB": 64,
+    "worker_CPU_seconds_soft_and_hard_maximum": 20,
+    "Wasm_uses_inline_bounds_checks_without_large_virtual_cage": true,
+    "actual_effective_child_address_space_limit_verified": true
+  },
+  "isolated_tests": {
+    "Root_suite_total": 422,
+    "failures": 0,
+    "skipped": 0,
+    "native_Node_process_cases": 9,
+    "EOF_unit_cases": 2,
+    "Node_channel_cases": 5,
+    "actual_owned_HTTP_POSTs_in_HTTP_case": 1,
+    "bounded_Wasm_memory_bytes": 65536,
+    "household_HTTP_requests": 0,
+    "network": "none",
+    "production_mounts": 0,
+    "Docker_socket_mounted": false,
+    "Compose_labels_empty": true,
+    "image_healthcheck_disabled": true,
+    "owned_container_removed": true,
+    "source_hashes_unchanged_during_run": true,
+    "seven_household_states_and_StartedAt_unchanged": true,
+    "CPU_quota": 0.25,
+    "fixture_parent_address_space_bytes": 2147483648,
+    "fixture_parent_CPU_seconds": 80
+  },
+  "static_installer_catalog": {
+    "targets": 51,
+    "Root_modules": 32
+  },
+  "history": {
+    "legacy_three_phase_chains_remain_readable": true,
+    "legacy_chain_without_worker_witness_cannot_obtain_new_admission": true,
+    "consumed_or_uncertain_operations_remain_nonterminal": true
+  },
+  "pending": [
+    "complete_frozen_production_upload_worker_dependency_tree",
+    "capture_staging_and_unique_remote_request_integration",
+    "read_only_reconciliation_and_verified_operational_closure",
+    "real_encrypted_remote_receipt_canary_and_quota_preserving_13_to_14_promotion",
+    "canonical_NodeRED_transition_and_full_installation_package_specific_owner_approval",
+    "production_source_latency_coverage24h_and_PC_off_autonomy",
+    "seven_isolated_functional_application_restores"
+  ]
+}

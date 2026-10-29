@@ -307,7 +307,7 @@ reconfigura automaticamente esse vínculo. A integração dessa etapa no atualiz
 e o instalador selado ainda são pendências da ativação.
 
 O componente `deployment_files.py` prepara a transação dos arquivos estáticos
-do pacote. Seu catálogo fechado contém 50 destinos: 31 módulos Root, nove
+do pacote. Seu catálogo fechado contém 51 destinos: 32 módulos Root, nove
 módulos do consumidor e dez arquivos de units, configuração, plugin e licenças.
 Não inclui credenciais, autorização, vínculo de origem
 ou dados de aplicações. Ele registra a intenção durável antes de cada escrita,
@@ -783,9 +783,69 @@ interpretador sintéticos em contêiner Root isolado.
 Incluem falha de retorno, mudança entre intent e retorno, expiração, inventário,
 integridade do backend, preservação do bloqueio e um snapshot/restore real de metadados com o
 novo ID consumido. Não executam o worker, envio remoto ou aplicações da casa.
-O vínculo entre o processo efetivamente executado e esses arquivos, o launcher
-imutável, a integração ao worker, o limite de uso e a promoção continuam
-pendentes do pacote completo e da aprovação específica.
+Esse aceite não comprova o envio pelo worker de produção. O launcher abaixo
+prepara o vínculo ao processo; sua implantação, a integração ao upload, o limite
+de uso e a promoção continuam pendentes do pacote completo e da aprovação
+específica.
+
+### Launcher fixo e canal herdado do worker
+
+`bootstrap_launcher.py` tem uma entrada sem argumentos, aceita somente no
+caminho selado `/opt/raspberry-mqtt-observation/bootstrap_launcher.py`, como
+Root, com arquivo regular protegido. Não recebe comando, caminho ou PID do
+chamador. Consome o ID no journal antes de criar o filho; uma falha de spawn ou
+retorno perdido não autoriza outra execução. O lock do journal é liberado
+enquanto o filho trabalha e retomado somente para cada transição.
+
+O filho usa o interpretador e a árvore Root do perfil, argumentos fixos do
+Node.js, ambiente limpo, UID/GID do worker e nenhum grupo suplementar.
+`NODE_OPTIONS`, `NODE_PATH`, addons e busca global de módulos não são herdados.
+O limite de espaço de endereçamento permanece em 2 GiB e o heap em 64 MiB.
+O argumento fixo `--disable-wasm-trap-handler` faz WebAssembly usar verificações
+de limites em linha, evitando a reserva virtual grande que impedia a
+inicialização do HTTP nesse limite; veja a
+[documentação do Node.js](https://nodejs.org/download/release/v22.17.0/docs/api/cli.html#--disable-wasm-trap-handler).
+O teste nativo verifica o limite efetivo, aloca uma memória Wasm pequena e
+conclui uma única requisição HTTP ao servidor sintético do próprio teste.
+O launcher coleta pidfd, nascimento, executável, argumentos e credenciais pelo
+kernel. A identidade dos arquivos do worker e do interpretador permanece selada
+durante o processo, incluindo inode e datas; mesmo troca por bytes iguais
+bloqueia nova autorização. `bootstrap_worker_bound` registra esse witness.
+Cadeias anteriores sem essa fase continuam legíveis como dados históricos;
+não podem obter uma nova admissão.
+
+O canal é um socket Unix privado herdado, sem listener de rede. Cada frame
+precisa trazer `SCM_CREDENTIALS` do filho original; descendentes não podem
+pedir autorização em seu lugar. A interface aceita somente hashes para uma
+admissão e um relato, sem credenciais, payload residencial ou comandos.
+`offsite-bootstrap-channel.mjs` consome a tentativa antes de escrever e verifica
+operação, resultado e validade antes de devolver a admissão ao worker. O prazo
+usa também `/proc/uptime`, arredondado conservadoramente, compatível com o
+`CLOCK_BOOTTIME` do Root. O processo precisa estar vivo antes e depois de gravar
+o intent, antes da resposta que permite o envio.
+Falhas do cliente possuem códigos fixos de etapa, sem reproduzir o conteúdo
+da resposta nem erros do transporte. Uma falha de resposta mantém a tentativa
+consumida; esses códigos não autorizam retry.
+
+Um relato já recebido do filho pode ser registrado durante sua saída, pois
+continua dado sem aceite independente. Após a confirmação final, o cliente
+fecha o socket inteiro; encerrar só a escrita deixaria os dois lados esperando
+o outro terminar. Timeout fecha o canal sem matar um worker que pode estar
+concluindo solicitação autorizada; estado desconhecido continua consumido e
+não terminal. O relato não promove política nem libera outros ciclos.
+
+O [aceite do launcher](../scripts/raspberry-mcp/offsite-bootstrap-launcher.acceptance.json)
+separa os 422 testes Python em Root isolado e os cinco casos do cliente Node.
+Inclui nove casos com processos Node reais, credenciais nativas, descendente
+recusado, saída com relatório pendente e uma requisição HTTP própria. O
+contêiner tem rede `none`, labels Compose vazias e healthcheck desativado;
+não monta o socket Docker nem dados da residência. A suíte confirma a remoção
+do contêiner e a preservação dos sete serviços residenciais.
+
+O launcher ainda não está instalado nem conectado ao worker de upload real.
+O pacote precisa incluir a árvore completa de dependências congeladas, a
+integração da captura/staging e do único envio, a reconciliação e o fechamento
+operacional verificado, além de recibo criptografado, canary, quota e promoção.
 
 ## Revogação, reversão e recuperação
 
