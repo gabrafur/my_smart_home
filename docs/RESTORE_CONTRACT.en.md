@@ -195,6 +195,14 @@ reports the real neutral probe and cleanup. No restored service was started.
 This proof does not authorize another key read, transfer, radio access,
 household shutdown or operation after authority expires.
 
+The [process boundary for recovery probes](../restore/PROCESS_BOUNDARY.md) has
+separate native evidence for limits, watchdog behavior and guest OOM. Its
+[resource acceptance receipt](../restore/process-boundary.acceptance.json) uses
+only public software, without keys, backups, physical devices or restored
+applications. It does not replace the seven functional acceptance checks or
+authorize additional access. TCG is not treated as a guest security boundary;
+outer containment still requires its own review before admitting private data.
+
 ## Limitations
 
 - The real external backup and isolated structural restore were completed;

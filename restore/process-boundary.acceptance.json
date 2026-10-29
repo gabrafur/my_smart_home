@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "state": "native_VM_resource_boundary_verified_not_service_restoration",
+  "observed_on": "2026-10-29",
+  "architecture": "aarch64",
+  "source_file": "restore/process-boundary.c",
+  "source_sha256": "51e6723fb8560d2d237a5e50674f65e41d6e1bd84ec104fbada35a9a3c849a8d",
+  "native_binary_sha256": "a6ac4049fff071328bdc79a1c46fc2b116730a8e6847026e644110f08100da8a",
+  "native_resource_scope": {
+    "watchdog_hard_AS_bytes": 67108864,
+    "VM_hard_AS_bytes": 1342177280,
+    "watchdog_CPU_seconds": 4,
+    "VM_CPU_seconds": 60,
+    "normal_wall_deadline_seconds": 300,
+    "maximum_open_descriptors_per_process": 128,
+    "native_host_process_groups": 2,
+    "VM_threads_observed": 4,
+    "minimum_watchdog_seccomp_filters": 2,
+    "minimum_VM_thread_seccomp_filters": 3,
+    "unprivileged_UID_and_no_capabilities_checked": true
+  },
+  "trusted_public_guest": {
+    "acceleration": "explicit_TCG_only",
+    "QEMU_version": "10.0.13",
+    "QEMU_package": "Debian 1:10.0.13+ds-0+deb13u1",
+    "RAM_MiB": 512,
+    "reported_memory_KiB": 477716,
+    "loopback_only": true,
+    "native_memory_controller": true,
+    "test_cgroup_bytes": 8388608,
+    "oversized_writer_exit": 137,
+    "OOM_kill_observed": true,
+    "test_cgroup_removed": true,
+    "guest_shutdown_observed": true,
+    "QEMU_exit_code": 0
+  },
+  "native_negative_proofs": {
+    "thread_group_shared_AS": true,
+    "fork_and_nonthread_clone_denied": true,
+    "hard_ceiling_raise_denied": true,
+    "oversized_mapping_refused": true,
+    "io_uring_denied": true,
+    "root_caller_refused_before_payload": true,
+    "short_deadline_variant_seconds": 2,
+    "short_deadline_variant_exit": 124,
+    "normal_candidate_TERM_exit": 143
+  },
+  "preservation": {
+    "eight_household_service_starts_unchanged": true,
+    "owned_probe_containers_removed": true,
+    "host_packages_installed": 0,
+    "KVM_accesses": 0,
+    "physical_devices": 0,
+    "backup_or_key_reads": 0,
+    "production_changes": 0,
+    "new_MCP_tools": 0,
+    "authorization_extensions": 0
+  },
+  "limits": [
+    "TCG is not claimed as a guest security boundary; only trusted public resource-probe inputs were executed",
+    "Outer namespaces, capability confinement, mounts, data handling and complete resource budget require their own reviewed driver",
+    "No restored application was executed and no seven-service readiness is proven",
+    "Actual restored application memory sizing remains unproven",
+    "Consumed key/transfer scopes and physical coordinator access are not renewed by this receipt",
+    "This receipt does not repeat or replace accepted physical24h cadence or CPU/RSS tests"
+  ]
+}

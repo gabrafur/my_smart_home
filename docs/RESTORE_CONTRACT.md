@@ -262,6 +262,14 @@ registra a prova neutra e limpeza reais. Nenhum dos sete serviços restaurados f
 iniciado. O ensaio não autoriza nova leitura de chave, transferência, acesso a
 rádio, parada residencial ou operação após expirar a autoridade.
 
+A [fronteira de processos dos ensaios](../restore/PROCESS_BOUNDARY.md) possui
+provas nativas separadas de limites, watchdog e OOM no guest. Seu
+[aceite de recursos](../restore/process-boundary.acceptance.json) usa somente
+software público, sem chave, backup, dispositivo físico ou aplicação restaurada.
+Ele não substitui os sete aceites funcionais nem autoriza acesso adicional.
+TCG não é tratado como garantia de segurança de guest; a contenção externa
+continua exigindo revisão própria antes de admitir dados privados.
+
 ## Preparação de backup externo no OneDrive
 
 O exemplo público desativado fica em
