@@ -3,7 +3,7 @@ import json,unittest
 import observer as o
 class TimingMetadata(unittest.TestCase):
  def event(self,source='docker',occurred=1000,now=1000.25):
-  if source=='docker':return o.docker_event({'Type':'container','Action':'start','timeNano':int(occurred*1e9),'Actor':{'ID':'synthetic','Attributes':{'com.docker.compose.project':'docker','com.docker.compose.service':'nodered'}}},now,55.25)
+  if source=='docker':return o.docker_event({'Type':'container','Action':'start','timeNano':int(occurred*1e9),'Actor':{'ID':'synthetic','Attributes':{'com.docker.compose.project':'docker','com.docker.compose.service':'nodered','name':'nodered'}}},now,55.25)
   return o.journal_event({'UNIT':'raspberry-procmon.service','MESSAGE_ID':'39f53479d3a045ac8e11786248231fbf','__REALTIME_TIMESTAMP':str(int(occurred*1e6)),'__CURSOR':'synthetic'},now,55.25)
  def test_decoder_boundary_retains_monotonic_clock_and_actual_source_delay(self):
   for source in ['docker','systemd']:

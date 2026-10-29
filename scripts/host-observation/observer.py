@@ -47,7 +47,10 @@ def docker_event(value, now, observed_monotonic=None, clock_stable=True):
         return None
     attrs = actor['Attributes']
     service, action, nano = attrs.get('com.docker.compose.service'), value.get('Action'), value.get('timeNano')
+    # Compose-built images can carry these labels into unrelated test containers.
+    # All reviewed services have an explicit canonical container_name.
     if (attrs.get('com.docker.compose.project') != 'docker' or service not in SERVICES
+            or attrs.get('name') != service
             or action not in DOCKER_ACTIONS or type(nano) is not int or nano <= 0):
         return None
     occurred = nano / 1_000_000_000

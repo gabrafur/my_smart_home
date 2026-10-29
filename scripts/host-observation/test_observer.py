@@ -14,7 +14,7 @@ class ObserverTests(unittest.TestCase):
         row = {'Type': 'container', 'Action': 'health_status: unhealthy',
             'timeNano': int(1000 * 1e9), 'Actor': {'ID': 'opaque', 'Attributes': {
                 'com.docker.compose.project': 'docker', 'com.docker.compose.service': 'nodered',
-                'name': 'withheld', 'private': 'withheld'}}}
+                'name': 'nodered', 'private': 'withheld'}}}
         row.update(changes)
         return row
 
@@ -32,6 +32,7 @@ class ObserverTests(unittest.TestCase):
         self.assertEqual(row['action'], 'health_status: unhealthy')
         self.assertAlmostEqual(row['source_to_observer_ms'], 100, places=3)
         self.assertNotIn('withheld', json.dumps(row))
+        self.assertNotIn('name',row)
         self.assertEqual(row['id'], o.docker_event(self.docker(), 1000.2)['id'])
 
     def test_other_projects_services_actions_and_types_are_ignored(self):
@@ -41,6 +42,22 @@ class ObserverTests(unittest.TestCase):
             self.assertIsNone(o.docker_event(row, 1000))
         for row in [self.docker(Type='network'), self.docker(Action='exec_start'), {}, None]:
             self.assertIsNone(o.docker_event(row, 1000))
+
+    def test_inherited_compose_labels_cannot_impersonate_a_canonical_container(self):
+        for service in ['nodered','ai-bridge','homeassistant']:
+            for name in ['isolated-worker-fixture', 'nodered-test', '/nodered', '', None]:
+                row=self.docker();row['Actor']['Attributes'].update(name=name,**{'com.docker.compose.service':service})
+                with self.subTest(service=service,name=name):self.assertIsNone(o.docker_event(row,1000))
+        row=self.docker();del row['Actor']['Attributes']['name']
+        self.assertIsNone(o.docker_event(row,1000))
+
+    def test_all_canonical_names_still_accept_real_lifecycle_and_health_events(self):
+        for service in o.SERVICES:
+            for action in o.DOCKER_ACTIONS:
+                row=self.docker(Action=action);row['Actor']['Attributes'].update(name=service,**{'com.docker.compose.service':service})
+                with self.subTest(service=service,action=action):
+                    result=o.docker_event(row,1000)
+                    self.assertEqual(result['service'],service);self.assertEqual(result['action'],action)
 
     def test_missing_or_conflicting_source_times_do_not_measure_success(self):
         for value in [None, True, '1000', -1]:

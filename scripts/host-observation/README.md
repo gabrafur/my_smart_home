@@ -33,6 +33,10 @@ A autorização administrativa temporária e sua revogação são contratos sepa
 - Eventos: origem, papel de serviço allowlisted, ação fechada, hash de identidade,
   horário da origem/observador e latência desse trecho. Mensagens, prompts,
   nomes de containers, atributos, comandos e identificadores brutos são descartados.
+  A origem Docker precisa coincidir também com o `container_name` canônico
+  do serviço. Rótulos Compose de projeto/serviço podem vir da imagem e, sozinhos,
+  não identificam o contêiner residencial. Cópias para testes são ignoradas mesmo
+  quando herdam esses rótulos. Os nomes continuam fora do relatório publicado.
 - Recursos a cada 20 segundos. Leitura ausente vira `null` e erro de coleta,
   nunca zero nem prova de saúde. Relatório até 65.536 bytes; heartbeat em 10s e
   atualização de eventos com debounce mínimo de 250ms.
@@ -49,6 +53,19 @@ A autorização administrativa temporária e sua revogação são contratos sepa
 - Limites de CPU, I/O, processos, descritores, memória virtual e tamanho são
   declarados na unidade. `MemoryMax` depende do controlador de memória do host;
   sua ausência impede alegar teto físico de RAM efetivo.
+
+Em ensaios que reutilizem imagens Compose, remova os rótulos herdados com
+`--label com.docker.compose.service= --label com.docker.compose.project=` e use
+`--no-healthcheck` quando a saúde da aplicação da imagem não estiver sob teste.
+Use nome próprio para o contêiner e mantenha rede/volumes isolados. Isso evita
+que ferramentas antigas atribuam o lifecycle do ensaio ao serviço real.
+
+A correção do filtro não comprova recuperação nem remove incidentes históricos
+produzidos com vínculo incorreto. Reconcilie esses casos com o evento original e
+o estado atual do contêiner canônico; não gere restart ou evento saudável
+artificial para encerrar o aviso. Alterar a fonte no Git não atualiza o coletor
+Root já carregado: a implantação deve preservar estado/evidências e registrar
+qualquer lacuna de observação.
 - O custo do próprio observador no relatório inclui somente o produtor Python;
   exclui o filho `journalctl`, demais coletores e uma janela de 24h.
 

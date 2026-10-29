@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "scope": "canonical_Docker_event_attribution",
+  "verified_on": "2026-10-29",
+  "production_installed": false,
+  "code_change": {
+    "require_existing_project_and_service_allowlists": true,
+    "require_actor_name_equals_canonical_container_name": true,
+    "raw_container_name_exported": false,
+    "event_schema_changed": false,
+    "resource_or_timing_policy_changed": false
+  },
+  "regression": {
+    "old_code_attributes_distinct_fixture_with_inherited_labels_to_service": true,
+    "new_code_ignores_same_synthetic_fixture": true,
+    "missing_or_noncanonical_names_ignored": true,
+    "all_canonical_services_and_allowed_actions_preserved": true,
+    "unit_tests": 20,
+    "failures": 0,
+    "skipped": 0,
+    "real_Docker_events_generated_by_regression": 0
+  },
+  "operational_limits": {
+    "loaded_collector_not_replaced_or_restarted": true,
+    "historical_incidents_not_deleted_or_claimed_recovered": true,
+    "household_actions": 0,
+    "new_accounts_or_MCP_tools": 0,
+    "runtime_installation_and_specific_incident_reconciliation_pending": true
+  }
+}
