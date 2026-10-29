@@ -63,3 +63,18 @@ test('malformed replies expose only fixed diagnostic codes and consume admission
     assert.ok(r.output.errors.every(e=>e.message==='first backup Root channel is unconfirmed; automatic retry is disabled'));
   }
 });
+test('dispatch invokes the synchronous wire callback once after the Root reply',async()=>{
+  const r=await fixture(`let sent=0;await c.dispatchRemote({...${admission},send:()=>{sent++}});let denied=false;try{await c.dispatchRemote({...${admission},send:()=>{sent++}})}catch{denied=true}c.close();console.log(JSON.stringify({sent,denied}));`,
+    (_v,s)=>s.write(JSON.stringify(reply())+'\n'));
+  assert.equal(r.messages.length,1);assert.deepEqual(r.output,{sent:1,denied:true});
+});
+test('expiry after the admission await prevents the wire callback and consumes the attempt',async()=>{
+  const r=await fixture(`const clock=Date.now;let checks=0,sent=0;Date.now=()=>++checks===1?clock():Number.MAX_SAFE_INTEGER;let code;try{await c.dispatchRemote({...${admission},send:()=>{sent++}})}catch(e){code=e.code}c.close();console.log(JSON.stringify({sent,code}));`,
+    (_v,s)=>s.write(JSON.stringify(reply())+'\n'));
+  assert.equal(r.messages.length,1);assert.deepEqual(r.output,{sent:0,code:'BOOTSTRAP_WALL_EXPIRED'});
+});
+test('expiry during synchronous source validation is checked before the wire callback',async()=>{
+  const r=await fixture(`let sent=0,code;try{await c.dispatchRemote({...${admission},beforeSend:()=>{Date.now=()=>Number.MAX_SAFE_INTEGER},send:()=>{sent++}})}catch(e){code=e.code}c.close();console.log(JSON.stringify({sent,code}));`,
+    (_v,s)=>s.write(JSON.stringify(reply())+'\n'));
+  assert.equal(r.messages.length,1);assert.deepEqual(r.output,{sent:0,code:'BOOTSTRAP_WALL_EXPIRED'});
+});

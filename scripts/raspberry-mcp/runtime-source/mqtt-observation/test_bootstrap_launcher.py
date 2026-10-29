@@ -11,6 +11,9 @@ H='a'*64
 ID='c'*32
 NODE=shutil.which('node')
 CHANNEL=Path(__file__).resolve().parents[3]/'offsite-bootstrap-channel.mjs'
+PROJECT=CHANNEL.parent.parent
+UPLOAD_SOURCES=('offsite-bootstrap-upload.mjs','offsite-backup.mjs','offsite-bootstrap-state.mjs',
+ 'restore.mjs','container-readiness.mjs','mqtt-maintenance-backup.mjs','mqtt-backup-snapshot.mjs')
 
 class ChannelEnd(unittest.TestCase):
     def test_reset_is_EOF_without_an_authenticated_frame(self):
@@ -67,7 +70,7 @@ class Native(unittest.TestCase):
           'issued_at':now-1,'expires_at':now+300,'approval_sha256':'d'*64,'code_manifest_sha256':H,
           'operation_id':ID,'snapshot_operation_id':'e'*32,'maximum_duration_ns':str(120*10**9),
           'baseline_policy_sha256':self.sha(self.policy),'baseline_manifest_sha256':self.sha(self.manifest),
-          'worker_files':{f.name:self.sha(f)for f in self.worker.iterdir()},'interpreter_sha256':self.sha(Path(NODE).resolve())}
+          'worker_files':{str(f.relative_to(self.worker)):self.sha(f)for f in self.worker.rglob('*')if f.is_file()},'interpreter_sha256':self.sha(Path(NODE).resolve())}
         path=self.state/'first-backup-policy.json';path.write_bytes(canonical(p));path.chmod(0o600)
         self.launcher=module.Launcher(self.state,self.backend,self.paths);return self.launcher
     def operation(self):
@@ -110,6 +113,7 @@ c.sendall(b'HTTP/1.1 200 OK\\r\\nContent-Length: 2\\r\\nConnection: close\\r\\n\
         self.assertEqual(json.loads(counter.read_text())['requests'],1)
     def test_child_cannot_repeat_the_private_admission_and_environment_is_clean(self):
         self.install(f"if(process.env.NODE_OPTIONS||process.env.NODE_PATH)throw Error('inherited environment');\n"
+          +"if(process.env.WS_NO_BUFFER_UTIL!=='1'||process.env.WS_NO_UTF_8_VALIDATE!=='1')throw Error('optional module search enabled');\n"
           f"await channel.admitRemote({{bundleSha256:'{H}',requestSha256:'{H}'}});\n"
           f"let denied=false;try{{await channel.admitRemote({{bundleSha256:'{H}',requestSha256:'{H}'}})}}catch{{denied=true}}\n"
           f"if(!denied)throw Error('duplicate admitted');await channel.recordReport('{H}');\n")
@@ -141,6 +145,61 @@ c.sendall(b'HTTP/1.1 200 OK\\r\\nContent-Length: 2\\r\\nConnection: close\\r\\n\
           f"await channel.admitRemote({{bundleSha256:'{H}',requestSha256:'{H}'}});\n")
         with self.assertRaisesRegex(MaintenanceUnavailable,'baseline_changed'):self.launcher.run()
         self.assertFalse(any(r['body']['phase']=='bootstrap_remote_intent'for r in self.operation()['records']))
+    @unittest.skipUnless((PROJECT/'nodered/node_modules/ws/package.json').is_file()and
+      all((CHANNEL.parent/name).is_file()for name in UPLOAD_SOURCES),
+      'public upload modules and existing ws fixture dependency required')
+    def test_native_Root_channel_and_one_owned_automatic_settings_generation(self):
+        scripts=self.worker/'scripts';scripts.mkdir(mode=0o755)
+        for name in UPLOAD_SOURCES:
+            shutil.copyfile(CHANNEL.parent/name,scripts/name);(scripts/name).chmod(0o644)
+        vendor=self.worker/'nodered/node_modules/ws';vendor.parent.mkdir(parents=True,mode=0o755)
+        shutil.copytree(PROJECT/'nodered/node_modules/ws',vendor)
+        for path in vendor.rglob('*'):
+            path.chmod(0o755 if path.is_dir()else 0o644)
+        restore=self.worker/'restore';restore.mkdir(mode=0o755)
+        shutil.copyfile(PROJECT/'restore/mqtt-observation-private-state.json',restore/'mqtt-observation-private-state.json')
+        (restore/'mqtt-observation-private-state.json').chmod(0o644)
+        portfile=self.base/'port.json';counter=self.base/'generation.json'
+        serverfile=self.base/'server.cjs'
+        serverfile.write_text("const fs=require('node:fs');const {WebSocketServer}=require("+json.dumps(str(vendor))+ ");\n"
+          +"const s=new WebSocketServer({host:'127.0.0.1',port:0});const requests=[];\n"
+          +f"s.on('listening',()=>fs.writeFileSync({json.dumps(str(portfile))},JSON.stringify({{port:s.address().port}})));\n"
+          +"s.on('connection',c=>{c.send(JSON.stringify({type:'auth_required'}));c.on('message',raw=>{const m=JSON.parse(raw);"
+          +"if(m.type==='auth'){c.send(JSON.stringify({type:'auth_ok'}));return}requests.push(m.type);"
+          +"if(m.type==='backup/info'){c.send(JSON.stringify({id:m.id,type:'result',success:true,result:{state:'idle',backups:[],agent_errors:{}}}));return}"
+          +"if(m.type!=='backup/generate_with_automatic_settings'||Object.keys(m).sort().join()!=='id,type')process.exit(2);"
+          +f"fs.writeFileSync({json.dumps(str(counter))},JSON.stringify({{requests,generation_requests:requests.filter(t=>t==='backup/generate_with_automatic_settings').length}}));"
+          +"c.send(JSON.stringify({id:m.id,type:'result',success:true,result:{backup_job_id:'fixture_job'}}));});});\n")
+        self.server=subprocess.Popen([NODE,*module.FLAGS,str(serverfile)],stdin=subprocess.DEVNULL,
+          stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+          env={'PATH':'/usr/bin:/bin','WS_NO_BUFFER_UTIL':'1','WS_NO_UTF_8_VALIDATE':'1'})
+        deadline=time.monotonic()+10
+        while not portfile.exists()and time.monotonic()<deadline:
+            self.assertIsNone(self.server.poll());time.sleep(0.01)
+        self.assertTrue(portfile.exists());port=json.loads(portfile.read_text())['port']
+        local=self.data/'upload.json'
+        saved_profile={'schema_version':1,'scope':'ha_saved_backup_profile_v1','agent_id':'onedrive.fixture',
+          'password_configured':True,'provider_protected':True,'include_database':False,'include_all_addons':False,
+          'include_addons':[],'include_folders':[],'delete_permanently':False,
+          'native_retention':{'all_agents_covered':True,'global':{'copies':None,'days':None},
+            'agents':[{'agent_id':'onedrive.fixture','copies':None,'days':None}]}}
+        self.install("import{prepareBootstrapUpload,savedBackupProfileSha256}from './scripts/offsite-bootstrap-upload.mjs';\n"
+          +f"const savedProfile={json.dumps(saved_profile)};\n"
+          +"import{createRequire}from 'node:module';const WS=createRequire(import.meta.url)('./nodered/node_modules/ws');\n"
+          +f"class OwnedSocket extends WS{{constructor(url){{if(url!=='ws://127.0.0.1:8123/api/websocket')throw Error('endpoint changed');super('ws://127.0.0.1:{port}')}}}}\n"
+          +f"const upload=prepareBootstrapUpload({{channel,bundleSha256:'{H}',token:'synthetic-only',WebSocket:OwnedSocket,readSavedProfile:()=>savedProfile,expectedProfileSha256:savedBackupProfileSha256(savedProfile),timeoutMs:15000,readinessTimeoutMs:10000,pollIntervalMs:100,validateSource:()=>true,recordLocalReport:async value=>{{const fd=fixtureFs.openSync({json.dumps(str(local))},'wx',0o600);try{{fixtureFs.writeFileSync(fd,JSON.stringify(value));fixtureFs.fsyncSync(fd)}}finally{{fixtureFs.closeSync(fd)}}return true}}}});\n"
+          +"await upload.run();let denied=false;try{await upload.run()}catch{denied=true}if(!denied)throw Error('duplicate worker run');channel.close();\n")
+        result=self.launcher.run();self.assertEqual(result['exit_code'],0,(result,(self.data/'child-exit.json').read_text()))
+        self.assertEqual(result['state'],'worker_exited_report_unverified');self.assertFalse(result['remote_effect_proven'])
+        self.assertEqual(json.loads(counter.read_text()),{'requests':['backup/info','backup/generate_with_automatic_settings'],'generation_requests':1})
+        saved=json.loads(local.read_text());self.assertEqual(saved['jobId'],'fixture_job')
+        self.assertFalse(saved['report']['independent_acceptance']);self.assertFalse(saved['report']['policy_promoted'])
+        records=self.operation()['records'];self.assertEqual([r['body']['phase']for r in records],
+          ['bootstrap_begin','bootstrap_worker_bound','bootstrap_remote_intent','bootstrap_report_recorded'])
+        report_hash=hashlib.sha256(json.dumps(saved['report'],separators=(',',':')).encode()).hexdigest()
+        self.assertEqual(records[-1]['body']['facts']['report_sha256'],report_hash)
+        with self.assertRaisesRegex(MaintenanceUnavailable,'launch_consumed'):self.launcher.run()
+        self.assertEqual(json.loads(counter.read_text())['generation_requests'],1)
     def test_kernel_credentials_reject_a_descendant_using_the_inherited_socket(self):
         payload=f"import net from 'node:net';const s=new net.Socket({{fd:3,readable:true,writable:true}});s.on('error',()=>{{}});s.end(JSON.stringify({{action:'admit_remote',bundle_sha256:'{H}',request_sha256:'{H}'}})+'\\n');"
         self.install("import {spawn}from 'node:child_process';import{once}from 'node:events';\n"

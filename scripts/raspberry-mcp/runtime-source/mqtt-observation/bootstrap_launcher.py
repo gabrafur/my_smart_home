@@ -58,6 +58,7 @@ class Child:
         try:
             self.process=subprocess.Popen(self.argv,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
               stderr=subprocess.DEVNULL,cwd=self.paths.worker,env={'PATH':'/usr/bin:/bin','LC_ALL':'C','TZ':'UTC',
+              'WS_NO_BUFFER_UTIL':'1','WS_NO_UTF_8_VALIDATE':'1',
               'EVA_BOOTSTRAP_FD':str(child.fileno()),'EVA_BOOTSTRAP_OPERATION_ID':self.profile['operation_id']},
               user=self.paths.worker_uid,group=self.paths.worker_gid,
               extra_groups=[],pass_fds=(child.fileno(),),close_fds=True,preexec_fn=limits)

@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "scope": "first_metadata_automatic_settings_generation_transport",
+  "verified_on": "2026-10-29",
+  "production_installed": false,
+  "new_scope_activated": false,
+  "new_accounts": 0,
+  "new_MCP_tools": 0,
+  "production_backup_requests": 0,
+  "production_credential_or_key_reads": 0,
+  "native_saved_settings_read": false,
+  "policy_promoted": false,
+  "public_API_contract": {
+    "version": "2026.10.4",
+    "websocket_source": "https://raw.githubusercontent.com/home-assistant/core/2026.10.4/homeassistant/components/backup/websocket.py",
+    "websocket_sha256": "8ba4e047c61e3b4a7734151f64c9503b836abd7939f556a041a3679477825a45",
+    "manager_source": "https://raw.githubusercontent.com/home-assistant/core/2026.10.4/homeassistant/components/backup/manager.py",
+    "manager_sha256": "634df1878a2cb4311d7c574779d8dfdaa1c4f71fb98ba01638578176025f20b7",
+    "byte_exact_matches_to_inspected_public_libraries": true,
+    "automatic_settings_keep_password_in_producer": true,
+    "generation_can_invoke_native_count_cleanup": true
+  },
+  "profile_gate": {
+    "sanitized_closed_schema_only": true,
+    "expected_profile_digest_required": true,
+    "selected_provider_and_password_configured_boolean_required": true,
+    "global_and_all_agent_retention_must_have_null_days_and_copies": true,
+    "all_agents_coverage_required": true,
+    "database_addons_and_extra_folders_excluded": true,
+    "delete_permanently_must_be_false": true,
+    "profile_revalidated_before_authentication_and_after_Root_admission": true,
+    "safe_but_changed_profile_also_rejected": true,
+    "native_profile_reader_not_implemented_or_activated": true
+  },
+  "wire_gate": {
+    "single_authenticated_session": true,
+    "methods": [
+      "backup/info",
+      "backup/generate_with_automatic_settings"
+    ],
+    "readiness_uses_existing_canonical_helper": true,
+    "Root_intent_binds_exact_serialized_frame_and_bundle_hash": true,
+    "synchronous_source_checks_finish_before_final_Root_deadline_check": true,
+    "monotonic_response_deadline_checked_after_source_validation": true,
+    "no_reconnect_or_repeat_generation": true,
+    "request_contains_password": false,
+    "backup_config_info_or_update_called": false,
+    "no_generic_daily_wrapper_or_retention_dispatch": true
+  },
+  "report": {
+    "private_durable_report_callback_required_before_Root_report_hash": true,
+    "immutable_report": true,
+    "Root_receives_job_hash_not_job_or_credential": true,
+    "independent_acceptance": false,
+    "remote_effect_proven": false,
+    "policy_promoted": false,
+    "report_is_terminal": false
+  },
+  "fixed_runtime": {
+    "optional_ws_peers_disabled_in_clean_environment": true,
+    "Node_addons_disabled": true,
+    "worker_address_space_soft_and_hard_bytes": 2147483648,
+    "worker_heap_MiB": 64,
+    "worker_CPU_seconds_maximum": 20
+  },
+  "isolated_tests": {
+    "Root_suite_total": 423,
+    "Root_suite_failures": 0,
+    "Root_suite_skipped": 0,
+    "native_Node_process_cases": 10,
+    "Node_channel_and_upload_cases_including_subtests": 27,
+    "Node_failures": 0,
+    "actual_owned_automatic_settings_generation_requests_in_native_case": 1,
+    "actual_Root_begin_worker_binding_remote_intent_and_report": true,
+    "actual_native_private_report_fsync": true,
+    "duplicate_worker_run_and_Root_relaunch_rejected": true,
+    "owned_container_removed": true,
+    "source_and_dependency_hashes_unchanged": true,
+    "seven_household_states_and_StartedAt_unchanged": true,
+    "network": "none",
+    "production_mounts": 0,
+    "Docker_socket_mounted": false,
+    "image_healthcheck_disabled": true,
+    "Compose_labels_empty": true,
+    "CPU_quota": 0.25
+  },
+  "pending": [
+    "native_sanitized_profile_producer_and_specific_configuration_scope_review",
+    "complete_frozen_worker_entry_and_upstream_verified_dependency_tree",
+    "capture_and_staging_integration",
+    "readonly_reconciliation_and_verified_operational_closure",
+    "real_encrypted_14_component_receipt_canary_and_quota_preserving_promotion",
+    "specific_full_installation_approval",
+    "seven_isolated_functional_application_restores"
+  ]
+}

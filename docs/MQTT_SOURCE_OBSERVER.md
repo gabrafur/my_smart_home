@@ -847,6 +847,50 @@ O pacote precisa incluir a árvore completa de dependências congeladas, a
 integração da captura/staging e do único envio, a reconciliação e o fechamento
 operacional verificado, além de recibo criptografado, canary, quota e promoção.
 
+### Geração com as configurações salvas do Home Assistant
+
+`offsite-bootstrap-upload.mjs` prepara uma única sessão autenticada, consulta
+`backup/info` com o gate de prontidão já existente e admite somente
+`backup/generate_with_automatic_settings` como efeito. Essa
+[API do Home Assistant](https://github.com/home-assistant/core/blob/2026.10.4/homeassistant/components/backup/websocket.py)
+usa a senha salva dentro do produtor; o worker não consulta `backup/config/info`,
+não recebe a senha e não usa o wrapper diário que para serviços. A comparação
+da fonte pública com a biblioteca instalada foi byte a byte, sem ler
+configuração privada nem chamar a API de backup residencial.
+
+A geração também aciona a limpeza nativa por quantidade no Home Assistant.
+Por isso o transporte exige um perfil sanitizado ligado ao hash esperado:
+senha configurada apenas como booleano, provedor protegido, cobertura limitada
+e retenção global e de todos os agentes sem dias nem quantidade de cópias.
+Perfil ausente, cobertura desconhecida, retenção ativa ou qualquer mudança
+no perfil bloqueiam a geração. O leitor nativo desses fatos ainda precisa
+fazer parte do pacote selado; um callback de teste não comprova os fatos da casa.
+
+O frame completo já serializado é ligado ao hash do bundle na admissão Root.
+Depois da resposta, o cliente conclui a validação síncrona da origem e relê
+os prazos antes da escrita. A sessão verifica também seu próprio prazo
+monotônico após essa validação; mesmo um bloqueio que impeça o timer de rodar
+não permite um envio atrasado. Uma resposta perdida, autenticação duplicada,
+origem alterada ou timeout não permite reconexão nem uma segunda geração.
+
+O identificador retornado ainda não comprova upload ou criptografia. O worker
+deve persistir seu relato privado antes de enviar o hash ao journal Root;
+os campos `independent_acceptance`, `remote_effect_proven` e `policy_promoted`
+continuam falsos. A integração definitiva ainda precisa validar o perfil
+salvo, ligar a captura e o staging, congelar as dependências e conferir o
+recibo externo e o canary antes de qualquer promoção da política de 13.
+
+O ambiente fixo do launcher inclui `WS_NO_BUFFER_UTIL=1` e
+`WS_NO_UTF_8_VALIDATE=1`, além de impedir addons, para evitar a busca por peers
+opcionais fora da árvore revisada do `ws`. Os testes injetam apenas o
+transporte ao servidor sintético; objetos injetados não comprovam autoridade
+Root. O ensaio nativo deve atravessar o canal herdado e o journal reais.
+O [aceite do transporte](../scripts/raspberry-mcp/offsite-bootstrap-upload.acceptance.json)
+registra 423 testes Python em Root, sem skips, e 27 casos Node, incluindo os
+subtestes. O caso nativo conecta o filho UID/GID do worker ao journal Root e
+ao servidor WebSocket próprio, faz uma geração, persiste o relato com `fsync`
+e rejeita repetição. Não executa backup residencial nem comprova o perfil salvo.
+
 ## Revogação, reversão e recuperação
 
 Revogação fecha a autorização e remove o marcador positivo. O plugin verifica
