@@ -16,6 +16,14 @@ iguais. Recarregar o estado atual para enriquecer conteúdo não cria evento nov
 e não renova assinatura nem orçamento. O sanitizador e catálogo compartilhados
 com Node-RED ficam independentes deste complemento específico do coletor HA.
 
+O leitor também reconhece o hash do identificador público exato
+`raspberry_storage_health`, usado pelo produtor canônico. Quando faltam tokens
+revisados do corpo, apresenta apenas a identificação do produtor e orienta a
+consulta a `storage_health` em `maintenance_capabilities`. Não reconstrói
+números, severidade ou texto desconhecido, nem infere limpeza ou recuperação.
+Essa melhoria do leitor dispensa reiniciar o coletor e preserva a assinatura,
+IDs, revisões e eventos. O erro de cobertura do corpo permanece explícito.
+
 Implantar o catálogo e o leitor antes do produtor; validar todos os hashes e
 dependências. Reiniciar somente o coletor de notificações, uma vez, após fechar
 a cadeia. Preservar o cache e recibos. Resultado incerto exige reconciliação,

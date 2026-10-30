@@ -38,6 +38,16 @@ class TestReader(unittest.TestCase):
  def test_scope_and_pagination_guard(self):
   with self.assertRaises(ValueError):self.get(offset=16)
   with self.assertRaises(ValueError):reader.evidence({'host':'other'},self.path)
+ def test_exact_storage_producer_without_inventing_body_or_severity(self):
+  row=notice(1);row['id']=reader.STORAGE_NOTICE_ID
+  row.update(category='unclassified',summary='Notificação persistente; conteúdo não exportado',category_basis='unknown')
+  self.data['notifications']=[row];self.write();result=self.get()['notifications'][0]
+  self.assertEqual(result['id'],row['id']);self.assertEqual(result['revision'],row['revision'])
+  self.assertEqual(result['category'],'unclassified');self.assertTrue(result['identifier_diagnostic_only'])
+  self.assertIn('armazenamento',result['title']);self.assertIn('dry-run',result['correction_guidance'])
+  self.assertEqual(result['content_collection_error'],'notice_body_not_retained_as_reviewed_tokens')
+  self.assertFalse(result['recovery_proven']);self.assertNotIn('must_not_escape',json.dumps(result))
+  self.assertNotIn('identifier_diagnostic_only',reader.notice(notice(2)))
  def test_execute_only_parent_supports_read_without_listing_permission(self):
   parent=Path(self.temp.name)/'traverse_only';parent.mkdir();self.path=parent/'snapshot.json';self.write();parent.chmod(0o100)
   try:

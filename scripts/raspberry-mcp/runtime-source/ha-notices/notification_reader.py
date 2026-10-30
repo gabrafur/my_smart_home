@@ -23,6 +23,28 @@ LABELS = {
 }
 ERRORS = {'starting','connection_failed','connection_closed','auth_failed','credential_role_refused','subscription_refused',
           'invalid_response','pong_timeout','storage_failed','resource_budget_exceeded'}
+STORAGE_NOTICE_ID = hashlib.sha256(b'raspberry_storage_health').hexdigest()
+
+
+def reviewed_identifier_diagnostic(identifier, diagnostic):
+    """Fixed public producer identity, never reconstruction of an unknown body.
+
+    Do not infer severity, values, cleanup execution or current disk health from
+    an identifier. This reader-only fallback never alters source subscriptions.
+    """
+    body_available = bool(diagnostic.get('message')) and not any(
+        row.get('field') == 'message' for row in diagnostic.get('redacted_fields', []))
+    if identifier != STORAGE_NOTICE_ID or body_available:
+        return diagnostic
+    return {**diagnostic,
+            'title': 'Raspberry Pi — aviso de armazenamento',
+            'message': 'O produtor Storage Health publicou um aviso. O conteúdo e a severidade desta revisão não estão disponíveis neste snapshot.',
+            'correction_guidance': 'Consultar storage_health em maintenance_capabilities e conferir origem, idade e cobertura. Exigir dry-run antes de limpeza; preservar backups e bancos de dados.',
+            'guidance_basis': 'reviewed_exact_public_producer_identifier_not_notice_body',
+            'sanitized_content_available': True,
+            'content_collection_error': 'notice_body_not_retained_as_reviewed_tokens',
+            'raw_content_withheld': True,
+            'identifier_diagnostic_only': True}
 
 
 def iso(value):
@@ -44,7 +66,8 @@ def notice(row):
     iso(row['observed_at'])
     if row.get('created_or_updated_at') is not None:
         iso(row['created_or_updated_at'])
-    return {**content.project(row.get('diagnostics')), **{k: row[k] for k in ('id','revision','observed_at','created_or_updated_at','category','summary','category_basis')},
+    diagnostic = reviewed_identifier_diagnostic(row['id'], content.project(row.get('diagnostics')))
+    return {**diagnostic, **{k: row[k] for k in ('id','revision','observed_at','created_or_updated_at','category','summary','category_basis')},
             'source':'homeassistant.persistent_notification','origin':'not_provided_by_HA',
             'content_withheld':True,'destination_delivery':'not_applicable'}
 

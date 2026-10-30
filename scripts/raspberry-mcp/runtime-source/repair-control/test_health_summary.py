@@ -71,7 +71,9 @@ class HealthTests(unittest.TestCase):
         source = {'evidence': {'data': {'native_events': {'assistant_run_proven': False},
             'ha_notification_observer': {'events_subscription_enabled': False,
                                         'events_discovery_only': True}, 'autonomous_repairs': False}}}
-        out = static_capabilities(source)['evidence']['data']
+        from unittest.mock import patch
+        with patch.object(_active, 'storage_health', return_value={'state': 'unknown'}):
+            out = static_capabilities(source)['evidence']['data']
         self.assertNotIn('native_events', out)
         self.assertNotIn('events_subscription_enabled', out['ha_notification_observer'])
         self.assertTrue(out['events']['capability_static']['implemented'])

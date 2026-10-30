@@ -220,6 +220,7 @@ def static_capabilities(base):
         'current_observation': {'state': 'unknown', 'reason': 'frontend_live_status_required',
                                 'assistant_execution': 'unknown'}}
     data['capability_semantics'] = 'static_interfaces_are_not_current_health_or_approval'
+    data['storage_health'] = storage_health()
     return result
 
 
@@ -750,3 +751,118 @@ def host_observation():
     report, report_error = _observer_json('/mnt/data/docker/nodered/.host-health-observer', 'report.json', 0)
     context, context_error = _observer_json('/mnt/data/docker/nodered/context/host_observer_tab', 'flow.json', 1000)
     return project_host_observation(report, context, time.time(), report_error, context_error)
+
+
+STORAGE_CATEGORIES = ('logs', 'caches', 'checkout', 'tools', 'recorder', 'backups',
+                      'snapshots', 'recovery_workspace')
+
+
+def _storage_map(value):
+    return value if isinstance(value, dict) else {}
+
+
+def storage_health(read=None, now=None):
+    """Existing read tool supplement; no measurement, execution or caller paths."""
+    read = read_metadata if read is None else read
+    now = dt.datetime.now(dt.timezone.utc).timestamp() if now is None else now
+    raw, error = read('/mnt/data/docker/.local-state/storage-maintenance/observation.json', 1001)
+
+    def packet(source, value, fields, complete=None):
+        if not isinstance(value, dict):
+            value = {}
+        at = stamp(value.get('observed_at'))
+        age = now-at if at is not None else None
+        state = 'unknown' if at is None or age < 0 else 'stale' if age > 300 else 'observed'
+        data = value.get('data')
+        safe = {}
+        for key in fields:
+            v = data.get(key) if isinstance(data, dict) else None
+            safe[key] = v if type(v) is int and 0 <= v <= 2**63-1 else None
+        reason = None if all(v is not None for v in safe.values()) else 'source_invalid_or_unavailable'
+        if complete is False:
+            reason = 'bounded_or_incomplete_scan'
+            if state == 'observed':
+                state = 'partial'
+        if state == 'unknown':
+            reason = 'source_clock_or_time_unconfirmed'
+        return {'source': source, 'observed_at': value.get('observed_at') if at is not None else None,
+                'age_seconds': round(age, 3) if age is not None and age >= 0 else None,
+                'collection_error': reason, 'state': state, 'data': safe,
+                'coverage': ['fixed_metadata_only', 'not_cleanup_authorization']}
+
+    result = {'source': 'existing_Storage_Health_and_bounded_metadata_supplement',
+              'observed_at': None, 'age_seconds': None, 'collection_error': error,
+              'state': 'unknown', 'categories': {}, 'cleanup_enabled': False,
+              'coverage': ['no_private_contents_names_or_free_paths',
+                           'logical_and_allocated_bytes_separate', 'categories_overlap_do_not_sum',
+                           'source_age_not_tool_call_time', 'no_measurement_or_execution_on_read']}
+    if error or not isinstance(raw, dict) or type(raw.get('schema_version')) is not int or raw.get('schema_version') != 1:
+        result['collection_error'] = error or 'source_invalid_or_unavailable'
+        return result
+    root_time = stamp(raw.get('observed_at'))
+    if root_time is None or root_time > now:
+        result['collection_error'] = 'source_clock_or_time_unconfirmed'
+        return result
+    result.update(observed_at=raw['observed_at'], age_seconds=round(now-root_time, 3),
+                  state='stale' if now-root_time > 300 else 'observed', collection_error=None)
+    result['filesystem'] = packet('native_statvfs_fixed_checkout_filesystem', raw.get('filesystem'),
+                                  ('total_bytes', 'available_bytes', 'free_bytes_including_reserve', 'used_bytes'))
+    for name in STORAGE_CATEGORIES:
+        value = _storage_map(raw.get('categories')).get(name)
+        data = _storage_map(value.get('data')) if isinstance(value, dict) else {}
+        row = packet('fixed_path_metadata_scan', value,
+                     ('logical_bytes_lower_bound', 'allocated_bytes_lower_bound', 'metadata_entries',
+                      'inaccessible_or_missing_entries'), data.get('complete') is True)
+        row['data']['complete'] = data.get('complete') is True
+        row['data']['largest_observed_files'] = []
+        for item in data.get('largest_observed_files', [])[:5] if isinstance(data.get('largest_observed_files'), list) else []:
+            if (isinstance(item, dict) and isinstance(item.get('item_id'), str)
+                    and re.fullmatch('[a-f0-9]{24}', item['item_id'])
+                    and type(item.get('logical_bytes')) is int and 0 <= item['logical_bytes'] <= 2**63-1):
+                row['data']['largest_observed_files'].append(
+                    {'item_id': item['item_id'], 'logical_bytes': item['logical_bytes']})
+        row['coverage'] += ['partial_byte_counts_are_lower_bounds', 'no_file_names']
+        result['categories'][name] = row
+    deleted = _storage_map(raw.get('deleted_open'))
+    result['deleted_open'] = packet('bounded_proc_fd_metadata', deleted,
+                                    ('count_lower_bound', 'logical_bytes_lower_bound',
+                                     'allocated_bytes_lower_bound', 'checked_descriptors', 'inaccessible_processes'),
+                                    _storage_map(deleted.get('data')).get('complete') is True)
+    result['deleted_open']['data']['complete'] = _storage_map(deleted.get('data')).get('complete') is True
+    # Retain the original report's source time. Its age never becomes fresh just
+    # because an MCP client reads this supplement.
+    legacy = _storage_map(raw.get('legacy_report'))
+    old = packet('existing_Storage_Health_report', legacy, ('total_bytes', 'available_bytes'))
+    old['data']['logical_bytes_by_category'] = {}
+    for name in ('docker', *STORAGE_CATEGORIES):
+        v = _storage_map(_storage_map(legacy.get('data')).get('logical_bytes_by_category')).get(name)
+        old['data']['logical_bytes_by_category'][name] = v if type(v) is int and 0 <= v <= 2**63-1 else None
+    old['coverage'] += ['historical_report_not_current_category_totals', 'legacy_methods_can_differ']
+    result['legacy_report'] = old
+    docker = _storage_map(raw.get('docker'))
+    rows = []
+    for item in docker.get('data', []) if isinstance(docker.get('data'), list) else []:
+        if (isinstance(item, dict) and item.get('kind') in ('images', 'containers', 'volumes', 'build_cache')
+                and type(item.get('logical_bytes')) is int and 0 <= item['logical_bytes'] <= 2**63-1):
+            rows.append({'kind': item['kind'], 'logical_bytes': item['logical_bytes'], 'cleanup_allowed': False})
+    result['docker'] = packet('fixed_Docker_system_df_aggregate', docker, ())
+    result['docker']['data'] = rows
+    if len(rows) != 4 or len({r['kind'] for r in rows}) != 4:
+        result['docker'].update(state='unknown', collection_error='docker_aggregate_unavailable')
+    g = _storage_map(raw.get('growth'))
+    growth = {'source': 'two_actual_bounded_metadata_samples', 'state': 'unknown',
+              'observed_at': raw['observed_at'], 'age_seconds': result['age_seconds'],
+              'collection_error': 'two_compatible_samples_not_available',
+              'coverage': ['no_growth_inference_from_partial_scans', 'net_change_not_cleanup_attribution']}
+    if (isinstance(g, dict) and g.get('state') == 'observed' and stamp(g.get('window_start')) is not None
+            and type(g.get('interval_seconds')) in (int, float) and 0 < g['interval_seconds'] <= 86400
+            and all(type(g.get(k)) is int and abs(g[k]) <= 2**63-1
+                    for k in ('filesystem_used_delta_bytes', 'available_delta_bytes'))):
+        growth.update(state='observed', collection_error=None, window_start=g['window_start'],
+                      interval_seconds=g['interval_seconds'],
+                      filesystem_used_delta_bytes=g['filesystem_used_delta_bytes'],
+                      available_delta_bytes=g['available_delta_bytes'])
+        growth['complete_category_deltas_bytes'] = {k: v for k, v in _storage_map(g.get('complete_category_deltas_bytes')).items()
+                                                   if k in STORAGE_CATEGORIES and type(v) is int and abs(v) <= 2**63-1}
+    result['growth'] = growth
+    return result
