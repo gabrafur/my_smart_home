@@ -80,4 +80,3 @@ O aceite posterior confirmou a cadeia completa, sem reiniciar serviços.
 As [regressões isoladas](../../../scripts/raspberry-mcp/owner-thread-access.test.mjs)
 e o [recibo público sanitizado](../../../scripts/raspberry-mcp/owner-thread-access.acceptance.json)
 registram o escopo validado; os recibos privados permanecem no plano central.
-

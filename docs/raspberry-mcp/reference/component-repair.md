@@ -240,4 +240,3 @@ e o [runbook Kia](../../VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md) delimitam o r
 Essa prova cobre a correção de diagnóstico; aplicação geral de flows Node-RED,
 consumo natural de Events pelo cliente MCP autorizado e recuperação funcional da candidata continuam
 exigindo suas próprias evidências. Não há nova ferramenta ou gateway de shell.
-

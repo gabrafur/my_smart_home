@@ -103,4 +103,3 @@ Assistant foi preservada fora do checkout para revisão. O Compose voltou
 à imagem que permanece em execução, sem reiniciar serviços nessa contenção.
 Antes de editar ou validar o projeto, confira a atividade de todas as etapas
 diárias; o fluxo existente pode avançar após o resultado offsite.
-

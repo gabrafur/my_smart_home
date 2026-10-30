@@ -37,5 +37,3 @@ de início. A falha anterior e os recibos continuam preservados.
 Isso comprova a integridade daquele artefato, sem afirmar restauração ou
 recuperação funcional dos serviços. Não repetir a leitura consumida da chave
 ou a transferência para reproduzir esse aceite.
-
-

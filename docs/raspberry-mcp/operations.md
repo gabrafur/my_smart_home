@@ -230,4 +230,3 @@ registra duas rodadas de `status`/`read` nas três referências, paginação com
 do inventário permitido e preservação dos registros de operações. Um registro
 antigo sem metadados confirmados permanece desconhecido. A correção desse
 vínculo não amplia a concessão nem comprova a execução atual de todas as tarefas.
-

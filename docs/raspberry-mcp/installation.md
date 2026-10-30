@@ -185,4 +185,3 @@ administrativa configurada. O aceite administrativo independente comprovou
 UID0 no executor e deduplicação de criação/envio. Nenhum desses resultados
 certifica uma nova conta de cliente,proxy externo ou outro chatbot ainda não
 conectado. Registrar esse aceite quando o cliente escolhido estiver disponível.
-

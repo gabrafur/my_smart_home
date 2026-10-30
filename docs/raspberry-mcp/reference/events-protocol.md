@@ -93,4 +93,3 @@ específica antes da retomada, para evitar replay. Limites, validade e acesso
 permanecem os existentes. Entrega aceita ainda exige prova própria de execução
 do assistente; a medição de transporte não conclui a meta de latência ponta a
 ponta nem a cobertura de 24 horas.
-

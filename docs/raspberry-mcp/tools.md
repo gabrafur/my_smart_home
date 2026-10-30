@@ -102,4 +102,3 @@ Os detalhes de tipos,limites e enums ficam no modelo de esquemas mencionado acim
 | `codex_repair_reconcile` | `host`, `operation_id`, `result_hash` |
 | `codex_repair_revoke` | `host` |
 | `codex_repair_capabilities` | `host` |
-

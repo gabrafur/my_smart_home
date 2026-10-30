@@ -225,4 +225,3 @@ Esse teste prova a transação e o processamento dos metadados no runtime. Não
 comprova tempos de incidentes reais, chegada de push, execução natural do cliente MCP autorizado,
 24 horas de continuidade ou recuperação funcional de integrações e backups.
 As operações e seus IDs foram consumidos; não repetir para produzir evidência.
-

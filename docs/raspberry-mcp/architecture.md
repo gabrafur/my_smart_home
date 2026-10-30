@@ -103,4 +103,3 @@ proativo completo,24h de cobertura,PC desligado,backup offsite ou recuperação.
 
 As referências definem o protocolo; não certificam este servidor ou um cliente
 específico. A evidência local e o aceite real determinam o que está comprovado.
-

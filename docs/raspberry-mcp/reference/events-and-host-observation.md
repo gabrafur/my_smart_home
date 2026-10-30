@@ -173,5 +173,3 @@ memória sem contador continua desconhecida. O aceite não substitui cadência d
 amostras duráveis, observação de 24h, latência até cliente MCP autorizado nem prova de PC desligado.
 Esses campos novos ainda não são projetados pelo coletor agendado de aceite;
 o MCP continua expondo os limites explícitos da projeção já instalada.
-
-
