@@ -5,6 +5,8 @@ must provide the finite private filesystem and password in memory. Nothing is
 executed here, and no source path, credential or archive value is returned.
 """
 import hashlib
+import gzip
+import io
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -18,11 +20,36 @@ MAX_SELECTED_BYTES = {"compose": 256 * 1024**2, "homeassistant": 24 * 1024**3}
 MAX_FILE_BYTES = {"compose": 64 * 1024**2, "homeassistant": 20 * 1024**3}
 STAGING = re.compile(r"^(?:data/)?backups/(offsite-staging-[A-Za-z0-9_-]+)(?:/(.*))?$")
 SEAL = ".authenticated-archive.json"
+DECRYPT_BUFFER = 1024 * 1024
 
 
 def require(value, reason):
     if not value:
         raise ValueError(reason)
+
+
+class DecryptedReader(io.RawIOBase):
+    """Adapt securetar's forward-only reader without owning its lifetime."""
+
+    def __init__(self, source):
+        self.source = source
+
+    def readable(self):
+        return True
+
+    def readinto(self, output):
+        size = min(len(output), DECRYPT_BUFFER)
+        data = self.source.read(size)
+        require(type(data) is bytes and len(data) <= size, "decrypted_read_limit")
+        output[:len(data)] = data
+        return len(data)
+
+
+def drain(stream):
+    trailing = 0
+    while chunk := stream.read(CHUNK):
+        trailing += len(chunk)
+        require(trailing <= MAX_EXPANDED_BYTES, "decrypted_tail_limit")
 
 
 def normalized(name):
@@ -160,13 +187,19 @@ def extract_authenticated(backup, password, destination, kind, *, securetar_type
                         0 <= header.plaintext_size <= MAX_EXPANDED_BYTES,
                         "authenticated_encryption_not_proven")
             with outer.extract_tar(member) as decrypted:
-                proof = extract_inner(decrypted, destination, kind)
-                # tar ends before the cryptographic stream does. Do not accept
-                # an archive with a valid tar prefix and a bad/truncated tail.
-                trailing = 0
-                while chunk := decrypted.read(CHUNK):
-                    trailing += len(chunk)
-                    require(trailing <= MAX_EXPANDED_BYTES, "decrypted_tail_limit")
+                with io.BufferedReader(DecryptedReader(decrypted), DECRYPT_BUFFER) as buffered:
+                    if buffered.peek(2).startswith(b"\x1f\x8b"):
+                        # GzipFile limits decompression to the requested output.
+                        # tarfile's streaming gzip path retains a large expanded
+                        # buffer and repeatedly copies it while skipping members.
+                        with gzip.GzipFile(fileobj=buffered, mode="rb") as expanded:
+                            proof = extract_inner(expanded, destination, kind)
+                            drain(expanded)  # Validate gzip CRC and trailer too.
+                    else:
+                        proof = extract_inner(buffered, destination, kind)
+                    # Tar EOF is earlier than cipher EOF. Drain this same buffered
+                    # reader, including prefetched bytes, to authenticate the tail.
+                    drain(buffered)
     require(found and proof is not None, "homeassistant_archive_missing")
     proof.update(authenticated=True, securetar_version=3, full_ciphertext_read=True,
                  services_started=False, credentials_exported=False)

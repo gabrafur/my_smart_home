@@ -1,5 +1,6 @@
 """Synthetic regressions; no backup, key, Docker or residential access."""
 import io
+import gzip
 import json
 from pathlib import Path
 import tarfile
@@ -75,6 +76,48 @@ def securetar_fixture(payload, *, bad_tail=False, version=3):
 
 
 class GuestArchiveTests(unittest.TestCase):
+    def test_compressed_skipped_member_and_gzip_trailer_are_checked(self):
+        rows = [("data/unselected", b"\0" * (4 * 1024**2), tarfile.REGTYPE)] + bundle()
+        payload = gzip.compress(archive(rows), mtime=0)
+        for corrupt_crc in (False, True):
+            damaged = bytearray(payload)
+            if corrupt_crc:
+                damaged[-8] ^= 1
+            types_, state = securetar_fixture(bytes(damaged))
+            with self.subTest(corrupt_crc=corrupt_crc), tempfile.TemporaryDirectory() as tmp:
+                dst = Path(tmp) / "out"
+                if corrupt_crc:
+                    with self.assertRaises(gzip.BadGzipFile):
+                        g.extract_authenticated("fixture", "synthetic-only", dst, "compose", securetar_types=types_)
+                    self.assertFalse((dst / g.SEAL).exists())
+                else:
+                    result = g.extract_authenticated("fixture", "synthetic-only", dst, "compose", securetar_types=types_)
+                    self.assertEqual(result["selected_files"], 3)
+                    self.assertEqual(result["expanded_bytes"], 4 * 1024**2 + 6)
+                    self.assertTrue(state["fully_read"])
+                    self.assertFalse((dst / "unselected").exists())
+
+    def test_buffered_crypto_reader_bounds_requests_and_preserves_short_reads(self):
+        class ShortReader:
+            def __init__(self):
+                self.remaining = 2 * g.DECRYPT_BUFFER + 7
+                self.requests = []
+
+            def read(self, size):
+                self.requests.append(size)
+                n = min(size, 7901, self.remaining)
+                self.remaining -= n
+                return b"x" * n
+
+        source = ShortReader()
+        total = 0
+        with io.BufferedReader(g.DecryptedReader(source), g.DECRYPT_BUFFER) as stream:
+            self.assertEqual(stream.peek(2)[:2], b"xx")
+            while chunk := stream.read(g.CHUNK):
+                total += len(chunk)
+        self.assertEqual(total, 2 * g.DECRYPT_BUFFER + 7)
+        self.assertTrue(all(0 < size <= g.DECRYPT_BUFFER for size in source.requests))
+
     def test_native_includes_recorder_and_skips_nested_backup_without_exporting_paths(self):
         rows = native() + [("data/backups/nested.tar", b"nested", tarfile.REGTYPE)]
         with tempfile.TemporaryDirectory() as tmp:

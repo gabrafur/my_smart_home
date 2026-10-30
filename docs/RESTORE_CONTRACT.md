@@ -225,6 +225,13 @@ de expansão são rejeitados. Um selo só é escrito após consumir toda a cauda
 stream securetar v3. Saída parcial de falha fica em quarentena até a limpeza
 da operação isolada; não autoriza execução nem repetição automática.
 
+O leitor usa buffer limitado para o stream criptográfico e `gzip.GzipFile` para
+descompressão incremental. Isso evita cópias repetidas de grandes buffers ao
+ignorar membros muito comprimidos no modo gzip streaming de `tarfile`. O CRC e
+o trailer gzip também são conferidos antes do selo; o consumo integral da
+cauda autenticada continua obrigatório, inclusive dos bytes antecipados pelo
+buffer. Essa preparação não amplia os limites nem a autorização do chamador.
+
 Esse módulo não lê chaves do host, transfere arquivos ou concede acesso a VM,
 rede ou rádio. Seus testes usam arquivos sintéticos e não comprovam restauração
 privada. O chamador ainda precisa verificar o bundle canônico, as identidades
