@@ -581,7 +581,8 @@
                 "host_obs_test_resource_high",
                 "host_obs_test_source_failure",
                 "host_obs_test_stale",
-                "host_obs_test_malformed"
+                "host_obs_test_malformed",
+                "host_obs_test_legacy"
             ],
             "dry_run_terminal_ids": [
                 "global_observer_dry_run_terminal"

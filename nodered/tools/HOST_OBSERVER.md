@@ -54,6 +54,13 @@ reinicia sua janela de confirmação ao voltar a falhar. Isso mantém a ordem
 `first_seen_at <= notified_at <= last_seen_at`, sem reenviar o mesmo alerta.
 O ajuste não reescreve incidentes históricos com cronologia inválida; esses
 registros continuam exigindo reconciliação e a projeção MCP permanece estrita.
+Para o caso legado fechado em que a notificação precede a primeira detecção,
+o lifecycle conserva a linha original em `legacy_history_v1`, como histórico
+incerto. A migração exige papel nativo conhecido, datas ordenadas nos demais
+campos e schema fechado; ela não afirma recuperação e não gera alerta. O cursor
+não pode transformar esse mesmo evento antigo em outro incidente. Uma falha
+posterior continua sujeita à confirmação normal. O MCP publica esse histórico
+em `legacy_incident_observations`, mantendo a saúde operacional desconhecida.
 Essa marca prova intenção local, não confirmação do Home Assistant, do celular ou
 da Eva; falha de entrega deve ser reconciliada pelo canal global, sem replay cego.
 Recuperação remove somente o aviso associado; o histórico de falhas continua.
@@ -124,6 +131,11 @@ fonte ausente, relatório antigo e inválido. Todo replay passa pelas mesmas
 funções, decisões e lifecycle até `global_observer_dispatch_guard`, que encaminha
 exclusivamente ao terminal dry-run. Não clicar nos nós reais de leitura para
 simular incidentes e não usar o teste opcional de push como requisito deste tab.
+
+Para a migração legada, usar reset → saudável → histórico inconsistente. O
+contexto `host_observer_incidents_v1__test.legacy_history_v1.records` deve conter
+o original; repetir conserva um único registro e não acrescenta falha nem
+recuperação no terminal global. Esse teste não altera o contexto de produção.
 
 O replay automatizado no runtime pode fornecer `_host_test_run_id` com 32 hex.
 Reset inicia esse rascunho isolado; outras etapas só avançam com o mesmo ID.

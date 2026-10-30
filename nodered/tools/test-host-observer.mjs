@@ -148,6 +148,46 @@ replay(unconfirmedGap,frame(1009000,2,'die'),1009000);
 assert.equal(incidentOf(unconfirmedGap).first_seen_at,1009000,'unnotified incident starts confirmation again');
 replay(unconfirmedGap,frame(1011000,2,'die'),1011000);assert.equal(unconfirmedGap.dry.length,0);
 replay(unconfirmedGap,frame(1015000,2,'die'),1015000);assert.equal(unconfirmedGap.dry.length,1);
+// A pre-fix chronology is retained as uncertain history, without a recovery
+// alert or reclassifying its repeated cursor event as a new failure.
+const legacyManual=harness();legacyManual.scenario('reset');legacyManual.scenario('healthy');legacyManual.scenario('legacy');
+const legacyManualState=()=>legacyManual.context('host_observer_tab').get('host_observer_incidents_v1__test');
+assert.equal(legacyManualState().incidents['native_docker_ai-bridge'],undefined);
+assert.equal(legacyManualState().legacy_history_v1.records.length,1);
+assert.equal(legacyManualState().legacy_history_v1.records[0].reason,'legacy_notified_before_first_seen');
+assert.equal(legacyManual.dry.length,0,'quarantine is not a failure or recovery notification');
+assert.equal(legacyManual.effects.length,0);
+assert.equal(legacyManual.context('host_observer_tab').get('host_observer_incidents_v1','persistent'),undefined);
+legacyManual.scenario('legacy');assert.equal(legacyManualState().legacy_history_v1.records.length,1,'repeat does not duplicate history');
+const legacyOriginal={kind:'native',first_seen_at:995000,last_seen_at:997000,notified_at:994000,
+ current_evidence:'failed',source_first_observed_at:new Date(995000).toISOString(),source_time_kind:'producer_occurrence',sample_count:0,last_sample_at:null};
+const legacy=harness();legacy.context('host_observer_tab').set('host_observer_incidents_v1__test',
+ {version:1,incidents:{native_docker_nodered:structuredClone(legacyOriginal)}});
+replay(legacy,frame(997000,1,'die'),1000000);
+const legacyState=()=>legacy.context('host_observer_tab').get('host_observer_incidents_v1__test');
+assert.deepEqual(legacyState().legacy_history_v1.records[0].original,legacyOriginal,'original dates and evidence retained exactly');
+assert.equal(legacyState().incidents.native_docker_nodered,undefined);
+replay(legacy,frame(997000,1,'die'),1001000);
+assert.equal(legacy.dry.length,0,'the old cached failure cannot emit again');
+const restartedLegacy=harness();restartedLegacy.context('host_observer_tab').set('host_observer_incidents_v1__test',structuredClone(legacyState()));
+replay(restartedLegacy,frame(997000,1,'die'),1001000);
+assert.equal(restartedLegacy.dry.length,0);assert.equal(restartedLegacy.context('host_observer_tab').get('host_observer_incidents_v1__test').legacy_history_v1.records.length,1);
+replay(legacy,frame(1002000,2,'die'),1002000);replay(legacy,frame(1008000,2,'die'),1008000);
+assert.equal(legacy.dry.length,1,'a genuinely later failure still confirms and notifies');
+assert.equal(legacy.dry[0].payload.observer_kind,'host_failure');
+assert.equal(legacyState().legacy_history_v1.records.length,1,'new incident does not replace original history');
+for(const [role,row]of [
+ ['native_docker_private_fixture',legacyOriginal],
+ ['native_docker_nodered',{...legacyOriginal,private:'PRIVATE_SENTINEL'}],
+ ['native_docker_nodered',{...legacyOriginal,last_seen_at:2000000}],
+ ['native_docker_nodered',{...legacyOriginal,notified_at:996000}],
+]){
+ const rejected=harness();rejected.context('host_observer_tab').set('host_observer_incidents_v1__test',{version:1,incidents:{[role]:row}});
+ replay(rejected,frame(),1000000);
+ const ledger=rejected.context('host_observer_tab').get('host_observer_incidents_v1__test');
+ assert.deepEqual(ledger.incidents[role],row,'unknown schema, future clock or valid current incident is not quarantined');
+ assert.equal(ledger.legacy_history_v1,undefined);assert.equal(rejected.dry.length,0);assert.equal(rejected.effects.length,0);
+}
 const rc=harness();rc.run('host_obs_read_complete',{payload:{code:0}});assert.equal(rc.dry.length,0);
 const code=new Function('msg',source('read-completion'));assert.equal(code({payload:{code:0}}),null);assert.equal(code({payload:{code:1}}).payload.report,null);assert.equal(code({payload:{signal:'SIGTERM'}}).payload.collection_error,'source_invalid_or_unavailable');
 const malformed=harness();for(const now of [1000000,1021000])replay(malformed,null,now);

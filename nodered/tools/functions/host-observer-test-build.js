@@ -2,7 +2,7 @@ if (msg._host_observer_test !== true) return null;
 const name = msg.payload;
 const runId = msg._host_test_run_id;
 if (runId !== undefined && (typeof runId !== "string" || !/^[a-f0-9]{32}$/.test(runId))) return null;
-if (!["reset", "healthy", "failure", "confirm", "resource_high", "source_failure", "stale", "malformed"].includes(name)) return null;
+if (!["reset", "healthy", "failure", "confirm", "resource_high", "source_failure", "stale", "malformed", "legacy"].includes(name)) return null;
 if (name === "reset") {
     for (const key of ["host_observer_cursor_v1__test", "host_observer_incidents_v1__test", "host_observer_fixture_v1__test", "host_observer_timing_v1__test"]) flow.set(key, undefined);
     flow.set("host_observer_timing_runtime_v1__test", undefined, "memoryOnly");
@@ -14,6 +14,18 @@ if (name === "reset") {
 const state = flow.get("host_observer_fixture_v1__test") ?? {now: Date.now(), sequence: 0, action: "started", cpu: 10};
 if (state.run_id !== runId) return null;
 state.base_now ??= state.now;
+if (name === "legacy") {
+    const key = "host_observer_incidents_v1__test";
+    const ledger = flow.get(key) ?? {version: 1, incidents: {}};
+    ledger.incidents["native_docker_ai-bridge"] = {
+        kind: "native", first_seen_at: state.now - 20000,
+        last_seen_at: state.now - 10000, notified_at: state.now - 30000,
+        current_evidence: "failed", source_time_kind: "producer_occurrence",
+        source_first_observed_at: new Date(state.now - 20000).toISOString(),
+        sample_count: 0, last_sample_at: null
+    };
+    flow.set(key, ledger);
+}
 state.sample_sequence = (state.sample_sequence ?? 0) + 1;
 state.source_faults ??= 0;
 if (name === "source_failure" && state.last_source_state !== "unknown") state.source_faults++;

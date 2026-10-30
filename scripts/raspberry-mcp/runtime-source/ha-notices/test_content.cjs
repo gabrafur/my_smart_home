@@ -39,3 +39,43 @@ test('cause cycles and deep chains retain at most six public frames',()=>{
 test('embedded public exception name, service failure and reviewed context survive',()=>{const {errorDTO,contextDTO}=require('./content_sanitizer.cjs');const d=errorDTO({message:'HomeAssistantError: Service not available.'});assert.equal(d.exception_type,'HomeAssistantError');assert(d.reason_codes.includes('service_unavailable'));assert(contextDTO('ea0a6aa0d24ff863','people_visual_primary_icloud_update').node);assert.equal(contextDTO('private','private').node,null);const normal=sanitizeContent('Home Assistant iniciado','Home Assistant iniciou em 2026-10-25. Ultimo boot do Raspberry Pi: private. Se esta inicializacao nao foi planejada, verifique energia, temperatura e logs.');assert(normal.title_codes.includes('ha_started'));assert(normal.message_codes.includes('startup_guidance'));});
 
 test("generic service refusal does not identify a Home Assistant registry failure",()=>{const C=require("./diagnostic_templates.json");const d=require("./content_sanitizer.cjs").errorDTO({name:"HomeAssistantError",message:"Service not available."});assert(d.reason_codes.includes("service_unavailable"));assert.equal(C.fragments.service_unavailable,"Serviço indisponível; origem não comprovada");assert.match(C.fragments.check_service,/handler/);assert.match(C.fragments.check_service,/não comprova serviço ausente/);});
+
+const operational=[
+ ['Raspberry Pi - crescimento de storage','⚠️ Storage crescendo rapidamente: +0.5 pp/24h, +3.0 pp/7d. Uso atual: 64.0% (12.0 GiB livres). A limpeza segura foi solicitada automaticamente.','op_storage_growth_title','op_storage_growth_requested'],
+ ['Codex — pouca folga até o reset','⚠️ Ritmo atual: 10.00%/dia. Uso projetado: 80.0%.','op_codex_margin_low_title','op_codex_margin_low_forecast'],
+ ['Codex — autonomia recuperada','✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: 20%.','op_codex_margin_recovered_title','op_codex_margin_recovered_forecast']
+];
+function operationalDiagnostic(title,message){
+ return require('./notification_view.cjs').sanitize({notification_id:'operational_fixture',title,message,created_at:new Date(now).toISOString()},new Date(now).toISOString()).diagnostics;
+}
+function renderContent(diagnostic){
+ const {spawnSync}=require('node:child_process');
+ const code='import importlib.util,json,sys; s=importlib.util.spec_from_file_location("content",sys.argv[1]); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); print(json.dumps(m.project(json.load(sys.stdin))))';
+ const r=spawnSync('python3',['-I','-S','-B','-c',code,__dirname+'/content_reader.py'],{input:JSON.stringify(diagnostic),encoding:'utf8',timeout:5000,maxBuffer:32768});assert.equal(r.status,0,r.stderr);return JSON.parse(r.stdout);
+}
+test('known operational notices use fixed labels without exporting metric values',()=>{
+ for(const [title,message,titleCode,messageCode]of operational){
+  const d=operationalDiagnostic(title,message);assert.deepEqual(d.title_codes,[titleCode]);assert.deepEqual(d.message_codes,[messageCode]);
+  const rendered=renderContent(d);assert.equal(rendered.content_collection_error,null);assert.equal(rendered.raw_content_withheld,true);assert(!/trecho ocultado/.test(rendered.title));
+  assert(!JSON.stringify(d).includes('64.0'));assert(!JSON.stringify(rendered).includes('12.0'));assert(!JSON.stringify(rendered).includes('10.00'));
+ }
+ const storage=renderContent(operationalDiagnostic(...operational[0]));assert.match(storage.message,/solicitada/);assert.match(storage.message,/depende de recibo/);
+ const recovered=renderContent(operationalDiagnostic(...operational[2]));assert.match(recovered.message,/projeção/i);assert(!/meta concluída|cota disponível/.test(recovered.message));
+});
+test('unreviewed operational body suffixes and secret text stay withheld',()=>{
+ for(const [title,message]of operational){
+  const injected=message+' password=PRIVATEPASSWORD OTP: 987654 https://private.example/?token=PRIVATEKEY';
+  const d=operationalDiagnostic(title,injected);assert(!d.message_codes.some(c=>c.startsWith('op_')));
+  assert(d.redacted_fields.some(r=>r.field==='message'));
+  const rendered=JSON.stringify(renderContent(d));for(const secret of ['PRIVATEPASSWORD','987654','private.example','PRIVATEKEY'])assert(!rendered.includes(secret));
+  assert(!operationalDiagnostic(title+' PRIVATE_SUFFIX',message).title_codes.some(c=>c.startsWith('op_')));
+ }
+});
+test('operational content enrichment preserves legacy revisions and event counters',()=>{
+ const state=new NotificationState();const notifications={};for(const [i,[title,message]]of operational.entries())notifications['op_'+i]={notification_id:'op_'+i,title,message,created_at:new Date(now).toISOString()};
+ state.apply({type:'current',notifications},now);const saved=state.snapshot(now);
+ for(const n of saved.notifications)n.diagnostics=sanitizeContent('unclassified operational fixture','PRIVATE_SENTINEL');
+ const resumed=new NotificationState(saved);assert.equal(resumed.apply({type:'current',notifications},now+1000),0);
+ assert.equal(resumed.sequence,saved.sequence);assert.equal(resumed.dropped,saved.dropped);assert.deepEqual(resumed.events,saved.events);
+ for(const [id,n]of resumed.current)assert.equal(n.revision,state.current.get(id).revision);
+});

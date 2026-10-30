@@ -86967,18 +86967,17 @@
             "host_obs_test_malformed",
             "host_obs_test_build",
             "host_obs_test_frame_out",
-            "notification_hub_wire_out_f941866a0d9a",
-            "notification_hub_wire_in_f941866a0d9a",
-            "notification_hub_wire_out_896961521c78",
-            "notification_hub_wire_in_896961521c78",
-            "notification_hub_wire_out_b7e594ca51f8",
-            "notification_hub_wire_in_b7e594ca51f8",
-            "notification_hub_wire_out_e90587893caf",
-            "notification_hub_wire_in_e90587893caf",
-            "notification_hub_wire_out_dcae6f1998b4",
-            "notification_hub_wire_in_dcae6f1998b4",
-            "notification_hub_wire_out_94aa9b2537a4",
-            "notification_hub_wire_in_94aa9b2537a4"
+            "host_obs_test_reset_out",
+            "host_obs_test_healthy_out",
+            "host_obs_test_failure_out",
+            "host_obs_test_confirm_out",
+            "host_obs_test_resource_high_out",
+            "host_obs_test_source_failure_out",
+            "host_obs_test_stale_out",
+            "host_obs_test_malformed_out",
+            "host_obs_test_legacy",
+            "host_obs_test_legacy_out",
+            "host_obs_test_cases_in"
         ],
         "x": 64,
         "y": 1560,
@@ -87997,7 +87996,7 @@
                 "host_obs_alert_out"
             ]
         ],
-        "func": "const test = msg._host_observer_test === true;\nconst store = test ? undefined : \"persistent\";\nconst key = test ? \"host_observer_incidents_v1__test\" : \"host_observer_incidents_v1\";\nconst state = flow.get(key, store) ?? {version: 1, incidents: {}};\nconst fact = msg._host_fact;\nconst name = `${fact.kind}_${fact.source ?? \"host\"}_${fact.name}`;\nif (!/^[a-z0-9_-]{1,90}$/.test(name) || ![\"failed\", \"healthy\", \"unknown\"].includes(msg._host_signal)) return null;\nconst now = msg._host_now;\nlet incident = state.incidents[name];\nif (incident && now < incident.last_seen_at) {\n    incident.clock_conflict = true;\n    flow.set(key, state, store);\n    return null;\n}\nif (msg._host_signal === \"unknown\") {\n    if (incident) { incident.current_evidence = \"unknown\"; incident.last_seen_at = now; }\n    flow.set(key, state, store);\n    return null;\n}\nconst label = fact.kind === \"resource\" ? `recurso ${fact.name}` :\n    fact.kind === \"observation\" ? `observação ${fact.name}` : `serviço ${fact.name}`;\nconst alert = (recovery) => ({\n    _global_observer_test: test,\n    ...(test && msg._host_test_run_id !== undefined ? {_observer_test_receipt: {\n        run_id: msg._host_test_run_id, source_flow_id: \"host_observer_tab\"\n    }} : {}),\n    payload: {test_mode: test, observer_kind: recovery ? \"host_recovery\" : \"host_failure\",\n        persistent_incident_kind: \"host_failure\", incident_key: name,\n        persistent_notification_operation: recovery ? \"dismiss\" : \"create\",\n        mobile_notification: !recovery, host_source: fact.source ?? \"host\", host_role: fact.name,\n        source_observed_at: recovery ? fact.occurred_at ?? fact.observed_at ?? null : incident.source_first_observed_at ?? null,\n        source_time_kind: recovery ? fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\" : incident.source_time_kind ?? \"unknown\",\n        first_detected_at: new Date(recovery ? now : incident.first_seen_at).toISOString(),\n        policy_decided_at: new Date(now).toISOString(),\n        resolution: recovery ? \"approved_observation_returned\" : undefined},\n    alert: {title: `${test ? \"TESTE — \" : \"\"}${recovery ? \"Observação recuperada\" : \"Servidor exige atenção\"}`,\n        message: recovery ? `A observação de ${label} voltou ao estado esperado. O incidente anterior foi encerrado.` :\n            `Foi confirmada uma condição de atenção em ${label}. A Eva pode consultar o MCP para verificar a causa e os próximos passos. ` +\n            \"Este aviso não comprova uma ação do assistente ou a saúde de todos os serviços.\"}\n});\nif (msg._host_signal === \"healthy\") {\n    delete state.incidents[name];\n    flow.set(key, state, store);\n    return incident?.notified_at ? alert(true) : null;\n}\nincident ??= {first_seen_at: now, last_seen_at: now, notified_at: null, kind: fact.kind,\n    source_first_observed_at: fact.occurred_at ?? fact.observed_at ?? null,\n    source_time_kind: fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\"};\n// Unknown evidence restarts an unconfirmed failure, while an existing\n// notification keeps its incident chronology and dedupe until actual recovery.\nif (incident.current_evidence === \"unknown\" && incident.notified_at === null) {\n    incident.first_seen_at = now; incident.sample_count = 0; incident.last_sample_at = null;\n    incident.source_first_observed_at = fact.occurred_at ?? fact.observed_at ?? null;\n    incident.source_time_kind = fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\";\n}\nincident.last_seen_at = now; incident.current_evidence = \"failed\";\nif (fact.kind === \"resource\" && fact.observed_at !== incident.last_sample_at) {\n    const observed = Date.parse(fact.observed_at);\n    if (!Number.isFinite(observed) || incident.last_sample_at && observed < Date.parse(incident.last_sample_at)) {\n        incident.clock_conflict = true;\n    } else {\n        incident.sample_count = (incident.sample_count ?? 0) + 1;\n        incident.last_sample_at = fact.observed_at;\n    }\n}\nconst confirmation = fact.kind === \"resource\" ? msg._host_policy.resource_confirm_ms :\n    fact.kind === \"observation\" ? msg._host_policy.observation_confirm_ms : msg._host_policy.event_confirm_ms;\nstate.incidents[name] = incident;\nif (!Number.isFinite(confirmation) || confirmation < 1000 || incident.clock_conflict ||\n    now - incident.first_seen_at < confirmation || fact.kind === \"resource\" && incident.sample_count < 2 ||\n    incident.notified_at !== null) {\n    flow.set(key, state, store);\n    return null;\n}\nincident.notified_at = now;\nflow.set(key, state, store);\nnode.log(`HOST_OBSERVATION_INCIDENT role=${fact.name} kind=${fact.kind} simulated=${test}`);\nreturn alert(false);",
+        "func": "const test = msg._host_observer_test === true;\nconst store = test ? undefined : \"persistent\";\nconst key = test ? \"host_observer_incidents_v1__test\" : \"host_observer_incidents_v1\";\nconst state = flow.get(key, store) ?? {version: 1, incidents: {}};\nconst fact = msg._host_fact;\nconst name = `${fact.kind}_${fact.source ?? \"host\"}_${fact.name}`;\nif (!/^[a-z0-9_-]{1,90}$/.test(name) || ![\"failed\", \"healthy\", \"unknown\"].includes(msg._host_signal)) return null;\nconst now = msg._host_now;\n// Older lifecycle code could restart first_seen_at after notification. Preserve\n// that inconsistent row as unknown history; it is neither a current failure\n// nor evidence of recovery. This migration has no notification output.\nconst legacyReason = \"legacy_notified_before_first_seen\";\nconst knownNative = new Set([\n    ...[\"homeassistant\", \"nodered\", \"mosquitto\", \"portainer\", \"appdaemon\", \"matter_server\", \"zigbee2mqtt\",\n        \"ai-bridge\", \"docs-review-scheduler\", \"kia-uvo-codex-merge\"].map(role => `native_docker_${role}`),\n    ...[\"docker\", \"procmon\", \"mcp_collection\", \"external_heartbeat\", \"events\", \"ha_notices\", \"host_observation\"].map(role => `native_systemd_${role}`)\n]);\nconst nativeKey = key => knownNative.has(key);\nconst legacyFields = new Set([\"first_seen_at\", \"last_seen_at\", \"notified_at\", \"kind\",\n    \"source_first_observed_at\", \"source_time_kind\", \"current_evidence\", \"sample_count\",\n    \"last_sample_at\", \"clock_conflict\"]);\nconst legacyRow = row => row && typeof row === \"object\" && !Array.isArray(row) &&\n    Object.keys(row).every(key => legacyFields.has(key)) && row.kind === \"native\" &&\n    [row.first_seen_at, row.last_seen_at, row.notified_at].every(value => Number.isFinite(value) && value >= 0) &&\n    row.notified_at < row.first_seen_at && row.first_seen_at <= row.last_seen_at &&\n    [\"failed\", \"unknown\"].includes(row.current_evidence) &&\n    (row.source_first_observed_at == null || typeof row.source_first_observed_at === \"string\" && Number.isFinite(Date.parse(row.source_first_observed_at))) &&\n    [undefined, \"producer_occurrence\", \"producer_observation\", \"unknown\"].includes(row.source_time_kind) &&\n    (row.sample_count === undefined || Number.isSafeInteger(row.sample_count) && row.sample_count >= 0) &&\n    (row.last_sample_at == null || typeof row.last_sample_at === \"string\" && Number.isFinite(Date.parse(row.last_sample_at))) &&\n    (row.clock_conflict === undefined || typeof row.clock_conflict === \"boolean\");\nconst history = state.legacy_history_v1 ?? {version: 1, records: []};\nconst historyValid = history && history.version === 1 && Array.isArray(history.records) &&\n    history.records.length <= 64 && Object.keys(history).every(key => [\"version\", \"records\"].includes(key)) &&\n    history.records.every(record => record && Object.keys(record).length === 4 && nativeKey(record.role) &&\n        record.reason === legacyReason && Number.isFinite(record.quarantined_at) && record.quarantined_at >= 0 &&\n        legacyRow(record.original) && record.original.last_seen_at <= record.quarantined_at) &&\n    new Set(history.records.map(record => record.role)).size === history.records.length;\nif (Number.isFinite(now) && historyValid) {\n    for (const [key, row] of Object.entries(state.incidents)) {\n        if (!nativeKey(key) || !legacyRow(row) || row.last_seen_at > now) continue;\n        const existing = history.records.find(record => record.role === key);\n        if (existing) {\n            // An interrupted/replayed migration cannot append the same history\n            // twice, and a different later inconsistency remains unresolved.\n            if (Object.keys(existing.original).length !== Object.keys(row).length ||\n                Object.keys(row).some(field => row[field] !== existing.original[field])) continue;\n        } else {\n            if (history.records.length >= 64) continue;\n            history.records.push({role: key, reason: legacyReason, quarantined_at: now, original: {...row}});\n        }\n        state.legacy_history_v1 = history;\n        delete state.incidents[key];\n    }\n}\nconst priorLegacy = historyValid ? history.records.find(record => record.role === name) : null;\nif (priorLegacy && !state.incidents[name] &&\n    (!Number.isFinite(Date.parse(fact.occurred_at)) || Date.parse(fact.occurred_at) <= priorLegacy.original.last_seen_at)) {\n    // The cursor may still repeat the old cached event. Quarantining its row\n    // does not make that same historical event a new failure or recovery.\n    flow.set(key, state, store);\n    return null;\n}\nlet incident = state.incidents[name];\nif (incident && now < incident.last_seen_at) {\n    incident.clock_conflict = true;\n    flow.set(key, state, store);\n    return null;\n}\nif (msg._host_signal === \"unknown\") {\n    if (incident) { incident.current_evidence = \"unknown\"; incident.last_seen_at = now; }\n    flow.set(key, state, store);\n    return null;\n}\nconst label = fact.kind === \"resource\" ? `recurso ${fact.name}` :\n    fact.kind === \"observation\" ? `observação ${fact.name}` : `serviço ${fact.name}`;\nconst alert = (recovery) => ({\n    _global_observer_test: test,\n    ...(test && msg._host_test_run_id !== undefined ? {_observer_test_receipt: {\n        run_id: msg._host_test_run_id, source_flow_id: \"host_observer_tab\"\n    }} : {}),\n    payload: {test_mode: test, observer_kind: recovery ? \"host_recovery\" : \"host_failure\",\n        persistent_incident_kind: \"host_failure\", incident_key: name,\n        persistent_notification_operation: recovery ? \"dismiss\" : \"create\",\n        mobile_notification: !recovery, host_source: fact.source ?? \"host\", host_role: fact.name,\n        source_observed_at: recovery ? fact.occurred_at ?? fact.observed_at ?? null : incident.source_first_observed_at ?? null,\n        source_time_kind: recovery ? fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\" : incident.source_time_kind ?? \"unknown\",\n        first_detected_at: new Date(recovery ? now : incident.first_seen_at).toISOString(),\n        policy_decided_at: new Date(now).toISOString(),\n        resolution: recovery ? \"approved_observation_returned\" : undefined},\n    alert: {title: `${test ? \"TESTE — \" : \"\"}${recovery ? \"Observação recuperada\" : \"Servidor exige atenção\"}`,\n        message: recovery ? `A observação de ${label} voltou ao estado esperado. O incidente anterior foi encerrado.` :\n            `Foi confirmada uma condição de atenção em ${label}. A Eva pode consultar o MCP para verificar a causa e os próximos passos. ` +\n            \"Este aviso não comprova uma ação do assistente ou a saúde de todos os serviços.\"}\n});\nif (msg._host_signal === \"healthy\") {\n    delete state.incidents[name];\n    flow.set(key, state, store);\n    return incident?.notified_at ? alert(true) : null;\n}\nincident ??= {first_seen_at: now, last_seen_at: now, notified_at: null, kind: fact.kind,\n    source_first_observed_at: fact.occurred_at ?? fact.observed_at ?? null,\n    source_time_kind: fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\"};\n// Unknown evidence restarts an unconfirmed failure, while an existing\n// notification keeps its incident chronology and dedupe until actual recovery.\nif (incident.current_evidence === \"unknown\" && incident.notified_at === null) {\n    incident.first_seen_at = now; incident.sample_count = 0; incident.last_sample_at = null;\n    incident.source_first_observed_at = fact.occurred_at ?? fact.observed_at ?? null;\n    incident.source_time_kind = fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\";\n}\nincident.last_seen_at = now; incident.current_evidence = \"failed\";\nif (fact.kind === \"resource\" && fact.observed_at !== incident.last_sample_at) {\n    const observed = Date.parse(fact.observed_at);\n    if (!Number.isFinite(observed) || incident.last_sample_at && observed < Date.parse(incident.last_sample_at)) {\n        incident.clock_conflict = true;\n    } else {\n        incident.sample_count = (incident.sample_count ?? 0) + 1;\n        incident.last_sample_at = fact.observed_at;\n    }\n}\nconst confirmation = fact.kind === \"resource\" ? msg._host_policy.resource_confirm_ms :\n    fact.kind === \"observation\" ? msg._host_policy.observation_confirm_ms : msg._host_policy.event_confirm_ms;\nstate.incidents[name] = incident;\nif (!Number.isFinite(confirmation) || confirmation < 1000 || incident.clock_conflict ||\n    now - incident.first_seen_at < confirmation || fact.kind === \"resource\" && incident.sample_count < 2 ||\n    incident.notified_at !== null) {\n    flow.set(key, state, store);\n    return null;\n}\nincident.notified_at = now;\nflow.set(key, state, store);\nnode.log(`HOST_OBSERVATION_INCIDENT role=${fact.name} kind=${fact.kind} simulated=${test}`);\nreturn alert(false);",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -88028,7 +88027,7 @@
         "x": 900,
         "y": 1610,
         "wires": [],
-        "info": "Todos os cenários percorrem normalização,validade,decisões visuais e lifecycle até global_observer_dispatch_guard. Somente estado __test;sem exec,HA,MQTT,notificações ou dispositivos. source_failure e relatório stale não provam falha física; healthy encerra apenas evidência esperada. Resource_high exige nova amostra no confirmar. Start de container não encerra incidente de prontidão."
+        "info": "Todos os cenários percorrem normalização,validade,decisões visuais e lifecycle até global_observer_dispatch_guard. Somente estado __test;sem exec,HA,MQTT,notificações ou dispositivos. source_failure e relatório stale não provam falha física; healthy encerra apenas evidência esperada. Resource_high exige nova amostra no confirmar. Start de container não encerra incidente de prontidão. Para histórico legado: reset → saudável → histórico inconsistente; conferir legacy_history_v1.records no contexto host_observer_incidents_v1__test. Deve reter o original e não enviar falha nem recuperação; repetir mantém um único registro. Produção não é alterada."
     },
     {
         "id": "host_obs_test_reset",
@@ -88040,7 +88039,7 @@
         "y": 1700,
         "wires": [
             [
-                "notification_hub_wire_out_f941866a0d9a"
+                "host_obs_test_reset_out"
             ]
         ],
         "props": [
@@ -88073,7 +88072,7 @@
         "y": 1700,
         "wires": [
             [
-                "notification_hub_wire_out_896961521c78"
+                "host_obs_test_healthy_out"
             ]
         ],
         "props": [
@@ -88106,7 +88105,7 @@
         "y": 1700,
         "wires": [
             [
-                "notification_hub_wire_out_b7e594ca51f8"
+                "host_obs_test_failure_out"
             ]
         ],
         "props": [
@@ -88139,7 +88138,7 @@
         "y": 1700,
         "wires": [
             [
-                "host_obs_test_build"
+                "host_obs_test_confirm_out"
             ]
         ],
         "props": [
@@ -88172,7 +88171,7 @@
         "y": 1790,
         "wires": [
             [
-                "notification_hub_wire_out_e90587893caf"
+                "host_obs_test_resource_high_out"
             ]
         ],
         "props": [
@@ -88205,7 +88204,7 @@
         "y": 1790,
         "wires": [
             [
-                "notification_hub_wire_out_dcae6f1998b4"
+                "host_obs_test_source_failure_out"
             ]
         ],
         "props": [
@@ -88238,7 +88237,7 @@
         "y": 1790,
         "wires": [
             [
-                "notification_hub_wire_out_94aa9b2537a4"
+                "host_obs_test_stale_out"
             ]
         ],
         "props": [
@@ -88271,7 +88270,7 @@
         "y": 1790,
         "wires": [
             [
-                "host_obs_test_build"
+                "host_obs_test_malformed_out"
             ]
         ],
         "props": [
@@ -88307,7 +88306,7 @@
                 "host_obs_test_frame_out"
             ]
         ],
-        "func": "if (msg._host_observer_test !== true) return null;\nconst name = msg.payload;\nconst runId = msg._host_test_run_id;\nif (runId !== undefined && (typeof runId !== \"string\" || !/^[a-f0-9]{32}$/.test(runId))) return null;\nif (![\"reset\", \"healthy\", \"failure\", \"confirm\", \"resource_high\", \"source_failure\", \"stale\", \"malformed\"].includes(name)) return null;\nif (name === \"reset\") {\n    for (const key of [\"host_observer_cursor_v1__test\", \"host_observer_incidents_v1__test\", \"host_observer_fixture_v1__test\", \"host_observer_timing_v1__test\"]) flow.set(key, undefined);\n    flow.set(\"host_observer_timing_runtime_v1__test\", undefined, \"memoryOnly\");\n    if (runId !== undefined) flow.set(\"host_observer_fixture_v1__test\",\n        {now: Date.now(), sequence: 0, action: \"started\", cpu: 10, run_id: runId});\n    node.status({fill: \"blue\", shape: \"dot\", text: \"somente TESTE resetado\"});\n    return null;\n}\nconst state = flow.get(\"host_observer_fixture_v1__test\") ?? {now: Date.now(), sequence: 0, action: \"started\", cpu: 10};\nif (state.run_id !== runId) return null;\nstate.base_now ??= state.now;\nstate.sample_sequence = (state.sample_sequence ?? 0) + 1;\nstate.source_faults ??= 0;\nif (name === \"source_failure\" && state.last_source_state !== \"unknown\") state.source_faults++;\nstate.last_source_state = name === \"source_failure\" ? \"unknown\" : \"connected\";\nstate.now += name === \"confirm\" ? 25000 : 1000;\nif ([\"failure\", \"healthy\"].includes(name)) {\n    state.sequence += 1; state.action = name === \"failure\" ? \"failed\" : \"started\";\n}\nif (name === \"resource_high\") state.cpu = 96;\nif (name === \"healthy\") state.cpu = 10;\nconst at = new Date(state.now).toISOString();\nconst report = {schema_version: 1, source: \"fixed_readonly_host_observer\", observed_at: at,\n    instance_id: \"a\".repeat(64), boot_id_sha256: \"b\".repeat(64), sequence: state.sequence,\n    evicted_event_records: 0,\n    timing_v1: {version: 1, state: \"observed\", collection_error: null,\n        report_monotonic_seconds: state.now / 1000, resource_sample_sequence: state.sample_sequence,\n        resource_sampled_monotonic_seconds: state.now / 1000,\n        source_event_counts: {docker: 0, systemd: state.sequence},\n        source_fault_counts: {docker: 0, systemd: state.source_faults}, clock_change_count: 0, clock_stable: true,\n        resource_period_seconds: 20, idle_report_period_seconds: 10},\n    sources: {docker: {state: \"connected\", collection_error: null}, systemd: {state: name === \"source_failure\" ? \"unknown\" : \"connected\", collection_error: name === \"source_failure\" ? \"stream_unavailable_or_invalid\" : null}},\n    events: state.sequence ? [{id: state.sequence.toString(16).padStart(64, \"0\"), source: \"systemd\", service: \"procmon\", action: state.action,\n        sequence: state.sequence, occurred_at: at, observed_at: at, source_to_observer_ms: 0, source_clock_ordered: true, observer_monotonic_seconds: state.now / 1000}] : [],\n    resources: {observed_at: at, collection_errors: [], data: {cpu_busy_percent: state.cpu,\n        memory_available_bytes: 4096 * 1048576, memory_total_bytes: 8192 * 1048576,\n        disk_used_percent: 50, inodes_used_percent: 10, temperature_celsius: 50, oom_kill_count: 0}}};\nif (name === \"stale\") report.observed_at = new Date(state.now - 120000).toISOString();\nflow.set(\"host_observer_fixture_v1__test\", state);\nreturn {_host_observer_test: true, _host_test_now: state.now,\n    _host_test_run_id: runId, _host_test_canvas_monotonic_ms: state.now - state.base_now,\n    payload: name === \"malformed\" ? \"{\" : {schema_version: 1, collection_error: null, report, consumer_clock: {version: 1, state: \"observed\", collection_error: null,\n        observed_at: at, monotonic_seconds: state.now / 1000, boot_id_sha256: \"b\".repeat(64)}}};",
+        "func": "if (msg._host_observer_test !== true) return null;\nconst name = msg.payload;\nconst runId = msg._host_test_run_id;\nif (runId !== undefined && (typeof runId !== \"string\" || !/^[a-f0-9]{32}$/.test(runId))) return null;\nif (![\"reset\", \"healthy\", \"failure\", \"confirm\", \"resource_high\", \"source_failure\", \"stale\", \"malformed\", \"legacy\"].includes(name)) return null;\nif (name === \"reset\") {\n    for (const key of [\"host_observer_cursor_v1__test\", \"host_observer_incidents_v1__test\", \"host_observer_fixture_v1__test\", \"host_observer_timing_v1__test\"]) flow.set(key, undefined);\n    flow.set(\"host_observer_timing_runtime_v1__test\", undefined, \"memoryOnly\");\n    if (runId !== undefined) flow.set(\"host_observer_fixture_v1__test\",\n        {now: Date.now(), sequence: 0, action: \"started\", cpu: 10, run_id: runId});\n    node.status({fill: \"blue\", shape: \"dot\", text: \"somente TESTE resetado\"});\n    return null;\n}\nconst state = flow.get(\"host_observer_fixture_v1__test\") ?? {now: Date.now(), sequence: 0, action: \"started\", cpu: 10};\nif (state.run_id !== runId) return null;\nstate.base_now ??= state.now;\nif (name === \"legacy\") {\n    const key = \"host_observer_incidents_v1__test\";\n    const ledger = flow.get(key) ?? {version: 1, incidents: {}};\n    ledger.incidents[\"native_docker_ai-bridge\"] = {\n        kind: \"native\", first_seen_at: state.now - 20000,\n        last_seen_at: state.now - 10000, notified_at: state.now - 30000,\n        current_evidence: \"failed\", source_time_kind: \"producer_occurrence\",\n        source_first_observed_at: new Date(state.now - 20000).toISOString(),\n        sample_count: 0, last_sample_at: null\n    };\n    flow.set(key, ledger);\n}\nstate.sample_sequence = (state.sample_sequence ?? 0) + 1;\nstate.source_faults ??= 0;\nif (name === \"source_failure\" && state.last_source_state !== \"unknown\") state.source_faults++;\nstate.last_source_state = name === \"source_failure\" ? \"unknown\" : \"connected\";\nstate.now += name === \"confirm\" ? 25000 : 1000;\nif ([\"failure\", \"healthy\"].includes(name)) {\n    state.sequence += 1; state.action = name === \"failure\" ? \"failed\" : \"started\";\n}\nif (name === \"resource_high\") state.cpu = 96;\nif (name === \"healthy\") state.cpu = 10;\nconst at = new Date(state.now).toISOString();\nconst report = {schema_version: 1, source: \"fixed_readonly_host_observer\", observed_at: at,\n    instance_id: \"a\".repeat(64), boot_id_sha256: \"b\".repeat(64), sequence: state.sequence,\n    evicted_event_records: 0,\n    timing_v1: {version: 1, state: \"observed\", collection_error: null,\n        report_monotonic_seconds: state.now / 1000, resource_sample_sequence: state.sample_sequence,\n        resource_sampled_monotonic_seconds: state.now / 1000,\n        source_event_counts: {docker: 0, systemd: state.sequence},\n        source_fault_counts: {docker: 0, systemd: state.source_faults}, clock_change_count: 0, clock_stable: true,\n        resource_period_seconds: 20, idle_report_period_seconds: 10},\n    sources: {docker: {state: \"connected\", collection_error: null}, systemd: {state: name === \"source_failure\" ? \"unknown\" : \"connected\", collection_error: name === \"source_failure\" ? \"stream_unavailable_or_invalid\" : null}},\n    events: state.sequence ? [{id: state.sequence.toString(16).padStart(64, \"0\"), source: \"systemd\", service: \"procmon\", action: state.action,\n        sequence: state.sequence, occurred_at: at, observed_at: at, source_to_observer_ms: 0, source_clock_ordered: true, observer_monotonic_seconds: state.now / 1000}] : [],\n    resources: {observed_at: at, collection_errors: [], data: {cpu_busy_percent: state.cpu,\n        memory_available_bytes: 4096 * 1048576, memory_total_bytes: 8192 * 1048576,\n        disk_used_percent: 50, inodes_used_percent: 10, temperature_celsius: 50, oom_kill_count: 0}}};\nif (name === \"stale\") report.observed_at = new Date(state.now - 120000).toISOString();\nflow.set(\"host_observer_fixture_v1__test\", state);\nreturn {_host_observer_test: true, _host_test_now: state.now,\n    _host_test_run_id: runId, _host_test_canvas_monotonic_ms: state.now - state.base_now,\n    payload: name === \"malformed\" ? \"{\" : {schema_version: 1, collection_error: null, report, consumer_clock: {version: 1, state: \"observed\", collection_error: null,\n        observed_at: at, monotonic_seconds: state.now / 1000, boot_id_sha256: \"b\".repeat(64)}}};",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -96956,6 +96955,190 @@
         ]
     },
     {
+        "id": "host_obs_test_reset_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE reset → replay",
+        "x": 430,
+        "y": 1700,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_healthy_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE healthy → replay",
+        "x": 800,
+        "y": 1700,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_failure_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE failure → replay",
+        "x": 1170,
+        "y": 1700,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_confirm_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE confirm → replay",
+        "x": 1540,
+        "y": 1700,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_resource_high_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE resource_high → replay",
+        "x": 430,
+        "y": 1790,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_source_failure_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE source_failure → replay",
+        "x": 800,
+        "y": 1790,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_stale_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE stale → replay",
+        "x": 1170,
+        "y": 1790,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_malformed_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE malformed → replay",
+        "x": 1540,
+        "y": 1790,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_legacy",
+        "type": "inject",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE 8 histórico inconsistente",
+        "x": 260,
+        "y": 1880,
+        "wires": [
+            [
+                "host_obs_test_legacy_out"
+            ]
+        ],
+        "props": [
+            {
+                "p": "payload",
+                "v": "legacy",
+                "vt": "str"
+            },
+            {
+                "p": "_host_observer_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "legacy",
+        "payloadType": "str"
+    },
+    {
+        "id": "host_obs_test_legacy_out",
+        "type": "link out",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "TESTE legacy → replay",
+        "x": 430,
+        "y": 1880,
+        "wires": [],
+        "mode": "link",
+        "links": [
+            "host_obs_test_cases_in"
+        ]
+    },
+    {
+        "id": "host_obs_test_cases_in",
+        "type": "link in",
+        "z": "host_observer_tab",
+        "g": "host_obs_test_group",
+        "name": "Cenários → construir frame",
+        "x": 1410,
+        "y": 1900,
+        "wires": [
+            [
+                "host_obs_test_build"
+            ]
+        ],
+        "links": [
+            "host_obs_test_reset_out",
+            "host_obs_test_healthy_out",
+            "host_obs_test_failure_out",
+            "host_obs_test_confirm_out",
+            "host_obs_test_resource_high_out",
+            "host_obs_test_source_failure_out",
+            "host_obs_test_stale_out",
+            "host_obs_test_malformed_out",
+            "host_obs_test_legacy_out"
+        ]
+    },
+    {
         "id": "notification_hub_wire_out_91f75af07cd0",
         "type": "link out",
         "z": "host_observer_tab",
@@ -97169,192 +97352,6 @@
         "wires": [
             [
                 "host_obs_observation"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_f941866a0d9a",
-        "type": "link out",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Encurtar: TESTE 0 reset",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_f941866a0d9a"
-        ],
-        "x": 440,
-        "y": 1700,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_f941866a0d9a",
-        "type": "link in",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Continuar: Construir somente frame sintético",
-        "links": [
-            "notification_hub_wire_out_f941866a0d9a"
-        ],
-        "x": 1400,
-        "y": 1880,
-        "wires": [
-            [
-                "host_obs_test_build"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_896961521c78",
-        "type": "link out",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Encurtar: TESTE 1 saudável",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_896961521c78"
-        ],
-        "x": 810,
-        "y": 1700,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_896961521c78",
-        "type": "link in",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Continuar: Construir somente frame sintético",
-        "links": [
-            "notification_hub_wire_out_896961521c78"
-        ],
-        "x": 1400,
-        "y": 1630,
-        "wires": [
-            [
-                "host_obs_test_build"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_b7e594ca51f8",
-        "type": "link out",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Encurtar: TESTE 2 falha",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_b7e594ca51f8"
-        ],
-        "x": 1180,
-        "y": 1700,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_b7e594ca51f8",
-        "type": "link in",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Continuar: Construir somente frame sintético",
-        "links": [
-            "notification_hub_wire_out_b7e594ca51f8"
-        ],
-        "x": 1320,
-        "y": 1880,
-        "wires": [
-            [
-                "host_obs_test_build"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_e90587893caf",
-        "type": "link out",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Encurtar: TESTE 4 CPU alta",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_e90587893caf"
-        ],
-        "x": 440,
-        "y": 1790,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_e90587893caf",
-        "type": "link in",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Continuar: Construir somente frame sintético",
-        "links": [
-            "notification_hub_wire_out_e90587893caf"
-        ],
-        "x": 1320,
-        "y": 1630,
-        "wires": [
-            [
-                "host_obs_test_build"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_dcae6f1998b4",
-        "type": "link out",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Encurtar: TESTE 5 fonte ausente",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_dcae6f1998b4"
-        ],
-        "x": 810,
-        "y": 1790,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_dcae6f1998b4",
-        "type": "link in",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Continuar: Construir somente frame sintético",
-        "links": [
-            "notification_hub_wire_out_dcae6f1998b4"
-        ],
-        "x": 1480,
-        "y": 1630,
-        "wires": [
-            [
-                "host_obs_test_build"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_94aa9b2537a4",
-        "type": "link out",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Encurtar: TESTE 6 relatório antigo",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_94aa9b2537a4"
-        ],
-        "x": 1180,
-        "y": 1790,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_94aa9b2537a4",
-        "type": "link in",
-        "z": "host_observer_tab",
-        "g": "host_obs_test_group",
-        "name": "Continuar: Construir somente frame sintético",
-        "links": [
-            "notification_hub_wire_out_94aa9b2537a4"
-        ],
-        "x": 1240,
-        "y": 1830,
-        "wires": [
-            [
-                "host_obs_test_build"
             ]
         ]
     }

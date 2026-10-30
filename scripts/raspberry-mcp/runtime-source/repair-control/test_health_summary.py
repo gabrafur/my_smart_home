@@ -297,6 +297,45 @@ class HostObservationTests(unittest.TestCase):
         context['host_observer_incidents_v1']['incidents']['native_systemd_procmon']['notified_at']=(now+5)*1000
         self.assertEqual(self.project(report,context,now)['state'],'unknown')
 
+    def legacy_record(self, now):
+        return {'role':'native_systemd_procmon','reason':'legacy_notified_before_first_seen',
+            'quarantined_at':now*1000,'original':{'kind':'native','first_seen_at':(now-20)*1000,
+                'last_seen_at':(now-10)*1000,'notified_at':(now-30)*1000,'current_evidence':'failed',
+                'source_time_kind':'producer_occurrence','sample_count':0,'last_sample_at':None}}
+
+    def test_quarantined_original_chronology_is_unknown_history_not_recovery(self):
+        report,context,now=self.fixture();record=self.legacy_record(now);original=copy.deepcopy(record)
+        context['host_observer_incidents_v1']['legacy_history_v1']={'version':1,'records':[record]}
+        out=self.project(report,context,now)
+        self.assertEqual(out['state'],'observed');self.assertIsNone(out['collection_error'])
+        self.assertEqual(out['NodeRED']['incident_observations'],[])
+        row=out['NodeRED']['legacy_incident_observations'][0]
+        self.assertEqual(row['historical_evidence'],'unknown');self.assertTrue(row['original_chronology_retained'])
+        self.assertFalse(row['recovery_proven']);self.assertTrue(row['not_current_failure_proof'])
+        self.assertEqual(out['operational_health'],'unknown');self.assertFalse(out['full24h_proven'])
+        self.assertEqual(record,original)
+
+    def test_legacy_history_rejects_private_extra_future_unknown_or_valid_current_rows(self):
+        report,context,now=self.fixture()
+        for update in [{'role':'PRIVATE_SENTINEL'},{'private':'PRIVATE_SENTINEL'},
+                       {'quarantined_at':(now+100)*1000},{'reason':'PRIVATE_SENTINEL'}]:
+            with self.subTest(update=update):
+                context['host_observer_incidents_v1']['legacy_history_v1']={'version':1,'records':[{**self.legacy_record(now),**update}]}
+                out=self.project(report,context,now)
+                self.assertEqual(out['state'],'unknown');self.assertNotIn('PRIVATE_SENTINEL',str(out))
+                self.assertIn('legacy_incident_metadata_invalid',out['collection_error'])
+        for update in [{'private':'PRIVATE_SENTINEL'},{'kind':'resource'}, {'notified_at':(now-15)*1000}]:
+            record=self.legacy_record(now);record['original'].update(update)
+            context['host_observer_incidents_v1']['legacy_history_v1']={'version':1,'records':[record]}
+            out=self.project(report,context,now);self.assertEqual(out['state'],'unknown');self.assertNotIn('PRIVATE_SENTINEL',str(out))
+
+    def test_legacy_history_rejects_duplicates_and_boolean_schema(self):
+        report,context,now=self.fixture();record=self.legacy_record(now)
+        for history in [{'version':1,'records':[record,copy.deepcopy(record)]},{'version':True,'records':[record]}]:
+            context['host_observer_incidents_v1']['legacy_history_v1']=history
+            out=self.project(report,context,now);self.assertEqual(out['state'],'unknown')
+            self.assertEqual(out['NodeRED']['legacy_incident_observations'],[])
+
     def test_fixed_entry_calls_only_two_reviewed_paths(self):
         from unittest.mock import patch
         with patch.dict(_active.host_observation.__globals__,{'_observer_json':lambda *args:(None,'source_missing')}), patch('time.time',return_value=1000000):

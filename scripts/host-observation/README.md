@@ -85,6 +85,28 @@ a exposição pelo MCP foi validada em
 [host-observation-MCP.acceptance.json](../raspberry-mcp/host-observation-MCP.acceptance.json). Não há comprovação de entrega
 à Eva, execução do assistente, PC desligado ou da meta completa.
 
+## Cronologia legada inconsistente
+
+O lifecycle do Node-RED pode encontrar um registro legado cuja notificação
+precede a primeira detecção. Para papéis nativos conhecidos e schema fechado,
+ele conserva o registro original em `legacy_history_v1`, com a razão
+`legacy_notified_before_first_seen`, e o retira do conjunto de incidentes
+atuais. Essa quarentena registra evidência histórica desconhecida: não afirma
+que o serviço falhou ou se recuperou, não corrige datas e não envia notificação.
+Um evento antigo repetido pelo cursor não inicia outro incidente; uma falha
+genuinamente posterior continua passando pela confirmação e pelo gate normal.
+Schema inesperado, relógio futuro ou uma inconsistência diferente permanecem
+pendentes, sem migração automática. O histórico persiste junto do lifecycle e
+o MCP o expõe como `legacy_incident_observations`, sempre sem prova de recuperação
+ou de falha atual. O campo de saúde operacional continua desconhecido.
+
+Replay manual: `reset` → `saudável` → `histórico inconsistente`; conferir um
+registro em `host_observer_incidents_v1__test.legacy_history_v1.records`, nenhum
+novo alerta no terminal global e ausência de alterações no contexto de produção.
+Repetir o último passo mantém um único registro. Os replays automatizados também
+cobrem retomada após restart, evento antigo, nova falha real e recusa de metadados
+inválidos; nenhum deles aciona serviços residenciais.
+
 ## Testes e aceite
 
 `node --test scripts/host-observation/observer.test.mjs` executa os testes

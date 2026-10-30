@@ -557,6 +557,47 @@ def project_passive_host_timing(context, report, now):
         result['collection_error']='passive_timing_invalid';return result
 
 
+def project_host_legacy_history(value, known, now):
+    """Project quarantined chronology as unknown history, never as recovery."""
+    import math
+    if value is None:
+        return [], None
+    def number(v):
+        return type(v) in (int, float) and math.isfinite(v) and 0 <= v <= 10**18
+    fields = {'first_seen_at', 'last_seen_at', 'notified_at', 'kind', 'source_first_observed_at',
+              'source_time_kind', 'current_evidence', 'sample_count', 'last_sample_at', 'clock_conflict'}
+    rows, seen = [], set()
+    try:
+        if (type(value) is not dict or set(value) != {'version', 'records'} or type(value['version']) is not int
+                or value['version'] != 1 or type(value['records']) is not list or len(value['records']) > 64):
+            raise ValueError('invalid_history')
+        for record in value['records']:
+            if (type(record) is not dict or set(record) != {'role', 'reason', 'quarantined_at', 'original'}
+                    or record['role'] not in known or not record['role'].startswith('native_')
+                    or record['role'] in seen or record['reason'] != 'legacy_notified_before_first_seen'
+                    or not number(record['quarantined_at']) or record['quarantined_at']/1000 > now+1):
+                raise ValueError('invalid_history')
+            row = record['original']
+            if (type(row) is not dict or not set(row) <= fields or row.get('kind') != 'native'
+                    or not all(number(row.get(k)) for k in ('first_seen_at', 'last_seen_at', 'notified_at'))
+                    or not row['notified_at'] < row['first_seen_at'] <= row['last_seen_at'] <= record['quarantined_at']
+                    or row.get('current_evidence') not in ('failed', 'unknown')
+                    or row.get('source_first_observed_at') is not None and stamp(row['source_first_observed_at']) is None
+                    or 'source_time_kind' in row and row['source_time_kind'] not in ('producer_occurrence', 'producer_observation', 'unknown')
+                    or 'sample_count' in row and (type(row['sample_count']) is not int or row['sample_count'] < 0)
+                    or row.get('last_sample_at') is not None and stamp(row['last_sample_at']) is None
+                    or 'clock_conflict' in row and type(row['clock_conflict']) is not bool):
+                raise ValueError('invalid_history')
+            seen.add(record['role'])
+            rows.append({'role': record['role'], 'historical_evidence': 'unknown', 'reason': record['reason'],
+                         'quarantined_at': dt.datetime.fromtimestamp(record['quarantined_at']/1000, dt.timezone.utc).isoformat(),
+                         'original_chronology_retained': True, 'original_notification_intent_recorded': True,
+                         'not_current_failure_proof': True, 'recovery_proven': False})
+        return rows, None
+    except (ValueError, TypeError, KeyError, OverflowError):
+        return [], 'legacy_incident_metadata_invalid'
+
+
 def project_host_observation(report, context, now, report_error=None, context_error=None):
     """Metadata observation only. Never derive administrative authority or whole-host health."""
     import math
@@ -679,10 +720,15 @@ def project_host_observation(report, context, now, report_error=None, context_er
                     incidents.append({'role': key, 'evidence': row['current_evidence'],
                         'notification_intent_recorded': notified is not None,
                         'clock_conflict': row.get('clock_conflict') is True})
+            ledger = context.get('host_observer_incidents_v1')
+            legacy, legacy_error = project_host_legacy_history(ledger.get('legacy_history_v1') if isinstance(ledger, dict) else None, known, now)
+            if legacy_error:
+                errors.append(legacy_error)
             result['NodeRED'] = {'last_report_at': dt.datetime.fromtimestamp(last/1000, dt.timezone.utc).isoformat(timespec='milliseconds'),
                 'age_seconds': round(max(0, now-last/1000), 3), 'sequence': cursor['sequence'],
                 'native_role_observations': sorted(rows, key=lambda x: stamp(x['occurred_at']), reverse=True),
-                'incident_observations': incidents, 'visual_policy': dict(policy) if policy_valid else None,
+                'incident_observations': incidents, 'legacy_incident_observations': legacy,
+                'visual_policy': dict(policy) if policy_valid else None,
                 'application_context_persistence_flush_allowance_seconds': 30}
             if now-last/1000 > 60:
                 errors.append('NodeRED_observation_stale')

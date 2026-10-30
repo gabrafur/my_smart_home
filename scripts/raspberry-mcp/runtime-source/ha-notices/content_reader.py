@@ -2,6 +2,13 @@
 import json
 from pathlib import Path
 C=json.loads(Path(__file__).with_name('diagnostic_templates.json').read_text())
+O=json.loads(Path(__file__).with_name('operational_notice_templates.json').read_text())
+if (type(O) is not dict or set(O) != {'schema_version','fragments'} or type(O['schema_version']) is not int
+        or O['schema_version'] != 1 or type(O['fragments']) is not dict or len(O['fragments']) > 16
+        or any(type(k) is not str or not k.startswith('op_') or k in C['fragments']
+               or type(v) is not str or not 0 < len(v) <= 256 for k,v in O['fragments'].items())):
+    raise ValueError('invalid_operational_catalog')
+C['fragments'].update(O['fragments'])
 
 def codes(value,limit=16):
     if not isinstance(value,list)or len(value)>limit or any(not isinstance(x,str)or x not in C['fragments']for x in value):raise ValueError('invalid_codes')
@@ -38,7 +45,7 @@ def project(value):
     try:
         if value.get('schema_version')!=1 or value.get('raw_content_persisted')is not False or value.get('rendering')!='reviewed_diagnostic_fragments_only':raise ValueError('invalid_content')
         redacted=redactions(value.get('redacted_fields'));e=error(value.get('error'));guidance=value.get('guidance_code')
-        if guidance not in ('check_integration','check_manual_auth','check_switch','check_core_compatibility','check_backup','check_service'):raise ValueError('invalid_guidance')
+        if guidance not in ('check_integration','check_manual_auth','check_switch','check_core_compatibility','check_backup','check_service','op_check_storage_growth','op_check_codex_capacity'):raise ValueError('invalid_guidance')
         title=render(value.get('title_codes'));message=render(value.get('message_codes'))
         if any(r['field']=='title'for r in redacted):title+=' '+C['fragments']['redacted']
         if any(r['field']=='message'for r in redacted):message+=' '+C['fragments']['redacted']

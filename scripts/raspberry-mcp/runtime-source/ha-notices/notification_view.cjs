@@ -2,6 +2,7 @@
 // No raw title/body is exported: known operational categories have fixed labels.
 const {createHash}=require('node:crypto');
 const {sanitizeContent}=require('./content_sanitizer.cjs');
+const {supplement}=require('./operational_notices.cjs');
 const kinds=[['external','Iluminação externa'],['backup','Backup'],['global_observer','Observador de automações'],['smart_home_proactive_test','TESTE de observabilidade']];
 const exactIds=new Map([['git_backup_failure',['backup','Backup']],['proactive_native_events_acceptance_20261023',['smart_home_proactive_test','TESTE de observabilidade']]]);
 function iso(value){const t=typeof value==='string'?Date.parse(value):NaN;return Number.isFinite(t)?new Date(t).toISOString():null;}
@@ -18,7 +19,7 @@ function sanitize(notification,observedAt){
   created_or_updated_at:iso(notification.created_at),origin:'not_provided_by_HA',
   category:exact?.[0]||match?.[0]||diagnostic?.[0]||'unclassified',summary:exact?.[1]||match?.[1]||diagnostic?.[1]||'Notificação persistente; conteúdo não exportado',
   category_basis:exact?'identifier_exact':match?'identifier_prefix':diagnostic?'untrusted_text_pattern':'unknown',
-  diagnostics:sanitizeContent(notification.title,notification.message),
+  diagnostics:supplement(sanitizeContent(notification.title,notification.message),notification.title,notification.message),
   content_withheld:true,destination_delivery:'not_applicable',collection_error:null};
 }
 function view(notifications,now=new Date().toISOString()){

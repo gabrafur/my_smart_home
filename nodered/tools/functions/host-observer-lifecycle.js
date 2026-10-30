@@ -6,6 +6,61 @@ const fact = msg._host_fact;
 const name = `${fact.kind}_${fact.source ?? "host"}_${fact.name}`;
 if (!/^[a-z0-9_-]{1,90}$/.test(name) || !["failed", "healthy", "unknown"].includes(msg._host_signal)) return null;
 const now = msg._host_now;
+// Older lifecycle code could restart first_seen_at after notification. Preserve
+// that inconsistent row as unknown history; it is neither a current failure
+// nor evidence of recovery. This migration has no notification output.
+const legacyReason = "legacy_notified_before_first_seen";
+const knownNative = new Set([
+    ...["homeassistant", "nodered", "mosquitto", "portainer", "appdaemon", "matter_server", "zigbee2mqtt",
+        "ai-bridge", "docs-review-scheduler", "kia-uvo-codex-merge"].map(role => `native_docker_${role}`),
+    ...["docker", "procmon", "mcp_collection", "external_heartbeat", "events", "ha_notices", "host_observation"].map(role => `native_systemd_${role}`)
+]);
+const nativeKey = key => knownNative.has(key);
+const legacyFields = new Set(["first_seen_at", "last_seen_at", "notified_at", "kind",
+    "source_first_observed_at", "source_time_kind", "current_evidence", "sample_count",
+    "last_sample_at", "clock_conflict"]);
+const legacyRow = row => row && typeof row === "object" && !Array.isArray(row) &&
+    Object.keys(row).every(key => legacyFields.has(key)) && row.kind === "native" &&
+    [row.first_seen_at, row.last_seen_at, row.notified_at].every(value => Number.isFinite(value) && value >= 0) &&
+    row.notified_at < row.first_seen_at && row.first_seen_at <= row.last_seen_at &&
+    ["failed", "unknown"].includes(row.current_evidence) &&
+    (row.source_first_observed_at == null || typeof row.source_first_observed_at === "string" && Number.isFinite(Date.parse(row.source_first_observed_at))) &&
+    [undefined, "producer_occurrence", "producer_observation", "unknown"].includes(row.source_time_kind) &&
+    (row.sample_count === undefined || Number.isSafeInteger(row.sample_count) && row.sample_count >= 0) &&
+    (row.last_sample_at == null || typeof row.last_sample_at === "string" && Number.isFinite(Date.parse(row.last_sample_at))) &&
+    (row.clock_conflict === undefined || typeof row.clock_conflict === "boolean");
+const history = state.legacy_history_v1 ?? {version: 1, records: []};
+const historyValid = history && history.version === 1 && Array.isArray(history.records) &&
+    history.records.length <= 64 && Object.keys(history).every(key => ["version", "records"].includes(key)) &&
+    history.records.every(record => record && Object.keys(record).length === 4 && nativeKey(record.role) &&
+        record.reason === legacyReason && Number.isFinite(record.quarantined_at) && record.quarantined_at >= 0 &&
+        legacyRow(record.original) && record.original.last_seen_at <= record.quarantined_at) &&
+    new Set(history.records.map(record => record.role)).size === history.records.length;
+if (Number.isFinite(now) && historyValid) {
+    for (const [key, row] of Object.entries(state.incidents)) {
+        if (!nativeKey(key) || !legacyRow(row) || row.last_seen_at > now) continue;
+        const existing = history.records.find(record => record.role === key);
+        if (existing) {
+            // An interrupted/replayed migration cannot append the same history
+            // twice, and a different later inconsistency remains unresolved.
+            if (Object.keys(existing.original).length !== Object.keys(row).length ||
+                Object.keys(row).some(field => row[field] !== existing.original[field])) continue;
+        } else {
+            if (history.records.length >= 64) continue;
+            history.records.push({role: key, reason: legacyReason, quarantined_at: now, original: {...row}});
+        }
+        state.legacy_history_v1 = history;
+        delete state.incidents[key];
+    }
+}
+const priorLegacy = historyValid ? history.records.find(record => record.role === name) : null;
+if (priorLegacy && !state.incidents[name] &&
+    (!Number.isFinite(Date.parse(fact.occurred_at)) || Date.parse(fact.occurred_at) <= priorLegacy.original.last_seen_at)) {
+    // The cursor may still repeat the old cached event. Quarantining its row
+    // does not make that same historical event a new failure or recovery.
+    flow.set(key, state, store);
+    return null;
+}
 let incident = state.incidents[name];
 if (incident && now < incident.last_seen_at) {
     incident.clock_conflict = true;

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "fragments": {
+    "op_check_codex_capacity": "Consultar a projeção de uso e o horário do reset.",
+    "op_check_storage_growth": "Conferir o uso atual do disco e o recibo da limpeza solicitada.",
+    "op_codex_margin_low_forecast": "A projeção de uso indica pouca folga até o reset.",
+    "op_codex_margin_low_title": "Codex — projeção de pouca folga até o reset",
+    "op_codex_margin_recovered_forecast": "A projeção de uso voltou a um ritmo sustentável até o reset.",
+    "op_codex_margin_recovered_title": "Codex — projeção de folga recuperada",
+    "op_storage_growth_requested": "Armazenamento em crescimento; limpeza segura solicitada. A execução depende de recibo.",
+    "op_storage_growth_title": "Raspberry Pi — crescimento de armazenamento"
+  }
+}
