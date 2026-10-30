@@ -216,6 +216,20 @@ Plano para ensaio real, sujeito a autorização antes de transferir dados:
 
 ## Prontidão dos serviços e ensaio neutro de isolamento
 
+O parser [`guest_archive.py`](../restore/guest_archive.py) prepara separadamente
+o bundle Compose e o snapshot completo do Home Assistant no filesystem finito
+do guest. O snapshot HA exige Recorder não vazio e os registros de identidade;
+backups aninhados não são extraídos, mas continuam na leitura autenticada.
+Links, objetos especiais, sparse files, caminhos inseguros, duplicatas e limites
+de expansão são rejeitados. Um selo só é escrito após consumir toda a cauda do
+stream securetar v3. Saída parcial de falha fica em quarentena até a limpeza
+da operação isolada; não autoriza execução nem repetição automática.
+
+Esse módulo não lê chaves do host, transfere arquivos ou concede acesso a VM,
+rede ou rádio. Seus testes usam arquivos sintéticos e não comprovam restauração
+privada. O chamador ainda precisa verificar o bundle canônico, as identidades
+entre snapshots e a prontidão real de cada serviço nos critérios abaixo.
+
 O contrato em [`restore/service-recovery-contract.mjs`](../restore/service-recovery-contract.mjs)
 mantém os sete papéis e os critérios de `offsite-backup.mjs::serviceReady`:
 
