@@ -33,7 +33,7 @@ class Broker(legacy.Broker):
             data['procmon_acceptance_observation'] = health.procmon_acceptance_observation()
             data['host_observation'] = health.host_observation()
             data['authorized_thread_observations'] = tasks.reference_observations(old)
-            data['tool_names'] = list(dict.fromkeys([*data['tool_names'], *repairs.TOOLS]))
+            data['tool_names'] = list(dict.fromkeys([*data['tool_names'], *repairs.TOOLS, *tasks.TOOLS, *legacy.legacy.client.TOOLS]))
             data['listed_tool_count'] = len(data['tool_names'])
             data['fixed_repair_catalogue'] = repairs.handle('codex_repair_capabilities',
                                                          {'host': 'raspberry'}, old, tasks)
