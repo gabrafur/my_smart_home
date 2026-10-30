@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 import {
   applyRestore,
@@ -75,6 +76,27 @@ function fixture(t, payloads = {
   return { root, manifestFile, bundleDir };
 }
 
+// Synthetic contents with production-format metadata; never reads private state.
+function realFormatFixture(t) {
+  const result = fixture(t);
+  const targetFacts = {
+    repository_commit: "a".repeat(40),
+    architecture: process.arch,
+    container_image_digests: { "synthetic-service": `sha256:${"b".repeat(64)}` },
+  };
+  const metadataFile = path.join(result.bundleDir, "bundle.json");
+  const metadata = JSON.parse(fs.readFileSync(metadataFile, "utf8"));
+  Object.assign(metadata, {
+    repository_commit: targetFacts.repository_commit,
+    host_architecture: process.arch,
+    container_image_digests: targetFacts.container_image_digests,
+    verification_status: "verified",
+    encryption_method: "external-required",
+  });
+  fs.writeFileSync(metadataFile, `${JSON.stringify(metadata, null, 2)}\n`);
+  return { ...result, targetFacts, metadataFile };
+}
+
 test("public private-state manifest validates against the versioned schema", () => {
   const publicManifest = loadManifest();
   assert.equal(publicManifest.contract, "private-state-v1");
@@ -114,6 +136,8 @@ test("synthetic bundle verifies, plans and restores in declared order", (t) => {
   const plan = restorePlan(bundleDir, { destination, canonicalManifestFile: manifestFile });
   assert.equal(plan.writes_data, false);
   assert.equal(plan.capacity.sufficient, true);
+  assert.equal(plan.compatibility.repository_commit, "synthetic");
+  assert.equal(plan.compatibility.architecture, "synthetic");
   const applied = applyRestore(bundleDir, destination, {
     confirm: "RESTORE_PRIVATE_STATE",
     canonicalManifestFile: manifestFile,
@@ -124,6 +148,133 @@ test("synthetic bundle verifies, plans and restores in declared order", (t) => {
   assert.equal(fs.readFileSync(path.join(destination, ".synthetic/state/nested/state.json"), "utf8"), "{\"synthetic\":true}\n");
   assert.equal(fs.statSync(path.join(destination, ".synthetic/core.txt")).mode & 0o777, 0o600);
   assert.equal(applied.rollback_snapshot_prepared, true);
+});
+
+test("sealed target facts plan and apply without Git or a local Compose file", (t) => {
+  const { root, manifestFile, bundleDir, targetFacts } = realFormatFixture(t);
+  const isolatedRoot = path.join(root, "public-package");
+  for (const relative of ["scripts/restore.mjs", "restore/schema.json", "restore/bundle.schema.json", "modules/features.json"]) {
+    const target = path.join(isolatedRoot, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(repoRoot, relative), target);
+  }
+  const emptyPath = path.join(root, "no-binaries");
+  fs.mkdirSync(emptyPath);
+  const destination = path.join(root, "restore-canary-sealed");
+  const options = { destination, canonicalManifestFile: manifestFile, targetFacts };
+  const moduleURL = pathToFileURL(path.join(isolatedRoot, "scripts/restore.mjs")).href;
+  const program = `
+    import assert from 'node:assert/strict';
+    import fs from 'node:fs';
+    import {restorePlan, applyRestore} from ${JSON.stringify(moduleURL)};
+    const options = ${JSON.stringify(options)};
+    const plan = restorePlan(${JSON.stringify(bundleDir)}, options);
+    assert.equal(plan.compatibility.repository_commit, 'exact');
+    assert.equal(plan.compatibility.architecture, 'exact');
+    assert.deepEqual(plan.compatibility.image_digest_mismatches, []);
+    const applied = applyRestore(${JSON.stringify(bundleDir)}, options.destination, {
+      ...options, confirm: 'RESTORE_PRIVATE_STATE',
+      repositoryRoot: ${JSON.stringify(path.join(root, "unrelated-repository"))}
+    });
+    assert.equal(applied.applied, true);
+    const statfs = fs.statfsSync;
+    try {
+      fs.statfsSync = () => ({bavail: 0, bsize: 4096});
+      assert.throws(() => applyRestore(${JSON.stringify(bundleDir)}, options.destination + '-no-space', {
+        ...options, confirm: 'RESTORE_PRIVATE_STATE'
+      }), /insufficient destination space/);
+      assert.equal(fs.existsSync(options.destination + '-no-space'), false);
+    } finally {
+      fs.statfsSync = statfs;
+    }
+    process.stdout.write('sealed-target-pass');
+  `;
+  assert.equal(execFileSync(process.execPath, ["--input-type=module", "-e", program], {
+    cwd: isolatedRoot, env: { ...process.env, PATH: emptyPath }, encoding: "utf8",
+    timeout: 10000, maxBuffer: 16384,
+  }), "sealed-target-pass");
+});
+
+test("sealed target facts reject partial, unknown and non-data identities", (t) => {
+  const { manifestFile, bundleDir, targetFacts } = realFormatFixture(t);
+  const accessor = { ...targetFacts };
+  Object.defineProperty(accessor, "repository_commit", { enumerable: true, get() { throw new Error("must not read accessor"); } });
+  const hidden = { ...targetFacts };
+  Object.defineProperty(hidden, "extra", { value: true });
+  const invalid = [null, false, [], {},
+    { repository_commit: targetFacts.repository_commit },
+    { ...targetFacts, extra: true },
+    ...["unknown", "synthetic", "0".repeat(40), "A".repeat(40)].map(repository_commit => ({ ...targetFacts, repository_commit })),
+    ...[null, 1, "unknown", "synthetic", process.arch === "arm64" ? "x64" : "arm64"].map(architecture => ({ ...targetFacts, architecture })),
+    ...[null, [], {}, { service: "latest" }, { "invalid/service": `sha256:${"b".repeat(64)}` }].map(container_image_digests => ({ ...targetFacts, container_image_digests })),
+    Object.assign(Object.create({ inherited: true }), targetFacts), accessor, hidden,
+  ];
+  for (const facts of invalid) {
+    assert.throws(() => restorePlan(bundleDir, { canonicalManifestFile: manifestFile, targetFacts: facts }), /target/);
+  }
+});
+
+test("sealed target facts classify differences without authorizing restore", (t) => {
+  const { root, manifestFile, bundleDir, metadataFile, targetFacts } = realFormatFixture(t);
+  const differentCommit = { ...targetFacts, repository_commit: "c".repeat(40) };
+  const options = { canonicalManifestFile: manifestFile, targetFacts: differentCommit };
+  assert.equal(restorePlan(bundleDir, options).compatibility.repository_commit, "different-review-required");
+  const destination = path.join(root, "restore-canary-different-revision");
+  assert.throws(() => applyRestore(bundleDir, destination, {
+    ...options, confirm: "RESTORE_PRIVATE_STATE",
+  }), /compatibility requires operator review/);
+  assert.equal(fs.existsSync(destination), false);
+
+  const metadata = JSON.parse(fs.readFileSync(metadataFile, "utf8"));
+  metadata.host_architecture = process.arch === "arm64" ? "x64" : "arm64";
+  fs.writeFileSync(metadataFile, `${JSON.stringify(metadata, null, 2)}\n`);
+  const originalOptions = { canonicalManifestFile: manifestFile, targetFacts };
+  assert.equal(restorePlan(bundleDir, originalOptions).compatibility.architecture, "different-review-required");
+  assert.throws(() => applyRestore(bundleDir, destination, {
+    ...originalOptions, confirm: "RESTORE_PRIVATE_STATE",
+  }), /compatibility requires operator review/);
+  assert.equal(fs.existsSync(destination), false);
+});
+
+test("sealed target facts reject changed and missing recorded image identities", (t) => {
+  const { root, manifestFile, bundleDir, targetFacts } = realFormatFixture(t);
+  const changed = { ...targetFacts, container_image_digests: { "synthetic-service": `sha256:${"c".repeat(64)}` } };
+  const options = { canonicalManifestFile: manifestFile, targetFacts: changed };
+  assert.deepEqual(restorePlan(bundleDir, options).compatibility.image_digest_mismatches, ["synthetic-service"]);
+  assert.throws(() => applyRestore(bundleDir, path.join(root, "restore-canary-different-digest"), {
+    ...options, confirm: "RESTORE_PRIVATE_STATE",
+  }), /compatibility requires operator review/);
+  const missing = { ...targetFacts, container_image_digests: { other: `sha256:${"b".repeat(64)}` } };
+  assert.throws(() => restorePlan(bundleDir, {
+    canonicalManifestFile: manifestFile, targetFacts: missing,
+  }), /missing a sealed target identity/);
+});
+
+test("sealed target facts preserve confirmation, path, integrity and rollback gates", (t) => {
+  const { root, manifestFile, bundleDir, targetFacts } = realFormatFixture(t);
+  const options = { canonicalManifestFile: manifestFile, targetFacts };
+  assert.throws(() => applyRestore(bundleDir, path.join(root, "restore-canary-confirm"), options), /explicit restore confirmation/);
+  assert.throws(() => applyRestore(bundleDir, "/", {
+    ...options, confirm: "RESTORE_PRIVATE_STATE",
+  }), /dangerous/);
+  assert.throws(() => restorePlan(bundleDir, {
+    ...options, requiredComponentNames: ["absent_component"],
+  }), /required component is outside the bundle manifest/);
+  const changedContract = manifest();
+  changedContract.items[0].destination = ".synthetic/changed-target.txt";
+  assert.throws(() => restorePlan(bundleDir, {
+    ...options, canonicalManifest: changedContract,
+  }), /contract mismatch/);
+  const destination = path.join(root, "restore-canary-sealed-rollback");
+  const oldFile = path.join(destination, ".synthetic/core.txt");
+  fs.mkdirSync(path.dirname(oldFile), { recursive: true });
+  fs.writeFileSync(oldFile, "previous contents\n", { mode: 0o600 });
+  assert.throws(() => applyRestore(bundleDir, destination, {
+    ...options, confirm: "RESTORE_PRIVATE_STATE", faultAfter: 1,
+  }), /rolled back/);
+  assert.equal(fs.readFileSync(oldFile, "utf8"), "previous contents\n");
+  fs.appendFileSync(path.join(bundleDir, "components/synthetic_file/payload"), "corrupt");
+  assert.throws(() => restorePlan(bundleDir, options), /byte count|checksum/);
 });
 
 test("checksum corruption is rejected", (t) => {

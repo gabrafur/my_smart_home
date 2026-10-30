@@ -229,6 +229,32 @@ outer containment still requires its own review before admitting private data.
 - A compatibility difference requires review; databases, registries, Matter
   fabrics, and Zigbee networks are never migrated automatically.
 
+## Target identity inside an isolated guest
+
+The programmatic `restorePlan` and `applyRestore` APIs accept optional
+`targetFacts` containing exactly `repository_commit`, `architecture`, and
+`container_image_digests`. A trusted launcher must independently obtain these
+facts from the reviewed public revision and verified target images, then seal
+them before admitting the backup. Never derive target identity from the backup
+being checked.
+
+Explicit mode does not invoke Git or read local Compose. It requires a known
+commit, the executing process architecture, and a nonempty digest map. Missing,
+unknown, additional, or accessor properties are rejected. Every recorded backup
+service needs a target identity. Revision, architecture, and digest differences
+still prevent apply; there is no mismatch override. Checksums, canonical
+manifest, coverage, capacity, destination, confirmations, and rollback remain
+required. Without this option, API defaults and CLI behavior are unchanged.
+
+The pure [`qemu_io.py`](../restore/qemu_io.py) adapter assigns the known finite
+`/disk/data.raw` slot to one I/O thread with exactly two precreated workers.
+It requires the existing sandbox with `spawn=deny` and rejects different paths,
+duplicate slots, or an existing profile. It reduces potential worker-stack
+reservations without relaxing the sandbox. It neither launches QEMU nor proves
+containment: trusted callers still seal sources and image identities, verify
+native limits, mounts and processes, and record each operation. Argument tests
+do not establish service readiness.
+
 ## Evidence required for a real recovery
 
 A Git backup or local Home Assistant archive does not prove private off-host

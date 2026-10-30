@@ -347,6 +347,41 @@ function composeDigests() {
   return result;
 }
 
+// Programmatic input from a trusted launcher that has independently sealed the
+// target identity. Never derive these facts from the candidate backup itself.
+function validateTargetFacts(value) {
+  const plainRecord = (candidate) => candidate !== null && typeof candidate === "object"
+    && Object.getPrototypeOf(candidate) === Object.prototype;
+  const dataProperties = (candidate) => Reflect.ownKeys(candidate).every((key) => {
+    const descriptor = Object.getOwnPropertyDescriptor(candidate, key);
+    return typeof key === "string" && descriptor.enumerable && Object.hasOwn(descriptor, "value");
+  });
+  const keys = ["architecture", "container_image_digests", "repository_commit"];
+  if (!plainRecord(value) || !dataProperties(value)
+      || JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(keys)) {
+    fail("target facts must contain exactly the complete sealed target identity");
+  }
+  if (typeof value.repository_commit !== "string"
+      || !/^(?!0{40}$)[a-f0-9]{40}$/.test(value.repository_commit)) {
+    fail("target repository identity must be a known commit");
+  }
+  if (typeof value.architecture !== "string" || value.architecture !== process.arch) {
+    fail("target architecture must match the executing process");
+  }
+  const digests = value.container_image_digests;
+  if (!plainRecord(digests) || !dataProperties(digests) || !Object.keys(digests).length
+      || Object.entries(digests).some(([service, digest]) =>
+        !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(service)
+        || typeof digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(digest))) {
+    fail("target image identities must be a nonempty sealed digest map");
+  }
+  return Object.freeze({
+    repository_commit: value.repository_commit,
+    architecture: value.architecture,
+    container_image_digests: Object.freeze({ ...digests }),
+  });
+}
+
 function availableBytesFor(destination) {
   let candidate = path.resolve(destination);
   while (!fs.existsSync(candidate)) {
@@ -396,14 +431,20 @@ export function restorePlan(backupDir, {
   canonicalManifestFile = defaultManifestFile,
   canonicalManifest = null,
   requiredComponentNames = null,
+  targetFacts = undefined,
 } = {}) {
+  const sealedTarget = targetFacts === undefined ? null : validateTargetFacts(targetFacts);
   const verification = verifyBundle(backupDir, {
     canonicalManifestFile,
     canonicalManifest,
     requiredComponentNames,
   });
   const included = new Set(verification.metadata.components.map((component) => component.logical_name));
-  const localDigests = composeDigests();
+  const localDigests = sealedTarget ? sealedTarget.container_image_digests : composeDigests();
+  if (sealedTarget && Object.keys(verification.metadata.container_image_digests)
+    .some((service) => !Object.hasOwn(localDigests, service))) {
+    fail("recorded image is missing a sealed target identity");
+  }
   const digestMismatches = Object.entries(verification.metadata.container_image_digests)
     .filter(([service, digest]) => localDigests[service] && localDigests[service] !== digest)
     .map(([service]) => service);
@@ -417,8 +458,8 @@ export function restorePlan(backupDir, {
     writes_data: false,
     bundle_verified: true,
     compatibility: {
-      repository_commit: verification.repository_commit === "synthetic" ? "synthetic" : verification.repository_commit === currentCommit() ? "exact" : "different-review-required",
-      architecture: verification.host_architecture === process.arch ? "exact" : verification.host_architecture === "synthetic" ? "synthetic" : "different-review-required",
+      repository_commit: verification.repository_commit === "synthetic" ? "synthetic" : verification.repository_commit === (sealedTarget ? sealedTarget.repository_commit : currentCommit()) ? "exact" : "different-review-required",
+      architecture: verification.host_architecture === (sealedTarget ? sealedTarget.architecture : process.arch) ? "exact" : verification.host_architecture === "synthetic" ? "synthetic" : "different-review-required",
       component_versions_recorded: Object.keys(verification.metadata.component_versions).length,
       image_digests_recorded: Object.keys(verification.metadata.container_image_digests).length,
       image_digest_mismatches: digestMismatches,
@@ -498,6 +539,7 @@ export function applyRestore(backupDir, destination, {
   canonicalManifestFile = defaultManifestFile,
   canonicalManifest = null,
   requiredComponentNames = null,
+  targetFacts = undefined,
   faultAfter = null,
   repositoryRoot = repoRoot,
 } = {}) {
@@ -513,6 +555,7 @@ export function applyRestore(backupDir, destination, {
     canonicalManifestFile,
     canonicalManifest,
     requiredComponentNames,
+    targetFacts,
   });
   if (plan.capacity.sufficient === false) fail("insufficient destination space");
   if (plan.compatibility.repository_commit === "different-review-required" || plan.compatibility.architecture === "different-review-required" || plan.compatibility.image_digest_mismatches.length) {

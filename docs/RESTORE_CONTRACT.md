@@ -181,6 +181,24 @@ antes de documentar uma invocação de uma linha. Nunca passe secrets em argv.
 - Compatibilidade marcada como diferente exige revisão; não há migração
   automática de banco, registry, fabric ou rede Zigbee.
 
+## Identidade do destino em um guest isolado
+
+As APIs programáticas `restorePlan` e `applyRestore` aceitam `targetFacts`
+opcional com exatamente `repository_commit`, `architecture` e
+`container_image_digests`. O launcher confiável deve obter esses fatos da
+revisão pública e das imagens verificadas que realmente compõem o destino,
+selando-os antes de admitir o backup. Nunca use os metadados do próprio backup
+como identidade independente do destino.
+
+Nesse modo, o planner não invoca Git nem lê o Compose local. Exige commit
+conhecido, arquitetura igual à do processo e mapa não vazio de digests; campos
+ausentes, desconhecidos, adicionais ou getters são rejeitados. Todo serviço
+registrado no backup precisa ter identidade no mapa. Revisão, arquitetura ou
+digest incompatível continuam impedindo `applyRestore`. Não existe opção para
+ignorar diferenças. Checksums, manifesto canônico, cobertura, espaço, destino,
+confirmações e rollback continuam obrigatórios. Sem `targetFacts`, a API e a
+CLI mantêm o comportamento anterior.
+
 ## Evidência necessária para recuperação real
 
 Um backup Git ou arquivo local do Home Assistant não comprova backup privado
@@ -231,6 +249,16 @@ ignorar membros muito comprimidos no modo gzip streaming de `tarfile`. O CRC e
 o trailer gzip também são conferidos antes do selo; o consumo integral da
 cauda autenticada continua obrigatório, inclusive dos bytes antecipados pelo
 buffer. Essa preparação não amplia os limites nem a autorização do chamador.
+
+O adaptador puro [`qemu_io.py`](../restore/qemu_io.py) permite limitar o disco
+finito conhecido a um I/O thread com exatamente dois workers precriados. Ele
+altera somente o slot `/disk/data.raw` esperado, exige o sandbox existente com
+`spawn=deny` e rejeita outro caminho, slot duplicado ou perfil já instalado.
+Isso reduz a reserva potencial de stacks de workers sem relaxar o sandbox.
+O módulo não executa QEMU nem verifica a contenção: o launcher continua
+responsável por selar o código, imagens e identidades, conferir os limites
+nativos, mounts e processos e registrar cada execução. Os testes desse
+adaptador verificam argumentos; não comprovam prontidão de serviços.
 
 Esse módulo não lê chaves do host, transfere arquivos ou concede acesso a VM,
 rede ou rádio. Seus testes usam arquivos sintéticos e não comprovam restauração
