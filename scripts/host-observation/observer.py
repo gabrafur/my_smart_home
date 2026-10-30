@@ -287,21 +287,23 @@ def atomic_report(directory, value):
     raw = (json.dumps(value, separators=(',', ':'), allow_nan=False) + '\n').encode()
     if len(raw) > 65536:
         raise ValueError('report_limit')
-    fd = os.open('report.json.tmp', os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW,
+    fd = os.open('report.json.tmp', os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW,
         0o644, dir_fd=directory)
     try:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != 0:
             raise ValueError('unsafe_report')
         os.fchmod(fd, 0o644)
+        os.ftruncate(fd, 0)
         with os.fdopen(os.dup(fd), 'wb') as stream:
             stream.write(raw)
             stream.flush()
-        os.fsync(fd)
     finally:
         os.close(fd)
+    # This is a replaceable, volatile cache, not a durable event journal.
+    # Flushing the complete userspace buffer before rename preserves atomic
+    # visibility without making every publication wait for storage durability.
     os.rename('report.json.tmp', 'report.json', src_dir_fd=directory, dst_dir_fd=directory)
-    os.fsync(directory)
     return len(raw)
 
 

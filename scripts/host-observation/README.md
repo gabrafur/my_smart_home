@@ -14,6 +14,14 @@ O diretório de saída fixo é `/mnt/data/docker/nodered/.host-health-observer`,
 root:root 0755, e o arquivo atômico `report.json`, root:root 0644, é excluído do
 Git. Não copie observações residenciais para documentação ou exemplos.
 
+O relatório é um cache volátil substituído por rename atômico depois da escrita
+completa. A publicação não executa `fsync` do arquivo nem do diretório: esperar
+persistência física de cada amostra pode atrasar o consumidor sem transformar
+o anel em histórico durável. Após perda de energia, o cache pode faltar ou ser
+inválido; o consumidor mantém o estado desconhecido até receber um relatório
+novo válido. Recibos, contadores persistentes e backups conservam seus contratos
+próprios de durabilidade. O arquivo temporário é validado antes de truncá-lo.
+
 A instalação em outro servidor exige revisão dos caminhos fixos, allowlists,
 projeto Compose, IDs oficiais de mensagens systemd, permissões e acesso local
 administrativo do operador. Não copie políticas, credenciais ou o estado privado
@@ -81,7 +89,8 @@ a exposição pelo MCP foi validada em
 
 `node --test scripts/host-observation/observer.test.mjs` executa os testes
 isolados de sanitização, allowlists, relógios, dedupe, limite do anel, falha de
-coleta e a regressão do modo atômico do procmon. A descoberta canônica de
+coleta, publicação atômica do cache sem sincronização durável e a regressão do
+modo atômico do procmon. A descoberta canônica de
 `scripts/test-all.mjs` inclui esse agregador. Nenhum teste invoca o coletor real,
 reinicia serviços ou gera eventos residenciais.
 
