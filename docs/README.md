@@ -26,7 +26,7 @@ placeholders.
 | [Auditoria de armazenamento — fase 2](operations/storage-audit-phase-2.md) | Limpeza de ferramentas de desenvolvimento, caches, PM2, Docker e análise do recorder | resumo no [índice em inglês](README.en.md) |
 | [Monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md) | Queda e recuperação de Zigbee, Tuya e Internet no Node-RED | [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
 | [Recuperação do acesso remoto ao Codex](CODEX_REMOTE_RECOVERY.md) | Detecção de SSH/App Server, recuperação automática idempotente e separação do Tailscale | Português |
-| [MCP Raspberry: administração e portabilidade](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) | Autoridade delegada, catálogo, instalação, conexão com outros clientes e revogação | resumo no índice em inglês |
+| [MCP Raspberry: administração e portabilidade](raspberry-mcp/README.md) | Autoridade delegada, catálogo, instalação, conexão com outros clientes e revogação | resumo no índice em inglês |
 | [Observação nativa MQTT](MQTT_SOURCE_OBSERVER.md) | Candidato desligado por padrão: metadados, política visual, build, autorização e recuperação | resumo no índice em inglês |
 | [Notificações globais de falha do Node-RED](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Erros de fluxos, indisponibilidade do runtime e teste obrigatório de entrega ao celular | Resumo em inglês abaixo |
 | [Hubs canônicos de notificação](NODERED_NOTIFICATION_HUBS.md) | Contratos móveis, Alexa e HA persistente, destinatários fail-closed e matriz de equivalência | Resumo em inglês abaixo |
@@ -106,7 +106,7 @@ cronologia residencial, nomes, rotas ou identificadores privados.
 
 Diagnósticos, evidências e limites das operações:
 
-- [RASPBERRY_MCP_EVIDENCE_STAGE2](RASPBERRY_MCP_EVIDENCE_STAGE2.md)
-- [RASPBERRY_MCP_MAINTENANCE_MATRIX](RASPBERRY_MCP_MAINTENANCE_MATRIX.md)
-- [RASPBERRY_MCP_MAINTENANCE_STAGE1](RASPBERRY_MCP_MAINTENANCE_STAGE1.md)
-- [RASPBERRY_MCP_OPERATIONS_PROPOSAL](RASPBERRY_MCP_OPERATIONS_PROPOSAL.md)
+- [RASPBERRY_MCP_EVIDENCE_STAGE2](raspberry-mcp/maintenance/evidence-stage2.md)
+- [RASPBERRY_MCP_MAINTENANCE_MATRIX](raspberry-mcp/maintenance/matrix.md)
+- [RASPBERRY_MCP_MAINTENANCE_STAGE1](raspberry-mcp/maintenance/stage1.md)
+- [RASPBERRY_MCP_OPERATIONS_PROPOSAL](raspberry-mcp/maintenance/proposals.md)

@@ -142,3 +142,38 @@ export function correctCapabilities(value, eventStatus, now=Date.now()) {
  data.capability_semantics='static_interfaces_are_not_current_health_or_approval';
  return out;
 }
+
+// Pure final projection after the existing actual frontend tools/list discovery.
+// This cannot turn a denied/unknown admission into an allowed action.
+export function finalizeOperatingPolicy(policy, catalogue, now=Date.now()) {
+ const value=structuredClone(policy);
+ if(value?.schema_version!==1||value?.client_neutral!==true||!Array.isArray(value.actions))return value;
+ const tools=new Set(Array.isArray(catalogue)?catalogue.filter(x=>typeof x==='string'):[]);
+ const permitted=new Set(['ready','blocked','unsupported','requires_confirmation']);
+ for(const action of value.actions){
+  if(typeof action.tool!=='string')continue;
+  if(!tools.has(action.tool)){
+   action.state='unsupported';action.reason='tool_not_in_current_frontend_catalogue';
+  }else if(permitted.has(action.admission_state)){
+   action.state=action.admission_state;action.reason=action.admission_reason;
+  }else{
+   action.state='blocked';action.reason='canonical_admission_decision_missing';
+  }
+  if(action.role==='privileged_task'&&action.state!=='unsupported'){
+   const at=Date.parse(value.evidence?.task_admission?.observed_at);
+   const expires=value.authority?.expires_at;
+   if(value.authority?.admission_active!==true||value.authority?.revoked===true||
+     typeof expires!=='number'||!Number.isFinite(expires)||now>=expires*1000||
+     !Number.isFinite(at)||at>now||now-at>120000){
+    action.state='blocked';action.reason='fresh_existing_admission_required';
+   }
+  }
+  // An interface confirmation is NEVER satisfied by this metadata projection.
+  if(action.interface_confirmation_required===true&&action.state==='ready'){
+   action.state='requires_confirmation';action.reason='existing_interface_confirmation_required';
+  }
+  action.tool_availability_source='actual_frontend_catalogue';
+ }
+ value.coverage=[...(value.coverage??[]),'actual_frontend_catalogue_verified_without_widening_admission'];
+ return value;
+}

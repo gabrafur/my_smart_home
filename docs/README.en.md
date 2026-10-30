@@ -25,7 +25,7 @@ physical identifiers must appear only as placeholders.
 | [Storage audit — phase 2](operations/storage-audit-phase-2.md) | Developer tools, cache, PM2, Docker cleanup, and recorder analysis | Portuguese detailed record |
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee, Tuya, and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Codex remote access recovery](CODEX_REMOTE_RECOVERY.md) | Portuguese runbook for SSH/App Server detection, idempotent automatic recovery, and Tailscale separation | Portuguese source |
-| [Raspberry MCP administration and portability](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) | Delegated server administration, schemas, installation, client connections and revocation; current acceptance and deployment limits are explicit | Portuguese runbook |
+| [Raspberry MCP administration and portability](raspberry-mcp/README.md) | Delegated server administration, schemas, installation, client connections and revocation; current acceptance and deployment limits are explicit | Portuguese runbook |
 | [Native MQTT metadata observation](MQTT_SOURCE_OBSERVER.md) | Opt-in source candidate: fixed seven-class metadata, visual policy, verified SDK build and data-only recovery; installation and permanent access remain separately approved | Portuguese runbook |
 | [Global Node-RED failure notifications](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Portuguese runbook for flow errors, runtime unavailability, and the mandatory mobile delivery test | Portuguese source |
 | [Canonical Node-RED notification hubs](NODERED_NOTIFICATION_HUBS.md) | Portuguese contracts for mobile, Alexa, and HA persistent hubs, fail-closed recipients, and the migration equivalence matrix | Portuguese source |
@@ -111,7 +111,7 @@ names, routes, or private identifiers.
 
 ## Raspberry MCP maintenance
 
-[Administration and portability](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) is the
+[Administration and portability](raspberry-mcp/README.md) is the
 current operational guide. Administrative objectives use the existing task
 tools and an explicitly authorized profile, with the original expiry and
 shared budgets preserved. Real MCP acceptance confirmed the executor's root
@@ -121,6 +121,15 @@ and remains separately deployable. It does not provide a public URL, OAuth
 server, or certification for an untested chatbot. The schema template removes
 private thread bindings, and the runtime source map distinguishes active code
 from the older task-control candidate preserved below.
+
+The documentation now has permanent functional paths under `docs/raspberry-mcp/`:
+[architecture](raspberry-mcp/architecture.md), [installation and authentication](raspberry-mcp/installation.md),
+[tools and schemas](raspberry-mcp/tools.md), [operation and recovery](raspberry-mcp/operations.md)
+and [document migration](raspberry-mcp/migration.md). Client/model choice does not
+renew local authority, budgets or executor credentials. The implemented task
+backend still depends on Codex; no alternative executor is certified. Detection,
+diagnosis, admitted correction and native verification each require their own
+evidence. Interface confirmations and expired-lease gates remain in force.
 
 The [Node-RED transaction acceptance](../scripts/raspberry-mcp/nodered-controlled-deployment.acceptance.json)
 also records real MCP apply, rollback and reapply, each with a complete native
@@ -135,7 +144,7 @@ Root-owned binding for the existing validator's six entity roles. Its fixed
 template returns only state kinds and timestamps, with no vehicle values,
 attributes, location or private IDs. Missing or revoked approval prevents the
 request; these observations do not establish loaded code, provider recovery
-or natural polling. See the [read-scope contract](RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md#indicadores-nativos-kia-com-autorização-separada).
+or natural polling. See the [read-scope contract](raspberry-mcp/reference/component-repair.md#indicadores-nativos-kia-com-autorização-separada).
 
 After changing MCP event definitions, rescan the server from its ChatGPT plugin
 page while preserving the existing subscription and delivery limits. A loaded
@@ -148,7 +157,7 @@ immutable SQLite receipt, separate from signed event data. Missing history,
 removals, reconnect snapshots and uncertain clock ordering remain unknown;
 wall-clock differences do not establish continuous 24-hour coverage.
 
-[Codex tasks and authorized threads](RASPBERRY_CODEX_TASKS.md) documents the
+[Codex tasks and authorized threads](raspberry-mcp/reference/task-control.md) documents the
 prepared `codex_threads_list` extension, strict input schemas, read-only
 pagination, partial host coverage and creation reconciliation. A durable thread
 with an incompatible permission profile remains blocked for sending. The
@@ -158,7 +167,7 @@ unvalidated opening links are withheld.
 
 The Portuguese documents describe diagnostics, sanitized evidence, capability coverage and maintenance boundaries. Listed tools do not establish deployment or permission to modify household services.
 
-- [RASPBERRY_MCP_EVIDENCE_STAGE2](RASPBERRY_MCP_EVIDENCE_STAGE2.md)
-- [RASPBERRY_MCP_MAINTENANCE_MATRIX](RASPBERRY_MCP_MAINTENANCE_MATRIX.md)
-- [RASPBERRY_MCP_MAINTENANCE_STAGE1](RASPBERRY_MCP_MAINTENANCE_STAGE1.md)
-- [RASPBERRY_MCP_OPERATIONS_PROPOSAL](RASPBERRY_MCP_OPERATIONS_PROPOSAL.md)
+- [RASPBERRY_MCP_EVIDENCE_STAGE2](raspberry-mcp/maintenance/evidence-stage2.md)
+- [RASPBERRY_MCP_MAINTENANCE_MATRIX](raspberry-mcp/maintenance/matrix.md)
+- [RASPBERRY_MCP_MAINTENANCE_STAGE1](raspberry-mcp/maintenance/stage1.md)
+- [RASPBERRY_MCP_OPERATIONS_PROPOSAL](raspberry-mcp/maintenance/proposals.md)

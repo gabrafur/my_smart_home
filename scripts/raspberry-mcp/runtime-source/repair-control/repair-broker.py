@@ -57,6 +57,8 @@ class Broker(legacy.Broker):
                 'identity_scope': 'existing_authenticated_owner_principal;not_unique_chatbot_identity',
                 'execution_proof': 'requires actual accepted task and root identity verification',
             }
+            data['operating_admission_snapshot_v1'] = health.operating_admission_snapshot(tasks, old)
+            data['operating_policy_v1'] = health.operating_policy_v1(data, data['operating_admission_snapshot_v1'])
         return result
 
 

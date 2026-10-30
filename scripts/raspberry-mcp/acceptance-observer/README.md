@@ -50,7 +50,7 @@ Esses snapshots não devem sobrescrever uma política ativa: preserve os binding
 privados, reveja as diferenças e atualize somente os hashes correspondentes
 na política root. A instalação real também fixa os hashes deste componente
 nas dependências dessa política. O manual completo do transporte e dos clientes
-fica em [RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md](../../../docs/RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md).
+fica em [RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md](../../../docs/raspberry-mcp/README.md).
 
 ## Consulta e interpretação
 

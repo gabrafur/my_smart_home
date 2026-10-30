@@ -8,8 +8,8 @@ const rules=[
  ['switch_operator',/operators\[rule\.t\] is not a function/g],['icloud_provider_unavailable',/iCloud location refresh provider is unavailable/g],['unsupported_icloud_core',/unsupported_icloud_core_version/g],['security_scan_failed',/security_scan_failed/g],
  ['execution_error',/erro de execução/ig],['unavailable',/\bindisponibilidade\b|\bunavailable\b|\bnot available\b/ig],['authentication',/authentication (?:required|failed)|autenticação|iCloudAuthRequired|not authorized/ig],['timeout',/\btimeout\b|\btimed out\b|tempo limite/ig],['connection_refused',/connection refused|ECONNREFUSED/ig],['connection_reset',/connection reset|ECONNRESET/ig],['permission_denied',/permission denied|EACCES/ig],['disk_full',/no space left on device|ENOSPC/ig],['invalid_configuration',/invalid config(?:uration)?|configuração inválida/ig],['database_locked',/database is locked/ig],['notification_cooldown',/O mesmo erro será silenciado por 6 horas para evitar notificações repetidas\./g]
 ];
-const reasonCodes=new Set(['codex_registry_lookup_failed','service_unavailable','switch_operator','icloud_provider_unavailable','unsupported_icloud_core','security_scan_failed','execution_error','unavailable','authentication','timeout','connection_refused','connection_reset','permission_denied','disk_full','invalid_configuration','database_locked']);
-const integrations=new Set(['node_red','ha','icloud','mqtt','mosquitto','recorder','backup','zigbee','public_bindings']);
+const reasonCodes=new Set(['codex_registry_lookup_failed','service_unavailable','switch_operator','icloud_provider_unavailable','unsupported_icloud_core','security_scan_failed','execution_error','unavailable','authentication','timeout','connection_refused','connection_reset','permission_denied','disk_full','invalid_configuration','database_locked','setup_retry']);
+const integrations=new Set(['node_red','ha','icloud','mqtt','mosquitto','recorder','backup','zigbee','public_bindings','radio_browser']);
 function redactions(text,field){
  const out=[];const add=reason=>{if(!out.some(x=>x.reason===reason))out.push({field,reason});};
  if(/(?:password|passwd|senha|token|secret|api.?key|authorization|Bearer|cookie)\s*[:= ]/i.test(text))add('credential');
@@ -19,6 +19,20 @@ function redactions(text,field){
  if(/\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:rua|avenida|street|address|endereço)\b|[a-f0-9]{1,4}(?::[a-f0-9]{0,4}){2,}/i.test(text))add('address');
  if(/[^\s@]{1,128}@[^\s@]{1,128}\.[^\s@]{1,32}|\b(?:pessoa|person|owner|nome|name)\s*[:=]/i.test(text))add('personal_data');
  return out;
+}
+// The public integration lifecycle producer supplies this exact title/body pair.
+// Its generic reauthentication guidance is not evidence of an authentication error.
+function radioBrowserTemplate(title,message){
+ if(typeof title!=='string'||typeof message!=='string')return null;
+ const t=title.slice(0,20000).match(/^(?:TESTE — )?Falha(?: persiste)? na integração Radio Browser(?=$|[\s.,:;!?—–-])/);
+ const m=message.slice(0,20000).match(/^A integração Radio Browser permanece em setup_retry há (?:0|[1-9]\d{0,2}(?:\.\d{3})*) min\. Abra Configurações → Dispositivos e serviços no Home Assistant para consultar ou reautenticar a entrada\./);
+ return t&&m?{titleLength:t[0].length,messageLength:m[0].length}:null;
+}
+function templateFragments(input,field,length,codes){
+ const text=input.slice(0,20000);const redacted=redactions(text,field);
+ if(input.length>20000)redacted.push({field,reason:'input_truncated'});
+ if(text.slice(length).trim())redacted.push({field,reason:'non_allowlisted_text_may_contain_personal_data'});
+ return {codes,redacted};
 }
 function fragments(input,field){
  const original=typeof input==='string'?input:'';const text=original.slice(0,20000);const redacted=redactions(text,field);const hits=[];const spans=[];
@@ -60,11 +74,13 @@ function errorDTO(error,embedded='',depth=0,seen=new Set(),frameBudget=6){
   collection_error:!name&&!reason.length&&!stack.frames.length?'exception_or_stack_not_present':null};
 }
 function sanitizeContent(title,message,error=null){
- const t=fragments(title,'title'),m=fragments(message,'message');const all=[...t.codes,...m.codes];if(all.includes('flow_failure'))all.push('node_red');const why=[...new Set(all.filter(x=>reasonCodes.has(x)))];
+ const reviewed=radioBrowserTemplate(title,message);
+ const t=reviewed?templateFragments(title,'title',reviewed.titleLength,['integration_failure','radio_browser']):fragments(title,'title');
+ const m=reviewed?templateFragments(message,'message',reviewed.messageLength,['radio_browser','setup_retry']):fragments(message,'message');const all=[...t.codes,...m.codes];if(all.includes('flow_failure'))all.push('node_red');const why=[...new Set(all.filter(x=>reasonCodes.has(x)))];
  const guidance=why.includes('service_unavailable')?'check_service':why.includes('switch_operator')?'check_switch':why.includes('unsupported_icloud_core')?'check_core_compatibility':why.includes('authentication')?'check_manual_auth':all.includes('backup')?'check_backup':'check_integration';
  return {schema_version:1,title_codes:t.codes.length?t.codes:['notice'],message_codes:m.codes.length?m.codes:['no_safe_clause'],
   integration_codes:[...new Set(all.filter(x=>integrations.has(x)))],reason_codes:why,guidance_code:guidance,
-  redacted_fields:[...t.redacted,...m.redacted].slice(0,16),error:errorDTO(error,typeof message==='string'?message:''),
+  redacted_fields:[...t.redacted,...m.redacted].slice(0,16),error:errorDTO(error,reviewed?'':typeof message==='string'?message:''),
   raw_content_persisted:false,untrusted_source_text:true,rendering:'reviewed_diagnostic_fragments_only'};
 }
 function contextDTO(flow,node){return {flow:typeof flow==='string'&&Object.hasOwn(C.context_flows,flow)?flow:null,node:typeof node==='string'&&Object.hasOwn(C.context_nodes,node)?node:null};}

@@ -866,3 +866,306 @@ def storage_health(read=None, now=None):
                                                    if k in STORAGE_CATEGORIES and type(v) is int and abs(v) <= 2**63-1}
     result['growth'] = growth
     return result
+
+
+# Additive provider-neutral operating contract; existing execution gates unchanged.
+def op_number(value):
+    import math
+    return type(value) in (int, float) and math.isfinite(value)
+
+
+def op_time(value):
+    if op_number(value):
+        return value
+    try:
+        result = dt.datetime.fromisoformat(value.replace('Z', '+00:00'))
+        return result.timestamp() if result.utcoffset() is not None else None
+    except (AttributeError, ValueError, TypeError, OverflowError):
+        return None
+
+
+def operating_admission_snapshot(tasks, old, now=None):
+    """No DDL/Store constructors/RPC, writes, task sends or policy alterations.
+
+    Reuse the existing read-only coordinator lock and lease/boot/revoke helper.
+    Aggregate both existing task and legacy ledgers exactly as send admission.
+    A point-in-time opportunity is still subject to actual server preflight.
+    """
+    import os
+    import sqlite3
+    import time
+    now = time.time() if now is None else now
+    result = dict(source='existing_task_policy_and_readonly_shared_ledgers',
+                  observed_at=dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(),
+                  age_seconds=0, state='unknown', collection_error='admission_unavailable',
+                  configured=None, admission_active=None, revoked=None, expires_at=None,
+                  maximum_shared_sends_per_24h=None, minimum_spacing_seconds=None,
+                  shared_sends_last_24h=None, remaining_sends=None, spacing_ready=None,
+                  unresolved_dispatches=None, terminal_unreconciled=None,
+                  task_reservations=None, administrative_tasks=None,
+                  coverage=['current_policy_and_shared_ledger_metadata_only',
+                            'no_global_daemon_idle_or_future_effect_proof',
+                            'existing_atomic_preflight_rechecks_scope_budget_resources_and_identity'])
+    try:
+        with tasks.locked(read_only=True):
+            policy, legacy = tasks.policy(old, observation=True)
+            configured = policy.get('admin_delegation') == tasks.ADMIN_DELEGATION
+            revoked = (tasks.STATE / 'revoked').exists()
+            result.update(configured=configured, revoked=revoked, expires_at=policy['expires_at'],
+                          admission_active=configured and policy['enabled'] is True and
+                              not legacy.get('_observation_only') and not revoked,
+                          maximum_shared_sends_per_24h=policy['max_sends_per_24h'],
+                          minimum_spacing_seconds=policy['minimum_spacing_seconds'])
+            path = tasks.STATE / 'jobs.sqlite3'  # Fixed existing module constant.
+            tasks.read(path, tasks.UID, 0o600, 1048576)
+            if any(os.path.lexists(str(p)+suffix)for p in (path,tasks.LEGACY_DB)for suffix in ('-wal','-journal')):
+                raise ValueError('journal_requires_reconciliation')
+            connection = sqlite3.connect('file:' + str(path) + '?mode=ro&immutable=1', uri=True, timeout=2)
+            try:
+                connection.execute('PRAGMA query_only=ON')
+                connection.execute('BEGIN')
+                count = connection.execute('SELECT count(*) FROM sends WHERE created>?', (now-86400,)).fetchone()[0]
+                latest = connection.execute('SELECT max(created) FROM sends').fetchone()[0]
+                busy = connection.execute("SELECT count(*) FROM sends WHERE state IN "
+                    "('send_intent','send_unknown','accepted','inProgress','outcome_unknown')").fetchone()[0]
+                busy += connection.execute("SELECT count(*) FROM tasks WHERE state IN "
+                    "('create_intent','create_unknown')").fetchone()[0]
+                terminal = connection.execute("SELECT count(*) FROM sends WHERE reconciled=0 "
+                    "AND state IN ('completed','failed','interrupted')").fetchone()[0]
+                reservations = connection.execute("SELECT count(*) FROM tasks WHERE reconciled=0").fetchone()[0]
+                # Prefix is fixed by the existing sealed backend, not a prompt,
+                # command/path or new caller-provided task identity.
+                delegation = policy.get('admin_delegation')
+                prefix = delegation.get('task_key_prefix') if isinstance(delegation,dict) else None
+                if configured and not (type(prefix) is str and re.fullmatch('[a-z][a-z0-9-]{1,48}-', prefix)):
+                    raise ValueError('invalid_metadata')
+                administrative = connection.execute("SELECT count(*) FROM tasks WHERE state='created' "
+                    "AND task_key LIKE ?", (prefix+'%',)).fetchone()[0] if configured else 0
+            finally:
+                connection.close()
+            prior = tasks.legacy_summary()
+            total = count + prior['count']
+            last = max(latest or 0, prior['latest'] or 0)
+            maximum, spacing = policy['max_sends_per_24h'], policy['minimum_spacing_seconds']
+            if not (type(maximum) is int and maximum > 0 and type(spacing) is int and spacing >= 0 and
+                    all(type(v) is int and v >= 0 for v in (total,busy,terminal,reservations,administrative,prior['busy']))):
+                raise ValueError('invalid_metadata')
+            result.update(state='observed', collection_error=None, shared_sends_last_24h=total,
+                          remaining_sends=max(0, maximum-total), spacing_ready=now-last >= spacing,
+                          unresolved_dispatches=busy+prior['busy'], terminal_unreconciled=terminal,
+                          task_reservations=reservations, administrative_tasks=administrative)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error):
+        # Partial policy metadata can explain a closed gate. Never promote it
+        # to readiness or expose raw SQL/paths/policy/source/error content.
+        pass
+    return result
+
+
+def op_evidence(value, now, maximum_age=120):
+    if not isinstance(value, dict):
+        return dict(source='not_observed', observed_at=None, age_seconds=None,
+                    state='unknown', collection_error='evidence_unavailable', coverage=[])
+    at = op_time(value.get('observed_at'))
+    age = now-at if at is not None and at <= now else None
+    valid = age is not None and age <= maximum_age and value.get('collection_error') is None and value.get('state', 'observed') == 'observed'
+    source = value.get('source')
+    sources = {'existing_task_policy_and_readonly_shared_ledgers', 'sealed_root_storage_policy_and_revocation_state',
+               'fixed_icloud_loaded_and_service_observation'}
+    return dict(source=source if type(source) is str and source in sources else 'existing_canonical_metadata',
+                observed_at=value.get('observed_at') if at is not None else None,
+                age_seconds=round(age,3) if age is not None else None,
+                state='observed' if valid else 'stale' if age is not None and age>maximum_age else 'unknown',
+                collection_error=None if valid else 'evidence_stale_or_unavailable',
+                coverage=['source_clock_preserved_not_refreshed_by_policy_projection'])
+
+
+def operating_policy_v1(data, admission, now=None):
+    """Provider-neutral lifecycle; existing adapter tool names are disclosed.
+
+    ready means eligible for an EXISTING gated call, not permission to bypass
+    interface confirmation, immutable scope, fresh RPC preflight or an OTP gate.
+    No thresholds, update installation, residential decisions or effects here.
+    """
+    now = dt.datetime.now(dt.timezone.utc).timestamp() if now is None else now
+    data = data if isinstance(data, dict) else {}
+    admission = admission if isinstance(admission, dict) else {}
+    tools = {value for value in data.get('tool_names', ()) if type(value) is str and re.fullmatch('[a-z_]{1,64}', value)} if isinstance(data.get('tool_names'), list) else set()
+    delegation = data.get('administrative_delegation', {})
+    delegation = delegation if isinstance(delegation, dict) else {}
+    source = op_evidence(admission, now)
+    storage = data.get('storage_maintenance_catalogue', {})
+    storage_admission = storage.get('current_admission', {}) if isinstance(storage, dict) else {}
+    storage_admission = storage_admission if isinstance(storage_admission, dict) else {}
+    storage_source = op_evidence(storage_admission, now)
+    storage_has_expiry = isinstance(storage_admission, dict) and 'expires_at' in storage_admission
+    storage_expiry = storage_admission.get('expires_at') if isinstance(storage_admission, dict) else None
+    storage_valid = storage_source['state']=='observed' and storage_has_expiry and (
+        storage_expiry is None or op_number(storage_expiry) and now < storage_expiry)
+    storage_execution = storage_valid and storage_admission.get('execution_active') is True
+    storage_restore = storage_valid and storage_admission.get('restore_active') is True
+    auth_observation=data.get('icloud_readiness',{})
+    auth_observation=auth_observation if isinstance(auth_observation,dict) else {}
+    loaded=auth_observation.get('loaded',{})
+    loaded=loaded if isinstance(loaded,dict) else {}
+    otp_pending = data.get('authentication_pending_user_action') is True or (
+        loaded.get('state')=='observed' and loaded.get('entry_phase')=='entry_waiting_user')
+    auth_state='pending_user_action' if otp_pending else 'unknown'
+    confirmed_catalogue = data.get('tool_catalogue_source') == 'actual_frontend_descriptors_not_authorization'
+
+    def action(identifier, tool, role, state='ready', reason='existing_read_interface', **rest):
+        if tool not in tools:
+            state, reason = 'unsupported', 'tool_not_in_current_catalogue'
+        return dict(id=identifier, tool=tool, role=role, state=state, reason=reason,
+                    automatic_retry=False, **rest)
+
+    def task_gate(send=False):
+        if admission.get('admission_active') is False or delegation.get('admission_active') is False:
+            return 'blocked','existing_admission_closed'
+        if admission.get('revoked') is True:
+            return 'blocked','existing_admission_revoked'
+        if admission.get('revoked') is not False:
+            return 'blocked','revocation_observation_required'
+        if not op_number(admission.get('expires_at')) or now >= admission['expires_at']:
+            return 'blocked','existing_admission_expired_or_unknown'
+        if source['state'] != 'observed' or admission.get('configured') is not True or delegation.get('configured') is not True:
+            return 'blocked','fresh_authority_evidence_required'
+        if admission.get('admission_active') is not True or delegation.get('admission_active') is not True:
+            return 'blocked','fresh_admission_required'
+        if type(admission.get('remaining_sends')) is not int or admission['remaining_sends'] <= 0:
+            return 'blocked','shared_send_budget_exhausted_or_unknown'
+        maximum, used = admission.get('maximum_shared_sends_per_24h'), admission.get('shared_sends_last_24h')
+        if not (type(maximum) is int and maximum > 0 and type(used) is int and used >= 0 and
+                admission['remaining_sends'] == max(0,maximum-used) and
+                type(admission.get('minimum_spacing_seconds')) is int and admission['minimum_spacing_seconds'] >= 0):
+            return 'blocked','shared_budget_contract_unconfirmed'
+        if admission.get('spacing_ready') is not True:
+            return 'blocked','existing_minimum_spacing_or_unknown'
+        if type(admission.get('unresolved_dispatches')) is not int or admission.get('unresolved_dispatches') != 0:
+            return 'blocked','uncertain_or_running_operation_observe_only'
+        if type(admission.get('terminal_unreconciled')) is not int or admission.get('terminal_unreconciled') != 0:
+            return 'blocked','terminal_result_requires_record_and_reconciliation'
+        if send and not (type(admission.get('administrative_tasks')) is int and admission['administrative_tasks'] > 0):
+            return 'blocked','existing_adapter_created_scoped_task_required'
+        if not send and (type(admission.get('task_reservations')) is not int or admission.get('task_reservations') != 0):
+            return 'blocked','existing_task_reservation_requires_observation'
+        return 'ready','eligible_for_existing_atomic_preflight_within_standing_goal'
+
+    create_state, create_reason = task_gate()
+    send_state, send_reason = task_gate(True)
+    pending_result = source['state']=='observed' and type(admission.get('unresolved_dispatches')) is int and admission['unresolved_dispatches']==0 and any(
+        type(admission.get(key)) is int and admission[key]>0 for key in ('terminal_unreconciled','task_reservations'))
+    common = dict(interface_confirmation='inherit_existing_client_requirements',
+                  standing_goal_scope_required=True, fresh_server_preflight_required=True,
+                  scope_or_permission_override_supported=False, stop_if_OTP_requested=True)
+    actions = [
+        action('diagnose_host','host_diagnostics','read'),
+        action('diagnose_service','service_diagnostics','read'),
+        action('diagnose_logs','log_summary','read'),
+        action('observe_backups','backup_results','read'),
+        action('observe_storage','disk_space','read'),
+        action('observe_tasks','codex_task_list','read'),
+        action('observe_task','codex_task_status','read'),
+        action('observe_operation','operation_status','read'),
+        action('read_public_catalogue','project_files','read'),
+        action('read_public_source','project_read','read'),
+        action('prepare_catalogue_edit','project_prepare_edit','prepare',
+               'ready','exact_catalogue_preview_only_no_apply_or_deploy'),
+        action('validate_prepared_change','change_validate','read'),
+        action('rollback_verified_source_change','change_revert','effect','blocked',
+               'own_applied_revision_and_unchanged_current_hash_required',
+               interface_confirmation_required=True,restore_only_own_backup=True),
+        action('prepare_scoped_administrative_task','codex_task_create','privileged_task',create_state,create_reason,**common),
+        action('execute_existing_scoped_task','codex_task_send','privileged_task',send_state,send_reason,
+               must_select_same_goal_adapter_task_from_current_inventory=True,**common),
+        action('execute_authentication_dependent_task','codex_task_send','privileged_task','blocked',
+               'user_authentication_action_required' if otp_pending else 'canonical_authentication_effect_gate_unproven',
+               authentication_dependency=True,**common),
+        action('record_task_result','codex_task_status','read'),
+        action('verify_repaired_service','service_diagnostics','read',
+               functional_readiness_not_proven_by_running=True),
+        action('acknowledge_terminal_task','codex_task_reconcile','reconcile',
+               'ready' if pending_result else 'blocked',
+               'exact_persisted_result_hash_required_after_central_record' if pending_result else 'uncertain_or_missing_result_observe_only',
+               observed_terminal_hash_required=True, centrally_record_before_ack=True),
+    ]
+    for scope in ('npm_logs','npm_temporary'):
+        for verb in ('plan','quarantine','restore'):
+            active = storage_restore if verb=='restore' else storage_execution
+            state, reason = ('ready','fixed_existing_storage_plan_only') if verb=='plan' else (
+                'requires_confirmation','existing_interface_confirmation_required')
+            if not active:
+                state,reason='blocked','storage_admission_expired_revoked_or_unknown'
+            if storage_admission.get('recurring_execution_enabled') is not False:
+                state,reason='blocked','storage_recurrence_contract_unconfirmed'
+            actions.append(action('storage_'+verb+'_'+scope, 'admin_action_apply',
+                'prepare' if verb=='plan' else 'storage_effect',state,reason,
+                action='storage_'+verb+'_'+scope, interface_confirmation_required=verb!='plan',
+                scope='fixed_npm_cache_only', protected_data_deletion_supported=False,
+                plan_before_effect=True, fresh_server_preflight_required=True))
+    actions.append(dict(id='delete_protected_data',tool=None,role='effect',state='unsupported',
+                        reason='no_protected_data_delete_authority',automatic_retry=False))
+    actions.append(dict(id='turn_on_recurrence',tool=None,role='policy_change',state='requires_confirmation',
+                        reason='separate_exact_policy_review_and_owner_approval_required',automatic_retry=False))
+    # A confirmed actual catalogue can ONLY close unsupported routes; it cannot
+    # widen any existing admission. Backend catalogue is explicitly provisional.
+    for item in actions:
+        item['tool_availability_source'] = 'actual_frontend_catalogue' if confirmed_catalogue else 'backend_catalogue_requires_frontend_check'
+        item['admission_state'],item['admission_reason']=item['state'],item['reason']
+        if item['tool'] is not None and item['state']=='ready' and not confirmed_catalogue:
+            item['state'],item['reason']='blocked','actual_frontend_catalogue_required'
+
+    flows = {
+        'service_unhealthy': ['diagnose_service','diagnose_logs','read_public_catalogue','read_public_source','prepare_scoped_administrative_task','execute_existing_scoped_task','observe_task','record_task_result','acknowledge_terminal_task'],
+        'backup_or_restore_unproven': ['observe_backups','read_public_catalogue','prepare_scoped_administrative_task','execute_existing_scoped_task','observe_task','record_task_result'],
+        'storage_pressure': ['observe_storage','storage_plan_npm_logs','storage_quarantine_npm_logs','observe_storage'],
+        'update_or_integration_failure': ['diagnose_service','diagnose_logs','read_public_source','prepare_scoped_administrative_task','execute_existing_scoped_task','observe_task','record_task_result'],
+        'operation_uncertain': ['observe_operation','observe_task','observe_tasks'],
+        'admission_closed': ['observe_tasks','read_public_catalogue','read_public_source'],
+        'authentication_pending_user': ['diagnose_service','observe_task'],
+    }
+    boolean = lambda value: value if type(value) is bool else None
+    number = lambda value: value if op_number(value) else None
+    integer = lambda value: value if type(value) is int and value >= 0 else None
+    return dict(schema_version=1,source='current_existing_MCP_admission_and_catalogue_contract',
+        observed_at=dt.datetime.fromtimestamp(now,dt.timezone.utc).isoformat(),
+        age_seconds=0,state='observed',collection_error=None,
+        evidence=dict(task_admission=source,storage_admission=storage_source),
+        authentication=dict(state=auth_state,functional_health='unknown',
+                            evidence=op_evidence(auth_observation,now),
+                            unrelated_maintenance_blocked=False,
+                            coverage=['absence_of_a_pending_user_step_is_not_authentication_health',
+                                      'only_authentication_dependent_effects_wait_for_user_or_canonical_gate']),
+        authority=dict(configured=boolean(admission.get('configured')),admission_active=boolean(admission.get('admission_active')),
+                       expires_at=number(admission.get('expires_at')),revoked=boolean(admission.get('revoked')),
+                       maximum_shared_sends_per_24h=integer(admission.get('maximum_shared_sends_per_24h')),
+                       minimum_spacing_seconds=integer(admission.get('minimum_spacing_seconds')),
+                       remaining_sends=integer(admission.get('remaining_sends')),
+                       storage_expires_at=number(storage_expiry),storage_recurring_execution_enabled=boolean(storage_admission.get('recurring_execution_enabled'))),
+        client_neutral=True,client_or_model_identity_is_not_authority=True,
+        executor_adapter=dict(kind='existing_scoped_task_backend',create_tool='codex_task_create',send_tool='codex_task_send',
+                              observation_tools=['codex_task_list','codex_task_status'],implementation_disclosure='existing_codex_task_adapter'),
+        control=dict(advance_without_new_prompt_when_ready_within_standing_goal=True,
+                     existing_interface_confirmations_preserved=True,automatic_retry=False,
+                     uncertain_dispatch='observe_existing_operation_only_never_resend_or_new_id',
+                     pending_OTP='stop_dependent_effect_and_wait_for_user',
+                     protected_data='metadata_and_preparation_only_no_deletion',
+                     persistent_security_or_recurrence_change='exact_reviewed_delta_and_specific_owner_approval',
+                     triggered_by='existing_authorized_event_or_active_goal_turn_only',new_schedule_enabled=False),
+        lifecycle=['detect','diagnose','prepare','apply','rollback','verify','result'],
+        phase_contract=dict(detect='consume_existing_canonical_issue_or_authorized_active_goal',
+                            diagnose='bounded_existing_read_tools_and_actual_source_evidence',
+                            prepare='reviewable_preview_or_existing_scoped_task_with_explicit_acceptance',
+                            apply='only_existing_ready_gated_action_with_current_operation_identity',
+                            rollback='own_receipt_and_compare_and_swap_only_within_existing_authority',
+                            verify='native_functional_readiness_and_preserved_household_state_not_apply_receipt_alone',
+                            result='persist_terminal_evidence_and_blockers_then_ack_exact_hash'),
+        workflows=flows,actions=actions,
+        completion=dict(apply_receipt_is_not_functional_recovery=True,
+                        rollback_requires_verified_own_before_and_after_images=True,
+                        result_requires_postverification_and_remaining_blockers=True,
+                        full_goal_complete=False),
+        coverage=['legal_existing_next_calls_not_new_authority_or_effect_execution',
+                  'no_new_free_commands_paths_prompts_permissions_or_identity_acceptance',
+                  'fixed_repair_health_summary_is_not_general_remediation',
+                  'no_invented_admission_on_configured_or_tool_presence',
+                  'readiness_requires_existing_atomic_server_preflight_and_client_gate'])

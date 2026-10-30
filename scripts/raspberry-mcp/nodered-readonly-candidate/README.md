@@ -13,7 +13,7 @@ vínculo Root para seis indicadores do validador Kia. Retorna somente classes de
 estado e horários; botões permanecem como fontes de leitura. O template fixo
 não exporta valores do veículo, atributos, localização ou IDs privados.
 Vínculo ausente, revogado ou inválido impede a consulta; a falha opcional não
-remove os metadados existentes. Veja o [contrato de autorização e evidência](../../../docs/RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md#indicadores-nativos-kia-com-autorização-separada).
+remove os metadados existentes. Veja o [contrato de autorização e evidência](../../../docs/raspberry-mcp/reference/component-repair.md#indicadores-nativos-kia-com-autorização-separada).
 
 Em 26/10/2026, o cliente MCP real paginou os 31 fluxos e recebeu código e conexões de um Function node de observacao_host, além dos recibos fixos Kia. Esse aceite é do contrato autenticado; não comprova uma execução autônoma específica da Eva.
 

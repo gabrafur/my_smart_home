@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
-import {correctCapabilities} from './event_projection.mjs';
+import {correctCapabilities,finalizeOperatingPolicy} from './event_projection.mjs';
 
 const host={type:'string',enum:['raspberry']};
 const operation_id={type:'string',pattern:'^[a-f0-9]{32}$'};
@@ -45,12 +45,15 @@ export function makeRepairRoute(prior,invoke,dispatch,audit=()=>{}) {
     if(!r?.result?.isError)events=r.result.structuredContent??
      JSON.parse(r.result.content.find(x=>x.type==='text').text);
    }catch{/* Closed unknown projection; no raw error or callback export. */}
+   const operatingObservationTime=Date.now();
    const project=value=>{
-    const corrected=correctCapabilities(value,events);
+    const corrected=correctCapabilities(value,events,operatingObservationTime);
     if(catalogue&&corrected?.evidence?.data){
      corrected.evidence.data.tool_names=catalogue;
      corrected.evidence.data.listed_tool_count=catalogue.length;
      corrected.evidence.data.tool_catalogue_source='actual_frontend_descriptors_not_authorization';
+     if(corrected.evidence.data.operating_policy_v1)
+      corrected.evidence.data.operating_policy_v1=finalizeOperatingPolicy(corrected.evidence.data.operating_policy_v1,catalogue,operatingObservationTime);
     }
     return corrected;
    };

@@ -3,7 +3,7 @@
 Estas fontes e esquemas são preparação isolada. As doze ferramentas propostas
 não estão registradas no MCP. Há um worker Node-RED candidato, testado em HTTP sintético; não há instalador
 ou permissão de produção neste diretório. O transporte MCP instalado está documentado em
-[RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md](../../../docs/RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md).
+[RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md](../../../docs/raspberry-mcp/README.md).
 
 ## Contrato proposto
 

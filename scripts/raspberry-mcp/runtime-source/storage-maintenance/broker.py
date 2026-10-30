@@ -30,6 +30,7 @@ class Broker(legacy.Broker):
             target['storage_maintenance_catalogue'] = catalog.catalogue()
             target['storage_maintenance_catalogue']['current_admission'] = observation.get('maintenance_admission')
             target['storage_metadata_refresh'] = observation
+            target['operating_policy_v1'] = legacy.health.operating_policy_v1(target, target.get('operating_admission_snapshot_v1'))
             return value
         return super().handle(name, args)
 
