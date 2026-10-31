@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { spawnSync } = require('node:child_process');
 const { RevisionStore, CHECKS } = require('./revision_store.cjs');
 const { normalizedIdentity } = require('./attestation_model.cjs');
 const { NodeRedWorker, ReceiptStore } = require('./effects/nodered_effect.cjs');
@@ -171,4 +172,30 @@ test('same bytes on a replacement inode do not become this publication', t => {
  const file = path.join(f.paths.preparedRoot, OP + '-apply.json'), content = fs.readFileSync(file);
  fs.renameSync(file, file + '-original'); fs.writeFileSync(file, content, { mode: 0o600 });
  assert.throws(() => store.publish(OP), /published_record_changed/);
+});
+test('Python admission consumes actual publication and rejects incomplete or replaced records', t => {
+ const f = fixture(t); f.store().publish(OP);
+ const script = `import json,os,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from revision_review import PublishedNodeRedReviews
+p=json.loads(sys.argv[2]);op=p['op']
+r=PublishedNodeRedReviews(p['reviews'],p['prepared'],p['journal'],{op:p['sha']},os.getuid())
+row=json.loads((Path(p['reviews'])/(op+'-apply.json')).read_bytes())
+assert r.read(row['binding'],p['principal'])==row
+receipt=Path(p['journal'])/op/'receipt.json'
+receipt.rename(receipt.with_suffix('.held'))
+try:r.read(row['binding'],p['principal']);raise AssertionError('partial publication admitted')
+except FileNotFoundError:pass
+receipt.with_suffix('.held').rename(receipt)
+original=Path(p['prepared'])/(op+'-rollback.json');content=original.read_bytes()
+original.rename(original.with_suffix('.held'));original.write_bytes(content);original.chmod(0o600)
+try:r.read(row['binding'],p['principal']);raise AssertionError('foreign inode admitted')
+except ValueError as e:assert str(e)=='published_record_changed'
+print('publication_admission_verified')
+`;
+ const result = spawnSync('python3', ['-I', '-S', '-B', '-c', script, __dirname,
+  JSON.stringify({ op: OP, principal: PRINCIPAL, sha: sha(raw(f.review)), reviews: f.paths.reviewsRoot,
+   prepared: f.paths.preparedRoot, journal: f.paths.journalRoot })], { encoding: 'utf8', timeout: 5000 });
+ assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout.trim(), 'publication_admission_verified');
 });

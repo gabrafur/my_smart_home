@@ -324,9 +324,13 @@ são sobrescritas. Revogação impede publicação; consulta de recibo históric
 não autoriza nenhum efeito.
 
 O permit de aplicação é publicado por último, depois dos artefatos de rollback.
-O bootstrap também precisa ligar a admissão ao recibo terminal de publicação:
-`ProtectedReview` sozinho ainda não verifica esse journal. Sem essa ligação,
-os arquivos não devem ser usados como uma nova autorização de produção.
+[`revision_review.py`](revision_review.py) fornece o leitor candidato
+`PublishedNodeRedReviews`: exige o recibo terminal e confere hashes e inodes das
+quatro saídas antes de entregar o review ao gate de admissão existente. O teste
+integra a publicação JavaScript com esse leitor Python usando arquivos reais
+temporários. O bootstrap ainda precisa instalar e usar esse leitor;
+`ProtectedReview` sozinho não verifica o journal. Sem essa ligação, os arquivos
+não devem ser usados como uma nova autorização de produção.
 
 `revision_store.test.cjs` usa somente diretórios temporários e um cliente
 Node-RED em memória. Exercita publicação, aplicação e rollback sintéticos,
