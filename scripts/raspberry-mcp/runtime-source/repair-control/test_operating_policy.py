@@ -22,7 +22,9 @@ def facts():
   state='observed',collection_error=None,configured=True,admission_active=True,revoked=False,
   expires_at=NOW+3600,maximum_shared_sends_per_24h=48,minimum_spacing_seconds=60,
   shared_sends_last_24h=1,remaining_sends=47,spacing_ready=True,unresolved_dispatches=0,
-  terminal_unreconciled=0,task_reservations=0,administrative_tasks=1)
+  terminal_unreconciled=0,task_reservations=0,administrative_tasks=1,
+  workspace_configured=True,workspace_admission_active=True,workspace_tasks=1,
+  administrative_expires_at=NOW+3600)
 
 def data():
  return dict(tool_names=TOOLS,tool_catalogue_source='actual_frontend_descriptors_not_authorization',
@@ -52,6 +54,27 @@ class OperatingPolicy(unittest.TestCase):
   self.assertTrue(a['standing_goal_scope_required']);self.assertFalse(a['scope_or_permission_override_supported'])
   self.assertFalse(out['completion']['full_goal_complete'])
   self.assertTrue(out['client_or_model_identity_is_not_authority'])
+
+ def test_workspace_opportunity_does_not_reopen_expired_administration(self):
+  f=facts();f.update(admission_active=False,administrative_expires_at=NOW-1)
+  d=data();d['administrative_delegation']['admission_active']=False
+  out=self.project(d=d,f=f);a=actions(out)
+  self.assertEqual(a['prepare_workspace_task']['state'],'ready')
+  self.assertEqual(a['execute_existing_workspace_task']['state'],'ready')
+  self.assertEqual(a['execute_existing_scoped_task']['state'],'blocked')
+  self.assertFalse(out['authority']['admission_active'])
+  self.assertTrue(out['authority']['workspace_admission_active'])
+  self.assertEqual(out['authority']['administrative_expires_at'],NOW-1)
+  self.assertEqual(a['execute_existing_workspace_task']['fixed_profile'],'workspace_write_no_network_no_sudo')
+
+ def test_workspace_cannot_bypass_shared_ledger_clock_or_revocation_gates(self):
+  for change in [dict(workspace_admission_active=False),dict(workspace_configured=None),
+   dict(expires_at=NOW),dict(revoked=True),dict(remaining_sends=0),dict(spacing_ready=False),
+   dict(unresolved_dispatches=1),dict(terminal_unreconciled=1),dict(workspace_tasks=0),
+   dict(observed_at=dt.datetime.fromtimestamp(NOW-121,dt.timezone.utc).isoformat())]:
+   with self.subTest(change=change):
+    f=facts();f.update(change)
+    self.assertNotEqual(actions(self.project(f=f))['execute_existing_workspace_task']['state'],'ready')
 
  def test_expiry_revocation_budget_and_spacing_are_preserved(self):
   for field,value in [('expires_at',NOW),('revoked',True),('remaining_sends',0),('spacing_ready',False),('collection_error','unavailable')]:
@@ -132,13 +155,13 @@ class ReadonlySnapshot(unittest.TestCase):
  def test_snapshot_uses_existing_policy_and_readonly_SQL_not_store_or_RPC(self):
   state=mock.MagicMock();(state/'revoked').exists.return_value=False
   policy=dict(enabled=True,expires_at=NOW+100,max_sends_per_24h=48,minimum_spacing_seconds=60,
-              admin_delegation=dict(task_key_prefix='approved-admin-'))
+              admin_delegation=dict(task_key_prefix='approved-admin-',enabled=True,expires_at=NOW+50))
   tasks=types.SimpleNamespace(STATE=state,LEGACY_DB=Path('/synthetic/legacy.sqlite3'),UID=1001,ADMIN_DELEGATION=policy['admin_delegation'],
    locked=mock.Mock(return_value=contextlib.nullcontext()),policy=mock.Mock(return_value=(policy,{})),
    read=mock.Mock(),legacy_summary=mock.Mock(return_value={'busy':0,'count':2,'latest':NOW-61}))
   connection=mock.MagicMock()
-  # PRAGMA, BEGIN then seven fixed aggregate SELECTs.
-  values=iter([(1,),(NOW-61,),(0,),(0,),(0,),(0,),(1,)])
+  # PRAGMA, BEGIN then eight fixed aggregate SELECTs, including workspace tasks.
+  values=iter([(1,),(NOW-61,),(0,),(0,),(0,),(0,),(1,),(2,)])
   def execute(sql,*args):
    cursor=mock.Mock()
    if sql.startswith('SELECT'):cursor.fetchone.return_value=next(values)
@@ -148,6 +171,8 @@ class ReadonlySnapshot(unittest.TestCase):
    result=m.operating_admission_snapshot(tasks,object(),NOW)
   self.assertEqual(result['state'],'observed');self.assertEqual(result['shared_sends_last_24h'],3)
   self.assertEqual(result['remaining_sends'],45);tasks.locked.assert_called_once_with(read_only=True)
+  self.assertTrue(result['workspace_admission_active']);self.assertTrue(result['admission_active'])
+  self.assertEqual(result['workspace_tasks'],2)
   self.assertIn('?mode=ro',connect.call_args.args[0]);self.assertTrue(connect.call_args.kwargs['uri'])
   statements=[call.args[0]for call in connection.execute.call_args_list]
   self.assertTrue(all(sql.startswith(('SELECT','PRAGMA query_only=ON','BEGIN'))for sql in statements))

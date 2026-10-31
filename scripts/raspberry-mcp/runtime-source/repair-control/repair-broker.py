@@ -42,6 +42,7 @@ class Broker(legacy.Broker):
             data['administrative_delegation'] = {
                 'configured': delegation == tasks.ADMIN_DELEGATION,
                 'admission_active': delegation == tasks.ADMIN_DELEGATION and task_policy['enabled']
+                    and tasks.time.time() < delegation['expires_at']
                     and not temporal.get('_observation_only') and not (tasks.STATE/'revoked').exists(),
                 'observation_preserved_after_expiry': True,
                 'task_key_prefix': 'eva-admin-',

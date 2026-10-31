@@ -159,10 +159,12 @@ export function finalizeOperatingPolicy(policy, catalogue, now=Date.now()) {
   }else{
    action.state='blocked';action.reason='canonical_admission_decision_missing';
   }
-  if(action.role==='privileged_task'&&action.state!=='unsupported'){
+  if(['privileged_task','workspace_task'].includes(action.role)&&action.state!=='unsupported'){
    const at=Date.parse(value.evidence?.task_admission?.observed_at);
-   const expires=value.authority?.expires_at;
-   if(value.authority?.admission_active!==true||value.authority?.revoked===true||
+   const workspace=action.role==='workspace_task';
+   const expires=workspace?value.authority?.workspace_expires_at:(value.authority?.administrative_expires_at??value.authority?.expires_at);
+   const active=workspace?value.authority?.workspace_admission_active:value.authority?.admission_active;
+   if(active!==true||value.authority?.revoked===true||
      typeof expires!=='number'||!Number.isFinite(expires)||now>=expires*1000||
      !Number.isFinite(at)||at>now||now-at>120000){
     action.state='blocked';action.reason='fresh_existing_admission_required';

@@ -14,6 +14,24 @@ e textual, preservando os gates e as confirmações do cliente. O contrato usa
 papéis e estados independentes do modelo; os nomes `codex_task_*` identificam
 somente o backend de tarefas implementado atualmente.
 
+### Admissões independentes
+
+Uma janela normal de projeto pode estar ativa enquanto a administração está
+vencida. Use `authority.workspace_admission_active`, `workspace_expires_at` e as
+ações `prepare_workspace_task`/`execute_existing_workspace_task` para o perfil
+existente de workspace, sem rede ou sudo. A disponibilidade desse perfil não
+renova `authority.admission_active` nem `administrative_expires_at`, não libera o
+prefixo administrativo e não autoriza modificar arquivos protegidos. O envio
+legado às referências existentes também pode continuar desabilitado por
+`codex_thread_control.send_enabled=false`, com leitura de metadados disponível.
+
+Todos esses caminhos continuam sujeitos a orçamento compartilhado, espaçamento,
+revogação, identidade, validade e reconciliação de operações. Armazenamento tem
+admissão própria e mantém as confirmações da interface. Na listagem histórica de
+tarefas, `administrative_admission_closed` pode refletir somente o fechamento do
+transporte geral; ele não substitui a decisão específica de administração nem
+prova autorização de um envio. `notLoaded` continua sem indicar conclusão.
+
 `tools/list` no servidor e no conector efetivamente usado é a fonte do catálogo
 atual. A tabela abaixo é uma captura histórica, com 38 nomes; não promete que
 um intermediário publique todos nem exclui extensões posteriores. Compare também

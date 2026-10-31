@@ -36,3 +36,22 @@ test('stale or missing metadata closes an otherwise admitted task',()=>{
   assert.equal(finalizeOperatingPolicy(value,['codex_task_send'],now).actions[0].state,'blocked');
  }
 });
+test('workspace lease cannot reopen administration or legacy task scope',()=>{
+ const value=fixture();
+ Object.assign(value.authority,{admission_active:false,administrative_expires_at:now/1000-1,
+  workspace_admission_active:true,workspace_expires_at:now/1000+100});
+ value.actions.push({id:'workspace',tool:'codex_task_send',role:'workspace_task',admission_state:'ready'});
+ const out=finalizeOperatingPolicy(value,['codex_task_send'],now);
+ assert.equal(out.actions[0].state,'blocked');assert.equal(out.actions[2].state,'ready');
+});
+test('workspace has its own expiry, revocation and evidence freshness gates',()=>{
+ for(const change of[{workspace_admission_active:false},{workspace_expires_at:now/1000},{revoked:true}]){
+  const value=fixture();value.actions[0].role='workspace_task';
+  Object.assign(value.authority,{workspace_admission_active:true,workspace_expires_at:now/1000+100},change);
+  assert.equal(finalizeOperatingPolicy(value,['codex_task_send'],now).actions[0].state,'blocked');
+ }
+ const value=fixture();value.actions[0].role='workspace_task';
+ Object.assign(value.authority,{workspace_admission_active:true,workspace_expires_at:now/1000+100});
+ value.evidence.task_admission.observed_at=new Date(now-120001).toISOString();
+ assert.equal(finalizeOperatingPolicy(value,['codex_task_send'],now).actions[0].state,'blocked');
+});

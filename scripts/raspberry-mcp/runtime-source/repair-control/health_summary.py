@@ -899,6 +899,8 @@ def operating_admission_snapshot(tasks, old, now=None):
                   observed_at=dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(),
                   age_seconds=0, state='unknown', collection_error='admission_unavailable',
                   configured=None, admission_active=None, revoked=None, expires_at=None,
+                  workspace_configured=None, workspace_admission_active=None, workspace_tasks=None,
+                  administrative_expires_at=None,
                   maximum_shared_sends_per_24h=None, minimum_spacing_seconds=None,
                   shared_sends_last_24h=None, remaining_sends=None, spacing_ready=None,
                   unresolved_dispatches=None, terminal_unreconciled=None,
@@ -913,6 +915,13 @@ def operating_admission_snapshot(tasks, old, now=None):
             revoked = (tasks.STATE / 'revoked').exists()
             result.update(configured=configured, revoked=revoked, expires_at=policy['expires_at'],
                           admission_active=configured and policy['enabled'] is True and
+                              not legacy.get('_observation_only') and not revoked and
+                              policy['admin_delegation'].get('enabled') is True and
+                              op_number(policy['admin_delegation'].get('expires_at')) and
+                              now < policy['admin_delegation']['expires_at'],
+                          administrative_expires_at=policy['admin_delegation'].get('expires_at'),
+                          workspace_configured=True,
+                          workspace_admission_active=policy['enabled'] is True and
                               not legacy.get('_observation_only') and not revoked,
                           maximum_shared_sends_per_24h=policy['max_sends_per_24h'],
                           minimum_spacing_seconds=policy['minimum_spacing_seconds'])
@@ -941,6 +950,8 @@ def operating_admission_snapshot(tasks, old, now=None):
                     raise ValueError('invalid_metadata')
                 administrative = connection.execute("SELECT count(*) FROM tasks WHERE state='created' "
                     "AND task_key LIKE ?", (prefix+'%',)).fetchone()[0] if configured else 0
+                workspace_tasks = connection.execute("SELECT count(*) FROM tasks WHERE state='created' "
+                    "AND task_key NOT LIKE ?", (tasks.ADMIN_DELEGATION['task_key_prefix']+'%',)).fetchone()[0]
             finally:
                 connection.close()
             prior = tasks.legacy_summary()
@@ -953,7 +964,7 @@ def operating_admission_snapshot(tasks, old, now=None):
             result.update(state='observed', collection_error=None, shared_sends_last_24h=total,
                           remaining_sends=max(0, maximum-total), spacing_ready=now-last >= spacing,
                           unresolved_dispatches=busy+prior['busy'], terminal_unreconciled=terminal,
-                          task_reservations=reservations, administrative_tasks=administrative)
+                          task_reservations=reservations, administrative_tasks=administrative, workspace_tasks=workspace_tasks)
     except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error):
         # Partial policy metadata can explain a closed gate. Never promote it
         # to readiness or expose raw SQL/paths/policy/source/error content.
@@ -1018,8 +1029,10 @@ def operating_policy_v1(data, admission, now=None):
         return dict(id=identifier, tool=tool, role=role, state=state, reason=reason,
                     automatic_retry=False, **rest)
 
-    def task_gate(send=False):
-        if admission.get('admission_active') is False or delegation.get('admission_active') is False:
+    def task_gate(send=False, workspace=False):
+        active_field = 'workspace_admission_active' if workspace else 'admission_active'
+        configured_field = 'workspace_configured' if workspace else 'configured'
+        if admission.get(active_field) is False or (not workspace and delegation.get('admission_active') is False):
             return 'blocked','existing_admission_closed'
         if admission.get('revoked') is True:
             return 'blocked','existing_admission_revoked'
@@ -1027,9 +1040,9 @@ def operating_policy_v1(data, admission, now=None):
             return 'blocked','revocation_observation_required'
         if not op_number(admission.get('expires_at')) or now >= admission['expires_at']:
             return 'blocked','existing_admission_expired_or_unknown'
-        if source['state'] != 'observed' or admission.get('configured') is not True or delegation.get('configured') is not True:
+        if source['state'] != 'observed' or admission.get(configured_field) is not True or (not workspace and delegation.get('configured') is not True):
             return 'blocked','fresh_authority_evidence_required'
-        if admission.get('admission_active') is not True or delegation.get('admission_active') is not True:
+        if admission.get(active_field) is not True or (not workspace and delegation.get('admission_active') is not True):
             return 'blocked','fresh_admission_required'
         if type(admission.get('remaining_sends')) is not int or admission['remaining_sends'] <= 0:
             return 'blocked','shared_send_budget_exhausted_or_unknown'
@@ -1044,7 +1057,8 @@ def operating_policy_v1(data, admission, now=None):
             return 'blocked','uncertain_or_running_operation_observe_only'
         if type(admission.get('terminal_unreconciled')) is not int or admission.get('terminal_unreconciled') != 0:
             return 'blocked','terminal_result_requires_record_and_reconciliation'
-        if send and not (type(admission.get('administrative_tasks')) is int and admission['administrative_tasks'] > 0):
+        task_field = 'workspace_tasks' if workspace else 'administrative_tasks'
+        if send and not (type(admission.get(task_field)) is int and admission[task_field] > 0):
             return 'blocked','existing_adapter_created_scoped_task_required'
         if not send and (type(admission.get('task_reservations')) is not int or admission.get('task_reservations') != 0):
             return 'blocked','existing_task_reservation_requires_observation'
@@ -1052,6 +1066,8 @@ def operating_policy_v1(data, admission, now=None):
 
     create_state, create_reason = task_gate()
     send_state, send_reason = task_gate(True)
+    workspace_create_state, workspace_create_reason = task_gate(workspace=True)
+    workspace_send_state, workspace_send_reason = task_gate(True, workspace=True)
     pending_result = source['state']=='observed' and type(admission.get('unresolved_dispatches')) is int and admission['unresolved_dispatches']==0 and any(
         type(admission.get(key)) is int and admission[key]>0 for key in ('terminal_unreconciled','task_reservations'))
     common = dict(interface_confirmation='inherit_existing_client_requirements',
@@ -1074,6 +1090,10 @@ def operating_policy_v1(data, admission, now=None):
         action('rollback_verified_source_change','change_revert','effect','blocked',
                'own_applied_revision_and_unchanged_current_hash_required',
                interface_confirmation_required=True,restore_only_own_backup=True),
+        action('prepare_workspace_task','codex_task_create','workspace_task',workspace_create_state,workspace_create_reason,
+               fixed_profile='workspace_write_no_network_no_sudo',administrative_prefix_forbidden='eva-admin-',**common),
+        action('execute_existing_workspace_task','codex_task_send','workspace_task',workspace_send_state,workspace_send_reason,
+               fixed_profile='workspace_write_no_network_no_sudo',must_select_existing_workspace_profile_task=True,**common),
         action('prepare_scoped_administrative_task','codex_task_create','privileged_task',create_state,create_reason,**common),
         action('execute_existing_scoped_task','codex_task_send','privileged_task',send_state,send_reason,
                must_select_same_goal_adapter_task_from_current_inventory=True,**common),
@@ -1121,6 +1141,8 @@ def operating_policy_v1(data, admission, now=None):
         'update_or_integration_failure': ['diagnose_service','diagnose_logs','read_public_source','prepare_scoped_administrative_task','execute_existing_scoped_task','observe_task','record_task_result'],
         'operation_uncertain': ['observe_operation','observe_task','observe_tasks'],
         'admission_closed': ['observe_tasks','read_public_catalogue','read_public_source'],
+        'workspace_source_work': ['read_public_catalogue','read_public_source','prepare_workspace_task',
+                                  'execute_existing_workspace_task','observe_task','record_task_result','acknowledge_terminal_task'],
         'authentication_pending_user': ['diagnose_service','observe_task'],
     }
     boolean = lambda value: value if type(value) is bool else None
@@ -1137,6 +1159,9 @@ def operating_policy_v1(data, admission, now=None):
                                       'only_authentication_dependent_effects_wait_for_user_or_canonical_gate']),
         authority=dict(configured=boolean(admission.get('configured')),admission_active=boolean(admission.get('admission_active')),
                        expires_at=number(admission.get('expires_at')),revoked=boolean(admission.get('revoked')),
+                       workspace_admission_active=boolean(admission.get('workspace_admission_active')),
+                       workspace_expires_at=number(admission.get('expires_at')),
+                       administrative_expires_at=number(admission.get('administrative_expires_at')),
                        maximum_shared_sends_per_24h=integer(admission.get('maximum_shared_sends_per_24h')),
                        minimum_spacing_seconds=integer(admission.get('minimum_spacing_seconds')),
                        remaining_sends=integer(admission.get('remaining_sends')),

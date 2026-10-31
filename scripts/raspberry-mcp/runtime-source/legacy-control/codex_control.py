@@ -84,11 +84,12 @@ class Store:
   return self.output(self.get(row['id']))
 
 def capabilities():
- try:p=plan();return {'enabled':True,'threads':list(THREADS),'project_scope':'existing_tasks_not_filesystem_confinement','max_sends':6,'expires_at':p['expires_at'],'fixed_intents':['continue','checkpoint'],'automatic_retry':False}
+ try:p=plan();return {'enabled':True,'send_enabled':p.get('allow_send',True) is True,'threads':list(THREADS),'project_scope':'existing_tasks_not_filesystem_confinement','max_sends':6,'expires_at':p['expires_at'],'fixed_intents':['continue','checkpoint'],'automatic_retry':False}
  except Exception:return {'enabled':False,'automatic_retry':False}
 
 def handle(name,args):
  need(os.geteuid()==1001,'control_identity_refused');validate(name,args);p=plan()
+ if name=='codex_thread_send':need(p.get('allow_send',True) is True,'legacy_send_not_authorized')
  if name!='codex_thread_send' and 'operation_id' not in args:return {'source':'existing_codex_daemon_official_rpc','observed_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),**rpc({'mode':'metadata','thread_id':args['thread_id']},p),'scope':'authorized_existing_reference_metadata;not_project_filesystem_confinement;no_raw_history','automatic_retry':False}
  store=Store()
  try:return store.send(args,p) if name=='codex_thread_send' else store.observe(args,p)
