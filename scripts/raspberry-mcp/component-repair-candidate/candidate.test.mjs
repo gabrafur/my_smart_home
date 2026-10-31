@@ -17,3 +17,8 @@ test("Node-RED effect worker uses durable receipts over synthetic HTTP",()=>{
  const r=spawnSync(process.execPath,["--test","--test-concurrency=1",fileURLToPath(new URL("./effects/nodered_effect.test.cjs",import.meta.url))],{encoding:"utf8",timeout:30000,maxBuffer:256*1024});
  assert.equal(r.error,undefined);assert.equal(r.status,0,r.stdout+r.stderr);
 });
+
+test("protected revision publication binds artifacts and never deploys",()=>{
+ const r=spawnSync(process.execPath,["--test","--test-concurrency=1",fileURLToPath(new URL("./revision_store.test.cjs",import.meta.url))],{encoding:"utf8",timeout:30000,maxBuffer:128*1024});
+ assert.equal(r.error,undefined);assert.equal(r.status,0,r.stdout+r.stderr);
+});

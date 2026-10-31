@@ -45,8 +45,9 @@ Preservar as confirmações da interface: elas são independentes dos gates loca
 
 4. Iniciar `initialize`, enviar `notifications/initialized`, descobrir
    `tools/list` e testar `maintenance_capabilities` com `{"host":"raspberry"}`.
-5. Confirmar a identidade autorizada e executar o aceite administrativo abaixo
-   antes de confiar correções ao novo cliente.
+5. Confirmar a identidade autorizada e seguir o
+   [aceite do novo cliente](operations.md#aceite-do-novo-cliente) antes de
+   confiar correções ao novo cliente.
 
 O relay não é servidor TCP e não recebe host, caminho ou comando do chatbot.
 O cliente precisa conseguir iniciar esse processo no Raspberry. O processo de
@@ -75,9 +76,13 @@ para outro fornecedor. Não copiar seu endereço privado nem inventar uma URL.
 Esse cliente precisará de um gateway MCP autenticado compatível com ele.
 O pacote opcional [`portable-http`](../../scripts/raspberry-mcp/portable-http/gateway.py) implementa um gateway local autenticado. A inicialização,listagem das38ferramentas e leitura das capacidades passaram contra o socket real. Ele não foi ativado como serviço permanente e não comprova conexão com um fornecedor externo. O guia de preparação e ativação está abaixo.
 
-Essa implantação deve validar TLS, autenticação por cliente, Origin, limites,
+Essa implantação deve validar TLS, identidade de acesso, Origin, limites,
 revogação e encaminhamento ao mesmo socket sem acesso Docker ou credenciais
-do executor. Não expor o socket ou um listener sem autenticação na internet.
+do executor. O gateway local usa uma única chave bearer por instância, sem
+cadastro ou revogação individual de clientes. Se mais de um cliente compartilhar
+a chave, sua rotação revoga todos os portadores. Identidade e revogação por
+cliente exigem uma camada adicional revisada e aceita. Não expor o socket ou
+um listener sem autenticação na internet.
 O suporte de um fornecedor específico só pode ser declarado após teste nesse
 cliente. A assinatura, disponibilidade e custo do cliente são independentes
 das restrições de custo do executor do Raspberry.
@@ -162,10 +167,15 @@ sudo /usr/bin/systemctl disable --now raspberry-mcp-http.service
 ```
 
 Isso preserva o MCP original,seus bancos e o túnel. Não apagar recibos nem
-reutilizar IDs. Para rotação de chave,parar este transporte,substituir a chave
-local por um novo valor aleatório no mesmo arquivo root0440,atualizar o
-armazenamento seguro do cliente e iniciar novamente. A chave antiga deve ser
-removida do cliente revogado. Não rotacionar a chave do túnel por engano.
+reutilizar IDs. Para rotação de chave, parar este transporte e substituir a chave
+local por 32 bytes aleatórios representados por 64 caracteres hexadecimais
+minúsculos, seguidos de uma única quebra de linha. Preservar arquivo regular,
+proprietário root, grupo privado do transporte, modo 0440 e um único hard link.
+Atualizar o armazenamento seguro dos clientes que continuarão autorizados e
+iniciar novamente: a chave é lida somente na inicialização. Confirmar a recusa
+da chave antiga e a aceitação da nova sem executar operações com efeito.
+Remover a chave antiga dos clientes revogados. Não rotacionar a chave do túnel
+por engano.
 
 ## Validar antes de confiar correções
 

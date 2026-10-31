@@ -232,7 +232,8 @@ owner-only dos registros existentes confirmou a correção vinculada e nenhum
 job durável ativo, mas não provou a exclusão de um job novo de componente nem
 executou reparo. A integração completa não está instalada.
 
-Faltam criação segura das revisões, bindings/instalador/controle durável dos
+Há agora um publicador candidato de revisões protegidas, descrito abaixo.
+Faltam sua integração, bindings/instalador/controle durável dos
 jobs e gates nos outros caminhos de mutação para que respeitem reservas ou
 incertezas do novo coordenador. O worker de heartbeat está preparado com journal e teste isolado; HA ainda
 precisa do port de efeito. A identidade do código do heartbeat já foi emitida e vinculada em
@@ -289,3 +290,47 @@ Uma leitura administrativa real confirmou o contrato com o ciclo natural;
 o observador não chamou sender, serviço ou credencial. A ferramenta MCP,
 o bootstrap privilegiado e o controle durável dos jobs continuam pendentes.
 Falha do transporte não apaga identidade de código válida nem prova saúde.
+
+## Publicação protegida das revisões Node-RED
+
+[`revision_store.cjs`](revision_store.cjs) prepara os registros consumidos pelo
+pai e por `ProtectedReview`, incluindo a revisão inversa da mesma operação.
+Não registra ferramentas, edita fontes, implanta flows ou executa validações.
+O bootstrap futuro deve fornecer diretórios protegidos, o digest de cada revisão
+aprovada e o lease real que exclui os demais executores. Esses bindings não são
+parâmetros MCP. O módulo não concede autorização por receber um booleano de um
+chatbot: lê somente artefatos protegidos e exige o digest previamente admitido
+da revisão completa. A criação dessas aprovações e a execução confiável dos
+checks ainda precisam ser integradas à cadeia privilegiada.
+
+A revisão fixa operação, tarefa, principal, envio existente, prazo, bytes dos
+artefatos anterior/posterior, identidades das configurações, conjunto de fontes,
+perfil de testes e recibo de validação. O recibo deve conter todos os checks de
+fonte, regressão, dry-run, layout, margem, revisão visual, testes manuais,
+observabilidade, preservação e rollback; cada resultado precisa corresponder
+ao mesmo conjunto de hashes. Esses resultados são atestados pelo preparador
+protegido, não executados nem comprovados pelo publicador. A classe inicial
+é `observacao_host`, preservando nós, topologia e fronteiras de efeito. Isso
+não representa suporte completo à manutenção Node-RED.
+
+O publicador conserva intent antes das quatro escritas exclusivas, exige lease
+durante toda a operação, verifica owner/modo, recusa symlinks, hardlinks,
+revogações e troca de diretórios. Limita a 64 operações, 32 MiB de registros
+publicados e aproximadamente 1 MiB por artefato. A área de entrada selada deve
+ter sua própria retenção limitada no bootstrap. Recibo final vincula hashes e
+inodes das quatro saídas. Publicação parcial permanece somente reconciliável;
+nova chamada não termina nem repete escritas. Saídas de outra origem nunca
+são sobrescritas. Revogação impede publicação; consulta de recibo histórico
+não autoriza nenhum efeito.
+
+O permit de aplicação é publicado por último, depois dos artefatos de rollback.
+O bootstrap também precisa ligar a admissão ao recibo terminal de publicação:
+`ProtectedReview` sozinho ainda não verifica esse journal. Sem essa ligação,
+os arquivos não devem ser usados como uma nova autorização de produção.
+
+`revision_store.test.cjs` usa somente diretórios temporários e um cliente
+Node-RED em memória. Exercita publicação, aplicação e rollback sintéticos,
+duplicação, concorrência, interrupção, adulteração e revogação. Não há chamada
+à residência, credencial real ou aceite MCP. Instalador, admissão recíproca,
+writer de fonte canônica, execução recorrente aprovada e comprovação funcional
+natural continuam pendentes.
