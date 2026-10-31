@@ -99,6 +99,12 @@ não precisam reiniciar. Reversão exige comparação dos arquivos com os hashes
 aplicados, restauração dos módulos/pins anteriores e preservação da tabela
 aditiva; não restaure um banco antigo nem remova eventos ou intents.
 
+Na fonte corrigida, o worker verifica o pedido de parada ao retornar do seletor
+e depois de atender a requisição atual, antes de iniciar outra rodada de envio.
+A requisição em andamento conclui normalmente; recibos incertos continuam
+preservados. Testes sintéticos dessa transição não comprovam a versão carregada
+nem autorizam parar o serviço: a implantação exige sua revisão própria.
+
 `category`, `summary` e `content_withheld` são campos legados de deduplicação.
 Uma categoria legada `unclassified` não invalida os novos campos diagnósticos.
 `content_withheld=true` indica retenção do conteúdo bruto. IDs, revisão e

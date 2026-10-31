@@ -218,10 +218,12 @@ def main():
         while not stopped:
             timeout=max(0,min(2,next_tick-time.monotonic()))
             for key,mask in selector.select(timeout):
+                if stopped:break
                 connection,_=server.accept()
                 with connection:
                     try:serve_connection(connection,engine)
                     except OSError:pass
+            if stopped:break
             if time.monotonic()>=next_tick:
                 engine.tick();next_tick=time.monotonic()+2
     finally:
