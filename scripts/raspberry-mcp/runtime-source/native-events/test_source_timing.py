@@ -41,6 +41,60 @@ class SourceTimingTests(fixture.WorkerSummaryTests):
         self.assertFalse(result['all_HA_MQTT_latency_proven'])
         self.assertFalse(result['full24h_proven'])
 
+    def test_submicrosecond_ingestion_survives_persisted_receipt_validation(self):
+        self.now = int(self.now) + 3000035 / 10_000_000
+        event = self.timed()
+        event['observed_at'] = self.iso(self.now - 0.05)
+        event['source_timing']['collector_observed_at'] = event['observed_at']
+        self.write([event], age=0.01)
+        self.assertTrue(self.engine.ingest())
+        result = self.reg.source_timing.diagnostics(self.now)
+        self.assertEqual(result['measured_source_records'], 1)
+        self.assertEqual(result['unknown_reasons'], {})
+        saved = self.reg.db.execute('SELECT body FROM event_source_timing').fetchone()[0]
+        self.assertEqual(self.reg.source_timing.diagnostics(self.now), result)
+        self.assertEqual(self.reg.db.execute('SELECT body FROM event_source_timing').fetchone()[0], saved)
+
+    def test_fractional_ingestion_grid_rebuilds_from_exact_persisted_clocks(self):
+        base = 1700000000.0
+        value = {'schema_version': 1, 'frame_kind': 'added',
+                 'source_occurred_at': self.iso(base),
+                 'collector_received_at': self.iso(base + 0.1),
+                 'collector_observed_at': self.iso(base + 0.2)}
+        for index in range(1000):
+            ingested = base + 0.3 + index / 10000000
+            row = source_timing.project(value, 'added', base + 0.2, ingested)
+            rebuilt = source_timing.project(
+                {field: row[field] for field in source_timing.INPUT_FIELDS}, 'added',
+                source_timing.stamp(row['collector_observed_at']),
+                source_timing.stamp(row['ingested_at']))
+            self.assertEqual(row, rebuilt)
+            self.assertLessEqual(source_timing.stamp(row['ingested_at']), ingested)
+            self.assertLess(ingested - source_timing.stamp(row['ingested_at']), 2 / 1_000_000)
+
+    def test_submicrosecond_clock_reversal_is_not_rounded_into_success(self):
+        ingested = 1700000000 + 3000035 / 10_000_000
+        observed = 1700000000 + 300004 / 1_000_000
+        value = {'schema_version': 1, 'frame_kind': 'added',
+                 'source_occurred_at': self.iso(1700000000 + 1 / 10),
+                 'collector_received_at': self.iso(1700000000 + 2 / 10),
+                 'collector_observed_at': self.iso(observed)}
+        result = source_timing.project(value, 'added', observed, ingested)
+        self.assertEqual(result['reason'], 'clock_order_unconfirmed')
+        self.assertEqual(result['state'], 'unknown')
+
+    def test_existing_unreproducible_receipt_remains_unknown_and_immutable(self):
+        event = self.timed()
+        self.ingest(event)
+        body = json.loads(self.reg.db.execute('SELECT body FROM event_source_timing').fetchone()[0])
+        body['observation_to_ingest_wall_ms'] += 0.001
+        saved = json.dumps(body)
+        self.reg.db.execute('UPDATE event_source_timing SET body=?', (saved,))
+        result = self.reg.source_timing.diagnostics(self.now)
+        self.assertEqual(result['unknown_reasons'], {'persisted_timing_invalid': 1})
+        self.assertEqual(result['measured_source_records'], 0)
+        self.assertEqual(self.reg.db.execute('SELECT body FROM event_source_timing').fetchone()[0], saved)
+
     def test_absent_source_and_removal_remain_unknown(self):
         event = self.timed()
         event['source_timing']['source_occurred_at'] = None

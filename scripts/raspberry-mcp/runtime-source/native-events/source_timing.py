@@ -13,6 +13,7 @@ REASONS = frozenset(('observed', 'metadata_missing', 'metadata_invalid',
                     'snapshot_reconciliation', 'clock_order_unconfirmed'))
 INPUT_FIELDS = frozenset(('schema_version', 'frame_kind', 'source_occurred_at',
                          'collector_received_at', 'collector_observed_at'))
+MICROSECOND_SECONDS = 1 / 1_000_000
 FIELDS = frozenset(('schema_version', 'phase', 'state', 'reason', 'frame_kind',
                    'source_occurred_at', 'collector_received_at', 'collector_observed_at',
                    'ingested_at', 'source_to_receive_wall_ms', 'source_to_observation_wall_ms',
@@ -32,6 +33,15 @@ def stamp(value):
     return parsed.timestamp()
 
 
+def persisted_ingestion_time(value):
+    """Use the stored clock precision without hiding a reversed clock."""
+    canonical = stamp(iso(value))
+    # datetime serializes microseconds; time.time() can retain finer precision.
+    # Round toward the preceding stored instant so an ingestion before the
+    # observation never becomes an ordered receipt through rounding upward.
+    return stamp(iso(canonical - MICROSECOND_SECONDS)) if canonical > value else canonical
+
+
 def empty(phase, ingested, reason):
     row = dict.fromkeys(FIELDS)
     row.update(schema_version=1, phase=phase if phase in PHASES else None,
@@ -41,6 +51,7 @@ def empty(phase, ingested, reason):
 
 def project(value, phase, observed, ingested):
     """Invalid values become unknown without retaining arbitrary input fields."""
+    ingested = persisted_ingestion_time(ingested)
     if value is None:
         return empty(phase, ingested, 'metadata_missing')
     try:

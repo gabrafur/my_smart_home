@@ -69,6 +69,15 @@ não autoriza repetir uma entrega nem bloquear a fila original. O limite é 4.35
 recibos, correspondente aos limites existentes de eventos e arquivo. Registros
 anteriores não são apagados para abrir espaço.
 
+O código-fonte normaliza o instante de ingestão à precisão de microssegundos
+persistida antes de calcular os intervalos. O arredondamento usa o instante
+representável anterior: não transforma uma inversão de relógio em sucesso.
+Isso evita que um recibo novo seja rejeitado na releitura por uma diferença de
+0,001 ms entre o cálculo e o horário gravado. Recibos antigos não são corrigidos,
+reescritos ou aceitos por tolerância; inconsistências continuam desconhecidas.
+Esta correção de fonte exige implantação revisada e validação MCP posterior;
+testes sintéticos não comprovam a versão carregada nem a causa de um recibo antigo.
+
 `events_status.ha_notification_source_timing` separa registros retidos, recibos,
 fontes medidas e fontes desconhecidas na seleção das últimas 24 horas. Ausência
 de metadados, remoção, fotografia de reconexão, ordem dos relógios não confirmada
