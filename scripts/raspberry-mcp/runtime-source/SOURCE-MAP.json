@@ -1035,6 +1035,24 @@
         "installed_source_bytes_only",
         "not_loaded_worker_or_functional_Eva_proof"
       ]
+    },
+    "storage-maintenance/runtime.py": {
+      "source": "/usr/local/lib/raspberry-mcp-storage/runtime.py",
+      "source_sha256": "97e5320da643106be24169255f54a6315bc6647cdfa6ed23f9ac873f7e76be69",
+      "export_sha256": "97e5320da643106be24169255f54a6315bc6647cdfa6ed23f9ac873f7e76be69",
+      "normalizations": []
+    },
+    "storage-maintenance/broker.py": {
+      "source": "/usr/local/lib/raspberry-mcp-storage/broker.py",
+      "source_sha256": "fe6a13f33c74bc26dc6374854b7b78cf740cde1ca845ecbe1e04579e0a736bc6",
+      "export_sha256": "fe6a13f33c74bc26dc6374854b7b78cf740cde1ca845ecbe1e04579e0a736bc6",
+      "normalizations": []
+    },
+    "storage-maintenance/client_event_policy.py": {
+      "source": "/usr/local/lib/raspberry-mcp-storage/client_event_policy.py",
+      "source_sha256": "cd936a62a684b2f66398f622edf09091cc124f1b9bc41d2fabf4b91dfa3b9a49",
+      "export_sha256": "cd936a62a684b2f66398f622edf09091cc124f1b9bc41d2fabf4b91dfa3b9a49",
+      "normalizations": []
     }
   },
   "snapshot_scope_note": "Historical per-file captures; active readonly iCloud collector/root/broker delta is exported with unarmed bindings in ../icloud-readiness-candidate. Historical hashes remain provenance, not current loaded-runtime claims."

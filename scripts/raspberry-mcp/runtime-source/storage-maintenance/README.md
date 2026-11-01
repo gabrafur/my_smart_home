@@ -4,6 +4,29 @@ Este diretório contém o suplemento de diagnóstico e uma candidata de execuç�
 fechada. Código presente no checkout não comprova instalação, autorização,
 descoberta pelo cliente ou execução. Consulte o catálogo e a admissão reais.
 
+## Política de atuação do cliente por eventos
+
+`disk_space` pode expor `storage_maintenance_catalogue.current_admission.client_event_policy`.
+A projeção distingue a autorização do cliente, a admissão atual do executor e a
+execução comprovada. O campo `approval_active` não é recibo de limpeza; a agenda
+do servidor permanece desativada. A política completa não é repetida na resposta
+ampla de `maintenance_capabilities`, preservando seu orçamento de transporte.
+
+O leitor aceita somente o arquivo fixo Root0644 `client-event-policy.json`, com
+esquema e limites fechados. Ausência, identidade insegura, corrupção ou campos
+adicionais permanecem desconhecidos e não autorizam atuação. O marcador fixo
+Root0600 `/var/lib/raspberry-mcp-storage/client-policy-revoked` revoga a projeção
+do cliente. A revogação autoritativa das ações continua sendo a política e o
+marcador do catálogo de execução; retirar a instrução do cliente não substitui
+essa barreira. Não apagar recibos para revogar acesso.
+
+A instalação exige revisão dos hashes do runtime, do broker e de suas
+dependências, inclusive os pins usados nos pontos de entrada systemd. Alterar
+somente o arquivo de política não reconcilia esses consumidores. Após instalar,
+consultar tanto `disk_space` quanto `maintenance_capabilities`; testes locais
+não comprovam o contrato real ou o tamanho da resposta. A observação dessa
+política nunca constrói o motor de limpeza nem inicia trabalho recorrente.
+
 `observation.py` mede metadados em alvos fixos e preserva o relatório existente
 produzido por `scripts/storage-maintenance.sh`. Não chama esse script, seu
 `--apply`, botões do Home Assistant, serviços ou dispositivos. O perfil amplo do

@@ -13,11 +13,12 @@ import time
 import catalog
 import maintenance
 import observation
+import client_event_policy
 
 INPUTS = Path('/run/raspberry-storage-inputs')
 STATE = maintenance.STATE
 FILES = ('catalog.py', 'client.py', 'maintenance.py', 'observation.py',
-         'runtime.py', 'server.py', 'broker.py', 'route.mjs', 'entry.mjs')
+         'runtime.py', 'server.py', 'broker.py', 'route.mjs', 'entry.mjs', 'client_event_policy.py')
 
 
 def approval(*, metadata=False):
@@ -91,6 +92,7 @@ def admission():
                       expires_at=p.get('expires_at'), allowed_scopes=list(catalog.SCOPES))
     except (OSError, ValueError):
         result['collection_error'] = 'storage_execution_admission_unavailable'
+    result['client_event_policy'] = client_event_policy.observe()
     return result
 
 

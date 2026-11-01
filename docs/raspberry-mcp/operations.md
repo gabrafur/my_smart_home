@@ -51,6 +51,11 @@ limpeza ampla, recorrência, expurgo de backups ou alteração de concessões Co
 Preservar plano apresentado, confirmação da interface, limites persistidos e
 reconciliação. A recorrência permanece desativada até política própria aprovada.
 
+Quando houver política aprovada de atuação do cliente por eventos, consulte sua
+projeção completa pelo catálogo presente em `disk_space`. A agenda do servidor
+e a admissão de execução são estados separados; a [referência do catálogo](../../scripts/raspberry-mcp/runtime-source/storage-maintenance/README.md#política-de-atuação-do-cliente-por-eventos)
+descreve identidade, revogação e limites desse contrato.
+
 ## Núcleo protegido de execução por componente
 
 Consultar o [perfil e o procedimento por componente](reference/component-repair.md#núcleo-protegido-instalado-com-perfil-inicial-do-host)

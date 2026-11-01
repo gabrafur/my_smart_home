@@ -24,6 +24,12 @@ class Broker(legacy.Broker):
                 c['current_admission'] = observation.get('maintenance_admission')
                 return {'storage_health': legacy.health.storage_health(),
                         'storage_maintenance_catalogue': c, 'storage_metadata_refresh': observation}
+            # Preserve the existing broad capabilities response size. Full
+            # client policy is available on the dedicated disk_space route.
+            observation = dict(observation)
+            if isinstance(observation.get('maintenance_admission'), dict):
+                observation['maintenance_admission'] = dict(observation['maintenance_admission'])
+                observation['maintenance_admission'].pop('client_event_policy', None)
             value = super().handle(name, args)
             target = value['evidence']['data']
             target['storage_health'] = legacy.health.storage_health()
