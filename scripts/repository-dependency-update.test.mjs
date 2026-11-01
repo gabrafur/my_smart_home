@@ -8,13 +8,24 @@ import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { normalizeAudit } from "../nodered/tools/scan-repository-dependency-audit.mjs";
-import { selectSameMajorTarget, validatePackageName, withPublicDependencyUmask } from "./update-repository-dependency.mjs";
+import { selectSameMajorTarget, validatePackageName, withPublicDependencyUmask, reconcileRuntimeRollback } from "./update-repository-dependency.mjs";
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const requestScript = path.join(scriptsDir, "request-host-repository-dependency-update.sh");
 const readScript = path.join(scriptsDir, "read-host-repository-dependency-update-result.sh");
 const processScript = path.join(scriptsDir, "process-repository-dependency-update-request.sh");
 const updateScript = path.join(scriptsDir, "update-repository-dependency.mjs");
+
+test("rollback reports verification separately while preserving the original failure", () => {
+  const original = new Error("nodered_dependency_validation_failed");
+  let calls = 0;
+  assert.equal(reconcileRuntimeRollback(original, false, () => calls++, () => calls++).rollback, "not_required");
+  assert.equal(calls, 0);
+  assert.equal(reconcileRuntimeRollback(original, true, () => calls++, () => calls++).rollback, "verified");
+  assert.equal(calls, 2);
+  assert.equal(reconcileRuntimeRollback(original, true, () => {}, () => { throw new Error("mismatch"); }).rollback, "unconfirmed");
+  assert.equal(original.message, "nodered_dependency_validation_failed");
+});
 
 test("public dependencies remain readable and the private caller mask is restored", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "repository-dependency-mask-"));

@@ -81,6 +81,18 @@ export function withPublicDependencyUmask(install) {
   }
 }
 
+export function reconcileRuntimeRollback(error, touched, restore, verify) {
+  if (!touched) { error.rollback = "not_required"; return error; }
+  try {
+    restore();
+    verify();
+    error.rollback = "verified";
+  } catch {
+    error.rollback = "unconfirmed";
+  }
+  return error;
+}
+
 function installRuntime() {
   // Public packages must remain readable by both the host and container UIDs,
   // including when the scheduler inherits a private 077 mask.
@@ -149,10 +161,9 @@ export function updateDependency({ packageName, dryRun = false }) {
   } catch (error) {
     fs.writeFileSync(packagePath, packageBefore);
     fs.writeFileSync(lockPath, lockBefore);
-    if (runtimeTouched) {
-      try { installRuntime(); } catch { /* Preserve the original failure. */ }
-    }
-    throw error;
+    throw reconcileRuntimeRollback(error, runtimeTouched, installRuntime, () => {
+      if (runtimeVersion(name) !== currentVersion) throw new Error("rollback_version_mismatch");
+    });
   }
 }
 
@@ -172,7 +183,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const result = updateDependency(parseArgs(process.argv.slice(2)));
     console.log(`repository-dependency-update status=${result.status} package=${result.package} from=${result.from} to=${result.to}`);
   } catch (error) {
-    console.error(`repository-dependency-update status=failed reason=${String(error?.message ?? "unknown").replace(/[^A-Za-z0-9_.-]/g, "_").slice(0, 80)}`);
+    const rollback = ["not_required", "verified", "unconfirmed"].includes(error?.rollback) ? error.rollback : "unknown";
+    console.error(`repository-dependency-update status=failed reason=${String(error?.message ?? "unknown").replace(/[^A-Za-z0-9_.-]/g, "_").slice(0, 80)} rollback=${rollback}`);
     process.exitCode = String(error?.message) === "repository_not_clean" ? 75 : 1;
   }
 }
