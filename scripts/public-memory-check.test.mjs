@@ -13,6 +13,7 @@ function createFixture() {
     ".codex/instructions/codex-general.md": `# Geral
 
 \`.agents/skills/prompt-improver/SKILL.md\`
+\`.agents/skills/desktop-browser-maintenance/SKILL.md\`
 `,
     ".codex/instructions/dashboards.md": "# Dashboards\n",
     ".codex/instructions/host-safety.md": "# Host\n\nNunca use `make -j`.\n",
@@ -57,6 +58,7 @@ Consulte [o guia](../../../docs/MEMORIA_VERSIONADA_AGENTES.md) e rode \`make val
     "docs/MEMORIA_VERSIONADA_AGENTES.md": "# Governança da memória\n",
     ".agents/skills/prompt-improver/SKILL.md": "---\nname: prompt-improver\ndescription: Improve prompts.\n---\n",
     ".agents/skills/rtx-context-optimizer/SKILL.md": "---\nname: rtx-context-optimizer\ndescription: Optimize context.\n---\n",
+    ".agents/skills/desktop-browser-maintenance/SKILL.md": "---\nname: desktop-browser-maintenance\ndescription: Test desktop browser maintenance.\n---\n",
     "scripts/weekly-docs-review.prompt.md": `# Revisão
 
 ## Memória versionada dos agentes
