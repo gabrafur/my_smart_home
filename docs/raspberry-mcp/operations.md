@@ -117,6 +117,16 @@ um comando ou uma configuração fornecida pelo cliente. A identidade durável
 registrada determina o perfil dos envios posteriores. Tarefas comuns preservam
 o perfil restrito original; texto de uma tarefa comum não a promove.
 
+O executor lê `AGENTS.md` e o contexto privado vigente em
+`.local-state/eva-maintenance/ACTIVE-GOAL.json`, que aponta para o checkpoint
+operacional. O operador mantém esse contexto fora do Git, com o escopo atual,
+restrições e operações que exigem reconciliação. Ele não concede autoridade:
+admissão, identidade, cotas e prazo continuam nas políticas seladas. Contexto
+ausente ou contraditório mantém somente observação. Não encaminhar tarefas a
+checkpoints históricos ausentes nem congelar uma validade antiga no prompt.
+A alteração das instruções exige revisar os hashes transitivos existentes;
+não muda o perfil ou dispensa a verificação real de cada efeito.
+
 Procedimento:
 
 1. Registrar objetivo, critérios, chave e IDs distintos de criação/envio no

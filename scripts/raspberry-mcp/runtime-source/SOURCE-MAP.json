@@ -23,11 +23,10 @@
     },
     "task-control/task_rpc.cjs": {
       "source": "/usr/local/lib/raspberry-task-control/task_rpc.cjs",
-      "source_sha256": "f8d7afb1c58accfa0d850d45d943e5ca06e9d7b1c99122655c3233b181a15faa",
-      "export_sha256": "2f15005cbb03546fcb96a8c1e82ab002deafa8bf52721a897dde11a72853dd27",
-      "normalizations": [
-        "same_prompt_timestamp_split_into_concatenated_string_literals"
-      ]
+      "source_sha256": "1cc35cd32085800287048857b42cd70747e623eb1a63ae57117370c93231cbdf",
+      "export_sha256": "1cc35cd32085800287048857b42cd70747e623eb1a63ae57117370c93231cbdf",
+      "normalizations": [],
+      "source_observed_at": "2026-11-01T22:49:18Z"
     },
     "task-control/task_list.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_list.py",

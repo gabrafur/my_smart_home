@@ -32,14 +32,15 @@ function profileParams(admin){return admin
  ? {cwd:PROJECT,approvalPolicy:'never',sandbox:'danger-full-access'}
  : {cwd:PROJECT,approvalPolicy:'never',permissions:':workspace',runtimeWorkspaceRoots:[PROJECT],config:{'sandbox_workspace_write.network_access':false}};}
 function adminPrompt(q){
- return 'Tarefa administrativa delegada expressamente pelo proprietário à Eva/dots. Objetivo:\n'+q.text+
- '\nAutoridade: mesma delegação administrativa da conversa principal para a meta doméstica em /mnt/data/docker e plano /home/gabriel/smart-home-proactive-review-20261023. '+
- 'Leia AGENTS.md, checkpoint.json, NEXT-CONVERSATION.json e GOAL-ADDENDUM-EVA-20261024.txt. A autorização não exige novas aprovações por ação dentro da meta. '+
+ return 'Tarefa administrativa delegada expressamente pelo proprietário. Objetivo:\n'+q.text+
+ '\nEscopo: somente o host raspberry e o projeto /mnt/data/docker. Leia AGENTS.md e .local-state/eva-maintenance/ACTIVE-GOAL.json; siga o checkpoint indicado para reconciliar trabalhos existentes. '+
+ 'O contexto da meta não concede autoridade: valide a admissão e as políticas seladas vigentes antes de qualquer efeito. Se o contexto estiver ausente, contraditório ou a admissão desconhecida, preserve somente observação e reporte o bloqueio. Não herde escopo ou autorização de artefatos históricos. '+
  'Identidade nativa gabriel UID1001. Quando necessário e dentro da validade, use somente a conta dedicada codex-house-01a16f9f pela rota sudo -n -u codex-house-01a16f9f /usr/bin/sudo -n, sem senha. '+
- 'Código e políticas privilegiados devem pertencer a root. Validade administrativa termina em 2026-10-25T15:25:22.'+'244394Z: não prorrogue, não mantenha acesso administrativo residual e não comece trabalho privilegiado que ultrapasse o prazo. '+
+ 'Código e políticas privilegiados devem pertencer a root. Confira o prazo real da delegação e da ação: não prorrogue, não mantenha acesso administrativo residual e não comece trabalho privilegiado que ultrapasse o prazo. '+
  'Preserve execução serial, limites compartilhados, custo adicional zero e quota incluída. Não exporte nem capture credenciais, mensagens privadas, histórico bruto ou logs privados. '+
- 'Não use Docker como contorno, não gere eventos artificiais, não amplie efeitos residenciais ou reabra iluminação. Não repita operações incertas nem troque IDs/intents; reconcilie os recibos. '+
- 'Não instale mecanismos de shell livre ou sudo geral no MCP. Não crie threads/agentes adicionais. Faça correção revisável, valide resultado real, registre evidência sanitizada no checkpoint central e preserve trabalhos concorrentes. '+
+ 'Não use Docker como contorno, não gere eventos artificiais nem amplie efeitos residenciais. Não repita operações incertas nem troque IDs/intents; reconcilie os recibos. '+
+ 'Use somente contratos existentes com alvos fixos e limites de impacto, preservando confirmação da interface, proteção de dados, concorrência, deduplicação e reversão própria. Aprovação técnica não autoriza exclusão irreversível de itens protegidos nem cria política recorrente. '+
+ 'Não instale mecanismos de shell livre ou sudo geral no MCP. Não crie threads/agentes adicionais. Faça correção revisável, valide resultado real, registre evidência sanitizada no checkpoint indicado e preserve trabalhos concorrentes. '+
  'Na resposta final, devolva somente JSON com operation_id="'+q.operation_id+'", project="/mnt/data/docker", state (checkpoint, progress, blocked ou complete), summary (até1200 caracteres) e next_step (até300 caracteres). Não inclua dados privados.';
 }
 function prompt(q){
