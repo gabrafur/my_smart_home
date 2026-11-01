@@ -129,6 +129,36 @@ usou os registros já existentes daquela manhã, sem novos eventos. A associaç�
 representa o último erro retido desse ID, não prova o disparo original ou a RCA.
 O histórico privado e a retenção anterior não foram alterados.
 
+### Recibo do evento, lote e transporte
+
+Quando oferecido pelo produtor e pelo frontend carregados,
+`events_status.latest_delivery_receipt` correlaciona o último dispatch do mesmo
+principal com seu lote, os membros retidos e a conclusão do transporte. O campo
+é adicional: não cria ferramenta, assinatura, tentativa ou nova autorização.
+Para atribuir um aviso, compare exatamente `object_id`, `revision` e `phase`
+de um membro; proximidade de horário e semelhança de título não bastam.
+
+O recibo verifica o digest do lote com todos os IDs de membros, até 256, e
+retorna detalhes de no máximo oito. `members_truncated` informa a cobertura
+parcial dos detalhes. Os registros podem vir do conjunto atual ou do arquivo;
+nenhum corpo, título, URL, credencial ou nome privado é retornado. O horário
+do membro pertence ao evento retido no registry e não substitui o relógio de
+origem do HA. Fonte, idade e erro do transporte são informados separadamente.
+
+`batch_membership_verified=true` comprova a associação dos registros ao lote.
+`transport.outcome=response_2xx` comprova a resposta HTTP recebida pelo sender,
+sem comprovar execução, mensagem ou manutenção pelo assistente.
+`assistant_execution` continua `unknown`. Conclusão de transporte ausente,
+dispatch incerto, fonte antiga e associação inválida permanecem distintos;
+nenhum desses estados autoriza reenviar o lote ou apagar seu histórico.
+
+A consulta é somente leitura e usa os índices existentes, no máximo 257 IDs
+para conferir o limite e oito detalhes. O diagnóstico tem limite de 8 KiB e
+orçamento de progresso SQLite de 100.000 passos/50 ms, conferido a cada mil
+passos. Isso não é um teto rígido de tempo de parede: a conexão mantém seu
+timeout de lock existente. Testes e import isolado não comprovam o frontend
+persistente; conferir o campo pela interface MCP realmente usada pelo cliente.
+
 ### Instalação, atualização e revogação
 
 As fontes auditadas estão em

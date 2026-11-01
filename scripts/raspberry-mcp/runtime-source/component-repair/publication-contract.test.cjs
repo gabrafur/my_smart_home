@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const {linuxDevice,kernelHas,input}=require('./publication_bridge.cjs');
+const device=linuxDevice(0xb302n);assert.deepEqual(device,{major:179,minor:2});
+const lock={dev:0xb302n,ino:99n};
+assert.equal(kernelHas('18: FLOCK  ADVISORY  WRITE 1234 b3:02:99 0 EOF\n',lock,1234),true);
+assert.equal(kernelHas('18: FLOCK  ADVISORY  WRITE 999 b3:02:99 0 EOF\n',lock,1234),false);
+assert.equal(kernelHas('18: -> FLOCK  ADVISORY  WRITE 1234 b3:02:99 0 EOF\n',lock,1234),false);
+assert.equal(kernelHas('18: POSIX  ADVISORY  WRITE 1234 b3:02:99 0 EOF\n',lock,1234),false);
+assert.equal(kernelHas('18: FLOCK  ADVISORY  READ 1234 b3:02:99 0 EOF\n',lock,1234),false);
+assert.throws(()=>input({operation_id:'a'.repeat(32),review_sha256:'b'.repeat(64),expires_at:Date.now()/1000+60,root_parent_pid:1234,operations_holder_pid:1235,path:'/etc'}));
+assert.throws(()=>input({operation_id:'a'.repeat(32),review_sha256:'b'.repeat(64),expires_at:0,root_parent_pid:1234,operations_holder_pid:1235}));
+console.log(JSON.stringify({synthetic_publication_checks:8,native_locks_acquired:0,native_publications:0}));

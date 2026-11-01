@@ -666,6 +666,14 @@ numéricos preservam histórico. GPU, VRAM e potência ociosas permanecem sem
 amostra, sem produzir zeros artificiais. Os gráficos novos começam com seus
 próprios sensores; o histórico legado permanece preservado.
 
+O helper ao vivo publica `service_unavailable` quando recebe uma observação
+recente de indisponibilidade do serviço. Ele não usa nesse caso o estado
+`unavailable`, que a normalização trata como ausência do transporte. Assim, o
+painel distingue serviço indisponível de “Sem sinal”; falhas de coleta continuam
+`error` e uma verificação antiga continua `stale`. O teste
+`homeassistant/tests/test_codex_rtx_live.py` cobre essas distinções sem acessar a
+GPU nem o serviço.
+
 O layout mantém os dois waterfalls em tiles: **hoje · UTC** e **total
 preservado**, com as mesmas 18 etapas, cores, nomes e unidades. Entidades
 `sensor.rtx_waterfall_today_*` e `sensor.rtx_waterfall_total_*` são publicadas

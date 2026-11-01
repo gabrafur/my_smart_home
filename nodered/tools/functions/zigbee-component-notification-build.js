@@ -14,7 +14,9 @@ if (msg.zigbee_component_event === "down") msg.notification = {
 else if (msg.zigbee_component_event === "recovery") msg.notification = {
     id: `zigbee_component_recovered_${msg.zigbee_component_key}`,
     dismiss_id: `zigbee_component_${msg.zigbee_component_key}`, title: "Componente Zigbee recuperado",
-    message: `O componente Zigbee “${component}” voltou a ficar disponível em ${when}.`
+    message: `O componente Zigbee “${component}” voltou a ficar disponível em ${when}.` +
+        (msg.zigbee_component_route_context?.state === "pending"
+            ? " O incidente de rota permanece aberto; o funcionamento dos comandos não está comprovado." : "")
 };
 else if (msg.zigbee_component_event === "reminder") msg.notification = {
     id: `zigbee_component_${msg.zigbee_component_key}`, title: "Componente Zigbee continua indisponível",

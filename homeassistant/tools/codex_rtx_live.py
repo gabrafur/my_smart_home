@@ -37,6 +37,9 @@ def main() -> None:
             state = "stale"
         else:
             state = str(preflight.get("state") or "unavailable").lower().replace("local_ai_", "")
+            # A fresh negative service observation is data, not an HA sentinel.
+            if state == "unavailable":
+                state = "service_unavailable"
         result = {
             "state": state,
             "task": job.get("task"),

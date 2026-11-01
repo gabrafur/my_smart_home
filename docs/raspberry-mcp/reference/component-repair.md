@@ -4,7 +4,155 @@ Referência temática de implementação e aceites históricos. Datas identifica
 evidências; não são autorização vigente nem prova de cobertura atual. Consulte
 o [índice operacional](../README.md) e as capacidades reais antes de agir.
 
-## Candidato de reparo por componente ainda desativado
+## Núcleo protegido instalado com perfil inicial do host
+
+O núcleo Root foi instalado e consultado pela interface MCP real. O campo
+`evidence.data.protected_component_maintenance` de `maintenance_capabilities`
+retornou coleta válida e perfil `observacao_host`. Uma chamada real de envio na
+mesma tarefa registrou e preparou a candidata; a validação nativa isolada passou
+pelas nove verificações do perfil. Tentativas anteriores foram recusadas antes
+do efeito, com recibo terminal e limpeza confirmada. Uma execução posterior
+concluiu aplicação, confirmação da identidade carregada, teste funcional isolado
+após a aplicação e leituras nativas finais. A operação foi verificada e liberada.
+Esse aceite cobre somente o isolamento de status do reset de teste do observador;
+não equivale a replay completo do fluxo, saúde residencial, reversão real ou
+atuação espontânea do cliente.
+Uma tentativa posterior concluiu a selagem normalmente, mas terminou a fase de
+aplicação sem recibo nativo verificável. Sua incerteza original foi preservada e
+posteriormente reconciliada por prova forense protegida de falha anterior ao
+registro do worker. O resultado identifica essa origem e não afirma ter
+recuperado a saída perdida do processo. A operação foi liberada sem repetir o
+efeito. A regressão isolada, por si só, não autoriza essa reconciliação.
+
+A leitura do inventário aceita os quatro registros que o executor já admitia e
+continua rejeitando um quinto. A consulta MCP real confirmou os quatro registros
+liberados, sem jobs pendentes ou reservas lógicas ativas. Após a mudança de fonte,
+o perfil inicial fica obsoleto e informa `profile_refresh_required`; isso não
+deve ser confundido com falha do transporte nem com autorização para repetir a
+proposta antiga. Um novo reparo exige perfil e proposta compatíveis com a fonte
+atual. A recorrência permanece uma configuração separada.
+
+As [fontes exportadas](../../../scripts/raspberry-mcp/runtime-source/component-repair/README.md)
+separam autorização, reservas duráveis, observação somente leitura, escrita
+canônica, validação isolada, revisão, efeito e recibos. A exportação remove
+bindings temporários e não instala políticas, concede sudo ou ativa agenda.
+Cada entrada de `SOURCE-MAP.json` informa quando os bytes de origem foram
+observados. O snapshot público pode anteceder uma correção instalada ou uma
+candidata em revisão: confira os hashes atuais antes de usar a exportação para
+reinstalar ou diagnosticar o runtime. Aprovação de uma candidata não comprova
+sua instalação; a existência de um arquivo instalado não comprova sua execução.
+O transporte imediato usa `codex_task_create`, `codex_task_send`,
+`codex_task_status` e `codex_task_reconcile`; nenhum nome ou schema novo de
+ferramenta foi necessário. As doze ferramentas do protótipo histórico abaixo
+continuam fora do catálogo ativo.
+
+### Descoberta e execução
+
+1. Consultar as capacidades atuais. `execution_active` descreve admissão para
+   uma nova preparação; não é permissão genérica ou prontidão funcional.
+   Conferir `component_id`, `pending_jobs`, `active_reservations`,
+   `canonical_before_matches_profile` e `profile_refresh_required`. Uma operação
+   própria já registrada conserva gates independentes para suas fases.
+2. Registrar criação/envio reais e conferir o perfil administrativo. O request
+   protegido vincula operação, tarefa e esse mesmo envio; texto, flags ou IDs
+   inventados não constituem autorização. Um turno diferente do request precisa
+   de vínculo revisado antes de executar. Não enviar outro turno para repetir
+   fase cujo resultado esteja incerto.
+3. O executor usa o CLI interno fechado para `prepare`, `validate`, `seal`,
+   `apply`, `rollback`, `status`, `reconcile`, `verify`, `cancel` e `release`.
+   Não são ferramentas MCP de shell. Antes de `seal`, o operador autorizado
+   revisa o diff e os hashes reais de fonte/render; o modelo não fornece
+   simplesmente um booleano de teste aprovado.
+4. Aplicação e reversão são jobs duráveis, com intent antes da solicitação
+   nativa, CAS de fontes e configuração, locks e revogação da sessão. Status e
+   reconciliação não repetem testes, POST ou compensação. Um resultado incerto
+   preserva sua reserva. Cancelamento e liberação obedecem ao estado comprovado
+   e conservam o histórico.
+5. Guardar o resultado terminal e reconhecer o hash exato do turno. Verificar
+   separadamente o comportamento nativo exigido pelo componente e a execução
+   específica do cliente. Hash carregado, fonte publicada e diagnóstico ativo
+   não substituem essas provas.
+
+### Recibos parciais e diagnóstico de recusa
+
+Uma publicação pode terminar de gravar os quatro artefatos e falhar ao devolver
+o resultado ao chamador. Antes de concluir que nada ocorreu, confira o recibo,
+os hashes e as identidades dos arquivos. Uma reconciliação autorizada pode
+concluir uma transição de estado comprovadamente ausente; não deve republicar
+os artefatos nem repetir um efeito incerto. Preserve também a falha original.
+
+O diagnóstico protegido do executor registra etapa, classe de exceção, errno e
+razão de uma lista fechada. Mensagens livres, argumentos, traceback, credenciais
+e payload não fazem parte desse resultado. Uma recusa anterior ao lançamento
+do processo não prova falha de autenticação ou indisponibilidade do Node-RED.
+
+Uma incompatibilidade reproduzida na revisão anterior ocorria porque o pai podia preservar
+`diagnostic.json` junto ao recibo de recusa, mas o registro do worker rejeitava
+esse nome ao examinar operações anteriores. A correção admite somente esse nome
+adicional, preservando ownership, modos, links, quantidade e limites de bytes.
+Não remova o diagnóstico para contornar o bloqueio.
+
+A reserva lógica do workflow e a reserva de armazenamento têm ciclos separados.
+O preparador soma bytes presentes e espaço ainda prometido; espaço livre no host
+não substitui esse limite. Encerrar uma operação não apaga seus artefatos nem
+libera automaticamente a reserva de disco. Uma reconciliação de reserva precisa
+comprovar o encerramento, ausência de efeito e limpeza de segurança, preservar o
+recibo original e excluir concorrência. Não aumente o teto nem faça prune para
+mascarar uma reserva obsoleta. Uma falha antes de criar a preparação exige prova
+desse ponto exato antes de continuar somente a etapa ainda não executada.
+
+Uma reconciliação forense usa evidência Root separada, vinculada à operação e
+ao resultado por hash. O resultado conserva `receipt_origin`,
+`original_worker_receipt_present: false` e `historical_stdout_recovered: false`.
+Não se cria um recibo nativo retroativo. A verificação precisa demonstrar que o
+registro obrigatório não ocorreu, que o código correspondente era o pinado,
+que o executor terminou, que as fontes continuam consistentes e que não há
+limpeza de sessão pendente. Essa prova não é reparo funcional nem autorização
+para repetir a operação. A confiança pressupõe integridade do host Root.
+
+Uma operação adicional exige a admissão vigente e um envio novo ainda ativo,
+na mesma tarefa e proposta. A liberação de uma operação antiga não apaga seu
+registro, não renova autoridade nem zera cotas. Confira o limite efetivo no
+contrato atual; não deduza autorização de repetição a partir de um erro.
+
+Para revisar a checagem de frescor, compare a observação com o relógio obtido
+depois da coleta e revalide a margem da autorização. Rejeite observações antigas
+ou futuras. Para revisar a publicação, confira também o contrato de retorno:
+o hash de revisão verificado no recibo deve chegar ao chamador que o exige.
+Esses dois contratos têm regressões isoladas; sua correção candidata permanece
+distinta de instalação e aceite nativo.
+
+### Escopo e isolamento
+
+Só `observacao_host` está habilitado. O perfil restringe nove fontes canônicas e
+uma revisão Git pública coerente, sem copiar configuração privada para testes.
+Mudar outro componente ou avançar a revisão exige novo perfil e validação
+protegidos. `profile_refresh_required` mantém esse requisito visível.
+
+O rename atômico do SourceWriter requer acesso às duas pastas pai; a restrição
+aos nove nomes é aplicada pelo código Root pinado, com comparação de bytes,
+metadata e inode. O candidato executa somente no sandbox UID65534, sem rede,
+credenciais ou dados privados. A publicação de uma fonte não a executa.
+
+O guard de concorrência é um socket interno somente de leitura/admissão, sem
+credencial e com capabilities vazias. Um bind readonly de um único lock permite
+comparar seu inode com o WRITE FLOCK do peer em `/proc/locks`, sem alterar modo,
+ACL ou proprietário original nem conceder DAC/ptrace amplo. As mutações dos
+dispatches registrados consultam esse guard; os executores também checam jobs
+legados, reservas, locks de manutenção e estados desconhecidos.
+
+O consumidor funcional inicial prova o defeito específico do reset de teste do
+host em execução isolada e sua correspondência com o hash carregado. Ele declara
+`native_full_flow_replay: false`: o replay no runtime Node-RED real continua
+separado. Não certifica saúde física, Zigbee, outras integrações, reação da Eva
+ou a meta completa. A recorrência permanece **desativada**, sem transformar
+saúde/webhooks em executores de manutenção.
+
+O núcleo e os contratos não selecionam modelo. Outro chatbot pode usar o mesmo
+MCP e a mesma autoridade local; a rota atual de tarefas ainda depende do
+adaptador/daemon Codex. Trocar o executor também requer implementação e aceite.
+
+## Protótipo histórico de doze ferramentas desativadas
 
 O [protótipo e seus esquemas](../../../scripts/raspberry-mcp/component-repair-candidate/README.md)
 separam fonte revisada, identidade carregada, reservas, recibos e prova funcional.

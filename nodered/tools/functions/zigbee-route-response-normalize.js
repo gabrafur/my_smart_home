@@ -1,35 +1,23 @@
-let payload = msg.payload;
-if (typeof payload === "string") {
-    try { payload = JSON.parse(payload); } catch { payload = null; }
-}
-const transaction = String(payload?.transaction || "");
-const testMode = transaction.startsWith("nodered-zigbee-route-test-");
-const prefixValid = testMode || transaction.startsWith("nodered-zigbee-route-");
-const stateKey = testMode ? "zigbee_route_incidents_v1__test" : "zigbee_route_incidents_v1";
-const incidents = (testMode ? flow.get(stateKey) : flow.get(stateKey, "persistent")) || {};
-const entry = Object.entries(incidents).find(([, value]) => value.pending_transaction === transaction);
-msg.zigbee_route_response_valid = Boolean(msg.retain !== true && prefixValid && entry && entry[1].incident_open && ["ok", "error"].includes(payload?.status));
+let p = msg.payload;
+if (typeof p === "string") { try { p = JSON.parse(p); } catch { p = null; } }
+const tx = String(p?.transaction || ""), test = tx.startsWith("nodered-zigbee-route-test-");
+const stateKey = test ? "zigbee_route_incidents_v1__test" : "zigbee_route_incidents_v1";
+const rows = (test ? flow.get(stateKey) : flow.get(stateKey,"persistent")) || {};
+const pair = Object.entries(rows).find(([,v]) => v.pending_transaction === tx ||
+    (v.pending_transaction == null && v.native_completion_state === "terminal" && v.last_terminal_transaction === tx));
+const c = pair?.[1], kind = msg.topic === "zigbee2mqtt/bridge/response/networkmap" ? "networkmap" :
+    msg.topic === "zigbee2mqtt/bridge/response/device/configure" ? "configure" : null;
+const stage = c?.native_stage || ({scanning:"networkmap",configuring:"configure",verifying:"configure"})[c?.phase];
+const old = c?.pending_transaction == null && c?.native_completion_state === "terminal";
+msg.zigbee_route_response_valid = Boolean(msg.retain !== true && tx.startsWith("nodered-zigbee-route-") && c && kind === stage &&
+    ["ok","error"].includes(p?.status) && !(old && c.last_terminal_status === p.status));
 if (!msg.zigbee_route_response_valid) return msg;
-const [key, current] = entry;
-msg._zigbee_test = testMode;
-msg.zigbee_route_state_key = stateKey;
-msg.zigbee_route_incidents = incidents;
-msg.zigbee_route_key = key;
-msg.zigbee_route_current = JSON.parse(JSON.stringify(current));
-msg.zigbee_route_revision = Number(current.revision || 0);
-// Duplicate map responses must not start another configure. Late configure
-// failures remain correlated while a successful response is being verified.
-const scan = msg.topic === "zigbee2mqtt/bridge/response/networkmap";
-if ((scan && current.phase !== "scanning") ||
-    (!scan && !["configuring", "verifying"].includes(current.phase)) ||
-    (!scan && current.phase === "verifying" && payload.status === "ok")) {
-    msg.zigbee_route_response_valid = false;
-    return msg;
-}
-msg.zigbee_route_device = current.device;
-msg.zigbee_route_ieee = current.ieee;
-msg.zigbee_route_response_status = payload.status;
-msg.zigbee_route_response_error = String(payload.error || "");
-msg.zigbee_route_now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();
-msg.zigbee_route_now_iso = new Date(msg.zigbee_route_now).toISOString();
+const now = Number.isFinite(Number(msg.monitor_now)) ? Number(msg.monitor_now) : Date.now();
+Object.assign(msg, {_zigbee_test:test, payload:p, zigbee_route_state_key:stateKey,
+    zigbee_route_key:pair[0], zigbee_route_current:{...c}, zigbee_route_revision:Number(c.revision || 0),
+    zigbee_route_device:c.device, zigbee_route_ieee:c.ieee, zigbee_route_response_status:p.status,
+    zigbee_route_response_error:String(p.error || ""), zigbee_route_response_transaction:tx,
+    zigbee_route_response_stage:kind, zigbee_route_response_reconcile_only:old || !c.incident_open ||
+        c.native_completion_state === "unknown" || now >= Date.parse(c.next_retry_at || ""),
+    zigbee_route_now:now, zigbee_route_now_iso:new Date(now).toISOString()});
 return msg;

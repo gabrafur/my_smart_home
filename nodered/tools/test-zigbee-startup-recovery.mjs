@@ -45,16 +45,16 @@ await component('online',t+1610000);await tick(t+1670000);assert.equal(notificat
 assert.equal(f.get('zigbee_route_incidents_v1','persistent'),undefined,'test state isolated');
 assert.ok(h.dry.length>5);assert.ok(!h.seen.includes('zigbee_route_recovery_mqtt'));assert.ok(!h.seen.includes('zigbee_route_configure_mqtt'));
 console.log('Zigbee graph replay: startup, duplicate messages/maps, late configure failure, timed retry, fresh evidence, stability, availability flap and dry-run passed.');
-// Interrupted requests are bounded even when neither map nor configure responds.
+// Unanswered native requests retain one reservation; elapsed time cannot prove cancellation.
 const stalled=harness(),sf=stalled.flowFor(tab);
 await stalled.run('zigbee_policy_default',{});sf.set('zigbee_boot_at__test',t);
 await stalled.run('zigbee_network_observation_normalize',{_zigbee_test:true,monitor_now:t,payload:'online'});
 await stalled.run('zigbee_route_error_normalize',{_zigbee_test:true,monitor_now:t+180000,payload:{level:'error',message:"Publish 'set' to 'teste_rota' failed: NWK_NO_ROUTE"}});
 for(const delta of [1080000,1980000,2880000,3780000])await stalled.run('zigbee_settle_tick_in',{_zigbee_test:true,monitor_now:t+delta});
 const exhausted=Object.values(sf.get('zigbee_route_incidents_v1__test'))[0];
-assert.equal(exhausted.attempts,3);assert.equal(exhausted.exhaustion_notified,true);
-assert.equal(stalled.dry.filter(x=>x.msg.topic==='zigbee2mqtt/bridge/request/networkmap').length,3);
-assert.equal(stalled.dry.filter(x=>x.msg.notification).length,2,'one opening and one final exhaustion');
+assert.equal(exhausted.attempts,1);assert.equal(exhausted.native_completion_state,"unknown");assert.ok(exhausted.pending_transaction);
+assert.equal(stalled.dry.filter(x=>x.msg.topic==='zigbee2mqtt/bridge/request/networkmap').length,1);
+assert.equal(stalled.dry.filter(x=>x.msg.notification).length,1,'one opening; missing native completion cannot exhaust by timer');
 // The same read version cannot reserve two attempts across interleaved messages.
 const race=harness(),rf=race.flowFor(tab);await race.run('zigbee_policy_default',{});
 const runFunction=(id,msg)=>new Function('msg','flow','node',race.by.get(id).func)(msg,rf,{status(){}});
@@ -71,9 +71,9 @@ await restarted.run('zigbee_network_observation_normalize',{_zigbee_test:true,mo
 await restarted.run('zigbee_settle_tick_in',{_zigbee_test:true,monitor_now:t+900000});assert.equal(rr.get('zigbee_route_incidents_v1__test').route.incident_open,true);
 await restarted.run('zigbee_route_telemetry',{_zigbee_test:true,monitor_now:t+900001,topic:'zigbee2mqtt/teste_rota',payload:{state:'ON'}});
 await restarted.run('zigbee_settle_tick_in',{_zigbee_test:true,monitor_now:t+900001});assert.equal(rr.get('zigbee_route_incidents_v1__test').route.incident_open,false);
-console.log('Zigbee additional replays: unanswered-request exhaustion, atomic reservation and persisted restart without old evidence passed.');
+console.log('Zigbee additional replays: unanswered-request reconciliation, atomic reservation and persisted restart without old evidence passed.');
 
-// A device can heal naturally after attempts are exhausted; two fresh reports
+// A device can heal naturally while native completion is unknown; two fresh reports
 // spanning the stability window close the same incident without another configure.
 await stalled.run('zigbee_route_telemetry',{_zigbee_test:true,monitor_now:t+4000000,topic:'zigbee2mqtt/teste_rota',payload:{state:'ON'}});
 await stalled.run('zigbee_settle_tick_in',{_zigbee_test:true,monitor_now:t+4300000});
@@ -81,7 +81,7 @@ assert.equal(Object.values(sf.get('zigbee_route_incidents_v1__test'))[0].inciden
 await stalled.run('zigbee_route_telemetry',{_zigbee_test:true,monitor_now:t+4300001,topic:'zigbee2mqtt/teste_rota',payload:{state:'ON'}});
 await stalled.run('zigbee_settle_tick_in',{_zigbee_test:true,monitor_now:t+4300001});
 assert.equal(Object.values(sf.get('zigbee_route_incidents_v1__test'))[0].incident_open,false,'natural recovery remains observable after exhaustion');
-assert.equal(stalled.dry.filter(x=>x.msg.topic==='zigbee2mqtt/bridge/request/networkmap').length,3,'natural recovery does not reset the attempt budget');
+assert.equal(stalled.dry.filter(x=>x.msg.topic==='zigbee2mqtt/bridge/request/networkmap').length,1,'natural recovery does not reset or repeat the native operation');
 
 // Real bridge error shapes must enter the same bounded, persistent lifecycle.
 for (const message of [

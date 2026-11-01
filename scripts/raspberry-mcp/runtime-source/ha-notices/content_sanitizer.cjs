@@ -8,7 +8,7 @@ const rules=[
  ['switch_operator',/operators\[rule\.t\] is not a function/g],['icloud_provider_unavailable',/iCloud location refresh provider is unavailable/g],['unsupported_icloud_core',/unsupported_icloud_core_version/g],['security_scan_failed',/security_scan_failed/g],
  ['execution_error',/erro de execução/ig],['unavailable',/\bindisponibilidade\b|\bunavailable\b|\bnot available\b/ig],['authentication',/authentication (?:required|failed)|autenticação|iCloudAuthRequired|not authorized/ig],['timeout',/\btimeout\b|\btimed out\b|tempo limite/ig],['connection_refused',/connection refused|ECONNREFUSED/ig],['connection_reset',/connection reset|ECONNRESET/ig],['permission_denied',/permission denied|EACCES/ig],['disk_full',/no space left on device|ENOSPC/ig],['invalid_configuration',/invalid config(?:uration)?|configuração inválida/ig],['database_locked',/database is locked/ig],['notification_cooldown',/O mesmo erro será silenciado por 6 horas para evitar notificações repetidas\./g]
 ];
-const reasonCodes=new Set(['codex_registry_lookup_failed','service_unavailable','switch_operator','icloud_provider_unavailable','unsupported_icloud_core','security_scan_failed','execution_error','unavailable','authentication','timeout','connection_refused','connection_reset','permission_denied','disk_full','invalid_configuration','database_locked','setup_retry','MAC_NO_ACK','NWK_NO_ROUTE','MAC_NO_CHANNEL_ACCESS','zigbee_route_unconfirmed','zigbee_component_unavailable','zigbee_network_unavailable']);
+const reasonCodes=new Set(['codex_registry_lookup_failed','service_unavailable','switch_operator','icloud_provider_unavailable','unsupported_icloud_core','security_scan_failed','execution_error','unavailable','authentication','timeout','connection_refused','connection_reset','permission_denied','disk_full','invalid_configuration','database_locked','setup_retry','MAC_NO_ACK','NWK_NO_ROUTE','MAC_NO_CHANNEL_ACCESS','zigbee_route_unconfirmed','zigbee_component_unavailable','zigbee_network_unavailable','zigbee_component_recovery_route_pending']);
 const integrations=new Set(['node_red','ha','icloud','mqtt','mosquitto','recorder','backup','zigbee','public_bindings','radio_browser']);
 function redactions(text,field){
  const out=[];const add=reason=>{if(!out.some(x=>x.reason===reason))out.push({field,reason});};
@@ -53,7 +53,12 @@ function zigbeeTemplate(title,message){
   const codes=['zigbee',code];if(g.radio)codes.push(g.radio);
   if(g.limit)codes.push('zigbee_attempt_1_of_'+g.limit);
   if(g.attempts)codes.push('zigbee_attempts_'+g.attempts);
-  return {titleLength:t[0].length,messageLength:m[0].length,titleCodes:[code],messageCodes:codes,privateSubject};
+  let messageLength=m[0].length;
+  const pendingSuffix=' O incidente de rota permanece aberto; o funcionamento dos comandos não está comprovado.';
+  if(code==='zigbee_component_recovery_notice'&&message.slice(messageLength).startsWith(pendingSuffix)){
+   codes.push('zigbee_component_recovery_route_pending');messageLength+=pendingSuffix.length;
+  }
+  return {titleLength:t[0].length,messageLength,titleCodes:[code],messageCodes:codes,privateSubject};
  }
  return null;
 }

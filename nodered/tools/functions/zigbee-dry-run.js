@@ -6,5 +6,5 @@ const record = {
     at: new Date(msg.zigbee_now || Date.now()).toISOString()
 };
 flow.set("zigbee_last_dry_run_v1__test", record);
-node.status({ fill: "blue", shape: "dot", text: "TESTE: efeito bloqueado" });
+if (msg._zigbee_test !== true) node.status({ fill: "blue", shape: "dot", text: "TESTE: efeito bloqueado" });
 return null;

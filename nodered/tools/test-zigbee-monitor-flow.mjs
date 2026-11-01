@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import "./test-zigbee-status-isolation.mjs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
@@ -202,10 +203,12 @@ function routeErrorCycle(targetFlow, at, testMode = false) {
   current = normalizeRouteError(current, targetFlow, nodeMock, globalMock);
   assert.equal(current.zigbee_route_valid, true);
   current = readRoute(current, targetFlow, nodeMock, globalMock);
-  if (!current.zigbee_route_current.incident_open) {
+  if (current.zigbee_route_native.unresolved) {
+    current.zigbee_route_action = "touch"; current.zigbee_route_event = "none";
+  } else if (!current.zigbee_route_current.incident_open) {
     current.zigbee_route_action = "open";
     current.zigbee_route_event = "route_failure";
-  } else if (current.zigbee_route_current.attempts < current.policy.route_recovery_max_attempts && current.zigbee_route_now >= current.zigbee_route_deadline) {
+  } else if (current.zigbee_route_native.terminal && current.zigbee_route_current.attempts < current.policy.route_recovery_max_attempts && current.zigbee_route_now >= current.zigbee_route_deadline) {
     current.zigbee_route_action = "retry";
     current.zigbee_route_event = "route_retry";
   } else {
@@ -215,7 +218,7 @@ function routeErrorCycle(targetFlow, at, testMode = false) {
   return mutateRoute(current, targetFlow, nodeMock, globalMock);
 }
 function routeResponse(targetFlow, transaction, status, at) {
-  let current = load({ payload: { status, transaction, ...(status === "error" ? { error: "NWK_NO_ROUTE" } : {}) }, monitor_now: at }, targetFlow, nodeMock, globalMock);
+  let current = load({ topic: "zigbee2mqtt/bridge/response/device/configure", payload: { status, transaction, ...(status === "error" ? { error: "NWK_NO_ROUTE" } : {}) }, monitor_now: at }, targetFlow, nodeMock, globalMock);
   current = normalizeRouteResponse(current, targetFlow, nodeMock, globalMock);
   assert.equal(current.zigbee_route_response_valid, true);
   current.zigbee_route_action = status === "ok" ? "verify" : "recovery_failed";
@@ -262,8 +265,10 @@ assert.equal(result.zigbee_route_current.phase, "scanning");
 assert.equal(result.zigbee_route_current.next_retry_at, new Date(now + 900000).toISOString());
 assert.equal(routeErrorCycle(interruptedRouteFlow, now + 899999, true).zigbee_route_event, "none", "operação sem resposta respeita cooldown");
 result = routeErrorCycle(interruptedRouteFlow, now + 900001, true);
-assert.equal(result.zigbee_route_event, "route_retry", "operação interrompida pelo coordenador pode ser retomada");
-assert.equal(result.zigbee_route_current.attempts, 2);
+assert.equal(result.zigbee_route_event, "none", "prazo não prova término de operação nativa");
+assert.equal(result.zigbee_route_current.attempts, 1);
+assert.equal(result.zigbee_route_current.native_completion_state, "unknown");
+assert.ok(result.zigbee_route_current.pending_transaction);
 assert.equal(normalizeRouteError({ payload: { level: "error", message: "unrelated" } }, routeFlow, nodeMock, globalMock).zigbee_route_valid, false);
 assert.equal(normalizeRouteResponse({ topic: "zigbee2mqtt/bridge/response/networkmap", payload: { status: "ok", transaction: "external" } }, routeFlow, nodeMock, globalMock).zigbee_route_response_valid, false);
 

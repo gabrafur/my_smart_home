@@ -111,6 +111,13 @@ configure errors. A successful configure response starts verification; fresh
 non-retained device data after 300 seconds without another route failure is
 required to announce recovery. Duplicate map responses cannot start concurrent
 configure requests. Attempts remain bounded to three, with a 15-minute cooldown.
+An observation timeout preserves an unanswered native transaction and blocks a
+new attempt; it does not cancel the native request. A correlated late map reply
+reconciles the request without starting configure. A retry requires a proved
+terminal result as well as the cooldown. Passive recovery from two fresh device
+publications spanning the stable window can close the radio incident while an
+unknown native operation remains reserved. Availability recovery does not prove
+that device commands work, and its notice identifies a still-open route incident.
 
 The shared startup coordinator waits at least 180 seconds after startup and
 120 seconds with both internet and VPN confirmed online before releasing
@@ -205,6 +212,14 @@ against `localfilesystem`; it never connects to production MQTT or Home
 Assistant. A safe end-to-end component test can publish retained offline then
 online values to
 `zigbee2mqtt/teste_monitor/availability` and clear the retained value afterward.
+
+The built-in synthetic Zigbee replay silences reachable `node.status()`
+producers: Node-RED status events do not carry the original test marker and
+could otherwise update the production observer context. Synthetic response
+injects declare `_zigbee_test` before normalization, including invalid replies.
+Regression covers all 21 manual entry points, zero synthetic status/warning
+callbacks and zero external effects, while preserving production status.
+Synthetic acceptance does not establish physical mesh recovery.
 
 Physical WAN cuts, router/coordinator restarts, and delivery to both phones
 require a controlled on-site window. ICMP filtering by all three targets remains

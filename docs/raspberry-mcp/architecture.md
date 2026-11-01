@@ -57,8 +57,8 @@ real do adaptador. O cursor considera essa mudança de admissão.
 As [fontes ativas exportadas](../../scripts/raspberry-mcp/runtime-source/SOURCE-MAP.json)
 permitem auditar as extensões de tarefas,administração,projeções,Events e
 instrumentação. O manifesto registra hashes da origem e do arquivo publicado.
-Identidades privadas foram substituídas por marcadores e representações de
-constantes temporais foram normalizadas sem alterar seus valores. Esse conjunto
+As normalizações estão descritas por arquivo no manifesto: identidades privadas
+usam marcadores e alguns limites temporais são desarmados com zero. Esse conjunto
 é uma captura de fontes com bindings removidos,não um instalador sobre a
 política ativa. Políticas,credenciais,bancos e recibos privados não pertencem
 ao pacote público. Não copiar esses arquivos diretamente sobre a produção sem
@@ -76,6 +76,7 @@ deve substituir a versão ativa apenas por estar no mesmo repositório.
 | Broker de operações | Instâncias `raspberry-mcp-operations@.service` |
 | Adaptador de tarefas | `/usr/local/lib/raspberry-task-control/` |
 | Projeções e reparo fixo | `/usr/local/lib/raspberry-repair-control/` |
+| Núcleo protegido por componente | `/usr/local/lib/raspberry-component-repair/`; perfil inicial do observador do host, jobs, CAS, validação e recibos |
 | Executor de inferência | Daemon Codex existente no Raspberry; assinatura incluída |
 | Conta administrativa | binding lógico `executor_admin`; concessão local com validade própria |
 | Transporte remoto atual | OpenAI Secure MCP Tunnel; autenticação existente |
@@ -89,12 +90,18 @@ está comprovado nesta instalação.
 
 ## Pendências que não devem ser ocultadas
 
-No aceite descrito, o conector OpenAI ainda não publicava os sete nomes novos de listagem/reparo,
-embora o servidor os liste. A administração acima usa ferramentas já publicadas.
-O caminho Events descrito recebe somente avisos sanitizados do Home Assistant;
-falhas diretas do host ainda não são encaminhadas por ele. O backend fixo,
-o aceite administrativo e a descoberta stdio não comprovam comportamento
-proativo completo,24h de cobertura,PC desligado,backup offsite ou recuperação.
+As diferenças de catálogo e cobertura registradas em relatos anteriores são
+históricas; a descoberta e as capacidades atuais determinam a superfície
+disponível. O núcleo por componente usa as ferramentas de tarefas já publicadas,
+e seu diagnóstico de admissão foi recebido pelo MCP real. Isso não habilita as
+doze ferramentas do protótipo nem outros perfis de reparo. Recorrência segue
+desativada e o backend de tarefas segue sendo Codex.
+
+Arquivo instalado, admissão ativa, teste isolado e hash carregado são provas
+distintas de execução no runtime e recuperação. O novo probe específico declara
+que não é replay nativo completo. O ciclo proativo da Eva, continuidade de 24h,
+PC desligado, backup externo e restauração mantêm seus próprios critérios e
+evidências; nenhum é deduzido do núcleo ou do transporte MCP.
 
 ## Referências de interoperabilidade
 

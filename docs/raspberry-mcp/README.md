@@ -23,6 +23,11 @@ e [continuidade](reference/continuity.md). As [etapas de manutenção](maintenan
 e [propostas](maintenance/proposals.md) registram escopos históricos; propostas
 não habilitam ferramentas.
 
+O [núcleo protegido por componente](reference/component-repair.md#núcleo-protegido-instalado-com-perfil-inicial-do-host)
+já expõe admissão real pelo MCP para o perfil inicial `observacao_host`, usando
+as ferramentas de tarefas existentes. Outros perfis, recorrência, replay nativo
+completo e execução proativa da Eva continuam sendo aceites separados.
+
 O transporte MCP e a identidade do cliente são separados do executor. O backend
 de tarefas implementado continua sendo o daemon Codex; não há segundo backend
 de execução aceito. As ferramentas `codex_*` e o prefixo legado `eva-admin-`

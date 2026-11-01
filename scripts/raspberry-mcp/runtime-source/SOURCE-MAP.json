@@ -78,8 +78,8 @@
     },
     "repair-control/event_projection.mjs": {
       "source": "/usr/local/lib/raspberry-repair-control/event_projection.mjs",
-      "source_sha256": "b06f1834a94aaf00ffc4dd8be51f93433c91552bc82bc0d388d3426d1536489a",
-      "export_sha256": "b06f1834a94aaf00ffc4dd8be51f93433c91552bc82bc0d388d3426d1536489a",
+      "source_sha256": "2cdd932445b9f7818b520c5e25b85530885325b5b4a899a2cd5b49d84c73d924",
+      "export_sha256": "2cdd932445b9f7818b520c5e25b85530885325b5b4a899a2cd5b49d84c73d924",
       "normalizations": [
         "reference_update_separate_workspace_administrative_and_legacy_send_gates;not_original_capture_or_installable_policy"
       ]
@@ -113,8 +113,8 @@
     },
     "frontend/event_projection.mjs": {
       "source": "/var/lib/raspberry-mcp/root/app/event_projection.mjs",
-      "source_sha256": "b06f1834a94aaf00ffc4dd8be51f93433c91552bc82bc0d388d3426d1536489a",
-      "export_sha256": "b06f1834a94aaf00ffc4dd8be51f93433c91552bc82bc0d388d3426d1536489a",
+      "source_sha256": "2cdd932445b9f7818b520c5e25b85530885325b5b4a899a2cd5b49d84c73d924",
+      "export_sha256": "2cdd932445b9f7818b520c5e25b85530885325b5b4a899a2cd5b49d84c73d924",
       "normalizations": [
         "reference_update_separate_workspace_administrative_and_legacy_send_gates;not_original_capture_or_installable_policy"
       ]
@@ -133,8 +133,8 @@
     },
     "native-events/registry.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/registry.py",
-      "source_sha256": "68c4953240f70b70eef336f10e9cb4209c625c0d43cc921a937645c710a9b5fb",
-      "export_sha256": "68c4953240f70b70eef336f10e9cb4209c625c0d43cc921a937645c710a9b5fb",
+      "source_sha256": "f34a0003037ab9abba2b593cb8e8f4a6dd5afd7397aec2cbc0c438527add9613",
+      "export_sha256": "f34a0003037ab9abba2b593cb8e8f4a6dd5afd7397aec2cbc0c438527add9613",
       "normalizations": []
     },
     "native-events/worker.py": {
@@ -324,14 +324,14 @@
     },
     "ha-notices/diagnostic_templates.json": {
       "source": "/usr/local/lib/raspberry-ha-notices/diagnostic_templates.json",
-      "source_sha256": "db852e558f2c1546d277041a29443d634c109761d91c2c7cb5785d96382cc1fa",
-      "export_sha256": "db852e558f2c1546d277041a29443d634c109761d91c2c7cb5785d96382cc1fa",
+      "source_sha256": "e3ca97ef6c7df970537d896f1be1d38fe0e1b40cbb51d6421e2657a2ca4a17f6",
+      "export_sha256": "e3ca97ef6c7df970537d896f1be1d38fe0e1b40cbb51d6421e2657a2ca4a17f6",
       "normalizations": []
     },
     "ha-notices/content_sanitizer.cjs": {
       "source": "/usr/local/lib/raspberry-ha-notices/content_sanitizer.cjs",
-      "source_sha256": "e9cd563639916e442dc8ba430f79bb5ce1835a40927936ac38389f46b1c3820a",
-      "export_sha256": "e9cd563639916e442dc8ba430f79bb5ce1835a40927936ac38389f46b1c3820a",
+      "source_sha256": "2d05672b07166c90399adfd17aa3938a6edd9079f7ccb3aa236ff7d350d05e42",
+      "export_sha256": "2d05672b07166c90399adfd17aa3938a6edd9079f7ccb3aa236ff7d350d05e42",
       "normalizations": []
     },
     "ha-notices/content_reader.py": {
@@ -609,6 +609,432 @@
       "source_sha256": "16e58ea45d06c4b9ad59a827bb1277e7a67b392f4a55f94aaef5d0e2557db6af",
       "export_sha256": "16e58ea45d06c4b9ad59a827bb1277e7a67b392f4a55f94aaef5d0e2557db6af",
       "normalizations": []
+    },
+    "component-repair/admission.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/admission.py",
+      "source_sha256": "f69b07f4e2e42c9e1326d62b86f227d453d7e3ea3dc6ed66dbddbb42c7a96967",
+      "export_sha256": "f69b07f4e2e42c9e1326d62b86f227d453d7e3ea3dc6ed66dbddbb42c7a96967",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/attestation_model.cjs": {
+      "source": "/usr/local/lib/raspberry-component-repair/attestation_model.cjs",
+      "source_sha256": "8240fcad9b8a85760500f151d0f9e551564301401a5e08f385fb81b9d330f5ad",
+      "export_sha256": "8240fcad9b8a85760500f151d0f9e551564301401a5e08f385fb81b9d330f5ad",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/canonical_worker.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/canonical_worker.py",
+      "source_sha256": "82f758bb248ecfaa67233efad0676007495347eb3c4c4f0718bb91886f3645e9",
+      "export_sha256": "82f758bb248ecfaa67233efad0676007495347eb3c4c4f0718bb91886f3645e9",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/component_jobs.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/component_jobs.py",
+      "source_sha256": "877d20f27770f9936e3986f3b93735de446f52918e05a0eca2c8490e27bd30a4",
+      "export_sha256": "877d20f27770f9936e3986f3b93735de446f52918e05a0eca2c8490e27bd30a4",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/effects/nodered_effect.cjs": {
+      "source": "/usr/local/lib/raspberry-component-repair/effects/nodered_effect.cjs",
+      "source_sha256": "21a8af95354e97650ec8aa0a327f8358c31402d454e8f3d18ef38ada88807bf3",
+      "export_sha256": "21a8af95354e97650ec8aa0a327f8358c31402d454e8f3d18ef38ada88807bf3",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:49:45Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/effects/nodered_job.cjs": {
+      "source": "/usr/local/lib/raspberry-component-repair/effects/nodered_job.cjs",
+      "source_sha256": "9973751af756e93df21a3947b74713fad59a9dda120ec618ecada73a783da938",
+      "export_sha256": "9973751af756e93df21a3947b74713fad59a9dda120ec618ecada73a783da938",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/effects/nodered_observe.cjs": {
+      "source": "/usr/local/lib/raspberry-component-repair/effects/nodered_observe.cjs",
+      "source_sha256": "6a88e8a10fa38ddb7c8d185867d4a58b7d64565ea8d0a678f960e0a75abb41b6",
+      "export_sha256": "6a88e8a10fa38ddb7c8d185867d4a58b7d64565ea8d0a678f960e0a75abb41b6",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/executor_observer.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/executor_observer.py",
+      "source_sha256": "20db020cba272329951ffa057a922d6f5eecf911152d825b08c64935fb430ce7",
+      "export_sha256": "20db020cba272329951ffa057a922d6f5eecf911152d825b08c64935fb430ce7",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/functional.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/functional.py",
+      "source_sha256": "f1f6c495909b9f985d428a8397297dda437b89fe000b35e689aba4d120e7101f",
+      "export_sha256": "f1f6c495909b9f985d428a8397297dda437b89fe000b35e689aba4d120e7101f",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/native_factory.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/native_factory.py",
+      "source_sha256": "3624ebce306ccfa88d240f09e4a2e71cb86f82963e3787156c61b6cac0660016",
+      "export_sha256": "975ccdfd919eb28fc0d8d96cd635a5a178de62e1cdc85cdc5d8919904e55972a",
+      "normalizations": [
+        "private_NodeRED_peer_replaced_with_nonresolving_binding_marker"
+      ],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/owner_lease.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/owner_lease.py",
+      "source_sha256": "229f8c0f0beb16d3dcb29c0c829de2e21ed9e04ae1ceaa498aaab29bea77c025",
+      "export_sha256": "229f8c0f0beb16d3dcb29c0c829de2e21ed9e04ae1ceaa498aaab29bea77c025",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/preparation_storage.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/preparation_storage.py",
+      "source_sha256": "387546d157789129bf77225d1211e980b5cbbdabb9085f3b27a1e4858d6a9f81",
+      "export_sha256": "387546d157789129bf77225d1211e980b5cbbdabb9085f3b27a1e4858d6a9f81",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/preparer.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/preparer.py",
+      "source_sha256": "9e2d9007e40f000bd91c6fd8d4373410de623339a84121a6db42119b2bdf75b1",
+      "export_sha256": "9e2d9007e40f000bd91c6fd8d4373410de623339a84121a6db42119b2bdf75b1",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/publication_bridge.cjs": {
+      "source": "/usr/local/lib/raspberry-component-repair/publication_bridge.cjs",
+      "source_sha256": "fb2cf85feb09138780f17842756a482a46a65fd513c376dfade0d4c6cd2d38f2",
+      "export_sha256": "7e0f6e418c31b2ca400d1713ccaf97afcb1d960b1ec739091a267f3207ff5a5a",
+      "normalizations": [
+        "private_owner_deadline_removed_public_publisher_disarmed"
+      ],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/publisher_parent.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/publisher_parent.py",
+      "source_sha256": "2bfe28abe0172f558848c7f7c599847cb0e834c74d439f1366f580e5b70be2bd",
+      "export_sha256": "2bfe28abe0172f558848c7f7c599847cb0e834c74d439f1366f580e5b70be2bd",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/readonly_parent.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/readonly_parent.py",
+      "source_sha256": "4abd9173fc59c22f310b7e1c6bdec988f11680fca63366085815fe0781ec7c9b",
+      "export_sha256": "4abd9173fc59c22f310b7e1c6bdec988f11680fca63366085815fe0781ec7c9b",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/reciprocal_gate.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/reciprocal_gate.py",
+      "source_sha256": "8f363af4965743cf27dfe8599b85d58da3708251cb2f5047392331502703fdbb",
+      "export_sha256": "8f363af4965743cf27dfe8599b85d58da3708251cb2f5047392331502703fdbb",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/revision_review.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/revision_review.py",
+      "source_sha256": "04e102f9634ca72766b5a77f6afdeef7da6c87221073c7137d36fd9b44644def",
+      "export_sha256": "04e102f9634ca72766b5a77f6afdeef7da6c87221073c7137d36fd9b44644def",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/revision_store.cjs": {
+      "source": "/usr/local/lib/raspberry-component-repair/revision_store.cjs",
+      "source_sha256": "52341086e86cd475f9f0d3f658387aab109e685b666904b7ec7f4c2568eda002",
+      "export_sha256": "52341086e86cd475f9f0d3f658387aab109e685b666904b7ec7f4c2568eda002",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/root_bootstrap.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/root_bootstrap.py",
+      "source_sha256": "008c609c19f2a57293f6ed29ecd5ef3c61038778588c2c2ddebd5d8fb67a4891",
+      "export_sha256": "6e6308c2dd3d10379e1f826e49f273b1c832738b85fa86436ed8168dda147fd2",
+      "normalizations": [
+        "private_owner_deadline_removed_public_entrypoint_disarmed"
+      ],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/root_coordinator.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/root_coordinator.py",
+      "source_sha256": "8c8ebbf105e6014d865b26a01f2b72788790bc6ee5453202eb6a769e6dcb9fa2",
+      "export_sha256": "8c8ebbf105e6014d865b26a01f2b72788790bc6ee5453202eb6a769e6dcb9fa2",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/source_writer.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/source_writer.py",
+      "source_sha256": "7508fda416344d31dff83f709cf2c9aba2f17c45945c038241bb1ce8d49b6c86",
+      "export_sha256": "7508fda416344d31dff83f709cf2c9aba2f17c45945c038241bb1ce8d49b6c86",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/task_adapter.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/task_adapter.py",
+      "source_sha256": "978c147c3ebb1a129f8f81a08fa07fceffcab29d76be502e1c0ad19b8315e590",
+      "export_sha256": "978c147c3ebb1a129f8f81a08fa07fceffcab29d76be502e1c0ad19b8315e590",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/validation_profile.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/validation_profile.py",
+      "source_sha256": "02454522f081642ffa8ebdb3075f652875a2249fcd175773a7c9df2820aa1078",
+      "export_sha256": "02454522f081642ffa8ebdb3075f652875a2249fcd175773a7c9df2820aa1078",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/worker_parent.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/worker_parent.py",
+      "source_sha256": "995e277da5ce0439b59859795f7747af212bc9bda551715a28dd05f59e25562e",
+      "export_sha256": "995e277da5ce0439b59859795f7747af212bc9bda551715a28dd05f59e25562e",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/workflow.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/workflow.py",
+      "source_sha256": "7a24b2c97f28d85835ac05253ccae167c0dd867e7ca5eb1c2d785ca1fdaa2536",
+      "export_sha256": "7a24b2c97f28d85835ac05253ccae167c0dd867e7ca5eb1c2d785ca1fdaa2536",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:49:45Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/harness/validate_profile.mjs": {
+      "source": "/usr/local/lib/raspberry-component-repair/profiles/observacao_host/runtime/validate_profile.mjs",
+      "source_sha256": "1f4732a53438cab004639c2ec25c6cf6b4af3a5dda97298663c488f712d3379d",
+      "export_sha256": "1f4732a53438cab004639c2ec25c6cf6b4af3a5dda97298663c488f712d3379d",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0444",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/harness/functional_probe.mjs": {
+      "source": "/usr/local/lib/raspberry-component-repair/profiles/observacao_host/runtime/functional_probe.mjs",
+      "source_sha256": "b312dab65e8f774d0f7ad8ae5c50d2105ba4985efdadb8a994e1282ed113b538",
+      "export_sha256": "b312dab65e8f774d0f7ad8ae5c50d2105ba4985efdadb8a994e1282ed113b538",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0444",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/harness/sandbox_probe.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/profiles/observacao_host/runtime/sandbox_probe.py",
+      "source_sha256": "cf42990175f81e2bcbfc5c44feb44a683434d60e8b2d72e9fc718aa4bc21e587",
+      "export_sha256": "cf42990175f81e2bcbfc5c44feb44a683434d60e8b2d72e9fc718aa4bc21e587",
+      "normalizations": [],
+      "native_owner_uid": 0,
+      "native_mode": "0444",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
+    },
+    "component-repair/initial_host_contract.py": {
+      "source": "/usr/local/lib/raspberry-component-repair/initial_host_contract.py",
+      "normalizations": [],
+      "source_sha256": "0c9f09af69740755a19261a084e3383f5a2c52ce27929daebd7ea17d07071cd5",
+      "export_sha256": "0c9f09af69740755a19261a084e3383f5a2c52ce27929daebd7ea17d07071cd5",
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observed_at": "2026-11-01T00:58:31Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
+      ]
     }
   },
   "snapshot_scope_note": "Historical per-file captures; active readonly iCloud collector/root/broker delta is exported with unarmed bindings in ../icloud-readiness-candidate. Historical hashes remain provenance, not current loaded-runtime claims."

@@ -95,6 +95,60 @@ function projectDelivery(status, active, sourceFresh, now) {
   assistant_execution:'unknown',automatic_retry:false};
 }
 
+// Exact lineage is distinct from provider acceptance and assistant execution.
+export function projectLatestDeliveryReceipt(status, now=Date.now()) {
+ const source='source_event_batch_transport_receipt_projection_v1';
+ const unknown=reason=>({source,observed_at:null,age_seconds:null,state:'unknown',
+  collection_error:reason,coverage:['no_unreviewed_fields','not_assistant_execution'],assistant_execution:'unknown'});
+ const r=status.latest_delivery_receipt;
+ const stamp=x=>typeof x==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|\+00:00)$/.test(x)&&Number.isFinite(Date.parse(x));
+ const sha=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
+ const number=x=>typeof x==='number'&&Number.isFinite(x)&&x>=0;
+ if(!r||r.schema_version!==1||r.source!=='source_event_batch_transport_receipt_v1'||
+  !stamp(r.observed_at)||Date.parse(r.observed_at)>now+1000||now-Date.parse(r.observed_at)>20000||
+  r.age_seconds!==0||r.assistant_execution!=='unknown'||r.maximum_members!==8)
+  return unknown('delivery_receipt_unavailable_or_stale');
+ if(r.state==='empty'&&r.collection_error===null&&r.returned_members===0&&Array.isArray(r.members)&&r.members.length===0)
+  return {source,observed_at:r.observed_at,age_seconds:Math.max(0,(now-Date.parse(r.observed_at))/1000),
+   state:'empty',collection_error:null,members:[],coverage:['no_matching_principal_dispatch'],assistant_execution:'unknown'};
+ if(r.state!=='observed'||r.collection_error!==null||!sha(r.batch_id)||!sha(r.subscription_id_sha256)||
+  !stamp(r.intent_at)||Date.parse(r.intent_at)>Date.parse(r.observed_at)+1000||!number(r.data_age_seconds)||
+  !['webhook_accepted','delivery_refused','uncertain'].includes(r.dispatch_state)||r.batch_membership_verified!==true||
+  !Number.isSafeInteger(r.membership_record_count)||r.membership_record_count<1||r.membership_record_count>256||
+  !sha(r.members_digest_sha256)||!Array.isArray(r.members)||r.members.length!==Math.min(r.membership_record_count,8)||
+  r.returned_members!==r.members.length||r.members_truncated!==(r.membership_record_count>8))
+  return unknown('delivery_receipt_binding_unconfirmed');
+ const seen=new Set(),members=[];
+ for(const m of r.members) {
+  if(!m||m.source!=='retained_registry_event'||!sha(m.event_id)||seen.has(m.event_id)||!sha(m.object_id)||!sha(m.revision)||
+   !['added','updated','removed'].includes(m.phase)||!stamp(m.observed_at)||!number(m.age_seconds)||
+   Date.parse(m.observed_at)>Date.parse(r.intent_at)+1000||m.collection_error!==null||!['current','archive'].includes(m.record_location))
+   return unknown('delivery_receipt_member_unconfirmed');
+  seen.add(m.event_id);members.push({source:m.source,event_id:m.event_id,object_id:m.object_id,revision:m.revision,
+   phase:m.phase,observed_at:m.observed_at,age_seconds:m.age_seconds,collection_error:null,record_location:m.record_location,
+   coverage:['retained_event_identity_only','not_universal_source_clock']});
+ }
+ const t=r.transport;
+ const errors=[null,'transport_completion_missing','sender_duration_unavailable','completion_clock_unavailable','transport_clock_order_unconfirmed'];
+ if(!t||t.source!=='native_transport_completion'||!['recorded','unknown'].includes(t.state)||!errors.includes(t.collection_error)||
+  ![null,'response_2xx','response_non2xx','outcome_unknown'].includes(t.outcome)||
+  t.observed_at!==null&&!stamp(t.observed_at)||t.age_seconds!==null&&!number(t.age_seconds)||
+  t.sender_duration_ms!==null&&(!number(t.sender_duration_ms)||t.sender_duration_ms>1e9)||
+  t.state==='recorded'&&(t.collection_error!==null||!stamp(t.observed_at)||!number(t.age_seconds)||
+   Date.parse(t.observed_at)<Date.parse(r.intent_at)||Date.parse(t.observed_at)>Date.parse(r.observed_at)+1000))
+  return unknown('delivery_receipt_transport_unconfirmed');
+ const transport={source:t.source,observed_at:t.observed_at,age_seconds:t.age_seconds,state:t.state,
+  outcome:t.outcome,sender_duration_ms:t.sender_duration_ms,collection_error:t.collection_error,
+  coverage:['same_subscription_and_batch_join','sender_call_only_not_assistant_execution']};
+ return {source,observed_at:r.observed_at,age_seconds:Math.max(0,(now-Date.parse(r.observed_at))/1000),state:'observed',
+  collection_error:null,batch_id:r.batch_id,subscription_id_sha256:r.subscription_id_sha256,intent_at:r.intent_at,
+  data_age_seconds:r.data_age_seconds,dispatch_state:r.dispatch_state,batch_membership_verified:true,
+  membership_record_count:r.membership_record_count,members_digest_sha256:r.members_digest_sha256,
+  maximum_members:8,returned_members:members.length,members_truncated:r.members_truncated,members,transport,
+  coverage:['same_principal_retained_event_to_batch_to_transport','bounded_member_details_not_whole_history',
+   'not_universal_source_clock_or_functional_recovery'],assistant_execution:'unknown'};
+}
+
 // Closed projection: server status is not proof of assistant execution.
 export function projectEvents(status, now=Date.now()) {
  const unknown=reason=>({state:'unknown',reason,assistant_execution:'unknown'});
@@ -122,6 +176,7 @@ export function projectEvents(status, now=Date.now()) {
   expires_at:Number.isFinite(expires)?lease.expires_at:null,
   source_state:sourceFresh?'observed':'unknown',assistant_execution:'unknown',
   delivery:projectDelivery(status,lease.state==='active',sourceFresh,now),
+  latest_delivery_receipt:projectLatestDeliveryReceipt(status,now),
   coverage:['live_subscription_and_dispatch_status_only','HA_sanitized_notices_only',
    'webhook_acceptance_not_assistant_execution','not_PC_off_or_24h_proof']};
 }

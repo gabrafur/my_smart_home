@@ -120,3 +120,10 @@ Os detalhes de tipos,limites e enums ficam no modelo de esquemas mencionado acim
 | `codex_repair_reconcile` | `host`, `operation_id`, `result_hash` |
 | `codex_repair_revoke` | `host` |
 | `codex_repair_capabilities` | `host` |
+
+`events_status` pode incluir `latest_delivery_receipt`, sem argumento novo.
+O campo liga o lote aos IDs/revisões dos eventos retidos e ao recibo HTTP;
+retorna até oito detalhes e declara truncamento. A associação e o aceite HTTP
+não comprovam execução do assistente. Consulte a
+[semântica dos recibos](reference/notifications.md#recibo-do-evento-lote-e-transporte)
+antes de atribuir entrega, perda ou recuperação.

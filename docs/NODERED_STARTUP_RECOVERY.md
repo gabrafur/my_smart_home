@@ -100,9 +100,18 @@ A consulta `networkmap` obtém um mapa; não comprova conserto da malha. Cada
 transação só pode iniciar um `configure`, mesmo recebendo mapas duplicados.
 A reserva de estágio e a persistência usam comparação de versão para impedir
 que mensagens concorrentes disparem a mesma tentativa. A agenda mantém cooldown
-de 15 min e no máximo três tentativas por incidente, inclusive se não vier
-resposta. São emitidos apenas abertura, esgotamento final e recuperação
+de 15 min e no máximo três tentativas por incidente. Uma operação sem resposta
+permanece reservada: o prazo de observação não cancela trabalho nativo nem
+autoriza sobrescrever sua transação ou iniciar outra tentativa. Uma resposta
+tardia correlacionada reconcilia a operação; mapa tardio não dispara um novo
+`configure`. O próximo retry exige conclusão comprovada e cooldown cumprido.
+São emitidos apenas abertura, esgotamento final e recuperação
 comprovada; falhas intermediárias permanecem no lifecycle sem novo push.
+
+A recuperação passiva por duas publicações frescas separadas pela janela estável
+é independente da conclusão do pedido nativo: ela pode encerrar o incidente de
+rádio conservando uma transação desconhecida. Retorno de disponibilidade também
+não comprova comandos; o aviso informa quando o incidente de rota permanece aberto.
 
 Incidentes e tentativas sobrevivem a restart. Evidência de comunicação é
 volátil e precisa ser renovada; um restart não transforma histórico em prova de
@@ -129,6 +138,14 @@ normalizador dos logs reais; os botões 15/18 incluem o tópico oficial de
 resposta do mapa para exercitar a correlação completa.
 Os botões de availability agora também precisam da agenda com o instante de
 confirmação. O replay automatizado cobre os limites exatos e oscilações.
+
+Nos caminhos de teste Zigbee, os produtores de `node.status()` permanecem
+silenciosos: o evento de status do Node-RED não transporta o marcador da
+mensagem original e poderia alterar o contexto do observador de produção.
+As respostas sintéticas também declaram `_zigbee_test` antes da normalização,
+inclusive quando inválidas. A regressão verifica os 21 pontos de entrada,
+ausência de status/avisos sintéticos e de efeitos externos, preservando os
+status normais de produção. Isso não comprova recuperação física da malha.
 
 ```bash
 node nodered/tools/test-startup-readiness.mjs

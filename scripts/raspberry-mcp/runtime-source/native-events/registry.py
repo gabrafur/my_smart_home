@@ -402,6 +402,139 @@ class Registry:
                     'complete_timing_records': None,
                     'records_without_completion_observation': None, 'latest': None}
 
+    def latest_delivery_receipt(self, now):
+        """Read-only exact lineage, same principal, one batch and eight details.
+
+        This connection belongs to Registry; no other progress handler is used.
+        A query budget fails closed without changing membership or eligibility.
+        """
+        out = {'schema_version': 1, 'source': 'source_event_batch_transport_receipt_v1',
+               'observed_at': None, 'age_seconds': None, 'state': 'unknown',
+               'collection_error': None, 'batch_id': None,
+               'subscription_id_sha256': None, 'intent_at': None,
+               'data_age_seconds': None, 'dispatch_state': None,
+               'batch_membership_verified': False, 'membership_record_count': None,
+               'members_digest_sha256': None, 'returned_members': 0,
+               'members_truncated': False, 'maximum_members': 8, 'members': [],
+               'transport': None, 'assistant_execution': 'unknown',
+               'coverage': ['same_authenticated_principal_only',
+                   'latest_dispatch_only_not_delivery_history',
+                   'exact_durable_member_and_batch_identity_not_time_proximity',
+                   'eight_member_details_maximum_explicit_truncation',
+                   'event_time_is_retained_registry_time_not_universal_source_clock',
+                   'not_assistant_execution_or_functional_recovery']}
+        sha = lambda x: isinstance(x, str) and re.fullmatch('[a-f0-9]{64}', x) is not None
+        finite = lambda x: type(x) in (int, float) and math.isfinite(x) and 0 <= x <= 253402300799
+        started = time.monotonic()
+        steps = 0
+        aborted = False
+        saved = False
+        def stop():
+            nonlocal steps, aborted
+            steps += 1000
+            aborted = steps > 100000 or time.monotonic()-started > 0.05
+            return int(aborted)
+        def need(value):
+            if not value:
+                raise ValueError('delivery_receipt_invalid')
+        try:
+            need(finite(now))
+            out.update(observed_at=iso(now), age_seconds=0)
+            self.db.set_progress_handler(stop, 1000)
+            self.db.execute('SAVEPOINT latest_delivery_receipt_observation')
+            saved = True
+            row = self.db.execute('SELECT d.subscription,d.event,d.state,d.at,b.body,'
+                't.event IS NOT NULL AS recorded,t.completed_at,t.sender_duration_ms,'
+                't.outcome,t.collection_error FROM dispatch d '
+                'JOIN subscriptions s ON s.id=d.subscription '
+                'LEFT JOIN delivery_batches b ON b.subscription=d.subscription AND b.id=d.event '
+                'LEFT JOIN transport_observations t ON t.subscription=d.subscription AND t.event=d.event '
+                'WHERE s.owner=? ORDER BY d.at DESC,d.event DESC LIMIT 1',
+                (self.principal,)).fetchone()
+            if row is None:
+                out.update(state='empty')
+                return out
+            need(sha(row['event']) and isinstance(row['subscription'], str) and
+                 finite(row['at']) and row['at'] <= now+1 and
+                 row['state'] in ('webhook_accepted', 'delivery_refused', 'uncertain'))
+            if row['body'] is None:
+                out['collection_error'] = 'latest_dispatch_not_summary'
+                return out
+            need(isinstance(row['body'], str) and len(row['body'].encode()) <= 16384)
+            batch = json.loads(row['body'])
+            data = batch.get('data', {})
+            count = data.get('covered_event_records')
+            need(batch.get('eventId') == row['event'] and batch.get('name') == NAME and
+                 batch.get('timestamp') == iso(row['at']) and
+                 data.get('project') == PROJECT and data.get('topic') == 'ha_notification' and
+                 data.get('source') == 'ha_persistent_notification' and
+                 data.get('delivery_kind') == VERSION and type(count) is int and 1 <= count <= 256)
+            # Existing (subscription,event) PK supplies the subscription prefix.
+            # The progress handler bounds the unindexed batch residual filter.
+            ids = [r[0] for r in self.db.execute('SELECT event FROM delivery_members '
+                'WHERE subscription=? AND batch=? ORDER BY event LIMIT 257',
+                (row['subscription'], row['event'])).fetchall()]
+            need(len(ids) == count and all(sha(x) for x in ids) and
+                 hashlib.sha256(canonical([VERSION, row['subscription'], ids]).encode()).hexdigest() == row['event'])
+            members = []
+            for eid in ids[:8]:
+                event = self.db.execute('SELECT body,created,0 AS archived FROM events WHERE id=? '
+                    'UNION ALL SELECT body,created,1 AS archived FROM event_archive WHERE id=? LIMIT 2',
+                    (eid, eid)).fetchall()
+                need(len(event) == 1)
+                event = event[0]
+                need(isinstance(event['body'], str) and len(event['body'].encode()) <= 4096 and
+                     finite(event['created']) and event['created'] <= row['at']+1)
+                envelope = json.loads(event['body'])
+                item = envelope.get('data', {})
+                need(envelope.get('eventId') == eid and envelope.get('name') == NAME and
+                     envelope.get('timestamp') == iso(event['created']) and
+                     item.get('project') == PROJECT and item.get('topic') == 'ha_notification' and
+                     item.get('source') == 'ha_persistent_notification' and
+                     item.get('phase') in PHASES and sha(item.get('object_id')) and sha(item.get('revision')))
+                members.append({'source': 'retained_registry_event', 'event_id': eid,
+                    'object_id': item['object_id'], 'revision': item['revision'],
+                    'phase': item['phase'], 'observed_at': iso(event['created']),
+                    'age_seconds': round(max(0, now-event['created']), 3),
+                    'collection_error': None, 'record_location': 'archive' if event['archived'] else 'current',
+                    'coverage': ['retained_event_identity_only', 'not_universal_source_clock']})
+            transport = {'source': 'native_transport_completion', 'observed_at': None,
+                'age_seconds': None, 'state': 'unknown', 'outcome': None,
+                'sender_duration_ms': None, 'collection_error': 'transport_completion_missing',
+                'coverage': ['same_subscription_and_batch_join', 'sender_call_only_not_assistant_execution']}
+            if row['recorded']:
+                allowed = (None, 'sender_duration_unavailable', 'completion_clock_unavailable')
+                need(row['outcome'] in ('response_2xx', 'response_non2xx', 'outcome_unknown') and
+                     row['collection_error'] in allowed and
+                     (row['completed_at'] is None or finite(row['completed_at']) and row['completed_at'] <= now+1) and
+                     (row['sender_duration_ms'] is None or type(row['sender_duration_ms']) in (int, float) and
+                      math.isfinite(row['sender_duration_ms']) and 0 <= row['sender_duration_ms'] <= 1e9))
+                ordered = row['completed_at'] is not None and row['completed_at'] >= row['at']
+                transport.update(state='recorded' if ordered and row['collection_error'] is None else 'unknown',
+                    observed_at=iso(row['completed_at']) if row['completed_at'] is not None else None,
+                    age_seconds=round(max(0, now-row['completed_at']), 3) if row['completed_at'] is not None else None,
+                    outcome=row['outcome'], sender_duration_ms=row['sender_duration_ms'],
+                    collection_error=row['collection_error'] if ordered else 'transport_clock_order_unconfirmed')
+            out.update(state='observed', batch_id=row['event'],
+                subscription_id_sha256=hashlib.sha256(row['subscription'].encode()).hexdigest(),
+                intent_at=iso(row['at']), data_age_seconds=round(max(0, now-row['at']), 3),
+                dispatch_state=row['state'], batch_membership_verified=True,
+                membership_record_count=count,
+                members_digest_sha256=hashlib.sha256(canonical(ids).encode()).hexdigest(),
+                returned_members=len(members), members_truncated=count > 8,
+                members=members, transport=transport)
+            need(len(canonical(out).encode()) <= 8192)
+            return out
+        except (sqlite3.Error, ValueError, TypeError, KeyError, OverflowError, AttributeError):
+            out.update(state='unknown', collection_error='delivery_receipt_query_budget_exceeded' if aborted
+                       else 'delivery_receipt_collection_unavailable', members=[], returned_members=0,
+                       batch_membership_verified=False)
+            return out
+        finally:
+            self.db.set_progress_handler(None, 0)
+            if saved:
+                self.db.execute('RELEASE latest_delivery_receipt_observation')
+
     def status(self):
         try:
             diagnostics = self.subscription_diagnostics()
@@ -422,6 +555,7 @@ class Registry:
                 'active_subscriptions':self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>?',(now,)).fetchone()[0],
                 **self.event_counts(now), **self.delivery_diagnostics(now),
                 'webhook_transport_timing': self.transport_diagnostics(),
+                'latest_delivery_receipt': self.latest_delivery_receipt(now),
                 'ha_notification_source_timing': self.source_timing.diagnostics(now),
                 'dispatch_states':states,'attempts_last_24h':self.db.execute('SELECT count(*) FROM dispatch WHERE at>?',(now-86400,)).fetchone()[0],
                 'delivery_cadence_version':CADENCE_VERSION,

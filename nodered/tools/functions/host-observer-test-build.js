@@ -8,7 +8,7 @@ if (name === "reset") {
     flow.set("host_observer_timing_runtime_v1__test", undefined, "memoryOnly");
     if (runId !== undefined) flow.set("host_observer_fixture_v1__test",
         {now: Date.now(), sequence: 0, action: "started", cpu: 10, run_id: runId});
-    node.status({fill: "blue", shape: "dot", text: "somente TESTE resetado"});
+    if (msg._host_observer_test !== true) node.status({fill: "blue", shape: "dot", text: "somente TESTE resetado"});
     return null;
 }
 const state = flow.get("host_observer_fixture_v1__test") ?? {now: Date.now(), sequence: 0, action: "started", cpu: 10};

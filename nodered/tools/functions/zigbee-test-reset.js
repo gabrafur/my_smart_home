@@ -8,5 +8,5 @@ for (const key of [
     "zigbee_component_observations__test",
     "zigbee_last_dry_run_v1__test"
 ]) flow.set(key, undefined);
-node.status({ fill: "blue", shape: "dot", text: "estado TESTE resetado" });
+if (msg._zigbee_test !== true) node.status({ fill: "blue", shape: "dot", text: "estado TESTE resetado" });
 return null;

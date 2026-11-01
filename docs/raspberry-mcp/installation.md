@@ -21,6 +21,50 @@ tokens pelo chat, argumentos de processo, URL, Git ou logs. O processo MCP e o
 cliente não precisam receber credenciais do executor, Docker ou sudo geral.
 Preservar as confirmações da interface: elas são independentes dos gates locais.
 
+## Núcleo protegido por componente
+
+A instalação atual acrescenta um núcleo Root com perfil inicial
+`observacao_host`. Sua admissão foi lida pelo MCP real em
+`maintenance_capabilities.evidence.data.protected_component_maintenance`.
+O [contrato e o uso](reference/component-repair.md#núcleo-protegido-instalado-com-perfil-inicial-do-host)
+separam esse aceite da aplicação, reversão, replay nativo e atuação da Eva.
+
+As [fontes sanitizadas](../../scripts/raspberry-mcp/runtime-source/component-repair/README.md)
+não são um instalador: prazos e peer privados estão desarmados. Para outra
+instalação, um operador deve produzir e revisar política, perfil, hashes de
+fontes/dependências, referência de autorização, identidades, arquivos exatos,
+units, limites e reversão. Cada perfil precisa de snapshot **público** coerente
+e harness imutável; não copiar configuração residencial ou credenciais para
+fixtures. Não copiar concessões, requests, sudoers, recibos ou snapshots do
+Raspberry para o repositório ou para outro chatbot.
+
+A implantação usa `/usr/local/lib/raspberry-component-repair` para código e
+`/var/lib/raspberry-component-repair` para estado protegido. Código é Root0644;
+state/perfis/revisões/requests são Root0700/0600. Harnesses públicos readonly
+ficam sob pai privado Root0700. A validação roda separadamente como UID65534,
+sem rede, credenciais ou dados privados, com memória/CPU/tempo/temporários
+limitados e o mutex canônico de validação. Não habilitar agenda por instalar o
+núcleo; a recorrência atual é falsa.
+
+O guard interno não possui credenciais nem endpoint de execução. O unit mantém
+capabilities vazias e usa somente um alias readonly do inode do operations lock
+em diretório Root0700. Isso permite lstat e correlação com `/proc/locks` sem
+abrir o diretório privado de outro UID nem conceder DAC/ptrace amplo. A ativação
+deve recusar um runtime directory preexistente e verificar o bind **na unidade
+real**, além de owner, modo, peer e flock. Não alterar permissões do lock original.
+
+O SourceWriter precisa das duas pastas pai para rename atômico; seu código
+pinado limita os nove nomes permitidos. Preserve essa distinção no plano de
+permissões, faça CAS de fontes e runtime e mantenha os recibos anteriores.
+Antes de aplicar qualquer pacote, conferir trabalhos/recursos/identidades e
+beforeimages. Não repetir initialize, start ou aplicação após resposta incerta.
+
+Essa extensão usa as ferramentas de tarefas existentes e acrescenta somente um
+campo de resultado às capacidades; ela não requer novas ferramentas ou Rescan.
+Outro chatbot pode consumir o mesmo MCP, mas a rota de tarefas implementada
+continua dependente do daemon/adaptador Codex. Nenhum segundo executor é
+certificado por esta exportação.
+
 ## Instalar em outro cliente de IA
 
 ### Cliente com suporte a stdio no Raspberry

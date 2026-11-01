@@ -51,6 +51,50 @@ limpeza ampla, recorrência, expurgo de backups ou alteração de concessões Co
 Preservar plano apresentado, confirmação da interface, limites persistidos e
 reconciliação. A recorrência permanece desativada até política própria aprovada.
 
+## Núcleo protegido de execução por componente
+
+Consultar o [perfil e o procedimento por componente](reference/component-repair.md#núcleo-protegido-instalado-com-perfil-inicial-do-host)
+antes de criar trabalho. O núcleo instalado não transforma o catálogo de
+armazenamento em rotina automática nem habilita todos os componentes do
+protótipo. O perfil inicial é somente `observacao_host` e a recorrência segue
+desativada. Fonte instalada e `execution_active=true` comprovam admissão da
+preparação atual; a aplicação, reversão e execução funcional pelo cliente têm
+seus próprios recibos e testes nativos.
+
+O request Root vincula o mesmo envio real usado pelo TaskBudgetPort. Um único
+turno admitido pode enfileirar e observar fases fechadas; não criar outro turno
+para escapar de uma reserva ou de um resultado incerto. A revisão de fonte e
+render pertence ao operador autorizado e não é substituída por uma flag
+fornecida pelo chatbot. O resultado terminal deve ser preservado antes do ACK.
+
+### Revogar e desativar com o estado preservado
+
+As concessões mantêm seus próprios prazos e marcadores. Remover a regra
+temporária de administração aprovada impede sua nova utilização e a admissão
+do componente que a confere; isso não encerra automaticamente processos já
+iniciados. Não apagar perfis, banco, reservas ou recibos para representar revogação.
+
+O marcador Root0600 `/var/lib/raspberry-component-repair/revoked` fecha a
+inicialização do bootstrap atual, incluindo o guard. **Na implementação atual,
+isso também faz os outros dispatches MCP que consultam o guard recusarem novas
+mutações.** Parar só `raspberry-component-guard.socket` tem o mesmo efeito de
+falhar fechado. Não apresentar esses passos como revogação seletiva do perfil
+do host com todas as demais mutações preservadas. Consultas de diagnóstico
+continuam disponíveis, com a admissão do núcleo desconhecida/inativa.
+
+Para retirar a integração preservando outros catálogos, preparar reversão
+coordenada do broker e seus pins antes de parar o guard, mantendo os flocks e
+os beforeimages. A reversão do instalador atual só admite ausência de qualquer
+operação de componente registrada. Se houver uma, observar e reconciliar seus
+IDs; usar somente sua reversão vinculada quando permitida e preparar um plano
+específico de desativação. Não restaurar políticas antigas sobre operações
+existentes, matar o Codex ou remover state para fazer o instalador aceitar.
+
+Não criar ou sobrescrever marcador existente sem verificar sua identidade.
+Revogar o transporte de um cliente, o catálogo de Storage ou a delegação de
+tarefas são operações distintas; uma não deve ser apresentada como prova de
+revogação de todas as outras.
+
 ## Administração pelo cliente MCP autorizado
 
 As quatro ferramentas principais são:
