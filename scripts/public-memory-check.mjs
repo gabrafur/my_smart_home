@@ -34,6 +34,7 @@ const memoryRoot = ".codex/memories";
 const canonicalIndex = `${memoryRoot}/projeto/indice.md`;
 const maxAgentInstructionBytes = 32 * 1024;
 const publicAgentFiles = new Set([
+  ".agents/skills/desktop-browser-maintenance/SKILL.md",
   ".agents/skills/prompt-improver/SKILL.md",
   ".agents/skills/prompt-improver/agents/openai.yaml",
   ".agents/skills/rtx-context-optimizer/SKILL.md",

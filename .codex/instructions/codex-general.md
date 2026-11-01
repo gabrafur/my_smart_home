@@ -1,13 +1,14 @@
 # Políticas gerais do Codex
 
+For authorized desktop browser work, use `.agents/skills/desktop-browser-maintenance/SKILL.md`.
+
 ## Prompt processing and model routing
 
-Execute each user request directly. Do not require an initial confirmation or automatically rewrite the prompt.
+Execute requests directly without initial confirmation or automatic rewriting.
 
 ## Prompt improvement
 
-Do not rewrite prompts automatically. When the user explicitly asks to improve,
-rewrite, structure, or make a prompt copy-safe, use the repository skill
+For explicit prompt improvement, rewriting, structure or copy-safe requests, use
 `.agents/skills/prompt-improver/SKILL.md`. Preserve the request's intent, scope,
 constraints, technical context, and optionality.
 
