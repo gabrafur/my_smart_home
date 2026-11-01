@@ -3,6 +3,7 @@ import contextlib,copy,fcntl,hashlib,http.server,json,math,os,shutil,socket,subp
 from unittest.mock import patch
 from pathlib import Path
 from admission import MaintenanceLease
+import worker_parent
 from worker_parent import BoundNodeRedParent
 OP='a'*32;TASK='b'*32;PRINCIPAL='c'*64;TAB='host_observer_tab'
 def identity(nodes):
@@ -13,7 +14,7 @@ def identity(nodes):
  return hashlib.sha256((json.dumps(sorted(nodes,key=lambda n:n['id']),sort_keys=True,separators=(',',':'))+'\n').encode()).hexdigest()
 class Cases(unittest.TestCase):
  def setUp(self):
-  self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.owner=os.getuid();self.calls=[];self.guards=0;self.credentials=0;self.deny=0;self.mode='success';self.lock_violations=[]
+  self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.owner=os.getuid();self.calls=[];self.guards=0;self.credentials=0;self.deny=0;self.mode='success';self.lock_violations=[];self.post_started=threading.Event();self.post_release=threading.Event()
   # A synthetic fixture uses the Node executable selected by its test runner.
   # Keep the candidate's fixed production command unchanged and assert it here.
   self.node_binary=os.environ.get('COMPONENT_REPAIR_TEST_NODE')or shutil.which('node')
@@ -55,7 +56,8 @@ class Cases(unittest.TestCase):
      if case.mode=='conflict':self.reply({},409);return
      case.flows=row['flows'];case.rev='1'*64
      if case.mode=='lost-response':self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
-     if case.mode=='late':time.sleep(1)
+     if case.mode=='late':
+      case.post_started.set();case.post_release.wait(timeout=10)
      self.reply({'rev':case.rev});return
     self.reply({},404)
   self.server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);self.server.daemon_threads=True;self.thread=threading.Thread(target=lambda:self.server.serve_forever(poll_interval=.01),daemon=True);self.thread.start()
@@ -88,7 +90,23 @@ class Cases(unittest.TestCase):
  def test_lost_http_reply_remains_uncertain_and_never_replays(self):
   self.mode='lost-response';parent=self.parent();r=parent.run(OP,'apply');self.assertEqual(r['state'],'uncertain',r);parent.run(OP,'apply');self.assertEqual(self.posts(),1)
  def test_deadline_kills_child_before_releasing_lease_and_preserves_intent(self):
-  self.mode='late';parent=self.parent(.4);r=parent.run(OP,'apply');self.assertEqual(r['state'],'uncertain',r);self.assertEqual(self.posts(),1);self.assertTrue((self.state/'apply'/OP/'intent.json').exists());parent.run(OP,'apply');self.assertEqual(self.posts(),1);self.assertFalse(self.lock_violations)
+  self.mode='late';parent=self.parent(.4)
+  # Freeze the test's deadline clock until the handler confirms POST arrival.
+  # A real-time cap prevents a broken pre-POST path from hanging the suite.
+  start=time.monotonic();clock_start=[None]
+  class DeadlineClock:
+   @staticmethod
+   def monotonic():
+    now=time.monotonic()
+    if self.post_started.is_set():
+     if clock_start[0] is None:clock_start[0]=now
+     return start+now-clock_start[0]
+    return start+max(0,now-start-8)
+  try:
+   with patch.object(worker_parent,'time',DeadlineClock):r=parent.run(OP,'apply')
+   self.assertTrue(self.post_started.is_set(),'POST did not start within fixture deadline')
+   self.assertEqual(r['state'],'uncertain',r);self.assertEqual(self.posts(),1);self.assertTrue((self.state/'apply'/OP/'intent.json').exists());parent.run(OP,'apply');self.assertEqual(self.posts(),1);self.assertFalse(self.lock_violations)
+  finally:self.post_release.set()
  def test_changed_sealed_worker_is_refused_before_child_or_credentials(self):
   parent=self.parent();(self.effects/'nodered_job.cjs').write_text('// changed')
   with self.assertRaisesRegex(ValueError,'sealed_worker_source_changed'):parent.run(OP,'apply')
