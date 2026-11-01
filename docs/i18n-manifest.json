@@ -49,6 +49,7 @@
     {"path": "docs/raspberry-mcp/operations.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/backup-verification.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/component-repair.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
+    {"path": "docs/raspberry-mcp/reference/nodered-reader-binding.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/continuity.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/events-and-host-observation.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/events-protocol.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},

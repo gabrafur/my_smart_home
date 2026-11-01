@@ -9,6 +9,13 @@ não configura o túnel nem concede o perfil administrativo. Não reaplicar esse
 instalador sobre uma instalação ativa. As [fontes exportadas](../../scripts/raspberry-mcp/runtime-source/SOURCE-MAP.json)
 documentam o código sanitizado, sem políticas ou bindings privados.
 
+O [catálogo do leitor Node-RED](reference/nodered-reader-binding.md) inclui
+fontes e testes sintéticos separados, além de inventário de arquivos, units,
+sockets, permissões e dependências. Seu guia distingue a instalação existente
+de uma reinstalação: não distribui políticas privadas nem um instalador
+completo desse catálogo. Não executar os módulos exportados como forma de
+reconstruir a cadeia privilegiada.
+
 No socket local, a identidade Unix e suas permissões controlam acesso. No túnel
 existente, a autenticação pertence ao transporte; uma opção de autenticação MCP
 `None` nesse conector não significa endpoint público sem proteção. O gateway

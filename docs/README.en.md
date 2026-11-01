@@ -111,6 +111,15 @@ names, routes, or private identifiers.
 
 ## Raspberry MCP maintenance
 
+The [closed Node-RED reader binding catalogue](raspberry-mcp/reference/nodered-reader-binding.md)
+can preview and replace one derived container return peer for the diagnostics
+reader, or restore its own previous value. It preserves fixed targets,
+confirmations, shared locks, write limits and uncertain receipts; it does not
+deploy flows, restart household services or enable recurring execution. The
+versioned source export includes synthetic lifecycle and transport tests;
+private policies and deployment identities remain local. The reference lists
+the installation dependencies and remaining reproduction limits explicitly.
+
 [Administration and portability](raspberry-mcp/README.md) is the
 current operational guide. Administrative objectives use the existing task
 tools and an explicitly authorized profile, with the original expiry and

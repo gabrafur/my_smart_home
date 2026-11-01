@@ -17,7 +17,8 @@ As referências são organizadas por função: [base de leitura](reference/read-
 [tarefas](reference/task-control.md), [observação da coordenadora](reference/task-observation.md),
 [Git e workers](reference/git-and-workers.md), [observação do host](reference/events-and-host-observation.md),
 [protocolo Events](reference/events-protocol.md), [notificações](reference/notifications.md),
-[reparo por componente](reference/component-repair.md), [backup](reference/backup-verification.md)
+[reparo por componente](reference/component-repair.md),
+[vínculo do leitor Node-RED](reference/nodered-reader-binding.md), [backup](reference/backup-verification.md)
 e [continuidade](reference/continuity.md). As [etapas de manutenção](maintenance/matrix.md),
 [primeira entrega](maintenance/stage1.md), [evidências posteriores](maintenance/evidence-stage2.md)
 e [propostas](maintenance/proposals.md) registram escopos históricos; propostas

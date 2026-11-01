@@ -188,3 +188,10 @@ A política do cliente pode ser projetada no catálogo presente em disk_space, s
 A ausência intencional de agregado Docker no sandbox preserva sua fonte e razão fechadas, mantendo unknown sem sugerir pane do Docker. O valor legado conserva origem e idade próprias; não substitui medição atual nem permite tratar coleta ausente como zero.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"mcp-leitor-nodered-binding-limitado","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-11-01","evidence":[{"file":"scripts/raspberry-mcp/runtime-source/nodered-reader-binding/controller.py","sha256":"934cce44d48906dd2a6af6a87ae89572e9564a3a8ed4e70311eb51343970ce5f"},{"file":"scripts/raspberry-mcp/runtime-source/nodered-reader-binding/broker.py","sha256":"485986868a801586e36e23543a4efb6ce8904c1931f99fc4ed66d07d985f479d"},{"file":"scripts/raspberry-mcp/runtime-source/nodered-reader-binding/test_broker_guard.py","sha256":"1d6de540521a3159003f2b250862e44a924d0566f2a2beef2327c6442b4e6241"},{"file":"docs/raspberry-mcp/reference/nodered-reader-binding.md","sha256":"fecf36fed4f6c7053a8ff965539648004add19ee190438e0ee0a362efc24a95c"}]} -->
+## Vínculo limitado do leitor Node-RED
+
+O catálogo fechado ajusta somente um peer derivado do container na permissão de rede do leitor de diagnóstico, sem deploy ou reinício do Node-RED. Prévia fixa instância, imagem, unit e valor anterior; efeito exige leitor inativo, identidade, margem de recursos, locks e intent durável. São quatro escritas por 24 horas, intervalo de 600 segundos e prévia de 900 segundos. Incerteza exige observação da mesma operação, sem retry; restore usa somente beforeimage própria e prévia fresca. Catálogo passivo não prova rede, confirmação da interface ou execução do cliente. O bind readonly do socket Docker não restringe métodos da API: o código selado limita a consulta. Fontes e testes sintéticos são públicos; política, ledger e identidades permanecem locais. O inventário de implantação não é um instalador ou rollback reproduzível. Recorrência continua desabilitada e depende de política específica.
+
+<!-- /memory-record -->
