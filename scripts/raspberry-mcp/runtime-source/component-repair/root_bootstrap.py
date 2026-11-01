@@ -95,7 +95,7 @@ def contract_wire_summary(full):
  return {'schema_version':1,'projection':'summary_read_full_before_any_effect',
   'source':full['source'],'state':full['state'],'observed_at':full['observed_at'],
   'age_seconds':0,'collection_error':full['collection_error'],
-  'coverage':['source_hashes_and_typed_read_route_only;full_contract_required'],
+  'coverage':['source_hashes_and_terminal_workflow_metadata;full_contract_required'],
   'component_id':full['component_id'],'policy_sha256':full['policy_sha256'],
   'profile_sha256':full['profile_sha256'],'prepare_invocable':full['prepare_invocable'],
   'source_sha256_by_id':{r['source_id']:r['before_sha256']for r in full['sources']},

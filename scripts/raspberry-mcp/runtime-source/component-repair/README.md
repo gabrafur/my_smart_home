@@ -86,7 +86,7 @@ de 24 horas. Nenhuma dessas provas é inferida de um webhook 2xx ou aviso removi
 O agregador público
 [`component-runtime.test.mjs`](../../component-runtime.test.mjs) executa as
 fixtures sintéticas deste diretório. Não lê caminhos privados do operador,
-conecta à casa, usa Root, cria units ou credenciais. As 57 verificações Python
+conecta à casa, usa Root, cria units ou credenciais. As 62 verificações Python
 exercitam idempotência, reservas, falhas, publicação, fontes e recibos; os checks
 Node usam clientes falsos e funções sintéticas. A execução é responsabilidade do
 alvo canônico e do coordenador; a publicação destas fixtures não afirma sucesso.

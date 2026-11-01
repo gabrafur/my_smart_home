@@ -1,23 +1,21 @@
 # Proteção obrigatória do host residencial
 
-Este checkout roda no servidor ativo da casa inteligente. Disponibilidade de
-SSH, Home Assistant, Node-RED, MQTT e automações residenciais tem prioridade
-sobre auditorias, builds e testes.
+Este checkout atende a casa ativa. SSH, Home Assistant, Node-RED, MQTT e
+as automações têm prioridade sobre auditorias, builds e testes.
 
-- Nunca execute duas validações pesadas, instalações NPM, clean-rooms ou suítes
-  amplas em paralelo neste host.
-- Antes de uma validação ampla, confira `uptime`, `free -h` e `df -h /`; não a
-  inicie com menos de 2 GiB disponíveis, filesystem acima de 85% ou pressão já
-  elevada.
-- Use o alvo canônico, que reduz prioridade de CPU e I/O. Não contorne
-  `scripts/run-resource-safe.sh` para acelerar a tarefa.
-- Faça checks direcionados primeiro. Execute no máximo uma validação ampla no
-  host por ciclo de mudança; repetições e clean-room devem ir para CI ou máquina
-  isolada com limites de recursos.
-- Interrompa imediatamente a carga iniciada pelo agente se SSH, dashboard ou
-  serviços residenciais degradarem. Nunca reinicie o host ou a stack para
-  concluir uma tarefa de repositório.
-- Não use `make -j`, concorrência de testes ou múltiplos agentes neste host.
+- Subagentes são permitidos em frentes independentes, com arquivos e
+  responsabilidades separados e coordenação pelo agente principal.
+- Mantenha apenas uma validação pesada, instalação NPM, clean-room ou suíte
+  ampla por vez. Subagentes não podem iniciá-las independentemente.
+- Antes de validar amplamente ou delegar carga, confira `uptime`, `free -h` e
+  `df -h /`; não inicie com menos de 2 GiB disponíveis, disco acima de 85% ou
+  pressão elevada.
+- Use o alvo canônico e `scripts/run-resource-safe.sh`, sem contornar a redução
+  de prioridade de CPU e I/O.
+- Checks direcionados primeiro; no máximo uma validação ampla por ciclo.
+  Repetições e clean-room vão para CI ou máquina isolada com limites.
+- Pare a carga do agente e reduza ou encerre subagentes se SSH, dashboard ou
+  serviços degradarem. Nunca reinicie host ou stack para concluir trabalho.
+- Não use `make -j` nem concorrência de testes neste host.
 
-Essas regras também valem quando o usuário pede persistência ou validação
-completa: persistência não autoriza sacrificar a disponibilidade residencial.
+Persistência e validação completa não autorizam sacrificar a casa.

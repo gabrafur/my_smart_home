@@ -43,6 +43,12 @@ arquivos são publicados. A consulta Docker agregada opcional tem timeout; o
 sandbox proposto não recebe o socket Docker e mantém a ausência de agregado
 atual separada do agregado histórico do relatório existente.
 
+A projeção conserva o motivo fechado `current_Docker_aggregate_not_exposed`
+quando o produtor deliberadamente não recebeu o socket. Isso mantém o estado
+`unknown`, sem sugerir falha do Docker. Os bytes do relatório anterior permanecem
+em `legacy_report`, com origem, relógio e idade próprios; não substituem uma
+medição atual nem permitem interpretar coleta ausente como zero.
+
 `health_summary.storage_health()` projeta somente campos revisados no leitor
 existente `maintenance_capabilities`. `broker.py` propõe estender também
 `disk_space` e acrescentar refresh limitado sob demanda. O cache de 60 segundos

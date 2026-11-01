@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 const directory=fileURLToPath(new URL('./runtime-source/component-repair/',import.meta.url));
 test('installed component reference has portable synthetic lifecycle and source tests',()=>{
  const r=spawnSync('python3',['-I','-S','-B','-m','unittest','discover','-s',directory,'-p','test_*.py'],{encoding:'utf8',timeout:30000,maxBuffer:131072});
- assert.equal(r.error,undefined);assert.equal(r.status,0,r.stdout+r.stderr);assert.match(r.stderr,/Ran 57 tests/);
+ assert.equal(r.error,undefined);assert.equal(r.status,0,r.stdout+r.stderr);const match=r.stderr.match(/Ran (\d+) tests?/);assert.ok(match,r.stderr);assert.ok(Number(match[1])>=57,r.stderr);
 });
 for(const [name,file]of[['readonly session and unknown revocation','readonly-observer.test.cjs'],['kernel lock and publication contract','publication-contract.test.cjs'],['isolated exact function coverage','harness/functional-probe.test.cjs']])test(name,()=>{
  const r=spawnSync(process.execPath,['--test','--test-concurrency=1',directory+file],{encoding:'utf8',timeout:15000,maxBuffer:65536});

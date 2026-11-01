@@ -34,6 +34,13 @@ devem manter a causa e o próximo passo explícitos, sem contornar autorização
 
 ## Boot, expiração e recuperação da ponte
 
+O transporte mantém o limite de 65.536 bytes e serializa a resposta JSON sem
+espaços dispensáveis. A compactação não altera os objetos, hashes dos recibos
+ou auditoria; a quebra de linha continua delimitando a mensagem. Fontes e
+instaladores em `read-catalog-release` têm proveniência histórica: compare o
+código atual, os pins vigentes e o pacote revisado antes de reinstalar. Um
+manifesto antigo não representa automaticamente uma revisão posterior da fonte.
+
 `control_lease_expired`, `control_socket_changed` e admissão inativa são gates de
 segurança. Uma queda de energia pode mudar boot, PID e inode; o socket reaparecer
 no mesmo caminho não renova a autorização. Preservar operações, banco, planos e

@@ -50,4 +50,36 @@ class ProjectionTests(unittest.TestCase):
         v=fixture();v['observed_at']='2027-01-01T00:00:00Z'
         self.assertEqual(h.storage_health(lambda *_:(v,None),NOW)['state'],'unknown')
 
+    def test_sandbox_absence_preserves_reason_and_separates_historical_bytes(self):
+        v=fixture();v['docker']={'source':'metadata_sandbox_without_Docker_control_socket',
+            'collection_error':'current_Docker_aggregate_not_exposed','state':'unknown',
+            'observed_at':None,'data':None,'coverage':['no_Docker_API_or_prune']}
+        out=h.storage_health(lambda *_:(v,None),NOW)
+        docker=out['docker']
+        self.assertEqual(docker['source'],'metadata_sandbox_without_Docker_control_socket')
+        self.assertEqual(docker['collection_error'],'current_Docker_aggregate_not_exposed')
+        self.assertEqual(docker['state'],'unknown');self.assertIsNone(docker['observed_at'])
+        self.assertIsNone(docker['age_seconds']);self.assertEqual(docker['data'],[])
+        self.assertIn('no_Docker_API_or_prune',docker['coverage'])
+        self.assertEqual(out['legacy_report']['data']['logical_bytes_by_category']['docker'],99)
+        self.assertEqual(out['legacy_report']['state'],'stale')
+
+    def test_docker_unknown_source_and_error_never_leak_or_prove_current_data(self):
+        v=fixture();v['docker']={'source':'PRIVATE_SENTINEL','collection_error':'PRIVATE_SENTINEL',
+            'state':'observed','observed_at':AT,'coverage':['PRIVATE_SENTINEL'],
+            'data':[{'kind':k,'logical_bytes':1} for k in ('images','containers','volumes','build_cache')]}
+        out=h.storage_health(lambda *_:(v,None),NOW)
+        self.assertNotIn('PRIVATE_SENTINEL',json.dumps(out))
+        self.assertEqual(out['docker']['state'],'unknown')
+        self.assertEqual(out['docker']['collection_error'],'docker_aggregate_unavailable')
+        self.assertEqual(out['docker']['data'],[])
+
+    def test_valid_docker_aggregate_preserves_source_clock(self):
+        v=fixture();v['docker']={'source':'fixed_Docker_system_df_aggregate',
+            'collection_error':None,'observed_at':AT,
+            'data':[{'kind':k,'logical_bytes':1} for k in ('images','containers','volumes','build_cache')]}
+        out=h.storage_health(lambda *_:(v,None),NOW+400)['docker']
+        self.assertEqual(out['state'],'stale');self.assertEqual(out['age_seconds'],410)
+        self.assertEqual(len(out['data']),4)
+
 if __name__=='__main__':unittest.main()

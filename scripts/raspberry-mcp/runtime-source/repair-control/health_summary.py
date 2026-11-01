@@ -841,7 +841,8 @@ def storage_health(read=None, now=None):
     result['legacy_report'] = old
     docker = _storage_map(raw.get('docker'))
     rows = []
-    for item in docker.get('data', []) if isinstance(docker.get('data'), list) else []:
+    aggregate = docker.get('source') == 'fixed_Docker_system_df_aggregate' and docker.get('collection_error') is None
+    for item in docker.get('data', []) if aggregate and isinstance(docker.get('data'), list) else []:
         if (isinstance(item, dict) and item.get('kind') in ('images', 'containers', 'volumes', 'build_cache')
                 and type(item.get('logical_bytes')) is int and 0 <= item['logical_bytes'] <= 2**63-1):
             rows.append({'kind': item['kind'], 'logical_bytes': item['logical_bytes'], 'cleanup_allowed': False})
@@ -849,6 +850,14 @@ def storage_health(read=None, now=None):
     result['docker']['data'] = rows
     if len(rows) != 4 or len({r['kind'] for r in rows}) != 4:
         result['docker'].update(state='unknown', collection_error='docker_aggregate_unavailable')
+    if (docker.get('source') == 'metadata_sandbox_without_Docker_control_socket'
+            and docker.get('collection_error') == 'current_Docker_aggregate_not_exposed'
+            and docker.get('state') == 'unknown' and docker.get('data') is None):
+        result['docker'].update(source='metadata_sandbox_without_Docker_control_socket',
+                                state='unknown', collection_error='current_Docker_aggregate_not_exposed',
+                                coverage=['fixed_metadata_only', 'not_cleanup_authorization',
+                                          'historical_aggregate_retained_in_existing_Storage_Health_report',
+                                          'no_Docker_API_or_prune'])
     g = _storage_map(raw.get('growth'))
     growth = {'source': 'two_actual_bounded_metadata_samples', 'state': 'unknown',
               'observed_at': raw['observed_at'], 'age_seconds': result['age_seconds'],

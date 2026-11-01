@@ -260,7 +260,7 @@ def main():
         safe = str(error) if isinstance(error, ValueError) and re.fullmatch('[a-z_]{1,60}', str(error)) else 'operation_unavailable'
         response = {'ok': False, 'error': safe}
     sys.stderr.write(json.dumps({'time': dt.datetime.now(dt.timezone.utc).isoformat(), 'tool': tool, 'outcome': outcome})+'\n')
-    connection.sendall((json.dumps(response)+'\n').encode())
+    connection.sendall((json.dumps(response,separators=(',',':'))+'\n').encode())
 
 if __name__ == '__main__':
     main()

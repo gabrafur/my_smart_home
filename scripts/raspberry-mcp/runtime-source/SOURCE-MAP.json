@@ -69,10 +69,16 @@
     },
     "repair-control/health_summary.py": {
       "source": "/usr/local/lib/raspberry-repair-control/health_summary.py",
-      "source_sha256": "c7455364bdcbc225944adc3978f5eeaba7a8bb0bf56004bc55c7e96a441f6b69",
-      "export_sha256": "c7455364bdcbc225944adc3978f5eeaba7a8bb0bf56004bc55c7e96a441f6b69",
-      "normalizations": [
-        "reference_update_separate_workspace_administrative_and_legacy_send_gates;not_original_capture_or_installable_policy"
+      "source_sha256": "fd9135466704bf34b692e0384c7417aaab80b8e841c3314ce8cfe9af95486a48",
+      "export_sha256": "fd9135466704bf34b692e0384c7417aaab80b8e841c3314ce8cfe9af95486a48",
+      "normalizations": [],
+      "source_observed_at": "2026-11-01T23:22:47.135490+00:00",
+      "native_owner_uid": 0,
+      "native_mode": "0644",
+      "native_source_matches_frozen_candidate": true,
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_functional_Eva_proof"
       ]
     },
     "repair-control/event_projection.mjs": {
@@ -881,15 +887,15 @@
     },
     "component-repair/root_bootstrap.py": {
       "source": "/usr/local/lib/raspberry-component-repair/root_bootstrap.py",
-      "source_sha256": "008c609c19f2a57293f6ed29ecd5ef3c61038778588c2c2ddebd5d8fb67a4891",
-      "export_sha256": "6e6308c2dd3d10379e1f826e49f273b1c832738b85fa86436ed8168dda147fd2",
+      "source_sha256": "c4c1c808e2640d6a2e63c13b74a0f8c23e3190869c1f233d35ddcfb38198b476",
+      "export_sha256": "61d711a434436d5d067b3cb905a683992720b1a1ccfc600bf0cc14db417e3d8b",
       "normalizations": [
         "private_owner_deadline_removed_public_entrypoint_disarmed"
       ],
       "native_owner_uid": 0,
       "native_mode": "0644",
       "native_source_matches_frozen_candidate": true,
-      "source_observed_at": "2026-11-01T00:32:06Z",
+      "source_observed_at": "2026-11-01T23:22:47.135490+00:00",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_loaded_worker_or_functional_Eva_proof"
@@ -1024,12 +1030,12 @@
     "component-repair/initial_host_contract.py": {
       "source": "/usr/local/lib/raspberry-component-repair/initial_host_contract.py",
       "normalizations": [],
-      "source_sha256": "0c9f09af69740755a19261a084e3383f5a2c52ce27929daebd7ea17d07071cd5",
-      "export_sha256": "0c9f09af69740755a19261a084e3383f5a2c52ce27929daebd7ea17d07071cd5",
+      "source_sha256": "b3581eb37f279f81734825392c77fd74e89f5427fd34f8a1156f4cae21b32305",
+      "export_sha256": "b3581eb37f279f81734825392c77fd74e89f5427fd34f8a1156f4cae21b32305",
       "native_owner_uid": 0,
       "native_mode": "0644",
       "native_source_matches_frozen_candidate": true,
-      "source_observed_at": "2026-11-01T00:58:31Z",
+      "source_observed_at": "2026-11-01T23:22:47.135490+00:00",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_loaded_worker_or_functional_Eva_proof"

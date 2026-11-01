@@ -5,7 +5,7 @@ caller supplies IDs only. No source, path, shell, approval boolean, grant,
 credential, effect or terminal proof comes from the model. Registration does
 not validate, seal, deploy or grant a native effect.
 """
-import hashlib,json,os,re,stat,time
+import hashlib,json,math,os,re,stat,time
 from pathlib import Path
 from component_jobs import need,ident,protected
 from source_writer import read,raw,sha,write_new,protected_dir,SourceWriter
@@ -43,7 +43,12 @@ def project_contract(policy,profile,canonical,registry,stamp,policy_sha,profile_
  for row in registry['requests']:
   record={key:row[key]for key in('operation_id','task_id','send_id','proposal_id','state','expires_at')}
   for key in('operation_id','task_id','send_id','proposal_id'):ident(record[key])
-  need(record['state']in('registered','uncertain_intent'),'contract_registry_state_invalid');record['workflow_state']=row.get('workflow_state','unknown');safe_records.append(record)
+  need(record['state']in('registered','uncertain_intent'),'contract_registry_state_invalid');record['workflow_state']=row.get('workflow_state','unknown')
+  if record['state']=='registered':
+   result=row.get('terminal_result','unknown');at=row.get('terminal_result_at')
+   need(result in TERMINAL_RESULTS|{'unknown','not_terminal'} and (at is None or type(at)in(int,float)and math.isfinite(at)and 0<=at<=stamp) and ((result in TERMINAL_RESULTS)==(at is not None)),'contract_terminal_result_invalid')
+   record.update(terminal_result=result,terminal_result_at=at)
+  safe_records.append(record)
  safe_registry={key:registry[key]for key in('source','observed_at','age_seconds','collection_error','coverage','records','truncated')};safe_registry['requests']=safe_records
  ready=[r for r in safe_records if r['state']=='registered'and r['workflow_state']in('not_prepared','prepared')and r['proposal_id']==proposal_id and r['expires_at']>stamp+190]
  frozen_source_matches=all(s['matches_before']for s in sources)
@@ -86,12 +91,42 @@ def project_contract(policy,profile,canonical,registry,stamp,policy_sha,profile_
   'recurring_execution_enabled':False,'other_components_enabled':False,'native_full_flow_replay':False,'operator_source_and_visual_review_still_required':True,
   'client_attribution':'authenticated owner principal; not a unique chatbot identity or execution proof'}
 
+TERMINAL_RESULTS=frozenset(('verified','failed_without_effect','confirmed_not_applied','rolled_back'))
+def terminal_observation(state,result,receipts,stamp):
+ """Project only receipt-bound terminal state and its original receipt time."""
+ if state not in TERMINAL_RESULTS and state!='released':return 'not_terminal',None
+ try:
+  def checked(value,expected_hash):
+   if not isinstance(value,str) or len(value.encode('utf-8'))>16384:raise ValueError('result bound')
+   parsed=json.loads(value)
+   if type(parsed)is not dict:raise ValueError('result shape')
+   encoded=json.dumps(parsed,sort_keys=True,separators=(',',':')).encode()
+   if hashlib.sha256(encoded).hexdigest()!=expected_hash:raise ValueError('result hash')
+   return parsed
+  required=2 if state=='released' else 1
+  if len(receipts)<required:raise ValueError('missing receipt')
+  selected=receipts[:required]
+  for receipt_state,value,result_hash,at in selected:
+   if type(at)not in(int,float) or not math.isfinite(at) or not 0<=at<=stamp:raise ValueError('receipt time')
+   checked(value,result_hash)
+  latest=selected[0]
+  current=checked(result,latest[2])
+  if current!=checked(latest[1],latest[2]) or latest[0]!=state:raise ValueError('latest mismatch')
+  terminal=selected[-1]
+  if terminal[0] not in TERMINAL_RESULTS or terminal[2]!=latest[2] or checked(terminal[1],terminal[2])!=current or terminal[3]>latest[3]:raise ValueError('terminal mismatch')
+  return terminal[0],terminal[3]
+ except (ValueError,TypeError,OverflowError,UnicodeError,RecursionError):return 'unknown',None
+
 def registration_registry(state=STATE,clock=time.time):
- state=Path(state);folder=protected_dir(state/'registrations');records=[];count=0;error=None
+ state=Path(state);folder=protected_dir(state/'registrations');records=[];count=0;error=None;stamp=clock()
  import sqlite3
  read(state/'workflow.sqlite3',0,0o600,limit=1048576);db=sqlite3.connect((state/'workflow.sqlite3').as_uri()+'?mode=ro',uri=True,timeout=2)
  try:
-  db.execute('PRAGMA query_only=ON');states=dict(db.execute('SELECT id,state FROM operations').fetchall())
+  db.execute('PRAGMA query_only=ON');db.execute('BEGIN')
+  rows=db.execute('SELECT id,state,CASE WHEN length(CAST(result AS BLOB))<=16384 THEN result END FROM operations LIMIT 65').fetchall();need(len(rows)<=64,'initial_workflow_capacity_changed');states={}
+  for op,workflow_state,result in rows:
+   receipts=db.execute('SELECT state,CASE WHEN length(CAST(result AS BLOB))<=16384 THEN result END,result_hash,at FROM receipts WHERE id=? ORDER BY seq DESC LIMIT 2',(op,)).fetchall()
+   states[op]=(workflow_state,*terminal_observation(workflow_state,result,receipts,stamp))
  finally:db.close()
  for path in sorted(folder.iterdir()):
   count+=1;need(count<=4,'initial_registration_capacity_changed')
@@ -103,10 +138,11 @@ def registration_registry(state=STATE,clock=time.time):
    result=row['result'];need(type(result)is dict and result.get('operation_id')==path.stem and type(result.get('expires_at'))in(int,float),'initial_registration_result_invalid')
    request=_root_json(state/'requests'/(path.stem+'.json'));proposal=state/'proposals'/(identity['proposal_id']+'.json')
    need(set(request)==ROOT_REQUEST_FIELDS and sha(raw(request))==result['request_sha256']and sha(read(proposal,0,0o600,limit=1048576))==result['proposal_sha256'],'initial_registered_files_changed')
-   records.append({**identity,'state':'registered','workflow_state':states.get(path.stem,'not_prepared'),'expires_at':result['expires_at'],'Root_review_created':False})
+   workflow_state,terminal_result,terminal_at=states.get(path.stem,('not_prepared','not_terminal',None))
+   records.append({**identity,'state':'registered','workflow_state':workflow_state,'terminal_result':terminal_result,'terminal_result_at':terminal_at,'expires_at':result['expires_at'],'Root_review_created':False})
   else:
    need(row['state']=='intent'and row['result']is None,'initial_registration_state_invalid');records.append({**identity,'state':'uncertain_intent','expires_at':0,'Root_review_created':False});error='registration_intent_requires_reconciliation'
- return {'source':'protected_initial_registration_ledger','observed_at':clock(),'age_seconds':0,'collection_error':error,'coverage':['immutable_registration_and_files','not_live_task_budget_or_native_execution'],'requests':records,'records':count,'truncated':False}
+ return {'source':'protected_initial_registration_ledger','observed_at':stamp,'age_seconds':0,'collection_error':error,'coverage':['immutable_registration_and_files','not_live_task_budget_or_native_execution'],'requests':records,'records':count,'truncated':False}
 
 def describe(factory,clock=time.time):
  p=factory.policy;profile_data=factory.verified[str(STATE/'profiles/observacao_host.json')];profile=json.loads(profile_data)

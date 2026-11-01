@@ -32,6 +32,14 @@ deve ser confundido com falha do transporte nem com autorização para repetir a
 proposta antiga. Um novo reparo exige perfil e proposta compatíveis com a fonte
 atual. A recorrência permanece uma configuração separada.
 
+O inventário distingue `workflow_state` de `terminal_result`: uma operação
+`released` pode ter sido verificada, revertida ou encerrada sem efeito.
+`terminal_result_at` conserva o horário do recibo terminal, antes da liberação.
+O leitor compara estado, resultado e hashes dos recibos no mesmo snapshot
+SQLite somente leitura. Evidência incompleta, divergente ou com horário futuro
+mantém `unknown`. Essa projeção não repete o reparo nem comprova saúde atual,
+replay nativo completo ou atuação espontânea do cliente.
+
 As [fontes exportadas](../../../scripts/raspberry-mcp/runtime-source/component-repair/README.md)
 separam autorização, reservas duráveis, observação somente leitura, escrita
 canônica, validação isolada, revisão, efeito e recibos. A exportação remove
