@@ -50,6 +50,8 @@ bindings/private/
 !.agents/skills/prompt-improver/**
 !.agents/skills/rtx-context-optimizer/
 !.agents/skills/rtx-context-optimizer/**
+!.agents/skills/desktop-browser-maintenance/
+!.agents/skills/desktop-browser-maintenance/**
 # Preserve Codex runtime state as private while versioning public instructions
 # and project memory.
 .codex/*
