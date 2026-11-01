@@ -72,7 +72,7 @@
       "source_sha256": "fd9135466704bf34b692e0384c7417aaab80b8e841c3314ce8cfe9af95486a48",
       "export_sha256": "fd9135466704bf34b692e0384c7417aaab80b8e841c3314ce8cfe9af95486a48",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:22:47.135490+00:00",
+      "source_observed_at": "2026-11-01T23:22:47Z",
       "native_owner_uid": 0,
       "native_mode": "0644",
       "native_source_matches_frozen_candidate": true,
@@ -895,7 +895,7 @@
       "native_owner_uid": 0,
       "native_mode": "0644",
       "native_source_matches_frozen_candidate": true,
-      "source_observed_at": "2026-11-01T23:22:47.135490+00:00",
+      "source_observed_at": "2026-11-01T23:22:47Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_loaded_worker_or_functional_Eva_proof"
@@ -1035,7 +1035,7 @@
       "native_owner_uid": 0,
       "native_mode": "0644",
       "native_source_matches_frozen_candidate": true,
-      "source_observed_at": "2026-11-01T23:22:47.135490+00:00",
+      "source_observed_at": "2026-11-01T23:22:47Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_loaded_worker_or_functional_Eva_proof"
