@@ -131,6 +131,14 @@ server, or certification for an untested chatbot. The schema template removes
 private thread bindings, and the runtime source map distinguishes active code
 from the older task-control candidate preserved below.
 
+[Existing-thread communication](raspberry-mcp/reference/workspace-communication.md)
+uses a separately enabled policy on the current task tools. It preserves the
+recipient's profile, uses active-turn steering or idle-turn start, and refuses
+unloaded threads without profile proof. Shared quotas, expiry, durable receipts
+and uncertain-delivery blocking remain in force. A bounded sanitized reply must
+be proven later than delivery; exact acknowledgement, turn completion and
+household recovery remain separate evidence.
+
 The documentation now has permanent functional paths under `docs/raspberry-mcp/`:
 [architecture](raspberry-mcp/architecture.md), [installation and authentication](raspberry-mcp/installation.md),
 [tools and schemas](raspberry-mcp/tools.md), [operation and recovery](raspberry-mcp/operations.md)
