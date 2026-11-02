@@ -1113,8 +1113,10 @@
     "nodered-reader-binding/controller.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/controller.py",
       "source_sha256": "8132b908d74d584802d9e1f6281e78e9a65cbde0f82543b7f5a90ec157d7621d",
-      "export_sha256": "8132b908d74d584802d9e1f6281e78e9a65cbde0f82543b7f5a90ec157d7621d",
-      "normalizations": [],
+      "export_sha256": "f0f90eeb4699f72ec708f06881f6a31466bd6d1add6f666d8e7527fcb742438c",
+      "normalizations": [
+        "reviewed_reference_update_server_incident_correlation_and_duplicate_guard;not_original_captured_runtime_bytes"
+      ],
       "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
@@ -1140,8 +1142,10 @@
     "nodered-reader-binding/runtime.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/runtime.py",
       "source_sha256": "34c98eb8b2619bc25d48016b96917da8be91275e673c627cc04e48e935922421",
-      "export_sha256": "34c98eb8b2619bc25d48016b96917da8be91275e673c627cc04e48e935922421",
-      "normalizations": [],
+      "export_sha256": "e20f792537fd42d26d12931caf2d822423ae114b4d06d864237912fd02986608",
+      "normalizations": [
+        "reviewed_reference_update_incident_correlation_discovery;not_original_captured_runtime_bytes"
+      ],
       "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
@@ -1149,8 +1153,10 @@
     "nodered-reader-binding/server.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/server.py",
       "source_sha256": "f1c8ce5394a8bb3fafb94476ccc6b63dc4716cb2e9841684f0a8a9e4fe6535a3",
-      "export_sha256": "f1c8ce5394a8bb3fafb94476ccc6b63dc4716cb2e9841684f0a8a9e4fe6535a3",
-      "normalizations": [],
+      "export_sha256": "e2e67b7bc04c2fb698666dd5f5ca1adc257ed04660bd9aa57296f5c07c661872",
+      "normalizations": [
+        "reviewed_reference_update_closed_incident_refusal_codes;not_original_captured_runtime_bytes"
+      ],
       "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"

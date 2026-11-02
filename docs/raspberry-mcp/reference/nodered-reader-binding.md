@@ -28,6 +28,34 @@ Um plano `planned`, válido e sem resultado incerto pode ser seguido de uma apli
 
 Antes do intent de aplicação ou restauração, o executor pode observar o leitor até ficar inativo por no máximo 30 segundos e 16 consultas. A espera é somente observacional, sem reiniciar o leitor. Após ela, o executor revalida admissão, prazo da prévia, identidade e valores antes de persistir o intent. Se não confirmar inatividade ou outro gate falhar, não há escrita.
 
+## Correlação canônica e proteção contra repetição
+
+Uma falha atual elegível pode solicitar a prévia já autorizada para obter a
+associação do alvo atual. A descoberta passiva explica esse procedimento em
+`incident_correlation`; não consulta Docker/systemd, não afirma conhecer a
+instância atual e não enumera o histórico privado. A prévia verifica o mesmo
+alvo fixo e retorna uma chave opaca derivada no servidor da instância, unidade
+lógica e mudança de permissões. Horário, chave escolhida pelo cliente ou uma
+revisão de código da unidade não tornam a mesma mudança um incidente novo.
+Os controles normais continuam validando a identidade e a versão atual.
+
+Se a prévia encontra a operação canônica já existente, retorna seu identificador
+com `existing_operation: true` e `observe_only: true`, sem criar uma operação
+alias. O cliente acompanha esse recibo; não aplica usando uma chave nova. O
+servidor volta a verificar a correlação antes de um intent, inclusive quando
+existiam dois planos antigos. Uma operação aplicada ou restaurada não ganha
+outro efeito pela troca de chave. Resultados incertos bloqueiam novas prévias;
+status e reconciliação permanecem na operação original.
+
+Uma prévia nova identifica a associação atual verificada, mas a correlação não
+concede o efeito. São necessários estado `planned`, relógio válido, confirmação
+da interface e todos os gates existentes. Planos vencidos comprovadamente sem
+efeito podem receber uma nova prévia vinculada por
+`prior_no_effect_preview_operation_id`: o recibo e o vencimento anteriores são
+preservados. Isso não renova um intent, não repete uma aplicação e não autoriza
+recriar operações incertas. A proteção de orçamento persiste entre processos e
+contabiliza também restaurações.
+
 ## Transporte e fronteiras de confiança
 
 O cliente nativo usa prazo de 48 segundos, abaixo dos 50 segundos do frontend. Timeout ou perda de resposta não comprovam ausência de efeito: observe e reconcilie a mesma operação, sem repetição automática.

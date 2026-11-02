@@ -98,6 +98,9 @@ class PersistentController(unittest.TestCase):
 
     def test_budget_and_spacing_survive_new_controller_instances(self):
         for key in ('a' * 32, 'b' * 32):
+            # Independent verified instances represent separate incidents;
+            # an applied/restored incident cannot gain a fresh effect by key.
+            self.manager.value['container_id'] = key[0] * 64
             self.call(key=key)
             self.call('apply', key)
             self.now += 600
@@ -106,6 +109,7 @@ class PersistentController(unittest.TestCase):
             self.call('restore', key)
             self.now += 600
             self.reopen()
+        self.manager.value['container_id'] = 'c' * 64
         with self.assertRaisesRegex(c.Refused, 'daily_budget'):
             self.call(key='c' * 32)
         self.assertEqual(len(self.manager.writes), 4)

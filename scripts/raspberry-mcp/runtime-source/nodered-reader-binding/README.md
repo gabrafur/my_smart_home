@@ -1,8 +1,12 @@
 # Closed Node-RED diagnostics reader binding
 
-The eight modules are a reviewed source export. `SOURCE-MAP.json` in the
-parent directory records their observed native hashes; it is evidence of
-source provenance, not current admission or deployment authority.
+The eight modules retain their reviewed native capture provenance.
+`SOURCE-MAP.json` preserves the original source hashes and observation times;
+its export hashes also describe the current versioned references. Three
+explicit post-capture changes add incident correlation, duplicate-effect
+protection, bounded discovery and closed refusal reasons. Their normalization
+notes distinguish these updates from the historical captured bytes. Neither
+provenance nor a versioned reference proves current admission or installation.
 
 Historical module docstrings saying `UNINSTALLED` or `UNACTIVATED` are retained
 byte for byte. They do not describe the current runtime. Query the real MCP

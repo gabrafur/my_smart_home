@@ -27,15 +27,37 @@ test('frontend preserves prior tools while exposing the fixed revocation pair', 
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
-test('export preserves the reviewed source bytes and excludes private admission', () => {
+test('export preserves capture provenance and declares reviewed updates', () => {
   const map = JSON.parse(fs.readFileSync(new URL('./runtime-source/SOURCE-MAP.json', import.meta.url)));
   const entries = Object.entries(map.files).filter(([name]) => name.startsWith('nodered-reader-binding/'));
   assert.equal(entries.length, 8);
+  const reviewedUpdates = {
+  "controller.py": {
+    "source_sha256": "8132b908d74d584802d9e1f6281e78e9a65cbde0f82543b7f5a90ec157d7621d",
+    "normalization": "reviewed_reference_update_server_incident_correlation_and_duplicate_guard;not_original_captured_runtime_bytes"
+  },
+  "runtime.py": {
+    "source_sha256": "34c98eb8b2619bc25d48016b96917da8be91275e673c627cc04e48e935922421",
+    "normalization": "reviewed_reference_update_incident_correlation_discovery;not_original_captured_runtime_bytes"
+  },
+  "server.py": {
+    "source_sha256": "f1c8ce5394a8bb3fafb94476ccc6b63dc4716cb2e9841684f0a8a9e4fe6535a3",
+    "normalization": "reviewed_reference_update_closed_incident_refusal_codes;not_original_captured_runtime_bytes"
+  }
+};
   for (const [name, row] of entries) {
     const bytes = fs.readFileSync(new URL('./runtime-source/' + name, import.meta.url));
     const digest = crypto.createHash('sha256').update(bytes).digest('hex');
     assert.equal(digest, row.export_sha256);
-    assert.equal(digest, row.source_sha256);
+    const declared = reviewedUpdates[name.split('/').at(-1)];
+    if (declared) {
+      assert.equal(row.source_sha256, declared.source_sha256);
+      assert.deepEqual(row.normalizations, [declared.normalization]);
+      assert.notEqual(digest, row.source_sha256);
+    } else {
+      assert.equal(digest, row.source_sha256);
+      assert.deepEqual(row.normalizations, []);
+    }
     assert.equal(row.native_owner_uid, 0);
     assert.equal(row.native_mode, '0644');
   }

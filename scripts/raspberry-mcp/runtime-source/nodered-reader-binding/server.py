@@ -19,6 +19,10 @@ SAFE_REASONS |= frozenset(('restore_plan_expired','restore_binding_conflict','re
     'instance_changed_since_original_effect','instance_changed_since_preview',
     'instance_changed_uncertain_operation_requires_reconciliation',
     'reviewed_logical_NodeRED_service_not_verified'))
+SAFE_REASONS |= frozenset(('ambiguous_incident_history_requires_review',
+    'incident_already_has_canonical_operation','incident_receipt_clock_unconfirmed',
+    'incident_prior_preview_unconfirmed','incident_instance_unconfirmed',
+    'incident_unit_unconfirmed','clock_order_unconfirmed'))
 
 
 def unique(pairs):

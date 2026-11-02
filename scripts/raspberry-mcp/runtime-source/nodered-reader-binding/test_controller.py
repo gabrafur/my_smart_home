@@ -74,7 +74,7 @@ class BindingCore(unittest.TestCase):
   self.assertEqual(self.manager.writes,[])
  def test_lost_reply_preserves_one_intent_blocks_new_ids_and_reconcile_only_reads(self):
   self.call();self.manager.lose_reply=True;self.assertEqual(self.call('apply')['state'],'outcome_unknown');self.call('apply')
-  with self.assertRaises(m.Refused):self.call(identifier='b'*32)
+  with self.assertRaisesRegex(m.Refused,'requires_reconciliation'):self.call(identifier='b'*32)
   self.assertEqual(self.call('apply',tool='admin_action_reconcile')['state'],'applied');self.assertEqual(len(self.manager.writes),1)
  def test_unknown_no_change_can_be_observed_but_never_automatically_retried(self):
   self.call();self.manager.failure=True;self.call('apply');self.assertEqual(self.call('apply',tool='admin_action_reconcile')['state'],'not_applied_observed');self.call('apply');self.assertEqual(len(self.manager.writes),1)
@@ -95,7 +95,9 @@ class BindingCore(unittest.TestCase):
   self.assertEqual(self.call('apply',tool='admin_action_status')['state'],'applied')
  def test_four_write_budget_includes_restores_without_counter_reset(self):
   for identifier in ['a'*32,'b'*32]:
+   self.manager.value['container_id']=identifier*2
    self.manager.value['peer_ipv4']='192.0.2.6';self.call(identifier=identifier);self.call('apply',identifier);self.now+=600;self.call('plan_restore',identifier);self.call('restore',identifier);self.now+=600
+  self.manager.value['container_id']='c'*64
   with self.assertRaisesRegex(m.Refused,'daily_budget'):self.call(identifier='c'*32)
   self.assertEqual(len(self.manager.writes),4)
  def test_status_clock_is_not_refreshed_and_reverse_clock_is_unknown(self):

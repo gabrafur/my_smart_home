@@ -160,6 +160,11 @@ def metadata(policy):
             unresolved_operations=uncertain, writes_last_24h=used,
             remaining_writes=None if used is None else max(0, controller.MAXIMUM_PER_24H - used),
             spacing_ready=clock_ok and (not effects or now - max(effects) >= controller.MINIMUM_SPACING),
+            incident_correlation={'source':'current_target_association_requires_existing_preview',
+                'available_via':'nodered_plan_reader_binding','key_format':'nri1-sha256',
+                'current_target_observed':False,'history_enumeration_enabled':False,
+                'existing_match_behavior':'observe_existing_operation_only_no_apply_with_new_key',
+                'preview_inspects_only_existing_fixed_target':True},
             live_identity_and_resource_preflight_required=True,
             execution_active=policy['controller_policy']['enabled'] and not revoked and clock_ok
                 and uncertain == 0 and used < controller.MAXIMUM_PER_24H
