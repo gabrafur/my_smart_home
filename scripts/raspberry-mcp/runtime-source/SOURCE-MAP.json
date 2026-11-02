@@ -163,7 +163,7 @@
       "source_sha256": "17b3ad5d77603438942ee49a8dc816c9d19f5ccf3e5e9b71d475e1fe85181306",
       "export_sha256": "17b3ad5d77603438942ee49a8dc816c9d19f5ccf3e5e9b71d475e1fe85181306",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T03:31:29.174018+00:00",
+      "source_observed_at": "2026-11-02T03:31:29Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_loaded_worker_or_runtime_health_proof"
