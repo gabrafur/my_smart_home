@@ -40,14 +40,24 @@ não recebe o horário de uma leitura nova. O suplemento limita a varredura a
 16.000 entradas e quatro segundos; arquivos apagados abertos têm orçamento
 próprio e cobertura parcial explícita. Somente IDs opacos e tamanhos dos maiores
 arquivos são publicados. A consulta Docker agregada opcional tem timeout; o
-sandbox proposto não recebe o socket Docker e mantém a ausência de agregado
-atual separada do agregado histórico do relatório existente.
+sandbox não recebe o socket Docker. O relatório do produtor existente pode
+fornecer a medição com origem e idade próprias, sem acesso à API pelo cliente.
 
-A projeção conserva o motivo fechado `current_Docker_aggregate_not_exposed`
-quando o produtor deliberadamente não recebeu o socket. Isso mantém o estado
-`unknown`, sem sugerir falha do Docker. Os bytes do relatório anterior permanecem
-em `legacy_report`, com origem, relógio e idade próprios; não substituem uma
-medição atual nem permitem interpretar coleta ausente como zero.
+O sandbox continua sem socket de controle Docker. O produtor existente
+`storage-maintenance.sh` acrescenta `docker_measurement` ao mesmo relatório,
+usando `storage_docker_report.py`: quatro agregados, até 256 linhas de imagens
+e cinco maiores candidatos com bytes exatos e IDs opacos. São no máximo três
+comandos de leitura, 65.536 bytes por comando, deadline de cinco segundos e
+até um segundo para encerrar o próprio subprocesso. Agregados e seleção dos
+maiores conservam a precisão exibida pelo Docker; tamanhos compartilhados
+não são aditivos. Os demais campos existentes permanecem compatíveis.
+
+A projeção usa o relógio original dessa medição: dado com mais de cinco minutos
+é `stale`, erro é `unknown` e lista incompleta preserva agregados válidos com
+cobertura parcial. Sem relatório medido válido, conserva o motivo fechado
+`current_Docker_aggregate_not_exposed`, sem sugerir pane do Docker. Valores
+legados permanecem em `legacy_report`, com origem e idade próprias; coleta
+ausente nunca vira zero. Nenhuma observação autoriza limpar Docker.
 
 `health_summary.storage_health()` projeta somente campos revisados no leitor
 existente `maintenance_capabilities`. `broker.py` propõe estender também

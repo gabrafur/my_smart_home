@@ -17,6 +17,13 @@ documentation, and the scheduler do not maintain a second coverage list.
 | Synthetic integration | Flows and bridge with temporary data | Node-RED and bridge aggregators |
 | Restore/bootstrap/demo | Recovery, fresh clones, and logical scenarios | temporary directories, no household state |
 
+Native process-boundary evidence runs on Linux without root and compiles the
+C11 fixture with `cc` and static linking. Validation hosts need the compiler
+and matching static headers/libraries (`gcc` and `libc6-dev` on Debian). A
+prebuilt binary is accepted only with explicit binary and source hashes in
+the test environment. Missing tooling fails validation; do not skip the test
+or treat an unpublished update as successfully published.
+
 ## Discovery and categories
 
 `npm --prefix nodered run test:all` discovers every

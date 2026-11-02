@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import pwd
+import re
 import stat
 import subprocess
 import time
@@ -79,7 +80,8 @@ def legacy_report(path=REPORT, now=None):
                 'total_bytes': number(v.get('filesystem_total_bytes')),
                 'deleted_open_bytes': number(v.get('deleted_open_bytes')),
                 'deleted_open_count': number(v.get('deleted_open_count')),
-                'deleted_open_scan_complete': v.get('deleted_open_scan_complete') is True}
+                'deleted_open_scan_complete': v.get('deleted_open_scan_complete') is True,
+                'docker_measurement': docker_report(v.get('docker_measurement'), now)}
         return envelope('existing_Storage_Health_report', observed.timestamp(), now, data,
                         state='stale' if now-observed.timestamp() > 300 else 'observed',
                         coverage=['retained_historical_point_not_current_measurement',
@@ -91,6 +93,49 @@ def legacy_report(path=REPORT, now=None):
     except (OSError, ValueError, KeyError, TypeError, OverflowError):
         error = 'source_invalid_or_unavailable'
     return envelope('existing_Storage_Health_report', None, now, None, error, 'unknown')
+
+
+
+def docker_report(value, now):
+    """Project the existing fixed report; never contact the Docker API here."""
+    source = 'existing_Storage_Health_Docker_report'
+    try:
+        if not isinstance(value, dict) or value.get('source') != source:
+            raise ValueError('invalid_source')
+        observed = datetime.fromisoformat(value['observed_at'].replace('Z', '+00:00'))
+        if observed.tzinfo is None or now < observed.timestamp():
+            raise ValueError('invalid_clock')
+        if value.get('collection_error') is not None or value.get('state') not in ('observed', 'partial'):
+            return envelope(source, observed.timestamp(), now, None,
+                            'docker_measurement_unavailable', 'unknown')
+        rows = value.get('data')
+        kinds = {'images', 'containers', 'volumes', 'build_cache'}
+        if not isinstance(rows, list) or len(rows) != 4 or not all(
+                isinstance(r, dict) and r.get('kind') in kinds and number(r.get('logical_bytes')) is not None for r in rows
+        ) or {r['kind'] for r in rows} != kinds:
+            raise ValueError('invalid_aggregate')
+        safe = [{'kind': r['kind'], 'logical_bytes': r['logical_bytes'], 'cleanup_allowed': False} for r in rows]
+        result = envelope(source, observed.timestamp(), now, safe,
+                          state='stale' if now-observed.timestamp() > 300 else 'observed',
+                          coverage=['existing_fixed_report_no_Docker_control_socket',
+                                    'logical_shared_bytes_not_additive',
+                                    'Docker_display_precision_for_aggregates',
+                                    'largest_selection_rounded_display_size_exact_inspected_bytes',
+                                    'no_names_contents_or_cleanup'])
+        items = value.get('largest_observed_images')
+        valid = isinstance(items, list) and len(items) <= 5 and all(
+            isinstance(r, dict) and isinstance(r.get('item_id'), str) and
+            re.fullmatch('[a-f0-9]{24}', r['item_id']) and number(r.get('logical_bytes')) is not None for r in items)
+        valid = valid and len({r['item_id'] for r in items}) == len(items)
+        complete = valid and value.get('largest_collection_error') is None and type(value.get('image_inventory_count')) is int and 0 <= value['image_inventory_count'] <= 256
+        result['largest_observed_images'] = [{'item_id': r['item_id'], 'logical_bytes': r['logical_bytes']} for r in items] if valid else []
+        result['image_inventory_count'] = value['image_inventory_count'] if complete else None
+        result['largest_collection_error'] = None if complete else 'largest_image_measurement_incomplete'
+        if not complete and result['state'] == 'observed':
+            result['state'] = 'partial'
+        return result
+    except (ValueError, KeyError, TypeError, OverflowError):
+        return envelope(source, None, now, None, 'docker_report_missing_or_invalid', 'unknown')
 
 
 def measure(roots, deadline, remaining, category, clock=time.monotonic):
@@ -281,6 +326,15 @@ def collect(now=None, roots=None, *, filesystem=REPO, report=REPORT, docker_read
                            'no_cleanup_or_service_calls'],
               'cleanup_enabled': False}
     result['docker'] = docker_reader(now)
+    # The sandbox keeps its Docker control socket absent. Reuse only metadata
+    # already produced by Storage Health, keeping its original measurement time.
+    if result['docker'].get('collection_error') is not None:
+        old_data = result['legacy_report'].get('data')
+        reported = old_data.get('docker_measurement') if isinstance(old_data, dict) else None
+        if isinstance(reported, dict) and reported.get('observed_at') is not None:
+            result['docker'] = reported
+        if isinstance(old_data, dict):
+            old_data.pop('docker_measurement', None)
     result['deleted_open'] = envelope('bounded_proc_fd_metadata', now, now,
                                      deleted_open(min(deadline, time.monotonic()+1)),
                                      coverage=['no_names_PIDs_or_contents', 'deduplicated_device_inode'])

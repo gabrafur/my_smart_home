@@ -841,15 +841,43 @@ def storage_health(read=None, now=None):
     result['legacy_report'] = old
     docker = _storage_map(raw.get('docker'))
     rows = []
-    aggregate = docker.get('source') == 'fixed_Docker_system_df_aggregate' and docker.get('collection_error') is None
+    aggregate = docker.get('source') in ('fixed_Docker_system_df_aggregate', 'existing_Storage_Health_Docker_report') and docker.get('collection_error') is None
     for item in docker.get('data', []) if aggregate and isinstance(docker.get('data'), list) else []:
         if (isinstance(item, dict) and item.get('kind') in ('images', 'containers', 'volumes', 'build_cache')
                 and type(item.get('logical_bytes')) is int and 0 <= item['logical_bytes'] <= 2**63-1):
             rows.append({'kind': item['kind'], 'logical_bytes': item['logical_bytes'], 'cleanup_allowed': False})
-    result['docker'] = packet('fixed_Docker_system_df_aggregate', docker, ())
+    docker_source = docker.get('source') if docker.get('source') in ('fixed_Docker_system_df_aggregate', 'existing_Storage_Health_Docker_report') else 'fixed_Docker_system_df_aggregate'
+    result['docker'] = packet(docker_source, docker, ())
     result['docker']['data'] = rows
     if len(rows) != 4 or len({r['kind'] for r in rows}) != 4:
         result['docker'].update(state='unknown', collection_error='docker_aggregate_unavailable')
+    if docker_source == 'existing_Storage_Health_Docker_report':
+        safe_items = []
+        for item in docker.get('largest_observed_images', [])[:5] if isinstance(docker.get('largest_observed_images'), list) else []:
+            if (isinstance(item, dict) and isinstance(item.get('item_id'), str)
+                    and re.fullmatch('[a-f0-9]{24}', item['item_id'])
+                    and type(item.get('logical_bytes')) is int and 0 <= item['logical_bytes'] <= 2**63-1):
+                safe_items.append({'item_id': item['item_id'], 'logical_bytes': item['logical_bytes']})
+        result['docker']['largest_observed_images'] = safe_items
+        count = docker.get('image_inventory_count')
+        valid_count = type(count) is int and 0 <= count <= 256
+        result['docker']['image_inventory_count'] = count if valid_count else None
+        raw_items = docker.get('largest_observed_images')
+        valid_items = (isinstance(raw_items, list) and len(raw_items) <= 5
+                       and len(safe_items) == len(raw_items)
+                       and len({item['item_id'] for item in safe_items}) == len(safe_items))
+        complete = (docker.get('largest_collection_error') is None and valid_count
+                    and valid_items and count >= len(safe_items))
+        if not valid_items:
+            result['docker']['largest_observed_images'] = []
+        result['docker']['largest_collection_error'] = None if complete else 'largest_image_measurement_incomplete'
+        if not complete and result['docker']['state'] == 'observed':
+            result['docker']['state'] = 'partial'
+        result['docker']['coverage'] += ['existing_producer_report_original_measurement_time',
+                                        'logical_shared_bytes_not_additive',
+                                        'aggregate_Docker_display_precision',
+                                        'largest_selection_rounded_display_size_exact_inspected_bytes',
+                                        'no_Docker_control_socket_in_MCP_sandbox']
     if (docker.get('source') == 'metadata_sandbox_without_Docker_control_socket'
             and docker.get('collection_error') == 'current_Docker_aggregate_not_exposed'
             and docker.get('state') == 'unknown' and docker.get('data') is None):

@@ -519,3 +519,31 @@ test("flock prevents concurrent executions", async () => {
   assert.ok(!fs.existsSync(item.metricsFile));
   removeFixture(item);
 });
+
+test("report-only does not attribute concurrent filesystem shrinkage to cleanup", () => {
+  const item = fixture();
+  try {
+    const bin = item.env.PATH.split(path.delimiter)[0];
+    fs.writeFileSync(path.join(bin, "df"), String.raw`#!/bin/sh
+case " $* " in
+  *" -Pi "*) printf '%s\n' 'Filesystem Inodes IUsed IFree IUse% Mounted on' "/dev/test 10000 1000 9000 10% $FAKE_FILESYSTEM" ;;
+  *" -B1 "*)
+    n=0; [ ! -f "$FAKE_DF_COUNT" ] || read -r n < "$FAKE_DF_COUNT"
+    n=$((n + 1)); printf '%s\n' "$n" > "$FAKE_DF_COUNT"
+    used=$((7000000000 - n * 1024))
+    printf '%s\n' 'Filesystem 1B-blocks Used Available Capacity Mounted on' "/dev/test 10000000000 $used 3000000000 70% $FAKE_FILESYSTEM" ;;
+  *" -P "*) printf '%s\n' 'Filesystem 1024-blocks Used Available Capacity Mounted on' "/dev/test 10000000 7000000 3000000 70% $FAKE_FILESYSTEM" ;;
+  *) exit 2 ;;
+esac
+`, {mode: 0o755});
+    const result = spawnSync(script, ["--apply", "--category", "report"], {
+      encoding: "utf8", env: {...item.env, FAKE_DF_COUNT: path.join(item.root, "df-count")},
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const metrics = JSON.parse(fs.readFileSync(item.metricsFile, "utf8"));
+    assert.equal(metrics.last_reclaimed_bytes, 0);
+    assert.ok(metrics.last_filesystem_net_reclaimed_bytes > 0);
+    assert.equal(metrics.docker_measurement, null, "fixture report must not probe the live Docker daemon");
+    assert.doesNotMatch(fs.readFileSync(item.calls, "utf8"), /prune|image rm|container rm/);
+  } finally { removeFixture(item); }
+});

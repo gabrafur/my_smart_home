@@ -1181,9 +1181,9 @@ known_logs_bytes() {
 }
 
 write_metrics() {
-  local result=$1 reclaimed=$2 total used free used_percent inode_total inode_free inode_used docker_bytes logs_bytes repo_bytes now inode_summary
+  local result=$1 reclaimed=$2 filesystem_net_reclaimed=${3:-$2} total used free used_percent inode_total inode_free inode_used docker_bytes logs_bytes repo_bytes now inode_summary
   local vscode_bytes cursor_bytes npm_bytes user_cache_bytes pm2_bytes recorder_bytes recorder_reclaimable_bytes backup_bytes backup_archive_bytes manual_snapshot_bytes expired_manual_snapshot_bytes deleted_count deleted_bytes deleted_inaccessible
-  local docker_images_bytes docker_build_cache_bytes docker_build_cache_reclaimable_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes docker_reclaimable_untagged_bytes docker_protected_untagged_bytes docker_recent_untagged_bytes category category_json separator
+  local docker_images_bytes docker_build_cache_bytes docker_build_cache_reclaimable_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes docker_reclaimable_untagged_bytes docker_protected_untagged_bytes docker_recent_untagged_bytes category category_json separator docker_measurement
   [[ "$MODE" == apply ]] || return 0
   total=$(df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $2}')
   used=$(filesystem_used_bytes)
@@ -1192,6 +1192,13 @@ write_metrics() {
   inode_summary=$(df -Pi "$FILESYSTEM" | awk 'NR == 2 {print $2, $4}')
   read -r inode_total inode_free <<<"$inode_summary"
   inode_used=$((inode_total - inode_free))
+  # Only the canonical report produces these bounded fixed Docker observations.
+  # Alternate metric destinations (including fixtures) never probe the live daemon.
+  docker_measurement=null
+  if [[ "$METRICS_FILE" == "$REPO_ROOT/homeassistant/storage-maintenance-status.json" ]] &&
+     [[ "$DOCKER_BIN" == docker || "$DOCKER_BIN" == /usr/bin/docker ]]; then
+    docker_measurement=$(/usr/bin/python3 -I -S -B "$SCRIPT_DIR/storage_docker_report.py" report) || docker_measurement=null
+  fi
   docker_bytes=$(docker_total_bytes)
   read -r docker_images_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes docker_reclaimable_untagged_bytes docker_protected_untagged_bytes docker_recent_untagged_bytes < <(docker_image_metrics)
   docker_build_cache_bytes=$(docker_system_df_bytes 'Build Cache' Size)
@@ -1220,8 +1227,8 @@ write_metrics() {
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   METRICS_TEMP=$(mktemp "$metrics_parent/.storage-maintenance-status.XXXXXX")
   chmod 0644 "$METRICS_TEMP"
-  printf '{\n  "schema_version": 1,\n  "filesystem_total_bytes": %s,\n  "filesystem_used_bytes": %s,\n  "filesystem_free_bytes": %s,\n  "filesystem_used_percent": %s,\n  "inodes_total": %s,\n  "inodes_used": %s,\n  "docker_logical_bytes": %s,\n  "docker_images_logical_bytes": %s,\n  "docker_build_cache_logical_bytes": %s,\n  "docker_build_cache_reclaimable_bytes": %s,\n  "docker_unused_tagged_logical_bytes": %s,\n  "docker_unused_untagged_logical_bytes": %s,\n  "docker_reclaimable_untagged_logical_bytes": %s,\n  "docker_protected_untagged_logical_bytes": %s,\n  "docker_recent_untagged_logical_bytes": %s,\n  "known_logs_bytes": %s,\n  "repository_bytes": %s,\n  "vscode_server_logical_bytes": %s,\n  "cursor_server_logical_bytes": %s,\n  "npm_cache_logical_bytes": %s,\n  "allowlisted_user_caches_logical_bytes": %s,\n  "pm2_logs_logical_bytes": %s,\n  "home_assistant_recorder_logical_bytes": %s,\n  "home_assistant_recorder_reclaimable_bytes": %s,\n  "home_assistant_backups_logical_bytes": %s,\n  "home_assistant_backup_archives_logical_bytes": %s,\n  "home_assistant_manual_snapshots_logical_bytes": %s,\n  "home_assistant_expired_manual_snapshots_logical_bytes": %s,\n  "home_assistant_manual_snapshot_retention_days": %s,\n  "deleted_open_bytes": %s,\n  "deleted_open_count": %s,\n  "deleted_open_scan_complete": %s,\n  "last_maintenance_at": "%s",\n  "phase2_last_maintenance_at": "%s",\n  "last_reclaimed_bytes": %s,\n  "last_filesystem_net_reclaimed_bytes": %s,\n  "last_reclaimed_by_category": %s,\n  "last_result": "%s"\n}\n' \
-    "$total" "$used" "$free" "$used_percent" "$inode_total" "$inode_used" "$docker_bytes" "$docker_images_bytes" "$docker_build_cache_bytes" "$docker_build_cache_reclaimable_bytes" "$docker_unused_tagged_bytes" "$docker_unused_untagged_bytes" "$docker_reclaimable_untagged_bytes" "$docker_protected_untagged_bytes" "$docker_recent_untagged_bytes" "$logs_bytes" "$repo_bytes" "$vscode_bytes" "$cursor_bytes" "$npm_bytes" "$user_cache_bytes" "$pm2_bytes" "$recorder_bytes" "$recorder_reclaimable_bytes" "$backup_bytes" "$backup_archive_bytes" "$manual_snapshot_bytes" "$expired_manual_snapshot_bytes" "$HA_BACKUP_RETENTION_DAYS" "$deleted_bytes" "$deleted_count" "$([[ $deleted_inaccessible -eq 0 ]] && echo true || echo false)" "$now" "$now" "$reclaimed" "$reclaimed" "$category_json" "$result" > "$METRICS_TEMP"
+  printf '{\n  "schema_version": 1,\n  "filesystem_total_bytes": %s,\n  "filesystem_used_bytes": %s,\n  "filesystem_free_bytes": %s,\n  "filesystem_used_percent": %s,\n  "inodes_total": %s,\n  "inodes_used": %s,\n  "docker_measurement": %s,\n  "docker_logical_bytes": %s,\n  "docker_images_logical_bytes": %s,\n  "docker_build_cache_logical_bytes": %s,\n  "docker_build_cache_reclaimable_bytes": %s,\n  "docker_unused_tagged_logical_bytes": %s,\n  "docker_unused_untagged_logical_bytes": %s,\n  "docker_reclaimable_untagged_logical_bytes": %s,\n  "docker_protected_untagged_logical_bytes": %s,\n  "docker_recent_untagged_logical_bytes": %s,\n  "known_logs_bytes": %s,\n  "repository_bytes": %s,\n  "vscode_server_logical_bytes": %s,\n  "cursor_server_logical_bytes": %s,\n  "npm_cache_logical_bytes": %s,\n  "allowlisted_user_caches_logical_bytes": %s,\n  "pm2_logs_logical_bytes": %s,\n  "home_assistant_recorder_logical_bytes": %s,\n  "home_assistant_recorder_reclaimable_bytes": %s,\n  "home_assistant_backups_logical_bytes": %s,\n  "home_assistant_backup_archives_logical_bytes": %s,\n  "home_assistant_manual_snapshots_logical_bytes": %s,\n  "home_assistant_expired_manual_snapshots_logical_bytes": %s,\n  "home_assistant_manual_snapshot_retention_days": %s,\n  "deleted_open_bytes": %s,\n  "deleted_open_count": %s,\n  "deleted_open_scan_complete": %s,\n  "last_maintenance_at": "%s",\n  "phase2_last_maintenance_at": "%s",\n  "last_reclaimed_bytes": %s,\n  "last_filesystem_net_reclaimed_bytes": %s,\n  "last_reclaimed_by_category": %s,\n  "last_result": "%s"\n}\n' \
+    "$total" "$used" "$free" "$used_percent" "$inode_total" "$inode_used" "$docker_measurement" "$docker_bytes" "$docker_images_bytes" "$docker_build_cache_bytes" "$docker_build_cache_reclaimable_bytes" "$docker_unused_tagged_bytes" "$docker_unused_untagged_bytes" "$docker_reclaimable_untagged_bytes" "$docker_protected_untagged_bytes" "$docker_recent_untagged_bytes" "$logs_bytes" "$repo_bytes" "$vscode_bytes" "$cursor_bytes" "$npm_bytes" "$user_cache_bytes" "$pm2_bytes" "$recorder_bytes" "$recorder_reclaimable_bytes" "$backup_bytes" "$backup_archive_bytes" "$manual_snapshot_bytes" "$expired_manual_snapshot_bytes" "$HA_BACKUP_RETENTION_DAYS" "$deleted_bytes" "$deleted_count" "$([[ $deleted_inaccessible -eq 0 ]] && echo true || echo false)" "$now" "$now" "$reclaimed" "$filesystem_net_reclaimed" "$category_json" "$result" > "$METRICS_TEMP"
   mv -f -- "$METRICS_TEMP" "$METRICS_FILE"
   METRICS_TEMP=""
   log "metric status_file=$METRICS_FILE"
@@ -1259,5 +1266,8 @@ RECLAIMED_BYTES=0
 if [[ "$MODE" == apply ]] && (( BEFORE_BYTES > AFTER_BYTES )); then RECLAIMED_BYTES=$((BEFORE_BYTES - AFTER_BYTES)); fi
 RESULT=success
 if (( WARNINGS > 0 )); then RESULT=partial; fi
-write_metrics "$RESULT" "$RECLAIMED_BYTES"
+FILESYSTEM_NET_RECLAIMED_BYTES=$RECLAIMED_BYTES
+# Observation cannot claim concurrent filesystem shrinkage as its own cleanup.
+if (( ${#CATEGORIES[@]} == 1 )) && [[ "${CATEGORIES[0]}" == report ]]; then RECLAIMED_BYTES=0; fi
+write_metrics "$RESULT" "$RECLAIMED_BYTES" "$FILESYSTEM_NET_RECLAIMED_BYTES"
 log "status=$RESULT mode=$MODE filesystem=$FILESYSTEM before_bytes=$BEFORE_BYTES after_bytes=$AFTER_BYTES reclaimed_bytes=$RECLAIMED_BYTES removed_count=$REMOVED_COUNT removed_bytes=$REMOVED_BYTES warnings=$WARNINGS"

@@ -8,6 +8,14 @@
 delegar para alvos menores, usados para diagnóstico, mas CI, documentação e
 scheduler não mantêm uma segunda lista de cobertura.
 
+As provas nativas de proteção de processos executam em Linux, sem root, e
+compilam o fixture C com `cc`, C11 e ligação estática. O host de validação
+precisa de compilador e headers/bibliotecas estáticas correspondentes (em
+Debian, `gcc` e `libc6-dev`). Um binário pré-compilado só é aceito quando seus
+hashes e o hash da fonte forem fornecidos explicitamente pelo ambiente do
+teste. A ausência dessa dependência falha a validação; não deve ser mascarada
+com skip, remoção do teste ou aprovação da atualização sem publicação.
+
 | Nível | Objetivo | Execução |
 | --- | --- | --- |
 | Unitário | Funções puras, parsing e regras de falha segura | Node Test Runner e `unittest` |

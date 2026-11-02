@@ -129,6 +129,24 @@ nova agenda de limpeza no host. Testes sintéticos de preservação estão em
 `scripts/storage-health-observation.test.mjs`; execução natural e verificação
 de dados mantêm evidência própria.
 
+O relatório existente também publica metadados Docker para `disk_space`:
+quatro agregados e até cinco imagens com identificadores opacos e tamanhos
+inspecionados. O produtor usa no máximo três comandos de leitura, 256 linhas
+de inventário, 65.536 bytes por comando e prazo de cinco segundos, com até um
+segundo adicional para encerrar seu próprio subprocesso. Os agregados seguem
+a precisão exibida pelo Docker; a seleção das maiores imagens usa tamanhos
+arredondados e informa os bytes exatos dos candidatos inspecionados. Categorias
+compartilham dados e não devem ser somadas.
+
+O MCP consome somente o mesmo relatório fixo; seu sandbox continua sem socket
+de controle Docker. O relógio da medição é preservado: após cinco minutos o
+dado é antigo, e falha de coleta permanece desconhecida, sem virar zero. Uma
+falha na lista de imagens preserva os agregados válidos e informa cobertura
+parcial. Relatório ausente ou antigo não comprova pane do Docker. Na execução
+somente `report`, `last_reclaimed_bytes` é zero; a diferença global do filesystem
+fica separada e não comprova limpeza. Os testes correspondentes usam fixtures,
+sem consultar o daemon residencial.
+
 ## Administração pelo cliente MCP autorizado
 
 As quatro ferramentas principais são:
