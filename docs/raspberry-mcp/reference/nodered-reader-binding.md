@@ -16,6 +16,14 @@ A descoberta em `maintenance_capabilities` expõe `client_event_policy` separada
 
 A política de cliente cobre somente falha natural do leitor de diagnóstico, com origem e horário identificados, idade de até 300 segundos e erro de coleta `NodeRED_runtime_collection_unavailable`, acompanhado de `runtime_collection_unavailable` ou `socket_timeout`. A confirmação deve incluir descoberta `project_files` para a categoria `nodered` e offset zero. Erro isolado em fluxo, identidade inválida, revogação, falta de autorização, ocupação, cooldown ou expiração de cache não comprovam essa falha elegível. Se a descoberta funcionar, a investigação prossegue sem alterar o vínculo.
 
+Em `project_files`, o catálogo estático pode responder com `collection_error: null`
+enquanto o leitor falha. Avalie o objeto separado `runtime_observation`: sua fonte,
+horário, idade, erro e razão descrevem a coleta runtime. O sucesso do catálogo
+estático não comprova o funcionamento do leitor. A idade deriva do horário da
+fonte, sem renová-lo a cada leitura; horário ausente, inválido ou futuro produz
+idade desconhecida e erro explícito, em vez de dado recente. Uma falha de coleta
+acabada de observar pode ter idade zero e estado da aplicação desconhecido.
+
 Um plano `planned`, válido e sem resultado incerto pode ser seguido de uma aplicação com a mesma chave, mantendo a confirmação da interface; a política do cliente limita a uma aplicação por incidente. `no_change`, recusa ou estado desconhecido não autorizam aplicação. Depois de aplicar, uma nova descoberta e leitura runtime sem erro, posteriores ao efeito, são necessárias para afirmar que o leitor voltou a responder; isso não demonstra saúde dos fluxos ou da casa. Não há restauração, reinício, tarefa ou efeito em dispositivo automáticos por essa política.
 
 Antes do intent de aplicação ou restauração, o executor pode observar o leitor até ficar inativo por no máximo 30 segundos e 16 consultas. A espera é somente observacional, sem reiniciar o leitor. Após ela, o executor revalida admissão, prazo da prévia, identidade e valores antes de persistir o intent. Se não confirmar inatividade ou outro gate falhar, não há escrita.

@@ -89,6 +89,20 @@ os hashes e as identidades dos arquivos. Uma reconciliação autorizada pode
 concluir uma transição de estado comprovadamente ausente; não deve republicar
 os artefatos nem repetir um efeito incerto. Preserve também a falha original.
 
+Em um pacote transitório, teste a concordância dos diretórios e nomes de unidade
+do instalador, lançador, serviço e adaptador real. Testar somente o protocolo em
+memória não cobre o primeiro gate do executável. Confira também `initialize` e
+`finalize` dos nós: preserve os corpos existentes exatos contra a fonte revisada;
+não suponha que estejam vazios nem aceite um corpo desconhecido.
+
+Uma recusa anterior ao lançamento exige reconciliação, e não uma chave nova.
+Correlacione o comando terminal, o código imutável que registra antes de
+despachar, o diário e os recursos da unidade. Ausência isolada de arquivo ou de
+processo não basta. Se a evidência provar que a fase nunca foi lançada e a
+admissão atual passar, uma continuação autorizada pode concluir a fase pendente
+com o mesmo pacote e vínculo. Preserve a recusa e os limites originais. Havendo
+incerteza de efeito ou autenticação, permaneça em observação.
+
 O diagnóstico protegido do executor registra etapa, classe de exceção, errno e
 razão de uma lista fechada. Mensagens livres, argumentos, traceback, credenciais
 e payload não fazem parte desse resultado. Uma recusa anterior ao lançamento

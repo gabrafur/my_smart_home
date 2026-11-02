@@ -2,6 +2,27 @@
 import datetime,json,os,re,socket,stat,struct
 from pathlib import Path
 SOCKET=Path('/run/raspberry-nodered-diagnostics.sock')
+def observation_metadata(result,now):
+ out=dict(result)
+ out.setdefault('source','fixed_NodeRED_readonly_socket')
+ try:
+  at=out.get('observed_at')
+  if type(at)is not str:raise ValueError('source_time_unavailable')
+  parsed=datetime.datetime.fromisoformat(at.replace('Z','+00:00'))
+  if parsed.utcoffset()is None:raise ValueError('source_time_unavailable')
+  age=(now-parsed).total_seconds()
+  if age<0:raise ValueError('clock_order_unconfirmed')
+ except (ValueError,TypeError,OverflowError)as error:
+  out['age_seconds']=None
+  reason='clock_order_unconfirmed'if str(error)=='clock_order_unconfirmed'else'source_time_unavailable'
+  out['collection_error']=out.get('collection_error')or reason
+  out['state']='unknown'
+ else:
+  out['age_seconds']=round(age,3)
+  out.setdefault('state','observed'if out.get('collection_error')is None else'unknown')
+ out.setdefault('observed_at',None)
+ out.setdefault('coverage',['fixed_readonly_resource_metadata','source_observation_clock_preserved'])
+ return out
 def request(q):
  try:
   s=SOCKET.lstat()
@@ -23,11 +44,11 @@ def request(q):
     reason=v.get('error')if v.get('error')in allowed else'collection_unavailable'
     raise ValueError(reason)
    if type(v)is not dict or v.get('ok')is not True or type(v.get('result'))is not dict:raise ValueError('collection_unavailable')
-   return v['result']
+   return observation_metadata(v['result'],datetime.datetime.now(datetime.timezone.utc))
  except Exception as error:
   allowed={'socket_identity_invalid','peer_identity_invalid','response_limit','response_framing','collection_unavailable','virtual_nodered_resource_unavailable','virtual_nodered_snapshot_unavailable','virtual_nodered_resource_budget_exhausted','virtual_nodered_document_limit_exceeded','runtime_collection_unavailable','collection_cooldown','read_session_revocation_unconfirmed','sidecar_busy','request_refused','integration_collection_unavailable'}
   reason=str(error)if type(error)is ValueError and str(error)in allowed else'socket_timeout'if isinstance(error,TimeoutError)else'transport_unavailable'
-  return {'reason_code':reason,'source':'fixed_NodeRED_readonly_socket','observed_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'collection_error':'NodeRED_runtime_collection_unavailable','state':'unknown','coverage':['collection_failed_not_absence_or_recovery'],'automatic_retry':False}
+  return {'reason_code':reason,'source':'fixed_NodeRED_readonly_socket','observed_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'age_seconds':0,'collection_error':'NodeRED_runtime_collection_unavailable','state':'unknown','coverage':['collection_failed_not_absence_or_recovery'],'automatic_retry':False}
 def files():return request({'op':'files','host':'raspberry','offset':0})
 def read(args):
  if set(args)!={'host','file_id','offset'}or args['host']!='raspberry'or type(args['file_id'])is not str or re.fullmatch('[a-f0-9]{32}',args['file_id'])is None or type(args['offset'])is not int or not 0<=args['offset']<=262144:raise ValueError('invalid_parameters')

@@ -1,9 +1,9 @@
-import importlib.util,json,socket,stat,struct,types,unittest
+import datetime,importlib.util,json,socket,stat,struct,types,unittest
 from pathlib import Path
 from unittest.mock import patch
 s=importlib.util.spec_from_file_location('fixed_runtime_client',Path(__file__).with_name('runtime_client.py'));m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class Conn:
- def __init__(self,uid=0,reply=None):self.uid=uid;self.sent=[];self.reply=reply or b'{"ok":true,"result":{"collection_error":null,"files":[]}}\n'
+ def __init__(self,uid=0,reply=None):self.uid=uid;self.sent=[];self.reply=reply or (json.dumps({'ok':True,'result':{'collection_error':None,'files':[],'observed_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}})+'\n').encode()
  def __enter__(self):return self
  def __exit__(self,*a):pass
  def settimeout(self,t):pass
@@ -34,4 +34,29 @@ class Cases(unittest.TestCase):
  def test_read_invalid_target_and_path_arguments_refused(self):
   for q in ({'host':'other','file_id':'a'*32,'offset':0},{'host':'raspberry','file_id':'/etc/passwd','offset':0},{'host':'raspberry','file_id':'a'*32,'offset':0,'path':'/etc/passwd'}):self.assertRaises(ValueError,m.read,q)
  def test_bool_offset_refused(self):self.assertRaises(ValueError,m.read,{'host':'raspberry','file_id':'a'*32,'offset':False})
+class ObservationClockCases(unittest.TestCase):
+ def test_original_source_clock_is_preserved_and_age_grows(self):
+  at=datetime.datetime(2026,1,1,tzinfo=datetime.timezone.utc)
+  result={'observed_at':at.isoformat(),'collection_error':None,'coverage':['upstream']}
+  value=m.observation_metadata(result,at+datetime.timedelta(seconds=61))
+  self.assertEqual(value['observed_at'],result['observed_at']);self.assertEqual(value['age_seconds'],61)
+  self.assertEqual(value['source'],'fixed_NodeRED_readonly_socket');self.assertEqual(value['coverage'],['upstream'])
+  self.assertNotIn('age_seconds',result)
+ def test_future_clock_is_unknown_not_fresh(self):
+  now=datetime.datetime(2026,1,1,tzinfo=datetime.timezone.utc)
+  value=m.observation_metadata({'observed_at':(now+datetime.timedelta(seconds=1)).isoformat(),'collection_error':None},now)
+  self.assertIsNone(value['age_seconds']);self.assertEqual(value['collection_error'],'clock_order_unconfirmed');self.assertEqual(value['state'],'unknown')
+ def test_missing_or_naive_clock_not_replaced_with_call_time(self):
+  now=datetime.datetime(2026,1,1,tzinfo=datetime.timezone.utc)
+  for at in (None,'invalid','2026-01-01T00:00:00'):
+   with self.subTest(at=at):
+    value=m.observation_metadata({'observed_at':at,'collection_error':None},now)
+    self.assertIsNone(value['age_seconds']);self.assertEqual(value['collection_error'],'source_time_unavailable');self.assertEqual(value['observed_at'],at)
+ def test_explicit_source_and_error_remain_separate(self):
+  now=datetime.datetime(2026,1,1,tzinfo=datetime.timezone.utc)
+  value=m.observation_metadata({'source':'reviewed_source','observed_at':now.isoformat(),'collection_error':'existing_failure'},now)
+  self.assertEqual(value['source'],'reviewed_source');self.assertEqual(value['collection_error'],'existing_failure');self.assertEqual(value['age_seconds'],0)
+ def test_actual_failure_has_current_age_and_no_retry(self):
+  value=Cases().run_request(Conn(reply=b'{"ok":false,"error":"runtime_collection_unavailable"}\n'))
+  self.assertEqual(value['age_seconds'],0);self.assertEqual(value['reason_code'],'runtime_collection_unavailable');self.assertFalse(value['automatic_retry'])
 if __name__=='__main__':unittest.main()

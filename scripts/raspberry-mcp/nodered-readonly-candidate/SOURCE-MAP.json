@@ -92,8 +92,10 @@
       "source_role": "root_snapshot.py"
     },
     "runtime_client.py": {
-      "export_sha256": "e10e3cfb521d715755cb357f0b5a51963370324fb1a562a9c9958f626b7168cc",
-      "normalizations": [],
+      "export_sha256": "aeb81a05a44ff24cb93a8ebf3ef2e82a7192bda23ab4e7d6ab0843fc87bde74f",
+      "normalizations": [
+        "add_source_clock_metadata_and_failure_freshness_regressions_without_changing_fixed_request_or_authority"
+      ],
       "prepared_source_sha256": "e10e3cfb521d715755cb357f0b5a51963370324fb1a562a9c9958f626b7168cc",
       "source_role": "runtime_client.py"
     },
@@ -143,8 +145,10 @@
       "source_role": "test_root_snapshot.py"
     },
     "test_runtime_client.py": {
-      "export_sha256": "936142695794f3aa375d33470e92a97d1f5dda4c54c6b357123e688b17ff117b",
-      "normalizations": [],
+      "export_sha256": "2f6277038e90512ecbd4c6bb79fc153cd0b7c441f3c008d18daf450abc50fb23",
+      "normalizations": [
+        "add_source_clock_metadata_and_failure_freshness_regressions_without_changing_fixed_request_or_authority"
+      ],
       "prepared_source_sha256": "936142695794f3aa375d33470e92a97d1f5dda4c54c6b357123e688b17ff117b",
       "source_role": "test_runtime_client.py"
     },
@@ -270,6 +274,27 @@
           "sha256": "f86c73c034ea5705da147fe9b2124bff52392ef08ce1195302a8105603bbf497"
         }
       }
+    },
+    {
+      "observed_at": "2026-11-02",
+      "previous_files": {
+        "runtime_client.py": {
+          "export_sha256": "e10e3cfb521d715755cb357f0b5a51963370324fb1a562a9c9958f626b7168cc",
+          "normalizations": [],
+          "prepared_source_sha256": "e10e3cfb521d715755cb357f0b5a51963370324fb1a562a9c9958f626b7168cc",
+          "source_role": "runtime_client.py"
+        },
+        "test_runtime_client.py": {
+          "export_sha256": "936142695794f3aa375d33470e92a97d1f5dda4c54c6b357123e688b17ff117b",
+          "normalizations": [],
+          "prepared_source_sha256": "936142695794f3aa375d33470e92a97d1f5dda4c54c6b357123e688b17ff117b",
+          "source_role": "test_runtime_client.py"
+        }
+      },
+      "previous_static_Python_total": 34,
+      "reason": "source_clock_metadata_compatibility_extension",
+      "runtime_installation_or_client_execution_proven_by_this_record": false,
+      "targeted_test_runtime_client_cases_passed": 15
     }
   ],
   "later_actual_acceptance": "../kia-promotion-evidence.acceptance.json",
@@ -288,9 +313,9 @@
   "static_Python_cases": {
     "test_kia_deployment.py": 16,
     "test_root_snapshot.py": 8,
-    "test_runtime_client.py": 10
+    "test_runtime_client.py": 15
   },
-  "static_Python_total": 34,
+  "static_Python_total": 39,
   "test_execution_during_export": false,
   "test_execution_field_scope": "original_export_only;later_serial_targeted_checks_and_runtime_acceptance_are_separate",
   "optional_runtime_facts": {
