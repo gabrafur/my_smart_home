@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 // Only validated aggregate metadata crosses the projection boundary.
 export function projectSummary(status, now=Date.now()) {
  const queue=status.delivery_queue, op=status.delivery_opportunity;
@@ -118,15 +119,17 @@ export function projectLatestDeliveryReceipt(status, now=Date.now()) {
   !sha(r.members_digest_sha256)||!Array.isArray(r.members)||r.members.length!==Math.min(r.membership_record_count,8)||
   r.returned_members!==r.members.length||r.members_truncated!==(r.membership_record_count>8))
   return unknown('delivery_receipt_binding_unconfirmed');
+ const terminal=r.delivery_kind==='task_terminal_summary_v1';
+ if(r.delivery_kind!==undefined&&!terminal||terminal&&r.functional_recovery_proven!==false)return unknown('delivery_receipt_kind_unconfirmed');
  const seen=new Set(),members=[];
  for(const m of r.members) {
   if(!m||m.source!=='retained_registry_event'||!sha(m.event_id)||seen.has(m.event_id)||!sha(m.object_id)||!sha(m.revision)||
-   !['added','updated','removed'].includes(m.phase)||!stamp(m.observed_at)||!number(m.age_seconds)||
+   !(terminal?m.phase==='terminal'&&typeof m.operation_id==='string'&&/^[a-f0-9]{32}$/.test(m.operation_id)&&['completed','failed','interrupted','not_dispatched'].includes(m.terminal_state)&&createHash('sha256').update('task-terminal-operation-v1:'+m.operation_id).digest('hex')===m.object_id:['added','updated','removed'].includes(m.phase))||!stamp(m.observed_at)||!number(m.age_seconds)||
    Date.parse(m.observed_at)>Date.parse(r.intent_at)+1000||m.collection_error!==null||!['current','archive'].includes(m.record_location))
    return unknown('delivery_receipt_member_unconfirmed');
   seen.add(m.event_id);members.push({source:m.source,event_id:m.event_id,object_id:m.object_id,revision:m.revision,
    phase:m.phase,observed_at:m.observed_at,age_seconds:m.age_seconds,collection_error:null,record_location:m.record_location,
-   coverage:['retained_event_identity_only','not_universal_source_clock']});
+   coverage:['retained_event_identity_only','not_universal_source_clock'],...(terminal?{operation_id:m.operation_id,terminal_state:m.terminal_state}:{})});
  }
  const t=r.transport;
  const errors=[null,'transport_completion_missing','sender_duration_unavailable','completion_clock_unavailable','transport_clock_order_unconfirmed'];
@@ -146,7 +149,41 @@ export function projectLatestDeliveryReceipt(status, now=Date.now()) {
   membership_record_count:r.membership_record_count,members_digest_sha256:r.members_digest_sha256,
   maximum_members:8,returned_members:members.length,members_truncated:r.members_truncated,members,transport,
   coverage:['same_principal_retained_event_to_batch_to_transport','bounded_member_details_not_whole_history',
-   'not_universal_source_clock_or_functional_recovery'],assistant_execution:'unknown'};
+   'not_universal_source_clock_or_functional_recovery'],assistant_execution:'unknown',
+  ...(terminal?{delivery_kind:'task_terminal_summary_v1',functional_recovery_proven:false}:{})};
+}
+
+export function projectClientExecutionPolicy(value, now=Date.now(), scope=null, terminal=null) {
+ const unknown={source:'sealed_task_terminal_client_policy',state:'unknown',approval_active:false,continuation_ready:false,execution_proven:false,collection_error:'client_policy_unconfirmed',coverage:['approval_not_executor_admission']};
+ const observed=Date.parse(value?.observed_at);
+ if(!value||value.source!=='sealed_task_terminal_client_policy'||!Number.isFinite(observed)||observed>now+1000||now-observed>20000||value.age_seconds!==0||value.execution_proven!==false||!['approved','disabled','expired','unknown'].includes(value.state)||typeof value.approval_active!=='boolean')return unknown;
+ if(value.state==='unknown')return unknown;
+ const p=value.policy;
+ const exact=(obj,keys)=>obj&&typeof obj==='object'&&!Array.isArray(obj)&&Object.keys(obj).sort().join(',')===keys.slice().sort().join(',');
+ if(!exact(p,['schema_version','kind','enabled','expires_at','client_neutral','target','allowed_tools','identity_recipe','limits','interface_confirmations_required','new_host_schedule_enabled','pending_OTP','uncertain_operations','workflows','authorization_does_not_override_backend'])||!exact(p.identity_recipe,['creation','task_key_prefix','send','terminal'])||!exact(p.limits,['maximum_sends_per_24h','minimum_spacing_seconds','concurrent_new_sends','backend_limits_authoritative'])||p.schema_version!==1||p.kind!=='client_incident_and_task_continuation_v1'||typeof p.enabled!=='boolean'||p.client_neutral!==true||p.target!=='raspberry:/mnt/data/docker'||!Number.isSafeInteger(p.expires_at)||p.expires_at<0||p.expires_at>253402300799||p.interface_confirmations_required!==true||p.authorization_does_not_override_backend!==true||p.new_host_schedule_enabled!==false||p.uncertain_operations!=='observe_same_id_never_replay'||p.pending_OTP!=='stop_dependent_effects'||JSON.stringify(p.allowed_tools)!==JSON.stringify(['codex_task_create','codex_task_send','codex_task_status','codex_task_reconcile','codex_task_list'])||JSON.stringify(p.workflows)!==JSON.stringify(['natural_actionable_ha_notification','registered_task_terminal'])||p.limits?.maximum_sends_per_24h!==48||p.limits?.minimum_spacing_seconds!==60||p.limits?.concurrent_new_sends!==1||p.limits?.backend_limits_authoritative!==true||p.identity_recipe?.creation!=='ha_object_id_prefix_32'||p.identity_recipe?.task_key_prefix!=='eva-admin-'||p.identity_recipe?.send!=='ha_revision_suffix_32'||p.identity_recipe?.terminal!=='exact_operation_id_from_registered_task_terminal_event')return unknown;
+ const approved=p.enabled&&now/1000<p.expires_at;
+ const ready=approved&&scope?.state==='observed'&&JSON.stringify(scope.topics)===JSON.stringify(['ha_notification','task_terminal'])&&terminal?.state==='observed';
+ if(value.continuation_ready!==ready||value.approval_active!==approved||value.state!==(approved?'approved':p.enabled?'expired':'disabled')||value.collection_error!==null)return unknown;
+ return {source:value.source,observed_at:value.observed_at,age_seconds:Math.max(0,(now-observed)/1000),state:value.state,collection_error:null,approval_active:approved,continuation_ready:ready,execution_proven:false,policy:p,coverage:['approval_not_executor_admission','scope_and_client_policy_only_not_backend_admission']};
+}
+
+export function projectTerminalSource(value, now=Date.now()) {
+ const safe=new Set(['control_socket_changed','control_peer_changed','observer_boot_changed','legacy_policy_binding_changed','sealed_source_scope_changed','sealed_source_digest_changed','sealed_dependency_digest_changed','policy_changed_during_observation','unregistered_observation_refused','observation_deadline_exceeded','database_journal_requires_reconciliation','unsafe_registered_file','unsafe_state_directory','unsafe_lock','invalid_registered_terminal','invalid_terminal_receipt','registered_send_changed','duplicate_receipt_key','nonfinite_receipt','observation_transport_unconfirmed','observation_transport_timeout','task_coordinator_busy','observation_unconfirmed','terminal_registry_truncated']);
+ const observed=Date.parse(value?.observed_at);
+ if(value?.source==='registered_task_terminal_observer_v1'&&value.state==='observed'&&value.collection_error===null&&Number.isFinite(observed)&&observed<=now+1000&&now-observed<=120000)
+  return {source:'registered_task_terminal_observer_v1',state:'observed',observed_at:value.observed_at,age_seconds:Math.max(0,(now-observed)/1000),collection_error:null,coverage:['bounded_24h_observer_not_complete_history','ingest_not_delivery_or_assistant_execution']};
+ const reason=['not_collected','terminal_snapshot_unconfirmed','terminal_snapshot_stale','terminal_health_time_unconfirmed','terminal_source_collection_unavailable'].includes(value?.collection_error)?value.collection_error:'terminal_snapshot_unconfirmed';
+ return {source:'registered_task_terminal_observer_v1',state:'unknown',observed_at:Number.isFinite(observed)?value.observed_at:null,age_seconds:Number.isFinite(observed)&&now>=observed?(now-observed)/1000:null,collection_error:reason,source_collection_error:safe.has(value?.source_collection_error)?value.source_collection_error:null,coverage:['not_household_outage_or_execution_proof']};
+}
+
+export function projectSubscriptionScope(value, now=Date.now()) {
+ const unknown={source:'authenticated_active_subscription_scope',state:'unknown',topics:[],collection_error:'subscription_scope_unconfirmed',coverage:['not_execution_or_backend_admission']};
+ const stamp=Date.parse(value?.observed_at),sha=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
+ if(!value||value.source!=='authenticated_active_subscription_scope'||!Number.isFinite(stamp)||stamp>now+1000||now-stamp>20000||value.age_seconds!==0||value.collection_error!==null)return unknown;
+ if(value.state==='inactive'&&Array.isArray(value.topics)&&value.topics.length===0&&value.subscription_id_sha256===null&&value.predecessor_id_sha256===null)
+  return {source:value.source,state:'inactive',observed_at:value.observed_at,age_seconds:Math.max(0,(now-stamp)/1000),collection_error:null,topics:[],subscription_id_sha256:null,predecessor_id_sha256:null,coverage:['not_execution_or_backend_admission']};
+ if(value.state!=='observed'||!Array.isArray(value.topics)||!['["ha_notification"]','["task_terminal"]','["ha_notification","task_terminal"]'].includes(JSON.stringify(value.topics))||!sha(value.subscription_id_sha256)||!(value.predecessor_id_sha256===null||sha(value.predecessor_id_sha256)))return unknown;
+ return {source:value.source,state:'observed',observed_at:value.observed_at,age_seconds:Math.max(0,(now-stamp)/1000),collection_error:null,topics:value.topics.slice(),subscription_id_sha256:value.subscription_id_sha256,predecessor_id_sha256:value.predecessor_id_sha256,coverage:['not_execution_or_backend_admission']};
 }
 
 // Closed projection: server status is not proof of assistant execution.
@@ -177,7 +214,10 @@ export function projectEvents(status, now=Date.now()) {
   source_state:sourceFresh?'observed':'unknown',assistant_execution:'unknown',
   delivery:projectDelivery(status,lease.state==='active',sourceFresh,now),
   latest_delivery_receipt:projectLatestDeliveryReceipt(status,now),
-  coverage:['live_subscription_and_dispatch_status_only','HA_sanitized_notices_only',
+  ...(status.subscription_scope?{subscription_scope:projectSubscriptionScope(status.subscription_scope,now)}:{}),
+  ...(status.client_execution_policy?{client_execution_policy:projectClientExecutionPolicy(status.client_execution_policy,now,projectSubscriptionScope(status.subscription_scope,now),projectTerminalSource(status.terminal_source_health,now))}:{}),
+  ...(status.terminal_source_health?{terminal_source_health:projectTerminalSource(status.terminal_source_health,now)}:{}),
+  coverage:['live_subscription_and_dispatch_status_only',status.terminal_source_health?'scoped_HA_and_registered_terminal_sources':'HA_sanitized_notices_only',
    'webhook_acceptance_not_assistant_execution','not_PC_off_or_24h_proof']};
 }
 

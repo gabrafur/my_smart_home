@@ -126,3 +126,48 @@ def opportunity(attempt_times, now, expires, pending):
             'delivery_cadence_version': CADENCE_VERSION,
             'maximum_attempts_per_day': MAXIMUM_ATTEMPTS_PER_DAY,
             'minimum_attempt_spacing_seconds': MINIMUM_ATTEMPT_SPACING_SECONDS}
+
+
+TERMINAL_VERSION = 'task_terminal_summary_v1'
+TERMINAL_PHASES = frozenset(('terminal',))
+
+
+def group_terminal_events(rows, now):
+    """Separate, opaque terminal events; never infer functional repair."""
+    if len(rows) > 256 or not finite(now):
+        raise ValueError('terminal_summary_scope_unconfirmed')
+    groups = []
+    for row in rows:
+        body = json.loads(row['body']); data = body['data']
+        if (data.get('project') != '/mnt/data/docker' or data.get('topic') != 'task_terminal'
+                or data.get('source') != 'registered_task_status' or data.get('phase') not in TERMINAL_PHASES
+                or type(data.get('operation_id')) is not str or not re.fullmatch('[a-f0-9]{32}',data['operation_id'])
+                or data.get('terminal_state') not in ('completed','failed','interrupted','not_dispatched')
+                or hashlib.sha256(('task-terminal-operation-v1:'+data['operation_id']).encode()).hexdigest() != data.get('object_id')
+                or any(not isinstance(data.get(k), str) or not re.fullmatch('[a-f0-9]{64}', data[k])
+                       for k in ('object_id', 'revision')) or body.get('eventId') != row['id']
+                or not finite(row['created']) or not now-86400 <= row['created'] <= now+1):
+            raise ValueError('terminal_summary_event_unconfirmed')
+        groups.append({'object_id': data['object_id'], 'revision': data['revision'],
+                       'phase': data['phase'], 'operation_id': data['operation_id'],
+                       'terminal_state': data['terminal_state'], 'observed_at': iso(row['created']),
+                       '_members': [row['id']], '_created': row['created']})
+    groups.sort(key=lambda item: (item['_created'], item['object_id'], item['revision']))
+    return groups
+
+
+def make_terminal_batch(groups, subscription, now):
+    selected = groups[:MAX_GROUPS]
+    if not selected: return None
+    members = sorted(member for group in selected for member in group['_members'])
+    identity = hashlib.sha256(encode([TERMINAL_VERSION, subscription, members]).encode()).hexdigest()
+    public = [{k: v for k, v in group.items() if not k.startswith('_')} for group in selected]
+    envelope = {'eventId': identity, 'name': 'smart_home.observation', 'timestamp': iso(now), 'cursor': None,
+                'data': {'project': '/mnt/data/docker', 'topic': 'task_terminal',
+                         'source': 'registered_task_status', 'delivery_kind': TERMINAL_VERSION,
+                         'summary_as_of': iso(now), 'tasks': public,
+                         'covered_event_records': len(members), 'remaining_terminal_events': len(groups)-len(selected),
+                         'functional_recovery_proven': False, 'assistant_execution': 'unknown'}}
+    body = encode(envelope)
+    if len(body.encode()) > 16384: raise ValueError('terminal_summary_payload_limit')
+    return identity, body, members

@@ -6,11 +6,14 @@ o [índice operacional](../README.md) e as capacidades reais antes de agir.
 
 ## Contrato de payload dos resumos Events
 
-`events/list` anuncia `smart_home.observation` com duas alternativas fechadas:
-o evento individual legado e `notification_summary_v1`. O schema completo
+`events/list` anuncia `smart_home.observation` com três alternativas fechadas:
+o evento individual legado, `notification_summary_v1` e
+`task_terminal_summary_v1`. A última exige adesão explícita ao tópico
+`task_terminal`; uma assinatura HA existente continua com seu escopo original. O schema completo
 está em `scripts/raspberry-mcp/runtime-source/frontend/events-server.mjs`,
-exportado como `eventPayloadSchema`. `inputSchema`, identidade autenticada,
-assinatura, transporte e intervalo de 600s permanecem; o limite local atual
+exportado como `eventPayloadSchema`. O `inputSchema` aceita um ou dois tópicos
+únicos do conjunto fechado `ha_notification`/`task_terminal`. A identidade
+autenticada, o transporte e o intervalo de 600s permanecem; o limite local atual
 é de 144 tentativas/24h pela cadência `grouped_minimum_spacing_v2`.
 
 O resumo contém `project`, `topic`, `source`, `delivery_kind`,
@@ -93,3 +96,32 @@ específica antes da retomada, para evitar replay. Limites, validade e acesso
 permanecem os existentes. Entrega aceita ainda exige prova própria de execução
 do assistente; a medição de transporte não conclui a meta de latência ponta a
 ponta nem a cobertura de 24 horas.
+
+## Continuação por resultados de tarefas
+
+O novo tópico transporta apenas `operation_id` opaco de 32 caracteres, hash de
+resultado de 64 caracteres, estado terminal e horários. Não transporta texto,
+prompts, respostas ou identificadores de thread. O resumo tipado permanece
+separado dos grupos HA; não representa uma notificação residencial ou prova de
+recuperação. Os estados terminais são `completed`, `failed`, `interrupted` e
+`not_dispatched`.
+
+A migração usa o protocolo existente, pelo mesmo principal e callback validado.
+Preserva início e prazo da assinatura anterior, histórico, cotas e resultados
+incertos; a linhagem impede reenvio de eventos já cobertos. Aceita atualização
+antes do cancelamento antigo e também cancelamento seguido da nova assinatura
+em até 300 segundos. Fora dessa transição comprovada, falha fechada. Não se cria
+uma segunda assinatura para contornar cotas ou incerteza. `subscription_scope`
+mostra tópicos ativos e hashes opacos da assinatura e de sua predecessora, sem
+exportar callback ou chave.
+
+`client_execution_policy` distingue aprovação de admissão e execução. O campo
+`continuation_ready` exige política ativa, os dois tópicos e evidência terminal
+fresca; não garante que o backend aceite uma tarefa. O cliente deve consultar
+status com o ID exato e só reconciliar um terminal persistido cujo hash real
+coincida com a revisão. Um aviso de conclusão é um pedido de verificação; não
+é autorização para reexecutar o comando nem para anunciar reparo funcional.
+
+Instalação local, atualização do catálogo remoto, configuração do monitor,
+entrega do webhook, execução do cliente e verificação funcional são camadas
+separadas. Para portas e métodos, consulte a [observação de tarefas](task-observation.md).

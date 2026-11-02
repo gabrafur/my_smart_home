@@ -80,3 +80,41 @@ O aceite posterior confirmou a cadeia completa, sem reiniciar serviços.
 As [regressões isoladas](../../../scripts/raspberry-mcp/owner-thread-access.test.mjs)
 e o [recibo público sanitizado](../../../scripts/raspberry-mcp/owner-thread-access.acceptance.json)
 registram o escopo validado; os recibos privados permanecem no plano central.
+
+## Observador limitado de resultados registrados
+
+A fonte `registered_task_terminal_observer_v1` acrescenta uma etapa ao coletor
+já existente; não cria timer, tarefa de IA ou rotina de reparo. Lê somente o
+registro local e consulta no máximo um envio pendente por amostra. O adaptador
+selado permite apenas `observe` do par thread/turno já registrado. Não cria,
+envia, retoma, reconcilia ou grava no ledger. O orçamento adicional é inferior
+a dois segundos, com timeout de transporte; falha permanece desconhecida.
+
+A instalação confere política, boot, inode, proprietário e peer do socket
+aprovado. O arquivo visível no host pode ser um placeholder: o socket real é
+fornecido pelo namespace da unit. Não aceitar identidade nova com base nesse
+placeholder. Uma montagem somente leitura de socket não restringe métodos;
+a restrição de protocolo depende do adaptador fixo e de seus hashes.
+
+O snapshot privado contém metadados e referência opaca do recibo; publicação
+atômica não altera o ledger. O worker recebe somente uma montagem do diretório
+de metadados, sem socket ou checkout. Montar apenas o arquivo prenderia um
+inode antigo após substituição atômica. Diretório e grupo devem permitir leitura
+pelo worker, sem escrita. A preparação de boot cria somente o diretório fixo.
+
+Terminais reconciliados são retidos na janela móvel de 24 horas após o início
+do escopo; há limite de 64 resultados por amostra. Truncamento, clock incoerente,
+coordenador ocupado, identidade alterada, coleta falha ou atraso permanecem
+explícitos. A janela não garante recuperar uma indisponibilidade prolongada.
+O hash usa exatamente a serialização do recibo nativo. O horário terminal vem
+do resultado nativo, sem reutilizar o horário de uma atualização posterior do
+ledger, evitando eventos duplicados após consulta ou reconciliação.
+
+O consumidor precisa de política recorrente aprovada separadamente e de
+admissão atual do backend antes de novo envio. Expiração não cria autoridade;
+revogação fecha a observação nova conforme o marcador fixo. Descoberta ou
+`continuation_ready` não comprovam execução do assistente. Veja o
+[contrato Events](events-protocol.md) para migração, deduplicação e verificação.
+As fontes e os testes sintéticos ficam em
+`scripts/raspberry-mcp/runtime-source/task-terminal-observer/`; políticas,
+identidades, referências reais e recibos permanecem privados na instalação.

@@ -14,16 +14,18 @@ import re
 import sqlite3
 import stat
 import time
-from delivery_summary import (group_events, make_batch, opportunity, VERSION,
+from delivery_summary import (group_events, make_batch, group_terminal_events, make_terminal_batch, TERMINAL_VERSION, opportunity, VERSION,
     CADENCE_VERSION, MAXIMUM_ATTEMPTS_PER_DAY, MINIMUM_ATTEMPT_SPACING_SECONDS)
 from source_timing import SourceTiming
 from webhook import Refused, callback_parts, key_bytes, signed_headers, verify_callback, post
 
 PROJECT = '/mnt/data/docker'
 NAME = 'smart_home.observation'
-TOPICS = {'ha_notification'}
+TOPICS = {'ha_notification', 'task_terminal'}
 PHASES = {'added', 'updated', 'removed'}
-SOURCES = {'ha_persistent_notification'}
+SOURCES = {'ha_persistent_notification', 'registered_task_status'}
+EVENT_PAIRS = {'ha_notification': ('ha_persistent_notification', PHASES),
+               'task_terminal': ('registered_task_status', {'terminal'})}
 
 
 def canonical(value):
@@ -43,7 +45,7 @@ def protocol_integer(value):
 def filters(args):
     if (not isinstance(args, dict) or set(args) != {'project', 'topics'}
             or args['project'] != PROJECT or not isinstance(args['topics'], list)
-            or not len(args['topics']) == 1
+            or not 1 <= len(args['topics']) <= 2
             or any(not isinstance(x, str) or x not in TOPICS for x in args['topics'])
             or len(set(args['topics'])) != len(args['topics'])):
         raise Refused('scope_refused')
@@ -83,6 +85,10 @@ class Registry:
           subscription TEXT, event TEXT, state TEXT, at REAL,
           PRIMARY KEY(subscription,event));
         CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value REAL);
+        CREATE TABLE IF NOT EXISTS subscription_lineage(
+          successor TEXT PRIMARY KEY, predecessor TEXT NOT NULL UNIQUE);
+        CREATE TABLE IF NOT EXISTS subscription_transition_markers(
+          predecessor TEXT PRIMARY KEY, at REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS delivery_batches(
           id TEXT PRIMARY KEY, subscription TEXT, body TEXT, at REAL);
         CREATE TABLE IF NOT EXISTS delivery_members(
@@ -194,7 +200,26 @@ class Registry:
         now = self.now()
         expires = now + min(ttl, 86400000) / 1000
         old = self.db.execute('SELECT * FROM subscriptions WHERE id=?', (sid,)).fetchone()
-        if self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>? AND id!=?',(now,sid)).fetchone()[0] >= 1 or (not old and self.db.execute('SELECT count(*) FROM subscriptions').fetchone()[0] >= 8):
+        active = self.db.execute('SELECT * FROM subscriptions WHERE active=1 AND expires>? AND id!=?',(now,sid)).fetchall()
+        predecessor = None
+        if active:
+            if (len(active) != 1 or old is not None or args['topics'] != ['ha_notification','task_terminal']
+                or active[0]['owner'] != self.principal or active[0]['url'] != delivery['url']
+                or filters(json.loads(active[0]['args']))['topics'] != ['ha_notification']):
+                raise Refused('subscription_limit')
+            predecessor=active[0]
+        elif old is None and args['topics'] == ['ha_notification','task_terminal']:
+            candidates=self.db.execute('SELECT s.*,m.at AS transition_at FROM subscription_transition_markers m JOIN subscriptions s ON s.id=m.predecessor WHERE s.owner=? AND s.url=? AND s.active=0 AND s.expires>? AND m.at<=? AND m.at>=? AND NOT EXISTS(SELECT 1 FROM subscription_lineage l WHERE l.predecessor=s.id)',(self.principal,delivery['url'],now,now,now-300)).fetchall()
+            candidates=[row for row in candidates if filters(json.loads(row['args']))['topics']==['ha_notification']]
+            if len(candidates)>1:raise Refused('subscription_migration_ambiguous')
+            if candidates:predecessor=candidates[0]
+            else:
+                # A known same-scope predecessor without a valid transition
+                # cannot be treated as a new history-free subscription.
+                legacy_sid,_=self.identity(NAME,{'project':PROJECT,'topics':['ha_notification']},delivery)
+                if self.db.execute('SELECT 1 FROM subscriptions WHERE id=? AND owner=?',(legacy_sid,self.principal)).fetchone():
+                    raise Refused('subscription_transition_unconfirmed')
+        if not old and self.db.execute('SELECT count(*) FROM subscriptions').fetchone()[0] >= 8:
             raise Refused('subscription_limit')
         self.note_subscription('validated', 0)
         if not old or not old['active'] or old['secret'] != delivery['secret'] or now-old['verified'] > 300:
@@ -208,8 +233,31 @@ class Registry:
         rotated = bool(old and old['secret'] != delivery['secret'])
         old_key = old['secret'] if rotated else (old['old_secret'] if old else None)
         rotated_at = now if rotated else (old['rotated_at'] if old else 0)
-        started = old['started'] if old and old['active'] else now
-        self.db.execute('INSERT OR REPLACE INTO subscriptions VALUES(?,?,?,?,?,?,?,?,?,?,1)',
+        started = predecessor['started'] if predecessor else old['started'] if old and old['active'] else now
+        if predecessor:
+            expires=min(expires,predecessor['expires'])
+            self.db.execute('BEGIN IMMEDIATE')
+            try:
+                current=self.db.execute('SELECT * FROM subscriptions WHERE id=?',(predecessor['id'],)).fetchone()
+                current_now=self.clock()
+                expected_active=predecessor['active']==1
+                need_same = current is not None and current['active']==int(expected_active) and current['owner']==self.principal and current['url']==delivery['url'] and current['args']==predecessor['args'] and current['started']==started and current['expires']==predecessor['expires'] and current['expires']>current_now
+                active_count=self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>?',(current_now,)).fetchone()[0]
+                if not expected_active:
+                    marker=self.db.execute('SELECT at FROM subscription_transition_markers WHERE predecessor=?',(predecessor['id'],)).fetchone()
+                    need_same=need_same and marker is not None and type(marker[0]) in (int,float) and 0<=current_now-marker[0]<=300
+                if not need_same or active_count!=(1 if expected_active else 0):
+                    raise Refused('subscription_migration_changed')
+                if expected_active:self.db.execute('UPDATE subscriptions SET active=0 WHERE id=?',(predecessor['id'],))
+                self.db.execute('DELETE FROM subscription_transition_markers WHERE predecessor=?',(predecessor['id'],))
+                self.db.execute('INSERT INTO subscriptions VALUES(?,?,?,?,?,?,?,?,?,?,1)',
+                    (sid,self.principal,canonical(args),delivery['url'],delivery['secret'],None,0,expires,verified,started))
+                self.db.execute('INSERT INTO subscription_lineage VALUES(?,?)',(sid,predecessor['id']))
+                self.db.execute('COMMIT')
+            except BaseException:
+                self.db.execute('ROLLBACK');raise
+        else:
+            self.db.execute('INSERT OR REPLACE INTO subscriptions VALUES(?,?,?,?,?,?,?,?,?,?,1)',
                         (sid,self.principal,canonical(args),delivery['url'],delivery['secret'],old_key,
                          rotated_at,expires,verified,started))
         self.note_subscription('stored', 0)
@@ -225,13 +273,34 @@ class Registry:
         if not isinstance(delivery,dict) or set(delivery) not in ({'url'}, {'mode','url'}):
             raise Refused('invalid_delivery')
         delivery = {'mode':'webhook', **delivery}
-        sid, _ = self.identity(params['name'], params['arguments'], delivery)
-        self.db.execute("UPDATE subscriptions SET active=0,secret='',old_secret=NULL WHERE id=? AND owner=?",(sid,self.principal))
+        sid, args = self.identity(params['name'], params['arguments'], delivery)
+        now=self.now()
+        self.db.execute('BEGIN IMMEDIATE')
+        try:
+            row=self.db.execute('SELECT active,expires FROM subscriptions WHERE id=? AND owner=?',(sid,self.principal)).fetchone()
+            self.db.execute('DELETE FROM subscription_transition_markers WHERE at<?',(now-300,))
+            if row and row['active']==1 and row['expires']>now and args['topics']==['ha_notification']:
+                count=self.db.execute('SELECT count(*) FROM subscription_transition_markers').fetchone()[0]
+                existing=self.db.execute('SELECT 1 FROM subscription_transition_markers WHERE predecessor=?',(sid,)).fetchone()
+                if count>=8 and not existing:raise Refused('subscription_transition_capacity')
+                self.db.execute('INSERT OR REPLACE INTO subscription_transition_markers VALUES(?,?)',(sid,now))
+            self.db.execute("UPDATE subscriptions SET active=0,secret='',old_secret=NULL WHERE id=? AND owner=?",(sid,self.principal))
+            self.db.execute('COMMIT')
+        except BaseException:
+            self.db.execute('ROLLBACK');raise
         return {}
 
-    def enqueue(self, topic, source, phase, object_id, revision, occurred_at):
-        if (topic not in TOPICS or source not in SOURCES or phase not in PHASES
+    def enqueue(self, topic, source, phase, object_id, revision, occurred_at, operation_id=None, terminal_state=None, result_updated_at=None):
+        if (topic not in EVENT_PAIRS or source != EVENT_PAIRS[topic][0] or phase not in EVENT_PAIRS[topic][1]
                 or any(not isinstance(v,str) or not re.fullmatch(r'[a-f0-9]{64}',v) for v in (object_id,revision))):
+            raise Refused('unsafe_event')
+        if topic == 'task_terminal':
+            if (type(operation_id) is not str or not re.fullmatch('[a-f0-9]{32}', operation_id)
+                    or terminal_state not in ('completed','failed','interrupted','not_dispatched')
+                    or result_updated_at is not None and (type(result_updated_at) not in (int,float) or not math.isfinite(result_updated_at) or not 0 <= result_updated_at <= occurred_at+1)
+                    or hashlib.sha256(('task-terminal-operation-v1:'+operation_id).encode()).hexdigest() != object_id):
+                raise Refused('unsafe_event')
+        elif operation_id is not None or terminal_state is not None or result_updated_at is not None:
             raise Refused('unsafe_event')
         now = self.clock()
         if type(occurred_at) not in (int,float) or not now-86400 <= occurred_at <= now+1:
@@ -239,7 +308,11 @@ class Registry:
         data = {'project':PROJECT,'topic':topic,'source':source,'phase':phase,
                 'object_id':object_id,'revision':revision}
         eid = hashlib.sha256(canonical(data).encode()).hexdigest()
-        if self.db.execute('SELECT 1 FROM events WHERE id=? UNION ALL SELECT 1 FROM event_archive WHERE id=?',(eid,eid)).fetchone():
+        if topic == 'task_terminal':data.update(operation_id=operation_id,terminal_state=terminal_state,result_updated_at=result_updated_at)
+        existing = self.db.execute('SELECT body FROM events WHERE id=? UNION ALL SELECT body FROM event_archive WHERE id=?',(eid,eid)).fetchone()
+        if existing:
+            if topic == 'task_terminal' and json.loads(existing[0]).get('data') != data:
+                raise Refused('terminal_event_identity_conflict')
             return {'id':eid,'duplicate':True}
         # Fail closed when full; never remove uncertain receipts to permit retries.
         if self.db.execute('SELECT count(*) FROM events').fetchone()[0] >= 256:
@@ -299,8 +372,8 @@ class Registry:
                 placeholders = ','.join('?' for _ in allowed)
                 pending = self.db.execute(
                     'SELECT count(*) FROM events e WHERE e.created>=? AND e.topic IN (' + placeholders +
-                    ') AND NOT EXISTS (SELECT 1 FROM dispatch d WHERE d.subscription=? AND d.event=e.id) AND NOT EXISTS (SELECT 1 FROM delivery_members m WHERE m.subscription=? AND m.event=e.id)',
-                    (max(now-86400, started), *allowed, sub['id'], sub['id'])).fetchone()[0]
+                    ') AND NOT EXISTS (SELECT 1 FROM dispatch d WHERE d.subscription=? AND d.event=e.id) AND NOT EXISTS (SELECT 1 FROM delivery_members m WHERE m.subscription=? AND m.event=e.id) AND NOT EXISTS (SELECT 1 FROM subscription_lineage l JOIN delivery_members m ON m.subscription=l.predecessor WHERE l.successor=? AND m.event=e.id) AND NOT EXISTS (SELECT 1 FROM subscription_lineage l JOIN dispatch d ON d.subscription=l.predecessor WHERE l.successor=? AND d.event=e.id)',
+                    (max(now-86400, started), *allowed, sub['id'], sub['id'], sub['id'], sub['id'])).fetchone()[0]
         except (ValueError, TypeError, KeyError, sqlite3.Error):
             pending = None
             error = 'event_count_scope_or_collection_unconfirmed'
@@ -464,18 +537,20 @@ class Registry:
             batch = json.loads(row['body'])
             data = batch.get('data', {})
             count = data.get('covered_event_records')
+            kind = data.get('delivery_kind')
+            terminal = kind == TERMINAL_VERSION
             need(batch.get('eventId') == row['event'] and batch.get('name') == NAME and
-                 batch.get('timestamp') == iso(row['at']) and
-                 data.get('project') == PROJECT and data.get('topic') == 'ha_notification' and
-                 data.get('source') == 'ha_persistent_notification' and
-                 data.get('delivery_kind') == VERSION and type(count) is int and 1 <= count <= 256)
+                 batch.get('timestamp') == iso(row['at']) and data.get('project') == PROJECT and
+                 ((terminal and data.get('topic') == 'task_terminal' and data.get('source') == 'registered_task_status') or
+                  (kind == VERSION and data.get('topic') == 'ha_notification' and data.get('source') == 'ha_persistent_notification')) and
+                 type(count) is int and 1 <= count <= 256)
             # Existing (subscription,event) PK supplies the subscription prefix.
             # The progress handler bounds the unindexed batch residual filter.
             ids = [r[0] for r in self.db.execute('SELECT event FROM delivery_members '
                 'WHERE subscription=? AND batch=? ORDER BY event LIMIT 257',
                 (row['subscription'], row['event'])).fetchall()]
             need(len(ids) == count and all(sha(x) for x in ids) and
-                 hashlib.sha256(canonical([VERSION, row['subscription'], ids]).encode()).hexdigest() == row['event'])
+                 hashlib.sha256(canonical([kind, row['subscription'], ids]).encode()).hexdigest() == row['event'])
             members = []
             for eid in ids[:8]:
                 event = self.db.execute('SELECT body,created,0 AS archived FROM events WHERE id=? '
@@ -489,15 +564,17 @@ class Registry:
                 item = envelope.get('data', {})
                 need(envelope.get('eventId') == eid and envelope.get('name') == NAME and
                      envelope.get('timestamp') == iso(event['created']) and
-                     item.get('project') == PROJECT and item.get('topic') == 'ha_notification' and
-                     item.get('source') == 'ha_persistent_notification' and
-                     item.get('phase') in PHASES and sha(item.get('object_id')) and sha(item.get('revision')))
+                     item.get('project') == PROJECT and
+                     ((terminal and item.get('topic') == 'task_terminal' and item.get('source') == 'registered_task_status' and item.get('phase') == 'terminal' and isinstance(item.get('operation_id'),str) and re.fullmatch('[a-f0-9]{32}',item['operation_id']) and item.get('terminal_state') in ('completed','failed','interrupted','not_dispatched') and hashlib.sha256(('task-terminal-operation-v1:'+item['operation_id']).encode()).hexdigest() == item.get('object_id')) or
+                      (not terminal and item.get('topic') == 'ha_notification' and item.get('source') == 'ha_persistent_notification' and item.get('phase') in PHASES)) and
+                     sha(item.get('object_id')) and sha(item.get('revision')))
                 members.append({'source': 'retained_registry_event', 'event_id': eid,
                     'object_id': item['object_id'], 'revision': item['revision'],
                     'phase': item['phase'], 'observed_at': iso(event['created']),
                     'age_seconds': round(max(0, now-event['created']), 3),
                     'collection_error': None, 'record_location': 'archive' if event['archived'] else 'current',
-                    'coverage': ['retained_event_identity_only', 'not_universal_source_clock']})
+                    'coverage': ['retained_event_identity_only', 'not_universal_source_clock'],
+                    **({'operation_id':item['operation_id'],'terminal_state':item['terminal_state']} if terminal else {})})
             transport = {'source': 'native_transport_completion', 'observed_at': None,
                 'age_seconds': None, 'state': 'unknown', 'outcome': None,
                 'sender_duration_ms': None, 'collection_error': 'transport_completion_missing',
@@ -523,6 +600,7 @@ class Registry:
                 members_digest_sha256=hashlib.sha256(canonical(ids).encode()).hexdigest(),
                 returned_members=len(members), members_truncated=count > 8,
                 members=members, transport=transport)
+            if terminal: out.update(delivery_kind=TERMINAL_VERSION, functional_recovery_proven=False)
             need(len(canonical(out).encode()) <= 8192)
             return out
         except (sqlite3.Error, ValueError, TypeError, KeyError, OverflowError, AttributeError):
@@ -534,6 +612,25 @@ class Registry:
             self.db.set_progress_handler(None, 0)
             if saved:
                 self.db.execute('RELEASE latest_delivery_receipt_observation')
+
+    def subscription_scope(self, now):
+        out={'source':'authenticated_active_subscription_scope','observed_at':iso(now),'age_seconds':0,
+             'state':'unknown','collection_error':'subscription_scope_unconfirmed','topics':[],
+             'subscription_id_sha256':None,'predecessor_id_sha256':None,
+             'coverage':['active_same_principal_only','no_callback_or_secret','not_execution_or_backend_admission']}
+        try:
+            rows=self.db.execute('SELECT id,args FROM subscriptions WHERE owner=? AND active=1 AND expires>?',(self.principal,now)).fetchall()
+            if len(rows)>1:raise ValueError('multiple_subscriptions')
+            if not rows:
+                out.update(state='inactive',collection_error=None);return out
+            sub=rows[0];topics=filters(json.loads(sub['args']))['topics']
+            parents=self.db.execute('SELECT predecessor FROM subscription_lineage WHERE successor=?',(sub['id'],)).fetchall()
+            if len(parents)>1 or not isinstance(sub['id'],str) or parents and not isinstance(parents[0][0],str):raise ValueError('invalid_lineage')
+            out.update(state='observed',collection_error=None,topics=topics,
+                       subscription_id_sha256=hashlib.sha256(sub['id'].encode()).hexdigest(),
+                       predecessor_id_sha256=hashlib.sha256(parents[0][0].encode()).hexdigest() if parents else None)
+        except (ValueError,TypeError,KeyError,sqlite3.Error):pass
+        return out
 
     def status(self):
         try:
@@ -552,6 +649,7 @@ class Registry:
         states={row[0]:row[1] for row in self.db.execute('SELECT state,count(*) FROM dispatch GROUP BY state')}
         return {'source':'persistent_mcp_event_delivery','observed_at':iso(now),
                 'subscription_lease':lease_metadata,
+                'subscription_scope':self.subscription_scope(now),
                 'active_subscriptions':self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>?',(now,)).fetchone()[0],
                 **self.event_counts(now), **self.delivery_diagnostics(now),
                 'webhook_transport_timing': self.transport_diagnostics(),
@@ -580,7 +678,7 @@ class Registry:
             current[item['id']]=item['revision']
         self.current_evidence = (observed_at,current)
 
-    def summary_plan(self, now):
+    def summary_plan(self, now, allowed_topics=None):
         active=self.db.execute('SELECT * FROM subscriptions WHERE active=1 AND expires>? AND owner=?', (now,self.principal)).fetchall()
         if len(active)>1:
             raise Refused('summary_subscription_scope_unconfirmed')
@@ -591,21 +689,40 @@ class Registry:
         if type(sub['started']) not in (int,float) or not 0<=sub['started']<=now:
             raise Refused('summary_subscription_scope_unconfirmed')
         marks=','.join('?' for _ in allowed)
-        rows=self.db.execute('SELECT e.* FROM events e WHERE e.created>=? AND e.topic IN ('+marks+') AND NOT EXISTS(SELECT 1 FROM dispatch d WHERE d.subscription=? AND d.event=e.id) AND NOT EXISTS(SELECT 1 FROM delivery_members m WHERE m.subscription=? AND m.event=e.id) ORDER BY e.created,e.id',
-                             (max(now-86400,sub['started']),*allowed,sub['id'],sub['id'])).fetchall()
+        rows=self.db.execute('SELECT e.* FROM events e WHERE e.created>=? AND e.topic IN ('+marks+') AND NOT EXISTS(SELECT 1 FROM dispatch d WHERE d.subscription=? AND d.event=e.id) AND NOT EXISTS(SELECT 1 FROM delivery_members m WHERE m.subscription=? AND m.event=e.id) AND NOT EXISTS(SELECT 1 FROM subscription_lineage l JOIN delivery_members m ON m.subscription=l.predecessor WHERE l.successor=? AND m.event=e.id) AND NOT EXISTS(SELECT 1 FROM subscription_lineage l JOIN dispatch d ON d.subscription=l.predecessor WHERE l.successor=? AND d.event=e.id) ORDER BY e.created,e.id',
+                             (max(now-86400,sub['started']),*allowed,sub['id'],sub['id'],sub['id'],sub['id'])).fetchall()
+        if allowed_topics is not None:
+            rows=[row for row in rows if row['topic'] in allowed_topics]
         evidence=self.current_evidence
         current=evidence[1] if evidence and 0<=now-evidence[0]<=15 else None
-        return sub, rows, group_events(rows,now,current)
+        topic = rows[0]['topic'] if rows else 'ha_notification'
+        selected = [row for row in rows if row['topic'] == topic]
+        groups = group_terminal_events(selected,now) if topic == 'task_terminal' else group_events(selected,now,current)
+        # Retain legacy HA ordering for HA-only queues; mixed queues choose the
+        # oldest eligible group across topics and do not starve another source.
+        if len({row['topic'] for row in rows}) > 1 and topic == 'ha_notification':
+            created={row['id']:row['created'] for row in selected}
+            groups.sort(key=lambda group:(min(created[eid] for eid in group['_members']),group['object_id']))
+        return sub, rows, groups
 
     def delivery_diagnostics(self, now):
         self.db.execute('SAVEPOINT delivery_observation')
         try:
             sub,rows,groups=self.summary_plan(now)
+            all_rows=rows
+            rows=[row for row in all_rows if row['topic']=='ha_notification']
+            evidence=self.current_evidence
+            current=evidence[1] if evidence and 0<=now-evidence[0]<=15 else None
+            groups=group_events(rows,now,current)
             times=[r[0] for r in self.db.execute('SELECT at FROM dispatch WHERE at>?',(now-86400,))]
-            upcoming=opportunity(times,now,sub['expires'] if sub else None,len(rows))
-            archived=self.db.execute('SELECT reason,count(*) FROM event_archive GROUP BY reason').fetchall()
-            batches=self.db.execute('SELECT count(*) FROM delivery_batches').fetchone()[0]
-            members=self.db.execute('SELECT count(*) FROM delivery_members').fetchone()[0]
+            upcoming=opportunity(times,now,sub['expires'] if sub else None,len(all_rows))
+            archived=self.db.execute("SELECT reason,count(*) FROM event_archive WHERE topic='ha_notification' GROUP BY reason").fetchall()
+            batches_data=[json.loads(row[0])['data'] for row in self.db.execute('SELECT body FROM delivery_batches')]
+            ha_batches=[data for data in batches_data if data.get('delivery_kind') == VERSION]
+            terminal_batches=[data for data in batches_data if data.get('delivery_kind') == TERMINAL_VERSION]
+            if len(ha_batches)+len(terminal_batches)!=len(batches_data):raise ValueError('summary_unknown_batch')
+            batches=len(ha_batches)
+            members=sum(data['covered_event_records'] for data in ha_batches)
             return {'delivery_summary_version':VERSION,
                     'delivery_queue':{'state':'observed','collection_error':None,
                       'eligible_event_records':len(rows),'notification_groups':len(groups),
@@ -616,7 +733,7 @@ class Registry:
                       'ordering':'current_then_latest_change_desc_no_severity_inferred',
                       'max_groups_per_delivery':8,'durable_summary_batches':batches,
                       'durable_covered_event_records':members,
-                      'covered_revisions_coalesced':members-sum(len(json.loads(r[0])['data']['notifications']) for r in self.db.execute('SELECT body FROM delivery_batches')),
+                      'covered_revisions_coalesced':members-sum(len(data['notifications']) for data in ha_batches),
                       'archived_event_records':sum(r[1] for r in archived),
                       'archive_reasons':{r[0]:r[1] for r in archived},
                       'history_archive_limit':4096,'archive_full_behavior':'fail_closed_no_silent_discard',
@@ -629,7 +746,7 @@ class Registry:
         finally:
             self.db.execute('RELEASE delivery_observation')
 
-    def dispatch_one(self):
+    def dispatch_one(self, allowed_topics=None):
         if not self.approved:
             raise Refused('activation_not_approved')
         self.db.execute('BEGIN IMMEDIATE')
@@ -639,10 +756,11 @@ class Registry:
             if recent[0]>=MAXIMUM_ATTEMPTS_PER_DAY or recent[1] is not None and now-recent[1]<MINIMUM_ATTEMPT_SPACING_SECONDS:
                 self.db.execute('COMMIT')
                 return {'state':'budget_held'}
-            sub,rows,groups=self.summary_plan(now)
+            sub,rows,groups=self.summary_plan(now,allowed_topics)
             evidence=self.current_evidence
             at=iso(evidence[0]) if evidence and 0<=now-evidence[0]<=15 else None
-            batch=make_batch(groups,sub['id'],now,at) if sub else None
+            terminal = bool(groups and '_created' in groups[0])
+            batch=(make_terminal_batch(groups,sub['id'],now) if terminal else make_batch(groups,sub['id'],now,at)) if sub else None
             if not batch:
                 self.db.execute('COMMIT')
                 return {'state':'idle'}
@@ -680,4 +798,4 @@ class Registry:
             completed = self.observation_clock(self.clock)
         self.record_transport(sub['id'], identity, started, ended, completed, response_status)
         return {'event_id':identity,'state':state,'covered_event_records':len(members),
-                'delivery_kind':VERSION,'assistant_run_confirmed':False,'automatic_retry':False}
+                'delivery_kind':TERMINAL_VERSION if terminal else VERSION,'assistant_run_confirmed':False,'automatic_retry':False}

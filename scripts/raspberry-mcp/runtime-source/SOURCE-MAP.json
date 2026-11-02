@@ -99,10 +99,13 @@
     },
     "repair-control/event_projection.mjs": {
       "source": "/usr/local/lib/raspberry-repair-control/event_projection.mjs",
-      "source_sha256": "2cdd932445b9f7818b520c5e25b85530885325b5b4a899a2cd5b49d84c73d924",
-      "export_sha256": "2cdd932445b9f7818b520c5e25b85530885325b5b4a899a2cd5b49d84c73d924",
-      "normalizations": [
-        "reference_update_separate_workspace_administrative_and_legacy_send_gates;not_original_capture_or_installable_policy"
+      "source_sha256": "c01d6f17b9801350e6ac08b9c925b8178f642669c85e49ed10d9dbf5dbc1dae9",
+      "export_sha256": "c01d6f17b9801350e6ac08b9c925b8178f642669c85e49ed10d9dbf5dbc1dae9",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
       ]
     },
     "repair-control/repair-broker.py": {
@@ -134,10 +137,13 @@
     },
     "frontend/event_projection.mjs": {
       "source": "/var/lib/raspberry-mcp/root/app/event_projection.mjs",
-      "source_sha256": "2cdd932445b9f7818b520c5e25b85530885325b5b4a899a2cd5b49d84c73d924",
-      "export_sha256": "2cdd932445b9f7818b520c5e25b85530885325b5b4a899a2cd5b49d84c73d924",
-      "normalizations": [
-        "reference_update_separate_workspace_administrative_and_legacy_send_gates;not_original_capture_or_installable_policy"
+      "source_sha256": "c01d6f17b9801350e6ac08b9c925b8178f642669c85e49ed10d9dbf5dbc1dae9",
+      "export_sha256": "c01d6f17b9801350e6ac08b9c925b8178f642669c85e49ed10d9dbf5dbc1dae9",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
       ]
     },
     "procmon-observability/observed_collector.py": {
@@ -154,15 +160,25 @@
     },
     "native-events/registry.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/registry.py",
-      "source_sha256": "f34a0003037ab9abba2b593cb8e8f4a6dd5afd7397aec2cbc0c438527add9613",
-      "export_sha256": "f34a0003037ab9abba2b593cb8e8f4a6dd5afd7397aec2cbc0c438527add9613",
-      "normalizations": []
+      "source_sha256": "2efc7016401251b37c567b5ae0084a15018b88c1ddfb67b18f72f7b8643e43f9",
+      "export_sha256": "2efc7016401251b37c567b5ae0084a15018b88c1ddfb67b18f72f7b8643e43f9",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ]
     },
     "native-events/worker.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/worker.py",
-      "source_sha256": "06305758f58dbe837dc14d36b742aace3ba4ca5e6af58f844b7d88ab38b0e075",
-      "export_sha256": "06305758f58dbe837dc14d36b742aace3ba4ca5e6af58f844b7d88ab38b0e075",
-      "normalizations": []
+      "source_sha256": "3a278c66b69c0d5e39131ddc069933bd5d3649ca2494b0be7cd91ed58d322c44",
+      "export_sha256": "3a278c66b69c0d5e39131ddc069933bd5d3649ca2494b0be7cd91ed58d322c44",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ]
     },
     "native-events/webhook.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/webhook.py",
@@ -429,15 +445,25 @@
     },
     "native-events/delivery_summary.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/delivery_summary.py",
-      "source_sha256": "04a2ad1312a3e241581d0764afb7d0561b1965723cdb7ab244f92d9b5756bdcc",
-      "export_sha256": "04a2ad1312a3e241581d0764afb7d0561b1965723cdb7ab244f92d9b5756bdcc",
-      "normalizations": []
+      "source_sha256": "ee1db7a4cfb37e2e00d706cfe08e59ab2787b7875d5e2585aa23706836d8fced",
+      "export_sha256": "ee1db7a4cfb37e2e00d706cfe08e59ab2787b7875d5e2585aa23706836d8fced",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ]
     },
     "frontend/events-server.mjs": {
       "source": "/var/lib/raspberry-mcp/root/app/events-server.mjs",
-      "source_sha256": "a998451c990d286c6b4f564c901aaac9274d5211aa2596af594a800a81275fae",
-      "export_sha256": "a998451c990d286c6b4f564c901aaac9274d5211aa2596af594a800a81275fae",
-      "normalizations": []
+      "source_sha256": "b5e4c061a47cf249097327c44387cf1bc89c70c65226b9c589bfca7a031d8d1d",
+      "export_sha256": "b5e4c061a47cf249097327c44387cf1bc89c70c65226b9c589bfca7a031d8d1d",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ]
     },
     "offsite-integrity/activate.py": {
       "source": "/run/raspberry-offsite-integrity-stdin-recovery-20261026-r2/activate.py",
@@ -1164,6 +1190,39 @@
       "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "scope": "source_export_not_installable_without_existing_frontend_dependencies"
+    },
+    "task-terminal-observer/observer.py": {
+      "source": "/usr/local/lib/raspberry-task-terminal-observer/observer.py",
+      "source_sha256": "52326e53c48ea18e7d2ad05284afa4069fcb06721cbbfb553994c2ead7217cab",
+      "export_sha256": "52326e53c48ea18e7d2ad05284afa4069fcb06721cbbfb553994c2ead7217cab",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ]
+    },
+    "task-terminal-observer/native_adapter.py": {
+      "source": "/usr/local/lib/raspberry-task-terminal-observer/native_adapter.py",
+      "source_sha256": "e90bc1c91331f316b3c4aef340f7b80c012012e3315611b446f0ceaa997b8c49",
+      "export_sha256": "e90bc1c91331f316b3c4aef340f7b80c012012e3315611b446f0ceaa997b8c49",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ]
+    },
+    "task-terminal-observer/bootstrap.py": {
+      "source": "/usr/local/lib/raspberry-task-terminal-observer/bootstrap.py",
+      "source_sha256": "aba32ed10966b1693880909368a1b214fbf2429aeca9eb597ac324bb2859f1b5",
+      "export_sha256": "aba32ed10966b1693880909368a1b214fbf2429aeca9eb597ac324bb2859f1b5",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ]
     }
   },
   "snapshot_scope_note": "Historical per-file captures; active readonly iCloud collector/root/broker delta is exported with unarmed bindings in ../icloud-readiness-candidate. Historical hashes remain provenance, not current loaded-runtime claims."

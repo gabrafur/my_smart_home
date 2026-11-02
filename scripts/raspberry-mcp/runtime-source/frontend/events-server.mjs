@@ -25,8 +25,12 @@ export const summaryPayloadSchema=closed({...common,delivery_kind:{enum:['notifi
   revisions_coalesced:count(),recovery_proven:{enum:[false]}})},
  covered_event_records:count(1),remaining_notification_groups:count(),recovery_proven:{enum:[false]},
  assistant_execution:{enum:['unknown']},history_semantics:{enum:['transition_history_not_current_incidents']}});
-export const eventPayloadSchema={oneOf:[closed({...common,phase,object_id:opaque,revision:opaque}),summaryPayloadSchema]};
-export const payloadContractMetadata={version:'notification_payload_contract_v1',schema_sha256:createHash('sha256').update(JSON.stringify(eventPayloadSchema)).digest('hex'),payload_variants:['individual_notification_v1','notification_summary_v1'],coverage:['loaded_frontend_descriptor_not_remote_client_cache','not_delivery_or_assistant_execution_proof']};
+export const terminalPayloadSchema=closed({project:{enum:['/mnt/data/docker']},topic:{enum:['task_terminal']},
+ source:{enum:['registered_task_status']},delivery_kind:{enum:['task_terminal_summary_v1']},summary_as_of:timestamp,
+ tasks:{type:'array',minItems:1,maxItems:8,items:closed({object_id:opaque,revision:opaque,phase:{enum:['terminal']},operation_id:{type:'string',pattern:'^[a-f0-9]{32}$'},terminal_state:{enum:['completed','failed','interrupted','not_dispatched']},observed_at:timestamp})},
+ covered_event_records:count(1),remaining_terminal_events:count(),functional_recovery_proven:{enum:[false]},assistant_execution:{enum:['unknown']}});
+export const eventPayloadSchema={oneOf:[closed({...common,phase,object_id:opaque,revision:opaque}),summaryPayloadSchema,terminalPayloadSchema]};
+export const payloadContractMetadata={version:'notification_payload_contract_v1',schema_sha256:createHash('sha256').update(JSON.stringify(eventPayloadSchema)).digest('hex'),payload_variants:['individual_notification_v1','notification_summary_v1','task_terminal_summary_v1'],coverage:['loaded_frontend_descriptor_not_remote_client_cache','not_delivery_or_assistant_execution_proof']};
 
 export const statusDescriptor={name:'events_status',description:'Read sanitized native event subscription/delivery health. Reports source freshness, delivery budgets and uncertain outcomes. Webhook acceptance is not proof of an assistant run. No callback URLs, keys, retries or mutations.',inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']}},required:['host']},annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false}};
 export function eventCall(method,params){return new Promise((resolve,reject)=>{
@@ -76,7 +80,7 @@ export function makeEventRoute(legacy,call=eventCall){return async request=>{
   }
   result.result.tools.push(statusDescriptor);
  }
- if(method==='events/list'&&result?.result?.events)for(const event of result.result.events)if(event.name==='smart_home.observation'){event.payloadSchema=eventPayloadSchema;event.description='Sanitized HA persistent-notification changes for /mnt/data/docker. One active subscription, signed HTTPS callback verification, grouped delivery at least ten minutes apart, at most 144 attempts per rolling day. No automatic retry after uncertain delivery. Removal is not proof of recovery. Subscription activation requires the installed approved event service.';}
+ if(method==='events/list'&&result?.result?.events)for(const event of result.result.events)if(event.name==='smart_home.observation'){event.payloadSchema=eventPayloadSchema;const topics=event.inputSchema?.properties?.topics;if(topics&&topics.type==='array'){topics.items={type:'string',enum:['ha_notification','task_terminal']};topics.minItems=1;topics.maxItems=2;topics.uniqueItems=true;}event.description='Sanitized HA persistent-notification changes and registered task terminal events for /mnt/data/docker. One active subscription, signed HTTPS callback verification, grouped delivery at least ten minutes apart, at most 144 attempts per rolling day. No automatic retry after uncertain delivery. Removal is not proof of recovery. Subscription activation requires the installed approved event service.';}
  return result;
 };}
 
