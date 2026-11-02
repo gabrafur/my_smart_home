@@ -20,8 +20,8 @@
     "lighting.patch": "992552b7300cd9458c21ee25cab1ec2c3b8956a18d431ae3e1dfc4c09bc7391c",
     "native_guard.py": "808a441b193e62a11c6194c34abd12f936e7a932a3049559bc9d0c6f84b0b53f",
     "public_source_validator.py": "70e46341e91ad2ee7fb3453165b68f5ef5c628b5ba667502dbc4233817d9294e",
+    "systemd/nodered-admin-instance.service.in": "e9b3b220a12231ee1020a06390ad1d0913a3f75426b966e92dcc3653646b9545",
     "systemd/raspberry-nodered-admin.socket": "38a2bdbb77c36b29edf15fec612a8cc5a77f414d482ec3fbb3db9e980a773e5b",
-    "systemd/raspberry-nodered-admin@.service.in": "e9b3b220a12231ee1020a06390ad1d0913a3f75426b966e92dcc3653646b9545",
     "test_engine.py": "8653f4d34608b5fbd27e87969e46fe0202f3a6de5908a038f440ddb771816bde",
     "test_fixed_transport.py": "adcb74cebd41fab10c8928eb6c60eea33961303844366eb5ecdfb6f32babcc6f",
     "test_native.py": "d733f46977f1235cd389284accbd247f2903e8931d67a089b7b40b795f394fef",
@@ -44,7 +44,7 @@
   ],
   "templates_only": [
     "systemd/raspberry-nodered-admin.socket",
-    "systemd/raspberry-nodered-admin@.service.in"
+    "systemd/nodered-admin-instance.service.in"
   ],
   "lighting_patch_is_review_only": true
 }
