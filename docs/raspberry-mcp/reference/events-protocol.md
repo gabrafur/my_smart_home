@@ -107,6 +107,25 @@ recuperação. Os estados terminais são `completed`, `failed`, `interrupted` e
 `not_dispatched`.
 
 A migração usa o protocolo existente, pelo mesmo principal e callback validado.
+Quando o cliente rotaciona o callback ao mudar os tópicos, a igualdade exata
+continua sendo a regra normal. Uma migração já autorizada pode receber uma
+concessão Root de uso único na chave fixa `subscription_handover` do registro
+existente: até 300 segundos, um principal e predecessora fixados, mesmos
+argumentos de destino, início e prazo originais. Somente HTTPS, porta 443,
+mesma origem e família de caminho com componente terminal de 32 hex; query
+e outro namespace são recusados. A concessão não é uma ferramenta pública,
+permissão permanente nem adoção automática de outro destinatário.
+
+Antes da rede, uma comparação atômica consome a concessão e fixa os hashes da
+assinatura e do novo callback. A verificação criptográfica normal permanece
+obrigatória. Falha ou incerteza não libera outra tentativa; concorrência ou
+drift da predecessora impedem o commit. O estado concluído conserva a
+linhagem e os membros já cobertos, inclusive os de entrega incerta. Nenhum
+recibo é apagado e nenhuma janela é reiniciada. Diagnóstico nativo de recusa
+guarda somente razão enumerada, estágio, tópicos e comparações booleanas de
+origem/família; nunca URL ou chave. A autorização operacional e seus IDs
+ficam privados e não acompanham este snapshot público.
+
 Preserva início e prazo da assinatura anterior, histórico, cotas e resultados
 incertos; a linhagem impede reenvio de eventos já cobertos. Aceita atualização
 antes do cancelamento antigo e também cancelamento seguido da nova assinatura

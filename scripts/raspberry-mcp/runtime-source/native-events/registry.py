@@ -174,8 +174,119 @@ class Registry:
             invalid = {'invalid_params','invalid_delivery','invalid_delivery_or_cursor','invalid_ttl','invalid_signing_key','invalid_callback'}
             code = (-32602 if reason in invalid else -32024 if reason in {'scope_refused','peer_refused','activation_not_approved'}
                     else -32023 if reason == 'event_refused' else -32015 if reason == 'challenge_failed' else -32000)
+            self.note_refusal_diagnostic(reason, params, type(error).__name__)
             self.note_subscription('refused', code)
             raise
+
+    def note_refusal_diagnostic(self, reason, params, error_kind):
+        """Bounded metadata only; never store callback URLs, keys or exception text."""
+        reasons={'subscription_limit','subscription_migration_ambiguous','subscription_transition_unconfirmed',
+                 'subscription_migration_changed','clock_reconciliation_required','delivery_refused',
+                 'event_refused','scope_refused','invalid_params','invalid_delivery_or_cursor',
+                 'invalid_ttl','invalid_signing_key','invalid_callback','challenge_failed','activation_not_approved',
+                 'subscription_handover_not_admitted','subscription_handover_consumed'}
+        try:
+            current=self.clock()
+            active=self.db.execute('SELECT url FROM subscriptions WHERE active=1 AND expires>?',(current,)).fetchall()
+            delivery=params.get('delivery') if isinstance(params,dict) else None
+            url=delivery.get('url') if isinstance(delivery,dict) else None
+            args=params.get('arguments') if isinstance(params,dict) else None
+            topics=args.get('topics') if isinstance(args,dict) else None
+            if not (isinstance(topics,list) and 1<=len(topics)<=2 and len(set(topics))==len(topics)
+                    and all(type(x) is str and x in EVENT_PAIRS for x in topics)):topics=None
+            stages=self.subscription_diagnostics()
+            same_origin=same_family=None
+            if type(url) is str:
+                try:
+                    candidate=callback_parts(url);prior=[callback_parts(row['url']) for row in active]
+                    same_origin=any((x.scheme,x.hostname,x.port or 443)==(candidate.scheme,candidate.hostname,candidate.port or 443) for x in prior)
+                    shape=re.fullmatch(r'(.*/)[a-f0-9]{32}',candidate.path)
+                    same_family=bool(shape and any(re.fullmatch(r'(.*/)[a-f0-9]{32}',x.path) and re.fullmatch(r'(.*/)[a-f0-9]{32}',x.path)[1]==shape[1] for x in prior))
+                except (ValueError,TypeError):pass
+            detail={'schema_version':1,'source':'native_subscription_refusal_metadata','observed_at':iso(current),
+                'reason':reason if reason in reasons else 'unclassified_refusal',
+                'exception_kind':error_kind if error_kind in ('Refused','OperationalError','IntegrityError','ValueError','TypeError') else 'other',
+                'last_completed_stage':stages[-1]['stage'] if stages else None,
+                'active_count':len(active),'known_subscriptions':self.db.execute('SELECT count(*) FROM subscriptions').fetchone()[0],
+                'callback_matches_active':(any(row['url']==url for row in active) if type(url) is str else None),
+                'requested_topics':sorted(topics) if topics is not None else None,
+                'callback_origin_matches_active':same_origin,'callback_path_family_matches_active':same_family,
+                'coverage':['metadata_only','no_callback_or_secret','refusal_not_a_new_subscription']}
+            value=canonical(detail)
+            if len(value.encode())<=2048:
+                self.db.execute("INSERT OR REPLACE INTO meta VALUES('subscription_refusal_metadata',?)",(value,))
+        except Exception:
+            # Diagnostics must not replace the original result or grant a retry.
+            pass
+
+    def authorize_handover(self, args, delivery, sid, now, predecessor=None):
+        """One Root-armed attempt for an already approved same-origin migration."""
+        item=self.db.execute("SELECT value FROM meta WHERE key='subscription_handover'").fetchone()
+        if item is None:return None
+        try:
+            if type(item[0]) is not str or len(item[0].encode())>4096:raise Refused('subscription_handover_not_admitted')
+            def unique(pairs):
+                result={}
+                for key,value in pairs:
+                    if key in result:raise ValueError('duplicate_handover_key')
+                    result[key]=value
+                return result
+            g=json.loads(item[0],object_pairs_hook=unique,parse_constant=lambda _:(_ for _ in ()).throw(ValueError('nonfinite_handover')))
+            if isinstance(g,dict) and g.get('state') in ('verification_intent','verification_unconfirmed','completed'):
+                raise Refused('subscription_handover_consumed')
+            fields={'schema_version','state','operation_id','principal','predecessor','old_url_sha256',
+                    'old_args_sha256','target_args_sha256','old_started','old_expires',
+                    'armed_at','expires_at','maximum_attempts'}
+            if not (type(g) is dict and set(g)==fields and type(g['schema_version']) is int and g['schema_version']==1
+                    and g['state']=='armed' and g['principal']==self.principal
+                    and type(g['maximum_attempts']) is int and g['maximum_attempts']==1
+                    and type(g['operation_id']) is str and re.fullmatch('[a-f0-9]{32}',g['operation_id'])
+                    and all(type(g[k]) is str and re.fullmatch('[a-f0-9]{64}',g[k]) for k in
+                            ('predecessor','old_url_sha256','old_args_sha256','target_args_sha256'))
+                    and all(type(g[k]) in (int,float) and math.isfinite(g[k]) and g[k]>=0 for k in
+                            ('old_started','old_expires','armed_at','expires_at'))
+                    and g['old_started']<=g['old_expires'] and g['armed_at']<=now<g['expires_at']
+                    and g['expires_at']<=min(g['armed_at']+300,g['old_expires'])
+                    and args=={'project':PROJECT,'topics':['ha_notification','task_terminal']}
+                    and hashlib.sha256(canonical(args).encode()).hexdigest()==g['target_args_sha256']):
+                raise Refused('subscription_handover_not_admitted')
+            prior=predecessor if predecessor is not None else self.db.execute('SELECT * FROM subscriptions WHERE id=?',(g['predecessor'],)).fetchone()
+            if not (prior is not None and prior['id']==g['predecessor'] and prior['owner']==self.principal
+                    and filters(json.loads(prior['args']))['topics']==['ha_notification']
+                    and prior['started']==g['old_started'] and prior['expires']==g['old_expires'] and prior['expires']>now
+                    and hashlib.sha256(prior['url'].encode()).hexdigest()==g['old_url_sha256']
+                    and hashlib.sha256(prior['args'].encode()).hexdigest()==g['old_args_sha256']):
+                raise Refused('subscription_handover_not_admitted')
+            if not prior['active']:
+                marker=self.db.execute('SELECT at FROM subscription_transition_markers WHERE predecessor=?',(prior['id'],)).fetchone()
+                if marker is None or type(marker[0]) not in (int,float) or not g['armed_at']<=marker[0]<=now or now-marker[0]>300:
+                    raise Refused('subscription_handover_not_admitted')
+            old,new=callback_parts(prior['url']),callback_parts(delivery['url'])
+            oldpath=re.fullmatch(r'(.*/)[a-f0-9]{32}',old.path)
+            newpath=re.fullmatch(r'(.*/)[a-f0-9]{32}',new.path)
+            if not (old.scheme==new.scheme=='https' and old.hostname==new.hostname
+                    and (old.port or 443)==(new.port or 443)==443 and not old.query and not new.query
+                    and oldpath and newpath and oldpath[1]==newpath[1] and prior['url']!=delivery['url']):
+                raise Refused('subscription_handover_not_admitted')
+            return {'grant':g,'armed_raw':item[0],'predecessor':prior}
+        except Refused:raise
+        except (ValueError,TypeError,KeyError,IndexError):
+            raise Refused('subscription_handover_not_admitted') from None
+
+    def begin_handover(self, handover, sid, delivery, now):
+        g={**handover['grant'],'state':'verification_intent','candidate_subscription_id':sid,
+           'candidate_url_sha256':hashlib.sha256(delivery['url'].encode()).hexdigest(),
+           'verification_started_at':now}
+        raw=canonical(g)
+        changed=self.db.execute("UPDATE meta SET value=? WHERE key='subscription_handover' AND value=?",(raw,handover['armed_raw'])).rowcount
+        if changed!=1:raise Refused('subscription_handover_consumed')
+        handover['intent_raw']=raw;handover['intent']=g
+
+    def unconfirmed_handover(self, handover):
+        try:
+            g={**handover['intent'],'state':'verification_unconfirmed'}
+            self.db.execute("UPDATE meta SET value=? WHERE key='subscription_handover' AND value=?",(canonical(g),handover['intent_raw']))
+        except Exception:pass
 
     def _subscribe(self, params):
         if not self.approved:
@@ -202,12 +313,16 @@ class Registry:
         old = self.db.execute('SELECT * FROM subscriptions WHERE id=?', (sid,)).fetchone()
         active = self.db.execute('SELECT * FROM subscriptions WHERE active=1 AND expires>? AND id!=?',(now,sid)).fetchall()
         predecessor = None
+        handover = None
         if active:
             if (len(active) != 1 or old is not None or args['topics'] != ['ha_notification','task_terminal']
-                or active[0]['owner'] != self.principal or active[0]['url'] != delivery['url']
+                or active[0]['owner'] != self.principal
                 or filters(json.loads(active[0]['args']))['topics'] != ['ha_notification']):
                 raise Refused('subscription_limit')
             predecessor=active[0]
+            if predecessor['url']!=delivery['url']:
+                handover=self.authorize_handover(args,delivery,sid,now,predecessor)
+                if handover is None:raise Refused('subscription_limit')
         elif old is None and args['topics'] == ['ha_notification','task_terminal']:
             candidates=self.db.execute('SELECT s.*,m.at AS transition_at FROM subscription_transition_markers m JOIN subscriptions s ON s.id=m.predecessor WHERE s.owner=? AND s.url=? AND s.active=0 AND s.expires>? AND m.at<=? AND m.at>=? AND NOT EXISTS(SELECT 1 FROM subscription_lineage l WHERE l.predecessor=s.id)',(self.principal,delivery['url'],now,now,now-300)).fetchall()
             candidates=[row for row in candidates if filters(json.loads(row['args']))['topics']==['ha_notification']]
@@ -217,14 +332,20 @@ class Registry:
                 # A known same-scope predecessor without a valid transition
                 # cannot be treated as a new history-free subscription.
                 legacy_sid,_=self.identity(NAME,{'project':PROJECT,'topics':['ha_notification']},delivery)
-                if self.db.execute('SELECT 1 FROM subscriptions WHERE id=? AND owner=?',(legacy_sid,self.principal)).fetchone():
+                handover=self.authorize_handover(args,delivery,sid,now)
+                if handover is not None:predecessor=handover['predecessor']
+                elif self.db.execute('SELECT 1 FROM subscriptions WHERE owner=? AND args=?',(self.principal,canonical({'project':PROJECT,'topics':['ha_notification']}))).fetchone():
                     raise Refused('subscription_transition_unconfirmed')
         if not old and self.db.execute('SELECT count(*) FROM subscriptions').fetchone()[0] >= 8:
             raise Refused('subscription_limit')
         self.note_subscription('validated', 0)
         if not old or not old['active'] or old['secret'] != delivery['secret'] or now-old['verified'] > 300:
+            if handover is not None:self.begin_handover(handover,sid,delivery,now)
             self.note_subscription('callback_verification', 0)
-            verify_callback(delivery['url'], delivery['secret'], sid, self.sender, self.clock)
+            try:verify_callback(delivery['url'], delivery['secret'], sid, self.sender, self.clock)
+            except BaseException:
+                if handover is not None:self.unconfirmed_handover(handover)
+                raise
             self.note_subscription('callback_verified', 0)
             verified = now
         else:
@@ -241,11 +362,14 @@ class Registry:
                 current=self.db.execute('SELECT * FROM subscriptions WHERE id=?',(predecessor['id'],)).fetchone()
                 current_now=self.clock()
                 expected_active=predecessor['active']==1
-                need_same = current is not None and current['active']==int(expected_active) and current['owner']==self.principal and current['url']==delivery['url'] and current['args']==predecessor['args'] and current['started']==started and current['expires']==predecessor['expires'] and current['expires']>current_now
+                need_same = current is not None and current['active']==int(expected_active) and current['owner']==self.principal and current['url']==predecessor['url'] and current['args']==predecessor['args'] and current['started']==started and current['expires']==predecessor['expires'] and current['expires']>current_now
                 active_count=self.db.execute('SELECT count(*) FROM subscriptions WHERE active=1 AND expires>?',(current_now,)).fetchone()[0]
                 if not expected_active:
                     marker=self.db.execute('SELECT at FROM subscription_transition_markers WHERE predecessor=?',(predecessor['id'],)).fetchone()
                     need_same=need_same and marker is not None and type(marker[0]) in (int,float) and 0<=current_now-marker[0]<=300
+                if handover is not None:
+                    stored=self.db.execute("SELECT value FROM meta WHERE key='subscription_handover'").fetchone()
+                    need_same=need_same and stored is not None and stored[0]==handover['intent_raw'] and current_now<handover['grant']['expires_at']
                 if not need_same or active_count!=(1 if expected_active else 0):
                     raise Refused('subscription_migration_changed')
                 if expected_active:self.db.execute('UPDATE subscriptions SET active=0 WHERE id=?',(predecessor['id'],))
@@ -253,6 +377,9 @@ class Registry:
                 self.db.execute('INSERT INTO subscriptions VALUES(?,?,?,?,?,?,?,?,?,?,1)',
                     (sid,self.principal,canonical(args),delivery['url'],delivery['secret'],None,0,expires,verified,started))
                 self.db.execute('INSERT INTO subscription_lineage VALUES(?,?)',(sid,predecessor['id']))
+                if handover is not None:
+                    complete={**handover['intent'],'state':'completed','completed_at':current_now}
+                    self.db.execute("UPDATE meta SET value=? WHERE key='subscription_handover' AND value=?",(canonical(complete),handover['intent_raw']))
                 self.db.execute('COMMIT')
             except BaseException:
                 self.db.execute('ROLLBACK');raise
