@@ -89,21 +89,40 @@ def _rows(db, lock, owner, scope_started_at=0, clock=time.time):
         try:
             conn.execute('PRAGMA query_only=ON')
             conn.execute('BEGIN')
-            pending = conn.execute('''SELECT s.id,s.task,s.state,s.turn,s.updated,t.thread
-                FROM sends s JOIN tasks t ON s.task=t.id
-                WHERE s.state IN (?,?,?,?,?) ORDER BY s.updated ASC,s.id ASC LIMIT 1''', PENDING).fetchall()
-            terminal = conn.execute('''SELECT s.id,s.task,s.state,s.turn,s.updated,s.result,s.reconciled
-                FROM sends s JOIN tasks t ON s.task=t.id
-                WHERE s.state IN (?,?,?,?) AND (s.reconciled=0 OR (s.updated>=? AND s.updated>=?))
+            pending = conn.execute('''SELECT s.id,s.task,s.state,s.turn,s.updated,s.result,t.thread
+                FROM sends s LEFT JOIN tasks t ON s.task=t.id
+                WHERE (t.id IS NOT NULL OR s.task LIKE 'workspace:%')
+                AND s.state IN (?,?,?,?,?) ORDER BY s.updated ASC,s.id ASC LIMIT 1''', PENDING).fetchall()
+            terminal = conn.execute('''SELECT s.id,s.task,s.state,s.turn,s.updated,s.result,s.reconciled,t.thread
+                FROM sends s LEFT JOIN tasks t ON s.task=t.id
+                WHERE (t.id IS NOT NULL OR s.task LIKE 'workspace:%')
+                AND s.state IN (?,?,?,?) AND (s.reconciled=0 OR (s.updated>=? AND s.updated>=?))
                 ORDER BY s.updated ASC,s.id ASC LIMIT 65''', (*TERMINAL,scope_started_at,clock()-86400)).fetchall()
-            return [dict(x) for x in pending], [dict(x) for x in terminal]
+            def reference(row):
+                value=dict(row)
+                if isinstance(value.get('task'),str) and value['task'].startswith('workspace:'):
+                    thread=value['task'][len('workspace:'):]
+                    if not UUID.fullmatch(thread):raise ValueError('invalid_workspace_reference')
+                    context=receipt(value['result']) if isinstance(value.get('result'),str) else None
+                    if not(isinstance(context,dict) and context.get('route')=='workspace_thread_communication'
+                            and context.get('target_thread_id')==thread
+                            and context.get('profile_preserved') is True
+                            and context.get('authority_changed') is False
+                            and (context.get('assistant_acknowledged') is None or type(context.get('assistant_acknowledged')) is bool)):
+                        raise ValueError('invalid_workspace_reference_receipt')
+                    value['thread']=thread
+                return value
+            return [reference(x) for x in pending], [reference(x) for x in terminal]
         finally:
             conn.close()
 
 
 def _valid_identity(row, pending=False):
-    return (bool(OP.fullmatch(row.get('id') or '')) and
-            bool(OP.fullmatch(row.get('task') or '')) and
+    task=row.get('task') or ''
+    workspace=isinstance(task,str) and task.startswith('workspace:')
+    valid_task=(bool(UUID.fullmatch(task[len('workspace:'):])) and
+                row.get('thread')==task[len('workspace:'):]) if workspace else bool(OP.fullmatch(task))
+    return (bool(OP.fullmatch(row.get('id') or '')) and valid_task and
             (not pending or bool(UUID.fullmatch(row.get('thread') or ''))))
 
 

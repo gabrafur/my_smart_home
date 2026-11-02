@@ -99,11 +99,26 @@ class Adapter:
         need(self.saved is not None and type(q) is dict and set(q)=={'mode','thread_id','turn_id','operation_id'} and q['mode']=='observe','observe_only_scope_refused')
         rows,_=self.rows()
         need(len(rows)==1 and q=={'mode':'observe','thread_id':rows[0]['thread'],'turn_id':rows[0]['turn'],'operation_id':rows[0]['id']},'unregistered_observation_refused')
+        request=q
+        task=rows[0].get('task')
+        if isinstance(task,str) and task.startswith('workspace:'):
+            need(task[len('workspace:'):]==q['thread_id'],'workspace_observation_identity_changed')
+            context=decode(rows[0]['result']) if isinstance(rows[0].get('result'),str) else None
+            need(isinstance(context,dict) and context.get('route')=='workspace_thread_communication'
+                 and context.get('target_thread_id')==q['thread_id']
+                 and context.get('profile_preserved') is True
+                 and context.get('authority_changed') is False
+                 and (context.get('assistant_acknowledged') is None or type(context.get('assistant_acknowledged')) is bool),
+                 'workspace_observation_context_unconfirmed')
+            request={**q,'mode':'workspace_message_observe','delivery_mode':context.get('delivery_mode'),
+                     'expected_turn_id':context.get('expected_turn_id'),
+                     'reply_boundary':context.get('reply_boundary',{'state':'unknown','item_id':None}),
+                     'known_ack':context.get('acknowledgement_evidence')}
         old_raw,new_raw,_=checked_bundle()
         need((sha(old_raw),sha(new_raw))==self.saved[:2],'policy_changed_during_observation')
         self.check_peer(self.saved[2])
         try:
-            result=self.run(['/usr/bin/node','--jitless','--no-expose-wasm','--max-old-space-size=16',str(LIB/'task_rpc.cjs')],input=json.dumps(q).encode(),capture_output=True,timeout=self.enforced_timeout_seconds,env={'PATH':'/usr/bin:/bin','WS_NO_BUFFER_UTIL':'1','WS_NO_UTF_8_VALIDATE':'1'})
+            result=self.run(['/usr/bin/node','--jitless','--no-expose-wasm','--max-old-space-size=16',str(LIB/'task_rpc.cjs')],input=json.dumps(request).encode(),capture_output=True,timeout=self.enforced_timeout_seconds,env={'PATH':'/usr/bin:/bin','WS_NO_BUFFER_UTIL':'1','WS_NO_UTF_8_VALIDATE':'1'})
         except subprocess.TimeoutExpired:
             raise TimeoutError('observation_transport_timeout') from None
         need(result.returncode==0 and len(result.stdout)<=16384,'observation_transport_unconfirmed')

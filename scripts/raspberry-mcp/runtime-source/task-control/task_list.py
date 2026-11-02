@@ -19,6 +19,7 @@ REFERENCES = {
 UUID = re.compile(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}')
 OP = re.compile(r'[a-f0-9]{32}')
 MAX_TASKS = 128
+MAX_WORKSPACE_REFERENCES = 64
 
 def need(ok,why):
     if not ok: raise ValueError(why)
@@ -74,7 +75,26 @@ def registry(tasks,now):
               'operations':[]}
         by_task={v['task_id']:v for v in rows.values() if v['task_id']}
         for send in sends[:1024]:
-            if send['task'] in by_task:by_task[send['task']]['operations'].append(send)
+            if send['task'] in by_task:
+                by_task[send['task']]['operations'].append(send)
+            elif isinstance(send['task'],str) and send['task'].startswith('workspace:'):
+                identifier=send['task'][len('workspace:'):]
+                need(UUID.fullmatch(identifier) is not None and OP.fullmatch(send['id']) is not None,
+                     'invalid_workspace_reference_identity')
+                value=json.loads(send['result']) if isinstance(send.get('result'),str) else None
+                need(isinstance(value,dict) and value.get('route')=='workspace_thread_communication'
+                     and value.get('target_thread_id')==identifier,'invalid_workspace_reference_receipt')
+                if identifier not in rows:
+                    need(sum(r.get('origin')=='workspace_reference' for r in rows.values())<MAX_WORKSPACE_REFERENCES,
+                         'workspace_reference_capacity')
+                    rows[identifier]={'thread_id':identifier,'safe_title':'workspace-thread-'+digest(identifier)[:16],
+                        'title_source':'opaque_workspace_reference_not_daemon_title','origin':'workspace_reference',
+                        'task_id':identifier.replace('-',''),'task_key':None,
+                        'creation_operation_id':None,'adapter_creation_state':None,
+                        'created_at':None,'registry_updated_at':None,'operations':[]}
+                rows[identifier]['workspace_message_reference']=True
+                rows[identifier]['workspace_communication_task_id']=identifier.replace('-','')
+                rows[identifier]['operations'].append(send)
     except (OSError,ValueError,sqlite3.Error):errors.append('adapter_registry_collection_failed')
     try:
         (legacy,)=read_database(tasks.LEGACY_DB,tasks,[
@@ -87,8 +107,19 @@ def registry(tasks,now):
 
 def project(raw,observation,now):
     ops=sorted(raw['operations'],key=lambda op:(op['updated'],op['id']),reverse=True)
-    executed=[op for op in ops if op['turn'] and op['state'] in ('inProgress','completed','failed','interrupted')]
+    def is_workspace(op):return isinstance(op.get('task'),str)and op['task'].startswith('workspace:')
+    executed=[op for op in ops if not is_workspace(op)and op['turn'] and op['state'] in ('inProgress','completed','failed','interrupted')]
     latest=ops[0] if ops else None;execution=executed[0] if executed else None
+    message=next((op for op in ops if is_workspace(op)),None);communication=None
+    if message:
+        try:
+            receipt=json.loads(message['result'])if isinstance(message.get('result'),str)else{}
+            communication={'operation_id':message['id'],'state':message['state'],
+                'delivery_mode':receipt.get('delivery_mode'),'input_accepted':receipt.get('input_accepted'),
+                'assistant_acknowledged':receipt.get('assistant_acknowledged'),
+                'receiver_turn_completed':message['state']=='completed',
+                'receiver_goal_completion_verified':False,'household_execution_proven':False}
+        except(ValueError,TypeError):communication={'operation_id':message['id'],'state':'unknown'}
     error=observation.get('collection_error') if isinstance(observation,dict) else 'daemon_metadata_unconfirmed'
     status=observation.get('status') if isinstance(observation,dict) else 'unknown'
     if status not in ('idle','notLoaded','active','systemError'):status='unknown'
@@ -108,7 +139,9 @@ def project(raw,observation,now):
     if isinstance(observation,dict) and valid_time(observation.get('created_at'),now):created=observation['created_at']
     daemon_ready=bool(isinstance(observation,dict) and not error and status=='idle' and observation.get('can_accept_direct_input') is True)
     admission=('closed' if raw['adapter_creation_state'] in ('cancelled_before_first_send','creation_lost_before_send') else
-               'fresh_preflight_required' if raw['origin']=='adapter_created' else 'coordinator_observation_only' if raw['thread_id']=='${AUTHORIZED_THREAD_ID_3}' else 'legacy_fixed_intents_only')
+               'fresh_preflight_required' if raw['origin']=='adapter_created' else
+               'fresh_workspace_reference_preflight_required' if raw['origin']=='workspace_reference' else
+               'coordinator_observation_only' if raw['thread_id']=='${AUTHORIZED_THREAD_ID_3}' else 'legacy_fixed_intents_only')
     outcome='unknown'
     if execution:
         try:
@@ -127,6 +160,7 @@ def project(raw,observation,now):
       'last_executed_at':iso(operation_time(execution)) if execution else None,
       'last_execution_observed_at':iso(execution['updated']) if execution and valid_time(execution['updated'],now) else None,
       'adapter_execution_proven':execution is not None,
+      'workspace_communication':communication,
       'last_executed_outcome':outcome,
       'collection_error':error,'open_link':None,'compatible_platforms':[],
       'link_reason':'not_provided_or_validated_by_integration',
@@ -142,7 +176,7 @@ def page(rows,args,registry_hash,errors,truncated,now):
         try:
             encoded=args['cursor'];need(re.fullmatch('[A-Za-z0-9_-]+',encoded) is not None,'invalid_list_cursor')
             cursor=json.loads(base64.urlsafe_b64decode(encoded+'='*((-len(encoded))%4)))
-            need(set(cursor)=={'v','offset','page_size','registry','order'} and type(cursor['v']) is int and cursor['v']==1 and type(cursor['offset']) is int and 0<=cursor['offset']<=130 and cursor['page_size']==args['page_size'],'invalid_list_cursor')
+            need(set(cursor)=={'v','offset','page_size','registry','order'} and type(cursor['v']) is int and cursor['v']==1 and type(cursor['offset']) is int and 0<=cursor['offset']<=MAX_TASKS+MAX_WORKSPACE_REFERENCES+len(REFERENCES) and cursor['page_size']==args['page_size'],'invalid_list_cursor')
             if cursor['registry']!=registry_hash or cursor['order']!=order_hash:
                 return {'observed_at':iso(now),'collection_error':'snapshot_changed','threads':[],
                  'next_cursor':None,'restart_pagination':True,'coverage_partial':True,
@@ -162,7 +196,7 @@ def page(rows,args,registry_hash,errors,truncated,now):
     return {'source':'authorized_references_and_adapter_registry_plus_daemon_metadata',
       'observed_at':iso(now),'collection_error':'partial_collection_failure' if errors or any(r['collection_error'] for r in ordered) else None,
       'collection_errors':sorted(set(errors)),'coverage_partial':True,
-      'coverage':['authorized_fixed_existing_references','adapter_registered_thread_identities_only',
+      'coverage':['authorized_fixed_existing_references','adapter_registered_thread_identities_and_own_recorded_workspace_messages',
        'no_global_native_thread_enumeration','no_prompts_raw_history_private_titles_logs_or_credentials',
        'point_in_time_metadata_not_execution_or_PC_off_proof'],
       'registry_truncated':truncated,'maximum_registered_tasks':MAX_TASKS,
@@ -172,7 +206,8 @@ def page(rows,args,registry_hash,errors,truncated,now):
       'latest_executed_thread':summary(executed[0] if executed else None),
       'mutation_performed':False,'assistant_dispatches':0}
 
-def collect(args,tasks,invoke,now=None,admission_closed=False,administrative_closed=None,legacy_send_closed=None):
+def collect(args,tasks,invoke,now=None,admission_closed=False,administrative_closed=None,legacy_send_closed=None,
+            workspace_communication_closed=True,communication_policy=None):
     validate(args);now=time.time() if now is None else now
     raw,errors,truncated=registry(tasks,now)
     registry_hash=digest(raw)
@@ -193,13 +228,24 @@ def collect(args,tasks,invoke,now=None,admission_closed=False,administrative_clo
     projected=[project(r,by_id.get(r['thread_id']),now) for r in raw]
     administrative_closed = admission_closed if administrative_closed is None else administrative_closed
     legacy_send_closed = admission_closed if legacy_send_closed is None else legacy_send_closed
-    need(type(administrative_closed) is bool and type(legacy_send_closed) is bool,
+    need(type(administrative_closed) is bool and type(legacy_send_closed) is bool
+         and type(workspace_communication_closed) is bool,
          'invalid_internal_scope_admission_state')
     for row in projected:
         if row['origin']=='adapter_created':
             key=row.get('task_key')
             scope='administrative' if isinstance(key,str) and key.startswith('eva-admin-') else 'workspace' if isinstance(key,str) else 'unknown'
             closed=admission_closed or (administrative_closed if scope=='administrative' else scope=='unknown')
+        elif row['origin']=='workspace_reference':
+            scope='existing_workspace_communication'
+            closed=admission_closed or workspace_communication_closed
+            observation=by_id.get(row['thread_id'],{})
+            ready=bool(not observation.get('collection_error') and observation.get('cwd_is_project') is True
+                and observation.get('ephemeral') is False and observation.get('model_provider')=='openai'
+                and observation.get('status') in ('idle','active')
+                and observation.get('can_accept_direct_input') is True)
+            row['daemon_can_accept_input']=ready
+            row['can_accept_input']=ready and not closed
         else:
             scope='observation_only' if row['adapter_send_admission']=='coordinator_observation_only' else 'legacy_reference'
             closed=admission_closed or legacy_send_closed or scope=='observation_only'
@@ -207,8 +253,46 @@ def collect(args,tasks,invoke,now=None,admission_closed=False,administrative_clo
         if closed:
             row['adapter_send_admission']='closed'
             row['can_accept_input']=False
+        if row.get('workspace_message_reference') is True:
+            observation=by_id.get(row['thread_id'],{})
+            ready=bool(not observation.get('collection_error') and observation.get('cwd_is_project') is True
+                and observation.get('ephemeral') is False and observation.get('model_provider')=='openai'
+                and observation.get('status') in ('idle','active')
+                and observation.get('can_accept_direct_input') is True)
+            row['workspace_communication']={**(row.get('workspace_communication') or {}),
+                'task_id':row['workspace_communication_task_id'],
+                'admission':'closed' if admission_closed or workspace_communication_closed else 'fresh_preflight_required',
+                'can_accept_input':ready and not(admission_closed or workspace_communication_closed),
+                'provider_evidence':observation.get('model_provider') if observation.get('model_provider') in ('openai','other') else 'unknown',
+                'scope':'message_only_no_permission_or_profile_change','notLoaded_resume_enabled':False}
     result=page(projected,args,registry_hash,errors,truncated,now)
     result['workspace_admission_closed']=admission_closed
     result['administrative_admission_closed']=admission_closed or administrative_closed
     result['legacy_reference_send_closed']=admission_closed or legacy_send_closed
+    result['workspace_thread_communication_closed']=admission_closed or workspace_communication_closed
+    communication_policy=communication_policy or {'enabled':False,'expires_at':None,'state':'not_approved'}
+    need(isinstance(communication_policy,dict) and set(communication_policy)=={'enabled','expires_at','state'}
+         and type(communication_policy['enabled']) is bool
+         and communication_policy['state'] in ('not_approved','closed_expired','closed_revoked','closed_disabled','fresh_preflight_required')
+         and (communication_policy['expires_at'] is None or type(communication_policy['expires_at']) in (int,float)),
+         'invalid_workspace_communication_policy_metadata')
+    result['workspace_thread_communication']={
+        'source':'sealed_task_policy_and_registered_reference_metadata','observed_at':iso(now),
+        'age_seconds':0,'collection_error':None,'enabled':communication_policy['enabled'],
+        'state':communication_policy['state'],'expires_at':communication_policy['expires_at'],
+        'admission_active':communication_policy['enabled'] and not(admission_closed or workspace_communication_closed),
+        'tools':['codex_task_send','codex_task_status','codex_task_reconcile'],
+        'addressing':'task_id is existing thread UUID with hyphens removed only after registered-task lookup miss',
+        'host':'raspberry','project':'/mnt/data/docker','owner':'same_exact_approved_daemon_UID1001',
+        'maximum_aggregate_sends_per_24h':48,'minimum_spacing_seconds':60,
+        'active_delivery':'turn_steer_with_recorded_expectedTurnId_CAS',
+        'idle_delivery':'turn_start_without_configuration_overrides',
+        'notLoaded_delivery':'blocked_no_resume_profile_proof',
+        'provider_required':'raw_modelProvider_openai_and_current_included_ChatGPT_account',
+        'provider_unknown':'blocked_no_paid_fallback','unknown_outcome':'observe_same_operation_never_replay',
+        'receiver_turn_completed_is_reply':False,'existing_profiles_preserved':True,
+        'global_busy_gates_preserved':True,'new_thread_creation':False,
+        'discovery':'partial_fixed_references_and_own_recorded_messages; exact UUID addressing supports other scoped existing threads',
+        'global_history_enumeration':False,'interface_confirmations_required':True,
+        'coverage':['approval_not_fresh_recipient_admission','metadata_not_assistant_acknowledgement']}
     return result

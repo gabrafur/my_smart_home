@@ -5,7 +5,7 @@ import test from 'node:test';
 for (const [name, command, args] of [
   ['reference metadata and scope report', 'python3', ['-B', '-m', 'unittest', 'discover', '-s', fileURLToPath(new URL('./runtime-source/task-control/', import.meta.url)), '-p', 'test_*.py']],
   ['legacy RPC and descriptor scope', process.execPath, [fileURLToPath(new URL('./owner-thread-access-check.cjs', import.meta.url))]],
-  ['delegated task context and send boundaries', process.execPath, ['--test', fileURLToPath(new URL('./runtime-source/task-control/admin-prompt.test.cjs', import.meta.url))]],
+  ['delegated task context and send boundaries', process.execPath, ['--test', '--test-concurrency=1', fileURLToPath(new URL('./runtime-source/task-control/admin-prompt.test.cjs', import.meta.url)), fileURLToPath(new URL('./runtime-source/task-control/workspace-rpc.test.cjs', import.meta.url))]],
 ]) {
   test(name, () => {
     const result=spawnSync(command,args,{encoding:'utf8',timeout:30000,maxBuffer:65536,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}});

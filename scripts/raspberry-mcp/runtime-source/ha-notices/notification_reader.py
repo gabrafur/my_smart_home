@@ -9,9 +9,11 @@ import pwd
 import re
 import stat
 import time
+import unicodedata
 
 _spec=importlib.util.spec_from_file_location('_ha_notices_content_renderer',Path(__file__).with_name('content_reader.py'))
 content=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(content)
+ZIGBEE_TARGET_POLICY=json.loads(Path(__file__).with_name('zigbee_target_policy.json').read_text())
 ASSOCIATED=Path('/mnt/data/docker/nodered/.notification-diagnostics.json')
 
 SNAPSHOT = Path('/var/lib/raspberry-ha-notices/public/snapshot.json')
@@ -56,6 +58,60 @@ def iso(value):
     return parsed.timestamp()
 
 
+
+# This extends observation only. Subject text never authorizes an effect.
+def _zigbee_unknown(row, reason):
+    return {'source':'reviewed_Zigbee_notification_subject_v1','object_id':row.get('id'),
+            'revision':row.get('revision'),'observed_at':None,'age_seconds':None,
+            'state':'unknown','friendly_name':None,'display_name':None,
+            'collection_error':reason,'device_identity_verified':False,
+            'name_is_unique_identity':False,'association_scope':'notification_revision_only'}
+
+
+def _zigbee_name_allowed(value):
+    if (type(value)is not str or not 1<=len(value)<=96 or unicodedata.normalize('NFC',value)!=value
+            or value.strip()!=value or not re.fullmatch(r'[A-Za-zÀ-ÖØ-öø-ÿ0-9 _/-]+',value)
+            or re.search(r'[A-Za-zÀ-ÖØ-öø-ÿ]',value)is None):return False
+    flat=''.join(c for c in unicodedata.normalize('NFD',value)if not '\u0300'<=c<='\u036f').lower()
+    tokens=re.split(r'[ _/-]+',flat)
+    return (len(tokens)<=8 and sum(re.search(r'[0-9]',x)is not None for x in tokens)<=2
+            and all(x in ZIGBEE_TARGET_POLICY['name_tokens']or re.fullmatch(r'(?:andar)?[0-9]{1,2}',x)is not None for x in tokens))
+
+
+def _zigbee_producer_id(name, kind):
+    rule=ZIGBEE_TARGET_POLICY['kinds'][kind]
+    value=0x811c9dc5
+    for byte in name.encode('utf8'):value=((value^byte)*0x01000193)&0xffffffff
+    flat=''.join(c for c in unicodedata.normalize('NFD',name)if not '\u0300'<=c<='\u036f').lower()
+    slug=re.sub('[^a-z0-9]+','_',flat).strip('_')or('component'if kind.startswith('zigbee_component_')else'device')
+    return rule['prefix']+slug+'_'+format(value,'08x')+rule['suffix']
+
+
+def zigbee_target(row, content_valid=False):
+    value=row.get('diagnostics',{}).get('zigbee_target')if type(row.get('diagnostics'))is dict else None
+    if value is None:return _zigbee_unknown(row,'zigbee_target_not_retained')
+    if not content_valid:return _zigbee_unknown(row,'zigbee_target_invalid_or_unsupported')
+    try:
+        if (type(value)is not dict or set(value)!={'schema_version','kind','friendly_name'}
+                or type(value['schema_version'])is not int or value['schema_version']!=1
+                or type(value['kind'])is not str or value['kind']not in ZIGBEE_TARGET_POLICY['kinds']
+                or value['kind']not in row['diagnostics'].get('message_codes',[])):
+            raise ValueError('invalid_target')
+        name=value['friendly_name'];kind=value['kind']
+        if name is not None and (not _zigbee_name_allowed(name)or
+                hashlib.sha256(_zigbee_producer_id(name,kind).encode()).hexdigest()!=row['id']):
+            raise ValueError('invalid_target')
+        at=row['observed_at'];iso(at)
+        return {'source':'reviewed_Zigbee_notification_subject_v1','object_id':row['id'],
+                'revision':row['revision'],'observed_at':at,'age_seconds':None,
+                'state':'observed'if name is not None else'alias_only','kind':kind,
+                'friendly_name':name,'display_name':name if name is not None else'Dispositivo Zigbee '+row['id'][:12]+'-'+row['revision'][:8],
+                'collection_error':None,'device_identity_verified':False,'name_is_unique_identity':False,
+                'association_scope':'notification_revision_only',
+                'association_basis':'recomputed_producer_key_matches_object_id'if name is not None else'collector_checked_key_private_subject_withheld'}
+    except(ValueError,TypeError,KeyError):return _zigbee_unknown(row,'zigbee_target_invalid_or_unsupported')
+
+
 def notice(row):
     if (not isinstance(row, dict) or row.get('category') not in LABELS or
             row.get('summary') not in LABELS[row['category']] or
@@ -69,7 +125,7 @@ def notice(row):
     diagnostic = reviewed_identifier_diagnostic(row['id'], content.project(row.get('diagnostics')))
     return {**diagnostic, **{k: row[k] for k in ('id','revision','observed_at','created_or_updated_at','category','summary','category_basis')},
             'source':'homeassistant.persistent_notification','origin':'not_provided_by_HA',
-            'content_withheld':True,'destination_delivery':'not_applicable'}
+            'content_withheld':True,'destination_delivery':'not_applicable','zigbee_target':zigbee_target(row,diagnostic['content_collection_error']is None)}
 
 
 def read(path):
@@ -177,6 +233,13 @@ def evidence(args, path=SNAPSHOT, clock=time.time):
             at=row.get('created_or_updated_at')
             row['notification_age_seconds']=round(max(0,now-iso(at)),3)if at else None
             row['recovery_proven']=False
+            target=row.setdefault('zigbee_target',_zigbee_unknown(row,'notification_removed'if previous=='removed'else'zigbee_target_not_retained'))
+            target['last_observed_state']=target['state']
+            if target['observed_at']is not None:
+                target_age=now-iso(target['observed_at'])
+                target['age_seconds']=round(max(0,target_age),3)if target_age>=-1 else None
+                if target_age < -1:target.update(state='unknown',collection_error='clock_reconciliation_required')
+            if state!='observed':target.update(state=state,collection_error=error or 'source_not_current')
             for associated in row.get('associated_errors',[]):
                 associated['age_seconds']=round(max(0,now-iso(associated['observed_at'])),3)if associated.get('observed_at')else None
         page=[];budget=56000

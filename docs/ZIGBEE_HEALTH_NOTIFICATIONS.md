@@ -210,6 +210,35 @@ friendly name completo. Assim, caminhos como `andar1/cozinha/sensor` são
 preservados na mensagem e não colidem com nomes diferentes que gerariam o mesmo
 slug, como `andar1-cozinha/sensor`.
 
+### Identificação sanitizada no MCP
+
+`ha_notifications` mantém a mensagem original oculta e publica separadamente
+`zigbee_target`. A extração exige o par completo de título/corpo revisado e a
+chave exata do produtor, calculada sobre o sujeito original. O leitor revalida
+a chave para nomes permitidos e vincula o resultado a `object_id` e `revision`;
+não associa dispositivos por título, proximidade temporal ou outro incidente.
+
+O campo contém `source`, `observed_at`, `age_seconds`, `collection_error`,
+`friendly_name` e `display_name`. Somente nomes de um vocabulário funcional
+fechado podem aparecer em `friendly_name`. Outros sujeitos recebem um alias
+derivado do aviso/revisão, com nome nulo; o alias não permite correlacionar
+hardware entre avisos. Endereços, identificadores longos, credenciais, texto
+arbitrário, controles Unicode e instruções não são liberados. `address` na
+redação da mensagem não prova um endereço real: a regra conservadora também
+pode reconhecer um relógio separado por dois-pontos.
+
+Nome ausente, placeholder, snapshot legado ou aviso removido permanece
+desconhecido. Falha de coleta, cache antigo e relógio futuro são explicitados.
+A idade é calculada depois do digest da página; o novo campo pode mudar esse
+digest, mas não muda IDs/revisões de Events nem reenvia eventos na reconexão.
+
+`device_identity_verified=false` e `name_is_unique_identity=false` são
+deliberados: nome de um aviso não autentica hardware, e nomes iguais não
+comprovam o mesmo equipamento. Um diagnóstico físico exige uma associação
+adicional inequívoca no inventário autorizado. Disponibilidade, anúncio,
+aceite de configure e tentativa do produtor não comprovam o efeito de um
+comando; os testes de identificação são sintéticos, sem notificações da casa.
+
 A carência inicial é de 180 s e a ponte deve estar online por 60 s antes de
 avaliar componentes. O tick reavalia os estados observados; uma oscilação reinicia
 a confirmação sem encerrar o incidente. A recuperação de `NWK_NO_ROUTE` e `MAC_NO_ACK` exige

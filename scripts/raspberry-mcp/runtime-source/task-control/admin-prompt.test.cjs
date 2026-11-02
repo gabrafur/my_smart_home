@@ -7,6 +7,7 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, 'task_rpc.cjs'), 'utf8');
 const target = {exports: {}};
 vm.runInNewContext(source, {module: target, require(name) {
+  if (name === 'node:net') return {isIP: require('node:net').isIP};
   if (name.endsWith('/ws')) return {};
   if (name.endsWith('/codex_control_rpc.cjs')) return {
     metadata(thread, id) {

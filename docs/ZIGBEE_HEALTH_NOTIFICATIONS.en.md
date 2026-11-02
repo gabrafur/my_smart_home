@@ -105,6 +105,35 @@ Notification identifiers combine a readable slug with a stable hash of the
 complete friendly name. Hierarchical names remain readable and distinct names
 that normalize to the same slug cannot overwrite each other's alerts.
 
+### Sanitized target identification in MCP
+
+`ha_notifications` keeps the original message withheld and exposes a separate
+`zigbee_target`. Extraction requires a complete reviewed title/body pair and
+the exact producer key computed from the original subject. The reader checks
+that key again for allowed names and binds the result to `object_id` and
+`revision`; titles, nearby timestamps and other incidents are not joins.
+
+The field includes `source`, `observed_at`, `age_seconds`, `collection_error`,
+`friendly_name` and `display_name`. Only a closed functional vocabulary may
+appear as a friendly name. Other subjects receive an alias derived from the
+notice/revision, with a null friendly name; it is not a cross-notice hardware
+identifier. Addresses, long identifiers, credentials, arbitrary text, Unicode
+controls and instructions remain withheld. An `address` redaction is not proof
+of an actual address: the conservative rule can also match a colon-separated
+clock.
+
+Missing subjects, placeholders, legacy snapshots and removed notices remain
+unknown. Failed collection, stale caches and future clocks are explicit. Age
+is added after the page digest. The additive field may change that digest,
+but preserves Events IDs/revisions and does not replay events on reconnection.
+
+`device_identity_verified=false` and `name_is_unique_identity=false` are
+intentional: a notice name does not authenticate hardware, and equal names do
+not prove the same device. Physical diagnosis needs a further unambiguous join
+in the authorized inventory. Availability, an announcement, an accepted
+configure response or a producer attempt do not prove a command effect.
+Identification tests are synthetic and never generate household notifications.
+
 The native tick reevaluates observed availability, including startup and recovery
 confirmation. Route recovery keeps one incident across failed attempts and late
 configure errors. A successful configure response starts verification; fresh

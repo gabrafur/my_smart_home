@@ -24,6 +24,11 @@ e [continuidade](reference/continuity.md). As [etapas de manutenção](maintenan
 e [propostas](maintenance/proposals.md) registram escopos históricos; propostas
 não habilitam ferramentas.
 
+A [comunicação com threads existentes](reference/workspace-communication.md)
+é uma admissão separada nas ferramentas atuais, sem criar threads substitutas
+ou mudar o perfil da destinatária. Sua validade e disponibilidade são informadas
+por `codex_task_list`; um catálogo atualizado não concede essa autorização.
+
 O [núcleo protegido por componente](reference/component-repair.md#núcleo-protegido-instalado-com-perfil-inicial-do-host)
 já expõe admissão real pelo MCP para o perfil inicial `observacao_host`, usando
 as ferramentas de tarefas existentes. Outros perfis, recorrência, replay nativo

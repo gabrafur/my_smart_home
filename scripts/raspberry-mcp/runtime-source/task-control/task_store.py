@@ -13,6 +13,8 @@ BUSY = ('create_intent', 'create_unknown', 'send_intent', 'send_unknown',
         'accepted', 'inProgress', 'outcome_unknown')
 TERMINAL = ('completed', 'failed', 'interrupted')
 UUID = re.compile(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}')
+WORKSPACE_PREFIX = 'workspace:'
+MAX_WORKSPACE_REFERENCES = 64
 
 
 def need(value, reason):
@@ -23,6 +25,61 @@ def need(value, reason):
 def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True,
                          ensure_ascii=False).encode()).hexdigest()
+
+
+def workspace_thread(value):
+    """Decode only the internal fixed namespace, never a path or native profile."""
+    if isinstance(value, str) and value.startswith(WORKSPACE_PREFIX):
+        identifier = value[len(WORKSPACE_PREFIX):]
+        need(UUID.fullmatch(identifier) is not None, 'invalid_workspace_message_reference')
+        return identifier
+    return None
+
+
+def workspace_reference(value):
+    need(isinstance(value, str) and re.fullmatch('[a-f0-9]{32}', value),
+         'invalid_workspace_message_reference')
+    return '-'.join((value[:8], value[8:12], value[12:16], value[16:20], value[20:]))
+
+
+def workspace_context(thread, plan=None):
+    value = {'route': 'workspace_thread_communication', 'target_thread_id': thread,
+             'delivery_mode': None, 'expected_turn_id': None,
+             'profile_preserved': True, 'authority_changed': False,
+             'assistant_acknowledged': False}
+    if plan is not None:
+        need(isinstance(plan, dict) and set(plan) == {'operation_state', 'thread_id',
+             'delivery_mode', 'expected_turn_id', 'profile_preserved', 'authority_changed'}
+             and plan['operation_state'] == 'ready' and plan['thread_id'] == thread
+             and plan['profile_preserved'] is True and plan['authority_changed'] is False,
+             'workspace_preflight_unconfirmed')
+        mode, expected = plan['delivery_mode'], plan['expected_turn_id']
+        need(mode in ('idle_start', 'active_steer') and
+             ((mode == 'idle_start' and expected is None) or
+              (mode == 'active_steer' and isinstance(expected, str) and UUID.fullmatch(expected))),
+             'workspace_preflight_unconfirmed')
+        value.update(delivery_mode=mode, expected_turn_id=expected)
+    return value
+
+
+def checked_workspace_receipt(value, thread, context, allow_ack=False, operation=None, turn=None):
+    need(isinstance(value, dict) and all(value.get(k) == v for k, v in context.items() if k!='assistant_acknowledged')
+         and value.get('route') == 'workspace_thread_communication'
+         and value.get('target_thread_id') == thread
+         and value.get('profile_preserved') is True and value.get('authority_changed') is False,
+         'workspace_receipt_context_unconfirmed')
+    acknowledgement=value.get('assistant_acknowledged')
+    need((acknowledgement is False) if not allow_ack else
+         (acknowledgement is None or type(acknowledgement) is bool),
+         'workspace_ack_evidence_unconfirmed')
+    if acknowledgement is True:
+        evidence=value.get('acknowledgement_evidence')
+        need(isinstance(evidence,dict) and set(evidence)=={'source','operation_id','turn_id','item_id'}
+             and evidence['source']=='exact_operation_reference_after_delivery'
+             and evidence['operation_id']==operation and evidence['turn_id']==turn
+             and isinstance(evidence['item_id'],str) and re.fullmatch('[A-Za-z0-9_-]{1,128}',evidence['item_id']),
+             'workspace_ack_evidence_unconfirmed')
+    return value
 
 
 def creation_observation(value, thread):
@@ -163,11 +220,13 @@ class Store:
         self.transaction(finish)
         return self.row('tasks', op)
 
-    def send(self, q, invoke, admission, legacy_idle):
+    def send(self, q, invoke, admission, legacy_idle, allow_workspace=False):
         need(isinstance(q, dict) and set(q) == {'operation_id', 'task_id', 'text'},
              'send_scope_refused')
         need(isinstance(q['operation_id'], str) and
              re.fullmatch('[a-f0-9]{32}', q['operation_id']), 'invalid_operation_id')
+        need(isinstance(q['task_id'], str) and re.fullmatch('[a-f0-9]{32}', q['task_id']),
+             'invalid_task_identifier')
         need(isinstance(q['text'], str) and 1 <= len(q['text']) <= 6000 and
              '\x00' not in q['text'], 'invalid_task_text')
         op, hashed = q['operation_id'], fingerprint(q)
@@ -181,6 +240,10 @@ class Store:
             need(old['input_hash'] == hashed, 'operation_id_conflict')
             return {**old, 'duplicate': True}
         task = self.row('tasks', q['task_id'])
+        if task is None and allow_workspace is True:
+            return self.send_workspace(q, invoke, admission, legacy_idle, hashed)
+        # An existing task row always owns this ID, even if invalid/closed.
+        # Never reinterpret that task ID as another native thread reference.
         need(task and task['state'] == 'created' and task['thread'], 'task_not_admitted')
         # Temporarily exempt only this task's reservation; all other gates remain.
         need(not self.db.execute('SELECT 1 FROM tasks WHERE id!=? AND reconciled=0',
@@ -232,14 +295,98 @@ class Store:
         self.transaction(finish)
         return self.row('sends', op)
 
+    def send_workspace(self, q, invoke, admission, legacy_idle, hashed):
+        """One new message to an existing project thread; no task/SQL migration."""
+        thread = workspace_reference(q['task_id'])
+        namespace = WORKSPACE_PREFIX + thread
+        need(self.row('tasks', q['task_id']) is None, 'workspace_reference_task_collision')
+        # Keep all current global BUSY, reservation and central-ACK gates. A
+        # message does not bypass an existing registered in-flight operation.
+        self.idle()
+        legacy_idle()
+        references = self.db.execute("SELECT count(DISTINCT task) FROM sends WHERE task LIKE 'workspace:%'").fetchone()[0]
+        already = self.db.execute('SELECT 1 FROM sends WHERE task=? LIMIT 1', (namespace,)).fetchone()
+        need(already or references < MAX_WORKSPACE_REFERENCES, 'workspace_reference_capacity')
+        count = self.db.execute('SELECT count(*) FROM sends WHERE created>?',
+                                (self.clock() - 86400,)).fetchone()[0]
+        latest = self.db.execute('SELECT max(created) FROM sends').fetchone()[0]
+        admission(count, latest)
+        op = q['operation_id']
+        context = workspace_context(thread)
+        try:
+            plan = invoke({'mode': 'workspace_message_preflight', 'thread_id': thread})
+            context = workspace_context(thread, plan)
+        except Exception as error:
+            reason = str(error) if isinstance(error, ValueError) and re.fullmatch('[a-z_]{1,60}', str(error)) else 'preflight_unconfirmed'
+            result = {**context, 'operation_state': 'not_dispatched', 'send_called': False,
+                      'execution_proven': False, 'reason': reason, 'automatic_retry': False}
+            def refused():
+                now = self.clock()
+                self.db.execute('INSERT INTO sends VALUES(?,?,?,?,?,?,?,?,0)',
+                    (op, namespace, hashed, 'not_dispatched', None, now, now, json.dumps(result, sort_keys=True)))
+                self.audit(op, 'workspace_preflight_refused_no_dispatch')
+            self.transaction(refused)
+            return self.row('sends', op)
+        def intent():
+            now = self.clock()
+            result = {**context, 'operation_state': 'send_intent', 'input_accepted': None,
+                      'automatic_retry': False}
+            self.db.execute('INSERT INTO sends VALUES(?,?,?,?,?,?,?,?,0)',
+                (op, namespace, hashed, 'send_intent', None, now, now, json.dumps(result, sort_keys=True)))
+            self.audit(op, 'send_intent')
+        self.transaction(intent)
+        try:
+            reply = invoke({'mode': 'workspace_message', 'thread_id': thread,
+                'operation_id': op, 'text': q['text'], 'delivery_mode': context['delivery_mode'],
+                'expected_turn_id': context['expected_turn_id']})
+            checked_workspace_receipt(reply, thread, context)
+            need(reply.get('operation_state') == 'accepted' and reply.get('input_accepted') is True
+                 and isinstance(reply.get('turn_id'), str) and UUID.fullmatch(reply['turn_id'])
+                 and (context['delivery_mode'] != 'active_steer' or reply['turn_id'] == context['expected_turn_id']),
+                 'workspace_send_unconfirmed')
+            result = reply
+            state, turn = 'accepted', reply['turn_id']
+        except Exception:
+            # In particular, completion of the expected old receiver turn can
+            # never prove that an uncertain steer was delivered. Do not record
+            # it as an accepted turn or automatically retry the input.
+            result = {**context, 'operation_state': 'send_unknown', 'input_accepted': None,
+                      'automatic_retry': False}
+            state, turn = 'send_unknown', None
+        raw = json.dumps(result, sort_keys=True)
+        need(len(raw.encode()) <= 8192, 'result_limit')
+        def finish():
+            self.db.execute('UPDATE sends SET state=?,turn=?,result=?,updated=? WHERE id=?',
+                (state, turn, raw, self.clock(), op))
+            self.audit(op, state)
+        self.transaction(finish)
+        return self.row('sends', op)
+
     def observe(self, op, invoke):
         row = self.row('sends', op)
         need(row is not None, 'send_not_found')
         # Observation failure never changes state to terminal or replays a send.
         if row['state'] in ('accepted', 'inProgress', 'outcome_unknown') and row['turn']:
-            task = self.row('tasks', row['task'])
-            reply = invoke({'mode': 'observe', 'thread_id': task['thread'],
-                            'turn_id': row['turn'], 'operation_id': op})
+            thread = workspace_thread(row['task'])
+            if thread is not None:
+                previous = json.loads(row['result'])
+                context = workspace_context(thread)
+                context.update(delivery_mode=previous.get('delivery_mode'),
+                               expected_turn_id=previous.get('expected_turn_id'))
+                reply = invoke({'mode': 'workspace_message_observe', 'thread_id': thread,
+                    'turn_id': row['turn'], 'operation_id': op,
+                    'delivery_mode': context['delivery_mode'], 'expected_turn_id': context['expected_turn_id'],
+                    'reply_boundary':previous.get('reply_boundary',{'state':'unknown','item_id':None}),
+                    'known_ack':previous.get('acknowledgement_evidence')})
+                checked_workspace_receipt(reply, thread, context,allow_ack=True,operation=op,turn=row['turn'])
+                need(reply.get('input_accepted') is True and type(reply.get('answer_withheld')) is bool
+                     and reply.get('completion_scope') == 'receiver_turn_and_bounded_agent_reply',
+                     'workspace_observation_unconfirmed')
+            else:
+                task = self.row('tasks', row['task'])
+                need(task and task['thread'], 'task_not_admitted')
+                reply = invoke({'mode': 'observe', 'thread_id': task['thread'],
+                                'turn_id': row['turn'], 'operation_id': op})
             state = reply.get('operation_state')
             need(state in (*TERMINAL, 'inProgress', 'outcome_unknown'),
                  'turn_state_unconfirmed')
@@ -326,10 +473,14 @@ class Store:
                 need(isinstance(proof, dict) and proof.get('operation_state') == 'not_dispatched'
                      and proof.get('send_called') is False and proof.get('execution_proven') is False
                      and current['turn'] is None, 'not_dispatched_proof_unconfirmed')
-                task = self.row('tasks', current['task'])
-                need(task is not None and task['state'] == 'created' and task['thread']
-                     and UUID.fullmatch(task['thread']), 'task_not_admitted')
-                if not task['reconciled']:
+                thread = workspace_thread(current['task'])
+                task = self.row('tasks', current['task']) if thread is None else None
+                if thread is not None:
+                    checked_workspace_receipt(proof, thread, workspace_context(thread))
+                else:
+                    need(task is not None and task['state'] == 'created' and task['thread']
+                         and UUID.fullmatch(task['thread']), 'task_not_admitted')
+                if task is not None and not task['reconciled']:
                     marks = ','.join('?' for _ in BUSY)
                     need(not self.db.execute('SELECT 1 FROM sends WHERE task=? AND id!=? AND '
                         '(state IN (' + marks + ') OR reconciled=0) LIMIT 1',

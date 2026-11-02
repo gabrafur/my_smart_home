@@ -8,8 +8,8 @@
   "files": {
     "task-control/task_control.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_control.py",
-      "source_sha256": "7370aca265dc1996d96b7b4e9d66d6bddebafafd7eba2394fe514f56d7ccf3da",
-      "export_sha256": "3df6fe470169f494566bb99936aa135c9fadf64c3d210d94f7f144fce500491f",
+      "source_sha256": "e9dad2d7c71b91ab48466c19df855256ee29d87e51dc824a07eb4745a8dbc6d0",
+      "export_sha256": "f7f0edec6008b85b02ce3e7f6377b50a05964e249358c8145a4409ca22912595",
       "normalizations": [
         "authorized_reference_ids_replaced_with_canonical_binding_markers",
         "coordinator_report_path_replaced_with_binding_marker",
@@ -17,40 +17,44 @@
       ],
       "source_observation_coverage": [
         "installed_source_bytes_only",
-        "not_loaded_worker_or_runtime_health_proof"
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ],
-      "source_observed_at": "2026-11-02T01:59:42Z"
+      "source_observed_at": "2026-11-02T12:10:17.402511+00:00"
     },
     "task-control/task_store.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_store.py",
-      "source_sha256": "15b89ec69c4984b5dbafa615432966b283d9857f06db0ea02e6a9d1d643d0b10",
-      "export_sha256": "15b89ec69c4984b5dbafa615432966b283d9857f06db0ea02e6a9d1d643d0b10",
+      "source_sha256": "47c86ce32e70e877e9de5b251012e3fdfd69a8d565b4c1fe5f6125142f784889",
+      "export_sha256": "47c86ce32e70e877e9de5b251012e3fdfd69a8d565b4c1fe5f6125142f784889",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T01:59:42Z",
+      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
       "source_observation_coverage": [
         "installed_source_bytes_only",
-        "not_loaded_worker_or_runtime_health_proof"
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ]
     },
     "task-control/task_rpc.cjs": {
       "source": "/usr/local/lib/raspberry-task-control/task_rpc.cjs",
-      "source_sha256": "1cc35cd32085800287048857b42cd70747e623eb1a63ae57117370c93231cbdf",
-      "export_sha256": "1cc35cd32085800287048857b42cd70747e623eb1a63ae57117370c93231cbdf",
+      "source_sha256": "8f3dfea23c26b9bfd7b4cd4e34df7ff0e9ffc965e9047c50dfcdbe0654c8fd3e",
+      "export_sha256": "8f3dfea23c26b9bfd7b4cd4e34df7ff0e9ffc965e9047c50dfcdbe0654c8fd3e",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T22:49:18Z"
+      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_assistant_execution_or_household_functional_recovery_proof"
+      ]
     },
     "task-control/task_list.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_list.py",
-      "source_sha256": "df54ebd6d597e11e85b136d9e66e24197f69a6aae45bf4001ab8202e9e8f1b28",
-      "export_sha256": "a9446ad1878cc486a4af55ead4c21b506a6b8078a2a6c9003c3af7caf9874a5f",
+      "source_sha256": "a10e6b01dbc3969ab57e82d3e7633f9564e48243aa0e9c5856203e167652f890",
+      "export_sha256": "0fbc98654605f1de6f484e8a90ec88c3093fe8bad32cf7eea3ea57bc553299ea",
       "normalizations": [
         "authorized_reference_ids_replaced_with_canonical_binding_markers"
       ],
       "source_observation_coverage": [
         "installed_source_bytes_only",
-        "not_loaded_worker_or_runtime_health_proof"
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ],
-      "source_observed_at": "2026-11-02T01:59:42Z"
+      "source_observed_at": "2026-11-02T12:12:12.248816+00:00"
     },
     "task-control/task-broker.py": {
       "source": "/usr/local/lib/raspberry-task-control/task-broker.py",
@@ -125,9 +129,14 @@
     },
     "frontend/task-server.mjs": {
       "source": "/var/lib/raspberry-mcp/root/app/task-server.mjs",
-      "source_sha256": "f703450a1cf54940401d6b9132332889a8fa18d516098c18c380f632eea71540",
-      "export_sha256": "f703450a1cf54940401d6b9132332889a8fa18d516098c18c380f632eea71540",
-      "normalizations": []
+      "source_sha256": "147325cca57807485e8d63be77422bca96723444c455dd298fc7e7b828548656",
+      "export_sha256": "147325cca57807485e8d63be77422bca96723444c455dd298fc7e7b828548656",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_assistant_execution_or_household_functional_recovery_proof"
+      ]
     },
     "frontend/repair-server.mjs": {
       "source": "/var/lib/raspberry-mcp/root/app/repair-server.mjs",
@@ -380,8 +389,10 @@
     "ha-notices/notification_view.cjs": {
       "source": "/usr/local/lib/raspberry-ha-notices/notification_view.cjs",
       "source_sha256": "4a72c271ecd5fbeff3c9729213a4f7ed25167f237b3eba0232a63cc6de7f0490",
-      "export_sha256": "4a72c271ecd5fbeff3c9729213a4f7ed25167f237b3eba0232a63cc6de7f0490",
-      "normalizations": []
+      "export_sha256": "fb140bf118c0dbe6c598f26d38098f373054e66c65b8ab53fb127b67f9a1cfed",
+      "normalizations": [
+        "reviewed_reference_update_structured_notice_target_identity;not_original_captured_runtime_bytes"
+      ]
     },
     "ha-notices/notification_state.cjs": {
       "source": "/usr/local/lib/raspberry-ha-notices/notification_state.cjs",
@@ -392,8 +403,10 @@
     "ha-notices/notification_reader.py": {
       "source": "/usr/local/lib/raspberry-ha-notices/notification_reader.py",
       "source_sha256": "4cd5dd21a76e17c902aa3c1a6d7bcb97a764aa348628db9f36c2e102ef8dc147",
-      "export_sha256": "4cd5dd21a76e17c902aa3c1a6d7bcb97a764aa348628db9f36c2e102ef8dc147",
-      "normalizations": []
+      "export_sha256": "098ec64781ecdfbc487201043f44378ec5759738074ca6d2cd39f521e7aa87f1",
+      "normalizations": [
+        "reviewed_reference_update_structured_notice_target_identity;not_original_captured_runtime_bytes"
+      ]
     },
     "ha-notices/notification_collector.cjs": {
       "source": "/usr/local/lib/raspberry-ha-notices/notification_collector.cjs",
@@ -1199,24 +1212,24 @@
     },
     "task-terminal-observer/observer.py": {
       "source": "/usr/local/lib/raspberry-task-terminal-observer/observer.py",
-      "source_sha256": "52326e53c48ea18e7d2ad05284afa4069fcb06721cbbfb553994c2ead7217cab",
-      "export_sha256": "52326e53c48ea18e7d2ad05284afa4069fcb06721cbbfb553994c2ead7217cab",
+      "source_sha256": "65620f9e6422700c69a66246f5dc1a7c15619b4c0923413693e0711ed49447eb",
+      "export_sha256": "65620f9e6422700c69a66246f5dc1a7c15619b4c0923413693e0711ed49447eb",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
       "source_observation_coverage": [
         "installed_source_bytes_only",
-        "not_loaded_worker_or_runtime_health_proof"
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ]
     },
     "task-terminal-observer/native_adapter.py": {
       "source": "/usr/local/lib/raspberry-task-terminal-observer/native_adapter.py",
-      "source_sha256": "e90bc1c91331f316b3c4aef340f7b80c012012e3315611b446f0ceaa997b8c49",
-      "export_sha256": "e90bc1c91331f316b3c4aef340f7b80c012012e3315611b446f0ceaa997b8c49",
+      "source_sha256": "f71c55d6c83e82859d7713ac76bd1518296c8ae975a05f3b8c295ba02ca14d76",
+      "export_sha256": "f71c55d6c83e82859d7713ac76bd1518296c8ae975a05f3b8c295ba02ca14d76",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T02:22:27Z",
+      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
       "source_observation_coverage": [
         "installed_source_bytes_only",
-        "not_loaded_worker_or_runtime_health_proof"
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ]
     },
     "task-terminal-observer/bootstrap.py": {
@@ -1228,6 +1241,22 @@
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_loaded_worker_or_runtime_health_proof"
+      ]
+    },
+    "ha-notices/zigbee_target.cjs": {
+      "source": "repository_reference_addition_not_native_capture",
+      "source_sha256": "907173b01c8f317b0ede71c2c2ba3aac1d99de5d6476346d0dfe3de427f13be6",
+      "export_sha256": "907173b01c8f317b0ede71c2c2ba3aac1d99de5d6476346d0dfe3de427f13be6",
+      "normalizations": [
+        "new_closed_subject_identity_validator;not_an_original_native_capture"
+      ]
+    },
+    "ha-notices/zigbee_target_policy.json": {
+      "source": "repository_reference_addition_not_native_capture",
+      "source_sha256": "019064bd79948f2bbc013db638bd5ba0c5d39e9e75db96c04782d6bd61eff208",
+      "export_sha256": "019064bd79948f2bbc013db638bd5ba0c5d39e9e75db96c04782d6bd61eff208",
+      "normalizations": [
+        "new_closed_subject_identity_validator;not_an_original_native_capture"
       ]
     }
   },

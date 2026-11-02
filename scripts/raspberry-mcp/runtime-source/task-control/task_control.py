@@ -90,6 +90,8 @@ def policy(old, observation=False):
          p.get('boot_id') == legacy['boot_id'], 'task_admission_changed')
     need(p.get('max_sends_per_24h') == 48 and p.get('minimum_spacing_seconds') == 60
          and p.get('maximum_database_bytes') == 1048576, 'task_limits_changed')
+    need(type(p.get('workspace_thread_communication', False)) is bool,
+         'workspace_communication_policy_invalid')
     need(set(p.get('source_hashes', {})) == {
         'task_control.py', 'task_store.py', 'task_rpc.cjs', 'task-broker.py', 'task_list.py'},
         'task_code_scope_changed')
@@ -187,16 +189,20 @@ def admission(count, latest, p):
 
 def rpc(q, legacy, old):
     if legacy.get('_observation_only'):
-        need(q['mode'] in ('metadata_batch', 'observe'), 'expired_observation_only')
+        need(q['mode'] in ('metadata_batch', 'observe', 'workspace_message_observe'), 'expired_observation_only')
         need(legacy['boot_id'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
              'observation_peer_boot_unconfirmed')
-    if q['mode'] in ('create_preflight', 'create', 'creation_probe', 'send_preflight', 'send'):
+    if q['mode'] in ('create_preflight', 'create', 'creation_probe', 'send_preflight', 'send',
+                      'workspace_message_preflight', 'workspace_message'):
         fresh = old.plan()
         need(fresh['expires_at'] == legacy['expires_at'] and
              time.time() < fresh['expires_at'], 'task_admission_expired')
         current, _ = policy(old)
         need(current['enabled'] is True, 'root_task_admission_disabled')
         need(not (STATE / 'revoked').exists(), 'task_admission_revoked')
+        if q['mode'] in ('workspace_message_preflight', 'workspace_message'):
+            need(current.get('workspace_thread_communication') is True,
+                 'workspace_communication_not_approved')
     old.peer(legacy)  # Same pinned Unix socket inode and SO_PEERCRED identity.
     p = subprocess.run(['/usr/bin/node', '--jitless', '--no-expose-wasm',
                         '--max-old-space-size=24', str(ROOT / 'task_rpc.cjs')],
@@ -205,7 +211,11 @@ def rpc(q, legacy, old):
                             'WS_NO_UTF_8_VALIDATE': '1'})
     need(len(p.stdout) <= 16384, 'task_response_limit')
     reply = json.loads(p.stdout)
-    reason = reply.get('error') if reply.get('error') in ('thread_not_ready', 'thread_profile_changed', 'invalid_metadata_scope') else 'task_rpc_unconfirmed'
+    reason = reply.get('error') if reply.get('error') in (
+        'thread_not_ready', 'thread_profile_changed', 'invalid_metadata_scope',
+        'workspace_thread_not_loaded', 'workspace_thread_metadata_unconfirmed',
+        'workspace_thread_out_of_project', 'workspace_provider_unconfirmed', 'workspace_thread_not_ready',
+        'workspace_active_turn_unconfirmed', 'workspace_thread_state_changed') else 'task_rpc_unconfirmed'
     need(p.returncode == 0 and reply.get('ok') is True, reason)
     return reply['result']
 
@@ -286,11 +296,20 @@ def handle(name, args, old):
     with locked(read_only=name == 'codex_task_list'):
         if name == 'codex_task_list':
             import task_list
+            communication_enabled=p.get('workspace_thread_communication') is True
+            communication_state=('not_approved' if not communication_enabled else
+                'closed_expired' if legacy.get('_observation_only') or time.time()>=p['expires_at'] else
+                'closed_revoked' if (STATE/'revoked').exists() else
+                'closed_disabled' if not p['enabled'] else 'fresh_preflight_required')
             # No Store constructor, DDL, receipt writes, resume or inference.
             return task_list.collect(args, __import__(__name__), lambda q: rpc(q, legacy, old),
                                      admission_closed=admission_closed,
                                      administrative_closed=administrative_closed,
-                                     legacy_send_closed=legacy_send_closed)
+                                     legacy_send_closed=legacy_send_closed,
+                                     workspace_communication_closed=bool(admission_closed or
+                                         not communication_enabled),
+                                     communication_policy={'enabled':communication_enabled,
+                                         'expires_at':p['expires_at'],'state':communication_state})
         db = store(p)
         try:
             invoke = lambda q: rpc(bind_profile(q, db, p, args), legacy, old)
@@ -366,7 +385,8 @@ def handle(name, args, old):
                         'WHERE created>?', (time.time()-86400,)).fetchone()
                     admission(count, latest, p)
                 return response(db.create(payload, invoke, idle))
-            return response(db.send(payload, invoke, lambda c, t: admission(c, t, p), idle))
+            return response(db.send(payload, invoke, lambda c, t: admission(c, t, p), idle,
+                                    allow_workspace=p.get('workspace_thread_communication') is True))
         finally:
             db.close()
 
