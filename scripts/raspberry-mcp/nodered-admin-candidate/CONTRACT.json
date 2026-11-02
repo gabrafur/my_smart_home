@@ -14,7 +14,8 @@
   "transport_contract": {
     "fetch": "returns exact {rev: opaque nonempty string, flows: bounded full private node array}",
     "deploy": "deploy(revision,flows) sends NodeRED v2/nodes through sealed transport; returns {state:accepted,rev} or {state:conflict,effect_proven_absent:true}; all other outcomes uncertain",
-    "authentication": "trusted parent owns login/revoke and credential transport; engine sees no authentication values"
+    "authentication": "trusted parent owns login/revoke and credential transport; engine sees no authentication values",
+    "authentication_dispatch": "Only the exact sealed transport may certify refusal before auth network dispatch. Response loss after dispatch remains unknown and closes new sessions/effects."
   },
   "trusted_coordination_methods": {
     "locks": "context manager actually holding all existing shared locks throughout preflight-intent-RPC-verification-receipt; not caller input",
@@ -22,7 +23,8 @@
     "validate": "validates exact plan with syntax graph layout observability isolated_regression installed_node_types canonical_sources_reconciled booleans and matching plan_sha256",
     "admit": "binds exact policy hash plan hash operation action risk hash deploy nodes before revision before/after hashes and opaque approval_id to sealed authorization; confirms preserved interface confirmation, resource/lock state, reviewed startup/sensitive effects and at least90s remaining",
     "guard": "guard(plan,phase=before|after) must return matching plan SHA and phase, credentials_unchanged and context_preservation_proven. Both phases are required. Logical delete also requires logical_delete_restore_isolated_proven; retiring own created nodes requires new_node_retirement_recoverable. Receipt stores only proof SHA/verdicts. Failed post-proof keeps deployment uncertain, never replayed.",
-    "project_value_optional": "returns exact_reviewed_public_source, exact original value and its matching SHA only after trusted public-source correspondence; never a caller-supplied public flag"
+    "project_value_optional": "returns exact_reviewed_public_source, exact original value and its matching SHA only after trusted public-source correspondence; never a caller-supplied public flag",
+    "peer_check": "inline native identity proof before every fixed HTTP request, bound to current held shared-lock generation, pinned PID/birth, namespace, local IPv4 and owned listener; old static peer.json has no fallback; identity proof is separate from authentication and effect admission"
   },
   "operations": {
     "read": "fixed views runtime (up to 16 nodes), plan_diff, node_field (public-proof-only 8 KiB fragments), policy; expected content hash binds continued pagination",
@@ -72,7 +74,8 @@
     "Whole afterimage and revision must match for own rollback; no merge over later third-party changes.",
     "Unknown intent or receipt blocks every new effect operation and is never released by matching configuration content alone.",
     "Production lock/admission/credential-context/source validation adapters are required and must be sealed before activation; this private candidate alone grants no authority.",
-    "delete of a configuration node lacking a flow parent z and type!=tab is refused as configuration_node_quarantine_unavailable; validators must also reject configuration types masquerading as operational nodes."
+    "delete of a configuration node lacking a flow parent z and type!=tab is refused as configuration_node_quarantine_unavailable; validators must also reject configuration types masquerading as operational nodes.",
+    "Runtime ancestor identities are pinned; group-writable ancestors require exact reviewed identities and GID0, while world-write, other writable groups, symlinks and drift remain refused. No runtime chmod."
   ],
   "test_status": "isolated_synthetic_tests_passed_not_production_acceptance",
   "production_entrypoint": "implemented_candidate_not_installed_or_activated"

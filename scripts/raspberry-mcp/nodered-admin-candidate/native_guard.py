@@ -16,6 +16,8 @@ import stat
 import time
 import types
 import builtins
+import ipaddress
+import secrets
 
 ROOT = Path('/usr/local/lib/raspberry-nodered-admin')
 STATE = Path('/var/lib/raspberry-nodered-admin')
@@ -177,6 +179,63 @@ def atomic_create(path, value):
         os.close(directory)
 
 
+def runtime_ancestors(path):
+    need(path in RUNTIME_FILES, 'runtime_file_outside_fixed_scope')
+    return tuple(str(parent) for parent in reversed(Path(path).parents))
+
+
+def verify_runtime_ancestor(info, name, parent_pins=None):
+    need(stat.S_ISDIR(info.st_mode), 'runtime_ancestor_not_directory')
+    if parent_pins is None:
+        need(not info.st_mode & 0o022, 'runtime_ancestor_writable')
+        return
+    identity = [info.st_dev, info.st_ino, info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode)]
+    need(identity == parent_pins[name], 'runtime_ancestor_identity_changed')
+    need(not info.st_mode & 0o002, 'runtime_ancestor_world_writable')
+    if info.st_mode & 0o020:
+        need(info.st_gid == 0, 'runtime_ancestor_group_write_not_root_group')
+
+
+def local_ipv4_addresses(table):
+    """Recognize only exact /32 host LOCAL records from bounded fib_trie text."""
+    need(type(table) is str and len(table.encode()) <= 1048576, 'fib_trie_bound_or_type')
+    lines = table.splitlines()
+    result = set()
+    for index, line in enumerate(lines[:-1]):
+        match = re.fullmatch(r'[ \t|]*[|]-- ([0-9]+(?:[.][0-9]+){3})', line)
+        if match and lines[index + 1].strip() == '/32 host LOCAL':
+            try:
+                result.add(str(ipaddress.IPv4Address(match.group(1))))
+            except ipaddress.AddressValueError:
+                raise ValueError('fib_trie_address_invalid') from None
+    return result
+
+
+def ipv4_listener(table, pinned, backend_host):
+    """Read fixed IPv4 TCP LISTEN metadata; no connection or socket mutation."""
+    need(type(table) is str and len(table.encode()) <= 1048576, 'tcp_table_bound_or_type')
+    expected_address = str(ipaddress.IPv4Address(pinned['local_address']))
+    need(expected_address in ('0.0.0.0', backend_host), 'listener_does_not_cover_backend_ip')
+    matches = []
+    lines = table.splitlines()
+    need(lines and 'local_address' in lines[0] and len(lines) <= 8193, 'tcp_table_header_or_bound')
+    for line in lines[1:]:
+        fields = line.split()
+        need(len(fields) >= 10, 'tcp_table_row_unknown')
+        need(re.fullmatch(r'[A-Fa-f0-9]{8}:[A-Fa-f0-9]{4}', fields[1]) is not None,
+             'tcp_local_address_unknown')
+        encoded, encoded_port = fields[1].split(':')
+        address = str(ipaddress.IPv4Address(int(encoded, 16).to_bytes(4, 'little')))
+        port = int(encoded_port, 16)
+        if fields[3] != '0A' or port != 1880:
+            continue
+        need(fields[9].isdigit(), 'tcp_listener_inode_unknown')
+        if address == expected_address and int(fields[9]) == pinned['socket_inode']:
+            matches.append((address, port, int(fields[9])))
+    need(len(matches) == 1, 'pinned_tcp_listener_missing_or_ambiguous')
+    return {'local_address': matches[0][0], 'port': matches[0][1], 'socket_inode': matches[0][2]}
+
+
 class NativeIO:
     """Native fixed reads; no protocol-supplied IO operations or destinations."""
     def process(self, pid):
@@ -186,11 +245,93 @@ class NativeIO:
         values = {line.split(':', 1)[0]: line.split(':', 1)[1].split()
                   for line in (proc / 'status').read_text().splitlines() if ':' in line}
         root = (proc / 'root').stat()
+        netns = (proc / 'ns' / 'net').stat()
         return {'birth_ticks': int(fields[19]), 'state': fields[0],
                 'uids': [int(v) for v in values['Uid']],
                 'gids': [int(v) for v in values['Gid']],
                 'root_identity': [root.st_dev, root.st_ino],
+                'netns_identity': [netns.st_dev, netns.st_ino],
                 'mountinfo_sha256': hashlib.sha256((proc / 'mountinfo').read_bytes()).hexdigest()}
+
+    def peer_listener(self, pid, backend_host, activation):
+        proc = Path('/proc') / str(pid)
+        expected = activation['backend_listener']
+        need(expected['family'] == 'tcp4', 'listener_family_not_reviewed')
+        def bounded_text(name):
+            need(name in ('tcp','fib_trie'), 'fixed_peer_proc_scope_required')
+            fd = os.open(proc / 'net' / name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            try:
+                body = os.read(fd, 1048577)
+                need(len(body) <= 1048576, 'peer_proc_table_bound')
+                return body.decode('ascii', errors='strict')
+            finally:
+                os.close(fd)
+        ns_before = (proc / 'ns' / 'net').stat()
+        netns = [ns_before.st_dev, ns_before.st_ino]
+        need(netns == activation['netns_identity'], 'backend_network_namespace_drift')
+        need(backend_host in local_ipv4_addresses(bounded_text('fib_trie')),
+             'backend_ip_not_local_in_pinned_namespace')
+        listener = ipv4_listener(bounded_text('tcp'), expected, backend_host)
+        # /proc/PID/net is namespace-wide, not proof of process ownership. The
+        # exact socket inode must simultaneously be held by this pinned PID.
+        descriptors = list((proc / 'fd').iterdir())
+        need(len(descriptors) <= 4096, 'backend_fd_scan_bound')
+        owners = []
+        for item in descriptors:
+            need(item.name.isdigit(), 'backend_fd_entry_unknown')
+            try:
+                target = os.readlink(item)
+            except FileNotFoundError:
+                continue  # unrelated descriptor may close; listener is rechecked below
+            if target == 'socket:[%d]' % expected['socket_inode']:
+                owners.append(item.name)
+        need(owners, 'pinned_process_does_not_own_listener')
+        need(any(os.readlink(proc / 'fd' / name) == 'socket:[%d]' % expected['socket_inode']
+                 for name in owners), 'pinned_listener_descriptor_changed')
+        need(ipv4_listener(bounded_text('tcp'), expected, backend_host) == listener,
+             'backend_listener_changed_during_observation')
+        ns_after = (proc / 'ns' / 'net').stat()
+        need([ns_after.st_dev, ns_after.st_ino] == netns,
+             'backend_network_namespace_read_race')
+        return {**listener, 'netns_identity': netns, 'pid_owns_listener': True,
+                'backend_ip_local': True, 'tcp_family': 'tcp4'}
+
+    def check_attestation_quota(self, reserved, reserve_entries):
+        need(type(reserved) is int and 0 < reserved <= 3*32768
+             and type(reserve_entries) is int and 0 < reserve_entries <= 5,
+             'guard_quota_reservation_unknown')
+        total=0;entries=0
+        for folder,dirs,files in os.walk(ATTESTATIONS,followlinks=False):
+            for name in dirs+files:
+                item=Path(folder)/name;meta=item.lstat();entries+=1
+                need(entries<=8192 and not stat.S_ISLNK(meta.st_mode)
+                     and meta.st_uid==meta.st_gid==0, 'guard_state_metadata_capacity_or_identity')
+                if stat.S_ISREG(meta.st_mode):total+=meta.st_size
+                else:need(stat.S_ISDIR(meta.st_mode), 'guard_state_special_file_refused')
+        need(entries+reserve_entries<=8192, 'guard_state_metadata_capacity_or_identity')
+        need(total+reserved<=64*1048576, 'guard_attestation_storage_capacity')
+        return True
+
+    def prepare_peer_folder(self, lease_id):
+        need(identifier(lease_id), 'fixed_peer_lease_required')
+        info = ATTESTATIONS.lstat()
+        need(stat.S_ISDIR(info.st_mode) and not ATTESTATIONS.is_symlink()
+             and info.st_uid == info.st_gid == 0 and stat.S_IMODE(info.st_mode) == 0o700,
+             'private_peer_root_required')
+        self.check_attestation_quota(32768, 3)
+        parent = ATTESTATIONS / 'peer'
+        for folder in (parent, parent / lease_id):
+            try:
+                folder.mkdir(mode=0o700)
+            except FileExistsError:
+                pass
+            meta = folder.lstat()
+            need(stat.S_ISDIR(meta.st_mode) and not folder.is_symlink()
+                 and meta.st_uid == meta.st_gid == 0 and stat.S_IMODE(meta.st_mode) == 0o700,
+                 'private_peer_lease_directory_required')
+        need(len(list(parent.iterdir())) <= 1024, 'peer_lease_capacity')
+        need(len(list((parent / lease_id).iterdir())) < 64, 'peer_proof_capacity')
+        return True
 
     def held_locks(self, context, expected):
         need(type(context.get('lock_fds')) is tuple and len(context['lock_fds']) == len(LOCKS),
@@ -216,20 +357,30 @@ class NativeIO:
             evidence.append(identity)
         return evidence
 
-    def runtime_file(self, pid, path, maximum):
+    def runtime_file(self, pid, path, maximum, parent_pins=None):
         need(path in RUNTIME_FILES, 'runtime_file_outside_fixed_scope')
+        if parent_pins is not None:
+            need(type(parent_pins) is dict and set(parent_pins) == set(runtime_ancestors(path)),
+                 'runtime_ancestor_pin_scope_unknown')
+            need(all(type(row) is list and len(row) == 5 and
+                     all(type(v) is int and v >= 0 for v in row) for row in parent_pins.values()),
+                 'runtime_ancestor_pin_identity_unknown')
         # Only the kernel's proc-root link is followed; every descendant must be
-        # an ordinary non-writable directory/file owned by the pinned process UID
-        # or Root. No symlink substitution in node_modules, /data or leaf allowed.
+        # an ordinary directory with exact Root-reviewed identity when pinned.
+        # Only pinned GID0 group-write is eligible; world-write/leaf-write remain
+        # blocked. No symlink substitution in node_modules, /data or leaf allowed.
         directory = os.open('/proc/%d/root' % pid, os.O_RDONLY | os.O_DIRECTORY)
         try:
             root = os.fstat(directory)
+            verify_runtime_ancestor(root, '/', parent_pins)
+            current_path = ''
             for name in Path(path).parts[1:-1]:
                 child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
                 os.close(directory)
                 directory = child
                 info = os.fstat(directory)
-                need(not info.st_mode & 0o022, 'runtime_ancestor_writable')
+                current_path += '/' + name
+                verify_runtime_ancestor(info, current_path, parent_pins)
             fd = os.open(Path(path).name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
         finally:
             os.close(directory)
@@ -255,7 +406,8 @@ class NativeIO:
                     'mode': stat.S_IMODE(info.st_mode),
                     'root_identity': [root.st_dev, root.st_ino],
                     'fixed_relative_path_sha256': hashlib.sha256(path.encode()).hexdigest(),
-                    'descendants_no_symlinks': True}
+                    'descendants_no_symlinks': True,
+                    'ancestor_identity_pins_verified': parent_pins is not None}
         finally:
             os.close(fd)
 
@@ -268,15 +420,7 @@ class NativeIO:
         need(stat.S_ISDIR(info.st_mode) and not parent.is_symlink()
              and info.st_uid==info.st_gid==0 and stat.S_IMODE(info.st_mode)==0o700,
              'reviewed_operation_directory_required')
-        total=0;entries=0
-        for folder,dirs,files in os.walk(ATTESTATIONS,followlinks=False):
-            for name in dirs+files:
-                item=Path(folder)/name;meta=item.lstat();entries+=1
-                need(entries<=8192 and not stat.S_ISLNK(meta.st_mode)
-                     and meta.st_uid==meta.st_gid==0, 'guard_state_metadata_capacity_or_identity')
-                if stat.S_ISREG(meta.st_mode):total+=meta.st_size
-                else:need(stat.S_ISDIR(meta.st_mode), 'guard_state_special_file_refused')
-        need(total+3*32768<=64*1048576, 'guard_attestation_storage_capacity')
+        self.check_attestation_quota(3*32768, 5)
         for folder in (parent/'leases',parent/'leases'/lease_id):
             try:folder.mkdir(mode=0o700)
             except FileExistsError:pass
@@ -431,12 +575,28 @@ class NativeGuard:
         activation = self._sealed(ACTIVATION, self.expected['runtime_activation_sha256'])
         need(set(activation) == {'schema_version', 'core_version', 'pid', 'birth_ticks', 'uid', 'gid',
              'root_identity', 'mountinfo_sha256', 'image_digest', 'core_sha256', 'settings_sha256',
-             'context_store_modules', 'runtime_file_owners'}, 'runtime_activation_scope_unknown')
+             'context_store_modules', 'runtime_file_owners', 'netns_identity',
+             'backend_listener', 'runtime_ancestor_pins'}, 'runtime_activation_scope_unknown')
         need(activation['schema_version'] == 1 and activation['core_version'] == '5.0.9'
              and type(activation['pid']) is int and activation['pid'] > 1
              and type(activation['birth_ticks']) is int and activation['birth_ticks'] > 0
              and re.fullmatch(r'sha256:[a-f0-9]{64}', activation['image_digest'] or '')
              and set(activation['core_sha256']) == set(CORE_FILES)
+             and type(activation['netns_identity']) is list and len(activation['netns_identity']) == 2
+             and all(type(v) is int and v >= 0 for v in activation['netns_identity'])
+             and type(activation['backend_listener']) is dict
+             and set(activation['backend_listener']) == {'family','local_address','port','socket_inode'}
+             and activation['backend_listener']['family'] == 'tcp4'
+             and type(activation['backend_listener']['socket_inode']) is int
+             and activation['backend_listener']['socket_inode'] > 0
+             and activation['backend_listener']['port'] == 1880
+             and type(activation['runtime_ancestor_pins']) is dict
+             and set(activation['runtime_ancestor_pins']) == set(RUNTIME_FILES)
+             and all(type(pins) is dict and set(pins) == set(runtime_ancestors(path))
+                     and all(type(row) is list and len(row) == 5
+                             and all(type(v) is int and v >= 0 for v in row)
+                             for row in pins.values())
+                     for path,pins in activation['runtime_ancestor_pins'].items())
              and type(activation['runtime_file_owners']) is dict
              and set(activation['runtime_file_owners']) == set(RUNTIME_FILES)
              and all(type(ids) is list and len(ids) == 2 and
@@ -449,15 +609,18 @@ class NativeGuard:
         need(current['state'] not in ('Z', 'X') and current['birth_ticks'] == activation['birth_ticks']
              and current['uids'] == [activation['uid']] * 4 and current['gids'] == [activation['gid']] * 4
              and current['root_identity'] == activation['root_identity']
+             and current['netns_identity'] == activation['netns_identity']
              and current['mountinfo_sha256'] == activation['mountinfo_sha256'],
              'runtime_process_or_mount_drift')
         meta = {}
         for path in CORE_FILES + ('/data/settings.js',):
-            info = self.io.runtime_file(activation['pid'], path, 2097152)
+            info = self.io.runtime_file(activation['pid'], path, 2097152,
+                                        activation['runtime_ancestor_pins'][path])
             expected = activation['settings_sha256'] if path == '/data/settings.js' else activation['core_sha256'][path]
             need(info['sha256'] == expected and info['root_identity'] == activation['root_identity']
                  and [info['uid'], info['gid']] == activation['runtime_file_owners'][path]
-                 and info['descendants_no_symlinks'] is True,
+                 and info['descendants_no_symlinks'] is True
+                 and info['ancestor_identity_pins_verified'] is True,
                  'runtime_core_or_settings_drift')
             meta[path] = info
         # PID reuse/root changes during source reads are refused as well.
@@ -511,6 +674,55 @@ class NativeGuard:
                 'executing_pid': os.getpid(), 'observed_at': now,
                 'expires_at': min(now + 5, expiry),
                 'loaded_source_sha256': self.expected['source_sha256']}
+
+    def produce_peer(self, ctx):
+        """One immutable identity proof for this request/lease, never auth evidence."""
+        self.ready(ctx)
+        activation, _ = self._runtime()
+        backend = self.document['backend']
+        need(type(backend) is dict and set(backend) == {'host','port','username','identity_sha256'}
+             and backend['port'] == 1880 and identifier(backend['identity_sha256'], 64),
+             'fixed_peer_backend_policy_changed')
+        host = str(ipaddress.IPv4Address(backend['host']))
+        address = ipaddress.IPv4Address(host)
+        need(address.is_private and not address.is_loopback and not address.is_unspecified
+             and not address.is_multicast, 'fixed_peer_backend_address_refused')
+        observed = self.io.peer_listener(activation['pid'], host, activation)
+        need(observed['netns_identity'] == activation['netns_identity']
+             and observed['socket_inode'] == activation['backend_listener']['socket_inode']
+             and observed['port'] == 1880 and observed['tcp_family'] == 'tcp4'
+             and observed['pid_owns_listener'] is True and observed['backend_ip_local'] is True,
+             'native_backend_listener_unconfirmed')
+        current = self.io.process(activation['pid'])
+        need(current['birth_ticks'] == activation['birth_ticks'] and current['state'] not in ('Z','X')
+             and current['netns_identity'] == activation['netns_identity']
+             and current['root_identity'] == activation['root_identity']
+             and current['uids'] == [activation['uid']] * 4
+             and current['gids'] == [activation['gid']] * 4
+             and current['mountinfo_sha256'] == activation['mountinfo_sha256'],
+             'backend_process_changed_before_peer_publication')
+        self._lease(ctx)
+        nonce = secrets.token_hex(16)
+        need(identifier(nonce), 'native_peer_generation_invalid')
+        need(self.io.prepare_peer_folder(ctx['lock_lease_id']) is True, 'private_peer_folder_unconfirmed')
+        now = self.clock()
+        value = {'schema_version': 1, 'producer': 'sealed_nodered_admin_inline_peer',
+                 'source': 'pinned_pid_network_namespace_listener_and_local_ip',
+                 'root_policy_sha256': self.policy_sha, 'loaded_source_sha256': self.expected['source_sha256'],
+                 'runtime_activation_sha256': self.expected['runtime_activation_sha256'],
+                 'backend_identity_sha256': backend['identity_sha256'], 'host': host, 'port': 1880,
+                 'lock_lease_id': ctx['lock_lease_id'], 'request_generation': nonce,
+                 'executing_pid': os.getpid(), 'observed_at': now, 'expires_at': now + 5,
+                 'runtime_pid': activation['pid'], 'runtime_birth_ticks': activation['birth_ticks'],
+                 'netns_identity': observed['netns_identity'], 'socket_inode': observed['socket_inode'],
+                 'backend_listener_identity_proven': True,
+                 'authenticated_Admin_API_enabled': None,
+                 'authentication_proven': False,
+                 'authority_scope': 'identity_observation_only_not_operation_admission',
+                 'observed': observed}
+        path = ATTESTATIONS / 'peer' / ctx['lock_lease_id'] / (nonce + '.json')
+        self.create(path, value)
+        return {'proof_path': str(path), 'proof_sha256': digest(value), 'request_generation': nonce}
 
     def produce_coordination(self, binding, ctx):
         need(type(binding) is dict, 'coordination_binding_required')
@@ -573,10 +785,12 @@ class NativeGuard:
         after = {n['id']: n for n in new}
         need(all((n.get('z'), n.get('type')) == (after[n['id']].get('z'), after[n['id']].get('type'))
                  for n in old), 'context_scope_or_node_type_migration_refused')
-        credential = self.io.runtime_file(activation['pid'], '/data/flows_cred.json', 2097152)
+        credential = self.io.runtime_file(activation['pid'], '/data/flows_cred.json', 2097152,
+                                          activation['runtime_ancestor_pins']['/data/flows_cred.json'])
         need([credential['uid'], credential['gid']] == activation['runtime_file_owners']['/data/flows_cred.json']
              and credential['root_identity'] == activation['root_identity']
-             and credential['descendants_no_symlinks'] is True, 'ciphertext_file_identity_unknown')
+             and credential['descendants_no_symlinks'] is True
+             and credential['ancestor_identity_pins_verified'] is True, 'ciphertext_file_identity_unknown')
         construction = {'retained_ids_sha256': digest(sorted(old_ids)),
                         'before_flows_sha256': digest(old), 'after_flows_sha256': digest(new),
                         'core_files_sha256': digest(activation['core_sha256']),

@@ -252,14 +252,20 @@ class Gateway:
             else:
                 raise ValueError('method_not_implemented')
         finally:
+            # Snapshot BEFORE revoke clears the private client. Only this exact
+            # pinned wrapper/FixedTransport may certify a local pre-dispatch
+            # refusal. Generic adapters/flags remain unknown and fail closed.
+            dispatched = (self.transport.login_dispatch_attempted
+                          if type(self.transport) is CredentialSessionTransport else None)
             try:
                 revoked = self.transport.revoke()
             except Exception:
                 revoked = False
-            # A token response can have been lost; token=None is not proof that
-            # authentication created no server-side session.
-            cleanup = bool(revoked and (not login_attempted or login_confirmed))
-            self.sessions.finish(session, cleanup, login_confirmed)
+            cleanup = bool(revoked and (not login_attempted or login_confirmed or dispatched is False))
+            if type(self.sessions) is RootSessionJournal:
+                self.sessions.finish(session, cleanup, login_confirmed, login_dispatch_attempted=dispatched)
+            else:
+                self.sessions.finish(session, cleanup, login_confirmed)
         need(type(result) is dict, 'structured_result_required')
         return {**result, 'session_revoked': cleanup,
                 'security_cleanup_confirmed': cleanup,
@@ -283,12 +289,15 @@ class RootSessionJournal:
             self.coordinator.current_session = session
             return session
 
-    def finish(self, session, cleanup, confirmed):
+    def finish(self, session, cleanup, confirmed, login_dispatch_attempted=None):
         need(valid_id(session) and self.coordinator.current_session == session, 'own_session_required')
         value = {'source': 'own_nodered_admin_session_cleanup',
                  'root_policy_sha256': self.coordinator.root_policy_sha256,
                  'session_id': session, 'security_cleanup_confirmed': cleanup,
-                 'login_confirmed': confirmed, 'observed_at': self.coordinator.clock(),
+                 'login_confirmed': confirmed, 'login_dispatch_attempted': login_dispatch_attempted,
+                 'cleanup_basis': ('authenticated_session_revoked' if cleanup and confirmed else
+                    'sealed_transport_no_auth_dispatch' if cleanup and login_dispatch_attempted is False else
+                    'unconfirmed'), 'observed_at': self.coordinator.clock(),
                  'automatic_retry': False}
         atomic_create(SESSIONS / (session + '.receipt.json'), value)
         if not cleanup and not os.path.lexists(CLEANUP_BLOCK):
@@ -300,6 +309,16 @@ class CredentialSessionTransport:
     def __init__(self, coordinator):
         self.coordinator = coordinator
         self.client = None
+
+    @property
+    def login_dispatch_attempted(self):
+        if self.client is None:
+            # The pinned wrapper performs no auth network operation before its
+            # exact FixedTransport instance exists.
+            return False
+        if type(self.client) is FixedTransport:
+            return self.client.login_dispatch_attempted
+        return None
 
     def login(self, write=False):
         need(self.client is None, 'session_already_open')

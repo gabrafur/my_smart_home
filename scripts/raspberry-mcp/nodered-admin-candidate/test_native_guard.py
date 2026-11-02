@@ -14,10 +14,16 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
+def fixture_pins(path):
+    return {name: ([7,8,0,0,0o755] if name=='/' else
+                   [7,9,1000,0,0o775 if name=='/usr/src/node-red' else 0o755])
+            for name in m.runtime_ancestors(path)}
+
+
 class FakeIO:
     def __init__(self):
         self.process_data = {'birth_ticks': 333, 'state': 'S', 'uids': [1000]*4,
-                             'gids': [1000]*4, 'root_identity': [7,8], 'mountinfo_sha256': '4'*64}
+                             'gids': [1000]*4, 'root_identity': [7,8], 'mountinfo_sha256': '4'*64, 'netns_identity':[30,80]}
         self.credential = 'a'*64
         self.ledger_data = {'task': {'tasks': [], 'sends': []},
                            'legacy': {'jobs': [], 'repair_receipts': []},
@@ -32,12 +38,14 @@ class FakeIO:
     def process(self, pid):
         m.need(pid == 222, 'fixed_fake_pid_required')
         return copy.deepcopy(self.process_data)
-    def runtime_file(self, pid, path, maximum):
+    def runtime_file(self, pid, path, maximum, parent_pins=None):
+        m.need(parent_pins == fixture_pins(path),'fixture_ancestor_pins_missing_or_changed')
         m.need(pid == 222 and path in m.RUNTIME_FILES, 'fixed_fake_file_required')
         value = self.credential if path.endswith('flows_cred.json') else ('3'*64 if path.endswith('settings.js') else '2'*64)
         return {'sha256':value,'bytes':32,'device':7,'inode':9,'uid':1000,'gid':1000,
                 'mode':0o600,'root_identity':[7,8], 'fixed_relative_path_sha256':hashlib.sha256(path.encode()).hexdigest(),
-                'descendants_no_symlinks':True}
+                'descendants_no_symlinks':True,
+                'ancestor_identity_pins_verified':parent_pins == fixture_pins(path)}
     def existing_executor(self, ctx, identities, hashes, sealed_read):
         return {'snapshot_sha256':'f'*64,'coverage':['legacy_admin_executor','deployment_journal_and_immutable_corrections','durable_jobs'],
                 'registered_existing_executors_idle':True,'private_rows_exported':False}
@@ -56,6 +64,8 @@ class GuardTests(unittest.TestCase):
                     'uid':1000,'gid':1000,'root_identity':[7,8],'mountinfo_sha256':'4'*64,
                     'image_digest':'sha256:'+'5'*64,'core_sha256':{p:'2'*64 for p in m.CORE_FILES},
                     'settings_sha256':'3'*64,'runtime_file_owners':{p:[1000,1000] for p in m.RUNTIME_FILES},'context_store_modules':{'default':'memoryOnly','memoryOnly':'memory','persistent':'localfilesystem'}}
+        activation.update(netns_identity=[30,80],backend_listener={'family':'tcp4','local_address':'0.0.0.0','port':1880,'socket_inode':777},
+                          runtime_ancestor_pins={p:fixture_pins(p) for p in m.RUNTIME_FILES})
         review={'schema_version':1,'core_version':'5.0.9','core_sha256':activation['core_sha256'],
                 'settings_sha256':activation['settings_sha256'],'context_store_modules':activation['context_store_modules'],
                 'checks':sorted(m.CHECKS),'isolated_exit_code':0,'isolated_evidence_sha256':'6'*64,

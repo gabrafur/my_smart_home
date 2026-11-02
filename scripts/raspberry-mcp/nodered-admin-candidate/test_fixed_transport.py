@@ -42,4 +42,24 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(self.calls,[])
     def test_conflict_has_no_retry(self):
         self.login(True);self.responses.append(Response(409,b'{}'));self.assertEqual(self.client.deploy('opaque',[])['state'],'conflict');self.assertEqual(len([c for c in self.calls if c[0]=='request']),2)
+    def test_peer_refusal_certifies_auth_request_not_dispatched(self):
+        self.assertIs(self.client.login_dispatch_attempted, False)
+        self.client._peer_check=lambda:False
+        with self.assertRaisesRegex(Refused,'return_peer_identity_unconfirmed'):
+            self.client.login()
+        self.assertIs(self.client.login_dispatch_attempted, False)
+        self.assertEqual(self.calls, [])
+    def test_request_failure_is_marked_dispatched_before_network_entry(self):
+        observed=[]
+        client=self.client
+        class FailedConnection:
+            def __init__(inner,*args,**kwargs):pass
+            def request(inner,*args,**kwargs):
+                observed.append(client.login_dispatch_attempted)
+                raise OSError('synthetic uncertain response')
+            def close(inner):pass
+        self.client._connection=FailedConnection
+        with self.assertRaisesRegex(ValueError,'transport_outcome_unknown'):self.client.login()
+        self.assertEqual(observed,[True])
+        self.assertIs(self.client.login_dispatch_attempted, True)
 if __name__=='__main__':unittest.main()

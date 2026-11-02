@@ -63,7 +63,9 @@ explícita da aprovação de ativação, não um privilégio já concedido à ca
 
 A senha existente do Node-RED chega somente por `LoadCredential`, sem token do
 Home Assistant. Sessões usam leitura para observar e escrita para aplicar,
-com revogação após cada requisição. O usuário subjacente tem administração
+com revogação após cada requisição. Uma recusa anterior ao envio só é
+classificada como não despachada quando comprovada pelo transporte selado exato;
+perda de resposta após o envio continua incerta. O usuário subjacente tem administração
 ampla: comprometer o executor ou sua sessão pode comprometer os fluxos. Perda
 do recibo de login ou falha de revogação fecha novas sessões; não se afirma
 revogação de um token que nunca foi recebido.
@@ -81,6 +83,18 @@ retornado pela API pode estar truncado, e `{}` para nó desabilitado significa
 informação desconhecida. Não é prova de contexto vazio nem de igualdade
 integral. O guard identifica separadamente a preservação por construção do
 Core, o ciphertext de credenciais e os limites da observação.
+
+A prova do backend é produzida inline antes de cada HTTP, sob os locks reais,
+vinculada a PID e nascimento, namespace de rede, IP local e socket de escuta
+pertencente ao processo. Não há renovador, agenda, prova estática reutilizada ou
+aceite automático de identidade nova. Essa observação não afirma autenticação;
+a resposta real do endpoint comprova o login separadamente.
+
+Ancestrais dos cinco arquivos fixos têm identidades completas revisadas. Uma
+permissão de escrita para grupo só é elegível com GID0 e pin exato; escrita
+pública, outro grupo com escrita, symlink ou divergência continuam bloqueados.
+O executor não altera permissões do runtime para passar na verificação. Essa
+exceção restrita e os pins fazem parte da confirmação específica de ativação.
 
 ## Transação e recuperação
 

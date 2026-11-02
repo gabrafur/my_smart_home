@@ -472,14 +472,42 @@ class RootCoordinator:
                 'value': copy.deepcopy(self._catalog_values[identity])}
 
     def peer_check(self):
+        # FixedTransport invokes this immediately before EVERY HTTP request,
+        # including /auth/token and /auth/revoke. No manual/static peer fallback.
+        if self.locked:
+            return self._peer_check_locked()
+        with self.locks():
+            return self._peer_check_locked()
+
+    def _peer_check_locked(self):
         self._unchanged()
-        value = sealed_json(ATTESTATIONS / 'peer.json')
+        self._native_guard_ready()
+        result = self._inline_guard.produce_peer(self._lease_context())
+        exact(result, ('proof_path','proof_sha256','request_generation'))
+        nonce = result['request_generation']
+        need(valid_id(nonce) and valid_id(result['proof_sha256'], SHA), 'peer_generation_unconfirmed')
+        proof_path = ATTESTATIONS / 'peer' / self.lock_lease_id / (nonce + '.json')
+        need(result['proof_path'] == str(proof_path), 'peer_proof_path_outside_current_lease')
+        body = checked_read(proof_path)
+        value = decode(body)
+        need(type(value) is dict and digest(value) == result['proof_sha256'], 'peer_proof_digest_changed')
         backend = self.document['backend']
-        need(value.get('root_policy_sha256') == self.root_policy_sha256
+        now, seen, expiry = self.clock(), value.get('observed_at'), value.get('expires_at')
+        need(value.get('schema_version') == 1
+             and value.get('producer') == 'sealed_nodered_admin_inline_peer'
+             and value.get('root_policy_sha256') == self.root_policy_sha256
+             and value.get('loaded_source_sha256') == self.document['sources']['native_guard.py']
+             and value.get('runtime_activation_sha256') == self.document['native_guard_producer']['runtime_activation_sha256']
              and value.get('backend_identity_sha256') == backend['identity_sha256']
              and value.get('host') == backend['host'] and value.get('port') == 1880
-             and value.get('authenticated_Admin_API_enabled') is True
-             and type(value.get('observed_at')) in (int, float)
-             and 0 <= self.clock() - value['observed_at'] <= 5,
-             'current_backend_peer_unconfirmed')
+             and value.get('request_generation') == nonce
+             and value.get('lock_lease_id') == self.lock_lease_id
+             and value.get('executing_pid') == os.getpid()
+             and value.get('backend_listener_identity_proven') is True
+             and value.get('authenticated_Admin_API_enabled') is None
+             and value.get('authentication_proven') is False
+             and type(seen) in (int,float) and type(expiry) in (int,float)
+             and math.isfinite(seen) and math.isfinite(expiry)
+             and self.locks_acquired_at <= seen <= now and 0 <= now-seen <= 5
+             and now < expiry <= seen+5, 'current_backend_peer_unconfirmed')
         return True

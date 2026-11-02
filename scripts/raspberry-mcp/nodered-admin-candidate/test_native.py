@@ -10,10 +10,11 @@ import sys
 import unittest
 
 HERE = Path(__file__).resolve().parent
+PUBLIC = Path('/mnt/data/docker/scripts/raspberry-mcp/nodered-admin-candidate')
 for name, path in (
-        ('engine', HERE / 'engine.py'),
+        ('engine', HERE / 'engine.py' if (HERE / 'engine.py').exists() else PUBLIC / 'engine.py'),
         ('fixed_transport', HERE / 'fixed_transport.py'),
-        ('coordination', HERE / 'coordination.py'),
+        ('coordination', HERE / 'coordination.py' if (HERE / 'coordination.py').exists() else PUBLIC / 'coordination.py'),
         ('gateway', HERE / 'gateway.py')):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -381,6 +382,67 @@ class NativeTests(unittest.TestCase):
         with self.assertRaises(TimeoutError):
             gateway.handle(request('read', view='runtime', operation_id=None, offset=0, expected_sha256=None))
         self.assertEqual(sessions.proof, (OP, False, False))
+
+    def test_exact_pinned_transport_peer_refusal_closes_auth_as_not_dispatched(self):
+        class Engine:
+            def _policy(self, **kwargs):return SHA
+        class Sessions:
+            def begin(self,*args):return OP
+            def finish(self,session,cleanup,confirmed):self.proof=(cleanup,confirmed)
+        class NoNetwork:
+            def __init__(self,*args,**kwargs):raise AssertionError('network constructor forbidden')
+        wrapper=G.CredentialSessionTransport(object())
+        wrapper.client=G.FixedTransport({'host':'192.0.2.8','port':1880,
+            'username':'fixture','password':'FIXTURE_SECRET'},lambda:False,NoNetwork)
+        sessions=Sessions()
+        old=G.CredentialSessionTransport.login
+        G.CredentialSessionTransport.login=lambda self,write=False:self.client.login(write=write)
+        try:
+            handler=G.Gateway(Engine(),object(),wrapper,sessions)
+            with self.assertRaises(ValueError):
+                handler.handle(request('read',view='runtime',operation_id=None,offset=0,expected_sha256=None))
+            self.assertEqual(sessions.proof,(True,False))
+        finally:G.CredentialSessionTransport.login=old
+
+    def test_auth_dispatch_snapshot_survives_revoke_clearing_private_client(self):
+        class Engine:
+            def _policy(self,**kwargs):return SHA
+        class Sessions:
+            def begin(self,*args):return OP
+            def finish(self,session,cleanup,confirmed):self.proof=(cleanup,confirmed)
+        class LostRequest:
+            def __init__(self,*args,**kwargs):pass
+            def request(self,*args,**kwargs):raise OSError('synthetic request outcome unknown')
+            def close(self):pass
+        wrapper=G.CredentialSessionTransport(object())
+        wrapper.client=G.FixedTransport({'host':'192.0.2.8','port':1880,
+            'username':'fixture','password':'FIXTURE_SECRET'},lambda:True,LostRequest)
+        sessions=Sessions()
+        old=G.CredentialSessionTransport.login
+        G.CredentialSessionTransport.login=lambda self,write=False:self.client.login(write=write)
+        try:
+            handler=G.Gateway(Engine(),object(),wrapper,sessions)
+            with self.assertRaisesRegex(ValueError,'transport_outcome_unknown'):
+                handler.handle(request('read',view='runtime',operation_id=None,offset=0,expected_sha256=None))
+            self.assertIsNone(wrapper.client)  # revoke cleared it after snapshot.
+            self.assertEqual(sessions.proof,(False,False))
+        finally:G.CredentialSessionTransport.login=old
+
+    def test_generic_adapter_no_dispatch_boolean_is_not_authority(self):
+        class Engine:
+            def _policy(self,**kwargs):return SHA
+        class Forged:
+            login_dispatch_attempted=False
+            def login(self,**kwargs):raise TimeoutError('unknown generic outcome')
+            def revoke(self):return True
+        class Sessions:
+            def begin(self,*args):return OP
+            def finish(self,session,cleanup,confirmed):self.proof=(cleanup,confirmed)
+        sessions=Sessions()
+        with self.assertRaises(TimeoutError):
+            G.Gateway(Engine(),object(),Forged(),sessions).handle(request('read',view='runtime',
+                operation_id=None,offset=0,expected_sha256=None))
+        self.assertEqual(sessions.proof,(False,False))
 
     def test_runtime_page_is_at_most16_and_requires_exact_snapshot(self):
         class Engine:

@@ -42,6 +42,12 @@ class FixedTransport:
         self._connection = connection
         self._token = None
         self._scope = None
+        self._login_dispatch_attempted = False
+
+    @property
+    def login_dispatch_attempted(self):
+        # Internal transport evidence, not a caller-controlled authorization.
+        return self._login_dispatch_attempted
 
     def __repr__(self):
         return '<FixedNodeRedTransport private-binding-withheld>'
@@ -62,6 +68,10 @@ class FixedTransport:
             headers['Node-RED-Deployment-Type'] = 'nodes'
         client = self._connection(str(self._binding['host']), 1880, timeout=12)
         try:
+            if method == 'POST' and route == '/auth/token':
+                # Set before the first operation that may connect/send bytes.
+                # Every later failure is conservatively dispatched/uncertain.
+                self._login_dispatch_attempted = True
             client.request(method, route, body=body, headers=headers)
             response = client.getresponse()
             raw = response.read(16*1024*1024+1)
@@ -81,6 +91,7 @@ class FixedTransport:
 
     def login(self, write=False):
         need(self._token is None, 'session_already_open')
+        self._login_dispatch_attempted = False
         status, data = self._request('POST','/auth/token', {
             'client_id':'node-red-admin','grant_type':'password',
             'scope':'*' if write else 'read',
