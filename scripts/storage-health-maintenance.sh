@@ -2,6 +2,7 @@
 set -eu
 
 MODE="dry-run"
+REQUESTED_MODE="dry-run"
 DEEP="false"
 DATA_ROOT="${STORAGE_MAINTENANCE_DATA_ROOT:-/data}"
 LOCK_DIR="${STORAGE_MAINTENANCE_LOCK_DIR:-/tmp/storage-health-maintenance.lock}"
@@ -27,8 +28,8 @@ trap cleanup 0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --dry-run) MODE="dry-run" ;;
-    --apply) MODE="apply" ;;
+    --dry-run) REQUESTED_MODE="dry-run" ;;
+    --apply) REQUESTED_MODE="apply" ;;
     --deep) DEEP="true" ;;
     -h|--help) usage; exit 0 ;;
     *) usage; exit 64 ;;
@@ -102,7 +103,7 @@ inspect_and_clean() {
     return 1
   }
   if ! find "$target_dir" -xdev -type f -mtime "+$retention_days" -print > "$manifest"; then
-    echo "Cannot inspect allowlisted directory: $target_dir" >&2
+    echo "Cannot inspect allowlisted directory" >&2
     return 1
   fi
 
@@ -111,20 +112,16 @@ inspect_and_clean() {
       "$target_dir"/*) ;;
       *) echo "Refusing candidate outside allowlisted directory: $candidate" >&2; return 1 ;;
     esac
-    size=$(wc -c < "$candidate") || {
-      echo "Cannot read candidate size: $candidate" >&2
+    size=$(stat -c %s -- "$candidate" 2>/dev/null) || {
+      echo "Cannot read allowlisted candidate size" >&2
       return 1
     }
     size=$(printf '%s' "$size" | tr -d '[:space:]')
-    numeric_value "$size" || { echo "Cannot read candidate size: $candidate" >&2; return 1; }
+    numeric_value "$size" || { echo "Cannot read allowlisted candidate size" >&2; return 1; }
     candidate_count=$((candidate_count + 1))
     candidate_bytes=$((candidate_bytes + size))
-    echo "CANDIDATE|action=$label|bytes=$size|path=$candidate"
-    if [ "$MODE" = "apply" ]; then
-      rm -f -- "$candidate"
-      removed_count=$((removed_count + 1))
-      removed_bytes=$((removed_bytes + size))
-    fi
+    echo "CANDIDATE|action=$label|bytes=$size"
+    # Observation only: legacy --apply never authorizes deletion.
   done < "$manifest"
 
   rm -f -- "$manifest"
@@ -137,11 +134,11 @@ candidate_count=0
 candidate_bytes=0
 removed_count=0
 removed_bytes=0
-echo "START|at=$started_at|mode=$MODE|data_root=$DATA_ROOT|before_bytes=$before_bytes"
+echo "START|at=$started_at|mode=$MODE|requested_mode=$REQUESTED_MODE|cleanup_enabled=false|data_scope=nodered_fixed|before_bytes=$before_bytes"
 
-# The only automatic deletions are regular files in these two explicit,
-# non-persistent cache/backup locations. Context, flows, credentials,
-# node_modules and arbitrary temporary paths are intentionally out of scope.
+# Legacy health calls are observations, including callers still passing --apply.
+# Never delete backups or caches here. Recoverable cleanup requires the separate
+# closed catalogue with a dry-run, item identities and interface confirmation.
 inspect_and_clean "$DATA_ROOT/backups/codex-flows" "$BACKUP_RETENTION_DAYS" "old_flow_backup"
 inspect_and_clean "$DATA_ROOT/.npm/_logs" "$NPM_LOG_RETENTION_DAYS" "old_npm_log"
 
@@ -151,9 +148,10 @@ fi
 
 after_bytes=$(disk_used_bytes)
 if [ "$before_bytes" -gt "$after_bytes" ]; then
-  reclaimed_bytes=$((before_bytes - after_bytes))
+  filesystem_net_decrease_bytes=$((before_bytes - after_bytes))
 else
-  reclaimed_bytes=0
+  filesystem_net_decrease_bytes=0
 fi
+reclaimed_bytes=0
 finished_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-echo "RESULT|status=success|at=$finished_at|mode=$MODE|before_bytes=$before_bytes|after_bytes=$after_bytes|reclaimed_bytes=$reclaimed_bytes|candidate_count=$candidate_count|candidate_bytes=$candidate_bytes|removed_count=$removed_count|removed_bytes=$removed_bytes"
+echo "RESULT|status=success|at=$finished_at|mode=$MODE|requested_mode=$REQUESTED_MODE|cleanup_enabled=false|before_bytes=$before_bytes|after_bytes=$after_bytes|reclaimed_bytes=$reclaimed_bytes|filesystem_net_decrease_bytes=$filesystem_net_decrease_bytes|candidate_count=$candidate_count|candidate_bytes=$candidate_bytes|removed_count=$removed_count|removed_bytes=$removed_bytes"

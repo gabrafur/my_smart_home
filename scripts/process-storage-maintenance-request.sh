@@ -27,7 +27,9 @@ restore_request() {
 }
 trap restore_request HUP INT TERM
 
-if "$maintenance_script" --apply --min-age 24 --max-build-cache 2GB; then
+# Health requests refresh metadata only. Cleanup belongs to the closed,
+# owner-approved recoverable catalogue and its separate execution gates.
+if "$maintenance_script" --apply --category report; then
   rm -f -- "$processing_file"
   trap - HUP INT TERM
   exit 0

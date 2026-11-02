@@ -75,6 +75,7 @@ deve substituir a versão ativa apenas por estar no mesmo repositório.
 | Relay stdio | `/usr/local/lib/raspberry-mcp/relay.py`; destino fixo, sem argumentos |
 | Broker de operações | Instâncias `raspberry-mcp-operations@.service` |
 | Adaptador de tarefas | `/usr/local/lib/raspberry-task-control/` |
+| Observador de resultados | `/usr/local/lib/raspberry-task-terminal-observer/`; consulta limitada de envios registrados, sem enviar ou alterar o ledger |
 | Projeções e reparo fixo | `/usr/local/lib/raspberry-repair-control/` |
 | Núcleo protegido por componente | `/usr/local/lib/raspberry-component-repair/`; perfil inicial do observador do host, jobs, CAS, validação e recibos |
 | Executor de inferência | Daemon Codex existente no Raspberry; assinatura incluída |
@@ -88,14 +89,38 @@ chatbot cliente não troca esse executor nem cria autorização para API paga.
 Trocar também o executor requer um adaptador próprio, revisão e aceite; não
 está comprovado nesta instalação.
 
+## Observação, eventos e continuação do cliente
+
+O coletor existente pode publicar resultados de tarefas registradas por meio de
+um observador fechado. Ele verifica a política e a identidade aprovada do daemon,
+consulta no máximo um envio pendente por amostra e entrega somente metadados ao
+trabalhador Events. Não cria, retoma, envia ou reconcilia tarefas. O trabalhador
+não recebe o socket do daemon nem os dados privados do projeto.
+
+O tópico `task_terminal` exige adesão explícita do cliente e fica separado de
+`ha_notification`. A migração preserva histórico, início, vencimento e cotas;
+a [referência do protocolo](reference/events-protocol.md#continuação-por-resultados-de-tarefas)
+descreve as transições controladas e a preservação de resultados incertos.
+
+A política aprovada de cliente pode permitir triagem de um incidente natural e
+acompanhamento de um terminal. `continuation_ready` reúne escopo, frescor e
+aprovação; não prova admissão para novo envio, execução do cliente ou reparo.
+O cliente verifica o recibo exato e seu hash antes de reconciliar e diferencia
+um turno concluído de um resultado funcional ainda bloqueado ou incompleto.
+A prova de continuação não substitui a prova de início espontâneo, efeito
+admitido e recuperação funcional. O ciclo não usa o navegador de um PC; esse
+navegador é somente um meio opcional de configurar e conferir o cliente.
+
 ## Pendências que não devem ser ocultadas
 
 As diferenças de catálogo e cobertura registradas em relatos anteriores são
 históricas; a descoberta e as capacidades atuais determinam a superfície
 disponível. O núcleo por componente usa as ferramentas de tarefas já publicadas,
 e seu diagnóstico de admissão foi recebido pelo MCP real. Isso não habilita as
-doze ferramentas do protótipo nem outros perfis de reparo. Recorrência segue
-desativada e o backend de tarefas segue sendo Codex.
+doze ferramentas do protótipo nem outros perfis de reparo. Recorrência no núcleo por componente segue
+desativada e o backend de tarefas segue sendo Codex. Políticas de atuação de
+um cliente em eventos têm aprovação e admissão próprias; não são uma agenda
+de manutenção no host nem habilitam outros perfis.
 
 Arquivo instalado, admissão ativa, teste isolado e hash carregado são provas
 distintas de execução no runtime e recuperação. O novo probe específico declara

@@ -107,6 +107,28 @@ Revogar o transporte de um cliente, o catálogo de Storage ou a delegação de
 tarefas são operações distintas; uma não deve ser apresentada como prova de
 revogação de todas as outras.
 
+## Saúde de armazenamento sem limpeza legada
+
+Os pedidos antigos de Storage Health atualizam somente observações. O
+processador `scripts/process-storage-maintenance-request.sh` seleciona
+explicitamente `--apply --category report`: nesse ramo, `apply` permite gravar o
+pequeno relatório de métricas, sem selecionar qualquer função de limpeza.
+Não substituir essa lista por categorias padrão ou `all`.
+
+O script interno `scripts/storage-health-maintenance.sh` mantém compatibilidade
+com chamadores antigos que passam `--apply`, mas opera sempre em `dry-run`.
+Registra `requested_mode` e `cleanup_enabled=false`, não remove os candidatos e
+obtém seus tamanhos por metadados, sem abrir conteúdo. Seu `reclaimed_bytes` é
+zero; uma redução de uso causada por outro processo permanece uma observação
+separada. Backups, contexto, configurações e credenciais continuam preservados.
+
+Limpeza pelo cliente usa somente o catálogo fechado e a política aprovada,
+com plano, quarentena recuperável, limites e confirmação da interface. Nem o
+health check nem um webhook acionam a rotina legada de exclusão. Não há uma
+nova agenda de limpeza no host. Testes sintéticos de preservação estão em
+`scripts/storage-health-observation.test.mjs`; execução natural e verificação
+de dados mantêm evidência própria.
+
 ## Administração pelo cliente MCP autorizado
 
 As quatro ferramentas principais são:

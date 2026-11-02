@@ -13,7 +13,7 @@ const requestScript = path.join(scriptsDir, "request-host-storage-maintenance.sh
 const processScript = path.join(scriptsDir, "process-storage-maintenance-request.sh");
 const installScript = path.join(scriptsDir, "install-storage-maintenance-cron.sh");
 
-test("manual request is coalesced and processed with bounded Docker cache", () => {
+test("health request is coalesced and processed as metadata only", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "storage-request-test-"));
   const triggerDir = path.join(fixture, "trigger");
   const calls = path.join(fixture, "calls");
@@ -33,7 +33,7 @@ test("manual request is coalesced and processed with bounded Docker cache", () =
 
   const processed = spawnSync(processScript, [], { encoding: "utf8", env });
   assert.equal(processed.status, 0, processed.stderr);
-  assert.equal(fs.readFileSync(calls, "utf8").trim(), "--apply --min-age 24 --max-build-cache 2GB");
+  assert.equal(fs.readFileSync(calls, "utf8").trim(), "--apply --category report");
   assert.ok(!fs.existsSync(path.join(triggerDir, "manual-trigger")));
   assert.equal(spawnSync(processScript, [], { encoding: "utf8", env }).status, 0);
   assert.equal(fs.readFileSync(calls, "utf8").trim().split("\n").length, 1);
