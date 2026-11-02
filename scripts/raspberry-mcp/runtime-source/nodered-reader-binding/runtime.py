@@ -28,15 +28,77 @@ def need(ok, reason):
         raise ValueError(reason)
 
 
+# This schema describes a separately approved client, never an executor grant.
+CLIENT_EVENT_RULES = {
+    'kind': 'client_response_to_natural_reader_diagnostic_failures',
+    'expires_at': None,
+    'target': controller.UNIT,
+    'actions': ['nodered_plan_reader_binding', 'nodered_apply_reader_binding'],
+    'interface_confirmations_required': True,
+    'maximum_writes_per_24h': 4,
+    'minimum_spacing_seconds': 600,
+    'plan_validity_seconds': 900,
+    'maximum_applies_per_incident': 1,
+    'maximum_inactive_wait_seconds': 30,
+    'server_scheduling_enabled': False,
+    'automatic_restart_enabled': False,
+    'automatic_task_enabled': False,
+    'automatic_device_enabled': False,
+    'automatic_restore_enabled': False,
+}
+
+
+def validate_client_event_policy(value):
+    need(type(value) is dict and set(value) == set(CLIENT_EVENT_RULES) | {'enabled', 'approval_sha256'},
+         'client_event_policy_fields_refused')
+    need(type(value['enabled']) is bool and type(value['approval_sha256']) is str and
+         re.fullmatch('[a-f0-9]{64}', value['approval_sha256']) is not None,
+         'client_event_policy_authority_refused')
+    need(all(type(value[key]) is type(expected) and value[key] == expected
+             for key, expected in CLIENT_EVENT_RULES.items()), 'client_event_policy_scope_refused')
+    return value
+
+
+def client_event_projection(policy, revoked):
+    result = {'source': 'sealed_root_reader_client_event_policy',
+              'observed_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              'age_seconds': 0, 'collection_error': None,
+              'state': 'approval_pending', 'approval_active': False,
+              'execution_proven': False, 'server_scheduling_enabled': False,
+              'interface_confirmations_required': True,
+              'coverage': ['client_approval_not_executor_admission_or_execution']}
+    if 'client_event_policy' not in policy:
+        return result
+    value = policy['client_event_policy']
+    try:
+        validate_client_event_policy(value)
+    except (ValueError, TypeError):
+        result.update(state='unknown', collection_error='client_event_policy_unverified')
+        return result
+    if revoked is not False:
+        result['state'] = 'revoked' if revoked is True else 'unknown'
+        if revoked is not True:
+            result['collection_error'] = 'client_event_policy_revocation_unverified'
+    elif not value['enabled']:
+        result['state'] = 'disabled'
+    else:
+        result.update(state='approved', approval_active=True, approval_sha256=value['approval_sha256'],
+                      policy={**CLIENT_EVENT_RULES, 'actions': list(CLIENT_EVENT_RULES['actions'])})
+    return result
+
+
 def load_policy():
     _, raw, _ = native_manager.root_file(str(POLICY), maximum=32768)
     need(type(_BOOT_POLICY_SHA256) is str and hashlib.sha256(raw).hexdigest() == _BOOT_POLICY_SHA256,
          'unit_pinned_binding_policy_changed_or_bootstrap_missing')
     value = json.loads(raw, object_pairs_hook=durable_store.unique)
-    need(set(value) == {'schema_version', 'project', 'approved_until_revoked',
+    fields = {'schema_version', 'project', 'approved_until_revoked',
         'source_hashes', 'controller_policy', 'binary_hashes', 'dependency_hashes',
-        'common_lock_identity', 'legacy_server_sha256', 'legacy_broker_sha256'},
-        'binding_policy_fields_changed')
+        'common_lock_identity', 'legacy_server_sha256', 'legacy_broker_sha256'}
+    need(type(value) is dict and set(value) in (fields, fields | {'client_event_policy'}),
+         'binding_policy_fields_changed')
+    if 'client_event_policy' in value:
+        validate_client_event_policy(value['client_event_policy'])
     need(value['schema_version'] == 1 and value['project'] == '/mnt/data/docker' and
          value['approved_until_revoked'] is True, 'specific_binding_approval_required')
     hashes = value['source_hashes']
@@ -93,6 +155,7 @@ def metadata(policy):
         uncertain = sum(row['state'] in controller.BUSY for row in rows)
         used = sum(now - 86400 <= at <= now for at in effects) if clock_ok else None
         revoked = store.revoked()
+        result['client_event_policy'] = client_event_projection(policy, revoked)
         result.update(revoked=revoked, clock_order_confirmed=clock_ok,
             unresolved_operations=uncertain, writes_last_24h=used,
             remaining_writes=None if used is None else max(0, controller.MAXIMUM_PER_24H - used),

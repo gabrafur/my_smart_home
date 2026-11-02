@@ -27,6 +27,7 @@ class Manager:
         self.writes = 0
         self.fail = False
     def headroom(self): return True
+    def wait_inactive(self): pass
     def inspect(self):
         return {'container_id': 'd'*64, 'image_id': 'e'*64,
             'network_id': POLICY['network_id'], 'network_name': POLICY['network_name'],

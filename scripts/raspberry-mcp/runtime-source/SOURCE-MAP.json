@@ -1064,43 +1064,43 @@
       "source_sha256": "9189ffed6b5b0ae437be229a3c7f75d32be247a1920806d3f4f2e14fdfa23004",
       "export_sha256": "9189ffed6b5b0ae437be229a3c7f75d32be247a1920806d3f4f2e14fdfa23004",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:48:54Z",
+      "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },
     "nodered-reader-binding/controller.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/controller.py",
-      "source_sha256": "934cce44d48906dd2a6af6a87ae89572e9564a3a8ed4e70311eb51343970ce5f",
-      "export_sha256": "934cce44d48906dd2a6af6a87ae89572e9564a3a8ed4e70311eb51343970ce5f",
+      "source_sha256": "8132b908d74d584802d9e1f6281e78e9a65cbde0f82543b7f5a90ec157d7621d",
+      "export_sha256": "8132b908d74d584802d9e1f6281e78e9a65cbde0f82543b7f5a90ec157d7621d",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:48:54Z",
+      "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },
     "nodered-reader-binding/durable_store.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/durable_store.py",
-      "source_sha256": "9183e90dee74cd671c530a0ebec1bf70deae138a0aa0302e31185d245fc88364",
-      "export_sha256": "9183e90dee74cd671c530a0ebec1bf70deae138a0aa0302e31185d245fc88364",
+      "source_sha256": "d4b7b569851db9fbbc589317c91298f20198aa80b378da8d5292bb333d19c279",
+      "export_sha256": "d4b7b569851db9fbbc589317c91298f20198aa80b378da8d5292bb333d19c279",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:48:54Z",
+      "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },
     "nodered-reader-binding/native_manager.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/native_manager.py",
-      "source_sha256": "e4221d332fc0095007c844b2e3296aa25e337b4b04859c4228ea1d17986aa65f",
-      "export_sha256": "e4221d332fc0095007c844b2e3296aa25e337b4b04859c4228ea1d17986aa65f",
+      "source_sha256": "4c7f777dc49afba90a93d8c46f8f5271a87cf2b7056fe76fadb6e40eb44da3c8",
+      "export_sha256": "4c7f777dc49afba90a93d8c46f8f5271a87cf2b7056fe76fadb6e40eb44da3c8",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:48:54Z",
+      "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },
     "nodered-reader-binding/runtime.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/runtime.py",
-      "source_sha256": "af98a4192b2714d7fa44f2480957364993a1aec4a6041607ca0355a410cf7b6c",
-      "export_sha256": "af98a4192b2714d7fa44f2480957364993a1aec4a6041607ca0355a410cf7b6c",
+      "source_sha256": "34c98eb8b2619bc25d48016b96917da8be91275e673c627cc04e48e935922421",
+      "export_sha256": "34c98eb8b2619bc25d48016b96917da8be91275e673c627cc04e48e935922421",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:48:54Z",
+      "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },
@@ -1109,16 +1109,16 @@
       "source_sha256": "f1c8ce5394a8bb3fafb94476ccc6b63dc4716cb2e9841684f0a8a9e4fe6535a3",
       "export_sha256": "f1c8ce5394a8bb3fafb94476ccc6b63dc4716cb2e9841684f0a8a9e4fe6535a3",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:48:54Z",
+      "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },
     "nodered-reader-binding/client.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/client.py",
-      "source_sha256": "bf9df56c74bf499ad031a659dd7096ab6e6f2a4159e7090079b2e8110e02fd6b",
-      "export_sha256": "bf9df56c74bf499ad031a659dd7096ab6e6f2a4159e7090079b2e8110e02fd6b",
+      "source_sha256": "38adb37b6edb9bf382ad0950aa2090c7f2dcc513aee16f519a9ba40223a9f967",
+      "export_sha256": "38adb37b6edb9bf382ad0950aa2090c7f2dcc513aee16f519a9ba40223a9f967",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:48:54Z",
+      "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },
@@ -1127,9 +1127,27 @@
       "source_sha256": "485986868a801586e36e23543a4efb6ce8904c1931f99fc4ed66d07d985f479d",
       "export_sha256": "485986868a801586e36e23543a4efb6ce8904c1931f99fc4ed66d07d985f479d",
       "normalizations": [],
-      "source_observed_at": "2026-11-01T23:48:54Z",
+      "source_observed_at": "2026-11-02T00:27:45Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
+    },
+    "frontend/binding-route.mjs": {
+      "source": "/var/lib/raspberry-mcp/root/app/binding-route.mjs",
+      "source_sha256": "add263f9dc440b1b991a2e5b493bafe6c0fa49f54ccd72006b523888ec4ed60a",
+      "export_sha256": "add263f9dc440b1b991a2e5b493bafe6c0fa49f54ccd72006b523888ec4ed60a",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T00:27:45Z",
+      "native_owner_uid": 0,
+      "scope": "source_export_not_installable_without_existing_frontend_dependencies"
+    },
+    "frontend/binding-entry.mjs": {
+      "source": "/var/lib/raspberry-mcp/root/app/binding-entry.mjs",
+      "source_sha256": "32544d4f2e8f663b9481feb08ccdd6570fe480379d2b12c517ff760fc4d3bf5a",
+      "export_sha256": "32544d4f2e8f663b9481feb08ccdd6570fe480379d2b12c517ff760fc4d3bf5a",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T00:27:45Z",
+      "native_owner_uid": 0,
+      "scope": "source_export_not_installable_without_existing_frontend_dependencies"
     }
   },
   "snapshot_scope_note": "Historical per-file captures; active readonly iCloud collector/root/broker delta is exported with unarmed bindings in ../icloud-readiness-candidate. Historical hashes remain provenance, not current loaded-runtime claims."

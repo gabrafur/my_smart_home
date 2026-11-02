@@ -26,6 +26,11 @@ def policy():
         'legacy_server_sha256': 'd' * 64, 'legacy_broker_sha256': 'd' * 64}
 
 
+def client_event_policy(enabled=True):
+    return {**copy.deepcopy(runtime.CLIENT_EVENT_RULES), 'enabled': enabled,
+            'approval_sha256': 'f' * 64}
+
+
 class RuntimePolicy(unittest.TestCase):
     def read(self, value, changed=None):
         def reader(path, **kwargs):
@@ -66,6 +71,37 @@ class RuntimePolicy(unittest.TestCase):
             changed[key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):
                 self.read(changed)
+
+    def test_optional_client_policy_exact_shape_and_types_are_enforced(self):
+        value = policy(); value['client_event_policy'] = client_event_policy()
+        self.assertEqual(self.read(value), value)
+        value['client_event_policy']['enabled'] = False
+        self.assertEqual(self.read(value), value)
+        for key, bad in [('enabled', 1), ('approval_sha256', 'bad'), ('expires_at', 0),
+                         ('target', 'other'), ('actions', ['nodered_apply_reader_binding']),
+                         ('interface_confirmations_required', 1), ('maximum_writes_per_24h', True),
+                         ('minimum_spacing_seconds', 601), ('plan_validity_seconds', 901),
+                         ('maximum_applies_per_incident', True), ('server_scheduling_enabled', 0),
+                         ('automatic_restart_enabled', True), ('automatic_task_enabled', True),
+                         ('automatic_device_enabled', True), ('automatic_restore_enabled', True)]:
+            with self.subTest(key=key):
+                candidate = policy(); candidate['client_event_policy'] = client_event_policy()
+                candidate['client_event_policy'][key] = bad
+                with self.assertRaises(ValueError): self.read(candidate)
+        for malformed in (None, {}, {**client_event_policy(), 'extra': True}):
+            candidate = policy(); candidate['client_event_policy'] = malformed
+            with self.assertRaises(ValueError): self.read(candidate)
+
+    def test_client_policy_does_not_add_policy_paths_or_source_reads(self):
+        value = policy(); value['client_event_policy'] = client_event_policy()
+        raw = json.dumps(value).encode(); paths = []
+        def read(path, **kwargs):
+            paths.append(path)
+            return ('e' * 64, raw, ()) if path == str(runtime.POLICY) else ('a' * 64, b'fixture', ())
+        with patch.object(native_manager, 'root_file', side_effect=read), \
+             patch.object(runtime, '_BOOT_POLICY_SHA256', hashlib.sha256(raw).hexdigest()):
+            runtime.load_policy()
+        self.assertEqual(paths, [str(runtime.POLICY)] + [str(runtime.LIB / name) for name in runtime.FILES])
 
     def test_previous_delegate_is_exact_hash_and_fixed_path_only(self):
         with patch.object(native_manager, 'root_file', return_value=('d' * 64, b'fixture', ())):
@@ -169,6 +205,52 @@ class RuntimeAdmission(unittest.TestCase):
         self.assertTrue(result['live_identity_and_resource_preflight_required'])
         self.assertFalse(result['recurring_execution_enabled'])
         self.assertNotIn('container_id', result)
+
+    def test_client_event_approval_is_pending_independently_of_server_admission(self):
+        for enabled in (True, False):
+            value = policy()
+            value['controller_policy']['enabled'] = enabled
+            result = self.observe(value)
+            approval = result['client_event_policy']
+            self.assertEqual(approval['state'], 'approval_pending')
+            self.assertFalse(approval['approval_active'])
+            self.assertFalse(approval['execution_proven'])
+            self.assertFalse(approval['server_scheduling_enabled'])
+            self.assertTrue(approval['interface_confirmations_required'])
+            self.assertFalse(result['recurring_execution_enabled'])
+            self.assertEqual((result['maximum_writes_per_24h'], result['minimum_spacing_seconds'], result['maximum_plan_age_seconds']), (4, 600, 900))
+            self.assertEqual(result['actions'], list(controller.ACTIONS))
+            self.assertEqual(result['tools'], list(controller.TOOLS))
+
+    def test_client_approval_is_separate_from_quota_and_revocation(self):
+        value = policy(); value['client_event_policy'] = client_event_policy()
+        approved = self.observe(value)
+        self.assertEqual(approved['client_event_policy']['state'], 'approved')
+        self.assertTrue(approved['client_event_policy']['approval_active'])
+        self.assertFalse(approved['client_event_policy']['execution_proven'])
+        self.assertEqual(approved['client_event_policy']['policy'], runtime.CLIENT_EVENT_RULES)
+        self.assertEqual(approved['client_event_policy']['collection_error'], None)
+        self.assertTrue(approved['client_event_policy']['observed_at'])
+        self.assertEqual(approved['client_event_policy']['source'], 'sealed_root_reader_client_event_policy')
+        self.assertLess(len(json.dumps(approved['client_event_policy'], separators=(',', ':')).encode()), 1536)
+        with self.store.lock():
+            for i in range(4):
+                self.store.save({'id': format(i, '032x'), 'state': 'applied', 'effects': [{'kind':'apply', 'at':self.now - 1000}]})
+        exhausted = self.observe(value)
+        self.assertEqual(exhausted['remaining_writes'], 0)
+        self.assertFalse(exhausted['execution_active'])
+        self.assertTrue(exhausted['client_event_policy']['approval_active'])
+        (self.state / 'revoked').write_bytes(b'fixture')
+        revoked = self.observe(value)
+        self.assertEqual(revoked['client_event_policy']['state'], 'revoked')
+        self.assertFalse(revoked['client_event_policy']['approval_active'])
+
+    def test_client_policy_invalid_disabled_and_unknown_revocation_are_fail_closed(self):
+        value = policy(); value['client_event_policy'] = client_event_policy(False)
+        self.assertEqual(self.observe(value)['client_event_policy']['state'], 'disabled')
+        value['client_event_policy']['enabled'] = 1
+        self.assertEqual(self.observe(value)['client_event_policy']['state'], 'unknown')
+        self.assertFalse(runtime.client_event_projection({'client_event_policy': client_event_policy()}, None)['approval_active'])
 
     def test_uncertain_intent_and_budget_are_preserved_and_close_admission(self):
         with self.store.lock():

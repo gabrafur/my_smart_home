@@ -15,7 +15,16 @@ test('closed reader binding covers lifecycle, protected files and synthetic tran
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const count = result.stderr.match(/Ran (\d+) tests?/);
   assert.ok(count, result.stderr);
-  assert.ok(Number(count[1]) >= 131, result.stderr);
+  assert.ok(Number(count[1]) >= 177, result.stderr);
+});
+
+test('frontend preserves prior tools while exposing the fixed revocation pair', () => {
+  const result = spawnSync(process.execPath, ['--test', '--test-concurrency=1',
+    fileURLToPath(new URL('test_binding_route.mjs', folder))], {
+    encoding: 'utf8', timeout: 10000, maxBuffer: 65536,
+  });
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
 test('export preserves the reviewed source bytes and excludes private admission', () => {

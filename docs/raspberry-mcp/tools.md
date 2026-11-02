@@ -121,6 +121,8 @@ Os detalhes de tipos,limites e enums ficam no modelo de esquemas mencionado acim
 | `codex_repair_revoke` | `host` |
 | `codex_repair_capabilities` | `host` |
 
+Para o binding do leitor Node-RED, `admin_action_apply`, `admin_action_status` e `admin_action_reconcile` aceitam as ações fechadas `nodered_plan_reader_binding`, `nodered_apply_reader_binding`, `nodered_plan_restore_reader_binding` e `nodered_restore_reader_binding`. `admin_action_revoke` aceita exclusivamente `nodered_revoke_reader_binding` nessa família; essa ação não é aceita pelos outros três métodos. O marcador de revogação fecha novas admissões e preserva ledger, histórico e cotas. A política separada de eventos do cliente e sua elegibilidade constam na [referência do leitor](reference/nodered-reader-binding.md#eventos-do-cliente-e-elegibilidade); sua descoberta não comprova execução do cliente nem substitui confirmação da interface ou gates do executor.
+
 `events_status` pode incluir `latest_delivery_receipt`, sem argumento novo.
 O campo liga o lote aos IDs/revisões dos eventos retidos e ao recibo HTTP;
 retorna até oito detalhes e declara truncamento. A associação e o aceite HTTP

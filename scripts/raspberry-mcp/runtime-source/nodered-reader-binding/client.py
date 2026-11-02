@@ -4,6 +4,7 @@ import socket
 import controller
 
 SOCKET = '/run/raspberry-admin-executor.sock'
+TIMEOUT_SECONDS = 48
 
 
 def request(tool, args):
@@ -17,7 +18,7 @@ def request(tool, args):
         raise ValueError('binding_request_size_limit')
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
         # Remains below the existing frontend's 50-second broker deadline.
-        peer.settimeout(30)
+        peer.settimeout(TIMEOUT_SECONDS)
         peer.connect(SOCKET)
         peer.sendall(packet)
         raw = bytearray()

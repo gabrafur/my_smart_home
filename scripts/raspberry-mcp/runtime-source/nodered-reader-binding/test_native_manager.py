@@ -51,7 +51,7 @@ class Runner:
                 'running':True,'network_id':'3'*64,'peer_ipv4':self.peer,
                 'compose_service_verified':True,'published_bindings':[{'host_ip':'198.51.100.1','host_port':'1880'}]}
 
-    def run(self, argv):
+    def run(self, argv, *, read_deadline_seconds=2):
         self.calls.append(list(argv))
         if argv[2] == 'show':
             props = {'FragmentPath': n.FRAGMENT, 'DropInPaths': self.dropin,

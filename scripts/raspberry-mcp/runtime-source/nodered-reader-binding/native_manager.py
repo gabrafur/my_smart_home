@@ -9,6 +9,7 @@ The runtime systemd write requires a separately reviewed deployment approval.
 import hashlib
 import ipaddress
 import json
+import math
 import os
 from pathlib import Path
 import selectors
@@ -23,6 +24,8 @@ DROPIN = '/run/systemd/system.control/' + UNIT + '.d/50-IPAddressAllow.conf'
 SIDECAR = '/usr/local/lib/raspberry-nodered-diagnostics/sidecar.cjs'
 SNAPSHOT = '/usr/local/lib/raspberry-nodered-diagnostics/root_snapshot.py'
 SYSTEMCTL = '/usr/bin/systemctl'
+WAIT_SECONDS = 30
+WAIT_MAX_POLLS = 16
 DOCKER_SOCKET = '/run/raspberry-nodered-binding-inputs/docker.sock'
 DOCKER_REQUEST = b'GET /containers/nodered/json HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n'
 COMPOSE_LABELS = {'com.docker.compose.project': 'docker',
@@ -93,10 +96,13 @@ class PinnedRunner:
         self.hashes = dict(hashes)
         self.identities = {}
 
-    def run(self, argv):
+    def run(self, argv, *, read_deadline_seconds=2):
         need(type(argv) is list and all(type(x) is str for x in argv), 'fixed_native_argv_required')
         allowed = argv == [SYSTEMCTL, '--no-pager', 'show', UNIT,
                            *['--property=' + p for p in PROPERTIES]]
+        need(type(read_deadline_seconds) in (int, float) and math.isfinite(read_deadline_seconds)
+             and 0 < read_deadline_seconds <= 2, 'native_read_deadline_refused')
+        is_show = allowed
         if argv[:5] == [SYSTEMCTL, '--no-ask-password', '--runtime', 'set-property', UNIT]:
             # One message: clear previous prefixes, then ONLY four canonical
             # reviewed/derived entries. The manager independently checks scope.
@@ -107,6 +113,7 @@ class PinnedRunner:
                  'canonical_network_values_required')
             allowed = True
         need(allowed, 'native_command_scope_refused')
+        need(is_show or read_deadline_seconds == 2, 'native_write_deadline_override_refused')
         binary = argv[0]
         cached = self.identities.get(binary)
         if cached is None:
@@ -129,7 +136,7 @@ class PinnedRunner:
                                   env={'PATH': '/usr/bin:/bin', 'LANG': 'C', 'LC_ALL': 'C'},
                                   start_new_session=True) as process:
                 raw = bytearray()
-                deadline = time.monotonic() + (2 if argv[2] == 'show' else 4)
+                deadline = time.monotonic() + (read_deadline_seconds if is_show else 4)
                 try:
                     with selectors.DefaultSelector() as selector:
                         selector.register(process.stdout, selectors.EVENT_READ)
@@ -271,6 +278,29 @@ class Manager:
         self.store = store
         self.dependencies = dict(dependency_hashes)
         self.reader = reader
+
+    def wait_inactive(self):
+        """Observe only the fixed unit; never stop, restart or change it."""
+        self.store.assert_locked()
+        deadline = time.monotonic() + WAIT_SECONDS
+        for attempt in range(WAIT_MAX_POLLS):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            started = time.monotonic()
+            props = property_values(self.runner.run([SYSTEMCTL, '--no-pager', 'show', UNIT,
+                                                     *['--property=' + p for p in PROPERTIES]],
+                                                    read_deadline_seconds=min(2, remaining)))
+            if time.monotonic() > deadline:
+                break
+            if props['ActiveState'] == 'inactive' and props['MainPID'] == '0':
+                return
+            if attempt < WAIT_MAX_POLLS - 1:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                time.sleep(max(0, min(2 - (time.monotonic() - started), remaining - 0.5)))
+        raise Refused('reader_active_no_effect_performed')
 
     def headroom(self):
         try:

@@ -21,6 +21,8 @@ class Manager:
   p=policy();self.value={k:p[k]for k in ('network_id','network_name')};self.value.update(container_id='1'*64,image_id='2'*64,logical_service_verified=True)
   self.value.update(peer_ipv4='192.0.2.6',running=True,unit_sha256='4'*64,unit_active='inactive',deny_all=True,allowed=sorted(p['base_allow']+['192.0.2.7/32']))
  def headroom(self):return self.safe
+ def wait_inactive(self):
+  if self.value['unit_active']!='inactive':raise m.Refused('reader_active_no_effect_performed')
  def inspect(self):return copy.deepcopy(self.value)
  def set_allow(self,expected,wanted):
   assert self.store.events[-1]in('apply_intent','restore_intent')

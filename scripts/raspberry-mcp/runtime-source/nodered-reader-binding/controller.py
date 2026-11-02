@@ -10,9 +10,9 @@ import ipaddress
 import re
 
 UNIT='raspberry-nodered-diagnostics.service'
-TOOLS=('admin_action_apply','admin_action_status','admin_action_reconcile')
+TOOLS=('admin_action_apply','admin_action_status','admin_action_reconcile','admin_action_revoke')
 ACTIONS=('nodered_plan_reader_binding','nodered_apply_reader_binding',
- 'nodered_plan_restore_reader_binding','nodered_restore_reader_binding')
+ 'nodered_plan_restore_reader_binding','nodered_restore_reader_binding','nodered_revoke_reader_binding')
 BUSY=('apply_intent','outcome_unknown','restore_intent','restore_unknown')
 MAXIMUM_PER_24H=4
 MINIMUM_SPACING=600
@@ -25,6 +25,7 @@ def need(value,reason):
 def validate(tool,args):
  need(tool in TOOLS and type(args)is dict and set(args)=={'host','action','idempotency_key'},'fixed_request_required')
  need(args['host']=='raspberry'and args['action']in ACTIONS and type(args['idempotency_key'])is str and re.fullmatch(r'nodered-peer-[a-f0-9]{32}',args['idempotency_key'])is not None,'binding_scope_refused')
+ need((tool=='admin_action_revoke') == (args['action']=='nodered_revoke_reader_binding'),'binding_scope_refused')
  return args['idempotency_key'][13:]
 
 def networks(values):
@@ -87,6 +88,13 @@ class Controller:
  def request(self,tool,args):
   identifier=validate(tool,args);now=self.clock()
   with self.store.lock():
+   if tool=='admin_action_revoke':
+    duplicate=self.store.revoke()
+    return {'source':'fixed_NodeRED_reader_binding_revocation','state':'revoked',
+     'observed_at':datetime.datetime.fromtimestamp(now,datetime.timezone.utc).isoformat(),
+     'age_seconds':0,'collection_error':None,'duplicate':duplicate,
+     'execution_active':False,'automatic_retry':False,
+     'coverage':['ledger_and_uncertain_intents_preserved','no_reactivation_or_network_effect']}
    row=self.store.get(identifier)
    if tool=='admin_action_status':
     need(row is not None,'binding_operation_not_found');return self.view(row)
@@ -122,11 +130,15 @@ class Controller:
    self.admission(now)
    preview=row['restore_previews'][-1]if restoring else{'at':row['planned_at'],'expires_at':row['expires_at'],'unit_sha256':row['unit_sha256'],'peer':row['after_peer']}
    need(preview['at']<=now<preview['expires_at'],'restore_plan_expired'if restoring else'binding_plan_expired')
+   self.manager.wait_inactive()
+   now=self.clock();self.admission(now)
+   need(preview['at']<=now<preview['expires_at'],'restore_plan_expired'if restoring else'binding_plan_expired')
    actual=self.inspect();need(actual['unit_active']=='inactive','reader_active_no_effect_performed')
    need(actual['instance']==row['instance'],'instance_changed_since_preview')
    need(actual['peer']==preview['peer']and actual['unit_sha256']==preview['unit_sha256'],'binding_changed_since_plan')
    expected=row['after']if restoring else row['before'];wanted=row['before']if restoring else row['after']
    need(actual['allowed']==expected,'binding_compare_conflict')
+   now=self.clock();self.admission(now);need(preview['at']<=now<preview['expires_at'],'restore_plan_expired'if restoring else'binding_plan_expired')
    row['state']='restore_intent'if restoring else'apply_intent';row['effects'].append({'kind':'restore'if restoring else'apply','at':now});row['observed_at_unix']=now;row['last_effect_evidence']='unconfirmed_intent';row['last_effect_observed_at']=now;self.store.save(row)
    try:
     self.manager.set_allow(expected,wanted)

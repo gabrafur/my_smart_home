@@ -191,6 +191,25 @@ class Store:
         # Any object at the fixed revocation name closes admission.
         return True
 
+    def revoke(self):
+        """Create only the fixed revocation marker while both locks are held."""
+        self.assert_locked()
+        try:
+            fd = os.open('revoked', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                         0o600, dir_fd=self.fd)
+        except FileExistsError:
+            self.assert_locked()
+            os.fsync(self.fd)
+            return True
+        try:
+            self.metadata(fd)
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        self.assert_locked()
+        os.fsync(self.fd)
+        return False
+
     def save(self, row):
         self.assert_locked()
         rows = self.history()
