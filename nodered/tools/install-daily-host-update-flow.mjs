@@ -174,8 +174,10 @@ if (!status) {
     if (!TEST_MODE) node.error("repository_dependency_result_unrecognized", msg);
     return [null, null, null];
 }
+const reason = [...text.matchAll(/\\breason=(nodered_dependency_validation_failed)(?= |$)/g)].at(-1)?.[1] ?? null;
+const rollback = [...text.matchAll(/\\brollback=(verified|unconfirmed|not_required)(?= |$)/g)].at(-1)?.[1] ?? null;
 const result = {
-    version: 1, status, package: packageName, request_id: requestId,
+    version: 1, status, package: packageName, request_id: requestId, reason, rollback,
     from: text.match(/\\bfrom=([^ ]+)\\b/)?.[1] ?? null,
     to: text.match(/\\bto=([^ ]+)\\b/)?.[1] ?? null,
     test_mode: TEST_MODE, observed_at: Date.now()
@@ -190,7 +192,8 @@ msg.payload = result;
 node.status({ fill: status === "failed" ? "red" : status === "success" || status === "current" ? "green" : "yellow", shape: status === "failed" ? "ring" : "dot", text: packageName + ": " + status });
 if (TEST_MODE) return [msg, null, null];
 if (status === "failed") {
-    node.error("repository_dependency_update_failed package=" + packageName + " request_id=" + requestId, msg);
+    node.error("repository_dependency_update_failed package=" + packageName + " request_id=" + requestId
+        + (reason ? " reason=" + reason : "") + (rollback ? " rollback=" + rollback : ""), msg);
     return [null, null, null];
 }
 if (status === "success") return [null, msg, null];

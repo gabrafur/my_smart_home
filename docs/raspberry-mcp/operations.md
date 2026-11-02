@@ -147,6 +147,26 @@ somente `report`, `last_reclaimed_bytes` é zero; a diferença global do filesys
 fica separada e não comprova limpeza. Os testes correspondentes usam fixtures,
 sem consultar o daemon residencial.
 
+## Falha na atualização de dependências Node-RED
+
+O diagnóstico sanitizado reconhece o nó `daily_update_dependency_parse_result`
+(Normalizar resultado npm) e o motivo fechado
+`repository_dependency_validation_failed` quando o recibo contém exatamente
+`reason=nodered_dependency_validation_failed`. Um erro genérico permanece
+`repository_dependency_update_failed`. Nome do pacote, identificador do pedido,
+texto desconhecido e dados privados não são exportados pelo sanitizador.
+
+Esse motivo localiza a etapa de validação; não identifica uma exceção interna
+que não foi registrada. A ausência de campo `rollback` é desconhecida, não
+confirma reversão. Reconciliar o recibo original antes de qualquer novo reparo;
+não repetir atualização em produção apenas para tentar reproduzir o erro.
+
+Fonte, artefato gerado, funções carregadas e sanitizador instalado são camadas
+separadas. Publicar o código não comprova implantação nem correção funcional.
+Uma implantação revisada deve preservar todos os demais nós, propriedades,
+credenciais e revisão da API, com verificação posterior e reversão própria.
+O catálogo e a admissão atuais continuam sendo a autoridade dos efeitos.
+
 ## Administração pelo cliente MCP autorizado
 
 As quatro ferramentas principais são:

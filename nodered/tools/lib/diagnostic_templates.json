@@ -8,7 +8,8 @@
     "host_obs_resource_age": "Idade dos recursos dispon\u00edvel?",
     "people_visual_primary_icloud_update": "EFEITO: atualizar localiza\u00e7\u00e3o iCloud primary",
     "people_visual_secondary_icloud_update": "EFEITO: atualizar localiza\u00e7\u00e3o iCloud secondary",
-    "daily_update_codex_cli_parse_result": "Normalizar resultado Codex CLI"
+    "daily_update_codex_cli_parse_result": "Normalizar resultado Codex CLI",
+    "daily_update_dependency_parse_result": "Normalizar resultado npm"
   },
   "error_types": [
     "Error",
@@ -99,7 +100,10 @@
     "zigbee": "Zigbee2MQTT",
     "flow_updates": "Fluxo atualizacoes_diarias",
     "node_codex_result": "N\u00f3 Normalizar resultado Codex CLI",
-    "codex_registry_lookup_failed": "Atualiza\u00e7\u00e3o do Codex: falha ao consultar o registro de pacotes; causa de rede n\u00e3o registrada"
+    "codex_registry_lookup_failed": "Atualiza\u00e7\u00e3o do Codex: falha ao consultar o registro de pacotes; causa de rede n\u00e3o registrada",
+    "node_dependency_result": "N\u00f3 Normalizar resultado npm",
+    "repository_dependency_update_failed": "Atualiza\u00e7\u00e3o de depend\u00eancia npm falhou; a mensagem isolada n\u00e3o identifica a causa interna",
+    "repository_dependency_validation_failed": "Valida\u00e7\u00e3o do Node-RED falhou durante atualiza\u00e7\u00e3o de depend\u00eancia npm; exce\u00e7\u00e3o interna n\u00e3o registrada"
   },
   "redaction_fields": [
     "title",
