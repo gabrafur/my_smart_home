@@ -20,6 +20,8 @@ class Bootstrap(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.lib = Path(self.temp.name) / 'lib'
         self.lib.mkdir(mode=0o755)
+        # The fixture models an exact protected mode, independent of umask.
+        self.lib.chmod(0o755)
         hashes = {}
         for name in b.FILES:
             raw = (HERE / name).read_bytes()
