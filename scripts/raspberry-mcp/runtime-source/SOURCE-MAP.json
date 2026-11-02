@@ -19,14 +19,14 @@
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
       ],
-      "source_observed_at": "2026-11-02T12:10:17.402511+00:00"
+      "source_observed_at": "2026-11-02T12:10:17Z"
     },
     "task-control/task_store.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_store.py",
       "source_sha256": "47c86ce32e70e877e9de5b251012e3fdfd69a8d565b4c1fe5f6125142f784889",
       "export_sha256": "47c86ce32e70e877e9de5b251012e3fdfd69a8d565b4c1fe5f6125142f784889",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
+      "source_observed_at": "2026-11-02T12:10:17Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -37,7 +37,7 @@
       "source_sha256": "8f3dfea23c26b9bfd7b4cd4e34df7ff0e9ffc965e9047c50dfcdbe0654c8fd3e",
       "export_sha256": "8f3dfea23c26b9bfd7b4cd4e34df7ff0e9ffc965e9047c50dfcdbe0654c8fd3e",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
+      "source_observed_at": "2026-11-02T12:10:17Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -54,7 +54,7 @@
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
       ],
-      "source_observed_at": "2026-11-02T12:12:12.248816+00:00"
+      "source_observed_at": "2026-11-02T12:12:12Z"
     },
     "task-control/task-broker.py": {
       "source": "/usr/local/lib/raspberry-task-control/task-broker.py",
@@ -132,7 +132,7 @@
       "source_sha256": "147325cca57807485e8d63be77422bca96723444c455dd298fc7e7b828548656",
       "export_sha256": "147325cca57807485e8d63be77422bca96723444c455dd298fc7e7b828548656",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
+      "source_observed_at": "2026-11-02T12:10:17Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -1215,7 +1215,7 @@
       "source_sha256": "65620f9e6422700c69a66246f5dc1a7c15619b4c0923413693e0711ed49447eb",
       "export_sha256": "65620f9e6422700c69a66246f5dc1a7c15619b4c0923413693e0711ed49447eb",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
+      "source_observed_at": "2026-11-02T12:10:17Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -1226,7 +1226,7 @@
       "source_sha256": "f71c55d6c83e82859d7713ac76bd1518296c8ae975a05f3b8c295ba02ca14d76",
       "export_sha256": "f71c55d6c83e82859d7713ac76bd1518296c8ae975a05f3b8c295ba02ca14d76",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T12:10:17.402511+00:00",
+      "source_observed_at": "2026-11-02T12:10:17Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
