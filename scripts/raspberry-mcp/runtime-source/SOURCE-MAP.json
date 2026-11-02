@@ -1124,10 +1124,10 @@
     },
     "nodered-reader-binding/broker.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/broker.py",
-      "source_sha256": "485986868a801586e36e23543a4efb6ce8904c1931f99fc4ed66d07d985f479d",
-      "export_sha256": "485986868a801586e36e23543a4efb6ce8904c1931f99fc4ed66d07d985f479d",
+      "source_sha256": "fd8b896da744330dfb6b54787814dd38315da158ce77e0ead7047ef9fb1d8549",
+      "export_sha256": "fd8b896da744330dfb6b54787814dd38315da158ce77e0ead7047ef9fb1d8549",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T00:27:45Z",
+      "source_observed_at": "2026-11-02T00:55:07Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },

@@ -350,3 +350,11 @@ pública completa e CI não foram executadas nesta etapa; não houve commit/push
 
 O contrato da extensão de tarefas Codex, reconciliação de criação e listagem
 restrita de threads está em [RASPBERRY_CODEX_TASKS.md](task-control.md).
+
+## Guias públicos revisados
+
+A extensão instalada acrescenta ao primeiro resultado `project_files` de `docs` três entradas virtuais somente de leitura: o índice MCP, o catálogo de ferramentas e a referência de binding do leitor Node-RED. Os IDs são derivados dos caminhos fixos; a paginação, `total` e `next_offset` do catálogo anterior continuam referentes às entradas estáticas. As três entradas revisadas aparecem apenas no primeiro resultado. Um ID colidente bloqueia a consulta em vez de substituir uma entrada anterior.
+
+A extensão exige um recibo protegido contendo revisão pública, horário e hashes dos três arquivos. O builder de recibo somente lê a árvore: exige branch `main`, HEAD e referência local `origin/main` iguais à revisão informada, compara os bytes completos de cada documento com o conteúdo Git e recusa links, arquivos não regulares, múltiplos links, conteúdo inválido ou acima de 256 KiB. Não busca a rede: a referência local não comprova por si só que o remoto não mudou desde a última atualização. O recibo não autoriza edições, efeitos ou comandos.
+
+Quando o recibo for válido, a listagem verifica os três arquivos antes de expor as entradas; cada `project_read` verifica novamente o hash e retorna até 4.000 caracteres por página. O tempo de observação se refere ao recibo, não ao HEAD atual. Se o recibo ou qualquer documento estiver indisponível ou divergente, a lista estática anterior permanece disponível, as entradas virtuais não são apresentadas e `reviewed_observation` informa estado desconhecido e erro; leitura direta do ID revisado falha fechada. `project_prepare_edit` não aceita esses IDs. A atualização do recibo e da cadeia selada requer procedimento de implantação revisado; nenhuma configuração ou aprovação privada é publicada aqui.
