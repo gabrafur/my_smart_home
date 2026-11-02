@@ -8,18 +8,29 @@
   "files": {
     "task-control/task_control.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_control.py",
-      "source_sha256": "1bf7a7e409b469842a648c6a2bd751c96e398cd49ea7b3b8eaa5030ef20aee91",
-      "export_sha256": "555d7284f937b65757d1ce1703f845b818505557f3a20993822371d4566f1c4e",
+      "source_sha256": "7370aca265dc1996d96b7b4e9d66d6bddebafafd7eba2394fe514f56d7ccf3da",
+      "export_sha256": "3df6fe470169f494566bb99936aa135c9fadf64c3d210d94f7f144fce500491f",
       "normalizations": [
-        "thread_identifiers_replaced_with_binding_markers",
-        "same_numeric_deadline_written_as_integer_plus_fraction"
-      ]
+        "authorized_reference_ids_replaced_with_canonical_binding_markers",
+        "coordinator_report_path_replaced_with_binding_marker",
+        "administrative_identity_and_temporary_approval_replaced_with_binding_markers"
+      ],
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ],
+      "source_observed_at": "2026-11-02T01:59:42Z"
     },
     "task-control/task_store.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_store.py",
-      "source_sha256": "d71de3ea09332b0b1793f94de0f43ac5ed13d82efb9f4a00d26568f476207d92",
-      "export_sha256": "d71de3ea09332b0b1793f94de0f43ac5ed13d82efb9f4a00d26568f476207d92",
-      "normalizations": []
+      "source_sha256": "15b89ec69c4984b5dbafa615432966b283d9857f06db0ea02e6a9d1d643d0b10",
+      "export_sha256": "15b89ec69c4984b5dbafa615432966b283d9857f06db0ea02e6a9d1d643d0b10",
+      "normalizations": [],
+      "source_observed_at": "2026-11-02T01:59:42Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ]
     },
     "task-control/task_rpc.cjs": {
       "source": "/usr/local/lib/raspberry-task-control/task_rpc.cjs",
@@ -30,11 +41,16 @@
     },
     "task-control/task_list.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_list.py",
-      "source_sha256": "1bf9e9c4dbed0344d63f0008480dc4832fb45f166ac1bc0316d37dd8ac69f012",
-      "export_sha256": "96344416868cde610ac2cd8e1958d18b4fa9b0ddc899aed8b6ad93bfcb5146e7",
+      "source_sha256": "df54ebd6d597e11e85b136d9e66e24197f69a6aae45bf4001ab8202e9e8f1b28",
+      "export_sha256": "a9446ad1878cc486a4af55ead4c21b506a6b8078a2a6c9003c3af7caf9874a5f",
       "normalizations": [
-        "thread_identifiers_replaced_with_binding_markers"
-      ]
+        "authorized_reference_ids_replaced_with_canonical_binding_markers"
+      ],
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_loaded_worker_or_runtime_health_proof"
+      ],
+      "source_observed_at": "2026-11-02T01:59:42Z"
     },
     "task-control/task-broker.py": {
       "source": "/usr/local/lib/raspberry-task-control/task-broker.py",

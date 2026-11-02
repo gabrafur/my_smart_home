@@ -172,7 +172,7 @@ def page(rows,args,registry_hash,errors,truncated,now):
       'latest_executed_thread':summary(executed[0] if executed else None),
       'mutation_performed':False,'assistant_dispatches':0}
 
-def collect(args,tasks,invoke,now=None,admission_closed=False):
+def collect(args,tasks,invoke,now=None,admission_closed=False,administrative_closed=None,legacy_send_closed=None):
     validate(args);now=time.time() if now is None else now
     raw,errors,truncated=registry(tasks,now)
     registry_hash=digest(raw)
@@ -191,10 +191,24 @@ def collect(args,tasks,invoke,now=None,admission_closed=False):
             errors.append('daemon_metadata_collection_failed')
     need(type(admission_closed) is bool,'invalid_internal_admission_state')
     projected=[project(r,by_id.get(r['thread_id']),now) for r in raw]
-    if admission_closed:
-        for row in projected:
+    administrative_closed = admission_closed if administrative_closed is None else administrative_closed
+    legacy_send_closed = admission_closed if legacy_send_closed is None else legacy_send_closed
+    need(type(administrative_closed) is bool and type(legacy_send_closed) is bool,
+         'invalid_internal_scope_admission_state')
+    for row in projected:
+        if row['origin']=='adapter_created':
+            key=row.get('task_key')
+            scope='administrative' if isinstance(key,str) and key.startswith('eva-admin-') else 'workspace' if isinstance(key,str) else 'unknown'
+            closed=admission_closed or (administrative_closed if scope=='administrative' else scope=='unknown')
+        else:
+            scope='observation_only' if row['adapter_send_admission']=='coordinator_observation_only' else 'legacy_reference'
+            closed=admission_closed or legacy_send_closed or scope=='observation_only'
+        row['send_scope']=scope
+        if closed:
             row['adapter_send_admission']='closed'
             row['can_accept_input']=False
     result=page(projected,args,registry_hash,errors,truncated,now)
-    result['administrative_admission_closed']=admission_closed
+    result['workspace_admission_closed']=admission_closed
+    result['administrative_admission_closed']=admission_closed or administrative_closed
+    result['legacy_reference_send_closed']=admission_closed or legacy_send_closed
     return result

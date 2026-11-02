@@ -240,10 +240,10 @@ ADMIN_DELEGATION = {
     'enabled': True,
     'task_key_prefix': 'eva-admin-',
     'executor_uid': 1001,
-    'dedicated_user': 'codex-house-01a16f9f',
-    'dedicated_uid': 977,
-    'expires_at': (1792941922 + 2443945 / 10000000),
-    'authorization': 'eva-equal-administrative-delegation-20261025',
+    'dedicated_user': '${ADMIN_DELEGATE_USER}',
+    'dedicated_uid': int('${ADMIN_DELEGATE_UID}'),
+    'expires_at': float('${ADMIN_DELEGATION_EXPIRES_AT}'),
+    'authorization': '${ADMIN_DELEGATION_AUTHORIZATION}',
 }
 
 
@@ -279,12 +279,18 @@ def handle(name, args, old):
                                                 'codex_task_reconcile', 'codex_task_revoke'))
     admission_closed = bool(legacy.get('_observation_only') or not p['enabled'] or
                             (STATE / 'revoked').exists())
+    delegation = p.get('admin_delegation')
+    administrative_closed = bool(admission_closed or delegation != ADMIN_DELEGATION or
+        delegation.get('enabled') is not True or time.time() >= delegation['expires_at'])
+    legacy_send_closed = bool(admission_closed or legacy.get('allow_send', True) is not True)
     with locked(read_only=name == 'codex_task_list'):
         if name == 'codex_task_list':
             import task_list
             # No Store constructor, DDL, receipt writes, resume or inference.
             return task_list.collect(args, __import__(__name__), lambda q: rpc(q, legacy, old),
-                                     admission_closed=admission_closed)
+                                     admission_closed=admission_closed,
+                                     administrative_closed=administrative_closed,
+                                     legacy_send_closed=legacy_send_closed)
         db = store(p)
         try:
             invoke = lambda q: rpc(bind_profile(q, db, p, args), legacy, old)
@@ -325,9 +331,15 @@ def handle(name, args, old):
                     counts = db.db.execute("SELECT count(*),sum(state!='not_dispatched'),sum(turn IS NOT NULL) FROM sends WHERE task=?", (args['operation_id'],)).fetchone()
                     row['dispatch_evidence'] = {'attempt_receipts': counts[0],
                         'dispatch_intent_rows': counts[1] or 0, 'recorded_turns': counts[2] or 0}
-                    row['send_admission'] = 'closed' if admission_closed or row.get('state') in ('cancelled_before_first_send','creation_lost_before_send') else 'fresh_preflight_required'
+                    task_record = db.row('tasks', args['operation_id'])
+                    profile_closed = admission_closed or bool(task_record and
+                        task_record['task_key'].startswith(ADMIN_DELEGATION['task_key_prefix']) and
+                        administrative_closed)
+                    row['send_admission'] = 'closed' if profile_closed or row.get('state') in ('cancelled_before_first_send','creation_lost_before_send') else 'fresh_preflight_required'
                     row['notLoaded_is_terminal'] = False
-                    row['observation_without_admission'] = admission_closed
+                    row['observation_without_admission'] = profile_closed
+                    row['workspace_admission_closed'] = admission_closed
+                    row['administrative_admission_closed'] = administrative_closed
                     return row
                 try:
                     row = response(db.observe(args['operation_id'], invoke))
@@ -336,7 +348,12 @@ def handle(name, args, old):
                         raise
                     row = response(db.row('sends', args['operation_id']))
                     row['collection_error'] = 'live_observation_unavailable_cached_state_only'
-                row['observation_without_admission'] = admission_closed
+                task_record = db.row('tasks', row['task']) if row.get('task') else None
+                row['observation_without_admission'] = admission_closed or bool(task_record and
+                    task_record['task_key'].startswith(ADMIN_DELEGATION['task_key_prefix']) and
+                    administrative_closed)
+                row['workspace_admission_closed'] = admission_closed
+                row['administrative_admission_closed'] = administrative_closed
                 return row
             if name == 'codex_task_reconcile':
                 if not db.row('sends', args['operation_id']):
@@ -357,7 +374,7 @@ def handle(name, args, old):
 
 
 COORDINATOR_THREAD = '${AUTHORIZED_THREAD_ID_3}'
-COORDINATOR_REPORT = Path('/home/gabriel/smart-home-proactive-review-20261023/evidence/coordinator-thread-summary-20261025.json')
+COORDINATOR_REPORT = Path('${COORDINATOR_REPORT_PATH}')
 COORDINATION_WORK = frozenset(('owner_thread_access', 'icloud_core_compatibility', 'offsite_integrity',
     'acceptance_capture', 'event_latency_observation', 'listener_recovery_guard', 'final_goal_audit'))
 COORDINATION_COMPLETED = frozenset(('owner_thread_access', 'events_retained_pending_separation',

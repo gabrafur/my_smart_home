@@ -314,10 +314,30 @@ class Store:
         row = self.row('sends', op)
         need(row and row['state'] in (*TERMINAL, 'not_dispatched') and row['result'], 'not_terminal')
         need(fingerprint(json.loads(row['result'])) == result_hash, 'result_hash_conflict')
-        if row['reconciled']:
+        if row['reconciled'] and row['state'] != 'not_dispatched':
             return {'operation_id': op, 'reconciled': True, 'result_hash': result_hash}
         def finish():
-            self.db.execute('UPDATE sends SET reconciled=1 WHERE id=?', (op,))
-            self.audit(op, 'centrally_reconciled')
+            current = self.row('sends', op)
+            need(current and current['task'] == row['task'] and current['turn'] == row['turn']
+                 and current['state'] == row['state'] and current['result'] == row['result']
+                 and fingerprint(json.loads(current['result'])) == result_hash, 'result_changed')
+            if current['state'] == 'not_dispatched':
+                proof = json.loads(current['result'])
+                need(isinstance(proof, dict) and proof.get('operation_state') == 'not_dispatched'
+                     and proof.get('send_called') is False and proof.get('execution_proven') is False
+                     and current['turn'] is None, 'not_dispatched_proof_unconfirmed')
+                task = self.row('tasks', current['task'])
+                need(task is not None and task['state'] == 'created' and task['thread']
+                     and UUID.fullmatch(task['thread']), 'task_not_admitted')
+                if not task['reconciled']:
+                    marks = ','.join('?' for _ in BUSY)
+                    need(not self.db.execute('SELECT 1 FROM sends WHERE task=? AND id!=? AND '
+                        '(state IN (' + marks + ') OR reconciled=0) LIMIT 1',
+                        (current['task'], op, *BUSY)).fetchone(), 'task_has_other_unresolved_sends')
+                    self.db.execute('UPDATE tasks SET reconciled=1 WHERE id=? AND reconciled=0', (current['task'],))
+                    self.audit(op, 'no_dispatch_reservation_released')
+            if not current['reconciled']:
+                self.db.execute('UPDATE sends SET reconciled=1 WHERE id=?', (op,))
+                self.audit(op, 'centrally_reconciled')
         self.transaction(finish)
         return {'operation_id': op, 'reconciled': True, 'result_hash': result_hash}

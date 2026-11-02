@@ -8,6 +8,11 @@ legacy.__file__=str(Path(__file__).parent.parent/'legacy-control/codex_control.p
 source=Path(legacy.__file__).read_text()
 for index,suffix in [(1,'10'),(2,'20'),(3,'30')]:
  source=source.replace('${AUTHORIZED_THREAD_ID_'+str(index)+'}','00000000-0000-7000-8000-'+suffix.zfill(12))
+for marker,value in {
+ '${ADMIN_DELEGATE_UID}':'60001', '${ADMIN_DELEGATION_EXPIRES_AT}':'4102444800',
+ '${ADMIN_DELEGATE_USER}':'synthetic-delegate', '${ADMIN_DELEGATION_AUTHORIZATION}':'synthetic_fixture_only',
+ '${COORDINATOR_REPORT_PATH}':'/synthetic/coordinator-summary.json',
+}.items():source=source.replace(marker,value)
 exec(compile(source,legacy.__file__,'exec'),legacy.__dict__)
 class OwnerAccessTests(unittest.TestCase):
  def test_owner_read_status_allowed_without_operation_send_scope_preserved(self):

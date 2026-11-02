@@ -16,6 +16,15 @@ def load_local(name, filename, bindings=None):
     for index, suffix in [(1, '10'), (2, '20'), (3, '30')]:
         source = source.replace('${AUTHORIZED_THREAD_ID_' + str(index) + '}',
                                 '00000000-0000-7000-8000-' + suffix.zfill(12))
+    synthetic_bindings = {
+        '${ADMIN_DELEGATE_UID}': '60001',
+        '${ADMIN_DELEGATION_EXPIRES_AT}': '4102444800',
+        '${ADMIN_DELEGATE_USER}': 'synthetic-delegate',
+        '${ADMIN_DELEGATION_AUTHORIZATION}': 'synthetic_fixture_only',
+        '${COORDINATOR_REPORT_PATH}': '/synthetic/coordinator-summary.json',
+    }
+    for marker, value in synthetic_bindings.items():
+        source = source.replace(marker, value)
     spec = importlib.util.spec_from_loader(name, loader=None)
     module = importlib.util.module_from_spec(spec)
     module.__file__ = str(Path(__file__).with_name(filename))
