@@ -35,7 +35,7 @@
         "type": "tab",
         "label": "iluminacao_externa",
         "disabled": false,
-        "info": "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa."
+        "info": "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle, janela finita de confirmação e TTL de recovery independentes; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa."
     },
     {
         "id": "alarm_house_tab",
@@ -2959,12 +2959,13 @@
             "external_visual_policy_ttl",
             "external_visual_policy_validate",
             "external_visual_policy_store",
-            "external_visual_policy_reject"
+            "external_visual_policy_reject",
+            "external_visual_policy_window"
         ],
         "x": 94,
         "y": 619,
         "w": 892,
-        "h": 212
+        "h": 262
     },
     {
         "id": "external_visual_test_group",
@@ -2987,7 +2988,11 @@
             "external_visual_test_sunrise",
             "external_visual_test_sunrise_out",
             "external_visual_dry_in",
-            "external_visual_dry_terminal"
+            "external_visual_dry_terminal",
+            "external_visual_test_mismatch",
+            "external_visual_test_mismatch_out",
+            "external_visual_test_unknown",
+            "external_visual_test_unknown_out"
         ],
         "x": 1244,
         "y": 619,
@@ -11749,8 +11754,8 @@
         "overrideDelay": true,
         "units": "s",
         "reset": "",
-        "bytopic": "all",
-        "topic": "topic",
+        "bytopic": "topic",
+        "topic": "external_confirmation_scope",
         "outputs": 1,
         "x": 2470,
         "y": 160,
@@ -11805,7 +11810,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "Montar aviso confirmado",
-        "func": "// Matching cached states are not a fresh command acknowledgement or a failure.\nconst testMode = msg._external_command?.test_mode === true || msg._external_lighting_test === true;\nconst expected = msg.expected_state || msg.payload?.expected_state;\nconst issuedAt = Number(msg.external_issued_at);\nconst now = Date.now();\nconst labels = { lampada_varanda: 'varanda', lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim', abajour_sala_de_estar: 'abajur' };\nconst observations = msg.payload?.observations ?? {};\nif (!['on', 'off'].includes(expected) || !Number.isFinite(issuedAt) || issuedAt <= 0 || issuedAt > now) {\n    node.error('external_lighting_confirmation_invalid_context', { _msgid: msg._msgid, _global_observer_test: testMode, payload: { test_mode: testMode } });\n    return [null, null];\n}\nconst devices = Object.entries(labels).map(([id, label]) => {\n    const report = observations[id];\n    const state = ['on', 'off', 'unknown', 'unavailable'].includes(report?.state) ? report.state : 'unknown';\n    const at = Date.parse(report?.observed_at);\n    const reason = !report ? 'missing' : state === 'unavailable' ? 'unavailable' :\n        state === 'unknown' ? 'unknown' : !Number.isFinite(at) || at < issuedAt || at > now ? 'stale' :\n        state !== expected ? 'mismatch' : 'confirmed';\n    return { id, label, expected, state, observed_at: Number.isFinite(at) ? at : null, reason };\n});\nconst failed = devices.filter(d => d.reason !== 'confirmed');\nconst matching = devices.every(d => d.state === expected);\n// An unavailable/unknown/missing/stale report is inconclusive, not a failed light.\nconst actionable = failed.filter(d => d.reason === 'mismatch');\nmsg.external_confirmation = { issued_at: issuedAt, observed_at: now, devices,\n    status: failed.length ? 'unconfirmed' : 'confirmed', matching_reported_states: matching,\n    coverage: ['ha_entity_report_after_command', 'not_physical_light_or_human_ack'] };\nconst key = testMode ? 'external_confirmation_incident_v1__test' : 'external_confirmation_incident_v1';\nconst previous = testMode ? flow.get(key) : flow.get(key, 'persistent');\nif (previous?.issued_at > issuedAt) return [null, null];\nif (!failed.length) {\n    if (testMode) flow.set('external_pending_v1__test', null);\n    else flow.set('external_pending_v1', null, 'persistent');\n}\nconst actionableSignature = actionable.map(d => `${d.id}:${d.reason}:${d.state}`).join('|');\n// Only a fresh on/off mismatch opens an incident. Migrate known mismatch\n// signatures, but never turn legacy unavailable/stale notices into recoveries.\nconst previousIncident = previous?.expected === expected && (previous?.version >= 3\n    ? previous.incident_open === true && previous.incident_kind === 'fresh_mismatch'\n    : previous?.failed === true && previous.signature?.split('|').some(item => /:mismatch:(on|off)$/.test(item)));\nconst signature = actionableSignature || (failed.length && previousIncident ? previous.signature : '');\nconst incidentOpen = actionable.length > 0 || failed.length > 0 && previousIncident === true;\nconst current = { issued_at: issuedAt, expected, failed: actionable.length > 0, signature,\n    incident_open: incidentOpen, incident_kind: incidentOpen ? 'fresh_mismatch' : null,\n    awaiting_fresh_report: failed.length > 0, observed_at: now, version: 3 };\nif (testMode) flow.set(key, current); else flow.set(key, current, 'persistent');\n// Persistent lifecycle: startup alone never emits a recovery. A change of intention\n// supersedes the old incident instead of claiming its original command succeeded.\nif (matching && failed.length) return [null, null];\nconst recovered = !failed.length && previousIncident === true;\nconst duplicate = previous?.expected === expected && previous?.signature === signature &&\n    (actionable.length ? previousIncident === true : previous?.failed === current.failed);\nif (actionable.length && !duplicate || recovered) {\n    const intention = expected === 'on' ? 'ligar' : 'desligar';\n    const detail = actionable.map(d => `${d.label}: esperado ${expected}, encontrado ${d.state} (${d.reason})`).join('; ');\n    const guidance = 'Uma leitura válida posterior ao comando difere do esperado; verifique o dispositivo.';\n    const message = failed.length\n        ? `Iluminação externa: não foi possível confirmar ${intention}. ${detail}. ${guidance} O comando não foi repetido.`\n        : `Iluminação externa: novos estados de todos os destinos confirmam ${intention}. Isso confirma o estado informado pelos dispositivos, não a emissão de luz.`;\n    const alertMsg = { ...msg, _global_observer_test: testMode,\n        payload: { test_mode: testMode, observer_kind: 'external_lighting_confirmation',\n            incident_key: 'exterior_light', recovery: recovered, mobile_notification: true },\n        alert: { title: recovered ? 'Iluminação externa confirmada' : 'Iluminação externa com estado diferente', message } };\n    return [null, alertMsg];\n}\nif (failed.length || duplicate || msg.source === 'sunrise') return [null, null];\nif (testMode) return [null, { ...msg, _global_observer_test: true, payload: { test_mode: true, observer_kind: 'external_lighting_confirmation', simulated: true, dispatched: false } }];\nmsg.notify_text = msg.notify_success || 'O estado informado da iluminação externa foi confirmado';\nreturn [msg, null];",
+        "func": "// Matching cached states are not a fresh command acknowledgement or a failure.\nconst testMode = msg._external_command?.test_mode === true || msg._external_lighting_test === true;\nconst expected = msg.expected_state || msg.payload?.expected_state;\nconst issuedAt = Number(msg.external_issued_at);\nconst now = Date.now();\nconst suffix = testMode ? '__test' : '';\nconst store = testMode ? undefined : 'persistent';\nconst pendingKey = 'external_pending_v1' + suffix;\nconst pending = flow.get(pendingKey, store);\nconst discard = reason => {\n    msg.external_confirmation = { operation_id: typeof msg.external_operation_id === 'string' ? msg.external_operation_id : null,\n        issued_at: Number.isFinite(issuedAt) ? issuedAt : null, observed_at: now,\n        status: 'unconfirmed', expectation_status: 'discarded', reason, devices: [],\n        coverage: ['current_command_expectation_only', 'not_device_failure_or_recovery'] };\n    return [null, null];\n};\nif (!pending) return discard('no_pending_expectation');\nconst epoch = flow.get('external_confirmation_epoch_v2' + suffix, 'memoryOnly');\nconst valid = pending.version === 2 && typeof pending.operation_id === 'string' &&\n    /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) && ['on', 'off'].includes(pending.expected) &&\n    Number.isFinite(pending.issued_at) && Number.isFinite(pending.verify_after) && Number.isFinite(pending.expires_at) &&\n    pending.issued_at < pending.verify_after && pending.verify_after < pending.expires_at &&\n    pending.issued_at <= now && typeof epoch === 'string' && pending.runtime_epoch === epoch;\nconst close = (status, reason) => {\n    flow.set(pendingKey, null, store);\n    flow.set('external_confirmation_expectation_v2' + suffix, { version: 2,\n        operation_id: typeof pending.operation_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) ? pending.operation_id : null,\n        status, reason, closed_at: now }, store);\n};\nif (!valid) {\n    close('discarded', 'legacy_or_runtime_context_invalid');\n    return discard('legacy_or_runtime_context_invalid');\n}\nif (now >= pending.expires_at) {\n    close('expired', 'deadline_elapsed');\n    const result = discard('deadline_elapsed');\n    msg.external_confirmation.expectation_status = 'expired';\n    return result;\n}\nif (msg.external_operation_id !== pending.operation_id || expected !== pending.expected ||\n    issuedAt !== pending.issued_at || Number(msg.external_verify_after) !== pending.verify_after ||\n    Number(msg.external_expires_at) !== pending.expires_at) return discard('replaced_or_unbound_callback');\nif (now < pending.verify_after) return discard('settle_window_not_reached');\nconst labels = { lampada_varanda: 'varanda', lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim', abajour_sala_de_estar: 'abajur' };\nconst observations = msg.payload?.observations ?? {};\nconst devices = Object.entries(labels).map(([id, label]) => {\n    const report = observations[id];\n    const state = ['on', 'off', 'unknown', 'unavailable'].includes(report?.state) ? report.state : 'unknown';\n    const at = Date.parse(report?.observed_at);\n    const reason = !report ? 'missing' : state === 'unavailable' ? 'unavailable' :\n        state === 'unknown' ? 'unknown' : !Number.isFinite(at) || at <= issuedAt || at > now || at >= pending.expires_at ? 'stale' :\n        state !== expected ? 'mismatch' : 'confirmed';\n    return { id, label, expected, state, observed_at: Number.isFinite(at) ? at : null, reason };\n});\nconst failed = devices.filter(d => d.reason !== 'confirmed');\nconst matching = devices.every(d => d.state === expected);\n// An unavailable/unknown/missing/stale report is inconclusive, not a failed light.\nconst actionable = failed.filter(d => d.reason === 'mismatch');\nconst expectationStatus = !failed.length ? 'confirmed' : actionable.length ? 'mismatch' : 'pending';\nmsg.external_confirmation = { operation_id: pending.operation_id, issued_at: issuedAt, observed_at: now, devices,\n    verify_after: pending.verify_after, expires_at: pending.expires_at, expectation_status: expectationStatus,\n    status: failed.length ? 'unconfirmed' : 'confirmed', matching_reported_states: matching,\n    coverage: ['ha_entity_report_after_command', 'not_physical_light_or_human_ack'] };\nconst key = testMode ? 'external_confirmation_incident_v1__test' : 'external_confirmation_incident_v1';\nconst previous = testMode ? flow.get(key) : flow.get(key, 'persistent');\nif (previous?.issued_at > issuedAt) return [null, null];\nif (expectationStatus !== 'pending') close(expectationStatus, expectationStatus === 'confirmed' ? 'fresh_reports_match' : 'fresh_mismatch');\nconst actionableSignature = actionable.map(d => `${d.id}:${d.reason}:${d.state}`).join('|');\n// Only a fresh on/off mismatch opens an incident. Migrate known mismatch\n// signatures, but never turn legacy unavailable/stale notices into recoveries.\nconst previousIncident = previous?.expected === expected && (previous?.version >= 3\n    ? previous.incident_open === true && previous.incident_kind === 'fresh_mismatch'\n    : previous?.failed === true && previous.signature?.split('|').some(item => /:mismatch:(on|off)$/.test(item)));\nconst signature = actionableSignature || (failed.length && previousIncident ? previous.signature : '');\nconst incidentOpen = actionable.length > 0 || failed.length > 0 && previousIncident === true;\nconst current = { operation_id: pending.operation_id, issued_at: issuedAt, expected, failed: actionable.length > 0, signature,\n    incident_open: incidentOpen, incident_kind: incidentOpen ? 'fresh_mismatch' : null,\n    awaiting_fresh_report: expectationStatus === 'pending', observed_at: now, version: 4 };\nif (testMode) flow.set(key, current); else flow.set(key, current, 'persistent');\n// Persistent lifecycle: startup alone never emits a recovery. A change of intention\n// supersedes the old incident instead of claiming its original command succeeded.\nif (matching && failed.length) return [null, null];\nconst recovered = !failed.length && previousIncident === true;\nconst duplicate = previous?.expected === expected && previous?.signature === signature &&\n    (actionable.length ? previousIncident === true : previous?.failed === current.failed);\nif (actionable.length && !duplicate || recovered) {\n    const intention = expected === 'on' ? 'ligar' : 'desligar';\n    const detail = actionable.map(d => `${d.label}: esperado ${expected}, encontrado ${d.state} (${d.reason})`).join('; ');\n    const guidance = 'Uma leitura válida posterior ao comando difere do esperado; verifique o dispositivo.';\n    const message = failed.length\n        ? `Iluminação externa: não foi possível confirmar ${intention}. ${detail}. ${guidance} O comando não foi repetido.`\n        : `Iluminação externa: novos estados de todos os destinos confirmam ${intention}. Isso confirma o estado informado pelos dispositivos, não a emissão de luz.`;\n    const alertMsg = { ...msg, _global_observer_test: testMode,\n        payload: { test_mode: testMode, observer_kind: 'external_lighting_confirmation',\n            incident_key: 'exterior_light', recovery: recovered, mobile_notification: true },\n        alert: { title: recovered ? 'Iluminação externa confirmada' : 'Iluminação externa com estado diferente', message } };\n    return [null, alertMsg];\n}\nif (failed.length || duplicate || msg.source === 'sunrise') return [null, null];\nif (testMode) return [null, { ...msg, _global_observer_test: true, payload: { test_mode: true, observer_kind: 'external_lighting_confirmation', simulated: true, dispatched: false } }];\nmsg.notify_text = msg.notify_success || 'O estado informado da iluminação externa foi confirmado';\nreturn [msg, null];",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
@@ -12228,7 +12233,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "Preparar confirmação pelo tempo visual",
-        "func": "const data = msg._external_command;\nmsg.delay = Number(data.policy.confirmation_settle_seconds) * 1000;\nmsg.external_issued_at = Date.now();\nmsg.external_operation_id = String(msg._msgid);\nconst pending = { expected: msg.expected_state, issued_at: msg.external_issued_at,\n    verify_after: msg.external_issued_at + msg.delay, operation_id: msg.external_operation_id };\nif (data.test_mode) flow.set('external_pending_v1__test', pending);\nelse flow.set('external_pending_v1', pending, 'persistent');\ndelete msg.reset;\nreturn msg;",
+        "func": "const data = msg._external_command;\nconst testMode = data.test_mode === true;\nconst settleSeconds = Number(data.policy.confirmation_settle_seconds);\nconst windowSeconds = Number(data.policy.confirmation_window_seconds);\nif (!Number.isInteger(settleSeconds) || settleSeconds < 1 || settleSeconds > 30 ||\n    !Number.isInteger(windowSeconds) || windowSeconds <= settleSeconds || windowSeconds > 300 ||\n    !['on', 'off'].includes(msg.expected_state) ||\n    typeof msg._msgid !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(msg._msgid)) {\n    node.error('external_lighting_confirmation_policy_or_identity_missing', { _global_observer_test: testMode, payload: { test_mode: testMode } });\n    return null;\n}\nmsg.delay = settleSeconds * 1000;\nmsg.external_issued_at = Date.now();\nmsg.external_operation_id = msg._msgid;\nmsg.external_verify_after = msg.external_issued_at + msg.delay;\nmsg.external_expires_at = msg.external_issued_at + windowSeconds * 1000;\nmsg.external_confirmation_scope = testMode ? 'test' : 'production';\nconst epochKey = 'external_confirmation_epoch_v2' + (testMode ? '__test' : '');\nlet epoch = flow.get(epochKey, 'memoryOnly');\nif (typeof epoch !== 'string') {\n    epoch = `${msg.external_issued_at}:${msg.external_operation_id}`;\n    flow.set(epochKey, epoch, 'memoryOnly');\n}\nconst pending = { version: 2, expected: msg.expected_state, issued_at: msg.external_issued_at,\n    verify_after: msg.external_verify_after, expires_at: msg.external_expires_at,\n    operation_id: msg.external_operation_id, runtime_epoch: epoch };\nif (testMode) flow.set('external_pending_v1__test', pending);\nelse flow.set('external_pending_v1', pending, 'persistent');\ndelete msg.reset;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -12249,7 +12254,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "Bloquear e cancelar confirmação pendente",
-        "func": "msg.zigbee_error = true;\nmsg.cancel_confirmation = true;\nmsg.reset = true;\nmsg.notify_text = \"Erro na rede Zigbee. A iluminação externa não foi acionada e o comando não será repetido.\";\nnode.status({ fill: \"red\", shape: \"ring\", text: \"comando bloqueado: Zigbee offline\" });\nreturn msg;",
+        "func": "msg.zigbee_error = true;\nmsg.cancel_confirmation = true;\nmsg.reset = true;\nconst testMode = msg._external_command?.test_mode === true;\nmsg.external_confirmation_scope = testMode ? 'test' : 'production';\nconst suffix = testMode ? '__test' : '';\nconst store = testMode ? undefined : 'persistent';\nconst pendingKey = 'external_pending_v1' + suffix;\nconst pending = flow.get(pendingKey, store);\nif (pending) {\n    flow.set(pendingKey, null, store);\n    flow.set('external_confirmation_expectation_v2' + suffix, { version: 2,\n        operation_id: typeof pending.operation_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) ? pending.operation_id : null,\n        status: 'cancelled', reason: 'Zigbee_command_blocked', closed_at: Date.now() }, store);\n}\nmsg.notify_text = \"Erro na rede Zigbee. A iluminação externa não foi acionada e o comando não será repetido.\";\nnode.status({ fill: \"red\", shape: \"ring\", text: \"comando bloqueado: Zigbee offline\" });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -12466,7 +12471,9 @@
         "g": "external_lighting_full_flow_group",
         "name": "Receber comandos TESTE",
         "links": [
-            "external_visual_test_command_out"
+            "external_visual_test_command_out",
+            "external_visual_test_mismatch_out",
+            "external_visual_test_unknown_out"
         ],
         "x": 945,
         "y": 280,
@@ -12545,7 +12552,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_visual_policy_group",
         "name": "Padrões e limites; inválidos preservam a última política válida.",
-        "info": "Confirmação: 5 s [1..30]. TTL do recovery: 12 h [1..24]. Valores inteiros.",
+        "info": "Acomodação: 5 s [1..30]. Janela de confirmação: 60 s [acomodação+1..300], contada desde a intenção. TTL do recovery: 12 h [1..24]; são responsabilidades independentes. Valores inteiros. Expiração e restart invalidam a expectativa sem comando ou alerta.",
         "x": 550,
         "y": 660,
         "wires": []
@@ -12616,7 +12623,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_visual_policy_group",
         "name": "Validar valor e limites",
-        "func": "const DEFAULTS = { confirmation_settle_seconds: 5, recovery_ttl_hours: 12 };\nconst LIMITS = { confirmation_settle_seconds: [1, 30], recovery_ttl_hours: [1, 24] };\nconst parameter = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[parameter];\nif (!bounds || !Number.isInteger(value) || value < bounds[0] || value > bounds[1]) {\n    msg.external_policy_rejection = { parameter, value: msg.payload, bounds, preserved: true };\n    return [null, msg];\n}\nconst previous = global.get(\"external_lighting_policy_v1\", \"persistent\");\nmsg.external_policy_candidate = { ...DEFAULTS,\n    ...(previous?.version === 1 && previous?.complete === true ? previous : {}),\n    [parameter]: value, version: 1, owner: \"node_red\", complete: true, updated_at: Date.now() };\nreturn [msg, null];",
+        "func": "const DEFAULTS = { confirmation_settle_seconds: 5, confirmation_window_seconds: 60, recovery_ttl_hours: 12 };\nconst LIMITS = { confirmation_settle_seconds: [1, 30], confirmation_window_seconds: [2, 300], recovery_ttl_hours: [1, 24] };\nconst parameter = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[parameter];\nif (!bounds || !Number.isInteger(value) || value < bounds[0] || value > bounds[1]) {\n    msg.external_policy_rejection = { parameter, value: msg.payload, bounds, preserved: true };\n    return [null, msg];\n}\nconst previous = global.get(\"external_lighting_policy_v1\", \"persistent\");\nconst candidate = { ...DEFAULTS,\n    ...(previous?.version === 1 && previous?.complete === true ? previous : {}),\n    [parameter]: value, version: 1, owner: \"node_red\", complete: true, updated_at: Date.now() };\nif (!Object.entries(LIMITS).every(([key, range]) => Number.isInteger(candidate[key]) &&\n    candidate[key] >= range[0] && candidate[key] <= range[1]) ||\n    candidate.confirmation_window_seconds <= candidate.confirmation_settle_seconds) {\n    msg.external_policy_rejection = { parameter, value: msg.payload, bounds,\n        reason: 'confirmation_window_must_exceed_settle', preserved: true };\n    return [null, msg];\n}\nmsg.external_policy_candidate = candidate;\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -12673,7 +12680,7 @@
         "type": "comment",
         "z": "ce258dec9814b96b",
         "g": "external_visual_test_group",
-        "name": "Ordem: reset; comando online; bloqueio offline; recovery. Nenhum MQTT, push ou Alexa.",
+        "name": "Ordem: reset; online; offline; mismatch; unknown; recovery. Sem MQTT, push ou Alexa.",
         "x": 2020,
         "y": 660,
         "wires": []
@@ -12710,7 +12717,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_visual_test_group",
         "name": "Resetar somente estado sintético",
-        "func": "flow.set(\"external_lighting_zigbee_state__test\", null);\nflow.set(\"external_lighting_recovery_pending_v1__test\", null);\nflow.set(\"external_lighting_recovery_prompted_date_v1__test\", null);\nflow.set(\"external_lighting_last_dry_run_v1\", { version: 1, reset: true, simulated: true, dispatched: false });\nreturn null;",
+        "func": "flow.set(\"external_lighting_zigbee_state__test\", null);\nflow.set(\"external_lighting_recovery_pending_v1__test\", null);\nflow.set(\"external_lighting_recovery_prompted_date_v1__test\", null);\nfor (const key of ['external_pending_v1__test', 'external_confirmation_incident_v1__test', 'external_confirmation_expectation_v2__test']) flow.set(key, null);\nflow.set('external_confirmation_epoch_v2__test', null, 'memoryOnly');\nflow.set(\"external_lighting_last_dry_run_v1\", { version: 1, reset: true, simulated: true, dispatched: false });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -84494,7 +84501,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "TESTE: observações sem consultar dispositivos",
-        "func": "if (msg._external_command?.test_mode !== true) return null;\nconst expected = msg.expected_state;\nconst observedAt = new Date().toISOString();\nconst ids = ['lampada_varanda', 'lampadas_garagem', 'refletores_jardim', 'abajour_sala_de_estar'];\nmsg.payload = { test_mode: true, observations: Object.fromEntries(ids.map(id => [id,\n    msg._external_test_observations?.[id] ?? { state: expected, observed_at: observedAt }])) };\nmsg._external_lighting_test = true;\nreturn msg;",
+        "func": "if (msg._external_command?.test_mode !== true) return null;\nconst expected = msg.expected_state;\nconst observedAt = new Date().toISOString();\nconst scenario = msg._external_test_scenario;\nconst scenarioState = scenario === 'mismatch' ? (expected === 'on' ? 'off' : 'on') : scenario === 'unknown' ? 'unknown' : null;\nconst ids = ['lampada_varanda', 'lampadas_garagem', 'refletores_jardim', 'abajour_sala_de_estar'];\nmsg.payload = { test_mode: true, observations: Object.fromEntries(ids.map(id => [id,\n    msg._external_test_observations?.[id] ?? { state: id === ids[0] && scenarioState ? scenarioState : expected, observed_at: observedAt }])) };\nmsg._external_lighting_test = true;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -84572,7 +84579,7 @@
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
         "name": "Reconciliar somente intenção pendente",
-        "func": "// State events can reconcile a pending intention; this function never sends a command.\nconst pending = flow.get('external_pending_v1', 'persistent');\nif (!pending || Date.now() < pending.verify_after || !['on', 'off'].includes(pending.expected)) return null;\nmsg.expected_state = pending.expected;\nmsg.external_issued_at = pending.issued_at;\nmsg.external_operation_id = pending.operation_id;\nmsg.source = 'state_reconciliation';\nmsg._external_command = { test_mode: false };\nreturn msg;",
+        "func": "// State events can reconcile only a live command expectation; never send a command.\nconst testMode = msg._external_lighting_test === true;\nconst suffix = testMode ? '__test' : '';\nconst store = testMode ? undefined : 'persistent';\nconst key = 'external_pending_v1' + suffix;\nconst pending = flow.get(key, store);\nif (!pending) return null;\nconst now = Date.now();\nconst epoch = flow.get('external_confirmation_epoch_v2' + suffix, 'memoryOnly');\nconst valid = pending.version === 2 && typeof pending.operation_id === 'string' &&\n    /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) && ['on', 'off'].includes(pending.expected) &&\n    Number.isFinite(pending.issued_at) && Number.isFinite(pending.verify_after) && Number.isFinite(pending.expires_at) &&\n    pending.issued_at < pending.verify_after && pending.verify_after < pending.expires_at &&\n    pending.issued_at <= now && typeof epoch === 'string' && pending.runtime_epoch === epoch;\nif (!valid || now >= pending.expires_at) {\n    flow.set(key, null, store);\n    flow.set('external_confirmation_expectation_v2' + suffix, { version: 2,\n        operation_id: typeof pending.operation_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) ? pending.operation_id : null,\n        status: valid ? 'expired' : 'discarded', reason: valid ? 'deadline_elapsed' : 'legacy_or_runtime_context_invalid',\n        closed_at: now }, store);\n    return null;\n}\nif (now < pending.verify_after) return null;\nmsg.expected_state = pending.expected;\nmsg.external_issued_at = pending.issued_at;\nmsg.external_operation_id = pending.operation_id;\nmsg.external_verify_after = pending.verify_after;\nmsg.external_expires_at = pending.expires_at;\nmsg.external_confirmation_scope = testMode ? 'test' : 'production';\nmsg.source = 'state_reconciliation';\nmsg._external_command = { test_mode: testMode };\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -97381,5 +97388,159 @@
                 "host_obs_observation"
             ]
         ]
+    },
+    {
+        "id": "external_visual_policy_window",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_policy_group",
+        "name": "Janela = 60 s [acomodação+1..300]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.2",
+        "topic": "confirmation_window_seconds",
+        "payload": "60",
+        "payloadType": "num",
+        "x": 260,
+        "y": 840,
+        "wires": [
+            [
+                "external_visual_policy_validate"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_mismatch",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "TESTE 6: divergência fresca",
+        "props": [
+            {
+                "p": "payload",
+                "v": "ON",
+                "vt": "str"
+            },
+            {
+                "p": "expected_state",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "p": "_external_lighting_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_external_test_zigbee_state",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "_external_test_scenario",
+                "v": "mismatch",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2610,
+        "y": 720,
+        "wires": [
+            [
+                "external_visual_test_mismatch_out"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_mismatch_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "Cenário TESTE → pipeline",
+        "mode": "link",
+        "links": [
+            "external_visual_test_command_in"
+        ],
+        "x": 2850,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "external_visual_test_unknown",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "TESTE 7: observação desconhecida",
+        "props": [
+            {
+                "p": "payload",
+                "v": "ON",
+                "vt": "str"
+            },
+            {
+                "p": "expected_state",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "p": "_external_lighting_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_external_test_zigbee_state",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "_external_test_scenario",
+                "v": "unknown",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2610,
+        "y": 780,
+        "wires": [
+            [
+                "external_visual_test_unknown_out"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_unknown_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "Cenário TESTE → pipeline",
+        "mode": "link",
+        "links": [
+            "external_visual_test_command_in"
+        ],
+        "x": 2850,
+        "y": 780,
+        "wires": []
     }
 ]

@@ -90,8 +90,8 @@ const confirmation = required("ext_wait_confirm");
 Object.assign(confirmation, {
   type: "trigger", name: "Aguardar confirmação mais recente — 5 s padrão",
   op1: "", op2: "", op1type: "nul", op2type: "payl", duration: "5",
-  extend: true, overrideDelay: true, units: "s", reset: "", bytopic: "all",
-  topic: "topic", outputs: 1, x: 2470, y: 160,
+  extend: true, overrideDelay: true, units: "s", reset: "", bytopic: "topic",
+  topic: "external_confirmation_scope", outputs: 1, x: 2470, y: 160,
   wires: [["external_visual_confirmation_mode"]],
 });
 for (const field of ["func", "timeout", "noerr", "initialize", "finalize", "libs"]) delete confirmation[field];
@@ -195,11 +195,12 @@ const policy = group("external_visual_policy_group", "2. Política visual — co
   64, 619, 1100, 262, "#b58b3f");
 grouped(policy.id, { id: "external_visual_policy_note", type: "comment", z: TAB, g: policy.id,
   name: "Padrões e limites; inválidos preservam a última política válida.",
-  info: "Confirmação: 5 s [1..30]. TTL do recovery: 12 h [1..24]. Valores inteiros.",
+  info: "Acomodação: 5 s [1..30]. Janela de confirmação: 60 s [acomodação+1..300], contada desde a intenção. TTL do recovery: 12 h [1..24]; são responsabilidades independentes. Valores inteiros. Expiração e restart invalidam a expectativa sem comando ou alerta.",
   x: 550, y: 660, wires: [] });
 for (const [id, name, topic, payload, y] of [
   ["external_visual_policy_settle", "Confirmação = 5 s [1..30]", "confirmation_settle_seconds", "5", 720],
   ["external_visual_policy_ttl", "TTL recovery = 12 h [1..24]", "recovery_ttl_hours", "12", 780],
+  ["external_visual_policy_window", "Janela = 60 s [acomodação+1..300]", "confirmation_window_seconds", "60", 840],
 ]) grouped(policy.id, { id, type: "inject", z: TAB, g: policy.id, name,
   props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "",
   once: true, onceDelay: "0.2", topic, payload, payloadType: "num", x: 260, y,
@@ -215,7 +216,7 @@ fn("external_visual_policy_reject", policy.id, "Rejeitar sem substituir",
 const tests = group("external_visual_test_group", "3. TESTES — pipeline real até dry-run",
   1220, 619, 1700, 302, "#4b93d1");
 grouped(tests.id, { id: "external_visual_test_note", type: "comment", z: TAB, g: tests.id,
-  name: "Ordem: reset; comando online; bloqueio offline; recovery. Nenhum MQTT, push ou Alexa.",
+  name: "Ordem: reset; online; offline; mismatch; unknown; recovery. Sem MQTT, push ou Alexa.",
   x: 2020, y: 660, wires: [] });
 grouped(tests.id, { id: "external_visual_test_reset", type: "inject", z: TAB, g: tests.id,
   name: "TESTE 1: reset", props: [{ p: "payload" }], repeat: "", crontab: "", once: false,
@@ -251,13 +252,26 @@ grouped(tests.id, { id: "external_visual_test_sunrise", type: "inject", z: TAB, 
   x: 2010, y: 840, wires: [["external_visual_test_sunrise_out"]] });
 linkOut("external_visual_test_sunrise_out", tests.id, "Amanhecer TESTE → pipeline",
   "external_visual_sunrise_in", 2260, 840);
+for (const [id, name, scenario, y] of [
+  ["external_visual_test_mismatch", "TESTE 6: divergência fresca", "mismatch", 720],
+  ["external_visual_test_unknown", "TESTE 7: observação desconhecida", "unknown", 780],
+]) {
+  grouped(tests.id, { id, type: "inject", z: TAB, g: tests.id, name,
+    props: [{ p: "payload", v: "ON", vt: "str" }, { p: "expected_state", v: "on", vt: "str" },
+      { p: "_external_lighting_test", v: "true", vt: "bool" }, { p: "_external_test_zigbee_state", v: "online", vt: "str" },
+      { p: "_external_test_scenario", v: scenario, vt: "str" }],
+    repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 2610, y, wires: [[id + "_out"]] });
+  linkOut(id + "_out", tests.id, "Cenário TESTE → pipeline", "external_visual_test_command_in", 2850, y);
+  required("external_visual_test_command_in").links.push(id + "_out");
+}
 linkIn("external_visual_dry_in", tests.id, "Receber efeitos simulados",
   ["external_visual_command_dry_out", "external_visual_notification_dry_out", "external_visual_recovery_dry_out"],
   "external_visual_dry_terminal", 2470, 840);
 fn("external_visual_dry_terminal", tests.id, "TESTE FINAL: nenhum efeito enviado",
   "external-lighting-dry-run.js", 0, 2730, 840, []);
 
-required(TAB).info = "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa.";
+required(TAB).info = "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle, janela finita de confirmação e TTL de recovery independentes; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa.";
 const originalBlocked = originalFlows.find(n => n.id === "external_visual_command_blocked");
 if (originalBlocked) required("external_visual_command_blocked").wires = structuredClone(originalBlocked.wires);
 flows = reconcileGeneratedFlows(originalFlows, flows, {

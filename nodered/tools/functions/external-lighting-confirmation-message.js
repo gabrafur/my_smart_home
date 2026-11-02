@@ -3,19 +3,53 @@ const testMode = msg._external_command?.test_mode === true || msg._external_ligh
 const expected = msg.expected_state || msg.payload?.expected_state;
 const issuedAt = Number(msg.external_issued_at);
 const now = Date.now();
+const suffix = testMode ? '__test' : '';
+const store = testMode ? undefined : 'persistent';
+const pendingKey = 'external_pending_v1' + suffix;
+const pending = flow.get(pendingKey, store);
+const discard = reason => {
+    msg.external_confirmation = { operation_id: typeof msg.external_operation_id === 'string' ? msg.external_operation_id : null,
+        issued_at: Number.isFinite(issuedAt) ? issuedAt : null, observed_at: now,
+        status: 'unconfirmed', expectation_status: 'discarded', reason, devices: [],
+        coverage: ['current_command_expectation_only', 'not_device_failure_or_recovery'] };
+    return [null, null];
+};
+if (!pending) return discard('no_pending_expectation');
+const epoch = flow.get('external_confirmation_epoch_v2' + suffix, 'memoryOnly');
+const valid = pending.version === 2 && typeof pending.operation_id === 'string' &&
+    /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) && ['on', 'off'].includes(pending.expected) &&
+    Number.isFinite(pending.issued_at) && Number.isFinite(pending.verify_after) && Number.isFinite(pending.expires_at) &&
+    pending.issued_at < pending.verify_after && pending.verify_after < pending.expires_at &&
+    pending.issued_at <= now && typeof epoch === 'string' && pending.runtime_epoch === epoch;
+const close = (status, reason) => {
+    flow.set(pendingKey, null, store);
+    flow.set('external_confirmation_expectation_v2' + suffix, { version: 2,
+        operation_id: typeof pending.operation_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) ? pending.operation_id : null,
+        status, reason, closed_at: now }, store);
+};
+if (!valid) {
+    close('discarded', 'legacy_or_runtime_context_invalid');
+    return discard('legacy_or_runtime_context_invalid');
+}
+if (now >= pending.expires_at) {
+    close('expired', 'deadline_elapsed');
+    const result = discard('deadline_elapsed');
+    msg.external_confirmation.expectation_status = 'expired';
+    return result;
+}
+if (msg.external_operation_id !== pending.operation_id || expected !== pending.expected ||
+    issuedAt !== pending.issued_at || Number(msg.external_verify_after) !== pending.verify_after ||
+    Number(msg.external_expires_at) !== pending.expires_at) return discard('replaced_or_unbound_callback');
+if (now < pending.verify_after) return discard('settle_window_not_reached');
 const labels = { lampada_varanda: 'varanda', lampadas_garagem: 'garagem',
     refletores_jardim: 'jardim', abajour_sala_de_estar: 'abajur' };
 const observations = msg.payload?.observations ?? {};
-if (!['on', 'off'].includes(expected) || !Number.isFinite(issuedAt) || issuedAt <= 0 || issuedAt > now) {
-    node.error('external_lighting_confirmation_invalid_context', { _msgid: msg._msgid, _global_observer_test: testMode, payload: { test_mode: testMode } });
-    return [null, null];
-}
 const devices = Object.entries(labels).map(([id, label]) => {
     const report = observations[id];
     const state = ['on', 'off', 'unknown', 'unavailable'].includes(report?.state) ? report.state : 'unknown';
     const at = Date.parse(report?.observed_at);
     const reason = !report ? 'missing' : state === 'unavailable' ? 'unavailable' :
-        state === 'unknown' ? 'unknown' : !Number.isFinite(at) || at < issuedAt || at > now ? 'stale' :
+        state === 'unknown' ? 'unknown' : !Number.isFinite(at) || at <= issuedAt || at > now || at >= pending.expires_at ? 'stale' :
         state !== expected ? 'mismatch' : 'confirmed';
     return { id, label, expected, state, observed_at: Number.isFinite(at) ? at : null, reason };
 });
@@ -23,16 +57,15 @@ const failed = devices.filter(d => d.reason !== 'confirmed');
 const matching = devices.every(d => d.state === expected);
 // An unavailable/unknown/missing/stale report is inconclusive, not a failed light.
 const actionable = failed.filter(d => d.reason === 'mismatch');
-msg.external_confirmation = { issued_at: issuedAt, observed_at: now, devices,
+const expectationStatus = !failed.length ? 'confirmed' : actionable.length ? 'mismatch' : 'pending';
+msg.external_confirmation = { operation_id: pending.operation_id, issued_at: issuedAt, observed_at: now, devices,
+    verify_after: pending.verify_after, expires_at: pending.expires_at, expectation_status: expectationStatus,
     status: failed.length ? 'unconfirmed' : 'confirmed', matching_reported_states: matching,
     coverage: ['ha_entity_report_after_command', 'not_physical_light_or_human_ack'] };
 const key = testMode ? 'external_confirmation_incident_v1__test' : 'external_confirmation_incident_v1';
 const previous = testMode ? flow.get(key) : flow.get(key, 'persistent');
 if (previous?.issued_at > issuedAt) return [null, null];
-if (!failed.length) {
-    if (testMode) flow.set('external_pending_v1__test', null);
-    else flow.set('external_pending_v1', null, 'persistent');
-}
+if (expectationStatus !== 'pending') close(expectationStatus, expectationStatus === 'confirmed' ? 'fresh_reports_match' : 'fresh_mismatch');
 const actionableSignature = actionable.map(d => `${d.id}:${d.reason}:${d.state}`).join('|');
 // Only a fresh on/off mismatch opens an incident. Migrate known mismatch
 // signatures, but never turn legacy unavailable/stale notices into recoveries.
@@ -41,9 +74,9 @@ const previousIncident = previous?.expected === expected && (previous?.version >
     : previous?.failed === true && previous.signature?.split('|').some(item => /:mismatch:(on|off)$/.test(item)));
 const signature = actionableSignature || (failed.length && previousIncident ? previous.signature : '');
 const incidentOpen = actionable.length > 0 || failed.length > 0 && previousIncident === true;
-const current = { issued_at: issuedAt, expected, failed: actionable.length > 0, signature,
+const current = { operation_id: pending.operation_id, issued_at: issuedAt, expected, failed: actionable.length > 0, signature,
     incident_open: incidentOpen, incident_kind: incidentOpen ? 'fresh_mismatch' : null,
-    awaiting_fresh_report: failed.length > 0, observed_at: now, version: 3 };
+    awaiting_fresh_report: expectationStatus === 'pending', observed_at: now, version: 4 };
 if (testMode) flow.set(key, current); else flow.set(key, current, 'persistent');
 // Persistent lifecycle: startup alone never emits a recovery. A change of intention
 // supersedes the old incident instead of claiming its original command succeeded.

@@ -127,6 +127,18 @@ for (const [name, script] of [
   assert.equal(fs.readFileSync(target, "utf8"), firstText, `${name}: segunda execução não foi idempotente`);
 }
 
+// API CAS appends new nodes after generated routes; nested helpers must not
+// replace the original input ordering with an intermediate rebuilt array.
+const trailingTarget = path.join(temporaryDirectory, "observer-appended.json");
+const trailingInput = structuredClone(baseline);
+trailingInput.push({id:"generator_stability_trailing_comment",type:"comment",
+  z:"ce258dec9814b96b",g:"external_visual_test_group",name:"synthetic trailing node",
+  x:300,y:100,wires:[]});
+trailingInput.find(n=>n.id==="external_visual_test_group").nodes.push("generator_stability_trailing_comment");
+fs.writeFileSync(trailingTarget,JSON.stringify(trailingInput,null,4)+"\n");
+run("install-global-flow-observer.mjs",trailingTarget);
+assertStableStructure(trailingInput,JSON.parse(fs.readFileSync(trailingTarget,"utf8")),"observer after API append");
+
 // A cadeia pública deve ser byte a byte neutra e manter o mesmo hash em duas execuções.
 const updateTarget = path.join(temporaryDirectory, "update-location.json");
 fs.writeFileSync(updateTarget, baselineText);

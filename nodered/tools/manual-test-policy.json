@@ -1,641 +1,643 @@
 {
-    "version": 2,
-    "tabs": {
-        "notification_hub_mobile_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "notification_hub_mobile_test_group",
-                "notification_hub_mobile_test_primary",
-                "notification_hub_mobile_test_secondary",
-                "notification_hub_mobile_test_both",
-                "notification_hub_mobile_test_invalid",
-                "notification_hub_mobile_test_startup",
-                "notification_hub_mobile_history_test"
-            ],
-            "automated_test": "test-notification-hubs.mjs",
-            "dry_run_terminal_ids": [
-                "notification_hub_mobile_dry_run_assert",
-                "notification_hub_mobile_history_dry"
-            ],
-            "reason": "Destinat\u00e1rio prim\u00e1rio, secund\u00e1rio, ambos explicitamente e contrato sem destinat\u00e1rio atravessam o mesmo validador e roteamento do hub; todos terminam com simulated:true e dispatched:false, sem chamar o Home Assistant. O teste de hist\u00f3rico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica reten\u00e7\u00e3o de 7 dias em diret\u00f3rio tempor\u00e1rio."
-        },
-        "notification_hub_alexa_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "notification_hub_alexa_test_group",
-                "notification_hub_alexa_test_valid",
-                "notification_hub_alexa_test_invalid",
-                "notification_hub_alexa_dashboard_test_valid",
-                "notification_hub_alexa_dashboard_test_empty",
-                "notification_hub_alexa_history_test"
-            ],
-            "automated_test": "test-notification-hubs.mjs",
-            "dry_run_terminal_ids": [
-                "notification_hub_alexa_dry_run_assert",
-                "notification_hub_alexa_history_dry"
-            ],
-            "reason": "Target l\u00f3gico v\u00e1lido e inv\u00e1lido, mensagem digitada e texto vazio atravessam o contrato real do hub com test_mode e terminam com simulated:true e dispatched:false, sem acionar qualquer Alexa. O teste de hist\u00f3rico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica reten\u00e7\u00e3o de 7 dias em diret\u00f3rio tempor\u00e1rio."
-        },
-        "notification_hub_persistent_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "notification_hub_persistent_test_group",
-                "notification_hub_persistent_test_create",
-                "notification_hub_persistent_test_dismiss",
-                "notification_hub_persistent_test_invalid",
-                "notification_hub_persistent_history_test"
-            ],
-            "automated_test": "test-notification-hubs.mjs",
-            "dry_run_terminal_ids": [
-                "notification_hub_persistent_dry_run_assert",
-                "notification_hub_persistent_history_dry"
-            ],
-            "reason": "Create, dismiss e contrato sem notification_id atravessam opera\u00e7\u00e3o e fila can\u00f4nicas em test_mode e terminam com simulated:true e dispatched:false, sem criar ou remover alertas no Home Assistant. O teste de hist\u00f3rico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica reten\u00e7\u00e3o de 7 dias em diret\u00f3rio tempor\u00e1rio."
-        },
-        "git_backup_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "git_backup_test_group",
-                "git_backup_test_instructions",
-                "git_backup_test_reset",
-                "git_backup_test_request",
-                "git_backup_test_success",
-                "git_backup_test_failure",
-                "git_backup_test_deferred",
-                "git_backup_test_invalid"
-            ],
-            "automated_test": "test-git-backup-flow.mjs",
-            "dry_run_terminal_ids": [
-                "git_backup_dry_run_terminal"
-            ],
-            "reason": "Pedido, sucesso, falha, adiamento e resposta inv\u00e1lida atravessam gates e decis\u00f5es can\u00f4nicos; worker, push, SSH, updates e notifica\u00e7\u00f5es s\u00e3o bloqueados no terminal dry-run."
-        },
-        "daily_host_updates_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "daily_update_test_group",
-                "daily_update_test_reset",
-                "daily_update_test_request",
-                "daily_update_test_failure",
-                "daily_update_test_unavailable",
-                "daily_update_core_group",
-                "daily_update_core_test_request",
-                "daily_update_core_test_result",
-                "daily_update_containers_group",
-                "daily_update_containers_test_request",
-                "daily_update_containers_test_result",
-                "daily_update_codex_cli_group",
-                "daily_update_codex_cli_test_request",
-                "daily_update_codex_cli_test_success",
-                "daily_update_codex_cli_test_failure",
-                "daily_update_inventory_group",
-                "daily_update_inventory_test",
-                "daily_update_hacs_group",
-                "daily_update_alexa_media_group",
-                "daily_update_alexa_media_result_test",
-                "daily_update_firmware_group",
-                "daily_update_firmware_test_auto",
-                "daily_update_unknown_group",
-                "daily_update_kia_group",
-                "daily_update_kia_test_request",
-                "daily_update_kia_test_result",
-                "daily_update_repository_dependency_group",
-                "daily_update_repository_dependency_test_group",
-                "daily_update_dependency_test_reset",
-                "daily_update_dependency_test_safe",
-                "daily_update_dependency_test_blocked",
-                "daily_update_dependency_test_result",
-                "operations_daily_group",
-                "operations_daily_test_reset",
-                "daily_update_kia_promotion_test_reset",
-                "daily_update_kia_promotion_test_pending",
-                "daily_update_kia_promotion_test_completed"
-            ],
-            "automated_test": "test-daily-host-update-flow.mjs",
-            "dry_run_terminal_ids": [
-                "daily_update_dry_run_terminal",
-                "global_observer_dry_run_terminal"
-            ],
-            "reason": "DietPi, Core, containers, Codex CLI e depend\u00eancias do reposit\u00f3rio percorrem pontes serializadas pr\u00f3prias; os invent\u00e1rios sint\u00e9ticos cobrem Bluelink, Alexa Media auditada, demais HACS, firmware, Core, classes desconhecidas, override eleg\u00edvel e depend\u00eancia transitiva bloqueada. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, npm install, restart, Codex, commit, push, update.install e reboot permanecem bloqueados."
-        },
-        "weekly_docs_review_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "weekly_docs_review_test_group",
-                "weekly_docs_review_test_reset",
-                "weekly_docs_review_test_scheduled",
-                "weekly_docs_review_test_manual",
-                "weekly_docs_review_test_failure",
-                "weekly_docs_review_test_worker_unavailable",
-                "weekly_docs_review_test_worker_recovered"
-            ],
-            "automated_test": "test-weekly-docs-review-flow.mjs",
-            "dry_run_terminal_ids": [
-                "weekly_docs_review_dry_run_terminal",
-                "global_observer_dry_run_terminal"
-            ],
-            "reason": "Agendamento, acionamento manual, falha da ponte e lifecycle indispon\u00edvel/recuperado usam os caminhos reais; Codex, Git, commit, push, trigger externo e entrega de notifica\u00e7\u00e3o permanecem bloqueados nos terminais dry-run."
-        },
-        "29d64664bf8cbde8": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "gar_group_tests",
-                "gar_test_reset",
-                "gar_test_accept",
-                "gar_test_duplicate",
-                "gar_test_cooldown",
-                "gar_test_boundary",
-                "gar_test_relay_on"
-            ],
-            "dry_run_terminal_ids": [
-                "gar_test_dry_run_terminal"
-            ],
-            "automated_test": "test-garage-gate-flow.mjs",
-            "reason": "Pedido aceito, duplicidade, cooldown, limite exato e rel\u00e9 j\u00e1 ligado atravessam adapta\u00e7\u00e3o, pol\u00edtica, decis\u00e3o e gates reais; MQTT, Logbook e notifica\u00e7\u00e3o terminam no terminal dry-run."
-        },
-        "shared_integrations_tab": {
-            "strategy": "not_applicable",
-            "evidence_node_ids": [],
-            "reason": "Tab de infraestrutura compartilhada sem automa\u00e7\u00e3o ou efeito pr\u00f3prio."
-        },
-        "ce258dec9814b96b": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "external_visual_test_group",
-                "external_visual_test_reset",
-                "external_visual_test_online",
-                "external_visual_test_offline",
-                "external_visual_test_recovery",
-                "external_visual_test_sunrise"
-            ],
-            "dry_run_terminal_ids": [
-                "external_visual_dry_terminal"
-            ],
-            "automated_test": "test-external-lighting-alarm-flow.mjs",
-            "reason": "Comando aceito, Zigbee offline, recovery p\u00f3s-p\u00f4r do sol e desligamento no amanhecer atravessam pol\u00edtica, gates e confirma\u00e7\u00e3o can\u00f4nicos; MQTT, push e Alexa terminam no dry-run."
-        },
-        "alarm_house_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "alarm_group_tests",
-                "alarm_test_reset",
-                "alarm_test_arm",
-                "alarm_test_failure_arm",
-                "alarm_test_disarm"
-            ],
-            "dry_run_terminal_ids": [
-                "alarm_test_dry_run_terminal"
-            ],
-            "automated_test": "test-alarm-house-flow.mjs",
-            "reason": "Armar, desarmar, falha e retry sint\u00e9ticos atravessam a decis\u00e3o can\u00f4nica e os gates finais; public_bindings.call, update_entity e notifica\u00e7\u00f5es terminam obrigatoriamente no dry-run."
-        },
-        "456b32bd5d59b0d6": {
-            "strategy": "automated_only",
-            "evidence_node_ids": [],
-            "automated_test": "test-raspberry-pi-cooling-flow.mjs",
-            "reason": "For\u00e7ar estados t\u00e9rmicos ou GPIO no host residencial n\u00e3o \u00e9 um teste manual seguro."
-        },
-        "storage_health_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "storage_group_tests",
-                "storage_test_reset",
-                "storage_test_normal",
-                "storage_test_growth",
-                "storage_test_prepare",
-                "storage_test_decision_terminal"
-            ],
-            "dry_run_terminal_ids": [
-                "storage_dry_run_terminal"
-            ],
-            "automated_test": "test-storage-health-flow.mjs",
-            "reason": "Normalidade e crescimento acelerado atravessam o mesmo diagn\u00f3stico e gate de autocuidado; test_mode bloqueia exec, MQTT e notifica\u00e7\u00f5es e termina no dry-run compartilhado."
-        },
-        "recorder_retention_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "recorder_retention_group_tests",
-                "recorder_retention_test_reset",
-                "recorder_retention_test_baseline",
-                "recorder_retention_test_near",
-                "recorder_retention_test_outlier",
-                "recorder_retention_test_repack_ready"
-            ],
-            "dry_run_terminal_ids": [
-                "recorder_retention_dry_run_terminal"
-            ],
-            "automated_test": "test-recorder-retention-flow.mjs",
-            "reason": "Baseline, valor consecutivo pr\u00f3ximo, outlier e libera\u00e7\u00e3o do repack percorrem as decis\u00f5es reais; test_mode bloqueia recorder.purge_entities e recorder.purge e termina no terminal dry-run."
-        },
-        "monitoramento_internet_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "grp_internet_tests",
-                "internet_test_note",
-                "internet_test_reset",
-                "internet_test_fail_1",
-                "internet_test_fail_2",
-                "internet_test_fail_3",
-                "internet_test_success_1",
-                "internet_test_success_2",
-                "internet_test_codex_absent",
-                "internet_test_codex_ready"
-            ],
-            "dry_run_terminal_ids": [
-                "internet_dry_run_terminal",
-                "internet_remote_dry_run_terminal"
-            ],
-            "automated_test": "test-internet-monitor-flow.mjs",
-            "reason": "Tr\u00eas falhas e dois sucessos percorrem quorum e alertas de internet; os relat\u00f3rios sint\u00e9ticos de Codex ausente/pronto percorrem telemetria, estado, cooldown, pedido de recovery e encerramento do alerta. MQTT, notifica\u00e7\u00f5es e worker terminam em dry-run."
-        },
-        "monitoramento_vpn_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "vpn_monitor_test_group",
-                "vpn_monitor_test_reset",
-                "vpn_monitor_test_internet_online",
-                "vpn_monitor_test_internet_offline",
-                "vpn_monitor_test_vpn_down",
-                "vpn_monitor_test_confirm_down",
-                "vpn_monitor_test_vpn_up",
-                "vpn_monitor_test_confirm_up"
-            ],
-            "dry_run_terminal_ids": [
-                "vpn_monitor_dry_run_terminal"
-            ],
-            "automated_test": "test-vpn-monitor-flow.mjs",
-            "reason": "Queda, supress\u00e3o durante indisponibilidade da internet e recupera\u00e7\u00e3o percorrem a l\u00f3gica real at\u00e9 o terminal dry-run, sem publicar MQTT nem enviar notifica\u00e7\u00f5es."
-        },
-        "monitoramento_zigbee_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "grp_zigbee_tests",
-                "zigbee_test_reset",
-                "zigbee_test_net_offline",
-                "zigbee_test_net_30",
-                "zigbee_test_net_60",
-                "zigbee_test_component_down",
-                "zigbee_test_component_duplicate",
-                "zigbee_test_component_reminder",
-                "zigbee_test_component_up",
-                "zigbee_test_route_failure",
-                "zigbee_test_route_duplicate",
-                "zigbee_test_route_scan_response",
-                "zigbee_test_route_failed_response",
-                "zigbee_test_route_retry",
-                "zigbee_test_route_scan_retry_response",
-                "zigbee_test_route_success_response"
-            ],
-            "dry_run_terminal_ids": [
-                "zigbee_dry_run_terminal"
-            ],
-            "automated_test": "test-zigbee-monitor-flow.mjs",
-            "reason": "Rede, disponibilidade e NWK_NO_ROUTE percorrem parsing, pol\u00edtica, estado, dedupe, cooldown, varredura de rotas, reconfigura\u00e7\u00e3o correlacionada e recovery; MQTT e notifica\u00e7\u00f5es s\u00e3o obrigatoriamente desviados ao dry-run."
-        },
-        "ea0a6aa0d24ff863": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "6e71dbc937fe5669",
-                "19a91d7fce3b9db2",
-                "people_departure_approach_test_v1",
-                "people_departure_bounce_home_test_v1",
-                "people_visual_arrival_refresh_dispatch",
-                "people_arrival_departure_blocked_v1"
-            ],
-            "dry_run_terminal_ids": [
-                "global_observer_dry_run_terminal",
-                "people_arrival_departure_blocked_v1",
-                "people_visual_icloud_dry_run_terminal",
-                "resident_notifications_dry_run_terminal",
-                "light_full_dry_run_terminal_v1",
-                "vehicle_primary_refresh_dry_run_terminal_v1"
-            ],
-            "automated_test": "test-security-light-flow.mjs",
-            "reason": "Estados sint\u00e9ticos cumulativos atravessam sele\u00e7\u00e3o, dire\u00e7\u00e3o, chegada, notifica\u00e7\u00f5es, ve\u00edculo e ilumina\u00e7\u00e3o; sa\u00edda e rebote terminam no bloqueio expl\u00edcito e todos os demais efeitos residenciais terminam em dry-run."
-        },
-        "c22d8b12055e87f7": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "5df25064f701ecd2",
-                "9501b32f01ed802b",
-                "vehicle_primary_manual_engine_on_test_v1",
-                "vehicle_primary_manual_engine_off_test_v1",
-                "vehicle_primary_remote_command_test_group_v1",
-                "vehicle_primary_remote_command_test_reset_v1",
-                "vehicle_primary_remote_command_test_success_v1",
-                "vehicle_primary_remote_command_test_failure_v1",
-                "vehicle_primary_remote_request_test_available_v1",
-                "vehicle_primary_remote_request_test_unavailable_v1"
-            ],
-            "dry_run_terminal_ids": [
-                "vehicle_primary_refresh_dry_run_terminal_v1",
-                "light_full_dry_run_terminal_v1"
-            ],
-            "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
-            "reason": "Motor e localiza\u00e7\u00e3o sint\u00e9ticos percorrem o fluxo de ilumina\u00e7\u00e3o; inten\u00e7\u00f5es remotas com alvo dispon\u00edvel e indispon\u00edvel atravessam valida\u00e7\u00e3o, disponibilidade, concorr\u00eancia, test_mode, classifica\u00e7\u00e3o, dedupe e guard. Todos os efeitos terminam em dry-run, sem acionar ve\u00edculo nem notifica\u00e7\u00f5es."
-        },
-        "62bb822e033d1623": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "arrival_context_test_group",
-                "arrival_context_test_reset_control",
-                "arrival_context_test_cycle_control",
-                "arrival_context_test_vehicle_on_control",
-                "arrival_context_test_home_control",
-                "arrival_context_test_due_control"
-            ],
-            "dry_run_terminal_ids": [
-                "vehicle_primary_refresh_dry_run_terminal_v1",
-                "light_full_dry_run_terminal_v1",
-                "resident_notifications_dry_run_terminal"
-            ],
-            "automated_test": "test-arrival-context-flow.mjs",
-            "reason": "Reset e ciclo sint\u00e9ticos atravessam os produtores, a valida\u00e7\u00e3o monot\u00f4nica, o join, a deduplica\u00e7\u00e3o e os consumidores; as fronteiras finais registram simulated:true e dispatched:false."
-        },
-        "6b7552efb85343f4": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "ed8fa1d49205cbdb",
-                "2f8ac8be8e84a548",
-                "security_light_engine_bypass_group_v1",
-                "security_light_engine_bypass_test_on_v1",
-                "security_light_engine_bypass_test_off_v1",
-                "security_light_arrival_direction_gate_v1",
-                "security_light_arrival_direction_blocked_v1",
-                "security_visual_arrival_watch",
-                "security_visual_people_refresh_out",
-                "light_full_dry_run_terminal_v1",
-                "security_visual_off_tests_group",
-                "security_visual_off_test_reset",
-                "security_visual_off_test_old_off",
-                "security_visual_off_test_new_off",
-                "security_visual_off_test_gate",
-                "security_visual_gps_tests_group",
-                "security_visual_gps_reset",
-                "security_visual_gps_return",
-                "security_visual_gps_jitter"
-            ],
-            "dry_run_terminal_ids": [
-                "light_full_dry_run_terminal_v1",
-                "security_visual_off_dry_run"
-            ],
-            "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
-            "reason": "Motor, bypass e chegada sint\u00e9ticos percorrem normaliza\u00e7\u00e3o, persist\u00eancia da inten\u00e7\u00e3o, gates e lifecycle; refletor, timers e notifica\u00e7\u00f5es terminam no terminal dry-run sem qualquer efeito residencial."
-        },
-        "1f468eaeef0733dd": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "alarm_arrival_full_flow_group",
-                "68bef52acfe15ef6",
-                "89896182d31675a1",
-                "alarm_arrival_test_dry_run_terminal_v1"
-            ],
-            "dry_run_terminal_ids": [
-                "alarm_arrival_test_dry_run_terminal_v1"
-            ],
-            "automated_test": "test-alarm-arrival-disarm-flow.mjs",
-            "reason": "A trilha manual percorre pend\u00eancia e confirma\u00e7\u00e3o, simula notifica\u00e7\u00f5es e desarme e termina sem alcan\u00e7ar dispositivos."
-        },
-        "codex_alertas_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "codex_group_tests",
-                "codex_test_reset",
-                "codex_test_warning",
-                "codex_test_duplicate",
-                "codex_test_unavailable",
-                "codex_test_daily"
-            ],
-            "dry_run_terminal_ids": [
-                "codex_test_dry_run_terminal"
-            ],
-            "automated_test": "test-notification-reliability.mjs",
-            "reason": "Aten\u00e7\u00e3o, duplicidade, indisponibilidade e resumo percorrem snapshot, pol\u00edtica, n\u00edvel, cooldown e gates reais; todos os servi\u00e7os terminam no dry-run compartilhado."
-        },
-        "monitoramento_tuya_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "grp_tuya_tests",
-                "tuya_test_reset",
-                "tuya_test_offline_29",
-                "tuya_test_offline_30",
-                "tuya_test_offline_duplicate",
-                "tuya_test_recovery_60",
-                "tuya_test_reminder",
-                "tuya_test_query_failure"
-            ],
-            "dry_run_terminal_ids": [
-                "tuya_dry_run_terminal"
-            ],
-            "automated_test": "test-tuya-monitor-flow.mjs",
-            "reason": "Tuya e LocalTuya percorrem snapshot, agrupamento, split/join, limites, dedupe, recovery, resumo e gates; alertas e MQTT terminam em dry-run."
-        },
-        "resident_notifications_tab": {
-            "strategy": "manual_explicit_side_effect",
-            "explicit_exception": "notification_delivery_under_test",
-            "evidence_node_ids": [
-                "resident_notifications_test_group",
-                "resident_notifications_test_instructions",
-                "resident_notifications_test_reset",
-                "resident_notifications_test_primary",
-                "resident_notifications_test_home",
-                "resident_notifications_test_secondary",
-                "resident_notifications_test_direction",
-                "resident_notifications_test_unavailable",
-                "resident_notifications_test_stale",
-                "resident_notifications_test_future",
-                "resident_notifications_test_duplicate",
-                "resident_notifications_dry_run_terminal",
-                "resident_notifications_test_delivery_secondary"
-            ],
-            "dry_run_terminal_ids": [
-                "resident_notifications_dry_run_terminal"
-            ],
-            "delivery_node_ids": [
-                "resident_notifications_test_notify_secondary"
-            ],
-            "automated_test": "test-resident-approach-notifications.mjs",
-            "reason": "Approach, salto direto para home, ambos os residentes, dire\u00e7\u00e3o inv\u00e1lida, ciclo n\u00e3o confirmado, evento antigo/futuro e duplicidade percorrem o contrato can\u00f4nico e terminam em dry-run; por solicita\u00e7\u00e3o expl\u00edcita, um \u00fanico bot\u00e3o marcado TESTE valida a entrega ao mobile_secondary sem acionar qualquer outro dispositivo."
-        },
-        "global_flow_observer_tab": {
-            "strategy": "manual_full_dry_run",
-            "explicit_exception": "notification_delivery_under_test",
-            "evidence_node_ids": [
-                "global_observer_test_group",
-                "global_observer_test_reset",
-                "global_observer_test_error",
-                "global_observer_test_status_failure",
-                "global_observer_test_evaluate",
-                "global_observer_test_delivery",
-                "global_observer_test_integration_reset",
-                "global_observer_test_integration_failure",
-                "global_observer_test_integration_confirm",
-                "global_observer_test_integration_recovery",
-                "global_observer_diagnostic_group"
-            ],
-            "dry_run_terminal_ids": [
-                "global_observer_dry_run_terminal",
-                "global_observer_diagnostic_dry"
-            ],
-            "delivery_node_ids": [
-                "global_observer_notify_primary"
-            ],
-            "automated_test": "test-global-flow-observer.mjs",
-            "reason": "Erros, indisponibilidade e integra\u00e7\u00f5es atravessam as decis\u00f5es reais at\u00e9 os terminais de notifica\u00e7\u00e3o e diagn\u00f3stico em dry-run. O push TESTE opcional mant\u00e9m exce\u00e7\u00e3o expl\u00edcita e n\u00e3o \u00e9 executado no replay automatizado."
-        },
-        "local_ai_rtx_recovery_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "local_ai_rtx_test_group",
-                "local_ai_rtx_test_instructions",
-                "local_ai_rtx_test_reset",
-                "local_ai_rtx_test_available",
-                "local_ai_rtx_test_host_off",
-                "local_ai_rtx_test_host_on",
-                "local_ai_rtx_test_unavailable",
-                "local_ai_rtx_test_recovered",
-                "local_ai_rtx_test_failed",
-                "rtx_auto_tests_group",
-                "rtx_auto_test_eligible",
-                "rtx_auto_test_offline",
-                "rtx_auto_test_exhausted",
-                "rtx_auto_test_unknown",
-                "rtx_auto_test_healthy",
-                "rtx_auto_test_reset"
-            ],
-            "dry_run_terminal_ids": [
-                "local_ai_rtx_dry_run_terminal",
-                "global_observer_dry_run_terminal",
-                "rtx_auto_dry_terminal"
-            ],
-            "automated_test": "test-local-ai-rtx-recovery-flow.mjs",
-            "reason": "Disponibilidade, host ligado/desligado, listener ausente, dedupe, sucesso e falhas do recovery atravessam normaliza\u00e7\u00e3o, decis\u00f5es e gates reais; alertas e chamadas HTTP/MCP terminam em dry-run."
-        },
-        "host_memory_guardian_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "host_memory_guardian_test_group",
-                "host_memory_guardian_test_instructions",
-                "host_memory_guardian_test_reset",
-                "host_memory_guardian_test_request",
-                "host_memory_guardian_test_healthy",
-                "host_memory_guardian_test_reclaimed",
-                "host_memory_guardian_test_candidate",
-                "host_memory_guardian_test_terminated",
-                "host_memory_guardian_test_duplicate",
-                "host_memory_guardian_test_failed",
-                "host_memory_guardian_test_stale",
-                "operations_memory_group",
-                "operations_memory_test_reset",
-                "operations_memory_test_pressure"
-            ],
-            "dry_run_terminal_ids": [
-                "host_memory_guardian_dry_run_terminal",
-                "global_observer_dry_run_terminal"
-            ],
-            "automated_test": "test-host-memory-guardian-flow.mjs",
-            "reason": "Pedido, mem\u00f3ria saud\u00e1vel, recupera\u00e7\u00e3o tempor\u00e1ria, press\u00e3o, candidato ocioso, encerramento, duplicidade, falha e resultado vencido atravessam adapta\u00e7\u00e3o, vig\u00eancia, estado, decis\u00f5es visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."
-        },
-        "startup_readiness_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "startup_test_group",
-                "startup_test_reset",
-                "startup_test_internet",
-                "startup_test_vpn",
-                "startup_test_offline",
-                "startup_test_unknown"
-            ],
-            "automated_test": "test-startup-readiness.mjs",
-            "dry_run_terminal_ids": [
-                "startup_dry"
-            ],
-            "reason": "Reset, internet sem VPN, ambas online, oscila\u00e7\u00e3o e unknown atravessam a mesma confirma\u00e7\u00e3o can\u00f4nica; dry-run n\u00e3o altera prontid\u00e3o de produ\u00e7\u00e3o nem executa tarefas."
-        },
-        "rtx_metrics_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "rtx_metrics_test_group",
-                "rtx_metrics_test_reset",
-                "rtx_metrics_test_nominal",
-                "rtx_metrics_test_offline",
-                "rtx_metrics_test_stale",
-                "rtx_metrics_test_empty",
-                "rtx_metrics_test_invalid"
-            ],
-            "automated_test": "test-rtx-metrics-flow.mjs",
-            "dry_run_terminal_ids": [
-                "rtx_metrics_dry_run",
-                "global_observer_dry_run_terminal"
-            ],
-            "reason": "Snapshots sint\u00e9ticos cumulativos percorrem valida\u00e7\u00e3o, disponibilidade, c\u00e1lculo e serializa\u00e7\u00e3o reais; gate final bloqueia MQTT. Reset e estado de teste isolados. Replay do observador cobre erro e indisponibilidade sem notifica\u00e7\u00e3o."
-        },
-        "host_observer_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "host_obs_test_group",
-                "host_obs_test_reset",
-                "host_obs_test_healthy",
-                "host_obs_test_failure",
-                "host_obs_test_confirm",
-                "host_obs_test_resource_high",
-                "host_obs_test_source_failure",
-                "host_obs_test_stale",
-                "host_obs_test_malformed",
-                "host_obs_test_legacy"
-            ],
-            "dry_run_terminal_ids": [
-                "global_observer_dry_run_terminal"
-            ],
-            "automated_test": "test-host-observer.mjs",
-            "reason": "Replay completo da fonte sanitizada,validade,thresholds visuais,dedupe/cursor/lifecycle e gate global;contexto sint\u00e9tico separado;sem exec,HA,MQTT ou dispositivos."
-        },
-        "mqtt_native_observer_tab": {
-            "strategy": "manual_full_dry_run",
-            "evidence_node_ids": [
-                "mq_native_test_group",
-                "mq_native_test_reset",
-                "mq_native_test_within",
-                "mq_native_test_duplicate",
-                "mq_native_test_over",
-                "mq_native_test_unknown",
-                "mq_native_test_missing",
-                "mq_native_test_no_events",
-                "mq_native_test_unavailable",
-                "mq_native_test_busy",
-                "mq_native_test_malformed",
-                "mq_native_test_disabled",
-                "mq_native_test_reader_denied",
-                "mq_native_test_reader_clock",
-                "mq_native_test_reader_future",
-                "mq_native_test_reader_stale",
-                "mq_native_test_reader_missing",
-                "mq_native_window_test_group",
-                "mq_native_test_window_start",
-                "mq_native_test_window_pending",
-                "mq_native_test_window_drain",
-                "mq_native_test_window_source_unknown",
-                "mq_native_test_window_epoch",
-                "mq_native_test_window_clock",
-                "mq_native_test_window_policy",
-                "mq_native_test_window_gap",
-                "mq_native_test_window_over",
-                "mq_native_test_window_fault",
-                "mq_native_test_window_legacy",
-                "mq_native_test_window_missing",
-                "mq_native_test_window_timing_unknown",
-                "mq_native_test_window_reader_denied",
-                "mq_native_test_window_reader_stale",
-                "mq_native_window_request_group",
-                "mq_native_test_window_restart",
-                "mq_native_test_window_restart_wait",
-                "mq_native_test_window_capacity"
-            ],
-            "automated_test": "test-mqtt-native-observer-flow.mjs",
-            "dry_run_terminal_ids": [
-                "global_observer_dry_run_terminal"
-            ],
-            "reason": "Replay nominal, negativo, reset, perda, duplicata, autoriza\u00e7\u00e3o, dom\u00ednio temporal e leitor antigo atravessa a mesma normaliza\u00e7\u00e3o, pol\u00edtica visual, dedupe e gate final. Em test_mode, nenhum exec, arquivo, ACK, servi\u00e7o, MQTT ou push \u00e9 executado; o terminal compartilhado recebe simulated:true e dispatched:false. Aus\u00eancia de eventos n\u00e3o comprova recupera\u00e7\u00e3o. Janela do componente: reset \u2192 in\u00edcio \u2192 corte com ACK pendente \u2192 drenar. Reset antes de cada falha. Tempo sint\u00e9tico avan\u00e7a 24h sem reduzir contrato; mudan\u00e7a de origem sem manuten\u00e7\u00e3o fica unknown; fonte desconhecida usa somente hist\u00f3rico pr\u00f3prio, sem ACK. O resultado passa pela mesma codifica\u00e7\u00e3o e gate final dry-run. Nova inten\u00e7\u00e3o atravessa o mesmo registrador e gates: janela anterior arquivada exatamente, espera por ACK atual, duplicata ap\u00f3s crash idempotente e capacidade8 preservada; observa\u00e7\u00e3o atual em envelope separado da prova congelada."
-        }
+  "version": 2,
+  "tabs": {
+    "notification_hub_mobile_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "notification_hub_mobile_test_group",
+        "notification_hub_mobile_test_primary",
+        "notification_hub_mobile_test_secondary",
+        "notification_hub_mobile_test_both",
+        "notification_hub_mobile_test_invalid",
+        "notification_hub_mobile_test_startup",
+        "notification_hub_mobile_history_test"
+      ],
+      "automated_test": "test-notification-hubs.mjs",
+      "dry_run_terminal_ids": [
+        "notification_hub_mobile_dry_run_assert",
+        "notification_hub_mobile_history_dry"
+      ],
+      "reason": "Destinatário primário, secundário, ambos explicitamente e contrato sem destinatário atravessam o mesmo validador e roteamento do hub; todos terminam com simulated:true e dispatched:false, sem chamar o Home Assistant. O teste de histórico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica retenção de 7 dias em diretório temporário."
+    },
+    "notification_hub_alexa_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "notification_hub_alexa_test_group",
+        "notification_hub_alexa_test_valid",
+        "notification_hub_alexa_test_invalid",
+        "notification_hub_alexa_dashboard_test_valid",
+        "notification_hub_alexa_dashboard_test_empty",
+        "notification_hub_alexa_history_test"
+      ],
+      "automated_test": "test-notification-hubs.mjs",
+      "dry_run_terminal_ids": [
+        "notification_hub_alexa_dry_run_assert",
+        "notification_hub_alexa_history_dry"
+      ],
+      "reason": "Target lógico válido e inválido, mensagem digitada e texto vazio atravessam o contrato real do hub com test_mode e terminam com simulated:true e dispatched:false, sem acionar qualquer Alexa. O teste de histórico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica retenção de 7 dias em diretório temporário."
+    },
+    "notification_hub_persistent_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "notification_hub_persistent_test_group",
+        "notification_hub_persistent_test_create",
+        "notification_hub_persistent_test_dismiss",
+        "notification_hub_persistent_test_invalid",
+        "notification_hub_persistent_history_test"
+      ],
+      "automated_test": "test-notification-hubs.mjs",
+      "dry_run_terminal_ids": [
+        "notification_hub_persistent_dry_run_assert",
+        "notification_hub_persistent_history_dry"
+      ],
+      "reason": "Create, dismiss e contrato sem notification_id atravessam operação e fila canônicas em test_mode e terminam com simulated:true e dispatched:false, sem criar ou remover alertas no Home Assistant. O teste de histórico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica retenção de 7 dias em diretório temporário."
+    },
+    "git_backup_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "git_backup_test_group",
+        "git_backup_test_instructions",
+        "git_backup_test_reset",
+        "git_backup_test_request",
+        "git_backup_test_success",
+        "git_backup_test_failure",
+        "git_backup_test_deferred",
+        "git_backup_test_invalid"
+      ],
+      "automated_test": "test-git-backup-flow.mjs",
+      "dry_run_terminal_ids": [
+        "git_backup_dry_run_terminal"
+      ],
+      "reason": "Pedido, sucesso, falha, adiamento e resposta inválida atravessam gates e decisões canônicos; worker, push, SSH, updates e notificações são bloqueados no terminal dry-run."
+    },
+    "daily_host_updates_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "daily_update_test_group",
+        "daily_update_test_reset",
+        "daily_update_test_request",
+        "daily_update_test_failure",
+        "daily_update_test_unavailable",
+        "daily_update_core_group",
+        "daily_update_core_test_request",
+        "daily_update_core_test_result",
+        "daily_update_containers_group",
+        "daily_update_containers_test_request",
+        "daily_update_containers_test_result",
+        "daily_update_codex_cli_group",
+        "daily_update_codex_cli_test_request",
+        "daily_update_codex_cli_test_success",
+        "daily_update_codex_cli_test_failure",
+        "daily_update_inventory_group",
+        "daily_update_inventory_test",
+        "daily_update_hacs_group",
+        "daily_update_alexa_media_group",
+        "daily_update_alexa_media_result_test",
+        "daily_update_firmware_group",
+        "daily_update_firmware_test_auto",
+        "daily_update_unknown_group",
+        "daily_update_kia_group",
+        "daily_update_kia_test_request",
+        "daily_update_kia_test_result",
+        "daily_update_repository_dependency_group",
+        "daily_update_repository_dependency_test_group",
+        "daily_update_dependency_test_reset",
+        "daily_update_dependency_test_safe",
+        "daily_update_dependency_test_blocked",
+        "daily_update_dependency_test_result",
+        "operations_daily_group",
+        "operations_daily_test_reset",
+        "daily_update_kia_promotion_test_reset",
+        "daily_update_kia_promotion_test_pending",
+        "daily_update_kia_promotion_test_completed"
+      ],
+      "automated_test": "test-daily-host-update-flow.mjs",
+      "dry_run_terminal_ids": [
+        "daily_update_dry_run_terminal",
+        "global_observer_dry_run_terminal"
+      ],
+      "reason": "DietPi, Core, containers, Codex CLI e dependências do repositório percorrem pontes serializadas próprias; os inventários sintéticos cobrem Bluelink, Alexa Media auditada, demais HACS, firmware, Core, classes desconhecidas, override elegível e dependência transitiva bloqueada. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, npm install, restart, Codex, commit, push, update.install e reboot permanecem bloqueados."
+    },
+    "weekly_docs_review_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "weekly_docs_review_test_group",
+        "weekly_docs_review_test_reset",
+        "weekly_docs_review_test_scheduled",
+        "weekly_docs_review_test_manual",
+        "weekly_docs_review_test_failure",
+        "weekly_docs_review_test_worker_unavailable",
+        "weekly_docs_review_test_worker_recovered"
+      ],
+      "automated_test": "test-weekly-docs-review-flow.mjs",
+      "dry_run_terminal_ids": [
+        "weekly_docs_review_dry_run_terminal",
+        "global_observer_dry_run_terminal"
+      ],
+      "reason": "Agendamento, acionamento manual, falha da ponte e lifecycle indisponível/recuperado usam os caminhos reais; Codex, Git, commit, push, trigger externo e entrega de notificação permanecem bloqueados nos terminais dry-run."
+    },
+    "29d64664bf8cbde8": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "gar_group_tests",
+        "gar_test_reset",
+        "gar_test_accept",
+        "gar_test_duplicate",
+        "gar_test_cooldown",
+        "gar_test_boundary",
+        "gar_test_relay_on"
+      ],
+      "dry_run_terminal_ids": [
+        "gar_test_dry_run_terminal"
+      ],
+      "automated_test": "test-garage-gate-flow.mjs",
+      "reason": "Pedido aceito, duplicidade, cooldown, limite exato e relé já ligado atravessam adaptação, política, decisão e gates reais; MQTT, Logbook e notificação terminam no terminal dry-run."
+    },
+    "shared_integrations_tab": {
+      "strategy": "not_applicable",
+      "evidence_node_ids": [],
+      "reason": "Tab de infraestrutura compartilhada sem automação ou efeito próprio."
+    },
+    "ce258dec9814b96b": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "external_visual_test_group",
+        "external_visual_test_reset",
+        "external_visual_test_online",
+        "external_visual_test_offline",
+        "external_visual_test_recovery",
+        "external_visual_test_sunrise",
+        "external_visual_test_mismatch",
+        "external_visual_test_unknown"
+      ],
+      "dry_run_terminal_ids": [
+        "external_visual_dry_terminal"
+      ],
+      "automated_test": "test-external-lighting-alarm-flow.mjs",
+      "reason": "Comando aceito, Zigbee offline, recovery pós-pôr do sol e desligamento no amanhecer atravessam política, gates e confirmação canônicos; MQTT, push e Alexa terminam no dry-run. A candidata acrescenta confirmação vinculada à operação em janela finita, controles de divergência fresca/desconhecida e replay automatizado de expiração, substituição, timestamps e restart; testes não publicam comandos ou notificações."
+    },
+    "alarm_house_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "alarm_group_tests",
+        "alarm_test_reset",
+        "alarm_test_arm",
+        "alarm_test_failure_arm",
+        "alarm_test_disarm"
+      ],
+      "dry_run_terminal_ids": [
+        "alarm_test_dry_run_terminal"
+      ],
+      "automated_test": "test-alarm-house-flow.mjs",
+      "reason": "Armar, desarmar, falha e retry sintéticos atravessam a decisão canônica e os gates finais; public_bindings.call, update_entity e notificações terminam obrigatoriamente no dry-run."
+    },
+    "456b32bd5d59b0d6": {
+      "strategy": "automated_only",
+      "evidence_node_ids": [],
+      "automated_test": "test-raspberry-pi-cooling-flow.mjs",
+      "reason": "Forçar estados térmicos ou GPIO no host residencial não é um teste manual seguro."
+    },
+    "storage_health_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "storage_group_tests",
+        "storage_test_reset",
+        "storage_test_normal",
+        "storage_test_growth",
+        "storage_test_prepare",
+        "storage_test_decision_terminal"
+      ],
+      "dry_run_terminal_ids": [
+        "storage_dry_run_terminal"
+      ],
+      "automated_test": "test-storage-health-flow.mjs",
+      "reason": "Normalidade e crescimento acelerado atravessam o mesmo diagnóstico e gate de autocuidado; test_mode bloqueia exec, MQTT e notificações e termina no dry-run compartilhado."
+    },
+    "recorder_retention_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "recorder_retention_group_tests",
+        "recorder_retention_test_reset",
+        "recorder_retention_test_baseline",
+        "recorder_retention_test_near",
+        "recorder_retention_test_outlier",
+        "recorder_retention_test_repack_ready"
+      ],
+      "dry_run_terminal_ids": [
+        "recorder_retention_dry_run_terminal"
+      ],
+      "automated_test": "test-recorder-retention-flow.mjs",
+      "reason": "Baseline, valor consecutivo próximo, outlier e liberação do repack percorrem as decisões reais; test_mode bloqueia recorder.purge_entities e recorder.purge e termina no terminal dry-run."
+    },
+    "monitoramento_internet_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "grp_internet_tests",
+        "internet_test_note",
+        "internet_test_reset",
+        "internet_test_fail_1",
+        "internet_test_fail_2",
+        "internet_test_fail_3",
+        "internet_test_success_1",
+        "internet_test_success_2",
+        "internet_test_codex_absent",
+        "internet_test_codex_ready"
+      ],
+      "dry_run_terminal_ids": [
+        "internet_dry_run_terminal",
+        "internet_remote_dry_run_terminal"
+      ],
+      "automated_test": "test-internet-monitor-flow.mjs",
+      "reason": "Três falhas e dois sucessos percorrem quorum e alertas de internet; os relatórios sintéticos de Codex ausente/pronto percorrem telemetria, estado, cooldown, pedido de recovery e encerramento do alerta. MQTT, notificações e worker terminam em dry-run."
+    },
+    "monitoramento_vpn_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "vpn_monitor_test_group",
+        "vpn_monitor_test_reset",
+        "vpn_monitor_test_internet_online",
+        "vpn_monitor_test_internet_offline",
+        "vpn_monitor_test_vpn_down",
+        "vpn_monitor_test_confirm_down",
+        "vpn_monitor_test_vpn_up",
+        "vpn_monitor_test_confirm_up"
+      ],
+      "dry_run_terminal_ids": [
+        "vpn_monitor_dry_run_terminal"
+      ],
+      "automated_test": "test-vpn-monitor-flow.mjs",
+      "reason": "Queda, supressão durante indisponibilidade da internet e recuperação percorrem a lógica real até o terminal dry-run, sem publicar MQTT nem enviar notificações."
+    },
+    "monitoramento_zigbee_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "grp_zigbee_tests",
+        "zigbee_test_reset",
+        "zigbee_test_net_offline",
+        "zigbee_test_net_30",
+        "zigbee_test_net_60",
+        "zigbee_test_component_down",
+        "zigbee_test_component_duplicate",
+        "zigbee_test_component_reminder",
+        "zigbee_test_component_up",
+        "zigbee_test_route_failure",
+        "zigbee_test_route_duplicate",
+        "zigbee_test_route_scan_response",
+        "zigbee_test_route_failed_response",
+        "zigbee_test_route_retry",
+        "zigbee_test_route_scan_retry_response",
+        "zigbee_test_route_success_response"
+      ],
+      "dry_run_terminal_ids": [
+        "zigbee_dry_run_terminal"
+      ],
+      "automated_test": "test-zigbee-monitor-flow.mjs",
+      "reason": "Rede, disponibilidade e NWK_NO_ROUTE percorrem parsing, política, estado, dedupe, cooldown, varredura de rotas, reconfiguração correlacionada e recovery; MQTT e notificações são obrigatoriamente desviados ao dry-run."
+    },
+    "ea0a6aa0d24ff863": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "6e71dbc937fe5669",
+        "19a91d7fce3b9db2",
+        "people_departure_approach_test_v1",
+        "people_departure_bounce_home_test_v1",
+        "people_visual_arrival_refresh_dispatch",
+        "people_arrival_departure_blocked_v1"
+      ],
+      "dry_run_terminal_ids": [
+        "global_observer_dry_run_terminal",
+        "people_arrival_departure_blocked_v1",
+        "people_visual_icloud_dry_run_terminal",
+        "resident_notifications_dry_run_terminal",
+        "light_full_dry_run_terminal_v1",
+        "vehicle_primary_refresh_dry_run_terminal_v1"
+      ],
+      "automated_test": "test-security-light-flow.mjs",
+      "reason": "Estados sintéticos cumulativos atravessam seleção, direção, chegada, notificações, veículo e iluminação; saída e rebote terminam no bloqueio explícito e todos os demais efeitos residenciais terminam em dry-run."
+    },
+    "c22d8b12055e87f7": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "5df25064f701ecd2",
+        "9501b32f01ed802b",
+        "vehicle_primary_manual_engine_on_test_v1",
+        "vehicle_primary_manual_engine_off_test_v1",
+        "vehicle_primary_remote_command_test_group_v1",
+        "vehicle_primary_remote_command_test_reset_v1",
+        "vehicle_primary_remote_command_test_success_v1",
+        "vehicle_primary_remote_command_test_failure_v1",
+        "vehicle_primary_remote_request_test_available_v1",
+        "vehicle_primary_remote_request_test_unavailable_v1"
+      ],
+      "dry_run_terminal_ids": [
+        "vehicle_primary_refresh_dry_run_terminal_v1",
+        "light_full_dry_run_terminal_v1"
+      ],
+      "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
+      "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação; intenções remotas com alvo disponível e indisponível atravessam validação, disponibilidade, concorrência, test_mode, classificação, dedupe e guard. Todos os efeitos terminam em dry-run, sem acionar veículo nem notificações."
+    },
+    "62bb822e033d1623": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "arrival_context_test_group",
+        "arrival_context_test_reset_control",
+        "arrival_context_test_cycle_control",
+        "arrival_context_test_vehicle_on_control",
+        "arrival_context_test_home_control",
+        "arrival_context_test_due_control"
+      ],
+      "dry_run_terminal_ids": [
+        "vehicle_primary_refresh_dry_run_terminal_v1",
+        "light_full_dry_run_terminal_v1",
+        "resident_notifications_dry_run_terminal"
+      ],
+      "automated_test": "test-arrival-context-flow.mjs",
+      "reason": "Reset e ciclo sintéticos atravessam os produtores, a validação monotônica, o join, a deduplicação e os consumidores; as fronteiras finais registram simulated:true e dispatched:false."
+    },
+    "6b7552efb85343f4": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "ed8fa1d49205cbdb",
+        "2f8ac8be8e84a548",
+        "security_light_engine_bypass_group_v1",
+        "security_light_engine_bypass_test_on_v1",
+        "security_light_engine_bypass_test_off_v1",
+        "security_light_arrival_direction_gate_v1",
+        "security_light_arrival_direction_blocked_v1",
+        "security_visual_arrival_watch",
+        "security_visual_people_refresh_out",
+        "light_full_dry_run_terminal_v1",
+        "security_visual_off_tests_group",
+        "security_visual_off_test_reset",
+        "security_visual_off_test_old_off",
+        "security_visual_off_test_new_off",
+        "security_visual_off_test_gate",
+        "security_visual_gps_tests_group",
+        "security_visual_gps_reset",
+        "security_visual_gps_return",
+        "security_visual_gps_jitter"
+      ],
+      "dry_run_terminal_ids": [
+        "light_full_dry_run_terminal_v1",
+        "security_visual_off_dry_run"
+      ],
+      "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
+      "reason": "Motor, bypass e chegada sintéticos percorrem normalização, persistência da intenção, gates e lifecycle; refletor, timers e notificações terminam no terminal dry-run sem qualquer efeito residencial."
+    },
+    "1f468eaeef0733dd": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "alarm_arrival_full_flow_group",
+        "68bef52acfe15ef6",
+        "89896182d31675a1",
+        "alarm_arrival_test_dry_run_terminal_v1"
+      ],
+      "dry_run_terminal_ids": [
+        "alarm_arrival_test_dry_run_terminal_v1"
+      ],
+      "automated_test": "test-alarm-arrival-disarm-flow.mjs",
+      "reason": "A trilha manual percorre pendência e confirmação, simula notificações e desarme e termina sem alcançar dispositivos."
+    },
+    "codex_alertas_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "codex_group_tests",
+        "codex_test_reset",
+        "codex_test_warning",
+        "codex_test_duplicate",
+        "codex_test_unavailable",
+        "codex_test_daily"
+      ],
+      "dry_run_terminal_ids": [
+        "codex_test_dry_run_terminal"
+      ],
+      "automated_test": "test-notification-reliability.mjs",
+      "reason": "Atenção, duplicidade, indisponibilidade e resumo percorrem snapshot, política, nível, cooldown e gates reais; todos os serviços terminam no dry-run compartilhado."
+    },
+    "monitoramento_tuya_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "grp_tuya_tests",
+        "tuya_test_reset",
+        "tuya_test_offline_29",
+        "tuya_test_offline_30",
+        "tuya_test_offline_duplicate",
+        "tuya_test_recovery_60",
+        "tuya_test_reminder",
+        "tuya_test_query_failure"
+      ],
+      "dry_run_terminal_ids": [
+        "tuya_dry_run_terminal"
+      ],
+      "automated_test": "test-tuya-monitor-flow.mjs",
+      "reason": "Tuya e LocalTuya percorrem snapshot, agrupamento, split/join, limites, dedupe, recovery, resumo e gates; alertas e MQTT terminam em dry-run."
+    },
+    "resident_notifications_tab": {
+      "strategy": "manual_explicit_side_effect",
+      "explicit_exception": "notification_delivery_under_test",
+      "evidence_node_ids": [
+        "resident_notifications_test_group",
+        "resident_notifications_test_instructions",
+        "resident_notifications_test_reset",
+        "resident_notifications_test_primary",
+        "resident_notifications_test_home",
+        "resident_notifications_test_secondary",
+        "resident_notifications_test_direction",
+        "resident_notifications_test_unavailable",
+        "resident_notifications_test_stale",
+        "resident_notifications_test_future",
+        "resident_notifications_test_duplicate",
+        "resident_notifications_dry_run_terminal",
+        "resident_notifications_test_delivery_secondary"
+      ],
+      "dry_run_terminal_ids": [
+        "resident_notifications_dry_run_terminal"
+      ],
+      "delivery_node_ids": [
+        "resident_notifications_test_notify_secondary"
+      ],
+      "automated_test": "test-resident-approach-notifications.mjs",
+      "reason": "Approach, salto direto para home, ambos os residentes, direção inválida, ciclo não confirmado, evento antigo/futuro e duplicidade percorrem o contrato canônico e terminam em dry-run; por solicitação explícita, um único botão marcado TESTE valida a entrega ao mobile_secondary sem acionar qualquer outro dispositivo."
+    },
+    "global_flow_observer_tab": {
+      "strategy": "manual_full_dry_run",
+      "explicit_exception": "notification_delivery_under_test",
+      "evidence_node_ids": [
+        "global_observer_test_group",
+        "global_observer_test_reset",
+        "global_observer_test_error",
+        "global_observer_test_status_failure",
+        "global_observer_test_evaluate",
+        "global_observer_test_delivery",
+        "global_observer_test_integration_reset",
+        "global_observer_test_integration_failure",
+        "global_observer_test_integration_confirm",
+        "global_observer_test_integration_recovery",
+        "global_observer_diagnostic_group"
+      ],
+      "dry_run_terminal_ids": [
+        "global_observer_dry_run_terminal",
+        "global_observer_diagnostic_dry"
+      ],
+      "delivery_node_ids": [
+        "global_observer_notify_primary"
+      ],
+      "automated_test": "test-global-flow-observer.mjs",
+      "reason": "Erros, indisponibilidade e integrações atravessam as decisões reais até os terminais de notificação e diagnóstico em dry-run. O push TESTE opcional mantém exceção explícita e não é executado no replay automatizado."
+    },
+    "local_ai_rtx_recovery_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "local_ai_rtx_test_group",
+        "local_ai_rtx_test_instructions",
+        "local_ai_rtx_test_reset",
+        "local_ai_rtx_test_available",
+        "local_ai_rtx_test_host_off",
+        "local_ai_rtx_test_host_on",
+        "local_ai_rtx_test_unavailable",
+        "local_ai_rtx_test_recovered",
+        "local_ai_rtx_test_failed",
+        "rtx_auto_tests_group",
+        "rtx_auto_test_eligible",
+        "rtx_auto_test_offline",
+        "rtx_auto_test_exhausted",
+        "rtx_auto_test_unknown",
+        "rtx_auto_test_healthy",
+        "rtx_auto_test_reset"
+      ],
+      "dry_run_terminal_ids": [
+        "local_ai_rtx_dry_run_terminal",
+        "global_observer_dry_run_terminal",
+        "rtx_auto_dry_terminal"
+      ],
+      "automated_test": "test-local-ai-rtx-recovery-flow.mjs",
+      "reason": "Disponibilidade, host ligado/desligado, listener ausente, dedupe, sucesso e falhas do recovery atravessam normalização, decisões e gates reais; alertas e chamadas HTTP/MCP terminam em dry-run."
+    },
+    "host_memory_guardian_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "host_memory_guardian_test_group",
+        "host_memory_guardian_test_instructions",
+        "host_memory_guardian_test_reset",
+        "host_memory_guardian_test_request",
+        "host_memory_guardian_test_healthy",
+        "host_memory_guardian_test_reclaimed",
+        "host_memory_guardian_test_candidate",
+        "host_memory_guardian_test_terminated",
+        "host_memory_guardian_test_duplicate",
+        "host_memory_guardian_test_failed",
+        "host_memory_guardian_test_stale",
+        "operations_memory_group",
+        "operations_memory_test_reset",
+        "operations_memory_test_pressure"
+      ],
+      "dry_run_terminal_ids": [
+        "host_memory_guardian_dry_run_terminal",
+        "global_observer_dry_run_terminal"
+      ],
+      "automated_test": "test-host-memory-guardian-flow.mjs",
+      "reason": "Pedido, memória saudável, recuperação temporária, pressão, candidato ocioso, encerramento, duplicidade, falha e resultado vencido atravessam adaptação, vigência, estado, decisões visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."
+    },
+    "startup_readiness_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "startup_test_group",
+        "startup_test_reset",
+        "startup_test_internet",
+        "startup_test_vpn",
+        "startup_test_offline",
+        "startup_test_unknown"
+      ],
+      "automated_test": "test-startup-readiness.mjs",
+      "dry_run_terminal_ids": [
+        "startup_dry"
+      ],
+      "reason": "Reset, internet sem VPN, ambas online, oscilação e unknown atravessam a mesma confirmação canônica; dry-run não altera prontidão de produção nem executa tarefas."
+    },
+    "rtx_metrics_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "rtx_metrics_test_group",
+        "rtx_metrics_test_reset",
+        "rtx_metrics_test_nominal",
+        "rtx_metrics_test_offline",
+        "rtx_metrics_test_stale",
+        "rtx_metrics_test_empty",
+        "rtx_metrics_test_invalid"
+      ],
+      "automated_test": "test-rtx-metrics-flow.mjs",
+      "dry_run_terminal_ids": [
+        "rtx_metrics_dry_run",
+        "global_observer_dry_run_terminal"
+      ],
+      "reason": "Snapshots sintéticos cumulativos percorrem validação, disponibilidade, cálculo e serialização reais; gate final bloqueia MQTT. Reset e estado de teste isolados. Replay do observador cobre erro e indisponibilidade sem notificação."
+    },
+    "host_observer_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "host_obs_test_group",
+        "host_obs_test_reset",
+        "host_obs_test_healthy",
+        "host_obs_test_failure",
+        "host_obs_test_confirm",
+        "host_obs_test_resource_high",
+        "host_obs_test_source_failure",
+        "host_obs_test_stale",
+        "host_obs_test_malformed",
+        "host_obs_test_legacy"
+      ],
+      "dry_run_terminal_ids": [
+        "global_observer_dry_run_terminal"
+      ],
+      "automated_test": "test-host-observer.mjs",
+      "reason": "Replay completo da fonte sanitizada,validade,thresholds visuais,dedupe/cursor/lifecycle e gate global;contexto sintético separado;sem exec,HA,MQTT ou dispositivos."
+    },
+    "mqtt_native_observer_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "mq_native_test_group",
+        "mq_native_test_reset",
+        "mq_native_test_within",
+        "mq_native_test_duplicate",
+        "mq_native_test_over",
+        "mq_native_test_unknown",
+        "mq_native_test_missing",
+        "mq_native_test_no_events",
+        "mq_native_test_unavailable",
+        "mq_native_test_busy",
+        "mq_native_test_malformed",
+        "mq_native_test_disabled",
+        "mq_native_test_reader_denied",
+        "mq_native_test_reader_clock",
+        "mq_native_test_reader_future",
+        "mq_native_test_reader_stale",
+        "mq_native_test_reader_missing",
+        "mq_native_window_test_group",
+        "mq_native_test_window_start",
+        "mq_native_test_window_pending",
+        "mq_native_test_window_drain",
+        "mq_native_test_window_source_unknown",
+        "mq_native_test_window_epoch",
+        "mq_native_test_window_clock",
+        "mq_native_test_window_policy",
+        "mq_native_test_window_gap",
+        "mq_native_test_window_over",
+        "mq_native_test_window_fault",
+        "mq_native_test_window_legacy",
+        "mq_native_test_window_missing",
+        "mq_native_test_window_timing_unknown",
+        "mq_native_test_window_reader_denied",
+        "mq_native_test_window_reader_stale",
+        "mq_native_window_request_group",
+        "mq_native_test_window_restart",
+        "mq_native_test_window_restart_wait",
+        "mq_native_test_window_capacity"
+      ],
+      "automated_test": "test-mqtt-native-observer-flow.mjs",
+      "dry_run_terminal_ids": [
+        "global_observer_dry_run_terminal"
+      ],
+      "reason": "Replay nominal, negativo, reset, perda, duplicata, autorização, domínio temporal e leitor antigo atravessa a mesma normalização, política visual, dedupe e gate final. Em test_mode, nenhum exec, arquivo, ACK, serviço, MQTT ou push é executado; o terminal compartilhado recebe simulated:true e dispatched:false. Ausência de eventos não comprova recuperação. Janela do componente: reset → início → corte com ACK pendente → drenar. Reset antes de cada falha. Tempo sintético avança 24h sem reduzir contrato; mudança de origem sem manutenção fica unknown; fonte desconhecida usa somente histórico próprio, sem ACK. O resultado passa pela mesma codificação e gate final dry-run. Nova intenção atravessa o mesmo registrador e gates: janela anterior arquivada exatamente, espera por ACK atual, duplicata após crash idempotente e capacidade8 preservada; observação atual em envelope separado da prova congelada."
     }
+  }
 }

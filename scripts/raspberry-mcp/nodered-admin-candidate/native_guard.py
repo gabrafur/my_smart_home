@@ -179,6 +179,21 @@ def atomic_create(path, value):
         os.close(directory)
 
 
+def same_live_process_identity(before, after):
+    """Compare pinned identity, allowing ordinary scheduler state changes.
+
+    R/S are observations, not identity. Both reads must still be alive, and
+    every immutable field returned by the native process reader must match.
+    """
+    fields = ('birth_ticks', 'uids', 'gids', 'root_identity',
+              'netns_identity', 'mountinfo_sha256')
+    return (type(before) is dict and type(after) is dict
+            and 'state' in before and 'state' in after
+            and before['state'] not in ('Z', 'X') and after['state'] not in ('Z', 'X')
+            and all(key in before and key in after and before[key] == after[key]
+                    for key in fields))
+
+
 def runtime_ancestors(path):
     need(path in RUNTIME_FILES, 'runtime_file_outside_fixed_scope')
     return tuple(str(parent) for parent in reversed(Path(path).parents))
@@ -623,8 +638,11 @@ class NativeGuard:
                  and info['ancestor_identity_pins_verified'] is True,
                  'runtime_core_or_settings_drift')
             meta[path] = info
-        # PID reuse/root changes during source reads are refused as well.
-        need(self.io.process(activation['pid']) == current, 'runtime_identity_read_race')
+        # Scheduling can change S/R between reads without changing identity.
+        # PID birth, owners, root, netns and mountinfo must all remain pinned;
+        # a dead process at either observation is still refused.
+        need(same_live_process_identity(current, self.io.process(activation['pid'])),
+             'runtime_identity_read_race')
         return activation, meta
 
     def _review(self, activation):

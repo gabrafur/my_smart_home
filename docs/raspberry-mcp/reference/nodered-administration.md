@@ -1,13 +1,14 @@
-# Administração geral do Node-RED — proposta
+# Administração geral do Node-RED
 
-Esta é uma candidata revisável, **não instalada, não autorizada para ativação e
-sem deploy em produção**. O estado real deve ser consultado no MCP. O pacote
-fica em `scripts/raspberry-mcp/nodered-admin-candidate/`; o perfil protegido de
-`observacao_host` permanece separado.
+O contrato administrativo tem implementação, validação e instalação separadas.
+Publicar ou importar o código não ativa acesso: consulte `nodered_admin_read`
+com `view=policy` para conhecer a concessão real. As fontes e os templates ficam
+em `scripts/raspberry-mcp/nodered-admin-candidate/`, nome preservado por
+compatibilidade; o perfil protegido de `observacao_host` permanece separado.
 
 ## Capacidade e autoridade
 
-A proposta oferece um contrato administrativo único para os fluxos do mesmo
+A implementação oferece um contrato administrativo único para os fluxos do mesmo
 Node-RED: leitura, criação, edição, desativação recuperável, validação, deploy e
 reversão. Não exige criar outro contrato de componente para cada função.
 A administração pode ser feita por qualquer cliente autorizado; o nome Eva não
@@ -23,6 +24,8 @@ A ativação exige confirmação específica do proprietário sobre o delta de
 segurança. Depois, mudanças ordinárias dentro dessa política podem ser
 revisadas e admitidas pelo executor delegado, sem nova concessão por função.
 A aprovação da interface do cliente continua obrigatória quando exigida.
+Metadados opcionais de transporte MCP (`_meta`) são limitados e descartados
+antes da aplicação; não representam concessão, revisão ou aprovação de efeito.
 Efeitos novos sobre equipamentos sensíveis precisam de autorização específica;
 administração de fluxos não autoriza acionar luzes, portão ou fechaduras como
 prova. A análise estática de JavaScript não é uma sandbox nem prova de ausência
@@ -56,7 +59,7 @@ função continua sendo uma operação poderosa e exige revisão de efeitos.
 
 O frontend usa um novo socket AF_UNIX fixo no canal privado existente. Não
 amplia a rede pública, não altera autenticação do Node-RED e não transforma o
-leitor atual em escritor. O executor proposto é um serviço Root com código,
+leitor atual em escritor. O executor é um serviço Root com código,
 política e dependências selados, gramática fechada e contenção systemd; não é
 uma ferramenta de Root genérico. Essa nova superfície privilegiada é parte
 explícita da aprovação de ativação, não um privilégio já concedido à candidata.
@@ -109,6 +112,10 @@ Locks compartilhados ficam mantidos durante preflight, intent, deploy,
 verificação e recibo. Provas nativas se vinculam à geração imprevisível dos
 locks e ao PID atual; uma leitura antiga do ledger não prova exclusão. O
 Node-RED editor não participa desses locks, por isso o CAS continua obrigatório.
+A comparação de processo preserva nascimento, usuários/grupos, root, namespace
+e mountinfo; alternância normal entre `R` e `S` não muda identidade. Ambas
+as observações precisam continuar vivas; processos mortos e divergências dos
+vínculos continuam recusados.
 
 Um intent ou resultado incerto bloqueia novos efeitos, inclusive com outra
 chave. Não há retry, novo deploy ou reversão automática. A reversão própria
@@ -124,12 +131,14 @@ sensível não pode ser admitido apenas por um teste de sintaxe bem-sucedido.
 
 ## Primeiro reparo: confirmação da iluminação
 
-A candidata separada `lighting.patch` modifica somente fontes da iluminação;
-a geração, o canvas e os testes são executados em cópia pública isolada.
+A correção canônica da iluminação está nos geradores, funções e testes do
+Node-RED. `lighting.patch` preserva o artefato de revisão anterior à promoção;
+não deve ser reaplicado a fontes já corrigidas. Geração, canvas e testes
+continuam disponíveis em cópia pública isolada.
 O diagnóstico anterior permanece reconciliado e não é repetido. A associação
 entre o defeito sintético e um aviso real continua sem comprovação.
 
-A proposta adiciona janela visual de 60 segundos, maior que a acomodação e
+A política canônica usa janela visual de 60 segundos, maior que a acomodação e
 limitada a 300 segundos. A confirmação exige operação pendente exata, mesma
 emissão e leitura estritamente posterior, dentro da janela. Callback
 substituído não altera estado; sucesso, mismatch válido e expiração encerram
@@ -142,7 +151,7 @@ comando confirmado, sem atribuí-la a uma mudança manual.
 O novo controle de janela tem inicialização de configuração no deploy. Isso
 precisa constar no plano concreto, mesmo sem comando residencial. O deploy
 pode cancelar timers anteriores dos nós alterados; não reinicia o serviço
-Node-RED. A candidata não inclui execução de injects de teste em produção.
+Node-RED. O reparo não inclui execução de injects de teste em produção.
 
 ## Ativação e aceite
 
@@ -162,3 +171,6 @@ O aceite exige consulta MCP real, preflight e recibo exatos, releitura da
 configuração carregada, guardas e observação de um ciclo natural. Teste
 isolado, commit, catálogo visível ou tarefa aceita não provam correção em
 produção. Até a ativação confirmada e a admissão concreta, nada é aplicado.
+
+O vencimento ou a revogação da concessão administrativa fecha novos efeitos e
+preserva recibos. Não reverte automaticamente fluxos já aplicados.

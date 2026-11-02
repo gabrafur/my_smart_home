@@ -33,7 +33,10 @@ const externalEventOutIds = [
   "notification_hub_persistent_observer_out",
   "mq_native_test_global_out",
 ];
-const parsedFlows = installMqttNative(installHostObserver(installStartupReadiness(installOperationalAlerts(JSON.parse(fs.readFileSync(sourcePath, "utf8"))))));
+// Nested helpers may rebuild routes; anchor final ordering to the real input,
+// including nodes recently appended by the revision-checked Admin API.
+const originalInputFlows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+const parsedFlows = installMqttNative(installHostObserver(installStartupReadiness(installOperationalAlerts(structuredClone(originalInputFlows)))));
 const notificationHubTabs = Object.values(NOTIFICATION_HUBS).map(({ tab }) => tab);
 const hasNotificationHubs = notificationHubTabs.every((tabId) =>
   parsedFlows.some((node) => node.id === tabId && node.type === "tab")
@@ -1405,7 +1408,7 @@ if (process.env.NODE_RED_NOTIFICATION_ROUTE_WIRES !== "0") {
 }
 // Routing can recreate pairs after the first reconciliation. Keep their
 // existing array slots and approved geometry as well as their final topology.
-const stableFinalized = reconcileGeneratedFlows(parsedFlows, finalized, {
+const stableFinalized = reconcileGeneratedFlows(originalInputFlows, finalized, {
   isOwned: () => true,
 });
 fs.writeFileSync(outputPath, `${JSON.stringify(stableFinalized, null, 4)}\n`);

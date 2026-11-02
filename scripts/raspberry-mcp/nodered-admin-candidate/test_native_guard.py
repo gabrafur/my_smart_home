@@ -149,6 +149,41 @@ class GuardTests(unittest.TestCase):
                 old=self.io.process_data[key];self.io.process_data[key]=value
                 with self.assertRaisesRegex(ValueError,'runtime_process_or_mount_drift'):self.before()
                 self.io.process_data[key]=old
+    def test_scheduler_state_change_preserves_complete_runtime_identity(self):
+        before=copy.deepcopy(self.io.process_data);after=copy.deepcopy(before);after['state']='R'
+        with patch.object(self.io,'process',side_effect=[before,after]):
+            activation,files=self.guard._runtime()
+        self.assertEqual(activation['birth_ticks'],before['birth_ticks'])
+        self.assertEqual(set(files),set(m.CORE_FILES+('/data/settings.js',)))
+    def test_scheduler_changes_do_not_make_after_guard_uncertain(self):
+        calls=[0]
+        def observation(pid):
+            self.assertEqual(pid,222);calls[0]+=1
+            value=copy.deepcopy(self.io.process_data)
+            value['state']='S' if calls[0]%2 else 'R'
+            return value
+        with patch.object(self.io,'process',side_effect=observation):
+            self.before();self.intent();self.guard.produce_guard(self.plan,'after',self.ctx)
+        self.assertTrue(self.proof('after')['credentials_unchanged'])
+    def test_runtime_read_race_rejects_each_immutable_identity_drift(self):
+        changes={'birth_ticks':334,'uids':[0]*4,'gids':[0]*4,'root_identity':[7,9],
+                 'netns_identity':[30,81],'mountinfo_sha256':'0'*64}
+        for key,value in changes.items():
+            with self.subTest(key=key):
+                before=copy.deepcopy(self.io.process_data);after=copy.deepcopy(before)
+                after['state']='R';after[key]=value
+                with patch.object(self.io,'process',side_effect=[before,after]):
+                    with self.assertRaisesRegex(ValueError,'runtime_identity_read_race'):self.guard._runtime()
+    def test_dead_process_is_rejected_before_and_after_source_reads(self):
+        for state in ('Z','X'):
+            with self.subTest(state=state,phase='before'):
+                before=copy.deepcopy(self.io.process_data);before['state']=state
+                with patch.object(self.io,'process',return_value=before):
+                    with self.assertRaisesRegex(ValueError,'runtime_process_or_mount_drift'):self.guard._runtime()
+            with self.subTest(state=state,phase='after'):
+                before=copy.deepcopy(self.io.process_data);after=copy.deepcopy(before);after['state']=state
+                with patch.object(self.io,'process',side_effect=[before,after]):
+                    with self.assertRaisesRegex(ValueError,'runtime_identity_read_race'):self.guard._runtime()
     def test_missing_real_flock_refused(self):
         self.io.locks_ok=False
         with self.assertRaisesRegex(ValueError,'kernel_exclusive_flock_not_owned'):self.before()

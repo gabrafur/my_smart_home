@@ -144,7 +144,7 @@ const recoveryFlow = {
 const recoveryEnv = { get: (key) => key === "TZ" ? "America/Sao_Paulo" : undefined };
 const externalPolicy = {
   version: 1, owner: "node_red", complete: true,
-  confirmation_settle_seconds: 5, recovery_ttl_hours: 12,
+  confirmation_settle_seconds: 5, confirmation_window_seconds: 60, recovery_ttl_hours: 12,
 };
 const recoveryGlobal = {
   get: (key) => key === "external_lighting_policy_v1" ? externalPolicy : undefined,
@@ -279,7 +279,7 @@ assert.equal(blocked.reset, true);
 assert.match(blocked.notify_text, /não será repetido/);
 
 zigbeeFlow.set("external_lighting_zigbee_state", "online");
-const allowedMessage = { expected_state: "off" };
+const allowedMessage = { _msgid: "synthetic-allowed-command", expected_state: "off" };
 const allowedFacts = zigbeeGate(
   allowedMessage,
   statusNode,
@@ -376,6 +376,8 @@ assert.equal(confirmation.duration, "5");
 assert.equal(confirmation.units, "s");
 assert.equal(confirmation.extend, true);
 assert.equal(confirmation.overrideDelay, true);
+assert.equal(confirmation.bytopic, "topic");
+assert.equal(confirmation.topic, "external_confirmation_scope");
 assert.deepEqual(confirmation.wires, [["external_visual_confirmation_mode"]]);
 assert.deepEqual(
   getNode("external_visual_command_blocked").wires[0].flatMap((id) => logicalTargets(id)),
@@ -389,7 +391,13 @@ function confirmationCase(expected, states, source) {
   const store = new Map();
   const context = { get: key => store.get(key), set: (key, value) => store.set(key, value) };
   const observed = new Date().toISOString();
-  return buildMessage({ expected_state: expected, external_issued_at: Date.now() - 1000,
+  const issuedAt = Date.now() - 6000;
+  const pending = { version: 2, operation_id: "synthetic-confirmation", expected, issued_at: issuedAt,
+    verify_after: issuedAt + 5000, expires_at: issuedAt + 60000, runtime_epoch: "synthetic-runtime" };
+  store.set("external_pending_v1", pending);
+  store.set("external_confirmation_epoch_v2", "synthetic-runtime");
+  return buildMessage({ expected_state: expected, external_issued_at: issuedAt,
+    external_operation_id: pending.operation_id, external_verify_after: pending.verify_after, external_expires_at: pending.expires_at,
     notify_success: "ok", source, payload: { observations: Object.fromEntries(
       ["lampada_varanda", "lampadas_garagem", "refletores_jardim", "abajour_sala_de_estar"]
         .map((id, i) => [id, { state: states[i], observed_at: observed }])) }

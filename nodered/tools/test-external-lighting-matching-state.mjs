@@ -4,10 +4,21 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source=fs.readFileSync(new URL('./functions/external-lighting-confirmation-message.js',import.meta.url),'utf8');
-const now=1800000000000,issued=now-1000;
+const now=1800000000000,issued=now-6000;
 class Clock extends Date {static now(){return now;}}
-const invoke=vm.runInNewContext(`(function(msg,node,flow){${source}\n})`,{Date:Clock,Number,Object});
+const rawInvoke=vm.runInNewContext(`(function(msg,node,flow){${source}\n})`,{Date:Clock,Number,Object});
 const roles=['lampada_varanda','lampadas_garagem','refletores_jardim','abajour_sala_de_estar'];
+function begin(msg,flow){
+ const pending={version:2,operation_id:msg.external_operation_id,expected:msg.expected_state,
+  issued_at:msg.external_issued_at,verify_after:msg.external_issued_at+5000,expires_at:msg.external_issued_at+60000,runtime_epoch:'synthetic-runtime'};
+ flow.set('external_pending_v1__test',pending);flow.set('external_confirmation_epoch_v2__test','synthetic-runtime','memoryOnly');
+ flow.fixture_initialized=true;return msg;
+}
+function invoke(msg,node,flow){
+ if(!flow.fixture_initialized)begin(msg,flow);
+ msg.external_verify_after=msg.external_issued_at+5000;msg.external_expires_at=msg.external_issued_at+60000;
+ return rawInvoke(msg,node,flow);
+}
 
 function fixture(states=['on','on','on','on'],at=issued-3600000,expected='on'){
  return {expected_state:expected,external_issued_at:issued,external_operation_id:'synthetic',
@@ -68,12 +79,14 @@ test('legacy false alert is not converted into a fabricated recovery',()=>{
  assert.deepEqual(plain(output),[null,null]);
 });
 
-test('genuine prior mismatch stays open until fresh matching observations',()=>{
+test('genuine prior mismatch closes its expectation; recovery requires a new command',()=>{
  const flow=context();invoke(fixture(['on','off','on','on'],now-1),node,flow);
  assert.equal(flow.get('external_confirmation_incident_v1__test').incident_open,true);
  assert.deepEqual(plain(invoke(fixture(),node,flow)),[null,null]);
  assert.equal(flow.get('external_confirmation_incident_v1__test').incident_open,true);
- const [,recovery]=invoke(fixture(undefined,now-1),node,flow);
+ assert.deepEqual(plain(invoke(fixture(undefined,now-1),node,flow)),[null,null]);
+ const next=fixture(undefined,now-1);next.external_operation_id='synthetic-next';begin(next,flow);
+ const [,recovery]=invoke(next,node,flow);
  assert.equal(recovery.payload.recovery,true);assert.equal(flow.get('external_confirmation_incident_v1__test').incident_open,false);
 });
 
@@ -138,5 +151,7 @@ test('an inconclusive interval neither recovers nor repeats a prior real mismatc
  assert.deepEqual(plain(invoke(missing,node,flow)),[null,null]);
  assert.equal(flow.get('external_confirmation_incident_v1__test').incident_open,true);
  assert.deepEqual(plain(invoke(fixture(['on','off','on','on'],now-1),node,flow)),[null,null]);
- assert.equal(invoke(fixture(undefined,now-1),node,flow)[1].payload.recovery,true);
+ assert.deepEqual(plain(invoke(fixture(undefined,now-1),node,flow)),[null,null]);
+ const next=fixture(undefined,now-1);next.external_operation_id='synthetic-next';begin(next,flow);
+ assert.equal(invoke(next,node,flow)[1].payload.recovery,true);
 });

@@ -5,6 +5,16 @@ Flow `iluminacao_externa` (`nodered/flows.json`, tab
 recebe eventos do Moni Mobile. O flow `alarme_casa` tambem nao envia comandos
 para a iluminacao.
 
+## Confirmação por operação
+
+A política canônica limita a confirmação a uma janela explícita de 60 s e ao
+comando vigente. Sucesso, divergência válida ou expiração encerram a expectativa;
+callbacks antigos e mudanças manuais posteriores não reabrem comandos passados.
+A confirmação exige leitura estritamente posterior à emissão. Esses contratos
+são verificáveis pelos testes de lifecycle; publicar arquivos não comprova deploy.
+A implantação precisa de releitura da API, e o funcionamento residencial exige
+observação natural, sem acionar equipamentos apenas para produzir evidência.
+
 ## Objetivo
 
 Controlar `switch.lampada_varanda`, `switch.lampadas_garagem` e
@@ -58,9 +68,15 @@ automatica.
    - `zigbee2mqtt/example_exterior_light_3/set`;
    - `zigbee2mqtt/example_exterior_light_4/set`.
 7. `Confirmar somente o comando mais recente` aguarda cinco segundos. Um novo
-   comando cancela a confirmacao anterior para impedir avisos obsoletos.
+   comando substitui a expectativa anterior. Cada callback precisa corresponder
+   ao `operation_id`, instante de emissão e limites da expectativa atual. O trigger
+   usa escopos separados para produção e teste; um teste não cancela o timer real.
+   A política visual propõe `confirmation_window_seconds = 60`, valor inteiro
+   entre `confirmation_settle_seconds + 1` e 300 s, contado desde a emissão.
+   Esse prazo é independente do TTL da pergunta de recuperação do pôr do sol.
 8. `Confirmar estados no Home Assistant` lê os quatro destinos. Confirmação do
-   comando exige observação válida posterior à intenção. Um estado `on` que
+   comando exige observação válida estritamente posterior à intenção, recebida
+   dentro da janela vigente. Timestamp igual ao comando permanece inconclusivo. Um estado `on` que
    permaneceu `on`, com data anterior ao comando, não comprova falha nem um novo
    aceite do comando: se todos os estados coincidem com o solicitado, o fluxo
    permanece silencioso e a confirmação continua `unconfirmed`.
@@ -69,10 +85,23 @@ automatica.
    data antiga permanecem `unconfirmed`, sem aviso de falha e sem repetir o
    comando. O estado geral do Zigbee2MQTT não confirma o estado individual de
    uma lâmpada. A indisponibilidade de leitura não abre incidente nem gera uma
-   recuperação quando a leitura volta. Incidente real por divergência permanece
-   aberto durante um intervalo inconclusivo, sem repetir o mesmo aviso; somente
-   observações novas de todos os destinos podem encerrá-lo. Avisos legados de
-   indisponibilidade ou estados antigos não viram recuperações fictícias.
+   recuperação quando a leitura volta. Dentro da janela, dados inconclusivos
+   mantêm a expectativa pendente e silenciosa. Uma divergência nova válida encerra
+   essa expectativa e abre ou mantém o incidente real, sem repetir o comando.
+   Confirmação integral também encerra a expectativa. O prazo vencido encerra a
+   expectativa silenciosamente; expiração não acusa falha física nem recuperação.
+   Após qualquer encerramento, mudanças manuais e callbacks antigos são ignorados.
+   Uma recuperação de incidente anterior exige uma nova intenção explícita e
+   observações novas de todos os destinos; não atribui uma mudança manual ao
+   comando antigo. Avisos legados de indisponibilidade ou estados antigos não
+   viram recuperações fictícias.
+10. O registro pendente inclui versão, token, limites absolutos e epoch volátil do
+    runtime. Após restart, a ausência do epoch impede adotar uma expectativa
+    persistida. Não se reconstrói o vínculo a partir de horário, estado ou aviso.
+    A limpeza do registro expirado/inválido ocorre no próximo callback ou evento;
+    não há timer nem agenda nova de expiração. O gate do prazo é autoritativo mesmo
+    se o registro ainda estiver no armazenamento. O último encerramento é guardado
+    em `external_confirmation_expectation_v2`, separado no estado sintético.
 
 ## Avisos
 
@@ -114,3 +143,24 @@ mudança de função, faça deploy somente dos nós alterados, com revisão da v
 carregada e releitura posterior. Não é necessário reiniciar o container nem
 acionar luzes para testar a classificação. A regressão sintética específica é
 `node --test tools/test-external-lighting-matching-state.mjs` dentro de `nodered`.
+
+## Validação isolada desta proposta
+
+Os replays em `test-external-lighting-confirmation-lifecycle.mjs` cobrem os oito
+casos de contrato (sucesso, mismatch, expiração, substituição, ação manual após
+conclusão, ação manual após expiração, leituras inválidas/antigas/iguais e limites
+de política), além de restart, estado legado e isolamento produção/teste. Nenhum
+replay chama dispositivos, API de escrita, MQTT ou notificação residencial.
+
+No canvas, reset seguido dos testes nominais e negativos atravessa a mesma
+classificação. `TESTE 6` injeta uma divergência fresca; `TESTE 7` injeta estado
+unknown. Ambos preservam `test_mode` até o gate final. Silêncio no ramo unknown
+é resultado esperado, não comprovação de funcionamento físico.
+
+Deploy apenas dos campos revisados pode parar/inicializar os nós modificados,
+embora não reinicie o serviço Node-RED. Callbacks anteriores podem sobreviver:
+a correção não depende de `initialize`/`finalize` para cancelá-los e revalida o
+token atual no consumidor. É necessário carregar e conferir a política de janela
+antes de tratar novos comandos como admitidos; política ausente falha fechada.
+Este pacote não repete comandos existentes, não aciona iluminação no boot e não
+associa retroativamente notificações reais ao defeito sintético.

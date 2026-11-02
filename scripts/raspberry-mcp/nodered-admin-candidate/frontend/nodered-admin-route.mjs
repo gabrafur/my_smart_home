@@ -109,7 +109,10 @@ const validId = id => Number.isSafeInteger(id)
 export function validEnvelope(q) {
   return isObject(q) && q.jsonrpc === '2.0' && validId(q.id) && q.method === 'tools/call'
     && Object.keys(q).sort().join() === 'id,jsonrpc,method,params'
-    && isObject(q.params) && Object.keys(q.params).sort().join() === 'arguments,name'
+    && isObject(q.params) && Object.hasOwn(q.params,'name') && Object.hasOwn(q.params,'arguments')
+    && Object.keys(q.params).every(k => ['name','arguments','_meta'].includes(k))
+    && (!Object.hasOwn(q.params,'_meta') || (isObject(q.params._meta) && data(q.params._meta)
+      && Buffer.byteLength(JSON.stringify(q.params._meta))<=4096))
     && valid(q.params.name,q.params.arguments);
 }
 export function checkedSocket(lstat=fs.lstatSync) {
@@ -163,7 +166,9 @@ export function makeAdminRoute(prior, invoke=adminCall, audit=()=>{}) {
     // These three fields only: no arguments, names of nodes, text, token or result.
     try {
       audit({tool:name,id:q.id,success:false});
-      const data=await invoke(q.params);
+      // MCP transport metadata is untrusted and carries no execution authority.
+      // The native application grammar remains exactly name + arguments.
+      const data=await invoke({name:q.params.name,arguments:q.params.arguments});
       const response={jsonrpc:'2.0',id:q.id,result:{content:[{type:'text',text:JSON.stringify(data)}],structuredContent:data}};
       if(Buffer.byteLength(JSON.stringify(response)+'\n')>RESPONSE_LIMIT)
         throw Error('nodered_admin_response_limit');

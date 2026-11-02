@@ -1,6 +1,5 @@
 {
-  "artifact": "uninstalled_injected_NodeRED_admin_engine_candidate",
-  "runtime_or_MCP_installed": false,
+  "artifact": "structured_NodeRED_administration_implementation",
   "policy_fields": {
     "enabled": false,
     "activation_confirmed": false,
@@ -78,5 +77,6 @@
     "Runtime ancestor identities are pinned; group-writable ancestors require exact reviewed identities and GID0, while world-write, other writable groups, symlinks and drift remain refused. No runtime chmod."
   ],
   "test_status": "isolated_synthetic_tests_passed_not_production_acceptance",
-  "production_entrypoint": "implemented_candidate_not_installed_or_activated"
+  "production_entrypoint": "fixed_root_pinned_bootstrap_and_private_frontend_overlay",
+  "installation_and_authority_state_source": "nodered_admin_read(view=policy); source publication alone grants no authority"
 }
