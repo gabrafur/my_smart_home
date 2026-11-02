@@ -1,0 +1,79 @@
+{
+  "artifact": "uninstalled_injected_NodeRED_admin_engine_candidate",
+  "runtime_or_MCP_installed": false,
+  "policy_fields": {
+    "enabled": false,
+    "activation_confirmed": false,
+    "host": "raspberry",
+    "project": "/mnt/data/docker",
+    "expires_at": "exact admitted expiry supplied by sealed parent",
+    "maximum_deploys_per_24h": 4,
+    "minimum_deploy_spacing_seconds": 60,
+    "maximum_plan_age_seconds": 900
+  },
+  "transport_contract": {
+    "fetch": "returns exact {rev: opaque nonempty string, flows: bounded full private node array}",
+    "deploy": "deploy(revision,flows) sends NodeRED v2/nodes through sealed transport; returns {state:accepted,rev} or {state:conflict,effect_proven_absent:true}; all other outcomes uncertain",
+    "authentication": "trusted parent owns login/revoke and credential transport; engine sees no authentication values"
+  },
+  "trusted_coordination_methods": {
+    "locks": "context manager actually holding all existing shared locks throughout preflight-intent-RPC-verification-receipt; not caller input",
+    "revoked": "checks fixed revocation state",
+    "validate": "validates exact plan with syntax graph layout observability isolated_regression installed_node_types canonical_sources_reconciled booleans and matching plan_sha256",
+    "admit": "binds exact policy hash plan hash operation action risk hash deploy nodes before revision before/after hashes and opaque approval_id to sealed authorization; confirms preserved interface confirmation, resource/lock state, reviewed startup/sensitive effects and at least90s remaining",
+    "guard": "guard(plan,phase=before|after) must return matching plan SHA and phase, credentials_unchanged and context_preservation_proven. Both phases are required. Logical delete also requires logical_delete_restore_isolated_proven; retiring own created nodes requires new_node_retirement_recoverable. Receipt stores only proof SHA/verdicts. Failed post-proof keeps deployment uncertain, never replayed.",
+    "project_value_optional": "returns exact_reviewed_public_source, exact original value and its matching SHA only after trusted public-source correspondence; never a caller-supplied public flag"
+  },
+  "operations": {
+    "read": "fixed views runtime (up to 16 nodes), plan_diff, node_field (public-proof-only 8 KiB fragments), policy; expected content hash binds continued pagination",
+    "prepare": "prepare(operation_id,expected_revision,expected_sha256,edits); duplicate original request returns original prepared plan before fetch/CAS",
+    "validate": "validate(operation_id)",
+    "preflight": "preflight(operation_id,approval_id)",
+    "apply": "apply(operation_id,plan_sha256,approval_id)",
+    "status": "status(operation_id); stored metadata remains available after expiry/revocation",
+    "verify": "verify(operation_id); read-only configuration proof, never functional/device proof and never converts uncertain receipt to applied; repeats after guard and reports protection failure explicitly, without promoting uncertain receipt",
+    "rollback": "rollback(operation_id,rollback_operation_id) prepares own reverse plan only; separate validate/preflight/apply authorization required; own created operational/tab IDs are retained disabled, declared retired_created_nodes/deleted_logically with their original data; configuration-node retirement without a proven disable capability is refused",
+    "revoke": "revoke(operation_id) closes own future authentication/effects, preserves receipts and read-only reconciliation"
+  },
+  "edit_schemas": [
+    {
+      "kind": "create",
+      "node": "bounded JSON node with id/type; no credentials/unsafe resource nodes/external module libs"
+    },
+    {
+      "kind": "patch",
+      "node_id": "exact ID",
+      "expected_node_sha256": "SHA256",
+      "set_fields": "object of whole top-level fields",
+      "unset_fields": "array of existing top-level field names"
+    },
+    {
+      "kind": "delete",
+      "node_id": "exact ID",
+      "expected_node_sha256": "SHA256; logical disable retains ID and every original field"
+    }
+  ],
+  "fixed_limits": {
+    "snapshot_nodes": 10000,
+    "snapshot_bytes": 8388608,
+    "changed_nodes": 128,
+    "request_edits_bytes": 1048576,
+    "public_diff_bytes": 1048576,
+    "operations_retained": 64,
+    "journal_bytes": 268435456,
+    "automatic_purge_or_retry": false
+  },
+  "explicit_limits": [
+    "No interface for shell, generic root, free host path, arbitrary endpoint, credentials or settings.",
+    "Create/edit exec, shell, daemon, file, file in, watch, tail, http in, tcp in, udp in, websocket-listener types refused; existing untouched nodes preserved.",
+    "No external module import configuration admitted.",
+    "Function code is administration with potentially broad runtime effects; static inventory is deliberately not a sandbox or authorization proof.",
+    "Deletion is logical disable; retirement and own-create rollback require separate recovery proof before data can be pruned.",
+    "Whole afterimage and revision must match for own rollback; no merge over later third-party changes.",
+    "Unknown intent or receipt blocks every new effect operation and is never released by matching configuration content alone.",
+    "Production lock/admission/credential-context/source validation adapters are required and must be sealed before activation; this private candidate alone grants no authority.",
+    "delete of a configuration node lacking a flow parent z and type!=tab is refused as configuration_node_quarantine_unavailable; validators must also reject configuration types masquerading as operational nodes."
+  ],
+  "test_status": "isolated_synthetic_tests_passed_not_production_acceptance",
+  "production_entrypoint": "implemented_candidate_not_installed_or_activated"
+}

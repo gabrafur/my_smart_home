@@ -1,0 +1,13 @@
+# PROPOSAL ONLY: not installed or enabled by repository validation.
+[Unit]
+Description=Private structured Node-RED administration
+[Socket]
+ListenStream=/run/raspberry-mcp/nodered-admin.sock
+SocketUser=root
+SocketGroup=raspberry-mcp
+SocketMode=0660
+Accept=yes
+MaxConnections=4
+RemoveOnStop=yes
+[Install]
+WantedBy=sockets.target

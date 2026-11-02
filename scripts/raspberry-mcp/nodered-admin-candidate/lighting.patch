@@ -1,0 +1,1959 @@
+--- a/nodered/tools/install-external-lighting-visual-policy.mjs
++++ b/nodered/tools/install-external-lighting-visual-policy.mjs
+@@ -90,8 +90,8 @@
+ Object.assign(confirmation, {
+   type: "trigger", name: "Aguardar confirmação mais recente — 5 s padrão",
+   op1: "", op2: "", op1type: "nul", op2type: "payl", duration: "5",
+-  extend: true, overrideDelay: true, units: "s", reset: "", bytopic: "all",
+-  topic: "topic", outputs: 1, x: 2470, y: 160,
++  extend: true, overrideDelay: true, units: "s", reset: "", bytopic: "topic",
++  topic: "external_confirmation_scope", outputs: 1, x: 2470, y: 160,
+   wires: [["external_visual_confirmation_mode"]],
+ });
+ for (const field of ["func", "timeout", "noerr", "initialize", "finalize", "libs"]) delete confirmation[field];
+@@ -195,11 +195,12 @@
+   64, 619, 1100, 262, "#b58b3f");
+ grouped(policy.id, { id: "external_visual_policy_note", type: "comment", z: TAB, g: policy.id,
+   name: "Padrões e limites; inválidos preservam a última política válida.",
+-  info: "Confirmação: 5 s [1..30]. TTL do recovery: 12 h [1..24]. Valores inteiros.",
++  info: "Acomodação: 5 s [1..30]. Janela de confirmação: 60 s [acomodação+1..300], contada desde a intenção. TTL do recovery: 12 h [1..24]; são responsabilidades independentes. Valores inteiros. Expiração e restart invalidam a expectativa sem comando ou alerta.",
+   x: 550, y: 660, wires: [] });
+ for (const [id, name, topic, payload, y] of [
+   ["external_visual_policy_settle", "Confirmação = 5 s [1..30]", "confirmation_settle_seconds", "5", 720],
+   ["external_visual_policy_ttl", "TTL recovery = 12 h [1..24]", "recovery_ttl_hours", "12", 780],
++  ["external_visual_policy_window", "Janela = 60 s [acomodação+1..300]", "confirmation_window_seconds", "60", 840],
+ ]) grouped(policy.id, { id, type: "inject", z: TAB, g: policy.id, name,
+   props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "",
+   once: true, onceDelay: "0.2", topic, payload, payloadType: "num", x: 260, y,
+@@ -215,7 +216,7 @@
+ const tests = group("external_visual_test_group", "3. TESTES — pipeline real até dry-run",
+   1220, 619, 1700, 302, "#4b93d1");
+ grouped(tests.id, { id: "external_visual_test_note", type: "comment", z: TAB, g: tests.id,
+-  name: "Ordem: reset; comando online; bloqueio offline; recovery. Nenhum MQTT, push ou Alexa.",
++  name: "Ordem: reset; online; offline; mismatch; unknown; recovery. Sem MQTT, push ou Alexa.",
+   x: 2020, y: 660, wires: [] });
+ grouped(tests.id, { id: "external_visual_test_reset", type: "inject", z: TAB, g: tests.id,
+   name: "TESTE 1: reset", props: [{ p: "payload" }], repeat: "", crontab: "", once: false,
+@@ -251,13 +252,26 @@
+   x: 2010, y: 840, wires: [["external_visual_test_sunrise_out"]] });
+ linkOut("external_visual_test_sunrise_out", tests.id, "Amanhecer TESTE → pipeline",
+   "external_visual_sunrise_in", 2260, 840);
++for (const [id, name, scenario, y] of [
++  ["external_visual_test_mismatch", "TESTE 6: divergência fresca", "mismatch", 720],
++  ["external_visual_test_unknown", "TESTE 7: observação desconhecida", "unknown", 780],
++]) {
++  grouped(tests.id, { id, type: "inject", z: TAB, g: tests.id, name,
++    props: [{ p: "payload", v: "ON", vt: "str" }, { p: "expected_state", v: "on", vt: "str" },
++      { p: "_external_lighting_test", v: "true", vt: "bool" }, { p: "_external_test_zigbee_state", v: "online", vt: "str" },
++      { p: "_external_test_scenario", v: scenario, vt: "str" }],
++    repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
++    x: 2610, y, wires: [[id + "_out"]] });
++  linkOut(id + "_out", tests.id, "Cenário TESTE → pipeline", "external_visual_test_command_in", 2850, y);
++  required("external_visual_test_command_in").links.push(id + "_out");
++}
+ linkIn("external_visual_dry_in", tests.id, "Receber efeitos simulados",
+   ["external_visual_command_dry_out", "external_visual_notification_dry_out", "external_visual_recovery_dry_out"],
+   "external_visual_dry_terminal", 2470, 840);
+ fn("external_visual_dry_terminal", tests.id, "TESTE FINAL: nenhum efeito enviado",
+   "external-lighting-dry-run.js", 0, 2730, 840, []);
+ 
+-required(TAB).info = "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa.";
++required(TAB).info = "Iluminação externa com comandos manuais, acionamento no pôr do sol, desligamento diário no amanhecer, disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle, janela finita de confirmação e TTL de recovery independentes; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa.";
+ const originalBlocked = originalFlows.find(n => n.id === "external_visual_command_blocked");
+ if (originalBlocked) required("external_visual_command_blocked").wires = structuredClone(originalBlocked.wires);
+ flows = reconcileGeneratedFlows(originalFlows, flows, {
+--- a/nodered/tools/manual-test-policy.json
++++ b/nodered/tools/manual-test-policy.json
+@@ -1,641 +1,643 @@
+ {
+-    "version": 2,
+-    "tabs": {
+-        "notification_hub_mobile_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "notification_hub_mobile_test_group",
+-                "notification_hub_mobile_test_primary",
+-                "notification_hub_mobile_test_secondary",
+-                "notification_hub_mobile_test_both",
+-                "notification_hub_mobile_test_invalid",
+-                "notification_hub_mobile_test_startup",
+-                "notification_hub_mobile_history_test"
+-            ],
+-            "automated_test": "test-notification-hubs.mjs",
+-            "dry_run_terminal_ids": [
+-                "notification_hub_mobile_dry_run_assert",
+-                "notification_hub_mobile_history_dry"
+-            ],
+-            "reason": "Destinat\u00e1rio prim\u00e1rio, secund\u00e1rio, ambos explicitamente e contrato sem destinat\u00e1rio atravessam o mesmo validador e roteamento do hub; todos terminam com simulated:true e dispatched:false, sem chamar o Home Assistant. O teste de hist\u00f3rico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica reten\u00e7\u00e3o de 7 dias em diret\u00f3rio tempor\u00e1rio."
+-        },
+-        "notification_hub_alexa_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "notification_hub_alexa_test_group",
+-                "notification_hub_alexa_test_valid",
+-                "notification_hub_alexa_test_invalid",
+-                "notification_hub_alexa_dashboard_test_valid",
+-                "notification_hub_alexa_dashboard_test_empty",
+-                "notification_hub_alexa_history_test"
+-            ],
+-            "automated_test": "test-notification-hubs.mjs",
+-            "dry_run_terminal_ids": [
+-                "notification_hub_alexa_dry_run_assert",
+-                "notification_hub_alexa_history_dry"
+-            ],
+-            "reason": "Target l\u00f3gico v\u00e1lido e inv\u00e1lido, mensagem digitada e texto vazio atravessam o contrato real do hub com test_mode e terminam com simulated:true e dispatched:false, sem acionar qualquer Alexa. O teste de hist\u00f3rico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica reten\u00e7\u00e3o de 7 dias em diret\u00f3rio tempor\u00e1rio."
+-        },
+-        "notification_hub_persistent_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "notification_hub_persistent_test_group",
+-                "notification_hub_persistent_test_create",
+-                "notification_hub_persistent_test_dismiss",
+-                "notification_hub_persistent_test_invalid",
+-                "notification_hub_persistent_history_test"
+-            ],
+-            "automated_test": "test-notification-hubs.mjs",
+-            "dry_run_terminal_ids": [
+-                "notification_hub_persistent_dry_run_assert",
+-                "notification_hub_persistent_history_dry"
+-            ],
+-            "reason": "Create, dismiss e contrato sem notification_id atravessam opera\u00e7\u00e3o e fila can\u00f4nicas em test_mode e terminam com simulated:true e dispatched:false, sem criar ou remover alertas no Home Assistant. O teste de hist\u00f3rico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica reten\u00e7\u00e3o de 7 dias em diret\u00f3rio tempor\u00e1rio."
+-        },
+-        "git_backup_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "git_backup_test_group",
+-                "git_backup_test_instructions",
+-                "git_backup_test_reset",
+-                "git_backup_test_request",
+-                "git_backup_test_success",
+-                "git_backup_test_failure",
+-                "git_backup_test_deferred",
+-                "git_backup_test_invalid"
+-            ],
+-            "automated_test": "test-git-backup-flow.mjs",
+-            "dry_run_terminal_ids": [
+-                "git_backup_dry_run_terminal"
+-            ],
+-            "reason": "Pedido, sucesso, falha, adiamento e resposta inv\u00e1lida atravessam gates e decis\u00f5es can\u00f4nicos; worker, push, SSH, updates e notifica\u00e7\u00f5es s\u00e3o bloqueados no terminal dry-run."
+-        },
+-        "daily_host_updates_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "daily_update_test_group",
+-                "daily_update_test_reset",
+-                "daily_update_test_request",
+-                "daily_update_test_failure",
+-                "daily_update_test_unavailable",
+-                "daily_update_core_group",
+-                "daily_update_core_test_request",
+-                "daily_update_core_test_result",
+-                "daily_update_containers_group",
+-                "daily_update_containers_test_request",
+-                "daily_update_containers_test_result",
+-                "daily_update_codex_cli_group",
+-                "daily_update_codex_cli_test_request",
+-                "daily_update_codex_cli_test_success",
+-                "daily_update_codex_cli_test_failure",
+-                "daily_update_inventory_group",
+-                "daily_update_inventory_test",
+-                "daily_update_hacs_group",
+-                "daily_update_alexa_media_group",
+-                "daily_update_alexa_media_result_test",
+-                "daily_update_firmware_group",
+-                "daily_update_firmware_test_auto",
+-                "daily_update_unknown_group",
+-                "daily_update_kia_group",
+-                "daily_update_kia_test_request",
+-                "daily_update_kia_test_result",
+-                "daily_update_repository_dependency_group",
+-                "daily_update_repository_dependency_test_group",
+-                "daily_update_dependency_test_reset",
+-                "daily_update_dependency_test_safe",
+-                "daily_update_dependency_test_blocked",
+-                "daily_update_dependency_test_result",
+-                "operations_daily_group",
+-                "operations_daily_test_reset",
+-                "daily_update_kia_promotion_test_reset",
+-                "daily_update_kia_promotion_test_pending",
+-                "daily_update_kia_promotion_test_completed"
+-            ],
+-            "automated_test": "test-daily-host-update-flow.mjs",
+-            "dry_run_terminal_ids": [
+-                "daily_update_dry_run_terminal",
+-                "global_observer_dry_run_terminal"
+-            ],
+-            "reason": "DietPi, Core, containers, Codex CLI e depend\u00eancias do reposit\u00f3rio percorrem pontes serializadas pr\u00f3prias; os invent\u00e1rios sint\u00e9ticos cobrem Bluelink, Alexa Media auditada, demais HACS, firmware, Core, classes desconhecidas, override eleg\u00edvel e depend\u00eancia transitiva bloqueada. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, npm install, restart, Codex, commit, push, update.install e reboot permanecem bloqueados."
+-        },
+-        "weekly_docs_review_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "weekly_docs_review_test_group",
+-                "weekly_docs_review_test_reset",
+-                "weekly_docs_review_test_scheduled",
+-                "weekly_docs_review_test_manual",
+-                "weekly_docs_review_test_failure",
+-                "weekly_docs_review_test_worker_unavailable",
+-                "weekly_docs_review_test_worker_recovered"
+-            ],
+-            "automated_test": "test-weekly-docs-review-flow.mjs",
+-            "dry_run_terminal_ids": [
+-                "weekly_docs_review_dry_run_terminal",
+-                "global_observer_dry_run_terminal"
+-            ],
+-            "reason": "Agendamento, acionamento manual, falha da ponte e lifecycle indispon\u00edvel/recuperado usam os caminhos reais; Codex, Git, commit, push, trigger externo e entrega de notifica\u00e7\u00e3o permanecem bloqueados nos terminais dry-run."
+-        },
+-        "29d64664bf8cbde8": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "gar_group_tests",
+-                "gar_test_reset",
+-                "gar_test_accept",
+-                "gar_test_duplicate",
+-                "gar_test_cooldown",
+-                "gar_test_boundary",
+-                "gar_test_relay_on"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "gar_test_dry_run_terminal"
+-            ],
+-            "automated_test": "test-garage-gate-flow.mjs",
+-            "reason": "Pedido aceito, duplicidade, cooldown, limite exato e rel\u00e9 j\u00e1 ligado atravessam adapta\u00e7\u00e3o, pol\u00edtica, decis\u00e3o e gates reais; MQTT, Logbook e notifica\u00e7\u00e3o terminam no terminal dry-run."
+-        },
+-        "shared_integrations_tab": {
+-            "strategy": "not_applicable",
+-            "evidence_node_ids": [],
+-            "reason": "Tab de infraestrutura compartilhada sem automa\u00e7\u00e3o ou efeito pr\u00f3prio."
+-        },
+-        "ce258dec9814b96b": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "external_visual_test_group",
+-                "external_visual_test_reset",
+-                "external_visual_test_online",
+-                "external_visual_test_offline",
+-                "external_visual_test_recovery",
+-                "external_visual_test_sunrise"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "external_visual_dry_terminal"
+-            ],
+-            "automated_test": "test-external-lighting-alarm-flow.mjs",
+-            "reason": "Comando aceito, Zigbee offline, recovery p\u00f3s-p\u00f4r do sol e desligamento no amanhecer atravessam pol\u00edtica, gates e confirma\u00e7\u00e3o can\u00f4nicos; MQTT, push e Alexa terminam no dry-run."
+-        },
+-        "alarm_house_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "alarm_group_tests",
+-                "alarm_test_reset",
+-                "alarm_test_arm",
+-                "alarm_test_failure_arm",
+-                "alarm_test_disarm"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "alarm_test_dry_run_terminal"
+-            ],
+-            "automated_test": "test-alarm-house-flow.mjs",
+-            "reason": "Armar, desarmar, falha e retry sint\u00e9ticos atravessam a decis\u00e3o can\u00f4nica e os gates finais; public_bindings.call, update_entity e notifica\u00e7\u00f5es terminam obrigatoriamente no dry-run."
+-        },
+-        "456b32bd5d59b0d6": {
+-            "strategy": "automated_only",
+-            "evidence_node_ids": [],
+-            "automated_test": "test-raspberry-pi-cooling-flow.mjs",
+-            "reason": "For\u00e7ar estados t\u00e9rmicos ou GPIO no host residencial n\u00e3o \u00e9 um teste manual seguro."
+-        },
+-        "storage_health_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "storage_group_tests",
+-                "storage_test_reset",
+-                "storage_test_normal",
+-                "storage_test_growth",
+-                "storage_test_prepare",
+-                "storage_test_decision_terminal"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "storage_dry_run_terminal"
+-            ],
+-            "automated_test": "test-storage-health-flow.mjs",
+-            "reason": "Normalidade e crescimento acelerado atravessam o mesmo diagn\u00f3stico e gate de autocuidado; test_mode bloqueia exec, MQTT e notifica\u00e7\u00f5es e termina no dry-run compartilhado."
+-        },
+-        "recorder_retention_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "recorder_retention_group_tests",
+-                "recorder_retention_test_reset",
+-                "recorder_retention_test_baseline",
+-                "recorder_retention_test_near",
+-                "recorder_retention_test_outlier",
+-                "recorder_retention_test_repack_ready"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "recorder_retention_dry_run_terminal"
+-            ],
+-            "automated_test": "test-recorder-retention-flow.mjs",
+-            "reason": "Baseline, valor consecutivo pr\u00f3ximo, outlier e libera\u00e7\u00e3o do repack percorrem as decis\u00f5es reais; test_mode bloqueia recorder.purge_entities e recorder.purge e termina no terminal dry-run."
+-        },
+-        "monitoramento_internet_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "grp_internet_tests",
+-                "internet_test_note",
+-                "internet_test_reset",
+-                "internet_test_fail_1",
+-                "internet_test_fail_2",
+-                "internet_test_fail_3",
+-                "internet_test_success_1",
+-                "internet_test_success_2",
+-                "internet_test_codex_absent",
+-                "internet_test_codex_ready"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "internet_dry_run_terminal",
+-                "internet_remote_dry_run_terminal"
+-            ],
+-            "automated_test": "test-internet-monitor-flow.mjs",
+-            "reason": "Tr\u00eas falhas e dois sucessos percorrem quorum e alertas de internet; os relat\u00f3rios sint\u00e9ticos de Codex ausente/pronto percorrem telemetria, estado, cooldown, pedido de recovery e encerramento do alerta. MQTT, notifica\u00e7\u00f5es e worker terminam em dry-run."
+-        },
+-        "monitoramento_vpn_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "vpn_monitor_test_group",
+-                "vpn_monitor_test_reset",
+-                "vpn_monitor_test_internet_online",
+-                "vpn_monitor_test_internet_offline",
+-                "vpn_monitor_test_vpn_down",
+-                "vpn_monitor_test_confirm_down",
+-                "vpn_monitor_test_vpn_up",
+-                "vpn_monitor_test_confirm_up"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "vpn_monitor_dry_run_terminal"
+-            ],
+-            "automated_test": "test-vpn-monitor-flow.mjs",
+-            "reason": "Queda, supress\u00e3o durante indisponibilidade da internet e recupera\u00e7\u00e3o percorrem a l\u00f3gica real at\u00e9 o terminal dry-run, sem publicar MQTT nem enviar notifica\u00e7\u00f5es."
+-        },
+-        "monitoramento_zigbee_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "grp_zigbee_tests",
+-                "zigbee_test_reset",
+-                "zigbee_test_net_offline",
+-                "zigbee_test_net_30",
+-                "zigbee_test_net_60",
+-                "zigbee_test_component_down",
+-                "zigbee_test_component_duplicate",
+-                "zigbee_test_component_reminder",
+-                "zigbee_test_component_up",
+-                "zigbee_test_route_failure",
+-                "zigbee_test_route_duplicate",
+-                "zigbee_test_route_scan_response",
+-                "zigbee_test_route_failed_response",
+-                "zigbee_test_route_retry",
+-                "zigbee_test_route_scan_retry_response",
+-                "zigbee_test_route_success_response"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "zigbee_dry_run_terminal"
+-            ],
+-            "automated_test": "test-zigbee-monitor-flow.mjs",
+-            "reason": "Rede, disponibilidade e NWK_NO_ROUTE percorrem parsing, pol\u00edtica, estado, dedupe, cooldown, varredura de rotas, reconfigura\u00e7\u00e3o correlacionada e recovery; MQTT e notifica\u00e7\u00f5es s\u00e3o obrigatoriamente desviados ao dry-run."
+-        },
+-        "ea0a6aa0d24ff863": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "6e71dbc937fe5669",
+-                "19a91d7fce3b9db2",
+-                "people_departure_approach_test_v1",
+-                "people_departure_bounce_home_test_v1",
+-                "people_visual_arrival_refresh_dispatch",
+-                "people_arrival_departure_blocked_v1"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "global_observer_dry_run_terminal",
+-                "people_arrival_departure_blocked_v1",
+-                "people_visual_icloud_dry_run_terminal",
+-                "resident_notifications_dry_run_terminal",
+-                "light_full_dry_run_terminal_v1",
+-                "vehicle_primary_refresh_dry_run_terminal_v1"
+-            ],
+-            "automated_test": "test-security-light-flow.mjs",
+-            "reason": "Estados sint\u00e9ticos cumulativos atravessam sele\u00e7\u00e3o, dire\u00e7\u00e3o, chegada, notifica\u00e7\u00f5es, ve\u00edculo e ilumina\u00e7\u00e3o; sa\u00edda e rebote terminam no bloqueio expl\u00edcito e todos os demais efeitos residenciais terminam em dry-run."
+-        },
+-        "c22d8b12055e87f7": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "5df25064f701ecd2",
+-                "9501b32f01ed802b",
+-                "vehicle_primary_manual_engine_on_test_v1",
+-                "vehicle_primary_manual_engine_off_test_v1",
+-                "vehicle_primary_remote_command_test_group_v1",
+-                "vehicle_primary_remote_command_test_reset_v1",
+-                "vehicle_primary_remote_command_test_success_v1",
+-                "vehicle_primary_remote_command_test_failure_v1",
+-                "vehicle_primary_remote_request_test_available_v1",
+-                "vehicle_primary_remote_request_test_unavailable_v1"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "vehicle_primary_refresh_dry_run_terminal_v1",
+-                "light_full_dry_run_terminal_v1"
+-            ],
+-            "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
+-            "reason": "Motor e localiza\u00e7\u00e3o sint\u00e9ticos percorrem o fluxo de ilumina\u00e7\u00e3o; inten\u00e7\u00f5es remotas com alvo dispon\u00edvel e indispon\u00edvel atravessam valida\u00e7\u00e3o, disponibilidade, concorr\u00eancia, test_mode, classifica\u00e7\u00e3o, dedupe e guard. Todos os efeitos terminam em dry-run, sem acionar ve\u00edculo nem notifica\u00e7\u00f5es."
+-        },
+-        "62bb822e033d1623": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "arrival_context_test_group",
+-                "arrival_context_test_reset_control",
+-                "arrival_context_test_cycle_control",
+-                "arrival_context_test_vehicle_on_control",
+-                "arrival_context_test_home_control",
+-                "arrival_context_test_due_control"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "vehicle_primary_refresh_dry_run_terminal_v1",
+-                "light_full_dry_run_terminal_v1",
+-                "resident_notifications_dry_run_terminal"
+-            ],
+-            "automated_test": "test-arrival-context-flow.mjs",
+-            "reason": "Reset e ciclo sint\u00e9ticos atravessam os produtores, a valida\u00e7\u00e3o monot\u00f4nica, o join, a deduplica\u00e7\u00e3o e os consumidores; as fronteiras finais registram simulated:true e dispatched:false."
+-        },
+-        "6b7552efb85343f4": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "ed8fa1d49205cbdb",
+-                "2f8ac8be8e84a548",
+-                "security_light_engine_bypass_group_v1",
+-                "security_light_engine_bypass_test_on_v1",
+-                "security_light_engine_bypass_test_off_v1",
+-                "security_light_arrival_direction_gate_v1",
+-                "security_light_arrival_direction_blocked_v1",
+-                "security_visual_arrival_watch",
+-                "security_visual_people_refresh_out",
+-                "light_full_dry_run_terminal_v1",
+-                "security_visual_off_tests_group",
+-                "security_visual_off_test_reset",
+-                "security_visual_off_test_old_off",
+-                "security_visual_off_test_new_off",
+-                "security_visual_off_test_gate",
+-                "security_visual_gps_tests_group",
+-                "security_visual_gps_reset",
+-                "security_visual_gps_return",
+-                "security_visual_gps_jitter"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "light_full_dry_run_terminal_v1",
+-                "security_visual_off_dry_run"
+-            ],
+-            "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
+-            "reason": "Motor, bypass e chegada sint\u00e9ticos percorrem normaliza\u00e7\u00e3o, persist\u00eancia da inten\u00e7\u00e3o, gates e lifecycle; refletor, timers e notifica\u00e7\u00f5es terminam no terminal dry-run sem qualquer efeito residencial."
+-        },
+-        "1f468eaeef0733dd": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "alarm_arrival_full_flow_group",
+-                "68bef52acfe15ef6",
+-                "89896182d31675a1",
+-                "alarm_arrival_test_dry_run_terminal_v1"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "alarm_arrival_test_dry_run_terminal_v1"
+-            ],
+-            "automated_test": "test-alarm-arrival-disarm-flow.mjs",
+-            "reason": "A trilha manual percorre pend\u00eancia e confirma\u00e7\u00e3o, simula notifica\u00e7\u00f5es e desarme e termina sem alcan\u00e7ar dispositivos."
+-        },
+-        "codex_alertas_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "codex_group_tests",
+-                "codex_test_reset",
+-                "codex_test_warning",
+-                "codex_test_duplicate",
+-                "codex_test_unavailable",
+-                "codex_test_daily"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "codex_test_dry_run_terminal"
+-            ],
+-            "automated_test": "test-notification-reliability.mjs",
+-            "reason": "Aten\u00e7\u00e3o, duplicidade, indisponibilidade e resumo percorrem snapshot, pol\u00edtica, n\u00edvel, cooldown e gates reais; todos os servi\u00e7os terminam no dry-run compartilhado."
+-        },
+-        "monitoramento_tuya_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "grp_tuya_tests",
+-                "tuya_test_reset",
+-                "tuya_test_offline_29",
+-                "tuya_test_offline_30",
+-                "tuya_test_offline_duplicate",
+-                "tuya_test_recovery_60",
+-                "tuya_test_reminder",
+-                "tuya_test_query_failure"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "tuya_dry_run_terminal"
+-            ],
+-            "automated_test": "test-tuya-monitor-flow.mjs",
+-            "reason": "Tuya e LocalTuya percorrem snapshot, agrupamento, split/join, limites, dedupe, recovery, resumo e gates; alertas e MQTT terminam em dry-run."
+-        },
+-        "resident_notifications_tab": {
+-            "strategy": "manual_explicit_side_effect",
+-            "explicit_exception": "notification_delivery_under_test",
+-            "evidence_node_ids": [
+-                "resident_notifications_test_group",
+-                "resident_notifications_test_instructions",
+-                "resident_notifications_test_reset",
+-                "resident_notifications_test_primary",
+-                "resident_notifications_test_home",
+-                "resident_notifications_test_secondary",
+-                "resident_notifications_test_direction",
+-                "resident_notifications_test_unavailable",
+-                "resident_notifications_test_stale",
+-                "resident_notifications_test_future",
+-                "resident_notifications_test_duplicate",
+-                "resident_notifications_dry_run_terminal",
+-                "resident_notifications_test_delivery_secondary"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "resident_notifications_dry_run_terminal"
+-            ],
+-            "delivery_node_ids": [
+-                "resident_notifications_test_notify_secondary"
+-            ],
+-            "automated_test": "test-resident-approach-notifications.mjs",
+-            "reason": "Approach, salto direto para home, ambos os residentes, dire\u00e7\u00e3o inv\u00e1lida, ciclo n\u00e3o confirmado, evento antigo/futuro e duplicidade percorrem o contrato can\u00f4nico e terminam em dry-run; por solicita\u00e7\u00e3o expl\u00edcita, um \u00fanico bot\u00e3o marcado TESTE valida a entrega ao mobile_secondary sem acionar qualquer outro dispositivo."
+-        },
+-        "global_flow_observer_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "explicit_exception": "notification_delivery_under_test",
+-            "evidence_node_ids": [
+-                "global_observer_test_group",
+-                "global_observer_test_reset",
+-                "global_observer_test_error",
+-                "global_observer_test_status_failure",
+-                "global_observer_test_evaluate",
+-                "global_observer_test_delivery",
+-                "global_observer_test_integration_reset",
+-                "global_observer_test_integration_failure",
+-                "global_observer_test_integration_confirm",
+-                "global_observer_test_integration_recovery",
+-                "global_observer_diagnostic_group"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "global_observer_dry_run_terminal",
+-                "global_observer_diagnostic_dry"
+-            ],
+-            "delivery_node_ids": [
+-                "global_observer_notify_primary"
+-            ],
+-            "automated_test": "test-global-flow-observer.mjs",
+-            "reason": "Erros, indisponibilidade e integra\u00e7\u00f5es atravessam as decis\u00f5es reais at\u00e9 os terminais de notifica\u00e7\u00e3o e diagn\u00f3stico em dry-run. O push TESTE opcional mant\u00e9m exce\u00e7\u00e3o expl\u00edcita e n\u00e3o \u00e9 executado no replay automatizado."
+-        },
+-        "local_ai_rtx_recovery_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "local_ai_rtx_test_group",
+-                "local_ai_rtx_test_instructions",
+-                "local_ai_rtx_test_reset",
+-                "local_ai_rtx_test_available",
+-                "local_ai_rtx_test_host_off",
+-                "local_ai_rtx_test_host_on",
+-                "local_ai_rtx_test_unavailable",
+-                "local_ai_rtx_test_recovered",
+-                "local_ai_rtx_test_failed",
+-                "rtx_auto_tests_group",
+-                "rtx_auto_test_eligible",
+-                "rtx_auto_test_offline",
+-                "rtx_auto_test_exhausted",
+-                "rtx_auto_test_unknown",
+-                "rtx_auto_test_healthy",
+-                "rtx_auto_test_reset"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "local_ai_rtx_dry_run_terminal",
+-                "global_observer_dry_run_terminal",
+-                "rtx_auto_dry_terminal"
+-            ],
+-            "automated_test": "test-local-ai-rtx-recovery-flow.mjs",
+-            "reason": "Disponibilidade, host ligado/desligado, listener ausente, dedupe, sucesso e falhas do recovery atravessam normaliza\u00e7\u00e3o, decis\u00f5es e gates reais; alertas e chamadas HTTP/MCP terminam em dry-run."
+-        },
+-        "host_memory_guardian_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "host_memory_guardian_test_group",
+-                "host_memory_guardian_test_instructions",
+-                "host_memory_guardian_test_reset",
+-                "host_memory_guardian_test_request",
+-                "host_memory_guardian_test_healthy",
+-                "host_memory_guardian_test_reclaimed",
+-                "host_memory_guardian_test_candidate",
+-                "host_memory_guardian_test_terminated",
+-                "host_memory_guardian_test_duplicate",
+-                "host_memory_guardian_test_failed",
+-                "host_memory_guardian_test_stale",
+-                "operations_memory_group",
+-                "operations_memory_test_reset",
+-                "operations_memory_test_pressure"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "host_memory_guardian_dry_run_terminal",
+-                "global_observer_dry_run_terminal"
+-            ],
+-            "automated_test": "test-host-memory-guardian-flow.mjs",
+-            "reason": "Pedido, mem\u00f3ria saud\u00e1vel, recupera\u00e7\u00e3o tempor\u00e1ria, press\u00e3o, candidato ocioso, encerramento, duplicidade, falha e resultado vencido atravessam adapta\u00e7\u00e3o, vig\u00eancia, estado, decis\u00f5es visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."
+-        },
+-        "startup_readiness_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "startup_test_group",
+-                "startup_test_reset",
+-                "startup_test_internet",
+-                "startup_test_vpn",
+-                "startup_test_offline",
+-                "startup_test_unknown"
+-            ],
+-            "automated_test": "test-startup-readiness.mjs",
+-            "dry_run_terminal_ids": [
+-                "startup_dry"
+-            ],
+-            "reason": "Reset, internet sem VPN, ambas online, oscila\u00e7\u00e3o e unknown atravessam a mesma confirma\u00e7\u00e3o can\u00f4nica; dry-run n\u00e3o altera prontid\u00e3o de produ\u00e7\u00e3o nem executa tarefas."
+-        },
+-        "rtx_metrics_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "rtx_metrics_test_group",
+-                "rtx_metrics_test_reset",
+-                "rtx_metrics_test_nominal",
+-                "rtx_metrics_test_offline",
+-                "rtx_metrics_test_stale",
+-                "rtx_metrics_test_empty",
+-                "rtx_metrics_test_invalid"
+-            ],
+-            "automated_test": "test-rtx-metrics-flow.mjs",
+-            "dry_run_terminal_ids": [
+-                "rtx_metrics_dry_run",
+-                "global_observer_dry_run_terminal"
+-            ],
+-            "reason": "Snapshots sint\u00e9ticos cumulativos percorrem valida\u00e7\u00e3o, disponibilidade, c\u00e1lculo e serializa\u00e7\u00e3o reais; gate final bloqueia MQTT. Reset e estado de teste isolados. Replay do observador cobre erro e indisponibilidade sem notifica\u00e7\u00e3o."
+-        },
+-        "host_observer_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "host_obs_test_group",
+-                "host_obs_test_reset",
+-                "host_obs_test_healthy",
+-                "host_obs_test_failure",
+-                "host_obs_test_confirm",
+-                "host_obs_test_resource_high",
+-                "host_obs_test_source_failure",
+-                "host_obs_test_stale",
+-                "host_obs_test_malformed",
+-                "host_obs_test_legacy"
+-            ],
+-            "dry_run_terminal_ids": [
+-                "global_observer_dry_run_terminal"
+-            ],
+-            "automated_test": "test-host-observer.mjs",
+-            "reason": "Replay completo da fonte sanitizada,validade,thresholds visuais,dedupe/cursor/lifecycle e gate global;contexto sint\u00e9tico separado;sem exec,HA,MQTT ou dispositivos."
+-        },
+-        "mqtt_native_observer_tab": {
+-            "strategy": "manual_full_dry_run",
+-            "evidence_node_ids": [
+-                "mq_native_test_group",
+-                "mq_native_test_reset",
+-                "mq_native_test_within",
+-                "mq_native_test_duplicate",
+-                "mq_native_test_over",
+-                "mq_native_test_unknown",
+-                "mq_native_test_missing",
+-                "mq_native_test_no_events",
+-                "mq_native_test_unavailable",
+-                "mq_native_test_busy",
+-                "mq_native_test_malformed",
+-                "mq_native_test_disabled",
+-                "mq_native_test_reader_denied",
+-                "mq_native_test_reader_clock",
+-                "mq_native_test_reader_future",
+-                "mq_native_test_reader_stale",
+-                "mq_native_test_reader_missing",
+-                "mq_native_window_test_group",
+-                "mq_native_test_window_start",
+-                "mq_native_test_window_pending",
+-                "mq_native_test_window_drain",
+-                "mq_native_test_window_source_unknown",
+-                "mq_native_test_window_epoch",
+-                "mq_native_test_window_clock",
+-                "mq_native_test_window_policy",
+-                "mq_native_test_window_gap",
+-                "mq_native_test_window_over",
+-                "mq_native_test_window_fault",
+-                "mq_native_test_window_legacy",
+-                "mq_native_test_window_missing",
+-                "mq_native_test_window_timing_unknown",
+-                "mq_native_test_window_reader_denied",
+-                "mq_native_test_window_reader_stale",
+-                "mq_native_window_request_group",
+-                "mq_native_test_window_restart",
+-                "mq_native_test_window_restart_wait",
+-                "mq_native_test_window_capacity"
+-            ],
+-            "automated_test": "test-mqtt-native-observer-flow.mjs",
+-            "dry_run_terminal_ids": [
+-                "global_observer_dry_run_terminal"
+-            ],
+-            "reason": "Replay nominal, negativo, reset, perda, duplicata, autoriza\u00e7\u00e3o, dom\u00ednio temporal e leitor antigo atravessa a mesma normaliza\u00e7\u00e3o, pol\u00edtica visual, dedupe e gate final. Em test_mode, nenhum exec, arquivo, ACK, servi\u00e7o, MQTT ou push \u00e9 executado; o terminal compartilhado recebe simulated:true e dispatched:false. Aus\u00eancia de eventos n\u00e3o comprova recupera\u00e7\u00e3o. Janela do componente: reset \u2192 in\u00edcio \u2192 corte com ACK pendente \u2192 drenar. Reset antes de cada falha. Tempo sint\u00e9tico avan\u00e7a 24h sem reduzir contrato; mudan\u00e7a de origem sem manuten\u00e7\u00e3o fica unknown; fonte desconhecida usa somente hist\u00f3rico pr\u00f3prio, sem ACK. O resultado passa pela mesma codifica\u00e7\u00e3o e gate final dry-run. Nova inten\u00e7\u00e3o atravessa o mesmo registrador e gates: janela anterior arquivada exatamente, espera por ACK atual, duplicata ap\u00f3s crash idempotente e capacidade8 preservada; observa\u00e7\u00e3o atual em envelope separado da prova congelada."
+-        }
++  "version": 2,
++  "tabs": {
++    "notification_hub_mobile_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "notification_hub_mobile_test_group",
++        "notification_hub_mobile_test_primary",
++        "notification_hub_mobile_test_secondary",
++        "notification_hub_mobile_test_both",
++        "notification_hub_mobile_test_invalid",
++        "notification_hub_mobile_test_startup",
++        "notification_hub_mobile_history_test"
++      ],
++      "automated_test": "test-notification-hubs.mjs",
++      "dry_run_terminal_ids": [
++        "notification_hub_mobile_dry_run_assert",
++        "notification_hub_mobile_history_dry"
++      ],
++      "reason": "Destinatário primário, secundário, ambos explicitamente e contrato sem destinatário atravessam o mesmo validador e roteamento do hub; todos terminam com simulated:true e dispatched:false, sem chamar o Home Assistant. O teste de histórico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica retenção de 7 dias em diretório temporário."
++    },
++    "notification_hub_alexa_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "notification_hub_alexa_test_group",
++        "notification_hub_alexa_test_valid",
++        "notification_hub_alexa_test_invalid",
++        "notification_hub_alexa_dashboard_test_valid",
++        "notification_hub_alexa_dashboard_test_empty",
++        "notification_hub_alexa_history_test"
++      ],
++      "automated_test": "test-notification-hubs.mjs",
++      "dry_run_terminal_ids": [
++        "notification_hub_alexa_dry_run_assert",
++        "notification_hub_alexa_history_dry"
++      ],
++      "reason": "Target lógico válido e inválido, mensagem digitada e texto vazio atravessam o contrato real do hub com test_mode e terminam com simulated:true e dispatched:false, sem acionar qualquer Alexa. O teste de histórico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica retenção de 7 dias em diretório temporário."
++    },
++    "notification_hub_persistent_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "notification_hub_persistent_test_group",
++        "notification_hub_persistent_test_create",
++        "notification_hub_persistent_test_dismiss",
++        "notification_hub_persistent_test_invalid",
++        "notification_hub_persistent_history_test"
++      ],
++      "automated_test": "test-notification-hubs.mjs",
++      "dry_run_terminal_ids": [
++        "notification_hub_persistent_dry_run_assert",
++        "notification_hub_persistent_history_dry"
++      ],
++      "reason": "Create, dismiss e contrato sem notification_id atravessam operação e fila canônicas em test_mode e terminam com simulated:true e dispatched:false, sem criar ou remover alertas no Home Assistant. O teste de histórico atravessa o serializador real sem gravar arquivos; test-notification-history.mjs verifica retenção de 7 dias em diretório temporário."
++    },
++    "git_backup_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "git_backup_test_group",
++        "git_backup_test_instructions",
++        "git_backup_test_reset",
++        "git_backup_test_request",
++        "git_backup_test_success",
++        "git_backup_test_failure",
++        "git_backup_test_deferred",
++        "git_backup_test_invalid"
++      ],
++      "automated_test": "test-git-backup-flow.mjs",
++      "dry_run_terminal_ids": [
++        "git_backup_dry_run_terminal"
++      ],
++      "reason": "Pedido, sucesso, falha, adiamento e resposta inválida atravessam gates e decisões canônicos; worker, push, SSH, updates e notificações são bloqueados no terminal dry-run."
++    },
++    "daily_host_updates_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "daily_update_test_group",
++        "daily_update_test_reset",
++        "daily_update_test_request",
++        "daily_update_test_failure",
++        "daily_update_test_unavailable",
++        "daily_update_core_group",
++        "daily_update_core_test_request",
++        "daily_update_core_test_result",
++        "daily_update_containers_group",
++        "daily_update_containers_test_request",
++        "daily_update_containers_test_result",
++        "daily_update_codex_cli_group",
++        "daily_update_codex_cli_test_request",
++        "daily_update_codex_cli_test_success",
++        "daily_update_codex_cli_test_failure",
++        "daily_update_inventory_group",
++        "daily_update_inventory_test",
++        "daily_update_hacs_group",
++        "daily_update_alexa_media_group",
++        "daily_update_alexa_media_result_test",
++        "daily_update_firmware_group",
++        "daily_update_firmware_test_auto",
++        "daily_update_unknown_group",
++        "daily_update_kia_group",
++        "daily_update_kia_test_request",
++        "daily_update_kia_test_result",
++        "daily_update_repository_dependency_group",
++        "daily_update_repository_dependency_test_group",
++        "daily_update_dependency_test_reset",
++        "daily_update_dependency_test_safe",
++        "daily_update_dependency_test_blocked",
++        "daily_update_dependency_test_result",
++        "operations_daily_group",
++        "operations_daily_test_reset",
++        "daily_update_kia_promotion_test_reset",
++        "daily_update_kia_promotion_test_pending",
++        "daily_update_kia_promotion_test_completed"
++      ],
++      "automated_test": "test-daily-host-update-flow.mjs",
++      "dry_run_terminal_ids": [
++        "daily_update_dry_run_terminal",
++        "global_observer_dry_run_terminal"
++      ],
++      "reason": "DietPi, Core, containers, Codex CLI e dependências do repositório percorrem pontes serializadas próprias; os inventários sintéticos cobrem Bluelink, Alexa Media auditada, demais HACS, firmware, Core, classes desconhecidas, override elegível e dependência transitiva bloqueada. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, npm install, restart, Codex, commit, push, update.install e reboot permanecem bloqueados."
++    },
++    "weekly_docs_review_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "weekly_docs_review_test_group",
++        "weekly_docs_review_test_reset",
++        "weekly_docs_review_test_scheduled",
++        "weekly_docs_review_test_manual",
++        "weekly_docs_review_test_failure",
++        "weekly_docs_review_test_worker_unavailable",
++        "weekly_docs_review_test_worker_recovered"
++      ],
++      "automated_test": "test-weekly-docs-review-flow.mjs",
++      "dry_run_terminal_ids": [
++        "weekly_docs_review_dry_run_terminal",
++        "global_observer_dry_run_terminal"
++      ],
++      "reason": "Agendamento, acionamento manual, falha da ponte e lifecycle indisponível/recuperado usam os caminhos reais; Codex, Git, commit, push, trigger externo e entrega de notificação permanecem bloqueados nos terminais dry-run."
++    },
++    "29d64664bf8cbde8": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "gar_group_tests",
++        "gar_test_reset",
++        "gar_test_accept",
++        "gar_test_duplicate",
++        "gar_test_cooldown",
++        "gar_test_boundary",
++        "gar_test_relay_on"
++      ],
++      "dry_run_terminal_ids": [
++        "gar_test_dry_run_terminal"
++      ],
++      "automated_test": "test-garage-gate-flow.mjs",
++      "reason": "Pedido aceito, duplicidade, cooldown, limite exato e relé já ligado atravessam adaptação, política, decisão e gates reais; MQTT, Logbook e notificação terminam no terminal dry-run."
++    },
++    "shared_integrations_tab": {
++      "strategy": "not_applicable",
++      "evidence_node_ids": [],
++      "reason": "Tab de infraestrutura compartilhada sem automação ou efeito próprio."
++    },
++    "ce258dec9814b96b": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "external_visual_test_group",
++        "external_visual_test_reset",
++        "external_visual_test_online",
++        "external_visual_test_offline",
++        "external_visual_test_recovery",
++        "external_visual_test_sunrise",
++        "external_visual_test_mismatch",
++        "external_visual_test_unknown"
++      ],
++      "dry_run_terminal_ids": [
++        "external_visual_dry_terminal"
++      ],
++      "automated_test": "test-external-lighting-alarm-flow.mjs",
++      "reason": "Comando aceito, Zigbee offline, recovery pós-pôr do sol e desligamento no amanhecer atravessam política, gates e confirmação canônicos; MQTT, push e Alexa terminam no dry-run. A candidata acrescenta confirmação vinculada à operação em janela finita, controles de divergência fresca/desconhecida e replay automatizado de expiração, substituição, timestamps e restart; testes não publicam comandos ou notificações."
++    },
++    "alarm_house_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "alarm_group_tests",
++        "alarm_test_reset",
++        "alarm_test_arm",
++        "alarm_test_failure_arm",
++        "alarm_test_disarm"
++      ],
++      "dry_run_terminal_ids": [
++        "alarm_test_dry_run_terminal"
++      ],
++      "automated_test": "test-alarm-house-flow.mjs",
++      "reason": "Armar, desarmar, falha e retry sintéticos atravessam a decisão canônica e os gates finais; public_bindings.call, update_entity e notificações terminam obrigatoriamente no dry-run."
++    },
++    "456b32bd5d59b0d6": {
++      "strategy": "automated_only",
++      "evidence_node_ids": [],
++      "automated_test": "test-raspberry-pi-cooling-flow.mjs",
++      "reason": "Forçar estados térmicos ou GPIO no host residencial não é um teste manual seguro."
++    },
++    "storage_health_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "storage_group_tests",
++        "storage_test_reset",
++        "storage_test_normal",
++        "storage_test_growth",
++        "storage_test_prepare",
++        "storage_test_decision_terminal"
++      ],
++      "dry_run_terminal_ids": [
++        "storage_dry_run_terminal"
++      ],
++      "automated_test": "test-storage-health-flow.mjs",
++      "reason": "Normalidade e crescimento acelerado atravessam o mesmo diagnóstico e gate de autocuidado; test_mode bloqueia exec, MQTT e notificações e termina no dry-run compartilhado."
++    },
++    "recorder_retention_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "recorder_retention_group_tests",
++        "recorder_retention_test_reset",
++        "recorder_retention_test_baseline",
++        "recorder_retention_test_near",
++        "recorder_retention_test_outlier",
++        "recorder_retention_test_repack_ready"
++      ],
++      "dry_run_terminal_ids": [
++        "recorder_retention_dry_run_terminal"
++      ],
++      "automated_test": "test-recorder-retention-flow.mjs",
++      "reason": "Baseline, valor consecutivo próximo, outlier e liberação do repack percorrem as decisões reais; test_mode bloqueia recorder.purge_entities e recorder.purge e termina no terminal dry-run."
++    },
++    "monitoramento_internet_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "grp_internet_tests",
++        "internet_test_note",
++        "internet_test_reset",
++        "internet_test_fail_1",
++        "internet_test_fail_2",
++        "internet_test_fail_3",
++        "internet_test_success_1",
++        "internet_test_success_2",
++        "internet_test_codex_absent",
++        "internet_test_codex_ready"
++      ],
++      "dry_run_terminal_ids": [
++        "internet_dry_run_terminal",
++        "internet_remote_dry_run_terminal"
++      ],
++      "automated_test": "test-internet-monitor-flow.mjs",
++      "reason": "Três falhas e dois sucessos percorrem quorum e alertas de internet; os relatórios sintéticos de Codex ausente/pronto percorrem telemetria, estado, cooldown, pedido de recovery e encerramento do alerta. MQTT, notificações e worker terminam em dry-run."
++    },
++    "monitoramento_vpn_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "vpn_monitor_test_group",
++        "vpn_monitor_test_reset",
++        "vpn_monitor_test_internet_online",
++        "vpn_monitor_test_internet_offline",
++        "vpn_monitor_test_vpn_down",
++        "vpn_monitor_test_confirm_down",
++        "vpn_monitor_test_vpn_up",
++        "vpn_monitor_test_confirm_up"
++      ],
++      "dry_run_terminal_ids": [
++        "vpn_monitor_dry_run_terminal"
++      ],
++      "automated_test": "test-vpn-monitor-flow.mjs",
++      "reason": "Queda, supressão durante indisponibilidade da internet e recuperação percorrem a lógica real até o terminal dry-run, sem publicar MQTT nem enviar notificações."
++    },
++    "monitoramento_zigbee_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "grp_zigbee_tests",
++        "zigbee_test_reset",
++        "zigbee_test_net_offline",
++        "zigbee_test_net_30",
++        "zigbee_test_net_60",
++        "zigbee_test_component_down",
++        "zigbee_test_component_duplicate",
++        "zigbee_test_component_reminder",
++        "zigbee_test_component_up",
++        "zigbee_test_route_failure",
++        "zigbee_test_route_duplicate",
++        "zigbee_test_route_scan_response",
++        "zigbee_test_route_failed_response",
++        "zigbee_test_route_retry",
++        "zigbee_test_route_scan_retry_response",
++        "zigbee_test_route_success_response"
++      ],
++      "dry_run_terminal_ids": [
++        "zigbee_dry_run_terminal"
++      ],
++      "automated_test": "test-zigbee-monitor-flow.mjs",
++      "reason": "Rede, disponibilidade e NWK_NO_ROUTE percorrem parsing, política, estado, dedupe, cooldown, varredura de rotas, reconfiguração correlacionada e recovery; MQTT e notificações são obrigatoriamente desviados ao dry-run."
++    },
++    "ea0a6aa0d24ff863": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "6e71dbc937fe5669",
++        "19a91d7fce3b9db2",
++        "people_departure_approach_test_v1",
++        "people_departure_bounce_home_test_v1",
++        "people_visual_arrival_refresh_dispatch",
++        "people_arrival_departure_blocked_v1"
++      ],
++      "dry_run_terminal_ids": [
++        "global_observer_dry_run_terminal",
++        "people_arrival_departure_blocked_v1",
++        "people_visual_icloud_dry_run_terminal",
++        "resident_notifications_dry_run_terminal",
++        "light_full_dry_run_terminal_v1",
++        "vehicle_primary_refresh_dry_run_terminal_v1"
++      ],
++      "automated_test": "test-security-light-flow.mjs",
++      "reason": "Estados sintéticos cumulativos atravessam seleção, direção, chegada, notificações, veículo e iluminação; saída e rebote terminam no bloqueio explícito e todos os demais efeitos residenciais terminam em dry-run."
++    },
++    "c22d8b12055e87f7": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "5df25064f701ecd2",
++        "9501b32f01ed802b",
++        "vehicle_primary_manual_engine_on_test_v1",
++        "vehicle_primary_manual_engine_off_test_v1",
++        "vehicle_primary_remote_command_test_group_v1",
++        "vehicle_primary_remote_command_test_reset_v1",
++        "vehicle_primary_remote_command_test_success_v1",
++        "vehicle_primary_remote_command_test_failure_v1",
++        "vehicle_primary_remote_request_test_available_v1",
++        "vehicle_primary_remote_request_test_unavailable_v1"
++      ],
++      "dry_run_terminal_ids": [
++        "vehicle_primary_refresh_dry_run_terminal_v1",
++        "light_full_dry_run_terminal_v1"
++      ],
++      "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
++      "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação; intenções remotas com alvo disponível e indisponível atravessam validação, disponibilidade, concorrência, test_mode, classificação, dedupe e guard. Todos os efeitos terminam em dry-run, sem acionar veículo nem notificações."
++    },
++    "62bb822e033d1623": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "arrival_context_test_group",
++        "arrival_context_test_reset_control",
++        "arrival_context_test_cycle_control",
++        "arrival_context_test_vehicle_on_control",
++        "arrival_context_test_home_control",
++        "arrival_context_test_due_control"
++      ],
++      "dry_run_terminal_ids": [
++        "vehicle_primary_refresh_dry_run_terminal_v1",
++        "light_full_dry_run_terminal_v1",
++        "resident_notifications_dry_run_terminal"
++      ],
++      "automated_test": "test-arrival-context-flow.mjs",
++      "reason": "Reset e ciclo sintéticos atravessam os produtores, a validação monotônica, o join, a deduplicação e os consumidores; as fronteiras finais registram simulated:true e dispatched:false."
++    },
++    "6b7552efb85343f4": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "ed8fa1d49205cbdb",
++        "2f8ac8be8e84a548",
++        "security_light_engine_bypass_group_v1",
++        "security_light_engine_bypass_test_on_v1",
++        "security_light_engine_bypass_test_off_v1",
++        "security_light_arrival_direction_gate_v1",
++        "security_light_arrival_direction_blocked_v1",
++        "security_visual_arrival_watch",
++        "security_visual_people_refresh_out",
++        "light_full_dry_run_terminal_v1",
++        "security_visual_off_tests_group",
++        "security_visual_off_test_reset",
++        "security_visual_off_test_old_off",
++        "security_visual_off_test_new_off",
++        "security_visual_off_test_gate",
++        "security_visual_gps_tests_group",
++        "security_visual_gps_reset",
++        "security_visual_gps_return",
++        "security_visual_gps_jitter"
++      ],
++      "dry_run_terminal_ids": [
++        "light_full_dry_run_terminal_v1",
++        "security_visual_off_dry_run"
++      ],
++      "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
++      "reason": "Motor, bypass e chegada sintéticos percorrem normalização, persistência da intenção, gates e lifecycle; refletor, timers e notificações terminam no terminal dry-run sem qualquer efeito residencial."
++    },
++    "1f468eaeef0733dd": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "alarm_arrival_full_flow_group",
++        "68bef52acfe15ef6",
++        "89896182d31675a1",
++        "alarm_arrival_test_dry_run_terminal_v1"
++      ],
++      "dry_run_terminal_ids": [
++        "alarm_arrival_test_dry_run_terminal_v1"
++      ],
++      "automated_test": "test-alarm-arrival-disarm-flow.mjs",
++      "reason": "A trilha manual percorre pendência e confirmação, simula notificações e desarme e termina sem alcançar dispositivos."
++    },
++    "codex_alertas_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "codex_group_tests",
++        "codex_test_reset",
++        "codex_test_warning",
++        "codex_test_duplicate",
++        "codex_test_unavailable",
++        "codex_test_daily"
++      ],
++      "dry_run_terminal_ids": [
++        "codex_test_dry_run_terminal"
++      ],
++      "automated_test": "test-notification-reliability.mjs",
++      "reason": "Atenção, duplicidade, indisponibilidade e resumo percorrem snapshot, política, nível, cooldown e gates reais; todos os serviços terminam no dry-run compartilhado."
++    },
++    "monitoramento_tuya_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "grp_tuya_tests",
++        "tuya_test_reset",
++        "tuya_test_offline_29",
++        "tuya_test_offline_30",
++        "tuya_test_offline_duplicate",
++        "tuya_test_recovery_60",
++        "tuya_test_reminder",
++        "tuya_test_query_failure"
++      ],
++      "dry_run_terminal_ids": [
++        "tuya_dry_run_terminal"
++      ],
++      "automated_test": "test-tuya-monitor-flow.mjs",
++      "reason": "Tuya e LocalTuya percorrem snapshot, agrupamento, split/join, limites, dedupe, recovery, resumo e gates; alertas e MQTT terminam em dry-run."
++    },
++    "resident_notifications_tab": {
++      "strategy": "manual_explicit_side_effect",
++      "explicit_exception": "notification_delivery_under_test",
++      "evidence_node_ids": [
++        "resident_notifications_test_group",
++        "resident_notifications_test_instructions",
++        "resident_notifications_test_reset",
++        "resident_notifications_test_primary",
++        "resident_notifications_test_home",
++        "resident_notifications_test_secondary",
++        "resident_notifications_test_direction",
++        "resident_notifications_test_unavailable",
++        "resident_notifications_test_stale",
++        "resident_notifications_test_future",
++        "resident_notifications_test_duplicate",
++        "resident_notifications_dry_run_terminal",
++        "resident_notifications_test_delivery_secondary"
++      ],
++      "dry_run_terminal_ids": [
++        "resident_notifications_dry_run_terminal"
++      ],
++      "delivery_node_ids": [
++        "resident_notifications_test_notify_secondary"
++      ],
++      "automated_test": "test-resident-approach-notifications.mjs",
++      "reason": "Approach, salto direto para home, ambos os residentes, direção inválida, ciclo não confirmado, evento antigo/futuro e duplicidade percorrem o contrato canônico e terminam em dry-run; por solicitação explícita, um único botão marcado TESTE valida a entrega ao mobile_secondary sem acionar qualquer outro dispositivo."
++    },
++    "global_flow_observer_tab": {
++      "strategy": "manual_full_dry_run",
++      "explicit_exception": "notification_delivery_under_test",
++      "evidence_node_ids": [
++        "global_observer_test_group",
++        "global_observer_test_reset",
++        "global_observer_test_error",
++        "global_observer_test_status_failure",
++        "global_observer_test_evaluate",
++        "global_observer_test_delivery",
++        "global_observer_test_integration_reset",
++        "global_observer_test_integration_failure",
++        "global_observer_test_integration_confirm",
++        "global_observer_test_integration_recovery",
++        "global_observer_diagnostic_group"
++      ],
++      "dry_run_terminal_ids": [
++        "global_observer_dry_run_terminal",
++        "global_observer_diagnostic_dry"
++      ],
++      "delivery_node_ids": [
++        "global_observer_notify_primary"
++      ],
++      "automated_test": "test-global-flow-observer.mjs",
++      "reason": "Erros, indisponibilidade e integrações atravessam as decisões reais até os terminais de notificação e diagnóstico em dry-run. O push TESTE opcional mantém exceção explícita e não é executado no replay automatizado."
++    },
++    "local_ai_rtx_recovery_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "local_ai_rtx_test_group",
++        "local_ai_rtx_test_instructions",
++        "local_ai_rtx_test_reset",
++        "local_ai_rtx_test_available",
++        "local_ai_rtx_test_host_off",
++        "local_ai_rtx_test_host_on",
++        "local_ai_rtx_test_unavailable",
++        "local_ai_rtx_test_recovered",
++        "local_ai_rtx_test_failed",
++        "rtx_auto_tests_group",
++        "rtx_auto_test_eligible",
++        "rtx_auto_test_offline",
++        "rtx_auto_test_exhausted",
++        "rtx_auto_test_unknown",
++        "rtx_auto_test_healthy",
++        "rtx_auto_test_reset"
++      ],
++      "dry_run_terminal_ids": [
++        "local_ai_rtx_dry_run_terminal",
++        "global_observer_dry_run_terminal",
++        "rtx_auto_dry_terminal"
++      ],
++      "automated_test": "test-local-ai-rtx-recovery-flow.mjs",
++      "reason": "Disponibilidade, host ligado/desligado, listener ausente, dedupe, sucesso e falhas do recovery atravessam normalização, decisões e gates reais; alertas e chamadas HTTP/MCP terminam em dry-run."
++    },
++    "host_memory_guardian_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "host_memory_guardian_test_group",
++        "host_memory_guardian_test_instructions",
++        "host_memory_guardian_test_reset",
++        "host_memory_guardian_test_request",
++        "host_memory_guardian_test_healthy",
++        "host_memory_guardian_test_reclaimed",
++        "host_memory_guardian_test_candidate",
++        "host_memory_guardian_test_terminated",
++        "host_memory_guardian_test_duplicate",
++        "host_memory_guardian_test_failed",
++        "host_memory_guardian_test_stale",
++        "operations_memory_group",
++        "operations_memory_test_reset",
++        "operations_memory_test_pressure"
++      ],
++      "dry_run_terminal_ids": [
++        "host_memory_guardian_dry_run_terminal",
++        "global_observer_dry_run_terminal"
++      ],
++      "automated_test": "test-host-memory-guardian-flow.mjs",
++      "reason": "Pedido, memória saudável, recuperação temporária, pressão, candidato ocioso, encerramento, duplicidade, falha e resultado vencido atravessam adaptação, vigência, estado, decisões visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."
++    },
++    "startup_readiness_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "startup_test_group",
++        "startup_test_reset",
++        "startup_test_internet",
++        "startup_test_vpn",
++        "startup_test_offline",
++        "startup_test_unknown"
++      ],
++      "automated_test": "test-startup-readiness.mjs",
++      "dry_run_terminal_ids": [
++        "startup_dry"
++      ],
++      "reason": "Reset, internet sem VPN, ambas online, oscilação e unknown atravessam a mesma confirmação canônica; dry-run não altera prontidão de produção nem executa tarefas."
++    },
++    "rtx_metrics_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "rtx_metrics_test_group",
++        "rtx_metrics_test_reset",
++        "rtx_metrics_test_nominal",
++        "rtx_metrics_test_offline",
++        "rtx_metrics_test_stale",
++        "rtx_metrics_test_empty",
++        "rtx_metrics_test_invalid"
++      ],
++      "automated_test": "test-rtx-metrics-flow.mjs",
++      "dry_run_terminal_ids": [
++        "rtx_metrics_dry_run",
++        "global_observer_dry_run_terminal"
++      ],
++      "reason": "Snapshots sintéticos cumulativos percorrem validação, disponibilidade, cálculo e serialização reais; gate final bloqueia MQTT. Reset e estado de teste isolados. Replay do observador cobre erro e indisponibilidade sem notificação."
++    },
++    "host_observer_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "host_obs_test_group",
++        "host_obs_test_reset",
++        "host_obs_test_healthy",
++        "host_obs_test_failure",
++        "host_obs_test_confirm",
++        "host_obs_test_resource_high",
++        "host_obs_test_source_failure",
++        "host_obs_test_stale",
++        "host_obs_test_malformed",
++        "host_obs_test_legacy"
++      ],
++      "dry_run_terminal_ids": [
++        "global_observer_dry_run_terminal"
++      ],
++      "automated_test": "test-host-observer.mjs",
++      "reason": "Replay completo da fonte sanitizada,validade,thresholds visuais,dedupe/cursor/lifecycle e gate global;contexto sintético separado;sem exec,HA,MQTT ou dispositivos."
++    },
++    "mqtt_native_observer_tab": {
++      "strategy": "manual_full_dry_run",
++      "evidence_node_ids": [
++        "mq_native_test_group",
++        "mq_native_test_reset",
++        "mq_native_test_within",
++        "mq_native_test_duplicate",
++        "mq_native_test_over",
++        "mq_native_test_unknown",
++        "mq_native_test_missing",
++        "mq_native_test_no_events",
++        "mq_native_test_unavailable",
++        "mq_native_test_busy",
++        "mq_native_test_malformed",
++        "mq_native_test_disabled",
++        "mq_native_test_reader_denied",
++        "mq_native_test_reader_clock",
++        "mq_native_test_reader_future",
++        "mq_native_test_reader_stale",
++        "mq_native_test_reader_missing",
++        "mq_native_window_test_group",
++        "mq_native_test_window_start",
++        "mq_native_test_window_pending",
++        "mq_native_test_window_drain",
++        "mq_native_test_window_source_unknown",
++        "mq_native_test_window_epoch",
++        "mq_native_test_window_clock",
++        "mq_native_test_window_policy",
++        "mq_native_test_window_gap",
++        "mq_native_test_window_over",
++        "mq_native_test_window_fault",
++        "mq_native_test_window_legacy",
++        "mq_native_test_window_missing",
++        "mq_native_test_window_timing_unknown",
++        "mq_native_test_window_reader_denied",
++        "mq_native_test_window_reader_stale",
++        "mq_native_window_request_group",
++        "mq_native_test_window_restart",
++        "mq_native_test_window_restart_wait",
++        "mq_native_test_window_capacity"
++      ],
++      "automated_test": "test-mqtt-native-observer-flow.mjs",
++      "dry_run_terminal_ids": [
++        "global_observer_dry_run_terminal"
++      ],
++      "reason": "Replay nominal, negativo, reset, perda, duplicata, autorização, domínio temporal e leitor antigo atravessa a mesma normalização, política visual, dedupe e gate final. Em test_mode, nenhum exec, arquivo, ACK, serviço, MQTT ou push é executado; o terminal compartilhado recebe simulated:true e dispatched:false. Ausência de eventos não comprova recuperação. Janela do componente: reset → início → corte com ACK pendente → drenar. Reset antes de cada falha. Tempo sintético avança 24h sem reduzir contrato; mudança de origem sem manutenção fica unknown; fonte desconhecida usa somente histórico próprio, sem ACK. O resultado passa pela mesma codificação e gate final dry-run. Nova intenção atravessa o mesmo registrador e gates: janela anterior arquivada exatamente, espera por ACK atual, duplicata após crash idempotente e capacidade8 preservada; observação atual em envelope separado da prova congelada."
+     }
++  }
+ }
+--- a/nodered/tools/test-external-lighting-matching-state.mjs
++++ b/nodered/tools/test-external-lighting-matching-state.mjs
+@@ -4,10 +4,21 @@
+ import vm from 'node:vm';
+ 
+ const source=fs.readFileSync(new URL('./functions/external-lighting-confirmation-message.js',import.meta.url),'utf8');
+-const now=1800000000000,issued=now-1000;
++const now=1800000000000,issued=now-6000;
+ class Clock extends Date {static now(){return now;}}
+-const invoke=vm.runInNewContext(`(function(msg,node,flow){${source}\n})`,{Date:Clock,Number,Object});
++const rawInvoke=vm.runInNewContext(`(function(msg,node,flow){${source}\n})`,{Date:Clock,Number,Object});
+ const roles=['lampada_varanda','lampadas_garagem','refletores_jardim','abajour_sala_de_estar'];
++function begin(msg,flow){
++ const pending={version:2,operation_id:msg.external_operation_id,expected:msg.expected_state,
++  issued_at:msg.external_issued_at,verify_after:msg.external_issued_at+5000,expires_at:msg.external_issued_at+60000,runtime_epoch:'synthetic-runtime'};
++ flow.set('external_pending_v1__test',pending);flow.set('external_confirmation_epoch_v2__test','synthetic-runtime','memoryOnly');
++ flow.fixture_initialized=true;return msg;
++}
++function invoke(msg,node,flow){
++ if(!flow.fixture_initialized)begin(msg,flow);
++ msg.external_verify_after=msg.external_issued_at+5000;msg.external_expires_at=msg.external_issued_at+60000;
++ return rawInvoke(msg,node,flow);
++}
+ 
+ function fixture(states=['on','on','on','on'],at=issued-3600000,expected='on'){
+  return {expected_state:expected,external_issued_at:issued,external_operation_id:'synthetic',
+@@ -68,12 +79,14 @@
+  assert.deepEqual(plain(output),[null,null]);
+ });
+ 
+-test('genuine prior mismatch stays open until fresh matching observations',()=>{
++test('genuine prior mismatch closes its expectation; recovery requires a new command',()=>{
+  const flow=context();invoke(fixture(['on','off','on','on'],now-1),node,flow);
+  assert.equal(flow.get('external_confirmation_incident_v1__test').incident_open,true);
+  assert.deepEqual(plain(invoke(fixture(),node,flow)),[null,null]);
+  assert.equal(flow.get('external_confirmation_incident_v1__test').incident_open,true);
+- const [,recovery]=invoke(fixture(undefined,now-1),node,flow);
++ assert.deepEqual(plain(invoke(fixture(undefined,now-1),node,flow)),[null,null]);
++ const next=fixture(undefined,now-1);next.external_operation_id='synthetic-next';begin(next,flow);
++ const [,recovery]=invoke(next,node,flow);
+  assert.equal(recovery.payload.recovery,true);assert.equal(flow.get('external_confirmation_incident_v1__test').incident_open,false);
+ });
+ 
+@@ -138,5 +151,7 @@
+  assert.deepEqual(plain(invoke(missing,node,flow)),[null,null]);
+  assert.equal(flow.get('external_confirmation_incident_v1__test').incident_open,true);
+  assert.deepEqual(plain(invoke(fixture(['on','off','on','on'],now-1),node,flow)),[null,null]);
+- assert.equal(invoke(fixture(undefined,now-1),node,flow)[1].payload.recovery,true);
++ assert.deepEqual(plain(invoke(fixture(undefined,now-1),node,flow)),[null,null]);
++ const next=fixture(undefined,now-1);next.external_operation_id='synthetic-next';begin(next,flow);
++ assert.equal(invoke(next,node,flow)[1].payload.recovery,true);
+ });
+--- a/nodered/tools/test-external-lighting-alarm-flow.mjs
++++ b/nodered/tools/test-external-lighting-alarm-flow.mjs
+@@ -144,7 +144,7 @@
+ const recoveryEnv = { get: (key) => key === "TZ" ? "America/Sao_Paulo" : undefined };
+ const externalPolicy = {
+   version: 1, owner: "node_red", complete: true,
+-  confirmation_settle_seconds: 5, recovery_ttl_hours: 12,
++  confirmation_settle_seconds: 5, confirmation_window_seconds: 60, recovery_ttl_hours: 12,
+ };
+ const recoveryGlobal = {
+   get: (key) => key === "external_lighting_policy_v1" ? externalPolicy : undefined,
+@@ -279,7 +279,7 @@
+ assert.match(blocked.notify_text, /não será repetido/);
+ 
+ zigbeeFlow.set("external_lighting_zigbee_state", "online");
+-const allowedMessage = { expected_state: "off" };
++const allowedMessage = { _msgid: "synthetic-allowed-command", expected_state: "off" };
+ const allowedFacts = zigbeeGate(
+   allowedMessage,
+   statusNode,
+@@ -376,6 +376,8 @@
+ assert.equal(confirmation.units, "s");
+ assert.equal(confirmation.extend, true);
+ assert.equal(confirmation.overrideDelay, true);
++assert.equal(confirmation.bytopic, "topic");
++assert.equal(confirmation.topic, "external_confirmation_scope");
+ assert.deepEqual(confirmation.wires, [["external_visual_confirmation_mode"]]);
+ assert.deepEqual(
+   getNode("external_visual_command_blocked").wires[0].flatMap((id) => logicalTargets(id)),
+@@ -389,7 +391,13 @@
+   const store = new Map();
+   const context = { get: key => store.get(key), set: (key, value) => store.set(key, value) };
+   const observed = new Date().toISOString();
+-  return buildMessage({ expected_state: expected, external_issued_at: Date.now() - 1000,
++  const issuedAt = Date.now() - 6000;
++  const pending = { version: 2, operation_id: "synthetic-confirmation", expected, issued_at: issuedAt,
++    verify_after: issuedAt + 5000, expires_at: issuedAt + 60000, runtime_epoch: "synthetic-runtime" };
++  store.set("external_pending_v1", pending);
++  store.set("external_confirmation_epoch_v2", "synthetic-runtime");
++  return buildMessage({ expected_state: expected, external_issued_at: issuedAt,
++    external_operation_id: pending.operation_id, external_verify_after: pending.verify_after, external_expires_at: pending.expires_at,
+     notify_success: "ok", source, payload: { observations: Object.fromEntries(
+       ["lampada_varanda", "lampadas_garagem", "refletores_jardim", "abajour_sala_de_estar"]
+         .map((id, i) => [id, { state: states[i], observed_at: observed }])) }
+--- a/docs/ILUMINACAO_EXTERNA_NODERED.md
++++ b/docs/ILUMINACAO_EXTERNA_NODERED.md
+@@ -4,6 +4,12 @@
+ `ce258dec9814b96b`). Esta aba controla somente as luzes e nao consulta nem
+ recebe eventos do Moni Mobile. O flow `alarme_casa` tambem nao envia comandos
+ para a iluminacao.
++
++## Estado desta candidata
++
++Proposta preparada para revisão; a presença destes arquivos não comprova instalação,
++deploy ou recuperação funcional. A janela de confirmação de 60 s é uma proposta de
++política explícita, ainda não ativada.
+ 
+ ## Objetivo
+ 
+@@ -58,9 +64,15 @@
+    - `zigbee2mqtt/example_exterior_light_3/set`;
+    - `zigbee2mqtt/example_exterior_light_4/set`.
+ 7. `Confirmar somente o comando mais recente` aguarda cinco segundos. Um novo
+-   comando cancela a confirmacao anterior para impedir avisos obsoletos.
++   comando substitui a expectativa anterior. Cada callback precisa corresponder
++   ao `operation_id`, instante de emissão e limites da expectativa atual. O trigger
++   usa escopos separados para produção e teste; um teste não cancela o timer real.
++   A política visual propõe `confirmation_window_seconds = 60`, valor inteiro
++   entre `confirmation_settle_seconds + 1` e 300 s, contado desde a emissão.
++   Esse prazo é independente do TTL da pergunta de recuperação do pôr do sol.
+ 8. `Confirmar estados no Home Assistant` lê os quatro destinos. Confirmação do
+-   comando exige observação válida posterior à intenção. Um estado `on` que
++   comando exige observação válida estritamente posterior à intenção, recebida
++   dentro da janela vigente. Timestamp igual ao comando permanece inconclusivo. Um estado `on` que
+    permaneceu `on`, com data anterior ao comando, não comprova falha nem um novo
+    aceite do comando: se todos os estados coincidem com o solicitado, o fluxo
+    permanece silencioso e a confirmação continua `unconfirmed`.
+@@ -69,10 +81,23 @@
+    data antiga permanecem `unconfirmed`, sem aviso de falha e sem repetir o
+    comando. O estado geral do Zigbee2MQTT não confirma o estado individual de
+    uma lâmpada. A indisponibilidade de leitura não abre incidente nem gera uma
+-   recuperação quando a leitura volta. Incidente real por divergência permanece
+-   aberto durante um intervalo inconclusivo, sem repetir o mesmo aviso; somente
+-   observações novas de todos os destinos podem encerrá-lo. Avisos legados de
+-   indisponibilidade ou estados antigos não viram recuperações fictícias.
++   recuperação quando a leitura volta. Dentro da janela, dados inconclusivos
++   mantêm a expectativa pendente e silenciosa. Uma divergência nova válida encerra
++   essa expectativa e abre ou mantém o incidente real, sem repetir o comando.
++   Confirmação integral também encerra a expectativa. O prazo vencido encerra a
++   expectativa silenciosamente; expiração não acusa falha física nem recuperação.
++   Após qualquer encerramento, mudanças manuais e callbacks antigos são ignorados.
++   Uma recuperação de incidente anterior exige uma nova intenção explícita e
++   observações novas de todos os destinos; não atribui uma mudança manual ao
++   comando antigo. Avisos legados de indisponibilidade ou estados antigos não
++   viram recuperações fictícias.
++10. O registro pendente inclui versão, token, limites absolutos e epoch volátil do
++    runtime. Após restart, a ausência do epoch impede adotar uma expectativa
++    persistida. Não se reconstrói o vínculo a partir de horário, estado ou aviso.
++    A limpeza do registro expirado/inválido ocorre no próximo callback ou evento;
++    não há timer nem agenda nova de expiração. O gate do prazo é autoritativo mesmo
++    se o registro ainda estiver no armazenamento. O último encerramento é guardado
++    em `external_confirmation_expectation_v2`, separado no estado sintético.
+ 
+ ## Avisos
+ 
+@@ -114,3 +139,24 @@
+ carregada e releitura posterior. Não é necessário reiniciar o container nem
+ acionar luzes para testar a classificação. A regressão sintética específica é
+ `node --test tools/test-external-lighting-matching-state.mjs` dentro de `nodered`.
++
++## Validação isolada desta proposta
++
++Os replays em `test-external-lighting-confirmation-lifecycle.mjs` cobrem os oito
++casos de contrato (sucesso, mismatch, expiração, substituição, ação manual após
++conclusão, ação manual após expiração, leituras inválidas/antigas/iguais e limites
++de política), além de restart, estado legado e isolamento produção/teste. Nenhum
++replay chama dispositivos, API de escrita, MQTT ou notificação residencial.
++
++No canvas, reset seguido dos testes nominais e negativos atravessa a mesma
++classificação. `TESTE 6` injeta uma divergência fresca; `TESTE 7` injeta estado
++unknown. Ambos preservam `test_mode` até o gate final. Silêncio no ramo unknown
++é resultado esperado, não comprovação de funcionamento físico.
++
++Deploy apenas dos campos revisados pode parar/inicializar os nós modificados,
++embora não reinicie o serviço Node-RED. Callbacks anteriores podem sobreviver:
++a correção não depende de `initialize`/`finalize` para cancelá-los e revalida o
++token atual no consumidor. É necessário carregar e conferir a política de janela
++antes de tratar novos comandos como admitidos; política ausente falha fechada.
++Este pacote não repete comandos existentes, não aciona iluminação no boot e não
++associa retroativamente notificações reais ao defeito sintético.
+--- a/nodered/tools/functions/external-lighting-command-blocked.js
++++ b/nodered/tools/functions/external-lighting-command-blocked.js
+@@ -1,6 +1,18 @@
+ msg.zigbee_error = true;
+ msg.cancel_confirmation = true;
+ msg.reset = true;
++const testMode = msg._external_command?.test_mode === true;
++msg.external_confirmation_scope = testMode ? 'test' : 'production';
++const suffix = testMode ? '__test' : '';
++const store = testMode ? undefined : 'persistent';
++const pendingKey = 'external_pending_v1' + suffix;
++const pending = flow.get(pendingKey, store);
++if (pending) {
++    flow.set(pendingKey, null, store);
++    flow.set('external_confirmation_expectation_v2' + suffix, { version: 2,
++        operation_id: typeof pending.operation_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) ? pending.operation_id : null,
++        status: 'cancelled', reason: 'Zigbee_command_blocked', closed_at: Date.now() }, store);
++}
+ msg.notify_text = "Erro na rede Zigbee. A iluminação externa não foi acionada e o comando não será repetido.";
+ node.status({ fill: "red", shape: "ring", text: "comando bloqueado: Zigbee offline" });
+ return msg;
+--- a/nodered/tools/functions/external-lighting-policy-validate.js
++++ b/nodered/tools/functions/external-lighting-policy-validate.js
+@@ -1,5 +1,5 @@
+-const DEFAULTS = { confirmation_settle_seconds: 5, recovery_ttl_hours: 12 };
+-const LIMITS = { confirmation_settle_seconds: [1, 30], recovery_ttl_hours: [1, 24] };
++const DEFAULTS = { confirmation_settle_seconds: 5, confirmation_window_seconds: 60, recovery_ttl_hours: 12 };
++const LIMITS = { confirmation_settle_seconds: [1, 30], confirmation_window_seconds: [2, 300], recovery_ttl_hours: [1, 24] };
+ const parameter = String(msg.topic ?? "");
+ const value = Number(msg.payload);
+ const bounds = LIMITS[parameter];
+@@ -8,7 +8,15 @@
+     return [null, msg];
+ }
+ const previous = global.get("external_lighting_policy_v1", "persistent");
+-msg.external_policy_candidate = { ...DEFAULTS,
++const candidate = { ...DEFAULTS,
+     ...(previous?.version === 1 && previous?.complete === true ? previous : {}),
+     [parameter]: value, version: 1, owner: "node_red", complete: true, updated_at: Date.now() };
++if (!Object.entries(LIMITS).every(([key, range]) => Number.isInteger(candidate[key]) &&
++    candidate[key] >= range[0] && candidate[key] <= range[1]) ||
++    candidate.confirmation_window_seconds <= candidate.confirmation_settle_seconds) {
++    msg.external_policy_rejection = { parameter, value: msg.payload, bounds,
++        reason: 'confirmation_window_must_exceed_settle', preserved: true };
++    return [null, msg];
++}
++msg.external_policy_candidate = candidate;
+ return [msg, null];
+--- a/nodered/tools/functions/external-lighting-test-observation.js
++++ b/nodered/tools/functions/external-lighting-test-observation.js
+@@ -1,8 +1,10 @@
+ if (msg._external_command?.test_mode !== true) return null;
+ const expected = msg.expected_state;
+ const observedAt = new Date().toISOString();
++const scenario = msg._external_test_scenario;
++const scenarioState = scenario === 'mismatch' ? (expected === 'on' ? 'off' : 'on') : scenario === 'unknown' ? 'unknown' : null;
+ const ids = ['lampada_varanda', 'lampadas_garagem', 'refletores_jardim', 'abajour_sala_de_estar'];
+ msg.payload = { test_mode: true, observations: Object.fromEntries(ids.map(id => [id,
+-    msg._external_test_observations?.[id] ?? { state: expected, observed_at: observedAt }])) };
++    msg._external_test_observations?.[id] ?? { state: id === ids[0] && scenarioState ? scenarioState : expected, observed_at: observedAt }])) };
+ msg._external_lighting_test = true;
+ return msg;
+--- a/nodered/tools/functions/external-lighting-test-reset.js
++++ b/nodered/tools/functions/external-lighting-test-reset.js
+@@ -1,5 +1,7 @@
+ flow.set("external_lighting_zigbee_state__test", null);
+ flow.set("external_lighting_recovery_pending_v1__test", null);
+ flow.set("external_lighting_recovery_prompted_date_v1__test", null);
++for (const key of ['external_pending_v1__test', 'external_confirmation_incident_v1__test', 'external_confirmation_expectation_v2__test']) flow.set(key, null);
++flow.set('external_confirmation_epoch_v2__test', null, 'memoryOnly');
+ flow.set("external_lighting_last_dry_run_v1", { version: 1, reset: true, simulated: true, dispatched: false });
+ return null;
+--- a/nodered/tools/functions/external-lighting-command-allowed.js
++++ b/nodered/tools/functions/external-lighting-command-allowed.js
+@@ -1,10 +1,30 @@
+ const data = msg._external_command;
+-msg.delay = Number(data.policy.confirmation_settle_seconds) * 1000;
++const testMode = data.test_mode === true;
++const settleSeconds = Number(data.policy.confirmation_settle_seconds);
++const windowSeconds = Number(data.policy.confirmation_window_seconds);
++if (!Number.isInteger(settleSeconds) || settleSeconds < 1 || settleSeconds > 30 ||
++    !Number.isInteger(windowSeconds) || windowSeconds <= settleSeconds || windowSeconds > 300 ||
++    !['on', 'off'].includes(msg.expected_state) ||
++    typeof msg._msgid !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(msg._msgid)) {
++    node.error('external_lighting_confirmation_policy_or_identity_missing', { _global_observer_test: testMode, payload: { test_mode: testMode } });
++    return null;
++}
++msg.delay = settleSeconds * 1000;
+ msg.external_issued_at = Date.now();
+-msg.external_operation_id = String(msg._msgid);
+-const pending = { expected: msg.expected_state, issued_at: msg.external_issued_at,
+-    verify_after: msg.external_issued_at + msg.delay, operation_id: msg.external_operation_id };
+-if (data.test_mode) flow.set('external_pending_v1__test', pending);
++msg.external_operation_id = msg._msgid;
++msg.external_verify_after = msg.external_issued_at + msg.delay;
++msg.external_expires_at = msg.external_issued_at + windowSeconds * 1000;
++msg.external_confirmation_scope = testMode ? 'test' : 'production';
++const epochKey = 'external_confirmation_epoch_v2' + (testMode ? '__test' : '');
++let epoch = flow.get(epochKey, 'memoryOnly');
++if (typeof epoch !== 'string') {
++    epoch = `${msg.external_issued_at}:${msg.external_operation_id}`;
++    flow.set(epochKey, epoch, 'memoryOnly');
++}
++const pending = { version: 2, expected: msg.expected_state, issued_at: msg.external_issued_at,
++    verify_after: msg.external_verify_after, expires_at: msg.external_expires_at,
++    operation_id: msg.external_operation_id, runtime_epoch: epoch };
++if (testMode) flow.set('external_pending_v1__test', pending);
+ else flow.set('external_pending_v1', pending, 'persistent');
+ delete msg.reset;
+ return msg;
+--- a/nodered/tools/functions/external-lighting-confirmation-message.js
++++ b/nodered/tools/functions/external-lighting-confirmation-message.js
+@@ -3,19 +3,53 @@
+ const expected = msg.expected_state || msg.payload?.expected_state;
+ const issuedAt = Number(msg.external_issued_at);
+ const now = Date.now();
++const suffix = testMode ? '__test' : '';
++const store = testMode ? undefined : 'persistent';
++const pendingKey = 'external_pending_v1' + suffix;
++const pending = flow.get(pendingKey, store);
++const discard = reason => {
++    msg.external_confirmation = { operation_id: typeof msg.external_operation_id === 'string' ? msg.external_operation_id : null,
++        issued_at: Number.isFinite(issuedAt) ? issuedAt : null, observed_at: now,
++        status: 'unconfirmed', expectation_status: 'discarded', reason, devices: [],
++        coverage: ['current_command_expectation_only', 'not_device_failure_or_recovery'] };
++    return [null, null];
++};
++if (!pending) return discard('no_pending_expectation');
++const epoch = flow.get('external_confirmation_epoch_v2' + suffix, 'memoryOnly');
++const valid = pending.version === 2 && typeof pending.operation_id === 'string' &&
++    /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) && ['on', 'off'].includes(pending.expected) &&
++    Number.isFinite(pending.issued_at) && Number.isFinite(pending.verify_after) && Number.isFinite(pending.expires_at) &&
++    pending.issued_at < pending.verify_after && pending.verify_after < pending.expires_at &&
++    pending.issued_at <= now && typeof epoch === 'string' && pending.runtime_epoch === epoch;
++const close = (status, reason) => {
++    flow.set(pendingKey, null, store);
++    flow.set('external_confirmation_expectation_v2' + suffix, { version: 2,
++        operation_id: typeof pending.operation_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) ? pending.operation_id : null,
++        status, reason, closed_at: now }, store);
++};
++if (!valid) {
++    close('discarded', 'legacy_or_runtime_context_invalid');
++    return discard('legacy_or_runtime_context_invalid');
++}
++if (now >= pending.expires_at) {
++    close('expired', 'deadline_elapsed');
++    const result = discard('deadline_elapsed');
++    msg.external_confirmation.expectation_status = 'expired';
++    return result;
++}
++if (msg.external_operation_id !== pending.operation_id || expected !== pending.expected ||
++    issuedAt !== pending.issued_at || Number(msg.external_verify_after) !== pending.verify_after ||
++    Number(msg.external_expires_at) !== pending.expires_at) return discard('replaced_or_unbound_callback');
++if (now < pending.verify_after) return discard('settle_window_not_reached');
+ const labels = { lampada_varanda: 'varanda', lampadas_garagem: 'garagem',
+     refletores_jardim: 'jardim', abajour_sala_de_estar: 'abajur' };
+ const observations = msg.payload?.observations ?? {};
+-if (!['on', 'off'].includes(expected) || !Number.isFinite(issuedAt) || issuedAt <= 0 || issuedAt > now) {
+-    node.error('external_lighting_confirmation_invalid_context', { _msgid: msg._msgid, _global_observer_test: testMode, payload: { test_mode: testMode } });
+-    return [null, null];
+-}
+ const devices = Object.entries(labels).map(([id, label]) => {
+     const report = observations[id];
+     const state = ['on', 'off', 'unknown', 'unavailable'].includes(report?.state) ? report.state : 'unknown';
+     const at = Date.parse(report?.observed_at);
+     const reason = !report ? 'missing' : state === 'unavailable' ? 'unavailable' :
+-        state === 'unknown' ? 'unknown' : !Number.isFinite(at) || at < issuedAt || at > now ? 'stale' :
++        state === 'unknown' ? 'unknown' : !Number.isFinite(at) || at <= issuedAt || at > now || at >= pending.expires_at ? 'stale' :
+         state !== expected ? 'mismatch' : 'confirmed';
+     return { id, label, expected, state, observed_at: Number.isFinite(at) ? at : null, reason };
+ });
+@@ -23,16 +57,15 @@
+ const matching = devices.every(d => d.state === expected);
+ // An unavailable/unknown/missing/stale report is inconclusive, not a failed light.
+ const actionable = failed.filter(d => d.reason === 'mismatch');
+-msg.external_confirmation = { issued_at: issuedAt, observed_at: now, devices,
++const expectationStatus = !failed.length ? 'confirmed' : actionable.length ? 'mismatch' : 'pending';
++msg.external_confirmation = { operation_id: pending.operation_id, issued_at: issuedAt, observed_at: now, devices,
++    verify_after: pending.verify_after, expires_at: pending.expires_at, expectation_status: expectationStatus,
+     status: failed.length ? 'unconfirmed' : 'confirmed', matching_reported_states: matching,
+     coverage: ['ha_entity_report_after_command', 'not_physical_light_or_human_ack'] };
+ const key = testMode ? 'external_confirmation_incident_v1__test' : 'external_confirmation_incident_v1';
+ const previous = testMode ? flow.get(key) : flow.get(key, 'persistent');
+ if (previous?.issued_at > issuedAt) return [null, null];
+-if (!failed.length) {
+-    if (testMode) flow.set('external_pending_v1__test', null);
+-    else flow.set('external_pending_v1', null, 'persistent');
+-}
++if (expectationStatus !== 'pending') close(expectationStatus, expectationStatus === 'confirmed' ? 'fresh_reports_match' : 'fresh_mismatch');
+ const actionableSignature = actionable.map(d => `${d.id}:${d.reason}:${d.state}`).join('|');
+ // Only a fresh on/off mismatch opens an incident. Migrate known mismatch
+ // signatures, but never turn legacy unavailable/stale notices into recoveries.
+@@ -41,9 +74,9 @@
+     : previous?.failed === true && previous.signature?.split('|').some(item => /:mismatch:(on|off)$/.test(item)));
+ const signature = actionableSignature || (failed.length && previousIncident ? previous.signature : '');
+ const incidentOpen = actionable.length > 0 || failed.length > 0 && previousIncident === true;
+-const current = { issued_at: issuedAt, expected, failed: actionable.length > 0, signature,
++const current = { operation_id: pending.operation_id, issued_at: issuedAt, expected, failed: actionable.length > 0, signature,
+     incident_open: incidentOpen, incident_kind: incidentOpen ? 'fresh_mismatch' : null,
+-    awaiting_fresh_report: failed.length > 0, observed_at: now, version: 3 };
++    awaiting_fresh_report: expectationStatus === 'pending', observed_at: now, version: 4 };
+ if (testMode) flow.set(key, current); else flow.set(key, current, 'persistent');
+ // Persistent lifecycle: startup alone never emits a recovery. A change of intention
+ // supersedes the old incident instead of claiming its original command succeeded.
+--- a/nodered/tools/functions/external-lighting-pending-observation.js
++++ b/nodered/tools/functions/external-lighting-pending-observation.js
+@@ -1,9 +1,32 @@
+-// State events can reconcile a pending intention; this function never sends a command.
+-const pending = flow.get('external_pending_v1', 'persistent');
+-if (!pending || Date.now() < pending.verify_after || !['on', 'off'].includes(pending.expected)) return null;
++// State events can reconcile only a live command expectation; never send a command.
++const testMode = msg._external_lighting_test === true;
++const suffix = testMode ? '__test' : '';
++const store = testMode ? undefined : 'persistent';
++const key = 'external_pending_v1' + suffix;
++const pending = flow.get(key, store);
++if (!pending) return null;
++const now = Date.now();
++const epoch = flow.get('external_confirmation_epoch_v2' + suffix, 'memoryOnly');
++const valid = pending.version === 2 && typeof pending.operation_id === 'string' &&
++    /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) && ['on', 'off'].includes(pending.expected) &&
++    Number.isFinite(pending.issued_at) && Number.isFinite(pending.verify_after) && Number.isFinite(pending.expires_at) &&
++    pending.issued_at < pending.verify_after && pending.verify_after < pending.expires_at &&
++    pending.issued_at <= now && typeof epoch === 'string' && pending.runtime_epoch === epoch;
++if (!valid || now >= pending.expires_at) {
++    flow.set(key, null, store);
++    flow.set('external_confirmation_expectation_v2' + suffix, { version: 2,
++        operation_id: typeof pending.operation_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(pending.operation_id) ? pending.operation_id : null,
++        status: valid ? 'expired' : 'discarded', reason: valid ? 'deadline_elapsed' : 'legacy_or_runtime_context_invalid',
++        closed_at: now }, store);
++    return null;
++}
++if (now < pending.verify_after) return null;
+ msg.expected_state = pending.expected;
+ msg.external_issued_at = pending.issued_at;
+ msg.external_operation_id = pending.operation_id;
++msg.external_verify_after = pending.verify_after;
++msg.external_expires_at = pending.expires_at;
++msg.external_confirmation_scope = testMode ? 'test' : 'production';
+ msg.source = 'state_reconciliation';
+-msg._external_command = { test_mode: false };
++msg._external_command = { test_mode: testMode };
+ return msg;
+--- a/nodered/tools/flow-layout-overrides.json
++++ b/nodered/tools/flow-layout-overrides.json
+@@ -946,7 +946,7 @@
+           "x": 94,
+           "y": 619,
+           "w": 892,
+-          "h": 212
++          "h": 262
+         },
+         "external_visual_test_group": {
+           "x": 1244,
+--- /dev/null
++++ b/nodered/tools/test-external-lighting-confirmation-lifecycle.mjs
+@@ -0,0 +1,172 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import fs from 'node:fs';
++import vm from 'node:vm';
++
++const files = name => fs.readFileSync(new URL(`./functions/${name}.js`, import.meta.url), 'utf8');
++const initialNow = 1800000000000;
++const roles = ['lampada_varanda', 'lampadas_garagem', 'refletores_jardim', 'abajour_sala_de_estar'];
++const plain = value => JSON.parse(JSON.stringify(value));
++function harness() {
++    let now = initialNow;
++    class Clock extends Date { static now() { return now; } }
++    const memory = new Map(), persistent = new Map(), globals = new Map(), errors = [];
++    const select = store => store === 'persistent' ? persistent : memory;
++    const flow = { get: (key, store) => select(store).get(key), set: (key, value, store) => select(store).set(key, value) };
++    const global = { get: key => globals.get(key), set: (key, value) => globals.set(key, value) };
++    const node = { error: (...args) => errors.push(args), warn: () => {}, status: () => {} };
++    const build = name => vm.runInNewContext(`(function(msg,node,flow,global){${files(name)}\n})`, { Date: Clock, Number, Object, String, RegExp });
++    const allowed = build('external-lighting-command-allowed');
++    const confirm = build('external-lighting-confirmation-message');
++    const pending = build('external-lighting-pending-observation');
++    const validate = build('external-lighting-policy-validate');
++    const blocked = build('external-lighting-command-blocked');
++    const policy = { version: 1, complete: true, confirmation_settle_seconds: 5, confirmation_window_seconds: 60, recovery_ttl_hours: 12 };
++    function command(id = 'synthetic-command-a', expected = 'on', testMode = true) {
++        const msg = { _msgid: id, expected_state: expected, _external_lighting_test: testMode,
++            _external_command: { test_mode: testMode, policy } };
++        assert.equal(allowed(msg, node, flow, global), msg);
++        return msg;
++    }
++    function observations(msg, states = roles.map(() => msg.expected_state), at = now - 1) {
++        msg.payload = { observations: Object.fromEntries(roles.map((id, i) => [id, { state: states[i], observed_at: typeof at === 'string' ? at : new Date(at).toISOString() }])) };
++        return msg;
++    }
++    return { flow, global, memory, persistent, errors, command, observations, policy,
++        confirm: msg => confirm(msg, node, flow, global), pending: msg => pending(msg, node, flow, global),
++        validate: msg => validate(msg, node, flow, global), blocked: msg => blocked(msg, node, flow, global),
++        at: value => { now = value; }, advance: value => { now += value; }, now: () => now };
++}
++
++test('1. fresh matching reports close the exact expectation once', () => {
++    const h = harness(), msg = h.command(); h.advance(6000);
++    const [, dry] = h.confirm(h.observations(msg));
++    assert.equal(msg.external_confirmation.status, 'confirmed');
++    assert.equal(msg.external_confirmation.expectation_status, 'confirmed');
++    assert.equal(h.flow.get('external_pending_v1__test'), null);
++    assert.equal(h.flow.get('external_confirmation_expectation_v2__test').status, 'confirmed');
++    assert.equal(dry.payload.simulated, true); assert.equal(dry.payload.dispatched, false);
++    assert.deepEqual(plain(h.confirm(h.observations(msg))), [null, null]);
++    assert.equal(msg.external_confirmation.reason, 'no_pending_expectation'); assert.equal(h.errors.length, 0);
++});
++
++test('2. genuine in-window mismatch closes expectation and keeps the incident deduplicated', () => {
++    const h = harness(), msg = h.command(); h.advance(6000);
++    const [, alert] = h.confirm(h.observations(msg, ['off', 'on', 'unknown', 'unavailable']));
++    assert.equal(alert.payload.recovery, false); assert.match(alert.alert.message, /varanda: esperado on, encontrado off/);
++    assert.equal(msg.external_confirmation.expectation_status, 'mismatch');
++    assert.equal(h.flow.get('external_pending_v1__test'), null);
++    assert.equal(h.flow.get('external_confirmation_expectation_v2__test').status, 'mismatch');
++    assert.equal(h.flow.get('external_confirmation_incident_v1__test').incident_open, true);
++    assert.deepEqual(plain(h.confirm(h.observations(msg))), [null, null]);
++    assert.equal(h.flow.get('external_confirmation_incident_v1__test').incident_open, true);
++});
++
++test('3. expiry is authoritative at the exact deadline and never creates a device alert', () => {
++    for (const offset of [0, 1, 86400000]) {
++        const h = harness(), msg = h.command(); h.at(msg.external_expires_at + offset);
++        assert.deepEqual(plain(h.confirm(h.observations(msg, roles.map(() => 'off')))), [null, null]);
++        assert.equal(msg.external_confirmation.expectation_status, 'expired');
++        assert.equal(h.flow.get('external_pending_v1__test'), null);
++        assert.equal(h.flow.get('external_confirmation_expectation_v2__test').status, 'expired');
++        assert.equal(h.flow.get('external_confirmation_incident_v1__test'), undefined); assert.equal(h.errors.length, 0);
++    }
++});
++
++test('4. a replaced callback cannot mutate the new expectation, including reused operation IDs', () => {
++    for (const reused of [false, true]) {
++        const h = harness(), old = h.command(); h.advance(1000);
++        const next = h.command(reused ? old.external_operation_id : 'synthetic-command-b', 'off');
++        const before = plain(h.flow.get('external_pending_v1__test')); h.advance(6000);
++        assert.deepEqual(plain(h.confirm(h.observations(old, roles.map(() => 'off')))), [null, null]);
++        assert.equal(old.external_confirmation.reason, 'replaced_or_unbound_callback');
++        assert.deepEqual(plain(h.flow.get('external_pending_v1__test')), before);
++        assert.equal(h.flow.get('external_confirmation_incident_v1__test'), undefined);
++        assert.equal(next.external_operation_id, before.operation_id);
++    }
++});
++
++test('5. a manual state change after success or mismatch cannot revive a completed command', () => {
++    for (const mismatch of [false, true]) {
++        const h = harness(), msg = h.command(); h.advance(6000);
++        h.confirm(h.observations(msg, roles.map(() => mismatch ? 'off' : 'on')));
++        const prior = plain(h.flow.get('external_confirmation_incident_v1__test'));
++        h.advance(1000); assert.equal(h.pending({ _external_lighting_test: true }), null);
++        assert.deepEqual(plain(h.confirm(h.observations(msg, roles.map(() => mismatch ? 'on' : 'off')))), [null, null]);
++        assert.deepEqual(plain(h.flow.get('external_confirmation_incident_v1__test')), prior);
++    }
++});
++
++test('6. a manual state change after expiry quietly consumes stale context', () => {
++    const h = harness(), msg = h.command(); h.at(msg.external_expires_at + 1);
++    assert.equal(h.pending({ _external_lighting_test: true }), null);
++    assert.equal(h.flow.get('external_pending_v1__test'), null);
++    assert.equal(h.flow.get('external_confirmation_expectation_v2__test').status, 'expired');
++    assert.deepEqual(plain(h.confirm(h.observations(msg, roles.map(() => 'off')))), [null, null]);
++    assert.equal(h.flow.get('external_confirmation_incident_v1__test'), undefined);
++});
++
++test('7. old, equal, unknown, unavailable, missing and future observations are inconclusive', () => {
++    for (const kind of ['old', 'equal', 'unknown', 'unavailable', 'missing', 'future', 'unknown-time']) {
++        const h = harness(), msg = h.command(); h.advance(6000);
++        const at = kind === 'old' ? msg.external_issued_at - 1 : kind === 'equal' ? msg.external_issued_at : kind === 'future' ? h.now() + 1 : kind === 'unknown-time' ? 'not-a-time' : h.now() - 1;
++        h.observations(msg, roles.map(() => ['unknown', 'unavailable'].includes(kind) ? kind : 'off'), at);
++        if (kind === 'missing') msg.payload.observations = {};
++        assert.deepEqual(plain(h.confirm(msg)), [null, null]);
++        assert.equal(msg.external_confirmation.status, 'unconfirmed'); assert.equal(msg.external_confirmation.expectation_status, 'pending');
++        assert.notEqual(h.flow.get('external_pending_v1__test'), null);
++        assert.equal(h.flow.get('external_confirmation_incident_v1__test').incident_open, false);
++    }
++});
++
++test('8. the explicit window policy rejects invalid/cross-field values without overwriting', () => {
++    const h = harness(); h.global.set('external_lighting_policy_v1', h.policy);
++    for (const [topic, value] of [['confirmation_window_seconds', 5], ['confirmation_window_seconds', 301], ['confirmation_window_seconds', 1.5]]) {
++        const msg = { topic, payload: value }, [valid, rejected] = h.validate(msg);
++        assert.equal(valid, null); assert.equal(rejected.external_policy_rejection.preserved, true);
++        assert.deepEqual(plain(h.global.get('external_lighting_policy_v1')), h.policy);
++    }
++    assert.equal(h.validate({ topic: 'confirmation_window_seconds', payload: 6 })[0].external_policy_candidate.confirmation_window_seconds, 6);
++    const short = { ...h.policy, confirmation_window_seconds: 10 }; h.global.set('external_lighting_policy_v1', short);
++    assert.equal(h.validate({ topic: 'confirmation_settle_seconds', payload: 10 })[0], null);
++    assert.deepEqual(plain(h.global.get('external_lighting_policy_v1')), short);
++});
++
++test('restart and legacy persistent expectations cannot be adopted into a new runtime', () => {
++    const h = harness(), msg = h.command('synthetic-production', 'on', false);
++    assert(h.persistent.get('external_pending_v1')); h.memory.clear(); h.advance(6000);
++    assert.equal(h.pending({}), null); assert.equal(h.persistent.get('external_pending_v1'), null);
++    assert.equal(h.persistent.get('external_confirmation_expectation_v2').status, 'discarded');
++    assert.deepEqual(plain(h.confirm(h.observations(msg))), [null, null]);
++    h.persistent.set('external_pending_v1', { expected: 'on', issued_at: initialNow, verify_after: initialNow + 5000, operation_id: 'legacy' });
++    assert.equal(h.pending({}), null); assert.equal(h.persistent.get('external_pending_v1'), null);
++    assert.equal(h.errors.length, 0);
++});
++
++test('test expectations, receipts and epochs never overwrite production state', () => {
++    const h = harness(); const production = h.command('synthetic-production', 'off', false);
++    const prior = plain(Object.fromEntries(h.persistent));
++    const msg = h.command('synthetic-test'); h.advance(6000); h.confirm(h.observations(msg));
++    assert.deepEqual(plain(Object.fromEntries(h.persistent)), prior);
++    const testReceipt = plain(h.flow.get('external_confirmation_expectation_v2__test'));
++    h.confirm(h.observations(production));
++    assert.equal(h.flow.get('external_pending_v1', 'persistent'), null);
++    assert.equal(h.flow.get('external_confirmation_expectation_v2', 'persistent').status, 'confirmed');
++    assert.deepEqual(plain(h.flow.get('external_confirmation_expectation_v2__test')), testReceipt);
++    const generator = fs.readFileSync(new URL('./install-external-lighting-visual-policy.mjs', import.meta.url), 'utf8');
++    assert.match(generator, /bytopic: "topic"/); assert.match(generator, /topic: "external_confirmation_scope"/);
++    assert.match(generator, /confirmation_window_seconds/);
++});
++
++test('a blocked command cancels only its matching production or test expectation and timer scope', () => {
++    const h = harness(); const production = h.command('synthetic-production', 'off', false);
++    const synthetic = h.command('synthetic-test');
++    const prodBefore = plain(Object.fromEntries(h.persistent));
++    h.blocked(synthetic);
++    assert.equal(synthetic.reset, true); assert.equal(synthetic.external_confirmation_scope, 'test');
++    assert.equal(h.flow.get('external_pending_v1__test'), null);
++    assert.deepEqual(plain(Object.fromEntries(h.persistent)), prodBefore);
++    h.blocked(production); assert.equal(production.external_confirmation_scope, 'production');
++    assert.equal(h.flow.get('external_pending_v1', 'persistent'), null);
++    assert.equal(h.flow.get('external_confirmation_expectation_v2', 'persistent').status, 'cancelled');
++});

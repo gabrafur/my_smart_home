@@ -57,6 +57,7 @@
     {"path": "docs/raspberry-mcp/reference/notifications.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/read-only-base.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/task-control.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
+    {"path": "docs/raspberry-mcp/reference/nodered-administration.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/task-observation.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/workspace-communication.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/tools.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},

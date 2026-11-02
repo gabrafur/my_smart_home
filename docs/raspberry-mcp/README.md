@@ -29,6 +29,11 @@ A [comunicação com threads existentes](reference/workspace-communication.md)
 ou mudar o perfil da destinatária. Sua validade e disponibilidade são informadas
 por `codex_task_list`; um catálogo atualizado não concede essa autorização.
 
+A [proposta de administração geral do Node-RED](reference/nodered-administration.md)
+separa o grafo, a revisão de efeitos e a admissão de deploy. O código candidato
+permanece fechado e não instalado até confirmação específica; não amplia o
+perfil protegido `observacao_host` nem autoriza testes com equipamentos.
+
 O [núcleo protegido por componente](reference/component-repair.md#núcleo-protegido-instalado-com-perfil-inicial-do-host)
 já expõe admissão real pelo MCP para o perfil inicial `observacao_host`, usando
 as ferramentas de tarefas existentes. Outros perfis, recorrência, replay nativo

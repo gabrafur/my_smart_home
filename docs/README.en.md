@@ -139,6 +139,13 @@ and uncertain-delivery blocking remain in force. A bounded sanitized reply must
 be proven later than delivery; exact acknowledgement, turn completion and
 household recovery remain separate evidence.
 
+The [general Node-RED administration proposal](raspberry-mcp/reference/nodered-administration.md)
+is an uninstalled, default-closed candidate with structured graph edits, opaque
+revision CAS, durable intents, native guards and own-operation rollback.
+Recoverable deletion retains IDs; device testing and sensitive startup effects
+require separate authority. Existing diagnostic and protected-host profiles are
+preserved. Isolated tests and publication do not prove production deployment.
+
 The documentation now has permanent functional paths under `docs/raspberry-mcp/`:
 [architecture](raspberry-mcp/architecture.md), [installation and authentication](raspberry-mcp/installation.md),
 [tools and schemas](raspberry-mcp/tools.md), [operation and recovery](raspberry-mcp/operations.md)

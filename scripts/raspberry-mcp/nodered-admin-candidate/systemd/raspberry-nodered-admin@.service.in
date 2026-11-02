@@ -1,0 +1,39 @@
+# Reviewed operator must replace bindings and seal exact source/policy hashes.
+# PROPOSAL ONLY: no installer, service start or privilege grant on import.
+[Unit]
+Description=One private Node-RED administration transaction
+[Service]
+Type=exec
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-nodered-admin/bootstrap.py ${ROOT_POLICY_SHA256}
+LoadCredential=nodered-password:${EXISTING_NODE_RED_PASSWORD_FILE}
+StandardInput=socket
+StandardOutput=socket
+StandardError=null
+UMask=0077
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=no
+PrivateDevices=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressDeny=any
+IPAddressAllow=${EXACT_NODE_RED_RETURN_PEER}/32
+ReadWritePaths=/var/lib/raspberry-nodered-admin
+ReadOnlyPaths=/usr/local/lib/raspberry-nodered-admin
+InaccessiblePaths=/run/docker.sock /var/run/docker.sock /mnt/data/docker/.local-secrets
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+SystemCallFilter=~ptrace process_vm_readv process_vm_writev @mount @reboot @swap
+MemoryMax=256M
+CPUQuota=50%
+IOWeight=10
+TasksMax=16
+RuntimeMaxSec=45
