@@ -17,7 +17,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from functools import partial
 from statistics import median
-from typing import Any
+from typing import Any, Literal
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.recorder import get_instance, history
@@ -78,6 +78,10 @@ _LOGGER = logging.getLogger(__name__)
 # set_svm_dewarp, consumed in image.py.
 SIGNAL_SVM_RENDER = DOMAIN + "_{}_svm_render"
 
+
+# "check" lets the library pick force or cached, "cached" is the server-side
+# cached state, "force" is an explicit fresh read.
+PollMode = Literal["check", "cached", "force"]
 BR_CURRENT_APPLICATION_ID = "213a491a-0d7c-4d6a-ac03-a2df127d73b0"
 BR_CURRENT_USER_AGENT = (
     "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) "
@@ -135,6 +139,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             str, tuple[tuple[dt.datetime | None, bool], dict[str, bytes]]
         ] = {}
         self._force_refresh_lock = asyncio.Lock()
+        # Vehicles whose last poll failed with a vehicle-scoped API error.
+        self._failed_vehicles: set[str] = set()
+        # Consecutive failed polls per vehicle (drives the "skip it" hint).
+        self._vehicle_failures: dict[str, int] = {}
         self._cache_refresh_lock = asyncio.Lock()
         self._br_rate_limit_key = config_entry.entry_id
         self._br_rate_limit_store = Store(
@@ -523,33 +531,44 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                 retry_after=60,
             ) from err
         self._install_br_parser_compatibility()
-        try:
-            await self.hass.async_add_executor_job(
-                self.vehicle_manager.update_all_vehicles_with_cached_state
+        if hasattr(self.vehicle_manager, "vehicles"):
+            await HyundaiKiaConnectDataUpdateCoordinator._async_poll_vehicles(
+                self, mode="cached"
             )
-        except RateLimitingError as err:
-            delay = HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
-            raise UpdateFailed(
-                "Bluelink rate limit reached; cached polling paused",
-                retry_after=delay,
-            ) from err
-        except Exception as err:
-            if (
-                type(self.vehicle_manager.api).__name__ == "HyundaiBlueLinkApiBR"
-                and HyundaiKiaConnectDataUpdateCoordinator._is_br_provider_denied(err)
-            ):
+        else:
+            # Keep the cache-only call usable with the narrow manager facade
+            # exercised by the local regression contract.
+            try:
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.update_all_vehicles_with_cached_state
+                )
+            except RateLimitingError as err:
                 delay = HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
                     self
                 )
                 raise UpdateFailed(
-                    "Bluelink provider denied cached polling; requests paused",
+                    "Bluelink rate limit reached; cached polling paused",
                     retry_after=delay,
                 ) from err
-            _LOGGER.exception("Cached vehicle update failed")
-            raise UpdateFailed(
-                "Error reading Hyundai/Kia Connect cached state; will retry",
-                retry_after=BR_CACHE_RETRY_INTERVAL_S,
-            ) from err
+            except Exception as err:
+                if (
+                    type(self.vehicle_manager.api).__name__ == "HyundaiBlueLinkApiBR"
+                    and HyundaiKiaConnectDataUpdateCoordinator._is_br_provider_denied(
+                        err
+                    )
+                ):
+                    delay = HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
+                        self
+                    )
+                    raise UpdateFailed(
+                        "Bluelink provider denied cached polling; requests paused",
+                        retry_after=delay,
+                    ) from err
+                _LOGGER.exception("Cached vehicle update failed")
+                raise UpdateFailed(
+                    "Error reading Hyundai/Kia Connect cached state; will retry",
+                    retry_after=BR_CACHE_RETRY_INTERVAL_S,
+                ) from err
         HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(self)
 
         await self._async_refresh_trip_info_on_new_distance()
@@ -702,33 +721,120 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
         finally:
             self._trip_refresh_tasks.pop(vehicle_id, None)
 
+    async def _async_poll_vehicles(self, *, mode: PollMode) -> None:
+        """Poll each vehicle so an API error cannot hide healthy vehicles."""
+        failed: set[str] = set()
+        auth_failures = 0
+        is_br = type(self.vehicle_manager.api).__name__ == "HyundaiBlueLinkApiBR"
+        for vehicle_id in list(self.vehicle_manager.vehicles):
+            try:
+                await self._async_poll_vehicle(vehicle_id, mode=mode)
+            except AuthenticationError as err:
+                auth_failures += 1
+                failed.add(vehicle_id)
+                self._log_vehicle_failure(vehicle_id, err)
+                if not is_br and auth_failures == len(self.vehicle_manager.vehicles):
+                    raise ConfigEntryAuthFailed(err) from err
+            except RateLimitingError as err:
+                delay = (
+                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                    if is_br
+                    else 2 * 60 * 60
+                )
+                raise UpdateFailed(
+                    f"Rate limited by the API: {err}", retry_after=delay
+                ) from err
+            except APIError as err:
+                if is_br and HyundaiKiaConnectDataUpdateCoordinator._is_br_provider_denied(
+                    err
+                ):
+                    delay = HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
+                        self
+                    )
+                    raise UpdateFailed(
+                        "Bluelink provider denied polling; requests paused",
+                        retry_after=delay,
+                    ) from err
+                failed.add(vehicle_id)
+                self._log_vehicle_failure(vehicle_id, err)
+            except Exception as err:
+                _LOGGER.exception("%s - Error communicating with API", DOMAIN)
+                raise UpdateFailed(
+                    f"Error communicating with API: {err}",
+                    retry_after=BR_CACHE_RETRY_INTERVAL_S if is_br else None,
+                ) from err
+            else:
+                self._vehicle_failures.pop(vehicle_id, None)
+        self._failed_vehicles = failed
+
+    async def _async_poll_vehicle(
+        self, vehicle_id: str, *, mode: PollMode
+    ) -> None:
+        """Update one vehicle, falling back to cached state after a force error."""
+        try:
+            if mode == "check":
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.check_and_force_update_vehicle,
+                    self.force_refresh_interval,
+                    vehicle_id,
+                )
+            elif mode == "force":
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
+                )
+            else:
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.update_vehicle_with_cached_state, vehicle_id
+                )
+        except Exception as err:
+            if mode == "cached":
+                raise
+            _LOGGER.warning(
+                "%s - Force refresh failed for %s (%s), using cached state: %s",
+                DOMAIN,
+                self.vehicle_manager.vehicles[vehicle_id].name,
+                vehicle_id,
+                err,
+            )
+            await self.hass.async_add_executor_job(
+                self.vehicle_manager.update_vehicle_with_cached_state, vehicle_id
+            )
+
+    def _log_vehicle_failure(self, vehicle_id: str, err: Exception) -> None:
+        """Record and log a vehicle-scoped polling failure."""
+        vehicle = self.vehicle_manager.vehicles[vehicle_id]
+        failures = self._vehicle_failures.get(vehicle_id, 0) + 1
+        self._vehicle_failures[vehicle_id] = failures
+        _LOGGER.warning(
+            "%s - Failed to update %s (%s): %s: %s",
+            DOMAIN,
+            vehicle.name,
+            vehicle_id,
+            type(err).__name__,
+            err,
+        )
+        if failures == 3:
+            _LOGGER.warning(
+                "%s - Vehicle %s (%s) failed %s polls in a row. If the backend "
+                "no longer serves it, disable its device in Home Assistant "
+                "to stop polling it.",
+                DOMAIN,
+                vehicle.name,
+                vehicle_id,
+                failures,
+            )
+
+    def vehicle_available(self, vehicle_id: str) -> bool:
+        """Return False if the vehicle's last poll failed."""
+        return vehicle_id not in self._failed_vehicles
+
     async def async_update_all(self) -> None:
-        """Update vehicle data."""
+        """Update vehicle data without waking the Brazilian provider."""
         HyundaiKiaConnectDataUpdateCoordinator._raise_if_br_rate_limited(self)
         async with self._cache_refresh_lock:
-            try:
-                await self.async_check_and_refresh_token()
-                await self.hass.async_add_executor_job(
-                    self.vehicle_manager.update_all_vehicles_with_cached_state
-                )
-            except RateLimitingError as err:
-                HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
-                raise HomeAssistantError(
-                    "Bluelink rate limit reached; cached polling paused"
-                ) from err
-            except Exception as err:
-                if (
-                    type(self.vehicle_manager.api).__name__
-                    == "HyundaiBlueLinkApiBR"
-                    and HyundaiKiaConnectDataUpdateCoordinator._is_br_provider_denied(
-                        err
-                    )
-                ):
-                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
-                    raise HomeAssistantError(
-                        "Bluelink provider denied cached polling; requests paused"
-                    ) from err
-                raise
+            await self.async_check_and_refresh_token()
+            self._install_br_parser_compatibility()
+            await self._async_poll_vehicles(mode="cached")
         HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(self)
         self.async_set_updated_data(self.data)
 
@@ -741,18 +847,9 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             )
         async with self._force_refresh_lock:
             async with self._cache_refresh_lock:
-                try:
-                    await self.async_check_and_refresh_token()
-                    await self.hass.async_add_executor_job(
-                        self.vehicle_manager.force_refresh_all_vehicles_states
-                    )
-                except RateLimitingError as err:
-                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
-                        self
-                    )
-                    raise HomeAssistantError(
-                        "Bluelink rate limit reached; vehicle refresh paused"
-                    ) from err
+                await self.async_check_and_refresh_token()
+                self._install_br_parser_compatibility()
+                await self._async_poll_vehicles(mode="force")
         HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(self)
         self.async_set_updated_data(self.data)
 
@@ -1826,6 +1923,23 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             self.vehicle_manager.check_and_refresh_token
         )
         await self._async_save_token()
+        self._sync_vehicle_enabled_states()
+
+    def _sync_vehicle_enabled_states(self) -> None:
+        """Stop polling vehicles whose device the user disabled in Home Assistant."""
+        # Import lazily so the coordinator remains loadable in minimal tests.
+        from homeassistant.helpers import device_registry as dr
+
+        registry = dr.async_get(self.hass)
+        for vehicle_id, vehicle in self.vehicle_manager.vehicles.items():
+            identifiers = {(DOMAIN, vehicle_id)}
+            if vehicle.VIN:
+                identifiers.add((DOMAIN, f"vin:{vehicle.VIN}"))
+            device = registry.async_get_device(identifiers=identifiers)
+            if device is not None and device.disabled:
+                self.vehicle_manager.disable_vehicle(vehicle_id)
+            else:
+                self.vehicle_manager.enable_vehicle(vehicle_id)
 
     async def async_await_action_and_refresh(self, vehicle_id, action_id):
         action_status = None
