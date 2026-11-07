@@ -5,7 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, call
 
 ALEXA_MEDIA_ROOT = Path(__file__).resolve().parents[2] / 'homeassistant/custom_components/alexa_media'
 
@@ -52,25 +52,113 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.IsolatedAsyncioTestCase):
         sensor.remove()
         unsubscribe.assert_called_once()
 
-    async def test_shared_poll_starts_once_refreshes_and_stops(self):
+    def shared_state_fixture(self):
         unsubscribe = Mock()
         schedule = Mock(return_value=unsubscribe)
+        api = SimpleNamespace(get_child_profiles=AsyncMock(return_value=[]),
+                              get_child_mode=AsyncMock(return_value=False))
         State = load_class('amazon_kids.py', 'AmazonKidsState', {
             'asyncio':asyncio, 'callback':lambda f:f, 'async_track_time_interval':schedule,
             'KIDS_SCAN_INTERVAL':timedelta(minutes=5), 'OPTION_NONE':'None',
+            'AlexaAPI':api, '_LOGGER':Mock(), 'hide_email':lambda _: 'account',
         })
-        state = State(object(), object())
-        state.async_refresh = AsyncMock()
+        state = State(object(), SimpleNamespace(email='synthetic'))
+        return state, api, schedule, unsubscribe
+
+    async def test_shared_poll_starts_once_refreshes_and_stops(self):
+        state, api, schedule, unsubscribe = self.shared_state_fixture()
+        state.track('synthetic', 'test_type')
         await state.async_start()
         await state.async_start()
         schedule.assert_called_once_with(state.hass, state._async_interval, timedelta(minutes=5))
-        state.async_refresh.assert_awaited_once()
+        # A second platform start may enter the real only_unknown wrapper, but
+        # must never re-poll a device whose state is already known.
+        api.get_child_profiles.assert_awaited_once_with(state.login)
+        api.get_child_mode.assert_awaited_once_with(state.login, 'synthetic', 'test_type')
+        self.assertFalse(state.state('synthetic')['kids'])
         await state._async_interval(None)
-        self.assertEqual(state.async_refresh.await_count, 2)
+        self.assertEqual(api.get_child_profiles.await_count, 2)
+        self.assertEqual(api.get_child_mode.await_args_list, [
+            call(state.login, 'synthetic', 'test_type'),
+            call(state.login, 'synthetic', 'test_type'),
+        ])
         state.async_stop()
         state.async_stop()
         unsubscribe.assert_called_once()
         self.assertIsNone(state._unsub)
+
+    async def test_later_platform_start_initializes_only_new_devices(self):
+        state, api, schedule, _ = self.shared_state_fixture()
+        state.track('known', 'test_type')
+        await state.async_start()
+        state.track('new', 'test_type')
+        await state.async_start()
+        await state.async_start()
+        schedule.assert_called_once()
+        self.assertEqual(api.get_child_profiles.await_count, 2)
+        self.assertEqual(api.get_child_mode.await_args_list, [
+            call(state.login, 'known', 'test_type'),
+            call(state.login, 'new', 'test_type'),
+        ])
+        self.assertFalse(state.state('known')['kids'])
+        self.assertFalse(state.state('new')['kids'])
+        state.async_stop()
+
+    async def test_later_start_retries_unknown_reads_without_repolling_known_state(self):
+        state, api, schedule, _ = self.shared_state_fixture()
+        api.get_child_mode.side_effect = [False, None, False]
+        state.track('known', 'test_type')
+        await state.async_start()
+        state.track('new', 'test_type')
+        await state.async_start()
+        self.assertIsNone(state.state('new')['kids'])
+        await state.async_start()
+        await state.async_start()
+        schedule.assert_called_once()
+        self.assertEqual(api.get_child_profiles.await_count, 3)
+        self.assertEqual(api.get_child_mode.await_args_list, [
+            call(state.login, 'known', 'test_type'),
+            call(state.login, 'new', 'test_type'),
+            call(state.login, 'new', 'test_type'),
+        ])
+        self.assertFalse(state.state('known')['kids'])
+        self.assertFalse(state.state('new')['kids'])
+        state.async_stop()
+
+    async def test_concurrent_platform_starts_recheck_unknown_after_refresh_lock(self):
+        state, api, schedule, _ = self.shared_state_fixture()
+        state.track('known', 'test_type')
+        await state.async_start()
+        state.track('new', 'test_type')
+        entered, release = asyncio.Event(), asyncio.Event()
+        async def read_new(login, serial, device_type):
+            self.assertEqual((login, serial, device_type), (state.login, 'new', 'test_type'))
+            entered.set()
+            await release.wait()
+            return False
+        api.get_child_mode.side_effect = read_new
+        first = asyncio.create_task(state.async_start())
+        second = asyncio.create_task(state.async_start())
+        try:
+            await asyncio.wait_for(entered.wait(), 1)
+            await asyncio.sleep(0)
+            self.assertEqual(api.get_child_mode.await_count, 2)
+            release.set()
+            await asyncio.wait_for(asyncio.gather(first, second), 1)
+        finally:
+            release.set()
+            for task in (first, second):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(first, second, return_exceptions=True)
+            state.async_stop()
+        schedule.assert_called_once()
+        self.assertEqual(api.get_child_profiles.await_count, 2)
+        self.assertEqual(api.get_child_mode.await_args_list, [
+            call(state.login, 'known', 'test_type'),
+            call(state.login, 'new', 'test_type'),
+        ])
+        self.assertFalse(state.state('new')['kids'])
 
 
     async def test_shared_refresh_notifies_consumers_and_preserves_failed_reads(self):

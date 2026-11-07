@@ -50,6 +50,7 @@ command_line:
       json_attributes:
         - collected_at
         - source_updated_at
+        - session_collection
         - rate_limit_updated_at
         - plan_type
         - rate_limit

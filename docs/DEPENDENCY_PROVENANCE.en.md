@@ -10,9 +10,15 @@ ignored caches and runtime state are outside the public distribution.
 
 | Name | Upstream project | Pinned origin | License | Local modifications | Update and attribution | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | exact origin in `scripts/alexa-media-upstream.json` (`v5.16.2` in this revision) | Apache-2.0 | `__init__.py` contains an allowlisted guard; the updater requires its marker or proves the target absorbed it | resolve tag/commit/tag object, compare byte for byte, allow only reviewed deltas, validate manifest/compilation, retain `LICENSE.upstream` and Apache notices | local pin; protected update |
+| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | exact origin in `scripts/alexa-media-upstream.json` | Apache-2.0 | `__init__.py` contains an allowlisted guard; the updater requires its marker or proves the target absorbed it | resolve tag/commit/tag object, compare byte for byte, allow only reviewed deltas, validate manifest/compilation, retain `LICENSE.upstream` and Apache notices | local pin; protected update |
 | HACS | [`hacs/integration`](https://github.com/hacs/integration) | `2.0.5`, `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | minimum HA version in `const.py`; release version in `manifest.json` | reapply and review only those deltas; retain MIT copyright and license | verified, modified |
-| Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | exact origin in `scripts/kia-uvo-upstream.json` (`v3.17.1`, commit `417f6ac5fe65521e7948015a278c82ee5a584a71` in this revision) | MIT | rate-limit guard, failure-tolerant refresh, trip/efficiency history, command status, and related entities | reconcile through staging/Codex, retain MIT copyright/license, and promote only after tests, backup, rollback, and runtime validation | local pin, substantially modified |
+| Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | exact origin in `scripts/kia-uvo-upstream.json` | MIT | rate-limit guard, failure-tolerant refresh, trip/efficiency history, command status, and related entities | reconcile through staging/Codex, retain MIT copyright/license, and promote only after tests, backup, rollback, and runtime validation | local pin, substantially modified |
+
+Amazon Kids state is shared across platforms. A later platform start initializes
+only unknown devices and checks that selection again under the lock, without
+creating another timer or polling known states again. Regression tests exercise
+the actual function with a simulated API; counting calls to a mock that replaces
+the entire filter does not establish this contract.
 
 The covered paths are `homeassistant/custom_components/<domain>/**`. Each
 directory contains the verified upstream license as `LICENSE.upstream`.

@@ -1,6 +1,6 @@
 # Políticas gerais do Codex
 
-For authorized desktop browser work, use `.agents/skills/desktop-browser-maintenance/SKILL.md`.
+After MCP deploys, test the previously blocked capability with Eva; follow `.agents/skills/desktop-browser-maintenance/SKILL.md` for this and authorized browser work.
 
 ## Prompt processing and model routing
 

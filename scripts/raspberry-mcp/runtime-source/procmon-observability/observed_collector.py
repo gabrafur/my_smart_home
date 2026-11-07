@@ -194,8 +194,14 @@ def main():
         mod=load_collector();observer.install(mod)
         # Original non-wall limits, state machine, durability and retention stay.
         # Only the wrapper wall/I/O envelope is explicitly extended from5s to15s.
-        apply_observed_limits(mod);observer.stage='state_validation'
-        mod.run_once()
+        try:
+            apply_observed_limits(mod);observer.stage='state_validation'
+            mod.run_once()
+        finally:
+            # The collection deadline ends with this invocation, on success or
+            # failure. An armed SIGALRM must not outlive collection into telemetry
+            # or interpreter shutdown. The outer systemd20s limit remains active.
+            mod.signal.alarm(0)
     except Exception as exc:
         observer.emit(exc)
         return 1

@@ -55,6 +55,10 @@ const codexUsage = new CodexUsageReader(
     || path.join(WORKDIR, 'docs', 'benchmarks', 'local-ai-restricted-pivot', 'latest.json'),
   process.env.LOCAL_AI_STRUCTURED_EXTRACTION_SUMMARY_PATH
     || path.join(HISTORY_DIR, 'structured-extraction-canary-summary.json'),
+  // These sources include independently managed host clients: no append-only
+  // contract is assumed. Coalesce strict history snapshots; live account and
+  // RTX telemetry keep their existing independent refresh cadence.
+  { historicalRefreshMs: 30_000 },
 );
 const codexRateLimits = new CodexRateLimitsPoller({
   refreshMs: Math.min(

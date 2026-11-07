@@ -73,6 +73,25 @@ adaptadores, interrupção propagada, tamanho do quadro, correlação, coleta
 incompleta, CPU legado/completa e ausência de memória. A janela sintética de
 24h dos testes não constitui evidência de produção.
 
+### Encerramento do alarme de coleta
+
+O wrapper cancela o alarme em `finally`, imediatamente após a tentativa de
+coleta, inclusive se a configuração de limites ou a coleta falhar. O alarme
+de 15 segundos continua ativo durante a coleta; o limite externo da unidade
+permanece em 20 segundos. Um alarme pendente não deve alcançar a emissão de
+telemetria ou o encerramento do interpretador depois da coleta.
+
+`test_alarm_lifecycle.py` verifica sucesso, falha, configuração parcial dos
+limites e falha da telemetria. Um filho isolado usa timer real e coletor fictício;
+não executa o coletor residencial. Cancelar o alarme após a coleta não resolve
+uma demora de I/O nem comprova continuidade de 24 horas.
+
+A instalação deve comparar a fonte e a identidade atuais, preservar o arquivo
+original e registrar um recibo antes do efeito. Não requer iniciar o coletor:
+o próximo ciclo natural carrega a fonte. Reversão própria deve recusar conteúdo
+ou identidade alterados por terceiros. Teste, fonte versionada e instalação
+precisam de evidências separadas.
+
 ## Envelope de parede para concluir I/O
 
 Em 26/10/2026 seis interrupções recentes em escrita foram comprovadas com

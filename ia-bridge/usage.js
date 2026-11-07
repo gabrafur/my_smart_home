@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { createHash } = require('crypto');
 
 function listJsonlFiles(directory) {
   let entries;
@@ -1414,82 +1415,145 @@ function scanLocalAiHistory(telemetryPath, now = new Date(), windowHours = 48) {
   return { window_hours: windowHours, count: recent.length, jobs: recent };
 }
 
-function scanCodexUsageFile(filePath) {
-  const totals = emptyTokens();
-  const daily = new Map();
-  let latestEvent = null;
-  let latestRateEvent = null;
-  let latestPlanEvent = null;
-  let latestCreditEvent = null;
-  let eventCount = 0;
-  const rateEvents = [];
-
-  let contents;
-  try {
-    contents = fs.readFileSync(filePath, 'utf8');
-  } catch {
-    return null;
-  }
-
-  let previousTotal = emptyTokens();
-  let hasUsage = false;
-  for (const line of contents.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    let event;
-    try {
-      event = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (event.type !== 'event_msg' || event.payload?.type !== 'token_count') continue;
-
-    const timestamp = new Date(event.timestamp);
-    if (Number.isNaN(timestamp.valueOf())) continue;
-    eventCount += 1;
-    hasUsage = true;
-
-    const current = event.payload.info?.total_token_usage || {};
-    const delta = emptyTokens();
-    for (const key of Object.keys(delta)) {
-      const currentValue = Math.max(0, Number(current[key]) || 0);
-      const previousValue = Math.max(0, Number(previousTotal[key]) || 0);
-      delta[key] = currentValue >= previousValue ? currentValue - previousValue : currentValue;
-    }
-    addTokens(totals, delta);
-    const day = timestamp.toISOString().slice(0, 10);
-    const dayUsage = daily.get(day) || emptyTokens();
-    addTokens(dayUsage, delta);
-    daily.set(day, dayUsage);
-    previousTotal = { ...previousTotal, ...current };
-
-    const candidate = { timestamp, rateLimits: event.payload.rate_limits };
-    if (!latestEvent || timestamp > latestEvent.timestamp) latestEvent = candidate;
-    if (
-      event.payload.rate_limits?.primary
-      && (!latestRateEvent || timestamp > latestRateEvent.timestamp)
-    ) latestRateEvent = candidate;
-    if (
-      planType(event.payload.rate_limits)
-      && (!latestPlanEvent || timestamp > latestPlanEvent.timestamp)
-    ) latestPlanEvent = candidate;
-    if (event.payload.rate_limits?.primary) rateEvents.push(candidate);
-    if (
-      event.payload.rate_limits?.credits
-      && (!latestCreditEvent || timestamp > latestCreditEvent.timestamp)
-    ) latestCreditEvent = candidate;
-  }
-
+function emptyCodexUsageState() {
   return {
-    totals,
-    daily,
-    latestEvent,
-    latestRateEvent,
-    latestPlanEvent,
-    latestCreditEvent,
-    sessionCount: hasUsage ? 1 : 0,
-    eventCount,
-    rateEvents,
+    totals: emptyTokens(), daily: new Map(), previousTotal: emptyTokens(),
+    latestEvent: null, latestRateEvent: null, latestPlanEvent: null,
+    latestCreditEvent: null, eventCount: 0, rateEvents: [],
   };
+}
+
+function copyCodexUsageState(state) {
+  return {
+    ...state, totals: { ...state.totals }, daily: new Map(state.daily),
+    previousTotal: { ...state.previousTotal }, rateEvents: [...state.rateEvents],
+  };
+}
+
+function consumeCodexUsageLine(state, line) {
+  if (!line.trim()) return;
+  let event;
+  try { event = JSON.parse(line); } catch { return; }
+  if (event.type !== 'event_msg' || event.payload?.type !== 'token_count') return;
+  const timestamp = new Date(event.timestamp);
+  if (Number.isNaN(timestamp.valueOf())) return;
+  state.eventCount += 1;
+  const current = event.payload.info?.total_token_usage || {};
+  const delta = emptyTokens();
+  for (const key of Object.keys(delta)) {
+    const currentValue = Math.max(0, Number(current[key]) || 0);
+    const previousValue = Math.max(0, Number(state.previousTotal[key]) || 0);
+    delta[key] = currentValue >= previousValue ? currentValue - previousValue : currentValue;
+  }
+  addTokens(state.totals, delta);
+  const day = timestamp.toISOString().slice(0, 10);
+  // Also isolates a provisional trailing event from the committed index.
+  const dayUsage = { ...(state.daily.get(day) || emptyTokens()) };
+  addTokens(dayUsage, delta); state.daily.set(day, dayUsage);
+  state.previousTotal = { ...state.previousTotal, ...current };
+  const candidate = { timestamp, rateLimits: event.payload.rate_limits };
+  if (!state.latestEvent || timestamp > state.latestEvent.timestamp) state.latestEvent = candidate;
+  if (event.payload.rate_limits?.primary
+      && (!state.latestRateEvent || timestamp > state.latestRateEvent.timestamp)) state.latestRateEvent = candidate;
+  if (planType(event.payload.rate_limits)
+      && (!state.latestPlanEvent || timestamp > state.latestPlanEvent.timestamp)) state.latestPlanEvent = candidate;
+  if (event.payload.rate_limits?.primary) state.rateEvents.push(candidate);
+  if (event.payload.rate_limits?.credits
+      && (!state.latestCreditEvent || timestamp > state.latestCreditEvent.timestamp)) state.latestCreditEvent = candidate;
+}
+
+function codexUsageSummary(state, pending) {
+  // Historically a complete final JSON value counted without a newline. Keep
+  // that view provisional: a later newline commits it once, not twice, and a
+  // later incomplete append cannot corrupt the committed prefix.
+  const view = pending.length ? copyCodexUsageState(state) : state;
+  if (pending.length) consumeCodexUsageLine(view, pending.toString('utf8'));
+  const { previousTotal, ...summary } = view;
+  return { ...summary, sessionCount: view.eventCount ? 1 : 0 };
+}
+
+const SESSION_CHUNK_BYTES = 64 * 1024;
+const SESSION_ANCHOR_BYTES = 512;
+
+function sessionFingerprint(stat) {
+  return `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+}
+
+function sessionChanged() {
+  const error = new Error('session_changed_during_read'); error.code = 'SESSION_CHANGED'; return error;
+}
+
+function readSessionBytes(fd, offset, length) {
+  const buffer = Buffer.alloc(length); let used = 0;
+  while (used < length) {
+    const count = fs.readSync(fd, buffer, used, length - used, offset + used);
+    if (!count) throw sessionChanged();
+    used += count;
+  }
+  return buffer;
+}
+
+function sessionAnchors(fd, size) {
+  const length = Math.min(size, SESSION_ANCHOR_BYTES);
+  const hash = (offset) => createHash('sha256').update(readSessionBytes(fd, offset, length)).digest('hex');
+  return { prefix: hash(0), suffix: hash(size - length) };
+}
+
+function sameSessionAnchors(left, right) {
+  return left.prefix === right.prefix && left.suffix === right.suffix;
+}
+
+function updateCodexUsageFile(filePath, previous = null, appendOnly = false) {
+  // Retry only a filesystem snapshot, never a model turn. No partial scan is
+  // installed in the cache. Persistent instability is reported as an error.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let fd;
+    try {
+      fd = fs.openSync(filePath, 'r');
+      const before = fs.fstatSync(fd);
+      if (!before.isFile()) return null;
+      const anchors = sessionAnchors(fd, before.size);
+      // Edge anchors detect ordinary truncate/regrow, not arbitrary edits in
+      // the middle. Reuse is opt-in ONLY for a producer with an established
+      // append-only contract. Uncontracted sources always rebuild on change.
+      const append = appendOnly && previous && previous.dev === before.dev && previous.ino === before.ino
+        && before.size > previous.size
+        && sameSessionAnchors(previous.anchors, sessionAnchors(fd, previous.size));
+      const state = append ? copyCodexUsageState(previous.state) : emptyCodexUsageState();
+      let parts = append && previous.pending.length ? [previous.pending] : [];
+      let pendingBytes = append ? previous.pending.length : 0;
+      let offset = append ? previous.size : 0;
+      while (offset < before.size) {
+        const chunk = readSessionBytes(fd, offset, Math.min(SESSION_CHUNK_BYTES, before.size - offset));
+        offset += chunk.length;
+        let start = 0;
+        for (let end = chunk.indexOf(10); end !== -1; end = chunk.indexOf(10, start)) {
+          const part = chunk.subarray(start, end); parts.push(part); pendingBytes += part.length;
+          consumeCodexUsageLine(state, Buffer.concat(parts, pendingBytes).toString('utf8'));
+          parts = []; pendingBytes = 0; start = end + 1;
+        }
+        if (start < chunk.length) { const part = chunk.subarray(start); parts.push(part); pendingBytes += part.length; }
+      }
+      const after = fs.fstatSync(fd); const named = fs.statSync(filePath);
+      if (after.size < before.size || named.dev !== before.dev || named.ino !== before.ino
+          || (after.size === before.size && (after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs))
+          || !sameSessionAnchors(anchors, sessionAnchors(fd, before.size))) throw sessionChanged();
+      const pending = Buffer.concat(parts, pendingBytes);
+      return {
+        fingerprint: sessionFingerprint(before), dev: before.dev, ino: before.ino,
+        size: before.size, anchors, state, pending, summary: codexUsageSummary(state, pending),
+      };
+    } catch (error) {
+      if (error.code === 'SESSION_CHANGED') { previous = null; if (!attempt) continue; throw error; }
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    } finally { if (fd !== undefined) fs.closeSync(fd); }
+  }
+  return null;
+}
+
+function scanCodexUsageFile(filePath) {
+  return updateCodexUsageFile(filePath)?.summary || null;
 }
 
 function buildCodexUsage(
@@ -1624,6 +1688,7 @@ class CodexUsageReader {
     localAiBenchmarkPath = null,
     localAiPivotPath = null,
     localAiCanarySummaryPath = null,
+    { appendOnlySessionFiles = false, historicalRefreshMs = 0 } = {},
   ) {
     this.sessionsDirectories = Array.isArray(sessionsDirectory) ? sessionsDirectory : [sessionsDirectory];
     this.localAiTelemetryPath = localAiTelemetryPath;
@@ -1635,9 +1700,27 @@ class CodexUsageReader {
     this.cachedAt = 0;
     this.cached = null;
     this.usageFiles = new Map();
+    this.appendOnlySessionFiles = appendOnlySessionFiles === true;
+    this.historicalRefreshMs = Math.max(0, Math.min(Number(historicalRefreshMs) || 0, 30_000));
+    this.historicalCollectedAt = null;
+    this.historicalSummaries = null;
   }
 
-  readCodexUsage(now, liveRateEvent = null) {
+  sessionCollection(now, { refreshed = false, error = null } = {}) {
+    return {
+      source: 'codex_session_files',
+      state: error ? 'collection_failed' : refreshed ? 'sampled' : 'cached_snapshot',
+      observed_at: this.historicalCollectedAt === null ? null : new Date(this.historicalCollectedAt).toISOString(),
+      age_seconds: this.historicalCollectedAt === null ? null
+        : Math.max(0, (now.valueOf() - this.historicalCollectedAt) / 1000),
+      refresh_interval_seconds: this.historicalRefreshMs / 1000,
+      collection_error: error,
+      coverage: error ? 'historical_collection_incomplete' : 'listed_session_files_at_observed_at',
+      strategy: this.appendOnlySessionFiles ? 'explicit_append_only_contract' : 'strict_snapshot',
+    };
+  }
+
+  refreshSessionIndex() {
     const files = [...new Set(
       this.sessionsDirectories.flatMap((directory) => listJsonlFiles(directory)),
     )];
@@ -1646,27 +1729,43 @@ class CodexUsageReader {
       let stat;
       try {
         stat = fs.statSync(filePath);
-      } catch {
-        continue;
+      } catch (error) {
+        if (['EACCES', 'EPERM'].includes(error.code)) throw error;
+        if (error.code === 'ENOENT') { this.usageFiles.delete(filePath); continue; }
+        throw error;
       }
-      const fingerprint = `${stat.size}:${stat.mtimeMs}`;
+      const fingerprint = sessionFingerprint(stat);
       const previous = this.usageFiles.get(filePath);
-      if (!previous || previous.fingerprint !== fingerprint || !previous.summary) {
-        this.usageFiles.set(filePath, {
-          fingerprint,
-          summary: scanCodexUsageFile(filePath),
-        });
+      if (!previous || previous.fingerprint !== fingerprint) {
+        const indexed = updateCodexUsageFile(filePath, previous, this.appendOnlySessionFiles);
+        if (indexed) this.usageFiles.set(filePath, indexed);
+        else this.usageFiles.delete(filePath);
       }
     }
     for (const filePath of this.usageFiles.keys()) {
       if (!present.has(filePath)) this.usageFiles.delete(filePath);
     }
-    return buildCodexUsage(
-      [...this.usageFiles.values()].map((entry) => entry.summary),
+    return [...this.usageFiles.values()].map((entry) => entry.summary);
+  }
+
+  readCodexUsage(now, liveRateEvent = null) {
+    let refreshed = false;
+    if (this.historicalSummaries === null || now.valueOf() < this.historicalCollectedAt
+        || now.valueOf() - this.historicalCollectedAt >= this.historicalRefreshMs) {
+      // Publish a new collection timestamp only after the whole scan succeeds.
+      // Account and Local AI data are overlaid independently on every read.
+      this.historicalSummaries = this.refreshSessionIndex();
+      this.historicalCollectedAt = now.valueOf(); refreshed = true;
+    }
+    return {
+      ...buildCodexUsage(
+      this.historicalSummaries,
       now,
       liveRateEvent,
       { accountLimitOnly: true },
-    );
+      ),
+      session_collection: this.sessionCollection(now, { refreshed }),
+    };
   }
 
   read(liveRateEvent = null) {
@@ -1676,16 +1775,19 @@ class CodexUsageReader {
     try {
       usage = this.readCodexUsage(now, liveRateEvent);
     } catch (error) {
-      if (!['EACCES', 'EPERM'].includes(error.code)) throw error;
+      if (!['EACCES', 'EPERM', 'SESSION_CHANGED'].includes(error.code)) throw error;
       // A private source must not disable independent live telemetry or turn
       // a partial historical count into an apparently complete numeric total.
       usage = {
         ...buildCodexUsage([], now, liveRateEvent, { accountLimitOnly: true }),
         status: 'degraded',
-        error: 'session_source_unreadable',
+        error: error.code === 'SESSION_CHANGED' ? 'session_source_unstable' : 'session_source_unreadable',
         totals: null,
         analytics: null,
         daily: [],
+        session_collection: this.sessionCollection(now, {
+          error: error.code === 'SESSION_CHANGED' ? 'session_source_unstable' : 'session_source_unreadable',
+        }),
       };
     }
     this.cached = {

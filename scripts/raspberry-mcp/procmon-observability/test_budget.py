@@ -39,7 +39,7 @@ class Cases(unittest.TestCase):
   with self.deterministic(clock):
    observer=m.Observer();observer.emit=Mock()
    with patch.object(m,'Observer',return_value=observer),patch.object(m,'load_collector',return_value=mod)as loader,patch.object(m.os,'geteuid',return_value=1001),patch.object(m.sys,'argv',['fixed']):self.assertEqual(m.main(),0)
-  loader.assert_called_once_with();self.assertEqual(count,{'limits':1,'sample':1,'run':1});observer.emit.assert_called_once_with();self.assertEqual(trace,[('limits',None),('alarm',5),('alarm',15)])
+  loader.assert_called_once_with();self.assertEqual(count,{'limits':1,'sample':1,'run':1});observer.emit.assert_called_once_with();self.assertEqual(trace,[('limits',None),('alarm',5),('alarm',15),('alarm',0)])
  def test_fsync_signal_receipt_and_original_interrupted_error_are_retained(self):
   mod,clock,trace,handlers,count,handler=self.fixture()
   def delayed_fake_fsync(fd):clock[0]=15.3;handlers[14](14,None)

@@ -643,13 +643,17 @@ class Registry:
             self.db.set_progress_handler(stop, 1000)
             self.db.execute('SAVEPOINT latest_delivery_receipt_observation')
             saved = True
+            # Select the latest authorized dispatch key BEFORE joining batch
+            # payloads. The old join fetched historical bodies while sorting.
+            # Preserve the same owner filter, deterministic tie-break and budget.
             row = self.db.execute('SELECT d.subscription,d.event,d.state,d.at,b.body,'
                 't.event IS NOT NULL AS recorded,t.completed_at,t.sender_duration_ms,'
-                't.outcome,t.collection_error FROM dispatch d '
-                'JOIN subscriptions s ON s.id=d.subscription '
+                't.outcome,t.collection_error FROM ('
+                'SELECT d.subscription,d.event,d.state,d.at FROM dispatch d '
+                'JOIN subscriptions s ON s.id=d.subscription WHERE s.owner=? '
+                'ORDER BY d.at DESC,d.event DESC LIMIT 1) d '
                 'LEFT JOIN delivery_batches b ON b.subscription=d.subscription AND b.id=d.event '
-                'LEFT JOIN transport_observations t ON t.subscription=d.subscription AND t.event=d.event '
-                'WHERE s.owner=? ORDER BY d.at DESC,d.event DESC LIMIT 1',
+                'LEFT JOIN transport_observations t ON t.subscription=d.subscription AND t.event=d.event',
                 (self.principal,)).fetchone()
             if row is None:
                 out.update(state='empty')

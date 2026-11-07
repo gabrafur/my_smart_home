@@ -43,6 +43,26 @@ foi removido; tentativas antigas continuam contando, sem reset ou replay.
 Isso não renova a assinatura, não altera limites da plataforma e não modifica
 o heartbeat externo do Healthchecks.
 
+### Custo da leitura do recibo
+
+`delivery_receipt_query_budget_exceeded` indica que a consulta local excedeu
+seu orçamento de leitura. Não significa limite diário de envios, perda de
+evento ou falha de entrega. O resultado permanece desconhecido; não reenviar
+o lote para tentar obter um recibo.
+
+A consulta seleciona primeiro a chave do último despacho do principal
+autenticado, com desempate por horário e identificador, e só depois associa
+corpo e transporte. Preserva os mesmos filtros, validação de membros e limites
+de tempo/instruções, sem alterar tabelas ou índices. Os testes isolados em
+`test_latest_query_cost.py` comparam o resultado com a consulta anterior e
+medem quantos corpos são lidos em uma base fictícia.
+
+O trabalhador importa o módulo ao iniciar. Uma troca de arquivo não comprova
+que o processo carregado usa a correção. A aplicação exige encerramento
+gracioso do trabalhador existente, preservação dos registros e verificação
+pelo MCP após carregar a fonte. Uma saída incerta exige consultar o mesmo
+recibo; não repetir sinal, início de serviço ou despacho com outra chave.
+
 Foi comprovada a leitura dos novos campos pelo cliente MCP real; a entrega de
 um resumo no ciclo natural e a execução do assistente exigem recibos separados.
 Confira o [contrato e procedimento](../../../scripts/raspberry-mcp/runtime-source/native-events/README.md),
