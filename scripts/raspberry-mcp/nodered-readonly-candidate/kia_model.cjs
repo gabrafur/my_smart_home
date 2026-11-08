@@ -35,6 +35,7 @@ function row(name,envelope,now){
  let d=name==='worker_result'?parseLine(envelope.data):envelope.data;
  if(!record(d))return {...out,state:'unknown',collection_error:'invalid_schema'};
  if(name==='pending'){
+  out.coverage.push('pending_flags_snapshot_at_reader_activation_not_live_queue');
   const keys=['audit_requested','audit_processing','audit_followup','merge_requested','merge_processing'];
   if(!keys.every(k=>typeof d[k]==='boolean'))return {...out,state:'unknown',collection_error:'invalid_schema'};
   out.pending=Object.fromEntries(keys.map(k=>[k,d[k]]));out.result=keys.some(k=>d[k])?'pending':'idle';out.source_updated_at=out.observed_at;

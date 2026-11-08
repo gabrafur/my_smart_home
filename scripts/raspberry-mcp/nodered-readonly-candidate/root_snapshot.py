@@ -64,6 +64,35 @@ def timezone():
   if len(tz)!=1 or tz[0]not in('America/Sao_Paulo','Etc/UTC','UTC'):raise ValueError('fixed_timezone_unknown')
   return {'timezone':tz[0],'source':'current_nodered_container_configuration_TZ','collection_error':None,'coverage':['configured_TZ_not_direct_JS_Intl_attestation']}
  finally:c.close()
+PENDING_SOURCES={
+ 'audit-requested':'/mnt/data/docker/homeassistant/.daily-update-trigger/kia-uvo-requested',
+ 'audit-processing':'/mnt/data/docker/homeassistant/.daily-update-trigger/kia-uvo-processing',
+ 'audit-followup':'/mnt/data/docker/homeassistant/.daily-update-trigger/kia-uvo-followup',
+ 'merge-requested':'/mnt/data/docker/.local-state/kia-uvo-merge-trigger/requested',
+ 'merge-processing':'/mnt/data/docker/.local-state/kia-uvo-merge-trigger/processing',
+}
+def mount_unescape(value):
+ return re.sub(r'\\(040|011|012|134)',lambda m:chr(int(m[1],8)),value)
+def pending_presence(name, mountinfo):
+ # A skipped optional bind can leave a regular empty destination file behind.
+ # Only the exact fixed, read-only mount is evidence of a source at activation.
+ target=str(INPUT/name);matches=[]
+ try:
+  if name not in PENDING_SOURCES or len(mountinfo)>1048576: return None
+  for line in mountinfo.splitlines():
+   fields=line.split();separator=fields.index('-')
+   if len(fields)<10 or separator<6:return None
+   if mount_unescape(fields[4])==target:matches.append(fields)
+  if not matches:return False
+  if len(matches)!=1:return None
+  fields=matches[0]
+  if mount_unescape(fields[3])!=PENDING_SOURCES[name] or 'ro'not in fields[5].split(','):return None
+  info=(INPUT/name).lstat()
+  if not stat.S_ISREG(info.st_mode):return None
+  if fields[2]!=str(os.major(info.st_dev))+':'+str(os.minor(info.st_dev)):return None
+  return True
+ except (OSError,ValueError,IndexError):return None
+
 def snapshot(now):
  result={'source':'fixed_root_readonly_Kia_update_receipts','observed_at':now,'collection_error':None,'sources':{},'pending':{},'timezone':None,'coverage':['latest_fixed_receipts_only','no_raw_error_reason_message_paths_secrets_or_vehicle_values','no_update_check_install_refresh_or_service_control']}
  for name,alias in SOURCES.items():
@@ -84,12 +113,12 @@ def snapshot(now):
   except FileNotFoundError:pass
   except Exception:row['collection_error']='fixed_source_collection_failed'
   result['sources'][name]=row
- for name in ('audit-requested','audit-processing','audit-followup','merge-requested','merge-processing'):
-  try:
-   # Only existence of the fixed intent; contents are never read.
-   s=(INPUT/name).stat();result['pending'][name.replace('-','_')]=stat.S_ISREG(s.st_mode)
-  except FileNotFoundError:result['pending'][name.replace('-','_')]=False
-  except OSError:result['pending'][name.replace('-','_')]=None
+ try:
+  with open('/proc/self/mountinfo',encoding='utf-8')as handle:mountinfo=handle.read(1048577)
+ except OSError:mountinfo=None
+ for name in PENDING_SOURCES:
+  result['pending'][name.replace('-','_')]=pending_presence(name,mountinfo)if mountinfo is not None else None
+ result['coverage'].append('pending_flags_are_fixed_readonly_mounts_observed_at_reader_activation_not_live_queue')
  try:result['timezone']=timezone()
  except Exception:result['timezone']={'timezone':None,'collection_error':'fixed_timezone_unavailable'}
  return result

@@ -134,3 +134,19 @@ A unit base do executor usa rede privada, famílias de endereço restritas a Uni
 ### Pendências para instalação reproduzível
 
 Publicar e revisar manifesto executável e instalador idempotente, definição completa dos serviços e mounts, mecanismo local de provisionamento e aprovação sem dados privados, preservação e validação dos delegados, testes isolados e de integração, backup consistente e rollback ensaiado. Confirmar a proteção efetiva do socket Docker e a execução do guardião no namespace real. Até existir evidência dessas etapas, tratar a instalação como específica do host e não afirmar que este documento a reconstrói.
+
+## Ausência de pedidos nas montagens opcionais
+
+O snapshot Kia não pode tratar a existência do destino de um bind opcional como
+prova de solicitação. Quando a fonte desaparece, um destino vazio antigo pode
+continuar existindo no namespace. `root_snapshot.py` exige a montagem somente
+leitura da fonte fixa correspondente e verifica tipo e dispositivo; identidade
+inconsistente ou leitura indeterminada produz desconhecido. Arquivo realmente
+montado e vazio não é confundido com destino sem montagem.
+
+Esses indicadores descrevem a montagem observada na ativação do leitor, com o
+horário do snapshot; não constituem acompanhamento contínuo da fila. A projeção
+MCP conserva essa limitação explicitamente. Não enviar auditoria ou reparo com
+base apenas nesses indicadores: reconciliar o recibo e a origem admitida antes
+de qualquer efeito. Os testes usam arquivos e mountinfo sintéticos, sem pedidos
+ou comandos residenciais.
