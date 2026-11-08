@@ -128,6 +128,9 @@ expor segredos.
 - Preservar prévia/recibo; resultado incerto exige reconciliação e nunca novo
   envio. A poda pode preservar parte das entradas por dependências: seleção
   lógica não é promessa de bytes físicos recuperados. Não repetir imediatamente.
+- Contenção do lock anterior à entrada no executor de cache retorna 75 e adia
+  o mesmo pedido. Não confundir essa recusa sem despacho com resultado incerto;
+  este último conserva o marcador bloqueado para reconciliação, sem replay.
 - Fonte operacional: `docs/RASPBERRY_PI_SYSTEM_HEALTH.md`. Testes e instalação
   precisam ser comprovados separadamente do primeiro ciclo da agenda.
 

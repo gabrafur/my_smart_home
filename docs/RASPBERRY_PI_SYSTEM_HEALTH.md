@@ -266,6 +266,9 @@ fontes e dependências originais; não é prometida reconstrução idêntica ou 
 O recibo separa bytes lógicos removidos da variação real do filesystem, que pode
 incluir outras atividades. Resultado incerto bloqueia repetição e não pode ser
 contornado com uma operação nova.
+Recusa do lock antes de entrar no executor retorna código 75 e mantém o mesmo
+pedido para o próximo ciclo. Esse caso comprovadamente sem despacho não cria
+um bloqueio de reconciliação. Falhas após despacho continuam sem repetição.
 
 Backups, snapshots, Recorder, credenciais, ferramentas instaladas e imagens de
 rollback ficam fora desse caminho. A política de quarentena npm do MCP permanece

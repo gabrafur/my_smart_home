@@ -37,6 +37,10 @@ class Refused(Exception):
     pass
 
 
+class DeferredBeforeDispatch(Refused):
+    """Lock admission failed before run() or any Docker mutation."""
+
+
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
@@ -175,7 +179,7 @@ def locks(state=STATE, maintenance_lock=ROOT / '.daily-maintenance.lock'):
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as exc:
-                raise Refused('maintenance_in_progress') from exc
+                raise DeferredBeforeDispatch('maintenance_in_progress') from exc
         yield
     finally:
         for fd in held:
@@ -263,6 +267,9 @@ def main():
         with locks():
             result = run(mode)
         print(json.dumps(result, sort_keys=True))
+    except DeferredBeforeDispatch as exc:
+        print(json.dumps({'state': 'deferred', 'reason': str(exc), 'dispatched': False}))
+        return 75
     except Exception as exc:
         print(json.dumps({'state': 'refused', 'reason': str(exc) if isinstance(exc, Refused) else type(exc).__name__, 'automatic_retry': False}))
         return 1

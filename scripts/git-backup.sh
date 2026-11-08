@@ -53,9 +53,9 @@ if [[ "$remote_url" == *github.com* && "$remote_url" != http://* && "$remote_url
   if [[ -n "$SSH_KEY" ]]; then
     ssh_identity="-i \"$SSH_KEY\" -o IdentitiesOnly=yes"
   fi
-  export GIT_SSH_COMMAND="ssh $ssh_identity -o BatchMode=yes -o StrictHostKeyChecking=yes -o Hostname=ssh.github.com -o HostKeyAlias=github.com -o Port=443"
+  export GIT_SSH_COMMAND="ssh $ssh_identity -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o BatchMode=yes -o StrictHostKeyChecking=yes -o Hostname=ssh.github.com -o HostKeyAlias=github.com -o Port=443"
 elif [[ -n "$SSH_KEY" ]]; then
-  export GIT_SSH_COMMAND="ssh -i \"$SSH_KEY\" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes"
+  export GIT_SSH_COMMAND="ssh -i \"$SSH_KEY\" -o IdentitiesOnly=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o BatchMode=yes -o StrictHostKeyChecking=yes"
 fi
 
 {

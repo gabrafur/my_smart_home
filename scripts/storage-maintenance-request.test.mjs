@@ -112,6 +112,19 @@ test("uncertain cache result keeps processing receipt and never requeues or bloc
   } finally {fs.rmSync(x.root,{recursive:true,force:true});}
 });
 
+test("known pre-dispatch contention retains the same request and later succeeds", () => {
+  const x = cacheFixture(75);
+  try {
+    assert.equal(spawnSync(requestScript, ["--daily-build-cache"], {env:x.env}).status, 0);
+    assert.equal(spawnSync(processScript, [], {env:x.env}).status, 75);
+    assert.ok(fs.existsSync(path.join(x.trigger, "build-cache-trigger")));
+    assert.ok(!fs.existsSync(path.join(x.trigger, "build-cache-processing")));
+    fs.writeFileSync(x.env.STORAGE_BUILD_CACHE_HELPER, "import sys\nsys.exit(0)\n");
+    assert.equal(spawnSync(processScript, [], {env:x.env}).status, 0);
+    assert.ok(!fs.existsSync(path.join(x.trigger, "build-cache-trigger")));
+  } finally { fs.rmSync(x.root, {recursive:true, force:true}); }
+});
+
 test("request refuses a symlink instead of following it", () => {
   const x=cacheFixture();
   try {

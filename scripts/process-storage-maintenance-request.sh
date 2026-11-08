@@ -34,10 +34,19 @@ if [ "$cache_status" -eq 0 ] && [ -f "$trigger_dir/build-cache-trigger" ] && [ !
   if "$python_bin" "$build_cache_helper" --daily; then
     rm -- "$trigger_dir/build-cache-processing"
   else
-    # Even a timeout can follow dispatch. Keep the exact marker and helper
-    # receipt for reconciliation instead of restoring an executable request.
-    echo "Build cache result not confirmed; inspect existing receipt" >&2
-    cache_status=1
+    helper_status=$?
+    if [ "$helper_status" -eq 75 ] && [ ! -e "$trigger_dir/build-cache-trigger" ] && [ ! -L "$trigger_dir/build-cache-trigger" ]; then
+      # The fixed helper reserves 75 for lock refusal before run()/dispatch.
+      # Preserve the same request for the next worker; never replay uncertainty.
+      mv -- "$trigger_dir/build-cache-processing" "$trigger_dir/build-cache-trigger"
+      echo "Build cache deferred before dispatch: maintenance busy"
+      cache_status=75
+    else
+      # Even a timeout can follow dispatch. Keep the exact marker and helper
+      # receipt for reconciliation instead of restoring an executable request.
+      echo "Build cache result not confirmed; inspect existing receipt" >&2
+      cache_status=1
+    fi
   fi
 fi
 [ -f "$request_file" ] && [ ! -L "$request_file" ] || exit "$cache_status"

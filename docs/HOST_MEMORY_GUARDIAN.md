@@ -80,6 +80,13 @@ O container grava apenas um marcador coalescido em
 Comandos, variáveis de ambiente, endereços e conteúdo de conversas não retornam
 ao Node-RED.
 
+Uma resposta vazia ou inválida da ponte continua sendo falha, sem reenvio
+automático. O diagnóstico preserva somente a razão classificada, o código de
+saída e o sinal do processo; não publica stdout, stderr, comandos ou caminhos.
+Um aceite textual com código de saída não zero não é aceito como confirmação.
+O retorno posterior de um resultado fresco comprova apenas aquele ciclo, sem
+atribuir retrospectivamente a causa de uma falha anterior.
+
 O lock curto do pedido se recupera automaticamente quando fica órfão por mais
 de 120 segundos e não existe pedido pendente ou em processamento. Isso evita
 que uma recriação do container deixe o guardião permanentemente em `busy`.

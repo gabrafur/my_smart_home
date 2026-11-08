@@ -43,6 +43,11 @@ sucesso, um link nomeado aciona a aba separada `atualizacoes_diarias`. Backup
 manual não dispara updates. Se os digests dos containers mudarem, o worker de
 updates chama um novo backup ao final para registrar o Compose reconciliado.
 
+O transporte SSH do GitHub mantém a conexão durante os testes do pre-push
+com `ServerAliveInterval=30` e `ServerAliveCountMax=10`. A verificação estrita
+da chave do host permanece obrigatória; keepalive não repete o push nem
+substitui validação ou reconciliação de resultado incerto.
+
 ## Operação e diagnóstico
 
 - O botão **Executar backup agora** na aba permite uma solicitação manual.

@@ -5,6 +5,8 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import contextlib
+import io
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('cache_maintenance', Path(__file__).with_name('docker-build-cache-maintenance.py'))
@@ -28,6 +30,16 @@ def candidate():
 
 
 class Eligibility(unittest.TestCase):
+    def test_lock_refusal_has_distinct_predispatch_exit_without_running(self):
+        with patch('sys.argv', ['cache', '--daily']), patch.object(m, 'locks', side_effect=m.DeferredBeforeDispatch('maintenance_in_progress')), patch.object(m, 'run') as run, contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(m.main(), 75)
+            self.assertFalse(json.loads(out.getvalue())['dispatched'])
+            run.assert_not_called()
+
+    def test_uncertain_refusal_does_not_use_deferral_exit(self):
+        with patch('sys.argv', ['cache', '--daily']), patch.object(m, 'locks', side_effect=m.Refused('existing_dispatch_requires_reconciliation_no_retry')), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(m.main(), 1)
+
     def test_exact_old_private_record_selected_without_descriptions(self):
         row = metadata(); row['Description'] = 'never export this'
         result = m.select([row], [cli(row)], NOW)

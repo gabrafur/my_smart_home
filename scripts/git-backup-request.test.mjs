@@ -93,6 +93,8 @@ test("GitHub backups use authenticated SSH on port 443 with strict host verifica
   assert.match(source, /Hostname=ssh\.github\.com/);
   assert.match(source, /HostKeyAlias=github\.com/);
   assert.match(source, /Port=443/);
+  assert.match(source, /ServerAliveInterval=30/);
+  assert.match(source, /ServerAliveCountMax=10/);
   assert.match(source, /StrictHostKeyChecking=yes/);
   assert.doesNotMatch(source, /StrictHostKeyChecking=accept-new/);
 });
