@@ -131,7 +131,9 @@ def admission():
 original=worker_parent.subprocess.Popen
 def launched(*args,**kwargs):
  if args[0][0]=='/usr/bin/node':args=([c['node_binary'],*args[0][1:]],*args[1:])
- p=original(*args,**kwargs);Path(c['pid_file']).write_text(str(p.pid));return p
+ p=original(*args,**kwargs)
+ target=Path(c['pid_file']);temporary=target.with_suffix('.tmp')
+ temporary.write_text(str(p.pid));temporary.replace(target);return p
 worker_parent.subprocess.Popen=launched
 job=worker_parent.BoundNodeRedParent(c['entry'],c['hashes'],c['prepared'],c['state'],admission,lambda:{'host':'127.0.0.1','port':c['port'],'username':'synthetic','password':'PRIVACY_TEST_FIXTURE'},os.getuid())
 job.run('a'*32,'apply')
