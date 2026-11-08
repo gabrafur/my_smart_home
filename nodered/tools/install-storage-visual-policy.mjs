@@ -45,7 +45,7 @@ configGroup.nodes = configGroup.nodes.filter((id) => !newIds.has(id));
 Object.assign(required("storage_comment_architecture"), { x: 700, y: 60,
   name: "Política em unidades humanas; métricas HA são fatos; efeitos privilegiados permanecem allowlisted." });
 const policy = { warning_pct: 70, high_pct: 80, critical_pct: 90, hysteresis_pp: 3,
-  notification_cooldown_h: 12, command_error_cooldown_h: 6, trend_24h_pp: 5, trend_7d_pp: 10,
+  notification_cooldown_h: 24, command_error_cooldown_h: 6, trend_24h_pp: 5, trend_7d_pp: 10,
   auto_remediation_cooldown_h: 6, sample_interval_min: 15, history_retention_days: 8 };
 Object.assign(required("storage_init"), {
   name: "CONFIG: aplicar política visual", x: 190, y: 150,
@@ -100,6 +100,7 @@ sw("storage_visual_raw_severity", decisionGroup.id, "Classificar uso pelos thres
   { t: "gte", v: "policy.critical_pct", vt: "msg" }, { t: "gte", v: "policy.high_pct", vt: "msg" },
   { t: "gte", v: "policy.warning_pct", vt: "msg" }, { t: "else" }
 ], 4210, 380, [["storage_visual_set_critical"], ["storage_visual_set_high"], ["storage_visual_set_warning"], ["storage_visual_set_normal"]]);
+required("storage_visual_raw_severity").checkall = "false"; // Highest matching severity only.
 const rawOrigins = [];
 for (const [id, name, value, y] of [
   ["storage_visual_set_critical", "Raw: critical", "critical", 300], ["storage_visual_set_high", "Raw: high", "high", 360],
@@ -131,8 +132,8 @@ change("storage_visual_facts", decisionGroup.id, "Calcular fatos sem rotear", [
   { t: "set", p: "storage.accelerated", pt: "msg", to: "(storage.growth24h != null and storage.growth24h >= policy.trend_24h_pp) or (storage.growth7d != null and storage.growth7d >= policy.trend_7d_pp)", tot: "jsonata" },
   { t: "set", p: "storage.recovered", pt: "msg", to: 'storage.severity = "normal" and storage.previous != "normal"', tot: "jsonata" },
   { t: "set", p: "storage.escalated", pt: "msg", to: '(storage.severity = "critical" and storage.previous != "critical") or (storage.severity = "high" and (storage.previous = "normal" or storage.previous = "warning")) or (storage.severity = "warning" and storage.previous = "normal")', tot: "jsonata" },
-  { t: "set", p: "storage.capacity_due", pt: "msg", to: "storage.escalated or (storage.severity != \"normal\" and storage.now - storage.state.lastNotificationAt >= policy.notification_cooldown_h * 3600000)", tot: "jsonata" },
-  { t: "set", p: "storage.trend_due", pt: "msg", to: "storage.now - storage.state.lastTrendNotificationAt >= policy.notification_cooldown_h * 3600000", tot: "jsonata" },
+  { t: "set", p: "storage.capacity_due", pt: "msg", to: "storage.escalated or (storage.severity != \"normal\" and storage.now -  $max([storage.state.lastNotificationAt, storage.state.lastTrendNotificationAt]) >= policy.notification_cooldown_h * 3600000)", tot: "jsonata" },
+  { t: "set", p: "storage.trend_due", pt: "msg", to: "storage.now -  $max([storage.state.lastNotificationAt, storage.state.lastTrendNotificationAt]) >= policy.notification_cooldown_h * 3600000", tot: "jsonata" },
   { t: "set", p: "storage.remediation_needed", pt: "msg", to: 'storage.accelerated or storage.severity != "normal"', tot: "jsonata" },
   { t: "set", p: "storage.remediation_due", pt: "msg", to: "storage.now - storage.state.lastAutoRemediationAt >= policy.auto_remediation_cooldown_h * 3600000", tot: "jsonata" }
 ], 6000, 570, [["storage_visual_recovery_gate"]]);
@@ -192,7 +193,7 @@ shift("storage_group_maintenance", 64, 650);
 shift("storage_group_tests", 1850, 760);
 const maintenance = required("storage_group_maintenance");
 const tests = required("storage_group_tests");
-Object.assign(maintenance, { name: "5. Efeitos allowlisted, recovery e retries", w: 1750, h: 570 });
+Object.assign(maintenance, { name: "5. Efeitos allowlisted, recovery e retries", w: 1750, h: 740 });
 Object.assign(tests, { name: "6. TESTE — caminho integral em dry-run", h: 400 });
 
 Object.assign(required("storage_manual_start"), { wires: [["storage_visual_manual_exec_out"], ["storage_visual_manual_host_out"], ["storage_read_ha"], ["storage_visual_manual_status_out"]] });
@@ -234,7 +235,16 @@ Object.assign(required("storage_manual_complete"), { wires: [["storage_visual_ma
 linkOut("storage_visual_manual_complete_status_out", maintenance.id, "Manual idle → MQTT", "storage_visual_manual_status_in", 1740, 1080);
 linkIn("storage_visual_manual_status_in", effects.id, "Receber lifecycle manual", ["storage_visual_manual_status_out", "storage_visual_manual_complete_status_out"], "storage_manual_status_mqtt", 9630, 220);
 Object.assign(required("storage_test_dry_out"), { x: 660, y: 840 });
-Object.assign(required("storage_auto_gate"), { wires: [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_test_dry_out"]] });
+Object.assign(required("storage_auto_gate"), { outputs: 4, wires: [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_test_dry_out"], ["storage_visual_daily_cache_out"]] });
+linkOut("storage_visual_daily_cache_out", maintenance.id, "Agenda → cache diário", "storage_visual_daily_cache_in", 650, 1000);
+linkIn("storage_visual_daily_cache_in", maintenance.id, "Receber somente agenda", "storage_visual_daily_cache_out", "storage_request_daily_build_cache", 590, 1470);
+Object.assign(required("storage_request_daily_build_cache"), { x: 820, y: 1470, wires: [["storage_visual_cache_recheck_out"], ["storage_visual_cache_stderr_out"], ["storage_visual_cache_done_out"]] });
+linkOut("storage_visual_cache_recheck_out", maintenance.id, "Cache solicitado → releitura", "storage_visual_cache_recheck_in", 1090, 1450);
+linkIn("storage_visual_cache_recheck_in", maintenance.id, "Receber releitura cache", "storage_visual_cache_recheck_out", "storage_post_maintenance_delay", 1190, 1180);
+linkOut("storage_visual_cache_stderr_out", maintenance.id, "Erro cache → diagnóstico", "storage_visual_stderr_in", 1140, 1480);
+required("storage_visual_stderr_in").links.push("storage_visual_cache_stderr_out");
+linkOut("storage_visual_cache_done_out", maintenance.id, "Cache solicitado → lifecycle", "storage_visual_request_done_in", 1190, 1510);
+required("storage_visual_request_done_in").links.push("storage_visual_cache_done_out");
 Object.assign(required("storage_dry_run_terminal"), { x: 3150, y: 980 });
 required("storage_test_decision_in").links = ["storage_test_decision_out", "storage_visual_invalid_test_out"];
 required(TAB).info = "Métricas HA são fatos. Política, thresholds, histerese, cooldowns, tendência, autocuidado, produção/teste e efeitos ficam explícitos; cálculo de janelas permanece adapter puro.";

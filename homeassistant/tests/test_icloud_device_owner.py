@@ -42,6 +42,12 @@ class AdapterTests(unittest.TestCase):
    def __init__(self):pass
   self.core.IcloudDevice=Changed
   with self.assertRaisesRegex(RuntimeError,'icloud_constructor_changed'):adapter.prepare_device_class(self.core,'2026.10.4')
+ def test_reviewed_minor_preserves_native_update_and_owner_guard(self):
+  cls=adapter.prepare_device_class(self.core,'2026.11.0')
+  self.assertIs(cls.update,native.IcloudDevice.update)
+  self.assertNotIn(native.ATTR_OWNER_NAME,cls(self.account,object(),self.status)._attrs)
+ def test_next_minor_rejected(self):
+  with self.assertRaisesRegex(RuntimeError,'unsupported_icloud_core_version'):adapter.prepare_device_class(self.core,'2026.11.1')
  def test_second_install_is_idempotent(self):
   cls=adapter.prepare_device_class(self.core,'2026.10.1');self.core.IcloudDevice=cls
   self.assertIs(adapter.prepare_device_class(self.core,'2026.10.1'),cls)

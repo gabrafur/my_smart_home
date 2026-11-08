@@ -57,6 +57,38 @@
       "reviewed_constructor_sha256": "69eacf8342e90c7c3f46b775fb60ef324c70835d5a353850be335f2ceed3ed17",
       "pyicloud": "2.7.0",
       "review": "explicit compatibility allowlist and constructor hash remain enforced; silent primary recovery reviewed in local overlay; OTP delivery remains manual"
+    },
+    {
+      "tag": "2026.11.0",
+      "commit": "74cf5a49c63ed8d4d87717844bf14f79c28c9cea",
+      "tag_type": "lightweight",
+      "container_image_id": "sha256:c6c1ca9931036bf3a2c4cc088d8db25dfea3b33935a5ecc83c40349462e2f69e",
+      "core_account_sha256": "9892646f87b0359f83d2685012dc69734444c3608bd7e0cde229ca84cacb6376",
+      "reviewed_constructor_sha256": "69eacf8342e90c7c3f46b775fb60ef324c70835d5a353850be335f2ceed3ed17",
+      "pyicloud": "2026.10.1",
+      "pyicloud_base_sha256": "ed0dc943ff8e8addd254ee7abe249edb7e0bfabff48d78cb99dae2ba42f130d2",
+      "native_source_sha256": {
+        "coordinator.py": "70032e8dd62142ea9d020632f49aa7c7ee53b4e2076e2d38a5ae745328395fc6",
+        "const.py": "4b3d3f43d7ce587f634b79a59884b9fd7ba744b5093fd3dd983f60658f4d7ba2",
+        "sensor.py": "dae7107106561f0a6ff237bfe6a8e44a90e6b59380288ff7e19ee77bd418e537",
+        "services.yaml": "ac9455453252f04049abaebc329384424f898bbbb9d65803b1ecc5afb3a51b59",
+        "config_flow.py": "391ad7ce5fc8f1813b1e7c4e111e54d9ba51485ffbc93b6697060a4b80eb1b23",
+        "binary_sensor.py": "d0aca34326536a7c25ab16e90c2d6e462aa465ebfbf2715ab75072ad70499b7b",
+        "device_tracker.py": "5864cc547e63862c33326ade30cf95415a7ded51e0c6a322e6eb06abb80f3d59",
+        "__init__.py": "68afac1a531fc728056a3b22eb17be51afb3c0f2f0c5d27e82cba41a2814bcd1",
+        "icons.json": "399f7d4f7f268b90ce307e13f199312711745f2403700dc99b32e6ac8d24362a",
+        "strings.json": "ba0c50f4d34051c00e5cf0327be00638d286696319d568b2f722aba7575a0f36",
+        "account.py": "9892646f87b0359f83d2685012dc69734444c3608bd7e0cde229ca84cacb6376",
+        "entity.py": "8b80d2297c8190f3e5b0f239eb7fabb5b1a9e40f563382b95cc1746a5f2b4203",
+        "todo.py": "fd974739297fe192e13eed3377531396ea3d07dcfef6a265ff12814582694dc9",
+        "calendar.py": "c932bdc3b568d199f480a445a8fbeef057d07347c7a08c895b585443b3145bb7",
+        "media_source.py": "d8c10558070e3ecae43efb6649f9e6b724c92b59ef9295a9d67d346604928e7b",
+        "services.py": "4964a3a96d5bced53be07130ef9ea14f13b4e70c82c405e9a0f0d3ef952c355d",
+        "button.py": "281de2eee7b715943424b839b09c9a26f4091f46c9b9ac7e545e824b6664cfb4",
+        "manifest.json": "f51261503aeba5671a239f53081ec244515f510108ae695c7f80c34c369454ba",
+        "diagnostics.py": "e793f7618568cd285fb7c3f1091c70b0826cbe0721b40e65fffc4a5af1b99bb5"
+      },
+      "review": "native auth failures persist the guarded state; OTP challenges block background retries; native unload None is successful; provider transport is not expired authentication; isolated tests and image preflight verified"
     }
   ]
 }

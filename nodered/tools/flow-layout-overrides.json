@@ -2371,7 +2371,7 @@
           "x": 64,
           "y": 939,
           "w": 1857,
-          "h": 522
+          "h": 591
         },
         "storage_group_tests": {
           "x": 2244,
@@ -2986,6 +2986,34 @@
         "notification_hub_wire_in_34604f022367": {
           "x": 2375,
           "y": 460
+        },
+        "storage_request_daily_build_cache": {
+          "x": 820,
+          "y": 1470
+        },
+        "storage_visual_daily_cache_out": {
+          "x": 650,
+          "y": 1000
+        },
+        "storage_visual_daily_cache_in": {
+          "x": 590,
+          "y": 1470
+        },
+        "storage_visual_cache_recheck_out": {
+          "x": 1090,
+          "y": 1450
+        },
+        "storage_visual_cache_recheck_in": {
+          "x": 1190,
+          "y": 1180
+        },
+        "storage_visual_cache_stderr_out": {
+          "x": 1140,
+          "y": 1480
+        },
+        "storage_visual_cache_done_out": {
+          "x": 1190,
+          "y": 1510
         }
       },
       "geometry_final": true,

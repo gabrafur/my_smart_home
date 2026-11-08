@@ -15,3 +15,15 @@ test('candidate probe has no production mounts, network or credentials',()=>{
 });
 test('constructor or version failure closes gate',()=>assert.throws(()=>check(target,options(()=>{throw Error('private sentinel');})),/compatibility unconfirmed/));
 test('invalid, missing and refused evidence stays blocked',()=>{for(const result of ['invalid',{},null,{...accepted,state:'blocked'},{...accepted,network_enabled:true},{...accepted,production_configuration_mounted:true}])assert.throws(()=>check(target,options(()=>typeof result==='string'?result:JSON.stringify(result))),/compatibility/);});
+
+test('failed probe exposes only reviewed reason without private stderr',()=>{
+ const error=Object.assign(new Error('private sentinel'),{stdout:JSON.stringify({state:'blocked',reason:'unsupported_icloud_core_version'}),stderr:'private sentinel'});
+ assert.throws(()=>check(target,options(()=>{throw error;})),e=>e.message.endsWith('reason=unsupported_icloud_core_version')&&!e.message.includes('private sentinel'));
+});
+test('unknown and oversized output stays sanitized',()=>{
+ for(const stdout of ['private sentinel',JSON.stringify({state:'blocked',reason:'private sentinel'}),'x'.repeat(4097)]) assert.throws(()=>check(target,options(()=>{throw Object.assign(Error('private sentinel'),{stdout});})),e=>e.message.endsWith('reason=compatibility_unconfirmed')&&!e.message.includes('private sentinel'));
+});
+test('timeout is distinct and never retries',()=>{
+ let calls=0;assert.throws(()=>check(target,options(()=>{calls++;throw Object.assign(Error('private sentinel'),{code:'ETIMEDOUT'});})),/reason=compatibility_probe_timeout$/);assert.equal(calls,1);
+});
+test('blocked result preserves reviewed reason',()=>assert.throws(()=>check(target,options(()=>JSON.stringify({state:'blocked',reason:'icloud_constructor_changed'}))),/reason=icloud_constructor_changed$/));

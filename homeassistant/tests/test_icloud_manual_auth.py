@@ -420,6 +420,20 @@ class NativeRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         await self.sut.async_unload_entry(self.hass, self.entry)
         await self.hass.async_stop()
 
+    async def test_all_native_platforms_have_importable_local_delegates(self):
+        import importlib
+        from homeassistant.components.icloud.const import PLATFORMS
+        for platform in PLATFORMS:
+            local=importlib.import_module('custom_components.icloud.'+platform.value)
+            native=importlib.import_module('homeassistant.components.icloud.'+platform.value)
+            self.assertIs(local.async_setup_entry,native.async_setup_entry)
+
+    async def test_native_unload_none_means_completed(self):
+        self.entry.runtime_data._manual_platforms_loaded=True
+        with patch.object(self.sut.native, 'async_unload_entry', new_callable=AsyncMock, return_value=None):
+            self.assertTrue(await self.sut.async_unload_entry(self.hass,self.entry))
+        self.entry.runtime_data._manual_platforms_loaded=False
+
     async def prepare(self):
         from pyicloud import PyiCloudService
         from unittest.mock import PropertyMock

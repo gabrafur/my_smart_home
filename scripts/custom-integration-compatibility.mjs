@@ -1,5 +1,18 @@
 import path from 'node:path';
 
+const reviewedReasons = new Set([
+  'unsupported_icloud_core_version', 'icloud_constructor_changed',
+  'unsupported_pyicloud_version', 'icloud_adapter_type_changed', 'compatibility_unconfirmed',
+]);
+function refusedReason(raw) {
+  if (typeof raw !== 'string' || Buffer.byteLength(raw) > 4096) return null;
+  try {
+    const value = JSON.parse(raw);
+    return value?.state === 'blocked' && reviewedReasons.has(value.reason) ? value.reason : null;
+  } catch { return null; }
+}
+
+
 export function assertCustomIntegrationCompatibility(desiredImages, {repoRoot, run, dryRun=false}) {
   const target=desiredImages.find(row=>row.service==='homeassistant');
   if (!target) return {state:'not_required'};
@@ -16,9 +29,14 @@ export function assertCustomIntegrationCompatibility(desiredImages, {repoRoot, r
     '--entrypoint','python3',target.image,'-I','-B','/review/preflight.py'];
   let result;
   try {result=JSON.parse(run('docker',args,{capture:true,timeout:110000}));}
-  catch {throw new Error('Home Assistant custom integration compatibility unconfirmed; production update blocked');}
+  catch (error) {
+    // Export only reviewed codes, never stderr, arbitrary messages or payloads.
+    const reason = refusedReason(error?.stdout)
+      ?? (error?.code === 'ETIMEDOUT' ? 'compatibility_probe_timeout' : 'compatibility_unconfirmed');
+    throw new Error('Home Assistant custom integration compatibility unconfirmed; production update blocked reason=' + reason);
+  }
   if (result?.state!=='compatible' || result.network_enabled!==false ||
       result.production_configuration_mounted!==false || result.apple_authentication_called!==false)
-    throw new Error('Home Assistant custom integration compatibility refused; production update blocked');
+    throw new Error('Home Assistant custom integration compatibility refused; production update blocked reason=' + (refusedReason(JSON.stringify(result)) ?? 'compatibility_unconfirmed'));
   return result;
 }

@@ -216,3 +216,14 @@ documenta a validação, os intervalos e os limites. A classificação e os gate
 das falhas permanecem no produtor canônico; os números de horário não mudam
 confirmação, dedupe, lifecycle ou escolha do efeito. Nenhum incidente artificial
 ou notificação real é necessário para validar a instrumentação.
+
+## Impressora IPP opcional indisponível
+
+`ipp` em `setup_retry` com a razão exata de falha de comunicação recebe
+`optional_printer_unreachable`: diagnóstico de disponibilidade desconhecida,
+sem push recorrente nem recomendação de reautenticação. A mensagem persistente
+explica que a impressora pode estar desligada e preserva a chave anterior.
+A razão bruta não é publicada. Retorno dessa condição também é silencioso;
+autenticação, configuração, migração, motivo ausente e outras integrações
+continuam alertando normalmente. A decisão pertence ao normalizador e lifecycle
+do observador Node-RED; teste isolado: `test-ipp-optional-availability.mjs`.

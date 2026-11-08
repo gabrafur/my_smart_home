@@ -77,3 +77,18 @@ constantes, vínculo com amostra, singleton, compatibilidade, reinício e
 falha opcional de armazenamento. Instalação/reversão foram exercitadas em
 fixtures separadas. Não execute o sender para validar essas propriedades:
 aguarde o timer existente e confira o resultado posterior à instalação.
+
+## Margem de execução do serviço
+
+`timeout-budget.conf` é um drop-in para `raspberry-host-heartbeat.service`:
+limita a execução completa a 30 s, preservando o deadline de transporte de 10 s,
+CPUQuota de 5%, agenda de 60 s, credenciais e ausência de retry. A margem adicional
+permite registrar falhas capturadas depois de startup e antes do encerramento
+do processo; não prova a causa de uma demora nem a disponibilidade remota.
+Instalar somente esse arquivo em
+`/etc/systemd/system/raspberry-host-heartbeat.service.d/timeout-budget.conf`,
+root:root 0644, depois de conferir unidade e ausência de override conflitante.
+Uma recarga do gerenciador basta; não reiniciar ou disparar o serviço. Verificar
+o próximo ciclo natural, resultado HTTP e história. Reversão: remover somente
+o drop-in cujo hash corresponda à instalação e recarregar o gerenciador,
+preservando histórico e demais overrides.

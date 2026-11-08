@@ -275,6 +275,14 @@ def service_adapter(base, *, transport_errors=()):
 
 def account_adapter(base, gates, client_factory, *, auth_required_errors=()):
     class GuardedAccount(base):
+        def _handle_auth_required(self, *, two_factor, keep_session, start_reauth=True):
+            # New Core catches provider auth failures inside setup/polling.
+            # Persist the challenge before native code can schedule another poll.
+            gate = gates[self._config_entry.entry_id]
+            gate.record(State.READY if two_factor else State.PRIMARY)
+            return super()._handle_auth_required(two_factor=two_factor,
+                keep_session=keep_session, start_reauth=start_reauth)
+
         def setup(self):
             gate = gates[self._config_entry.entry_id]
             snapshot = gate.snapshot_state()

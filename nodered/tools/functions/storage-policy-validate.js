@@ -11,7 +11,7 @@ msg.policy_candidate = {
 const c = msg.policy_candidate;
 msg.policy_valid = integer(c.warning_pct, 1, 98) && integer(c.high_pct, 2, 99) && integer(c.critical_pct, 3, 100) &&
     c.warning_pct < c.high_pct && c.high_pct < c.critical_pct && integer(c.hysteresis_pp, 0, 20) &&
-    integer(c.notification_cooldown_h, 1, 48) && integer(c.command_error_cooldown_h, 1, 48) &&
+    integer(c.notification_cooldown_h, 24, 48) && integer(c.command_error_cooldown_h, 1, 48) &&
     integer(c.trend_24h_pp, 1, 50) && integer(c.trend_7d_pp, 1, 80) && integer(c.auto_remediation_cooldown_h, 1, 48) &&
     integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30);
 return msg;

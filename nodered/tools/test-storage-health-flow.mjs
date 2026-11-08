@@ -37,7 +37,7 @@ const f = {
   ack: compile("storage_notification_ack"), gate: compile("storage_auto_gate"),
 };
 const defaults = { warning_pct: 70, high_pct: 80, critical_pct: 90, hysteresis_pp: 3,
-  notification_cooldown_h: 12, command_error_cooldown_h: 6, trend_24h_pp: 5, trend_7d_pp: 10,
+  notification_cooldown_h: 24, command_error_cooldown_h: 6, trend_24h_pp: 5, trend_7d_pp: 10,
   auto_remediation_cooldown_h: 6, sample_interval_min: 15, history_retention_days: 8 };
 const NOW = Date.parse("2026-08-13T12:00:00Z");
 const metric = (used, free = 20, categories = undefined) => ({
@@ -64,8 +64,8 @@ function evaluate(flow, payload, now = NOW, testMode = false) {
   s.recovered = s.severity === "normal" && s.previous !== "normal";
   s.escalated = (s.severity === "critical" && s.previous !== "critical") ||
     (s.severity === "high" && ["normal", "warning"].includes(s.previous)) || (s.severity === "warning" && s.previous === "normal");
-  s.capacity_due = s.escalated || (s.severity !== "normal" && s.now - Number(s.state.lastNotificationAt || 0) >= msg.policy.notification_cooldown_h * 3600000);
-  s.trend_due = s.now - Number(s.state.lastTrendNotificationAt || 0) >= msg.policy.notification_cooldown_h * 3600000;
+  s.capacity_due = s.escalated || (s.severity !== "normal" && s.now - Math.max(Number(s.state.lastNotificationAt || 0), Number(s.state.lastTrendNotificationAt || 0)) >= msg.policy.notification_cooldown_h * 3600000);
+  s.trend_due = s.now - Math.max(Number(s.state.lastNotificationAt || 0), Number(s.state.lastTrendNotificationAt || 0)) >= msg.policy.notification_cooldown_h * 3600000;
   s.remediation_needed = s.accelerated || s.severity !== "normal";
   s.remediation_due = s.remediation_needed && s.now - Number(s.state.lastAutoRemediationAt || 0) >= msg.policy.auto_remediation_cooldown_h * 3600000;
   s.alert_kind = s.recovered ? "recovery" : s.capacity_due ? "capacity" : s.accelerated && s.trend_due ? "trend" : "none";
@@ -191,3 +191,28 @@ for (const node of tabNodes.filter((entry) => entry.type === "function" && !["st
   assert.ok(node.func.length < 2000, `JavaScript residual grande: ${node.id}`);
 }
 console.log("Storage visual policy: bounds, thresholds, hysteresis, trend, recovery, invalid input and dry-run passed.");
+
+// Regression: one reading must not fan out to both high and warning.
+assert.equal(byId.get("storage_visual_raw_severity").checkall, "false");
+flow = configured();
+result = evaluate(flow, metric(81)); accept(flow, result[1]);
+for (const hours of [0.25, 1, 6, 12, 23]) assert.equal(evaluate(flow, metric(81), NOW+hours*3600000)[1], null);
+result=evaluate(flow, metric(81), NOW+86400000); assert.ok(result[1]); accept(flow,result[1]);
+result=evaluate(flow, metric(91), NOW+86400000+60000); assert.ok(result[1], "escalation remains immediate");accept(flow,result[1]);
+result=evaluate(flow,metric(60),NOW+86400000+120000); assert.ok(result[1], "recovery remains immediate");
+flow=configured();flow.set("storage_health_policy_v2",{version:2,...defaults,notification_cooldown_h:12},"persistent");
+flow.set("storage_health_state_v1",{severity:"high",lastNotificationAt:NOW},"persistent");
+assert.equal(call(f.load,{},flow).policy.notification_cooldown_h,24);assert.equal(flow.get("storage_health_state_v1","persistent").lastNotificationAt,NOW);
+
+// Execute the actual JSONata reminder rules, rather than only the JS test model.
+const { createRequire } = await import("node:module");
+const jsonata = createRequire(import.meta.url)("jsonata");
+const facts = byId.get("storage_visual_facts").rules;
+for (const field of ["storage.capacity_due", "storage.trend_due"]) {
+ const expression=jsonata(facts.find(r=>r.p===field).to);
+ const sample={policy:{notification_cooldown_h:24},storage:{severity:"high",escalated:false,now:NOW+3600000,state:{lastNotificationAt:NOW,lastTrendNotificationAt:0}}};
+ assert.equal(await expression.evaluate(sample),false);
+ sample.storage.now=NOW+86400000;assert.equal(await expression.evaluate(sample),true);
+ sample.storage.now=NOW+60000;sample.storage.escalated=true;
+ assert.equal(await expression.evaluate(sample),field==="storage.capacity_due");
+}

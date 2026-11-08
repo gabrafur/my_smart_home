@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const flowsPath = path.resolve(here, "..", "flows.json");
+const flowsPath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
+const outputPath = path.resolve(process.argv[3] ?? flowsPath);
 const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
 
 const TAB = "storage_health_tab";
@@ -47,6 +48,7 @@ const ownedIds = new Set([
   "storage_daily_maintenance",
   "storage_exec_maintenance",
   "storage_request_host_maintenance",
+  "storage_request_daily_build_cache",
   "storage_parse_maintenance",
   "storage_store_maintenance_stderr",
   "storage_maintenance_complete",
@@ -367,11 +369,12 @@ const event = { event: "health_check", severity, previous, used, freeGiB, growth
 return [msg.test_mode === true ? [] : mqtt, msg.test_mode === true ? null : alert, { ...msg, payload: event }, remediation];`;
 
 const autoGate = `if (msg.storageAutoRemediation !== true) return null;
+const scheduledBuildCache = msg.storageScheduledBuildCache === true;
 if (msg.test_mode === true) {
-    return [null, null, { payload: { simulated: true, dispatched: false, action: "storage-safe-maintenance", reason: msg.payload?.reason, growthCause: msg.payload?.growthCause } }];
+    return [null, null, { payload: { simulated: true, dispatched: false, action: "storage-safe-maintenance", reason: msg.payload?.reason, growthCause: msg.payload?.growthCause, scheduledBuildCache } }, null];
 }
 node.status({ fill: "blue", shape: "dot", text: "limpeza automatica solicitada" });
-return [{ ...msg }, { ...msg }, null];`;
+return [{ ...msg }, { ...msg }, null, scheduledBuildCache ? { ...msg } : null];`;
 
 const testReset = `for (const key of ["storage_health_state_v1__test", "storage_health_history_v1__test", "storage_health_category_history_v1__test"]) flow.set(key, null);
 node.status({ fill: "green", shape: "dot", text: "teste resetado" });
@@ -462,7 +465,7 @@ const nodes = [
   { id: "storage_group_config", type: "group", z: TAB, name: "1. Configuracao central e MQTT discovery", style: { label: true, color: "#7d6ba8" }, nodes: ["storage_comment_architecture", "storage_init", "storage_set_config", "storage_discovery", "storage_mqtt_discovery"], x: -16, y: 39, w: 1042, h: 152 },
   { id: "storage_group_health", type: "group", z: TAB, name: "2. Health check leve (15 min) e tendencia", style: { label: true, color: "#3fadb5" }, nodes: ["storage_health_tick", "storage_manual_health", "storage_manual_start", "storage_read_ha", "storage_evaluate", "storage_mqtt_state", "storage_manual_status_mqtt", "storage_recheck_in", "storage_test_input_in", "storage_test_decision_out", "storage_auto_out"], x: 34, y: 249, w: 1352, h: 202 },
   { id: "storage_group_alerts", type: "group", z: TAB, name: "3. Alertas com histerese, cooldown e recovery", style: { label: true, color: "#e6a23c" }, nodes: ["storage_notify", "storage_notify_secondary", "storage_notify_persistent", "storage_notification_ack", "storage_notification_catch", "storage_notification_failure"], x: 1314, y: 209, w: 594, h: 262 },
-  { id: "storage_group_maintenance", type: "group", z: TAB, name: "4. Housekeeping allowlisted e inspecao semanal", style: { label: true, color: "#4d9a6a" }, nodes: ["storage_daily_maintenance", "storage_auto_in", "storage_auto_gate", "storage_exec_maintenance", "storage_request_host_maintenance", "storage_post_maintenance_delay", "storage_recheck_out", "storage_parse_maintenance", "storage_store_maintenance_stderr", "storage_maintenance_complete", "storage_manual_complete", "storage_weekly_inspection", "storage_exec_inspection", "storage_parse_inspection", "storage_test_dry_out"], x: 24, y: 489, w: 1592, h: 279.5 },
+  { id: "storage_group_maintenance", type: "group", z: TAB, name: "4. Housekeeping allowlisted e inspecao semanal", style: { label: true, color: "#4d9a6a" }, nodes: ["storage_daily_maintenance", "storage_auto_in", "storage_auto_gate", "storage_exec_maintenance", "storage_request_host_maintenance", "storage_request_daily_build_cache", "storage_post_maintenance_delay", "storage_recheck_out", "storage_parse_maintenance", "storage_store_maintenance_stderr", "storage_maintenance_complete", "storage_manual_complete", "storage_weekly_inspection", "storage_exec_inspection", "storage_parse_inspection", "storage_test_dry_out"], x: 24, y: 489, w: 1592, h: 279.5 },
   { id: "storage_group_tests", type: "group", z: TAB, name: "TESTE — aumento e normalidade em dry-run", style: { label: true, color: "#c9b458" }, nodes: ["storage_test_instructions", "storage_test_reset", "storage_test_reset_state", "storage_test_normal", "storage_test_growth", "storage_test_prepare", "storage_test_input_out", "storage_test_decision_in", "storage_test_decision_terminal", "storage_test_dry_in", "storage_dry_run_terminal"], x: 24, y: 809, w: 1592, h: 242 },
   { id: "storage_comment_architecture", type: "comment", z: TAB, g: "storage_group_config", name: "Reusa sensores HA existentes; MQTT cria somente status/tendencia/manutencao. Node-RED nao recebe Docker socket nem sudo.", info: "", x: 450, y: 80, wires: [] },
   { id: "storage_init", type: "inject", z: TAB, g: "storage_group_config", name: "Inicializar ao subir", props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "", once: true, onceDelay: "2", topic: "", payload: "", payloadType: "date", x: 160, y: 150, wires: [["storage_set_config"]] },
@@ -486,10 +489,11 @@ const nodes = [
   functionNode("storage_notification_ack", "storage_group_alerts", "Confirmar entrega e iniciar cooldown", notificationAck, 0, 1770, 310, []),
   { id: "storage_notification_catch", type: "catch", z: TAB, g: "storage_group_alerts", name: "Capturar falha de notificacao", scope: ["storage_notify", "storage_notify_secondary", "storage_notify_persistent"], uncaught: false, x: 1480, y: 430, wires: [["storage_notification_failure"]] },
   functionNode("storage_notification_failure", "storage_group_alerts", "Registrar falha sem cooldown", notificationFailure, 0, 1760, 430, []),
-  { id: "storage_daily_maintenance", type: "inject", z: TAB, g: "storage_group_maintenance", name: "A cada 6h (:23)", props: [{ p: "payload" }, { p: "storageAutoRemediation", v: "true", vt: "bool" }], repeat: "", crontab: "23 */6 * * *", once: false, onceDelay: "0.1", topic: "", payload: "", payloadType: "date", x: 150, y: 500, wires: [["storage_auto_gate"]] },
+  { id: "storage_daily_maintenance", type: "inject", z: TAB, g: "storage_group_maintenance", name: "Agenda 6h (:23)", props: [{ p: "payload" }, { p: "storageAutoRemediation", v: "true", vt: "bool" }, { p: "storageScheduledBuildCache", v: "true", vt: "bool" }], repeat: "", crontab: "23 */6 * * *", once: false, onceDelay: "0.1", topic: "", payload: "", payloadType: "date", x: 150, y: 500, wires: [["storage_auto_gate"]] },
   { id: "storage_auto_in", type: "link in", z: TAB, g: "storage_group_maintenance", name: "Receber autocuidado", links: ["storage_auto_out"], x: 315, y: 760, wires: [["storage_auto_gate"]] },
-  functionNode("storage_auto_gate", "storage_group_maintenance", "Gate de autocuidado / dry-run", autoGate, 3, 220, 620, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_test_dry_out"]]),
+  functionNode("storage_auto_gate", "storage_group_maintenance", "Gate de autocuidado / dry-run", autoGate, 4, 220, 620, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_test_dry_out"], ["storage_request_daily_build_cache"]]),
   { id: "storage_exec_maintenance", type: "exec", z: TAB, g: "storage_group_maintenance", command: "/opt/storage-health-maintenance.sh --apply", addpay: "", append: "", useSpawn: "false", timer: "120", winHide: false, oldrc: false, name: "Housekeeping Node-RED allowlisted", x: 460, y: 560, wires: [["storage_parse_maintenance"], ["storage_store_maintenance_stderr"], ["storage_maintenance_complete", "storage_manual_complete"]] },
+  { id: "storage_request_daily_build_cache", type: "exec", z: TAB, g: "storage_group_maintenance", command: "/opt/request-host-storage-maintenance.sh --daily-build-cache", addpay: "", append: "", useSpawn: "false", timer: "15", winHide: false, oldrc: false, name: "Solicitar cache antigo: 30d / 2GB / 1 dia", info: "Somente agenda explícita. Host seleciona cache regular, imutável, não compartilhado e sem uso há mais de 30 dias; até 32 entradas e 2 GB por lote, intervalo de 24h. Imagens, volumes e backups não são alvos. Resultado incerto exige reconciliação do recibo. Teste termina no dry-run antes deste exec.", x: 850, y: 1280, wires: [["storage_post_maintenance_delay"], ["storage_store_maintenance_stderr"], ["storage_maintenance_complete"]] },
   { id: "storage_request_host_maintenance", type: "exec", z: TAB, g: "storage_group_maintenance", command: "/opt/request-host-storage-maintenance.sh", addpay: "", append: "", useSpawn: "false", timer: "15", winHide: false, oldrc: false, name: "Solicitar limpeza segura no host", x: 520, y: 570, wires: [["storage_post_maintenance_delay"], ["storage_store_maintenance_stderr"], ["storage_maintenance_complete"]] },
   { id: "storage_post_maintenance_delay", type: "delay", z: TAB, g: "storage_group_maintenance", name: "Aguardar worker e medir novamente", pauseType: "delay", timeout: "3", timeoutUnits: "minutes", rate: "1", nbRateUnits: "1", rateUnits: "second", randomFirst: "1", randomLast: "5", randomUnits: "seconds", drop: false, allowrate: false, outputs: 1, x: 870, y: 570, wires: [["storage_recheck_out"]] },
   { id: "storage_recheck_out", type: "link out", z: TAB, g: "storage_group_maintenance", name: "Voltar ao diagnostico", mode: "link", links: ["storage_recheck_in"], x: 1195, y: 570, wires: [] },
@@ -537,6 +541,7 @@ const canonicalLayout = new Map([
   ["storage_notify", { x: 1710, y: 280 }],
   ["storage_notify_secondary", { x: 1710, y: 340 }],
   ["storage_daily_maintenance", { x: 200, y: 700 }],
+  ["storage_request_daily_build_cache", { x: 850, y: 950 }],
   ["storage_auto_gate", { x: 500, y: 700 }],
   ["storage_auto_in", { x: 285, y: 780 }],
   ["storage_exec_maintenance", { x: 820, y: 680 }],
@@ -575,6 +580,29 @@ const canonicalNodes = nodes.map((node) => ({
 }));
 
 const replacements = new Map(canonicalNodes.map((node) => [node.id, node]));
+// Narrow upgrade for an already visualized canvas: use the same canonical
+// definitions without rebuilding unrelated notification geometry. The visual
+// generator and the normal layout/observability gates run after this phase.
+if (process.argv[4] === "--cache-policy-only") {
+  const byId = new Map(flows.map((node) => [node.id, node]));
+  const tick = byId.get("storage_daily_maintenance");
+  const gate = byId.get("storage_auto_gate");
+  const owner = byId.get("storage_group_maintenance");
+  if (!tick || !gate || !owner) throw new Error("Existing storage canvas required");
+  tick.props = replacements.get(tick.id).props;
+  tick.name = replacements.get(tick.id).name;
+  gate.func = replacements.get(gate.id).func;
+  gate.outputs = 4;
+  gate.wires = [...gate.wires.slice(0, 3), ["storage_request_daily_build_cache"]];
+  if (!byId.has("storage_request_daily_build_cache")) {
+    flows.push(replacements.get("storage_request_daily_build_cache"));
+  }
+  if (!owner.nodes.includes("storage_request_daily_build_cache")) owner.nodes.push("storage_request_daily_build_cache");
+  fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
+  console.log(`Updated scheduled cache policy in ${outputPath}`);
+  process.exit(0);
+}
+
 const installed = new Set();
 const updated = [];
 let lastOwnedIndex = -1;
@@ -592,5 +620,5 @@ for (const node of flows) {
 }
 const missing = canonicalNodes.filter((node) => !installed.has(node.id));
 updated.splice(lastOwnedIndex + 1, 0, ...missing);
-fs.writeFileSync(flowsPath, `${JSON.stringify(installNotificationHubs(updated), null, 4)}\n`);
-console.log(`Installed ${canonicalNodes.length} Storage Health nodes in ${flowsPath}`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(updated), null, 4)}\n`);
+console.log(`Installed ${canonicalNodes.length} Storage Health nodes in ${outputPath}`);

@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const source=fs.readFileSync(new URL("./install-storage-health-flow.mjs",import.meta.url),"utf8");
+const visual=fs.readFileSync(new URL("./install-storage-visual-policy.mjs",import.meta.url),"utf8");
+const gate=new Function("msg","node",source.match(/const autoGate = `([\s\S]*?)`;/)[1]);
+const node={status(){}};
+assert.equal(gate({},node),null);
+const regular=gate({storageAutoRemediation:true},node);
+assert.equal(regular[3],null,"health-driven remediation never queues cache");
+const scheduled=gate({storageAutoRemediation:true,storageScheduledBuildCache:true},node);
+assert.equal(scheduled[3].storageScheduledBuildCache,true);
+const dry=gate({storageAutoRemediation:true,storageScheduledBuildCache:true,test_mode:true},node);
+assert.deepEqual(dry.slice(0,2),[null,null]);assert.equal(dry[3],null);
+assert.equal(dry[2].payload.simulated,true);assert.equal(dry[2].payload.dispatched,false);
+assert.equal(dry[2].payload.scheduledBuildCache,true);
+assert.equal(gate({storageAutoRemediation:true,storageScheduledBuildCache:"true"},node)[3],null);
+assert.match(source,/command: "\/opt\/request-host-storage-maintenance.sh --daily-build-cache", addpay: "", append: ""/);
+assert.match(source,/id: "storage_daily_maintenance"[^\n]*storageScheduledBuildCache/);
+assert.match(visual,/storage_auto_gate[^\n]*outputs: 4/);
+assert.match(visual,/"storage_visual_daily_cache_in"[^\n]*"storage_request_daily_build_cache"/);
+assert.doesNotMatch(visual,/storage_visual_manual_host_in[^\n]*storage_request_daily_build_cache/);
+console.log("Storage daily build cache routing: schedule-only, fixed command and dry-run passed");

@@ -28,6 +28,11 @@ const normalized = entries
         entry_id: String(entry.entry_id ?? "").slice(0, 80),
         domain: String(entry.domain ?? "").slice(0, 80),
         state: String(entry.state ?? "unknown").toLowerCase().slice(0, 40),
+        // Preserve a bounded diagnosis, never the raw API reason (may contain private data).
+        availability_reason: entry.domain === "ipp" && entry.state === "setup_retry" &&
+            entry.reason === "Invalid response from API: Error occurred while communicating with IPP server."
+            ? "optional_printer_unreachable"
+            : null,
         disabled: entry.disabled_by !== null && entry.disabled_by !== undefined
     }))
     .filter((entry) => entry.entry_id && entry.domain);

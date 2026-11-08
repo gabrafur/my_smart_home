@@ -438,18 +438,18 @@
             "storage_notification_ack",
             "storage_notification_catch",
             "storage_notification_failure",
-            "storage_mqtt_state",
-            "storage_manual_status_mqtt",
-            "storage_visual_mqtt_in",
-            "storage_visual_notify_in",
-            "storage_visual_manual_status_in",
             "notification_hub_wire_in_168dc6db5cd7",
             "notification_hub_wire_out_b5cbe7a52037",
             "notification_hub_wire_in_b5cbe7a52037",
             "notification_hub_wire_out_0f2bad790b49",
             "notification_hub_wire_in_0f2bad790b49",
             "notification_hub_wire_out_34604f022367",
-            "notification_hub_wire_in_34604f022367"
+            "notification_hub_wire_in_34604f022367",
+            "storage_mqtt_state",
+            "storage_manual_status_mqtt",
+            "storage_visual_mqtt_in",
+            "storage_visual_notify_in",
+            "storage_visual_manual_status_in"
         ],
         "x": 1290,
         "y": 279,
@@ -481,6 +481,7 @@
             "storage_exec_inspection",
             "storage_parse_inspection",
             "storage_test_dry_out",
+            "storage_request_daily_build_cache",
             "storage_visual_manual_exec_in",
             "storage_visual_manual_host_in",
             "storage_visual_exec_done_out",
@@ -491,12 +492,18 @@
             "storage_visual_request_done_out",
             "storage_visual_request_done_in",
             "storage_visual_maintenance_notify_out",
-            "storage_visual_manual_complete_status_out"
+            "storage_visual_manual_complete_status_out",
+            "storage_visual_daily_cache_out",
+            "storage_visual_daily_cache_in",
+            "storage_visual_cache_recheck_out",
+            "storage_visual_cache_recheck_in",
+            "storage_visual_cache_stderr_out",
+            "storage_visual_cache_done_out"
         ],
         "x": 64,
         "y": 939,
         "w": 1857,
-        "h": 522
+        "h": 591
     },
     {
         "id": "c8f8e5b532232a4f",
@@ -17676,7 +17683,7 @@
         "props": [
             {
                 "p": "payload",
-                "v": "{\"warning_pct\":70,\"high_pct\":80,\"critical_pct\":90,\"hysteresis_pp\":3,\"notification_cooldown_h\":12,\"command_error_cooldown_h\":6,\"trend_24h_pp\":5,\"trend_7d_pp\":10,\"auto_remediation_cooldown_h\":6,\"sample_interval_min\":15,\"history_retention_days\":8}",
+                "v": "{\"warning_pct\":70,\"high_pct\":80,\"critical_pct\":90,\"hysteresis_pp\":3,\"notification_cooldown_h\":24,\"command_error_cooldown_h\":6,\"trend_24h_pp\":5,\"trend_7d_pp\":10,\"auto_remediation_cooldown_h\":6,\"sample_interval_min\":15,\"history_retention_days\":8}",
                 "vt": "json"
             }
         ],
@@ -17961,13 +17968,18 @@
         "type": "inject",
         "z": "storage_health_tab",
         "g": "storage_group_maintenance",
-        "name": "A cada 6h (:23)",
+        "name": "Agenda 6h (:23)",
         "props": [
             {
                 "p": "payload"
             },
             {
                 "p": "storageAutoRemediation",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "storageScheduledBuildCache",
                 "v": "true",
                 "vt": "bool"
             }
@@ -18440,8 +18452,8 @@
         "z": "storage_health_tab",
         "g": "storage_group_maintenance",
         "name": "Gate de autocuidado / dry-run",
-        "func": "if (msg.storageAutoRemediation !== true) return null;\nif (msg.test_mode === true) {\n    return [null, null, { payload: { simulated: true, dispatched: false, action: \"storage-safe-maintenance\", reason: msg.payload?.reason, growthCause: msg.payload?.growthCause } }];\n}\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"limpeza automatica solicitada\" });\nreturn [{ ...msg }, { ...msg }, null];",
-        "outputs": 3,
+        "func": "if (msg.storageAutoRemediation !== true) return null;\nconst scheduledBuildCache = msg.storageScheduledBuildCache === true;\nif (msg.test_mode === true) {\n    return [null, null, { payload: { simulated: true, dispatched: false, action: \"storage-safe-maintenance\", reason: msg.payload?.reason, growthCause: msg.payload?.growthCause, scheduledBuildCache } }, null];\n}\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"limpeza automatica solicitada\" });\nreturn [{ ...msg }, { ...msg }, null, scheduledBuildCache ? { ...msg } : null];",
+        "outputs": 4,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -18458,6 +18470,9 @@
             ],
             [
                 "storage_test_dry_out"
+            ],
+            [
+                "storage_visual_daily_cache_out"
             ]
         ]
     },
@@ -18766,7 +18781,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_config",
         "name": "Validar percentuais e tempos",
-        "func": "const p = msg.payload ?? {};\nconst n = (key) => Number(p[key]);\nconst integer = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;\nmsg.policy_candidate = {\n    warning_pct: n(\"warning_pct\"), high_pct: n(\"high_pct\"), critical_pct: n(\"critical_pct\"),\n    hysteresis_pp: n(\"hysteresis_pp\"), notification_cooldown_h: n(\"notification_cooldown_h\"),\n    command_error_cooldown_h: n(\"command_error_cooldown_h\"), trend_24h_pp: n(\"trend_24h_pp\"),\n    trend_7d_pp: n(\"trend_7d_pp\"), auto_remediation_cooldown_h: n(\"auto_remediation_cooldown_h\"),\n    sample_interval_min: n(\"sample_interval_min\"), history_retention_days: n(\"history_retention_days\")\n};\nconst c = msg.policy_candidate;\nmsg.policy_valid = integer(c.warning_pct, 1, 98) && integer(c.high_pct, 2, 99) && integer(c.critical_pct, 3, 100) &&\n    c.warning_pct < c.high_pct && c.high_pct < c.critical_pct && integer(c.hysteresis_pp, 0, 20) &&\n    integer(c.notification_cooldown_h, 1, 48) && integer(c.command_error_cooldown_h, 1, 48) &&\n    integer(c.trend_24h_pp, 1, 50) && integer(c.trend_7d_pp, 1, 80) && integer(c.auto_remediation_cooldown_h, 1, 48) &&\n    integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30);\nreturn msg;",
+        "func": "const p = msg.payload ?? {};\nconst n = (key) => Number(p[key]);\nconst integer = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;\nmsg.policy_candidate = {\n    warning_pct: n(\"warning_pct\"), high_pct: n(\"high_pct\"), critical_pct: n(\"critical_pct\"),\n    hysteresis_pp: n(\"hysteresis_pp\"), notification_cooldown_h: n(\"notification_cooldown_h\"),\n    command_error_cooldown_h: n(\"command_error_cooldown_h\"), trend_24h_pp: n(\"trend_24h_pp\"),\n    trend_7d_pp: n(\"trend_7d_pp\"), auto_remediation_cooldown_h: n(\"auto_remediation_cooldown_h\"),\n    sample_interval_min: n(\"sample_interval_min\"), history_retention_days: n(\"history_retention_days\")\n};\nconst c = msg.policy_candidate;\nmsg.policy_valid = integer(c.warning_pct, 1, 98) && integer(c.high_pct, 2, 99) && integer(c.critical_pct, 3, 100) &&\n    c.warning_pct < c.high_pct && c.high_pct < c.critical_pct && integer(c.hysteresis_pp, 0, 20) &&\n    integer(c.notification_cooldown_h, 24, 48) && integer(c.command_error_cooldown_h, 1, 48) &&\n    integer(c.trend_24h_pp, 1, 50) && integer(c.trend_7d_pp, 1, 80) && integer(c.auto_remediation_cooldown_h, 1, 48) &&\n    integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -19004,7 +19019,7 @@
         "z": "storage_health_tab",
         "g": "storage_visual_decision_group",
         "name": "Carregar política canônica",
-        "func": "msg.policy = flow.get(\"storage_health_policy_v2\", \"persistent\");\nmsg.policy_available = msg.policy?.version === 2;\nreturn msg;",
+        "func": "msg.policy = flow.get(\"storage_health_policy_v2\", \"persistent\");\nmsg.policy_available = msg.policy?.version === 2;\n\n// Migrate the previous reminder interval without resetting incident history.\nif (msg.policy_available && msg.policy.notification_cooldown_h < 24) {\n    msg.policy = { ...msg.policy, notification_cooldown_h: 24 };\n    flow.set(\"storage_health_policy_v2\", msg.policy, \"persistent\");\n    const legacy = flow.get(\"storage_health_config_v1\", \"persistent\");\n    if (legacy) flow.set(\"storage_health_config_v1\", { ...legacy, notificationCooldownMs: 86400000 }, \"persistent\");\n}\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -19266,7 +19281,7 @@
                 "t": "else"
             }
         ],
-        "checkall": "true",
+        "checkall": "false",
         "repair": false,
         "outputs": 4,
         "x": 1625,
@@ -19784,14 +19799,14 @@
                 "t": "set",
                 "p": "storage.capacity_due",
                 "pt": "msg",
-                "to": "storage.escalated or (storage.severity != \"normal\" and storage.now - storage.state.lastNotificationAt >= policy.notification_cooldown_h * 3600000)",
+                "to": "storage.escalated or (storage.severity != \"normal\" and storage.now -  $max([storage.state.lastNotificationAt, storage.state.lastTrendNotificationAt]) >= policy.notification_cooldown_h * 3600000)",
                 "tot": "jsonata"
             },
             {
                 "t": "set",
                 "p": "storage.trend_due",
                 "pt": "msg",
-                "to": "storage.now - storage.state.lastTrendNotificationAt >= policy.notification_cooldown_h * 3600000",
+                "to": "storage.now -  $max([storage.state.lastNotificationAt, storage.state.lastTrendNotificationAt]) >= policy.notification_cooldown_h * 3600000",
                 "tot": "jsonata"
             },
             {
@@ -20511,7 +20526,8 @@
         "g": "storage_group_maintenance",
         "name": "Receber stderr distante",
         "links": [
-            "storage_visual_inspection_stderr_out"
+            "storage_visual_inspection_stderr_out",
+            "storage_visual_cache_stderr_out"
         ],
         "x": 1135,
         "y": 1120,
@@ -20543,7 +20559,8 @@
         "name": "Receber conclusão de inspeção/worker",
         "links": [
             "storage_visual_inspection_done_out",
-            "storage_visual_request_done_out"
+            "storage_visual_request_done_out",
+            "storage_visual_cache_done_out"
         ],
         "x": 1440,
         "y": 1300,
@@ -43673,7 +43690,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_integration_group",
         "name": "Sanitizar snapshot de integrações",
-        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg._global_observer_integration_test === true ||\n    msg.payload?.test_mode === true;\n\nif (msg._global_observer_integration_reset === true) {\n    msg._global_observer_integration_test = TEST_MODE;\n    return msg;\n}\n\nconst entries = Array.isArray(msg.config_entries)\n    ? msg.config_entries\n    : Array.isArray(msg.payload)\n        ? msg.payload\n        : null;\n\nif (!entries || entries.length === 0 || entries.length > 1000) {\n    node.error(\n        \"INTEGRATION_MONITOR_INVALID_SNAPSHOT expected_non_empty_config_entries\",\n        msg\n    );\n    return null;\n}\n\nconst normalized = entries\n    .filter((entry) => entry && typeof entry === \"object\")\n    .map((entry) => ({\n        entry_id: String(entry.entry_id ?? \"\").slice(0, 80),\n        domain: String(entry.domain ?? \"\").slice(0, 80),\n        state: String(entry.state ?? \"unknown\").toLowerCase().slice(0, 40),\n        disabled: entry.disabled_by !== null && entry.disabled_by !== undefined\n    }))\n    .filter((entry) => entry.entry_id && entry.domain);\n\nif (normalized.length === 0) {\n    node.error(\n        \"INTEGRATION_MONITOR_INVALID_SNAPSHOT no_valid_config_entries\",\n        msg\n    );\n    return null;\n}\n\ndelete msg.config_entries;\nmsg.payload = { test_mode: TEST_MODE };\nmsg._global_observer_integration_test = TEST_MODE;\nmsg._integration_monitor_snapshot = {\n    version: 1,\n    entries: normalized\n};\nreturn msg;",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg._global_observer_integration_test === true ||\n    msg.payload?.test_mode === true;\n\nif (msg._global_observer_integration_reset === true) {\n    msg._global_observer_integration_test = TEST_MODE;\n    return msg;\n}\n\nconst entries = Array.isArray(msg.config_entries)\n    ? msg.config_entries\n    : Array.isArray(msg.payload)\n        ? msg.payload\n        : null;\n\nif (!entries || entries.length === 0 || entries.length > 1000) {\n    node.error(\n        \"INTEGRATION_MONITOR_INVALID_SNAPSHOT expected_non_empty_config_entries\",\n        msg\n    );\n    return null;\n}\n\nconst normalized = entries\n    .filter((entry) => entry && typeof entry === \"object\")\n    .map((entry) => ({\n        entry_id: String(entry.entry_id ?? \"\").slice(0, 80),\n        domain: String(entry.domain ?? \"\").slice(0, 80),\n        state: String(entry.state ?? \"unknown\").toLowerCase().slice(0, 40),\n        // Preserve a bounded diagnosis, never the raw API reason (may contain private data).\n        availability_reason: entry.domain === \"ipp\" && entry.state === \"setup_retry\" &&\n            entry.reason === \"Invalid response from API: Error occurred while communicating with IPP server.\"\n            ? \"optional_printer_unreachable\"\n            : null,\n        disabled: entry.disabled_by !== null && entry.disabled_by !== undefined\n    }))\n    .filter((entry) => entry.entry_id && entry.domain);\n\nif (normalized.length === 0) {\n    node.error(\n        \"INTEGRATION_MONITOR_INVALID_SNAPSHOT no_valid_config_entries\",\n        msg\n    );\n    return null;\n}\n\ndelete msg.config_entries;\nmsg.payload = { test_mode: TEST_MODE };\nmsg._global_observer_integration_test = TEST_MODE;\nmsg._integration_monitor_snapshot = {\n    version: 1,\n    entries: normalized\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -43694,7 +43711,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_integration_group",
         "name": "Confirmar, deduplicar e encerrar",
-        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg._global_observer_integration_test === true ||\n    msg.payload?.test_mode === true;\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_integrations_v1__test\"\n    : \"global_flow_observer_integrations_v1\";\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\n\nif (msg._global_observer_integration_reset === true) {\n    if (!TEST_MODE) {\n        node.error(\"INTEGRATION_MONITOR_RESET_REFUSED production_state\", msg);\n        return null;\n    }\n    setState({ version: 1, incidents: {}, last_scan_at: null });\n    node.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE integrações resetado\" });\n    return null;\n}\n\nconst policy = flow.get(\"global_observer_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\n\nconst snapshot = msg._integration_monitor_snapshot;\nif (snapshot?.version !== 1 || !Array.isArray(snapshot.entries)) {\n    node.error(\"INTEGRATION_MONITOR_INVALID_NORMALIZED_SNAPSHOT\", msg);\n    return null;\n}\n\nconst suppliedNow = Number(msg.observer_now);\nconst now = Number.isFinite(suppliedNow) && suppliedNow > 0\n    ? suppliedNow\n    : Date.now();\nconst confirmMs = Number(policy.status_confirm_seconds) * 1000;\nconst reminderMs = Number(policy.reminder_hours) * 60 * 60 * 1000;\nif (\n    !Number.isFinite(confirmMs) || confirmMs < 10000 ||\n    !Number.isFinite(reminderMs) || reminderMs < 60 * 60 * 1000\n) {\n    node.error(\"INTEGRATION_MONITOR_INVALID_POLICY\", msg);\n    return null;\n}\n\nconst failureStates = new Set([\n    \"setup_error\",\n    \"setup_retry\",\n    \"migration_error\",\n    \"failed_unload\"\n]);\nconst current = new Map(\n    snapshot.entries.map((entry) => [entry.entry_id, entry])\n);\nconst previous = getState();\nconst state = previous?.version === 1\n    ? previous\n    : { version: 1, incidents: {}, last_scan_at: null };\nif (!state.incidents || typeof state.incidents !== \"object\") {\n    state.incidents = {};\n}\n\nconst formatInteger = new Intl.NumberFormat(\"pt-BR\", {\n    maximumFractionDigits: 0\n});\nconst safeIncident = (entryId) =>\n    `config_entry_${entryId}`.replace(/[^a-zA-Z0-9_-]+/g, \"_\").slice(0, 120);\nconst knownDomainLabels = {\n    hacs: \"HACS\",\n    homekit: \"HomeKit\",\n    icloud: \"iCloud\",\n    mqtt: \"MQTT\",\n    tuya: \"Tuya\"\n};\nconst domainLabel = (domain) => knownDomainLabels[domain] ?? domain\n    .split(\"_\")\n    .filter(Boolean)\n    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))\n    .join(\" \");\nconst output = [];\n\nconst recoveryMessage = (incident, resolution, mobileNotification) => ({\n    _global_observer_test: TEST_MODE,\n    _global_observer_integration_test: TEST_MODE,\n    payload: {\n        test_mode: TEST_MODE,\n        observer_kind: \"integration_recovery\",\n        first_detected_at: new Date(now).toISOString(), policy_decided_at: new Date(now).toISOString(),\n        incident_key: safeIncident(incident.entry_id),\n        integration_domain: incident.domain,\n        persistent_incident_kind: \"integration_failure\",\n        persistent_notification_operation: \"dismiss\",\n        mobile_notification: mobileNotification,\n        resolution\n    },\n    alert: {\n        title: TEST_MODE\n            ? `TESTE — Integração ${domainLabel(incident.domain)} recuperada`\n            : `Integração ${domainLabel(incident.domain)} recuperada`,\n        message:\n            `A integração ${domainLabel(incident.domain)} voltou ao estado loaded. ` +\n            \"O incidente anterior foi encerrado.\"\n    }\n});\n\nfor (const entry of snapshot.entries) {\n    const incident = state.incidents[entry.entry_id];\n\n    if (entry.disabled) {\n        if (incident?.notified_at) {\n            output.push(recoveryMessage(incident, \"disabled\", false));\n        }\n        delete state.incidents[entry.entry_id];\n        continue;\n    }\n\n    if (failureStates.has(entry.state)) {\n        const active = incident ?? {\n            entry_id: entry.entry_id,\n            domain: entry.domain,\n            first_seen_at: now,\n            notified_at: null\n        };\n        active.domain = entry.domain;\n        active.state = entry.state;\n        active.last_seen_at = now;\n        state.incidents[entry.entry_id] = active;\n\n        const confirmed = now - Number(active.first_seen_at) >= confirmMs;\n        const reminderDue =\n            active.notified_at === null ||\n            now - Number(active.notified_at) >= reminderMs;\n        if (!confirmed || !reminderDue) continue;\n\n        const durationMinutes = Math.max(\n            1,\n            Math.round((now - Number(active.first_seen_at)) / 60000)\n        );\n        const reminder = active.notified_at !== null;\n        active.notified_at = now;\n        const failureTitle = reminder\n            ? `Falha persiste na integração ${domainLabel(entry.domain)}`\n            : `Falha na integração ${domainLabel(entry.domain)}`;\n        output.push({\n            _global_observer_test: TEST_MODE,\n            _global_observer_integration_test: TEST_MODE,\n            payload: {\n                test_mode: TEST_MODE,\n                observer_kind: \"integration_failure\",\n                first_detected_at: new Date(active.first_seen_at).toISOString(),\n                policy_decided_at: new Date(now).toISOString(),\n                incident_key: safeIncident(entry.entry_id),\n                integration_domain: entry.domain,\n                integration_state: entry.state,\n                persistent_notification_operation: \"create\",\n                mobile_notification: true\n            },\n            alert: {\n                title: TEST_MODE\n                    ? `TESTE — ${failureTitle}`\n                    : failureTitle,\n                message:\n                    `A integração ${domainLabel(entry.domain)} permanece em ` +\n                    `${entry.state} há ${formatInteger.format(durationMinutes)} min. ` +\n                    \"Abra Configurações → Dispositivos e serviços no Home Assistant \" +\n                    \"para consultar ou reautenticar a entrada.\"\n            }\n        });\n        node.warn(\n            \"HOME_ASSISTANT_INTEGRATION_FAILURE \" +\n            `domain=${entry.domain} state=${entry.state} reminder=${reminder}`\n        );\n        continue;\n    }\n\n    if (entry.state === \"loaded\") {\n        if (incident?.notified_at) {\n            output.push(recoveryMessage(incident, \"loaded\", true));\n            node.log(\n                \"HOME_ASSISTANT_INTEGRATION_RECOVERED \" +\n                `domain=${incident.domain}`\n            );\n        }\n        delete state.incidents[entry.entry_id];\n    } else if (incident) {\n        incident.last_seen_at = now;\n        incident.transition_state = entry.state;\n    }\n}\n\nfor (const [entryId, incident] of Object.entries(state.incidents)) {\n    if (current.has(entryId)) continue;\n    if (incident.notified_at) {\n        output.push(recoveryMessage(incident, \"removed\", false));\n    }\n    delete state.incidents[entryId];\n}\n\nconst activeEntries = snapshot.entries.filter((entry) => !entry.disabled).length;\nconst failingEntries = snapshot.entries.filter(\n    (entry) => !entry.disabled && failureStates.has(entry.state)\n).length;\nstate.last_scan_at = now;\nstate.active_entries = activeEntries;\nstate.failing_entries = failingEntries;\nsetState(state);\n\nnode.status(failingEntries > 0\n    ? {\n        fill: \"red\",\n        shape: \"ring\",\n        text: `${formatInteger.format(failingEntries)} integração(ões) em falha`\n    }\n    : {\n        fill: \"green\",\n        shape: \"dot\",\n        text: `${formatInteger.format(activeEntries)} entradas; nenhuma falha`\n    });\n\nreturn output.length ? [output] : null;",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg._global_observer_integration_test === true ||\n    msg.payload?.test_mode === true;\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_integrations_v1__test\"\n    : \"global_flow_observer_integrations_v1\";\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\n\nif (msg._global_observer_integration_reset === true) {\n    if (!TEST_MODE) {\n        node.error(\"INTEGRATION_MONITOR_RESET_REFUSED production_state\", msg);\n        return null;\n    }\n    setState({ version: 1, incidents: {}, last_scan_at: null });\n    node.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE integrações resetado\" });\n    return null;\n}\n\nconst policy = flow.get(\"global_observer_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\n\nconst snapshot = msg._integration_monitor_snapshot;\nif (snapshot?.version !== 1 || !Array.isArray(snapshot.entries)) {\n    node.error(\"INTEGRATION_MONITOR_INVALID_NORMALIZED_SNAPSHOT\", msg);\n    return null;\n}\n\nconst suppliedNow = Number(msg.observer_now);\nconst now = Number.isFinite(suppliedNow) && suppliedNow > 0\n    ? suppliedNow\n    : Date.now();\nconst confirmMs = Number(policy.status_confirm_seconds) * 1000;\nconst reminderMs = Number(policy.reminder_hours) * 60 * 60 * 1000;\nif (\n    !Number.isFinite(confirmMs) || confirmMs < 10000 ||\n    !Number.isFinite(reminderMs) || reminderMs < 60 * 60 * 1000\n) {\n    node.error(\"INTEGRATION_MONITOR_INVALID_POLICY\", msg);\n    return null;\n}\n\nconst failureStates = new Set([\n    \"setup_error\",\n    \"setup_retry\",\n    \"migration_error\",\n    \"failed_unload\"\n]);\nconst current = new Map(\n    snapshot.entries.map((entry) => [entry.entry_id, entry])\n);\nconst previous = getState();\nconst state = previous?.version === 1\n    ? previous\n    : { version: 1, incidents: {}, last_scan_at: null };\nif (!state.incidents || typeof state.incidents !== \"object\") {\n    state.incidents = {};\n}\n\nconst formatInteger = new Intl.NumberFormat(\"pt-BR\", {\n    maximumFractionDigits: 0\n});\nconst safeIncident = (entryId) =>\n    `config_entry_${entryId}`.replace(/[^a-zA-Z0-9_-]+/g, \"_\").slice(0, 120);\nconst knownDomainLabels = {\n    hacs: \"HACS\",\n    homekit: \"HomeKit\",\n    icloud: \"iCloud\",\n    mqtt: \"MQTT\",\n    ipp: \"IPP\",\n    tuya: \"Tuya\"\n};\nconst domainLabel = (domain) => knownDomainLabels[domain] ?? domain\n    .split(\"_\")\n    .filter(Boolean)\n    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))\n    .join(\" \");\nconst output = [];\nconst optionalPrinter = (entry) => entry.domain === \"ipp\" &&\n    entry.state === \"setup_retry\" &&\n    entry.availability_reason === \"optional_printer_unreachable\";\n\nconst recoveryMessage = (incident, resolution, mobileNotification) => ({\n    _global_observer_test: TEST_MODE,\n    _global_observer_integration_test: TEST_MODE,\n    payload: {\n        test_mode: TEST_MODE,\n        observer_kind: \"integration_recovery\",\n        first_detected_at: new Date(now).toISOString(), policy_decided_at: new Date(now).toISOString(),\n        incident_key: safeIncident(incident.entry_id),\n        integration_domain: incident.domain,\n        persistent_incident_kind: \"integration_failure\",\n        persistent_notification_operation: \"dismiss\",\n        mobile_notification: mobileNotification,\n        resolution\n    },\n    alert: {\n        title: TEST_MODE\n            ? `TESTE — Integração ${domainLabel(incident.domain)} recuperada`\n            : `Integração ${domainLabel(incident.domain)} recuperada`,\n        message:\n            `A integração ${domainLabel(incident.domain)} voltou ao estado loaded. ` +\n            \"O incidente anterior foi encerrado.\"\n    }\n});\n\nfor (const entry of snapshot.entries) {\n    const incident = state.incidents[entry.entry_id];\n\n    if (entry.disabled) {\n        if (incident?.notified_at) {\n            output.push(recoveryMessage(incident, \"disabled\", false));\n        }\n        delete state.incidents[entry.entry_id];\n        continue;\n    }\n\n    if (failureStates.has(entry.state)) {\n        const optionalPrinterUnreachable = optionalPrinter(entry);\n\n        const active = incident ?? {\n            entry_id: entry.entry_id,\n            domain: entry.domain,\n            first_seen_at: now,\n            notified_at: null\n        };\n        const classificationChanged = active.notified_at !== null &&\n            (active.availability_reason ?? null) !== (optionalPrinterUnreachable ? \"optional_printer_unreachable\" : null);\n        active.availability_reason = optionalPrinterUnreachable ? \"optional_printer_unreachable\" : null;\n        active.domain = entry.domain;\n        active.state = entry.state;\n        active.last_seen_at = now;\n        state.incidents[entry.entry_id] = active;\n\n        const confirmed = now - Number(active.first_seen_at) >= confirmMs;\n        const reminderDue =\n            classificationChanged || active.notified_at === null ||\n            now - Number(active.notified_at) >= reminderMs;\n        if (!confirmed || !reminderDue) continue;\n\n        const durationMinutes = Math.max(\n            1,\n            Math.round((now - Number(active.first_seen_at)) / 60000)\n        );\n        const reminder = active.notified_at !== null;\n        active.notified_at = now;\n        const failureTitle = optionalPrinterUnreachable\n            ? \"Impressora IPP indisponível\"\n            : reminder\n            ? `Falha persiste na integração ${domainLabel(entry.domain)}`\n            : `Falha na integração ${domainLabel(entry.domain)}`;\n        output.push({\n            _global_observer_test: TEST_MODE,\n            _global_observer_integration_test: TEST_MODE,\n            payload: {\n                test_mode: TEST_MODE,\n                observer_kind: optionalPrinterUnreachable ? \"integration_optional_unavailable\" : \"integration_failure\",\n                persistent_incident_kind: \"integration_failure\",\n                first_detected_at: new Date(active.first_seen_at).toISOString(),\n                policy_decided_at: new Date(now).toISOString(),\n                incident_key: safeIncident(entry.entry_id),\n                integration_domain: entry.domain,\n                integration_state: entry.state,\n                availability_classification: optionalPrinterUnreachable\n                    ? \"unknown\" : \"integration_failure\",\n                availability_reason: optionalPrinterUnreachable\n                    ? \"optional_printer_unreachable\" : null,\n                persistent_notification_operation: \"create\",\n                mobile_notification: !optionalPrinterUnreachable\n            },\n            alert: {\n                title: TEST_MODE\n                    ? `TESTE — ${failureTitle}`\n                    : failureTitle,\n                message: optionalPrinterUnreachable\n                    ? \"Não foi possível comunicar com a impressora IPP. \" +\n                      \"Ela pode estar desligada; o Home Assistant continuará tentando conectar. \" +\n                      \"Se estiver ligada e você precisar usá-la, verifique a conexão de rede. \" +\n                      `Estado de diagnóstico: ${entry.state}.`\n                    : `A integração ${domainLabel(entry.domain)} permanece em ` +\n                    `${entry.state} há ${formatInteger.format(durationMinutes)} min. ` +\n                    \"Abra Configurações → Dispositivos e serviços no Home Assistant \" +\n                    \"para consultar ou reautenticar a entrada.\"\n            }\n        });\n        const logIncident = optionalPrinterUnreachable\n            ? (message) => node.log(message)\n            : (message) => node.warn(message);\n        logIncident(\n            (optionalPrinterUnreachable ? \"HOME_ASSISTANT_OPTIONAL_DEVICE_UNAVAILABLE \" : \"HOME_ASSISTANT_INTEGRATION_FAILURE \") +\n            `domain=${entry.domain} state=${entry.state} reminder=${reminder}`\n        );\n        continue;\n    }\n\n    if (entry.state === \"loaded\") {\n        if (incident?.notified_at) {\n            output.push(recoveryMessage(incident, \"loaded\", incident.availability_reason !== \"optional_printer_unreachable\"));\n            node.log(\n                \"HOME_ASSISTANT_INTEGRATION_RECOVERED \" +\n                `domain=${incident.domain}`\n            );\n        }\n        delete state.incidents[entry.entry_id];\n    } else if (incident) {\n        incident.last_seen_at = now;\n        incident.transition_state = entry.state;\n    }\n}\n\nfor (const [entryId, incident] of Object.entries(state.incidents)) {\n    if (current.has(entryId)) continue;\n    if (incident.notified_at) {\n        output.push(recoveryMessage(incident, \"removed\", false));\n    }\n    delete state.incidents[entryId];\n}\n\nconst activeEntries = snapshot.entries.filter((entry) => !entry.disabled).length;\nconst failingEntries = snapshot.entries.filter(\n    (entry) => !entry.disabled && failureStates.has(entry.state) && !optionalPrinter(entry)\n).length;\nconst optionalUnavailable = snapshot.entries.filter(\n    (entry) => !entry.disabled && optionalPrinter(entry)\n).length;\nstate.optional_unavailable_entries = optionalUnavailable;\nstate.last_scan_at = now;\nstate.active_entries = activeEntries;\nstate.failing_entries = failingEntries;\nsetState(state);\n\nnode.status(failingEntries > 0\n    ? {\n        fill: \"red\",\n        shape: \"ring\",\n        text: `${formatInteger.format(failingEntries)} integração(ões) em falha`\n    }\n    : optionalUnavailable > 0\n    ? {\n        fill: \"yellow\", shape: \"ring\",\n        text: `${formatInteger.format(optionalUnavailable)} impressora(s) indisponível(is)`\n    }\n    : {\n        fill: \"green\",\n        shape: \"dot\",\n        text: `${formatInteger.format(activeEntries)} entradas; nenhuma falha`\n    });\n\nreturn output.length ? [output] : null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -97542,5 +97559,123 @@
         "x": 2850,
         "y": 780,
         "wires": []
+    },
+    {
+        "id": "storage_visual_daily_cache_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Agenda → cache diário",
+        "mode": "link",
+        "links": [
+            "storage_visual_daily_cache_in"
+        ],
+        "x": 650,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_daily_cache_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber somente agenda",
+        "links": [
+            "storage_visual_daily_cache_out"
+        ],
+        "x": 590,
+        "y": 1470,
+        "wires": [
+            [
+                "storage_request_daily_build_cache"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_cache_done_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Cache solicitado → lifecycle",
+        "mode": "link",
+        "links": [
+            "storage_visual_request_done_in"
+        ],
+        "x": 1190,
+        "y": 1510,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_cache_recheck_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Cache solicitado → releitura",
+        "mode": "link",
+        "links": [
+            "storage_visual_cache_recheck_in"
+        ],
+        "x": 1090,
+        "y": 1450,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_cache_stderr_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Erro cache → diagnóstico",
+        "mode": "link",
+        "links": [
+            "storage_visual_stderr_in"
+        ],
+        "x": 1140,
+        "y": 1480,
+        "wires": []
+    },
+    {
+        "id": "storage_request_daily_build_cache",
+        "type": "exec",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "command": "/opt/request-host-storage-maintenance.sh --daily-build-cache",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar cache antigo: 30d / 2GB / 1 dia",
+        "info": "Somente agenda explícita. Host seleciona cache regular, imutável, não compartilhado e sem uso há mais de 30 dias; até 32 entradas e 2 GB por lote, intervalo de 24h. Imagens, volumes e backups não são alvos. Resultado incerto exige reconciliação do recibo. Teste termina no dry-run antes deste exec.",
+        "x": 820,
+        "y": 1470,
+        "wires": [
+            [
+                "storage_visual_cache_recheck_out"
+            ],
+            [
+                "storage_visual_cache_stderr_out"
+            ],
+            [
+                "storage_visual_cache_done_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_cache_recheck_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber releitura cache",
+        "links": [
+            "storage_visual_cache_recheck_out"
+        ],
+        "x": 1190,
+        "y": 1180,
+        "wires": [
+            [
+                "storage_post_maintenance_delay"
+            ]
+        ]
     }
 ]

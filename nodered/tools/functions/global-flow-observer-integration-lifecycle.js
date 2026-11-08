@@ -76,6 +76,7 @@ const knownDomainLabels = {
     homekit: "HomeKit",
     icloud: "iCloud",
     mqtt: "MQTT",
+    ipp: "IPP",
     tuya: "Tuya"
 };
 const domainLabel = (domain) => knownDomainLabels[domain] ?? domain
@@ -84,6 +85,9 @@ const domainLabel = (domain) => knownDomainLabels[domain] ?? domain
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 const output = [];
+const optionalPrinter = (entry) => entry.domain === "ipp" &&
+    entry.state === "setup_retry" &&
+    entry.availability_reason === "optional_printer_unreachable";
 
 const recoveryMessage = (incident, resolution, mobileNotification) => ({
     _global_observer_test: TEST_MODE,
@@ -121,12 +125,17 @@ for (const entry of snapshot.entries) {
     }
 
     if (failureStates.has(entry.state)) {
+        const optionalPrinterUnreachable = optionalPrinter(entry);
+
         const active = incident ?? {
             entry_id: entry.entry_id,
             domain: entry.domain,
             first_seen_at: now,
             notified_at: null
         };
+        const classificationChanged = active.notified_at !== null &&
+            (active.availability_reason ?? null) !== (optionalPrinterUnreachable ? "optional_printer_unreachable" : null);
+        active.availability_reason = optionalPrinterUnreachable ? "optional_printer_unreachable" : null;
         active.domain = entry.domain;
         active.state = entry.state;
         active.last_seen_at = now;
@@ -134,7 +143,7 @@ for (const entry of snapshot.entries) {
 
         const confirmed = now - Number(active.first_seen_at) >= confirmMs;
         const reminderDue =
-            active.notified_at === null ||
+            classificationChanged || active.notified_at === null ||
             now - Number(active.notified_at) >= reminderMs;
         if (!confirmed || !reminderDue) continue;
 
@@ -144,7 +153,9 @@ for (const entry of snapshot.entries) {
         );
         const reminder = active.notified_at !== null;
         active.notified_at = now;
-        const failureTitle = reminder
+        const failureTitle = optionalPrinterUnreachable
+            ? "Impressora IPP indisponível"
+            : reminder
             ? `Falha persiste na integração ${domainLabel(entry.domain)}`
             : `Falha na integração ${domainLabel(entry.domain)}`;
         output.push({
@@ -152,28 +163,40 @@ for (const entry of snapshot.entries) {
             _global_observer_integration_test: TEST_MODE,
             payload: {
                 test_mode: TEST_MODE,
-                observer_kind: "integration_failure",
+                observer_kind: optionalPrinterUnreachable ? "integration_optional_unavailable" : "integration_failure",
+                persistent_incident_kind: "integration_failure",
                 first_detected_at: new Date(active.first_seen_at).toISOString(),
                 policy_decided_at: new Date(now).toISOString(),
                 incident_key: safeIncident(entry.entry_id),
                 integration_domain: entry.domain,
                 integration_state: entry.state,
+                availability_classification: optionalPrinterUnreachable
+                    ? "unknown" : "integration_failure",
+                availability_reason: optionalPrinterUnreachable
+                    ? "optional_printer_unreachable" : null,
                 persistent_notification_operation: "create",
-                mobile_notification: true
+                mobile_notification: !optionalPrinterUnreachable
             },
             alert: {
                 title: TEST_MODE
                     ? `TESTE — ${failureTitle}`
                     : failureTitle,
-                message:
-                    `A integração ${domainLabel(entry.domain)} permanece em ` +
+                message: optionalPrinterUnreachable
+                    ? "Não foi possível comunicar com a impressora IPP. " +
+                      "Ela pode estar desligada; o Home Assistant continuará tentando conectar. " +
+                      "Se estiver ligada e você precisar usá-la, verifique a conexão de rede. " +
+                      `Estado de diagnóstico: ${entry.state}.`
+                    : `A integração ${domainLabel(entry.domain)} permanece em ` +
                     `${entry.state} há ${formatInteger.format(durationMinutes)} min. ` +
                     "Abra Configurações → Dispositivos e serviços no Home Assistant " +
                     "para consultar ou reautenticar a entrada."
             }
         });
-        node.warn(
-            "HOME_ASSISTANT_INTEGRATION_FAILURE " +
+        const logIncident = optionalPrinterUnreachable
+            ? (message) => node.log(message)
+            : (message) => node.warn(message);
+        logIncident(
+            (optionalPrinterUnreachable ? "HOME_ASSISTANT_OPTIONAL_DEVICE_UNAVAILABLE " : "HOME_ASSISTANT_INTEGRATION_FAILURE ") +
             `domain=${entry.domain} state=${entry.state} reminder=${reminder}`
         );
         continue;
@@ -181,7 +204,7 @@ for (const entry of snapshot.entries) {
 
     if (entry.state === "loaded") {
         if (incident?.notified_at) {
-            output.push(recoveryMessage(incident, "loaded", true));
+            output.push(recoveryMessage(incident, "loaded", incident.availability_reason !== "optional_printer_unreachable"));
             node.log(
                 "HOME_ASSISTANT_INTEGRATION_RECOVERED " +
                 `domain=${incident.domain}`
@@ -204,8 +227,12 @@ for (const [entryId, incident] of Object.entries(state.incidents)) {
 
 const activeEntries = snapshot.entries.filter((entry) => !entry.disabled).length;
 const failingEntries = snapshot.entries.filter(
-    (entry) => !entry.disabled && failureStates.has(entry.state)
+    (entry) => !entry.disabled && failureStates.has(entry.state) && !optionalPrinter(entry)
 ).length;
+const optionalUnavailable = snapshot.entries.filter(
+    (entry) => !entry.disabled && optionalPrinter(entry)
+).length;
+state.optional_unavailable_entries = optionalUnavailable;
 state.last_scan_at = now;
 state.active_entries = activeEntries;
 state.failing_entries = failingEntries;
@@ -216,6 +243,11 @@ node.status(failingEntries > 0
         fill: "red",
         shape: "ring",
         text: `${formatInteger.format(failingEntries)} integração(ões) em falha`
+    }
+    : optionalUnavailable > 0
+    ? {
+        fill: "yellow", shape: "ring",
+        text: `${formatInteger.format(optionalUnavailable)} impressora(s) indisponível(is)`
     }
     : {
         fill: "green",

@@ -25,6 +25,7 @@ test("health request is coalesced and processed as metadata only", () => {
     ...process.env,
     STORAGE_MAINTENANCE_TRIGGER_DIR: triggerDir,
     STORAGE_MAINTENANCE_SCRIPT: maintenance,
+    STORAGE_MAINTENANCE_PROCESSOR_LOCK: path.join(fixture, "processor.lock"),
   };
 
   const request = spawnSync(requestScript, [], { encoding: "utf8", env });
@@ -50,7 +51,7 @@ test("failed maintenance restores the request for retry", () => {
   fs.chmodSync(maintenance, 0o755);
   const result = spawnSync(processScript, [], {
     encoding: "utf8",
-    env: { ...process.env, STORAGE_MAINTENANCE_TRIGGER_DIR: triggerDir, STORAGE_MAINTENANCE_SCRIPT: maintenance },
+    env: { ...process.env, STORAGE_MAINTENANCE_TRIGGER_DIR: triggerDir, STORAGE_MAINTENANCE_SCRIPT: maintenance, STORAGE_MAINTENANCE_PROCESSOR_LOCK: path.join(fixture,"processor.lock") },
   });
   assert.equal(result.status, 1);
   assert.ok(fs.existsSync(path.join(triggerDir, "manual-trigger")));
@@ -65,4 +66,73 @@ test("cron installer exposes an idempotent managed block", () => {
   assert.match(result.stdout, /run-resource-safe\.sh/);
   assert.doesNotMatch(result.stdout, /23 \*\/6 \* \* \*/);
   assert.doesNotMatch(result.stdout, /storage-maintenance\.sh --apply/);
+});
+
+function cacheFixture(exit = 0) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "storage-cache-request-"));
+  const trigger = path.join(root, "trigger"); fs.mkdirSync(trigger);
+  const calls = path.join(root, "calls");
+  const helper = path.join(root, "cache.py");
+  fs.writeFileSync(helper, `import sys\nwith open(${JSON.stringify(calls)}, 'a') as f: f.write('cache:'+','.join(sys.argv[1:])+'\\n')\nsys.exit(${exit})\n`);
+  const report = path.join(root, "report.sh");
+  fs.writeFileSync(report, `#!/bin/sh\nprintf 'report:%s\\n' "$*" >> '${calls}'\n`); fs.chmodSync(report, 0o755);
+  return { root, trigger, calls, env: { ...process.env, STORAGE_MAINTENANCE_TRIGGER_DIR: trigger, STORAGE_MAINTENANCE_SCRIPT: report, STORAGE_BUILD_CACHE_HELPER: helper, STORAGE_MAINTENANCE_PROCESSOR_LOCK: path.join(root,"processor.lock") } };
+}
+
+test("only the explicit scheduled request queues cache; arguments cannot select commands", () => {
+  const x=cacheFixture();
+  try {
+    assert.equal(spawnSync(requestScript,["--daily-build-cache"],{env:x.env}).status,0);
+    assert.ok(fs.existsSync(path.join(x.trigger,"build-cache-trigger")));
+    assert.ok(!fs.existsSync(path.join(x.trigger,"manual-trigger")));
+    assert.equal(spawnSync(requestScript,["--daily-build-cache"],{env:x.env}).status,0);
+    assert.equal(spawnSync(requestScript,["--daily-build-cache","extra"],{env:x.env}).status,64);
+    assert.equal(spawnSync(requestScript,["--other"],{env:x.env}).status,64);
+    assert.equal(spawnSync(processScript,[],{env:x.env}).status,0);
+    assert.equal(fs.readFileSync(x.calls,"utf8"),"cache:--daily\n");
+    assert.equal(spawnSync(processScript,[],{env:x.env}).status,0);
+    assert.equal(fs.readFileSync(x.calls,"utf8"),"cache:--daily\n");
+  } finally {fs.rmSync(x.root,{recursive:true,force:true});}
+});
+
+test("uncertain cache result keeps processing receipt and never requeues or blocks metadata", () => {
+  const x=cacheFixture(1);
+  try {
+    assert.equal(spawnSync(requestScript,["--daily-build-cache"],{env:x.env}).status,0);
+    assert.equal(spawnSync(requestScript,[],{env:x.env}).status,0);
+    assert.equal(spawnSync(processScript,[],{env:x.env}).status,1);
+    assert.ok(fs.existsSync(path.join(x.trigger,"build-cache-processing")));
+    assert.ok(!fs.existsSync(path.join(x.trigger,"build-cache-trigger")));
+    assert.equal(spawnSync(requestScript,["--daily-build-cache"],{env:x.env}).status,75);
+    assert.equal(spawnSync(requestScript,[],{env:x.env}).status,0);
+    assert.equal(spawnSync(processScript,[],{env:x.env}).status,75);
+    const lines=fs.readFileSync(x.calls,"utf8").trim().split("\n");
+    assert.equal(lines.filter(l=>l.startsWith("cache:")).length,1);
+    assert.equal(lines.filter(l=>l==="report:--apply --category report").length,2);
+  } finally {fs.rmSync(x.root,{recursive:true,force:true});}
+});
+
+test("request refuses a symlink instead of following it", () => {
+  const x=cacheFixture();
+  try {
+    const target=path.join(x.root,"protected");fs.writeFileSync(target,"preserved");
+    fs.symlinkSync(target,path.join(x.trigger,"build-cache-trigger"));
+    assert.equal(spawnSync(requestScript,["--daily-build-cache"],{env:x.env}).status,73);
+    assert.equal(fs.readFileSync(target,"utf8"),"preserved");
+    assert.equal(spawnSync(processScript,[],{env:x.env}).status,0);
+    assert.ok(!fs.existsSync(x.calls));
+  } finally {fs.rmSync(x.root,{recursive:true,force:true});}
+});
+
+test("transport lock prevents concurrent helper dispatch", () => {
+  const x=cacheFixture();
+  try {
+    assert.equal(spawnSync(requestScript,["--daily-build-cache"],{env:x.env}).status,0);
+    const locked=spawnSync("flock",[path.join(x.root,"processor.lock"),processScript],{env:x.env});
+    assert.equal(locked.status,0);
+    assert.ok(!fs.existsSync(x.calls));
+    assert.ok(fs.existsSync(path.join(x.trigger,"build-cache-trigger")));
+    assert.equal(spawnSync(processScript,[],{env:x.env}).status,0);
+    assert.equal(fs.readFileSync(x.calls,"utf8"),"cache:--daily\n");
+  } finally {fs.rmSync(x.root,{recursive:true,force:true});}
 });

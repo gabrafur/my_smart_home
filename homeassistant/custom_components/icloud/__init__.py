@@ -192,7 +192,7 @@ async def async_setup_entry(hass, entry):
 async def async_unload_entry(hass,entry):
     account=entry.runtime_data
     if getattr(account,'_manual_platforms_loaded',False):
-        if not await native.async_unload_entry(hass,entry):return False
+        if await native.async_unload_entry(hass,entry) is False:return False
     else:await hass.async_add_executor_job(account.cancel_fetch)
     GATES.pop(entry.entry_id,None);PHASES.pop(entry.entry_id,None)
     return True

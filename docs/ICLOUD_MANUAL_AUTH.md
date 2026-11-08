@@ -72,7 +72,7 @@ com a Apple. Sessões e tokens continuam sob armazenamento da biblioteca.
 
 ## Compatibilidade e manutenção
 
-Compatibilidade revisada para Home Assistant Core 2026.10.1 e 2026.10.4, com pyicloud 2.7.0.
+Compatibilidade revisada para Home Assistant Core 2026.10.1/2026.10.4 com pyicloud 2.7.0 e Core 2026.11.0 com pyicloud 2026.10.1. A revisão instalada deve preservar o par de versões; rollback exige restaurar também o manifesto e o overlay correspondentes.
 `manual_auth.ManualOtpService` é um nome de compatibilidade para `GuardedService`;
 `config_flow.py` registra `ManualIcloudFlow`, implementado em `manual_flow.py`.
 O adaptador substitui a fábrica de cliente em `account` e usa um fluxo local
@@ -174,3 +174,22 @@ somente se ainda não existir o marcador; códigos já solicitados são preserva
 próximo ciclo, expiração, concorrência e preservação do OTP manual. O modelo do
 provider no teste público não substitui o ensaio isolado da biblioteca nativa.
 Uma prova de código carregado confirma a versão; não comprova recuperação Apple.
+
+## Adaptação ao Core 2026.11.0
+
+O construtor de dispositivo mantém o hash revisado, mas a conta nativa passou
+a tratar erros de autenticação internamente. O overlay persiste o estado de
+desafio antes de delegar esse tratamento, impedindo polling/autenticação em
+segundo plano enquanto o usuário deve concluir o OTP. A exceção tipada de
+transporte do pyicloud continua sendo conectividade, sem consumir uma nova
+tentativa de senha. O retorno `None` do unload nativo concluído é aceito;
+`False` continua significando falha.
+
+A proveniência registra o commit da tag leve e hashes dos 19 arquivos nativos
+comparados à imagem, preservando licença e base histórica. As traduções da
+imagem são artefatos gerados; não são apresentadas como blobs dessa tag.
+Testes de compatibilidade reais continuam isolados, sem rede ou credenciais
+residenciais. A validação de configuração pode usar cópias dos registros em
+tmpfs, preservando os originais em somente leitura, pois o Core migra o
+formato do registro durante a checagem. Dependências binárias dessa validação
+precisam de tmpfs executável próprio; nenhum serviço restaurado é iniciado.

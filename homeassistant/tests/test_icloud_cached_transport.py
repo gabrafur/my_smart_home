@@ -26,7 +26,7 @@ def load():
     node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'is_transport_failure')
     classifier = ModuleType('cached_transport_candidate.setup_retry')
     classifier.__dict__.update(RemoteDisconnected=RemoteDisconnected, gaierror=gaierror,
-                               RequestsConnectionError=RequestConnectionError, Timeout=RequestTimeout)
+                               RequestsConnectionError=RequestConnectionError, Timeout=RequestTimeout, PROVIDER_TRANSPORT=(CustomTransport,))
     exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])), str(PUBLIC), 'exec'), classifier.__dict__)
     package = ModuleType('cached_transport_candidate'); package.__path__ = [str(ROOT)]
     names = ['cached_transport_candidate', 'cached_transport_candidate.setup_retry',
@@ -40,6 +40,28 @@ def load():
         module = importlib.util.module_from_spec(spec); sys.modules[name] = module
         spec.loader.exec_module(module); modules.append(module)
     return modules[0], modules[1], classifier, prior
+
+
+class CoreAuthBoundaryTest(unittest.TestCase):
+    def test_core_caught_challenge_blocks_background_recovery(self):
+        a,b,c,prior=load()
+        try:
+            saved=[]
+            gate=a.AuthGate(saved.append, automatic_recovery=True, persist_recovery=lambda row: None)
+            class Core:
+                def _handle_auth_required(self, **kwargs): self.seen=kwargs
+                def keep_alive(self, now=None): raise AssertionError('challenge must not poll')
+            account=b.account_adapter(Core, {'synthetic':gate}, None)()
+            account._config_entry=SimpleNamespace(entry_id='synthetic')
+            account._handle_auth_required(two_factor=True,keep_session=True)
+            self.assertEqual(gate.state,a.State.READY)
+            account.keep_alive()
+            self.assertTrue(account.seen['keep_session'])
+            self.assertEqual(saved[-1]['state'],a.State.READY.value)
+        finally:
+            for name,value in prior.items():
+                if value is None:sys.modules.pop(name,None)
+                else:sys.modules[name]=value
 
 
 class FakeProvider:

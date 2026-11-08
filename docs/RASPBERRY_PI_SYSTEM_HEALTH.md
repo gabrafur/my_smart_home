@@ -139,12 +139,12 @@ não encontrada.
 Os limites ficam no grupo visual `0. Política visual e MQTT discovery`: normal
 abaixo de 70%, warning de 70% a 79,9%, high de 80% a 89,9% e critical a partir
 de 90%. A histerese é de 3 pontos percentuais. Alertas repetidos usam cooldown
-de 12 horas, falhas de coleta/manutencao usam 6 horas, escaladas alertam
+compartilhado de 24 horas entre capacidade e tendência; falhas de coleta/manutencao usam 6 horas, escaladas alertam
 imediatamente e a volta a normal gera notificacao de recuperacao.
 
 Os onze valores ajustáveis têm unidade, limites e validação no canvas:
 thresholds de 1–100% com ordem estrita, histerese de 0–20 pp, cooldowns de
-1–48 h, crescimento de 1–50 pp/24 h e 1–80 pp/7 d, amostragem de 1–120 min e
+24–48 h para lembretes de capacidade/tendência e 1–48 h nos demais casos, crescimento de 1–50 pp/24 h e 1–80 pp/7 d, amostragem de 1–120 min e
 retenção de 2–30 dias. Um candidato inválido não substitui a última política.
 Classificação bruta, histerese, recovery, escalada/lembrete, tendência e gate
 de autocuidado são decisões nomeadas. O JavaScript remanescente calcula apenas
@@ -208,15 +208,12 @@ Git. Em paralelo, atualiza a leitura dos sensores existentes e a avaliação de
 limites/tendência.
 O Node-RED continua sem acesso ao socket Docker.
 
-O Node-RED é a fonte única do agendamento preventivo de seis em seis horas. No
-mesmo evento, ele executa o housekeeping allowlisted dentro do container e cria
-uma solicitação coalescente para a manutenção segura do host. O cron instalado
-por `scripts/install-storage-maintenance-cron.sh` é somente a ponte: verifica a
-solicitação a cada minuto e chama, com prioridade reduzida,
-`scripts/process-storage-maintenance-request.sh`. Falhas restauram o marcador
-para uma tentativa posterior. Solicitações repetidas antes do processamento são
-coalescidas em uma única execução; não existe um segundo agendamento preventivo
-direto no crontab.
+O Node-RED mantém o agendamento preventivo de seis em seis horas. Os pedidos
+legados/manual e a observação de saúde continuam somente leitura. Somente o
+ramo marcado da agenda solicita a limpeza específica de cache de construção.
+O cron existente é transporte: consome os marcadores e não decide o horário.
+O marcador separado de cache não é restaurado para repetição automática quando
+uma execução termina incerta; o recibo deve ser reconciliado primeiro.
 
 O painel usa o layout nativo responsivo `sections`, com três colunas no desktop
 e uma no celular. Os históricos ficam no fim da página, redistribuídos com os
@@ -243,52 +240,46 @@ pode incluir camadas compartilhadas que o prune corretamente preserve.
 
 ### SAFE AUTO-MAINTENANCE
 
-O Node-RED executa `/opt/storage-health-maintenance.sh --apply`, montado em
-somente leitura a partir de `scripts/storage-health-maintenance.sh`, que usa
-lock atômico, falha quando não consegue inspecionar os diretórios permitidos e so pode
-remover arquivos regulares nestes caminhos allowlisted:
+O helper interno `/opt/storage-health-maintenance.sh --apply` preserva a
+compatibilidade de chamada, mas mantém `cleanup_enabled=false`: somente mede.
+O pedido legado do host seleciona `--apply --category report`; não executa as
+categorias padrão do script antigo. O botão **Executar Storage Health**, os
+webhooks e os alertas não passam a autorizar exclusões.
 
-- backups de flows em `/data/backups/codex-flows` com mais de 30 dias;
-- logs npm em `/data/.npm/_logs` com mais de 14 dias.
+A limpeza recorrente tem caminho separado e explícito no canvas:
+`storage_daily_maintenance` → gate de agenda → comando fixo
+`request-host-storage-maintenance.sh --daily-build-cache` → marcador próprio →
+`docker-build-cache-maintenance.py --daily`. Não recebe comandos ou caminhos
+vindos de mensagens. O Node-RED continua sem socket Docker e sem sudo.
 
-Flows, credenciais, context storage, `node_modules` e outros temporarios nao
-entram no escopo. O container continua sem Docker socket, mount do host ou
-`sudo`.
+O executor do host seleciona exclusivamente registros de cache `regular`,
+imutáveis, não compartilhados e não usados, corroborados pela Engine e pelo
+buildx. Exige datas exatas de criação/último uso de pelo menos 30 dias; dado
+humanizado, desconhecido ou inconsistente não basta. Limites: 32 registros,
+2 GB por lote e intervalo de 24 horas. A cada operação preserva a prévia com IDs,
+tamanhos e elegibilidade, revalida sob lock, registra intenção durável antes do
+efeito e verifica o inventário depois. A exclusão usa filtro ancorado dos IDs
+exatos; nunca `prune` genérico, `--all`, imagens, containers ou volumes.
 
-No host, `scripts/storage-maintenance.sh` limita o build cache sem uso a 2 GB
-(`builder prune --all --max-used-space 2GB`) e remove imagens sem tag com mais
-de 24 horas somente depois de provar que nenhum container e nenhum arquivo
-versionado do repositório as referencia. Essa checagem explícita preserva, por
-exemplo, imagens fixadas por digest nos testes e cobre o store containerd atual,
-no qual uma imagem sem tag nem sempre aparece em `docker image ls --filter
-dangling=true`. O limite de
-tamanho é necessário porque um build recente pode manter toda uma cadeia antiga
-alcançável e tornar ineficaz uma política baseada somente em idade. O script
-valida argumentos, caminhos e symlinks, usa lock, é idempotente, registra
-métricas antes/depois, recusa `--apply` sob pressão de memória ou filesystem e
-usa dry-run por padrão:
+Não existe restauração direta do cache removido. Uma reconstrução exige as
+fontes e dependências originais; não é prometida reconstrução idêntica ou offline.
+O recibo separa bytes lógicos removidos da variação real do filesystem, que pode
+incluir outras atividades. Resultado incerto bloqueia repetição e não pode ser
+contornado com uma operação nova.
 
-O perfil `--apply` não solicita confirmação interativa e também executa, por
-allowlist, a rotação dos logs PM2 acima de 10 MiB, a limpeza oficial dos caches
-npm/pip, a remoção de downloads VSIX e a retenção do VS Code Server. O VS Code
-preserva todas as versões em uso e no mínimo as duas mais recentes. A manutenção
-agendada pelo Node-RED a cada seis horas usa esse mesmo perfil;
-`.cursor-server` não faz parte da rotina recorrente.
-
-No diretório de backups do Home Assistant, somente arquivos regulares `*.tar`
-são candidatos automáticos. Os dois arquivos mais recentes são sempre
-preservados; arquivos mais antigos são removidos independentemente da idade.
-Snapshots manuais de banco (`*.db`) e outros formatos não entram nessa rotina.
-O painel publica separadamente o total desses snapshots e a parcela acima de
-14 dias para revisão, sem chamar essa parcela de automaticamente descartável.
+Backups, snapshots, Recorder, credenciais, ferramentas instaladas e imagens de
+rollback ficam fora desse caminho. A política de quarentena npm do MCP permanece
+separada, com os seus próprios limites e confirmações. Para revogar a nova
+rotina, remover a marca de cache do inject agendado e preservar os recibos;
+confirmar também que não há marcador/execução já admitida em andamento.
 
 ```bash
-scripts/storage-maintenance.sh --dry-run
-scripts/storage-maintenance.sh --apply --min-age 24 --max-build-cache 2GB
-scripts/storage-maintenance.sh --dry-run --category all
-scripts/storage-maintenance.sh --apply --category docker-build-cache --max-build-cache 1GB
-scripts/install-storage-maintenance-cron.sh
+python3 scripts/docker-build-cache-maintenance.py --dry-run
 ```
+
+A presença da fonte ou a passagem de testes não comprova instalação nem ciclo
+agendado. Verificar o deploy do canvas, o transporte do marcador e o recibo do
+executor antes de declarar o caminho completo funcional.
 
 ### MANUAL / REQUIRES REVIEW
 
@@ -432,3 +423,14 @@ eventos sintéticos: falha transitória, três falhas, duplicata, recuperação,
 restart, manutenção, `unknown` e falha do canal. Simulação não deve enviar
 notificações reais. Teste de entrega e interrupção real exigem autorização
 separada. A presença desta proposta não comprova monitor externo ativo.
+
+### Uma severidade e um lembrete por incidente
+
+A classificação de capacidade usa somente a primeira faixa aplicável, da mais
+grave para a mais leve. Um uso acima do limiar alto não pode produzir também
+um ramo warning. Capacidade e tendência compartilham o último aceite de
+notificação para limitar lembretes a 24 horas; agravamento e recuperação continuam
+imediatos. A migração da política anterior preserva horários e incidentes
+persistidos, sem reset do cooldown. Falhas de coleta mantêm seu tratamento
+próprio. Testes cobrem a configuração real do switch e as expressões JSONata,
+além de leituras repetidas, agravamento, recuperação e migração.

@@ -11,7 +11,6 @@ pelo Git; caches e runtime ignorados não fazem parte da distribuição pública
 | Nome | Projeto e origem | Versão imobilizada | Licença | Modificações locais | Atualização e atribuição | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
 | Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | origem exata em `scripts/alexa-media-upstream.json` | Apache-2.0 | `__init__.py` contém um guard local permitido; o aplicador exige o marcador ou prova que o alvo o absorveu | resolver tag/commit/objeto de tag, comparar byte a byte, aceitar apenas deltas permitidos, validar manifest/compilação, manter `LICENSE.upstream` e preservar notices Apache | pin local; atualização protegida |
-| HACS | [`hacs/integration`](https://github.com/hacs/integration) | tag `2.0.5`, commit `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `const.py` fixa HA mínimo `2024.4.1`; `manifest.json` registra `2.0.5` | reaplicar e revisar somente esses dois deltas após atualização; manter copyright e licença MIT | verificado, modificado |
 | Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | origem exata em `scripts/kia-uvo-upstream.json` | MIT | proteção de rate limit, refresh tolerante a falha, histórico/eficiência de viagens, status de comandos e entidades relacionadas | reconciliar por staging/Codex, preservar copyright/licença MIT e promover somente após testes, backup, rollback e validação do runtime | pin local, modificado substancialmente |
 
 O estado Amazon Kids é compartilhado entre plataformas. Um novo início de
@@ -24,6 +23,33 @@ Os caminhos cobertos são, respectivamente,
 `homeassistant/custom_components/<domínio>/**`. Cada diretório contém uma cópia
 verificada da licença upstream em `LICENSE.upstream`; hashes e método de
 revalidação estão abaixo.
+
+## HACS retirado após migração para Marketplace
+
+No Core `2026.11.0`, o Marketplace nativo substituiu a cópia vendorizada de
+HACS. O código instalado de `components/marketplace/migration.py` contém
+`_remove_legacy_integration`, que remove a integração customizada após conferir
+o domínio legado e excluir checkouts de desenvolvimento próprios. A remoção
+observada de `homeassistant/custom_components/hacs/` é reconciliada aqui; não
+resta código HACS vendorizado nem manifesto local a atualizar ou restaurar.
+Marketplace é fornecido pela imagem do Core fixada no Compose, não por uma nova
+cópia de código neste repositório. A imagem auditada foi
+`sha256:c6c1ca9931036bf3a2c4cc088d8db25dfea3b33935a5ecc83c40349462e2f69e`;
+o SHA-256 do módulo de migração instalado era
+`e1c5775e2483f8cf0610049122fd9fa109ca174b3f6709926aafe2bc3e657c4e`.
+
+Proveniência histórica preservada: `hacs/integration`, tag leve `2.0.5`, commit
+`c0dfd8b44297c3673c21973e2539375a53687a9c` (sem objeto de tag anotada).
+A árvore Git retirada, `4e47869f7ca4f0a12c80c3cf13207274accfaa8e`, foi
+recomparada byte a byte com esse commit: 62 arquivos de código idênticos,
+licença MIT idêntica e somente dois deltas locais, `const.py` (HA mínimo
+`2024.4.1`) e `manifest.json` (versão `2.0.5`). Esses deltas não são transferidos
+para o Marketplace nativo. A licença e seu copyright permanecem no histórico,
+por exemplo em `1a8d7f53f368c533116f1af06a47c9e74a070f51:homeassistant/custom_components/hacs/LICENSE.upstream`;
+o hash histórico está abaixo. Ao redistribuir uma revisão antiga com HACS,
+preserve sua licença MIT. Esta auditoria de arquivos não prova sozinha a
+migração dos registros de entidades, a saúde do runtime ou a preservação do
+Recorder; essas verificações operacionais são separadas.
 
 ## Componentes próprios e serviços externos
 
@@ -80,11 +106,11 @@ cada arquivo rastreado foi comparado byte a byte com
 
 ```text
 alexa_media       38 iguais,  1 modificado
-hacs              62 iguais,  2 modificados
+hacs (histórico)  62 iguais,  2 modificados
 kia_uvo           24 iguais, 10 modificados
 ```
 
-Hashes SHA-256 das licenças preservadas:
+Hashes SHA-256 das licenças preservadas (HACS somente no histórico):
 
 ```text
 alexa_media       c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
