@@ -28,7 +28,7 @@ Core `2026.11.0` replaced the vendored HACS copy with native Marketplace.
 The installed `components/marketplace/migration.py` implements
 `_remove_legacy_integration`, checking the legacy domain and protecting standalone
 development checkouts before removing the custom integration. This inventory
-reconciles the observed removal of `homeassistant/custom_components/hacs/`;
+reconciles the observed removal of HACS;
 there is no remaining vendored HACS code or local manifest to restore.
 Marketplace ships in the Compose-pinned Core image, rather than as newly
 vendored source. The audited image was
