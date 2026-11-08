@@ -1,3 +1,4 @@
+import { kiaRepositoryRecordCode } from "./kia-repository-record.mjs";
 // Root attests a current restored baseline, never the outcome of an old apply.
 // There is no installation, restart, vehicle request or receipt mutation here.
 import fs from 'node:fs';
@@ -86,7 +87,7 @@ function archiveMatches(previousSha){
  return sha(archived)===previousSha;
 }
 export function readInstalledHacs(){
- const code="import json; d=json.load(open('/config/.storage/hacs.repositories')).get('data',{}); r=next((v for v in d.values() if isinstance(v,dict) and v.get('full_name')=='Hyundai-Kia-Connect/kia_uvo'),None); print(json.dumps({k:r.get(k) for k in ('installed','installed_commit','version_installed')} if r else None))";
+ const code=kiaRepositoryRecordCode;
  const r=spawnSync('/usr/bin/docker',['exec','homeassistant','python','-c',code],
   {encoding:'utf8',timeout:8000,maxBuffer:8192,env:{PATH:'/usr/bin:/bin'}});
  if(r.status!==0)throw Error('reconciliation_hacs_unavailable');return JSON.parse(r.stdout);

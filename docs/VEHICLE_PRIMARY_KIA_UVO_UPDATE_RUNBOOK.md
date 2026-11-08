@@ -45,6 +45,29 @@ Reversão exige conferir hashes e restaurar produtor, fluxo e fontes da revisão
 anterior, preservando recibos e solicitações; resultado incerto exige
 reconciliação antes de qualquer nova tentativa.
 
+## Cadastro após migração para Marketplace
+
+O leitor compartilhado `scripts/kia-repository-record.mjs` consulta primeiro
+`/config/.storage/marketplace.repositories`, pelo `full_name` exato da integração.
+Somente a ausência desse arquivo permite consultar `hacs.repositories` legado.
+Cadastro inválido, identidade duplicada ou integração ausente no cadastro nativo
+não permitem recuperar um registro legado obsoleto. A saída contém somente os
+campos de versão já usados e `repository_source`; outros registros e campos
+privados não são exportados. Auditoria e reconciliação de baseline usam esse
+mesmo leitor.
+
+Depois da migração, o antigo leitor falhava antes de auditar o alvo porque
+`hacs.repositories` não existia. Corrigir a leitura não modifica o recibo falho,
+não repete a solicitação, não comprova auditoria completa nem atualização.
+A leitura do cadastro é passiva; `check` continua sujeito aos efeitos descritos
+acima. Os testes isolados cobrem precedência, fallback, corrupção, duplicidade,
+registro ausente e proteção dos campos.
+
+O instalador legado copia/restaura o cadastro HACS inteiro. Ele recusa agora
+explicitamente cadastro nativo antes de criar backup ou chamar serviços. Uma
+instalação via Marketplace exige adaptar e revisar seu rollback sem sobrescrever
+registros de terceiros; o suporte à leitura não autoriza reutilizar esse rollback.
+
 ## Deteccao
 
 O tab Node-RED `atualizacoes_diarias` inventaria todas as entidades `update.*`

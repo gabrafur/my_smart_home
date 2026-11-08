@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { kiaRepositoryRecordCode, requireLegacyInstallationRecord } from "./kia-repository-record.mjs";
 import { auditFailureCategory } from "./kia-uvo-audit-failure.mjs";
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -84,13 +85,7 @@ function writeJson(filePath, value) {
 }
 
 function readHacsRecord() {
-  const code = [
-    "import json",
-    `data=json.load(open('${hacsContainerPath}')).get('data',{})`,
-    "record=next((v for v in data.values() if v.get('full_name')=='Hyundai-Kia-Connect/kia_uvo'),None)",
-    "keys=['full_name','installed','installed_commit','last_commit','last_fetched','last_updated','last_version','version_installed']",
-    "print(json.dumps({k:record.get(k) for k in keys} if record else None))",
-  ].join(";");
+  const code = kiaRepositoryRecordCode;
   const output = command(
     "docker",
     ["exec", "homeassistant", "python", "-c", code],
@@ -638,6 +633,8 @@ async function applyPrepared(prepared, token, options = {}) {
     throw new Error("local patch conflicts with target; nothing was installed");
   }
 
+  const hacsBefore = readHacsRecord();
+  requireLegacyInstallationRecord(hacsBefore);
   const states = await haRequest("GET", "/api/states", token);
   const updateEntity = states.find((entity) =>
     entity.entity_id.startsWith("update.") &&
@@ -645,7 +642,6 @@ async function applyPrepared(prepared, token, options = {}) {
       `${entity.entity_id} ${entity.attributes?.friendly_name ?? ""}`,
     ));
   if (!updateEntity) throw new Error("HACS Kia UVO update entity was not found");
-  const hacsBefore = readHacsRecord();
   const alreadyInstalled = runtimeUpdateMatchesTarget(updateEntity, prepared.target);
 
   const stamp = new Date().toISOString().replaceAll(":", "-");

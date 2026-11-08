@@ -74,6 +74,10 @@ Atualizações usam `scripts/kia-uvo-safe-update.mjs`: `check` prepara e verific
 a nova versão em staging. O ciclo autorizado do Node-RED pode encaminhar uma
 candidata mesclada e auditada ao promotor; a instalação exige checkout limpo,
 backup, preservação dos deltas locais, validação de runtime e rollback.
+O leitor compartilhado prefere o cadastro Marketplace nativo e só recorre ao
+HACS quando o arquivo nativo está ausente. O instalador legado permanece
+bloqueado para cadastro nativo até revisão do rollback compartilhado; corrigir
+a leitura não comprova auditoria completa nem autoriza repetir recibos falhos.
 Veja o [runbook de atualização](../../../docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md).
 
 ## Moni Mobile / security_panel
