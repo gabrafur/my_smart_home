@@ -9,13 +9,15 @@ from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('publication',Path(__file__).with_name('git-publication-evidence.py'))
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 SHA='a'*40
-LOG='''[2026-01-01T01:00:00+00:00] backup started
+START='2026-01-01T01:00:00+00:00'
+FINISH='2026-01-01T01:00:12+00:00'
+LOG=f'''[{START}] backup started
 Documentation check failed (4 issue(s)):
 - docs/DEPENDENCY_PROVENANCE.en.md:31: referenced path is missing or untracked: homeassistant/custom_components/hacs/
 - docs/DEPENDENCY_PROVENANCE.md:33: referenced path is missing or untracked: homeassistant/custom_components/hacs/
 - docs/i18n-manifest.json: classified path is outside human documentation scope: homeassistant/custom_components/hacs/validate/README.md
 - missing tracked i18n document: homeassistant/custom_components/hacs/validate/README.md
-[2026-01-01T01:00:12+00:00] backup failed: could not push origin/main reason=validation_failed
+[{FINISH}] backup failed: could not push origin/main reason=validation_failed
 '''
 class Publication(unittest.TestCase):
  def test_remote_mismatch_and_worktree_drift_refused(self):
@@ -24,7 +26,7 @@ class Publication(unittest.TestCase):
  def test_exact_remote_identity(self):
   with patch.object(m,'command',side_effect=['main','',SHA,SHA+'\trefs/heads/main',SHA,'']):self.assertEqual(m.verified_head(),SHA)
  def test_failure_requires_complete_exact_cycle(self):
-  self.assertEqual(m.hacs_failure(LOG),'2026-01-01T01:00:12+00:00')
+  self.assertEqual(m.hacs_failure(LOG),FINISH)
   for text in [LOG.replace('backup started','other'),LOG.replace('missing tracked i18n','untrusted'),LOG.replace('backup failed:','unknown:')]:
    with self.assertRaises(RuntimeError):m.hacs_failure(text)
  def test_receipt_is_separate_idempotent_and_preserves_history(self):

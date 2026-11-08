@@ -115,7 +115,8 @@ class EvidenceTests(unittest.TestCase):
         self.assertIsNotNone(invalid['last_verified_correction']['collection_error'])
 
     def test_later_different_failure_does_not_inherit_older_diagnosis(self):
-        log = failure() + '[2026-11-08T05:00:00Z] backup started\n[2026-11-08T05:00:01Z] backup failed: could not fetch origin/main reason=network_unavailable\n'
+        start, end = '2026-11-08T05:00:00Z', '2026-11-08T05:00:01Z'
+        log = failure() + f'[{start}] backup started\n[{end}] backup failed: could not fetch origin/main reason=network_unavailable\n'
         self.assertEqual(h.validation_diagnosis(log, NOW)['state'], 'unknown')
         self.assertFalse(self.project(log + receipt())['correction_link_verified'])
 
