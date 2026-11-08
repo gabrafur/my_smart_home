@@ -18,6 +18,13 @@ emit_reason() {
   printf 'git-backup-reason=%s\n' "$1"
 }
 
+record_publication_evidence() {
+  # Observation failure never repeats or changes the result of a completed push.
+  if [[ "$REMOTE" == origin && "$BRANCH" == main ]]; then
+    python3 "$SCRIPT_DIR/git-publication-evidence.py" worker >> "$LOG_FILE" 2>&1 || :
+  fi
+}
+
 classify_remote_error() {
   local output="$1"
   case "$output" in
@@ -112,6 +119,7 @@ fi
   ahead_count=$(git rev-list --count "$REMOTE/$BRANCH..HEAD")
   if [ "$ahead_count" -eq 0 ]; then
     log "backup finished: no changes"
+    record_publication_evidence
     exit 0
   fi
 
@@ -151,4 +159,5 @@ fi
   fi
 
   log "backup finished: pushed $(git rev-parse --short HEAD)"
+  record_publication_evidence
 } 9>"$LOCK_FILE"

@@ -6,6 +6,36 @@ o [índice operacional](../README.md) e as capacidades reais antes de agir.
 
 ## Proveniência dos ciclos Git e histórico de falhas
 
+### Publicação interativa e correção posterior
+
+`verified_publication` expõe um recibo adicional de comparação entre HEAD e
+`origin/main`, com SHA completo, origem, horário, idade e cobertura. Não altera
+`last_observed_publication`, que continua significando uma linha de push do
+worker, nem converte `no_changes` em envio. A comparação é histórica, feita pelo
+produtor no horário do recibo; a consulta MCP não abre uma conexão ao GitHub.
+
+Publicações interativas usam `python3 scripts/git-publication-evidence.py publish`,
+com checkout limpo, lock residencial e pre-push preservado. Para um envio já
+concluído, `observe` apenas compara e registra: não repete o push. O worker chama
+a mesma observação depois de sucesso, inclusive quando não houve mudanças.
+O log fixo existente recebe uma linha própria `git publication verified`, nunca
+uma linha falsa de sucesso do backup. Falha de observação não reenvia publicação.
+
+`validation_diagnosis` reconhece somente causas fechadas em ciclos completos do
+log limitado. A primeira causa é a referência documental remanescente ao HACS:
+exige os quatro erros exatos do verificador, sem exportar logs arbitrários.
+`hacs-correction` exige essa falha, executa o verificador documental atual e
+confirma HEAD/remoto antes de vincular a correção ao horário da falha.
+`last_verified_correction` preserva essa evidência histórica mesmo após um novo
+recibo sem correção. Não comprova saúde permanente, ciclo diário, offsite ou
+restauração. Recibo inválido, divergente ou futuro fica desconhecido.
+
+O recibo não cria agenda nem tópico de webhook. Os eventos atuais permanecem
+notificações HA e términos de tarefas registradas. Depois de um deploy, a
+aceitação com Eva deve consultar `backup_results` real; acesso visual ao catálogo
+ou uma mensagem enviada pelo operador não basta para provar essa leitura.
+
+
 O produtor `backup_results` usa o schema `1.3.0`. `last_worker_cycle` preserva
 o resultado original do worker; `last_observed_publication` observa publicações
 no log limitado e não identifica a origem da execução. `last_scheduled_cycle`

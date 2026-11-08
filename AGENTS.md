@@ -29,10 +29,8 @@ constraints, technical context, and optionality.
 
 ## Chat Title Policy
 
-Only when explicitly asked, suggest one specific, easy-to-find title of normally
-3 to 8 words in the user's language. Describe the actual task; avoid generic
-titles such as `Fix issue` or `New task`. Never rename the conversation; the
-title is only a suggestion for the user.
+Only when asked, suggest a specific 3–8-word title in the user's language
+describing the task. Avoid generic titles; never rename the conversation.
 
 ## Model Routing Policy
 
@@ -90,6 +88,9 @@ Siga docs/ESTRATEGIA_DE_TESTES.md.
 ## Branch
 
 Em tarefas interativas, trabalhe e publique sempre na `main`.
+
+Publique via `python3 scripts/git-publication-evidence.py publish`; após push
+concluído, use `observe` sem reenviar.
 
 ## Commit message policy
 

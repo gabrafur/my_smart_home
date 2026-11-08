@@ -146,6 +146,116 @@ def publication(log, now):
                          'not_scheduled_cycle', 'not_offsite_or_restoration']}
 
 
+
+def git_evidence_envelope(source, now, observed=None, error=None, coverage=()):
+    return {'source': source, 'observed_at': observed,
+            'age_seconds': max(0, round(now - stamp(observed), 3)) if stamp(observed) is not None else None,
+            'collection_error': error, 'coverage': list(coverage)}
+
+
+def validation_diagnosis(log, now):
+    """Recognize a complete fixed diagnostic; never return raw build output."""
+    result = git_evidence_envelope('git_backup.bounded_validation_log', now,
+        coverage=['complete_cycle_in_bounded_log_only', 'fixed_diagnostic_tokens_only',
+                  'not_current_validation_or_recovery_proof'])
+    result.update(state='unknown', reason='complete_validation_failure_not_observed',
+                  failure_at=None, cause=None, recovery_proven=False)
+    if not isinstance(log, str) or len(log.encode()) > 524288:
+        result['collection_error'] = 'bounded_log_unavailable'
+        return result
+    started = None
+    section = []
+    latest = None
+    for line in log.splitlines():
+        start = re.fullmatch(r'\[([^\]]+)\] backup started', line)
+        end = re.fullmatch(r'\[([^\]]+)\] backup failed: could not push [^\s]+ reason=validation_failed', line)
+        if start:
+            started = stamp(start[1]); section = []
+        elif end:
+            when = stamp(end[1])
+            if started is not None and when is not None and started <= when <= now:
+                latest = (end[1], section)
+            else:
+                latest = None
+            started = None; section = []
+        elif re.match(r'^\[[^\]]+\] backup (?:finished|failed|deferred|aborted):', line):
+            # Another failure must not retain an older diagnosis as the latest one.
+            if re.match(r'^\[[^\]]+\] backup (?:failed|aborted):', line):
+                latest = None
+            started = None; section = []
+        elif started is not None:
+            section.append(line)
+    if latest is None:
+        return result
+    when, section = latest
+    result.update(git_evidence_envelope(result['source'], now, when, coverage=result['coverage']))
+    result['failure_at'] = when
+    result['reason'] = 'validation_failure_cause_unclassified'
+    expected = [
+        r'- docs/DEPENDENCY_PROVENANCE\.en\.md:\d+: referenced path is missing or untracked: homeassistant/custom_components/hacs/',
+        r'- docs/DEPENDENCY_PROVENANCE\.md:\d+: referenced path is missing or untracked: homeassistant/custom_components/hacs/',
+        r'- docs/i18n-manifest\.json: classified path is outside human documentation scope: homeassistant/custom_components/hacs/validate/README\.md',
+        r'- missing tracked i18n document: homeassistant/custom_components/hacs/validate/README\.md',
+    ]
+    header = 'Documentation check failed (4 issue(s)):'
+    positions = [i for i, line in enumerate(section) if line == header]
+    if len(positions) == 1:
+        issues = section[positions[0] + 1:positions[0] + 5]
+        after = section[positions[0] + 5:positions[0] + 6]
+        if len(issues) == 4 and not any(line.startswith('- ') for line in after) and all(re.fullmatch(pattern, line) for pattern, line in zip(expected, issues)):
+            result.update(state='observed', reason='fixed_diagnostic_matched',
+                          cause='hacs_documentation_references')
+    return result
+
+
+def verified_publication(log, now, diagnosis, correction_only=False):
+    """Explicit producer remote comparison, separate from push/cycle history."""
+    result = git_evidence_envelope(
+        'git_publication.historical_correction_receipt' if correction_only else 'git_publication.remote_comparison_receipt', now,
+        coverage=['fixed_producer_receipt_in_bounded_log', 'remote_comparison_at_recorded_time_only',
+                  'not_live_remote_query', 'not_scheduled_cycle_or_offsite_or_restoration',
+                  'historical_correction_not_current_validation' if correction_only else 'latest_verification_only'])
+    result.update(state='unknown', reason='no_verification_receipt', commit=None,
+                  remote_commit=None, origin=None, correction='none', failure_at=None,
+                  correction_link_verified=False)
+    if not isinstance(log, str) or len(log.encode()) > 524288:
+        result['collection_error'] = 'bounded_log_unavailable'
+        return result
+    pattern = (r'\[([^\]]+)\] git publication verified: origin=(interactive|worker) '
+               r'commit=([a-f0-9]{40}) remote_commit=([a-f0-9]{40}) '
+               r'correction=(none|hacs_documentation_references) failure_at=(none|[^\s]+)')
+    found = []
+    for line in log.splitlines():
+        if 'git publication verified:' not in line:
+            continue
+        match = re.fullmatch(pattern, line) if len(line) <= 512 else None
+        when = stamp(match[1]) if match else None
+        if (match is None or when is None or when > now or match[3] != match[4]
+                or (match[5] == 'none' and match[6] != 'none')
+                or (match[5] != 'none' and (stamp(match[6]) is None or stamp(match[6]) >= when))
+                or (found and when < stamp(found[-1][1]))):
+            result.update(reason='verification_receipt_invalid', collection_error='receipt_invalid_or_conflicting')
+            return result
+        found.append(match)
+    if correction_only:
+        found = [row for row in found if row[5] != 'none']
+        result['reason'] = 'no_correction_receipt'
+    if not found:
+        return result
+    row = found[-1]
+    result.update(git_evidence_envelope(result['source'], now, row[1], coverage=result['coverage']))
+    result.update(state='observed', reason='remote_commit_compared_by_producer', origin=row[2],
+                  commit=row[3], remote_commit=row[4], correction=row[5],
+                  failure_at=None if row[6] == 'none' else row[6])
+    if row[5] != 'none':
+        result['correction_link_verified'] = bool(
+            diagnosis.get('state') == 'observed' and diagnosis.get('cause') == row[5]
+            and stamp(diagnosis.get('failure_at')) == stamp(row[6]))
+        if not result['correction_link_verified']:
+            result['correction_link_reason'] = 'matching_failure_diagnosis_not_proven'
+    return result
+
+
 def correct_backups(base, log, now, projection=None, projection_error=None, historical=None):
     """Keep original fields/receipts; add explicitly scoped, conservative views."""
     value = copy.deepcopy(base)
@@ -187,6 +297,9 @@ def correct_backups(base, log, now, projection=None, projection_error=None, hist
         'status': 'unknown', 'finished_at': None,
         'candidate_source': 'git_backup.result', 'candidate_is_last_worker_cycle': True}
     git['last_observed_publication'] = pub
+    git['validation_diagnosis'] = validation_diagnosis(log, now)
+    git['verified_publication'] = verified_publication(log, now, git['validation_diagnosis'])
+    git['last_verified_correction'] = verified_publication(log, now, git['validation_diagnosis'], correction_only=True)
     git['summary'] = {'state': relation, 'reason': reason,
                       'overall_health': 'unknown',
                       'scheduled_success_proven': False,
