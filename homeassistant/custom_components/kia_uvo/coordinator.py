@@ -730,11 +730,16 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             try:
                 await self._async_poll_vehicle(vehicle_id, mode=mode)
             except AuthenticationError as err:
+                # The token is only repaired (refresh or re-login) by the next
+                # cycle's token check, which raises ConfigEntryAuthFailed itself
+                # if the credentials are bad.
                 auth_failures += 1
                 failed.add(vehicle_id)
                 self._log_vehicle_failure(vehicle_id, err)
-                if not is_br and auth_failures == len(self.vehicle_manager.vehicles):
-                    raise ConfigEntryAuthFailed(err) from err
+                if auth_failures == len(self.vehicle_manager.vehicles):
+                    raise UpdateFailed(
+                        f"Authentication failed for every vehicle: {err}"
+                    ) from err
             except RateLimitingError as err:
                 delay = (
                     HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
@@ -1926,7 +1931,8 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
         self._sync_vehicle_enabled_states()
 
     def _sync_vehicle_enabled_states(self) -> None:
-        """Stop polling vehicles whose device the user disabled in Home Assistant."""
+        """Stop polling vehicles whose device the user disabled in HA."""
+        assert self.config_entry is not None
         # Import lazily so the coordinator remains loadable in minimal tests.
         from homeassistant.helpers import device_registry as dr
 
@@ -1935,8 +1941,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             identifiers = {(DOMAIN, vehicle_id)}
             if vehicle.VIN:
                 identifiers.add((DOMAIN, f"vin:{vehicle.VIN}"))
-            device = registry.async_get_device(identifiers=identifiers)
-            if device is not None and device.disabled:
+            devices = registry.async_get_devices(
+                identifiers=identifiers, config_entry_id=self.config_entry.entry_id
+            )
+            if any(device.disabled for device in devices):
                 self.vehicle_manager.disable_vehicle(vehicle_id)
             else:
                 self.vehicle_manager.enable_vehicle(vehicle_id)
@@ -2348,6 +2356,29 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             "set charging current",
         )
 
+    async def async_set_charge_alarm_before(
+        self, vehicle_id: str, minutes: int, enabled: bool
+    ) -> None:
+        """Toggle one charge-complete alarm offset, preserving the others.
+
+        The offsets are independent flags, not a radio preset (kia_uvo#1909);
+        an unknown sibling flag (= None) is sent as off.
+        """
+        vehicle = self.vehicle_manager.vehicles[vehicle_id]
+        flags = {
+            10: bool(vehicle.ev_charge_complete_alarm_before_10min),
+            20: bool(vehicle.ev_charge_complete_alarm_before_20min),
+            30: bool(vehicle.ev_charge_complete_alarm_before_30min),
+        }
+        flags[minutes] = enabled
+        await self._async_send_action(
+            vehicle_id,
+            lambda: self.vehicle_manager.set_charge_alarm(
+                vehicle_id, flags[10], flags[20], flags[30]
+            ),
+            "set charge alarm",
+        )
+
     async def async_schedule_charging_and_climate(
         self, vehicle_id: str, schedule_options: ScheduleChargingClimateRequestOptions
     ) -> None:
@@ -2611,8 +2642,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
 
     def _save_token_if_changed(self) -> None:
         """Persist a changed token; must run on the Home Assistant loop."""
-        new_token = self.vehicle_manager.token.to_dict()
         config_entry = self.config_entry
+        assert config_entry is not None
+        assert self.vehicle_manager.token is not None
+        new_token = self.vehicle_manager.token.to_dict()
         # Only update if token actually changed
         if new_token and new_token != config_entry.data.get(CONF_TOKEN):
             updated_data = {**config_entry.data, CONF_TOKEN: new_token}
