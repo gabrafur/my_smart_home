@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import resource
 import stat
 import sys
 import tempfile
@@ -14,6 +15,13 @@ import tempfile
 REPOSITORIES = {"alandtse/alexa_media_player", "Hyundai-Kia-Connect/kia_uvo"}
 STORES = ("marketplace.repositories", "hacs.repositories")
 MAX_BYTES = 8 * 1024 * 1024
+
+
+def apply_process_limits():
+    for kind, wanted in [(resource.RLIMIT_AS, 128 * 1024 * 1024), (resource.RLIMIT_CPU, 4)]:
+        soft, hard = resource.getrlimit(kind)
+        limit = min([wanted] + [n for n in (soft, hard) if n != resource.RLIM_INFINITY])
+        resource.setrlimit(kind, (limit, limit))
 
 
 def read_store(path):
@@ -112,4 +120,5 @@ def operate(request, base=Path("/config/.storage")):
 
 
 if __name__ == "__main__":
+    apply_process_limits()
     print(json.dumps(operate(json.load(sys.stdin))))

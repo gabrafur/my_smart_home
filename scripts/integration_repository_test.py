@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -107,6 +109,15 @@ class RepositoryAdapterTests(unittest.TestCase):
         real = self.base / "real.json";self.path.rename(real);self.path.symlink_to(real)
         with self.assertRaises(OSError):
             self.call("snapshot")
+
+    def test_helper_enforces_address_space_and_cpu_without_cgroup_support(self):
+        result = subprocess.run([sys.executable, "-B", "-c",
+            "import integration_repository as a,resource,json;a.apply_process_limits();"
+            "print(json.dumps([resource.getrlimit(resource.RLIMIT_AS),resource.getrlimit(resource.RLIMIT_CPU)]))"],
+            cwd=Path(__file__).parent, capture_output=True, text=True, check=True)
+        limits = json.loads(result.stdout)
+        self.assertLessEqual(limits[0][0], 128 * 1024 * 1024)
+        self.assertLessEqual(limits[1][0], 4)
 
 
 if __name__ == "__main__":

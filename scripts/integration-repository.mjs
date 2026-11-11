@@ -47,6 +47,7 @@ export function restoreRepository(repository, backupDir, target, command = execF
   if (fs.realpathSync(storage) !== storage) throw new Error("repository_storage_symlink_refused");
   return execute(["run", "--rm", "-i", "--network", "none", "--read-only", "--cap-drop=ALL",
     "--security-opt", "no-new-privileges", "--memory", "128m", "--cpus", "0.25", "--pids-limit", "16",
+    "--ulimit", "cpu=4:4",
     "--mount", `type=bind,source=${storage},target=/config/.storage`, "--entrypoint", "python", image,
     "-I", "-B", "-c", source], input, command);
 }

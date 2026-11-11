@@ -11,7 +11,7 @@ const repository = "alandtse/alexa_media_player";
 test("Marketplace scoped storage, stale identity, foreign updates and atomic failures", () => {
   const result = spawnSync("python3", ["-B", "-m", "unittest", "discover", "-s", "scripts", "-p", "integration_repository_test.py"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Ran 8 tests/);
+  assert.match(result.stderr, /Ran 9 tests/);
 });
 
 test("repository adapter refuses unknown inputs and snapshots only the selected record", (t) => {
@@ -40,6 +40,7 @@ test("rollback requires stopped HA and a bounded helper with no network or capab
     assert.ok(args.includes("--cap-drop=ALL"));assert.ok(args.includes("no-new-privileges"));
     assert.equal(args[args.indexOf("--network") + 1], "none");
     assert.ok(args.includes("--memory"));assert.ok(args.includes("--pids-limit"));
+    assert.ok(args.includes("cpu=4:4"));
     assert.equal(JSON.parse(options.input).mode, "restore");
     return '{"state":"own_repository_restored","other_records_preserved":true}';
   };
