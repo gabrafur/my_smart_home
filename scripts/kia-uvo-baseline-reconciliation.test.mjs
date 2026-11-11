@@ -46,6 +46,18 @@ test('bounded inventory hashes source, excludes bytecode, and rejects symlinks, 
  fs.linkSync(path.join(dir,'manifest.json'),bad);assert.throws(()=>inventoryBaseline(dir));fs.unlinkSync(bad);
  fs.writeFileSync(bad,Buffer.alloc(262145));assert.throws(()=>inventoryBaseline(dir));
 });
+test('inventory includes upstream high resolution branding without admitting unsafe names',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'kia-brand-baseline-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ fs.mkdirSync(path.join(dir,'brand'));
+ fs.writeFileSync(path.join(dir,'brand/icon@2x.png'),'upstream branding');
+ assert.deepEqual(inventoryBaseline(dir),{'brand/icon@2x.png':sha('upstream branding')});
+ fs.writeFileSync(path.join(dir,'brand/icon@2x.png'),'changed branding');
+ assert.deepEqual(inventoryBaseline(dir),{'brand/icon@2x.png':sha('changed branding')});
+ for(const name of ['unsafe name','unsafe\nname','unsafe$name']){
+  const invalid=path.join(dir,name);fs.writeFileSync(invalid,'invalid');
+  assert.throws(()=>inventoryBaseline(dir),/baseline_name_invalid/);fs.unlinkSync(invalid);
+ }
+});
 test('untrusted or mismatched attestation cannot read archive, token or runtime',async()=>{
  let calls=0;const deny=()=>{calls++;throw Error('unexpected');};
  const result=await currentBaselineReconciled({repoRoot:process.cwd(),previousRaw,candidate,readToken:deny,

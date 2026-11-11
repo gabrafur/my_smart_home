@@ -25,7 +25,7 @@ export function inventoryBaseline(directory){
   for(const name of fs.readdirSync(dir).sort()){
    if(++entries>256||prefix.length>160)throw Error('baseline_inventory_limit');
    if(name==='__pycache__'||name.endsWith('.pyc'))continue;
-   if(!/^[A-Za-z0-9_.-]+$/.test(name)||name==='.'||name==='..')throw Error('baseline_name_invalid');
+   if(!/^[A-Za-z0-9_.@-]+$/.test(name)||name==='.'||name==='..')throw Error('baseline_name_invalid');
    const p=path.join(dir,name),s=fs.lstatSync(p),rel=prefix+name;
    if(s.isSymbolicLink())throw Error('baseline_symlink');
    if(s.isDirectory()){visit(p,rel+'/');continue;}
