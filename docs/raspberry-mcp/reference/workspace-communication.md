@@ -13,6 +13,15 @@ habilitada e revogação observada como ausente. Esquema ou lease desconhecidos,
 peer não confirmado e evidência vencida mantêm o gate fechado. A concessão
 administrativa continua independente; prazo nulo de workspace não a habilita.
 
+A projeção final preserva essa distinção: prazo nulo exige esquema e lease v2
+exatos, admissão canônica de workspace ativa e evidência recente dessa fonte
+sem erro; uma falha parcial em outro domínio não substitui esse diagnóstico.
+Como o frontend mantém módulos ESM em memória, publicar os arquivos e validar
+seus hashes não comprova que o processo carregou a nova projeção. Depois do
+carregamento pelo ciclo de vida existente do frontend, o aceite funcional exige
+uma resposta MCP real com as ações de workspace elegíveis e a administração
+fechada; cotas, reconciliação e confirmações da interface continuam valendo.
+
 O snapshot usa o lock existente em modo de leitura e agrega os dois ledgers,
 incluindo envios históricos da política legada. Não cria banco ou tabela,
 não envia RPC e não renova o prazo legado. Elegibilidade de metadados continua

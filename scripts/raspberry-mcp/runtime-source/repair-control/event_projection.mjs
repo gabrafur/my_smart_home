@@ -259,8 +259,12 @@ export function finalizeOperatingPolicy(policy, catalogue, now=Date.now()) {
    const workspace=action.role==='workspace_task';
    const expires=workspace?value.authority?.workspace_expires_at:(value.authority?.administrative_expires_at??value.authority?.expires_at);
    const active=workspace?value.authority?.workspace_admission_active:value.authority?.admission_active;
-   if(active!==true||value.authority?.revoked===true||
-     typeof expires!=='number'||!Number.isFinite(expires)||now>=expires*1000||
+   const persistentWorkspace=workspace&&expires===null&&active===true&&value.authority?.revoked===false&&
+     value.authority?.task_policy_schema==='raspberry-task-policy-v2'&&
+     value.authority?.task_policy_lease_kind==='persistent_revocable'&&
+     value.evidence?.task_admission?.state==='observed'&&value.evidence?.task_admission?.collection_error===null;
+   const temporalActive=persistentWorkspace||(typeof expires==='number'&&Number.isFinite(expires)&&now<expires*1000);
+   if(active!==true||value.authority?.revoked===true||!temporalActive||
      !Number.isFinite(at)||at>now||now-at>120000){
     action.state='blocked';action.reason='fresh_existing_admission_required';
    }
