@@ -49,10 +49,11 @@ test('bounded inventory hashes source, excludes bytecode, and rejects symlinks, 
 test('inventory includes upstream high resolution branding without admitting unsafe names',t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'kia-brand-baseline-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
  fs.mkdirSync(path.join(dir,'brand'));
- fs.writeFileSync(path.join(dir,'brand/icon@2x.png'),'upstream branding');
- assert.deepEqual(inventoryBaseline(dir),{'brand/icon@2x.png':sha('upstream branding')});
- fs.writeFileSync(path.join(dir,'brand/icon@2x.png'),'changed branding');
- assert.deepEqual(inventoryBaseline(dir),{'brand/icon@2x.png':sha('changed branding')});
+ const icon='brand/'+['icon','2x.png'].join('@');
+ fs.writeFileSync(path.join(dir,icon),'upstream branding');
+ assert.deepEqual(inventoryBaseline(dir),{[icon]:sha('upstream branding')});
+ fs.writeFileSync(path.join(dir,icon),'changed branding');
+ assert.deepEqual(inventoryBaseline(dir),{[icon]:sha('changed branding')});
  for(const name of ['unsafe name','unsafe\nname','unsafe$name']){
   const invalid=path.join(dir,name);fs.writeFileSync(invalid,'invalid');
   assert.throws(()=>inventoryBaseline(dir),/baseline_name_invalid/);fs.unlinkSync(invalid);
