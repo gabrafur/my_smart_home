@@ -5,6 +5,20 @@ quando a política Root `workspace_thread_communication` estiver habilitada.
 `codex_task_list` informa essa admissão e seu prazo. A aprovação de comunicação
 não transfere permissões de execução entre threads nem renova a concessão.
 
+Os metadados de manutenção selecionam a política vigente por `task_policy`
+em modo de observação. Uma concessão `raspberry-task-policy-v2` com
+`lease_kind=persistent_revocable` pode publicar prazo nulo para workspace,
+mas só fica elegível com prova de peer confirmada, evidência recente, comunicação
+habilitada e revogação observada como ausente. Esquema ou lease desconhecidos,
+peer não confirmado e evidência vencida mantêm o gate fechado. A concessão
+administrativa continua independente; prazo nulo de workspace não a habilita.
+
+O snapshot usa o lock existente em modo de leitura e agrega os dois ledgers,
+incluindo envios históricos da política legada. Não cria banco ou tabela,
+não envia RPC e não renova o prazo legado. Elegibilidade de metadados continua
+sujeita ao preflight atômico, às cotas, à reconciliação e às confirmações da
+interface; não comprova entrega, execução ou recuperação funcional.
+
 Use `codex_task_send` com uma nova referência de operação e o UUID conhecido
 da destinatária sem hífens em `task_id`. Um registro de tarefa existente com
 esse ID sempre tem prioridade; não há fallback para contornar sua admissão.

@@ -1,4 +1,5 @@
 """Pure synthetic policy tests; no Root/runtime/network/services or DB files."""
+import ast
 import contextlib
 import copy
 import datetime as dt
@@ -151,13 +152,37 @@ class OperatingPolicy(unittest.TestCase):
   text=json.dumps(self.project(d,f));self.assertNotIn('PRIVATE_SENTINEL',text)
 
 
+
+ def test_persistent_workspace_requires_exact_fresh_admission_and_never_grants_admin(self):
+  f=facts();f.update(expires_at=None,task_policy_schema='raspberry-task-policy-v2',
+   task_policy_lease_kind='persistent_revocable',configured=False,admission_active=False,
+   administrative_expires_at=None)
+  d=data();d['administrative_delegation']=dict(configured=False,admission_active=False)
+  out=self.project(d=d,f=f);a=actions(out)
+  self.assertEqual(a['prepare_workspace_task']['state'],'ready')
+  self.assertEqual(a['execute_existing_workspace_task']['state'],'ready')
+  self.assertEqual(a['prepare_scoped_administrative_task']['state'],'blocked')
+  self.assertEqual(a['execute_existing_scoped_task']['state'],'blocked')
+  self.assertEqual(out['authority']['task_policy_schema'],'raspberry-task-policy-v2')
+  self.assertEqual(out['authority']['task_policy_lease_kind'],'persistent_revocable')
+  for patch in [dict(task_policy_schema=None),dict(task_policy_lease_kind='finite'),
+   dict(workspace_admission_active=False),dict(workspace_configured=False),dict(revoked=None),
+   dict(observed_at=dt.datetime.fromtimestamp(NOW-121,dt.timezone.utc).isoformat()),
+   dict(observed_at=dt.datetime.fromtimestamp(NOW+1,dt.timezone.utc).isoformat())]:
+   with self.subTest(patch=patch):
+    self.assertEqual(actions(self.project(d=d,f=dict(f,**patch)))['execute_existing_workspace_task']['state'],'blocked')
+  # Even independently asserted administration cannot use a workspace null lease.
+  d['administrative_delegation']=dict(configured=True,admission_active=True)
+  self.assertEqual(actions(self.project(d=d,f=dict(f,configured=True,admission_active=True)))['execute_existing_scoped_task']['reason'],'existing_admission_expired_or_unknown')
+
 class ReadonlySnapshot(unittest.TestCase):
  def test_snapshot_uses_existing_policy_and_readonly_SQL_not_store_or_RPC(self):
   state=mock.MagicMock();(state/'revoked').exists.return_value=False
   policy=dict(enabled=True,expires_at=NOW+100,max_sends_per_24h=48,minimum_spacing_seconds=60,
               admin_delegation=dict(task_key_prefix='approved-admin-',enabled=True,expires_at=NOW+50))
   tasks=types.SimpleNamespace(STATE=state,LEGACY_DB=Path('/synthetic/legacy.sqlite3'),UID=1001,ADMIN_DELEGATION=policy['admin_delegation'],
-   locked=mock.Mock(return_value=contextlib.nullcontext()),policy=mock.Mock(return_value=(policy,{})),
+   locked=mock.Mock(return_value=contextlib.nullcontext()),task_policy=mock.Mock(return_value=(policy,{})),
+   policy=mock.Mock(side_effect=AssertionError('v1 metadata route must not be used')),
    read=mock.Mock(),legacy_summary=mock.Mock(return_value={'busy':0,'count':2,'latest':NOW-61}))
   connection=mock.MagicMock()
   # PRAGMA, BEGIN then eight fixed aggregate SELECTs, including workspace tasks.
@@ -171,11 +196,59 @@ class ReadonlySnapshot(unittest.TestCase):
    result=m.operating_admission_snapshot(tasks,object(),NOW)
   self.assertEqual(result['state'],'observed');self.assertEqual(result['shared_sends_last_24h'],3)
   self.assertEqual(result['remaining_sends'],45);tasks.locked.assert_called_once_with(read_only=True)
+  tasks.task_policy.assert_called_once_with(mock.ANY,observation=True);tasks.policy.assert_not_called()
   self.assertTrue(result['workspace_admission_active']);self.assertTrue(result['admission_active'])
   self.assertEqual(result['workspace_tasks'],2)
   self.assertIn('?mode=ro',connect.call_args.args[0]);self.assertTrue(connect.call_args.kwargs['uri'])
   statements=[call.args[0]for call in connection.execute.call_args_list]
   self.assertTrue(all(sql.startswith(('SELECT','PRAGMA query_only=ON','BEGIN'))for sql in statements))
+
+
+
+ def test_v2_peer_required_despite_legacy_observation_only_and_preserves_history(self):
+  for flags,expected in [({'_v2':True,'_observation_only':True},True),
+   ({'_v2':True,'_v2_peer_unconfirmed':True},False),
+   ({'_v2':True,'_v2_peer_unconfirmed':'unknown'},False),({},False)]:
+   with self.subTest(flags=flags):
+    state=mock.MagicMock();(state/'revoked').exists.return_value=False
+    policy=dict(schema='raspberry-task-policy-v2',lease_kind='persistent_revocable',
+     enabled=True,expires_at=None,workspace_thread_communication=True,
+     max_sends_per_24h=48,minimum_spacing_seconds=60,admin_delegation={'enabled':False})
+    tasks=types.SimpleNamespace(STATE=state,LEGACY_DB=Path('/synthetic/legacy.sqlite3'),UID=1001,
+     ADMIN_DELEGATION={'enabled':True,'task_key_prefix':'synthetic-admin-'},
+     locked=mock.Mock(return_value=contextlib.nullcontext()),
+     task_policy=mock.Mock(return_value=(policy,flags)),
+     policy=mock.Mock(side_effect=AssertionError('v1 metadata route must not be used')),
+     read=mock.Mock(),legacy_summary=mock.Mock(return_value={'busy':0,'count':3,'latest':NOW-61}))
+    connection=mock.MagicMock();values=iter([(2,),(NOW-61,),(0,),(0,),(0,),(0,),(1,)])
+    def execute(sql,*args):
+     cursor=mock.Mock()
+     if sql.startswith('SELECT'):cursor.fetchone.return_value=next(values)
+     return cursor
+    connection.execute.side_effect=execute
+    with mock.patch('sqlite3.connect',return_value=connection)as connect,mock.patch('os.path.lexists',return_value=False):
+     result=m.operating_admission_snapshot(tasks,object(),NOW)
+    self.assertEqual(result['state'],'observed');self.assertIs(result['workspace_admission_active'],expected)
+    self.assertFalse(result['configured']);self.assertFalse(result['admission_active'])
+    self.assertEqual(result['shared_sends_last_24h'],5);self.assertEqual(result['remaining_sends'],43)
+    self.assertEqual(result['task_policy_schema'],'raspberry-task-policy-v2')
+    self.assertEqual(result['task_policy_lease_kind'],'persistent_revocable')
+    tasks.locked.assert_called_once_with(read_only=True);tasks.task_policy.assert_called_once_with(mock.ANY,observation=True);tasks.policy.assert_not_called()
+    self.assertIn('?mode=ro',connect.call_args.args[0])
+    self.assertTrue(all(c.args[0].startswith(('SELECT','PRAGMA query_only=ON','BEGIN'))for c in connection.execute.call_args_list))
+
+
+
+class MetadataSelector(unittest.TestCase):
+ def test_broker_uses_version_aware_observation_policy(self):
+  source=Path(__file__).with_name('repair-broker.py').read_text()
+  calls=[n for n in ast.walk(ast.parse(source)) if isinstance(n,ast.Call)
+   and isinstance(n.func,ast.Attribute) and isinstance(n.func.value,ast.Name)
+   and n.func.value.id=='tasks' and n.func.attr in ('policy','task_policy')]
+  self.assertEqual(len(calls),1)
+  self.assertEqual(calls[0].func.attr,'task_policy')
+  self.assertTrue(any(k.arg=='observation' and isinstance(k.value,ast.Constant)
+   and k.value.value is True for k in calls[0].keywords))
 
 
 if __name__=='__main__':unittest.main()

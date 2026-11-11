@@ -37,7 +37,7 @@ class Broker(legacy.Broker):
             data['listed_tool_count'] = len(data['tool_names'])
             data['fixed_repair_catalogue'] = repairs.handle('codex_repair_capabilities',
                                                          {'host': 'raspberry'}, old, tasks)
-            task_policy, temporal = tasks.policy(old, observation=True)
+            task_policy, temporal = tasks.task_policy(old, observation=True)
             delegation = task_policy.get('admin_delegation')
             data['administrative_delegation'] = {
                 'configured': delegation == tasks.ADMIN_DELEGATION,

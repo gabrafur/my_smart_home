@@ -1050,7 +1050,7 @@ def operating_admission_snapshot(tasks, old, now=None):
                   age_seconds=0, state='unknown', collection_error='admission_unavailable',
                   configured=None, admission_active=None, revoked=None, expires_at=None,
                   workspace_configured=None, workspace_admission_active=None, workspace_tasks=None,
-                  administrative_expires_at=None,
+                  administrative_expires_at=None, task_policy_schema=None, task_policy_lease_kind=None,
                   maximum_shared_sends_per_24h=None, minimum_spacing_seconds=None,
                   shared_sends_last_24h=None, remaining_sends=None, spacing_ready=None,
                   unresolved_dispatches=None, terminal_unreconciled=None,
@@ -1060,19 +1060,26 @@ def operating_admission_snapshot(tasks, old, now=None):
                             'existing_atomic_preflight_rechecks_scope_budget_resources_and_identity'])
     try:
         with tasks.locked(read_only=True):
-            policy, legacy = tasks.policy(old, observation=True)
+            policy, legacy = tasks.task_policy(old, observation=True)
+            v2 = policy.get('schema') == 'raspberry-task-policy-v2' or legacy.get('_v2') is True
+            v2_peer_confirmed = (policy.get('schema') == 'raspberry-task-policy-v2' and
+                legacy.get('_v2') is True and legacy.get('_v2_peer_unconfirmed', False) is False)
+            workspace_temporal_active = v2_peer_confirmed if v2 else not legacy.get('_observation_only')
             configured = policy.get('admin_delegation') == tasks.ADMIN_DELEGATION
             revoked = (tasks.STATE / 'revoked').exists()
             result.update(configured=configured, revoked=revoked, expires_at=policy['expires_at'],
+                          task_policy_schema=policy.get('schema'),
+                          task_policy_lease_kind=policy.get('lease_kind', 'finite'),
                           admission_active=configured and policy['enabled'] is True and
                               not legacy.get('_observation_only') and not revoked and
                               policy['admin_delegation'].get('enabled') is True and
                               op_number(policy['admin_delegation'].get('expires_at')) and
                               now < policy['admin_delegation']['expires_at'],
                           administrative_expires_at=policy['admin_delegation'].get('expires_at'),
-                          workspace_configured=True,
+                          workspace_configured=(not v2 or policy.get('workspace_thread_communication') is True),
                           workspace_admission_active=policy['enabled'] is True and
-                              not legacy.get('_observation_only') and not revoked,
+                              workspace_temporal_active and not revoked and
+                              (not v2 or policy.get('workspace_thread_communication') is True),
                           maximum_shared_sends_per_24h=policy['max_sends_per_24h'],
                           minimum_spacing_seconds=policy['minimum_spacing_seconds'])
             path = tasks.STATE / 'jobs.sqlite3'  # Fixed existing module constant.
@@ -1188,7 +1195,12 @@ def operating_policy_v1(data, admission, now=None):
             return 'blocked','existing_admission_revoked'
         if admission.get('revoked') is not False:
             return 'blocked','revocation_observation_required'
-        if not op_number(admission.get('expires_at')) or now >= admission['expires_at']:
+        persistent_workspace = (workspace and admission.get('expires_at', 'missing') is None and
+            admission.get('task_policy_schema') == 'raspberry-task-policy-v2' and
+            admission.get('task_policy_lease_kind') == 'persistent_revocable' and
+            source['state'] == 'observed' and admission.get('workspace_configured') is True and
+            admission.get('workspace_admission_active') is True)
+        if not persistent_workspace and (not op_number(admission.get('expires_at')) or now >= admission['expires_at']):
             return 'blocked','existing_admission_expired_or_unknown'
         if source['state'] != 'observed' or admission.get(configured_field) is not True or (not workspace and delegation.get('configured') is not True):
             return 'blocked','fresh_authority_evidence_required'
@@ -1311,6 +1323,8 @@ def operating_policy_v1(data, admission, now=None):
                        expires_at=number(admission.get('expires_at')),revoked=boolean(admission.get('revoked')),
                        workspace_admission_active=boolean(admission.get('workspace_admission_active')),
                        workspace_expires_at=number(admission.get('expires_at')),
+                       task_policy_schema=admission.get('task_policy_schema') if admission.get('task_policy_schema') == 'raspberry-task-policy-v2' else None,
+                       task_policy_lease_kind=admission.get('task_policy_lease_kind') if admission.get('task_policy_lease_kind') in ('persistent_revocable','finite') else None,
                        administrative_expires_at=number(admission.get('administrative_expires_at')),
                        maximum_shared_sends_per_24h=integer(admission.get('maximum_shared_sends_per_24h')),
                        minimum_spacing_seconds=integer(admission.get('minimum_spacing_seconds')),
