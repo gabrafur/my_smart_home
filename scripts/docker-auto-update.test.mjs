@@ -6,6 +6,7 @@ import test from "node:test";
 import vm from "node:vm";
 import crypto from "node:crypto";
 import { EventEmitter } from "node:events";
+import { spawnSync } from "node:child_process";
 
 import {
   imageChannelsForMode,
@@ -322,18 +323,33 @@ test("requires the live HACS update entity before replacing runtime", () => {
 });
 
 test("persists refreshed Kia credentials through the coordinator config entry", () => {
-  const coordinator = fs.readFileSync(
-    "homeassistant/custom_components/kia_uvo/coordinator.py",
-    "utf8",
-  );
-  assert.match(
-    coordinator,
-    /new_token = self\.vehicle_manager\.token\.to_dict\(\)\n        config_entry = self\.config_entry/,
-  );
-  assert.match(
-    coordinator,
-    /self\.hass\.config_entries\.async_update_entry\(config_entry, data=updated_data\)/,
-  );
+  const result = spawnSync("python3", ["-c", `
+import ast
+from pathlib import Path
+from types import SimpleNamespace
+source = ast.parse(Path('homeassistant/custom_components/kia_uvo/coordinator.py').read_text())
+coordinator = next(n for n in source.body if isinstance(n, ast.ClassDef) and n.name == 'HyundaiKiaConnectDataUpdateCoordinator')
+method = next(n for n in coordinator.body if isinstance(n, ast.FunctionDef) and n.name == '_save_token_if_changed')
+namespace = {'CONF_TOKEN': 'token'}
+exec(compile(ast.Module(body=[method], type_ignores=[]), '<token-persistence>', 'exec'), namespace)
+for token in ({}, {'access': 'old'}, {'access': 'new'}):
+    calls = []
+    original = {'token': {'access': 'old'}, 'other': 'preserved'}
+    entry = SimpleNamespace(data=original.copy())
+    manager = SimpleNamespace(token=SimpleNamespace(to_dict=lambda: token.copy()))
+    entries = SimpleNamespace(async_update_entry=lambda *args, **kwargs: calls.append((args, kwargs)))
+    subject = SimpleNamespace(config_entry=entry, vehicle_manager=manager, hass=SimpleNamespace(config_entries=entries))
+    namespace['_save_token_if_changed'](subject)
+    assert entry.data == original, 'original entry must not be mutated'
+    if token and token != original['token']:
+        assert len(calls) == 1, 'changed token must be persisted once'
+        args, kwargs = calls[0]
+        assert len(args) == 1 and args[0] is entry, 'persist through the coordinator entry'
+        assert kwargs == {'data': {'token': token, 'other': 'preserved'}}, 'retain unrelated entry data'
+    else:
+        assert not calls, 'empty or unchanged tokens must not write'
+`], { encoding: "utf8", timeout: 10_000 });
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
 });
 
 test("requires a fresh healthy cache probe before accepting Kia runtime", () => {
