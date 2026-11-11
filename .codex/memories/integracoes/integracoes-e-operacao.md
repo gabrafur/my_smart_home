@@ -183,7 +183,7 @@ O adaptador iCloud exige allowlist de versões Core e hash do construtor nativo.
 
 <!-- /memory-record -->
 
-<!-- memory-record {"id":"kia-restored-baseline-after-uncertain-promotion","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-11-08","evidence":[{"file":"scripts/kia-uvo-baseline-reconciliation.mjs","sha256":"83ecbe86a03882154bfd693e8d71d1b933a0308a014bfbd57cbf1f42349efe19"},{"file":"docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md","sha256":"3bf746f56f0b4060e46a977e53bce7cc38153ac7caf108bdea6b04e1cd23d8fa"}]} -->
+<!-- memory-record {"id":"kia-restored-baseline-after-uncertain-promotion","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-11-11","evidence":[{"file":"scripts/kia-uvo-baseline-reconciliation.mjs","sha256":"83ecbe86a03882154bfd693e8d71d1b933a0308a014bfbd57cbf1f42349efe19"},{"file":"docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md","sha256":"dbca2545130a5507eaf2775720bcd6ae7c69f5ed83dfa917fec3945a1846888c"}]} -->
 ## Base restaurada após promoção Kia incerta
 
 Uma promoção failed sem efeito conhecido não comprova rollback. Uma candidata diferente pode seguir somente com atestado Root temporário do estado atual, arquivo histórico exato do recibo e nova verificação de arquivos, cadastro da integração e loader antes de aplicar. O atestado não altera o resultado histórico, não libera applying/publicação/cleanup pendentes e não repete a candidata terminal. Adiamentos anteriores à nova aplicação preservam o recibo antigo. A instalação continua no promotor normal com backup e rollback; cadastro Marketplace nativo exige um adaptador de instalação revisado e não reutiliza o rollback HACS legado.
