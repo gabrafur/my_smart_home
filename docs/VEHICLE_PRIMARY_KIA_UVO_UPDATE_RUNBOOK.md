@@ -45,6 +45,21 @@ Reversão exige conferir hashes e restaurar produtor, fluxo e fontes da revisão
 anterior, preservando recibos e solicitações; resultado incerto exige
 reconciliação antes de qualquer nova tentativa.
 
+## Diagnóstico e autenticação do merge Codex
+
+O worker Codex sincroniza atomicamente sua cópia privada de autenticação no
+início de cada merge. Isso evita que um contêiner de longa duração continue
+usando o token copiado quando foi iniciado. A origem e o destino precisam ser
+arquivos regulares protegidos; symlink, permissões abertas, envelope inválido
+ou destino fora do diretório do worker fazem a execução falhar fechada.
+
+Falhas continuam terminais e não são repetidas automaticamente. O recibo e o
+Node-RED expõem apenas `reason_code` e `failure_stage` de vocabulário fechado,
+como `codex_authentication_failed`, sem publicar tokens, URLs, stack ou texto
+interno. O leitor MCP preserva auditoria, merge e promoção como etapas distintas:
+conflito de patch não indica defeito no veículo, e contêiner em execução não
+comprova candidata, promoção ou funcionamento do carro.
+
 ## Cadastro após migração para Marketplace
 
 O leitor compartilhado `scripts/kia-repository-record.mjs` consulta primeiro

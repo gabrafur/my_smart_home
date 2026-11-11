@@ -289,6 +289,8 @@ test("the Kia Codex merge reader exposes a safe terminal lifecycle", () => {
     state: "failed",
     target: "v3.12.0",
     reason: "authentication detail must not reach Node-RED",
+    reason_code: "codex_authentication_failed",
+    failure_stage: "codex_authentication",
     updated_at: "2026-09-09T12:00:19.820Z",
   }));
   const result = spawnSync(readKiaCodexMerge, [], {
@@ -298,7 +300,9 @@ test("the Kia Codex merge reader exposes a safe terminal lifecycle", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /state=failed target=v3\.12\.0/);
   assert.match(result.stdout, /updated_at=2026-09-09T12:00:19.820Z/);
-  assert.doesNotMatch(result.stdout, /authentication|reason=/);
+  assert.match(result.stdout, /reason_code=codex_authentication_failed/);
+  assert.match(result.stdout, /failure_stage=codex_authentication/);
+  assert.doesNotMatch(result.stdout, /authentication detail/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

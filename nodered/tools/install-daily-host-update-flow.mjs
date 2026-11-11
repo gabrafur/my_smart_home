@@ -365,6 +365,8 @@ if (!text) return null;
 const state = text.match(/\\bstate=(waiting|running|success|failed|unknown)\\b/)?.[1];
 const target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? "unknown";
 const updatedAt = text.match(/\\bupdated_at=([^ ]+)\\b/)?.[1] ?? "unknown";
+const reasonCode = text.match(/\\breason_code=(codex_authentication_failed|codex_auth_sync_failed|codex_execution_failed|worker_restarted|worker_failed_unclassified)\\b/)?.[1] ?? "none";
+const failureStage = text.match(/\\bfailure_stage=(codex_authentication|codex_auth_sync|codex_execution|worker_runtime)\\b/)?.[1] ?? "none";
 if (!state || state === "unknown") {
     if (!TEST_MODE) node.error("kia_uvo_codex_merge_result_unrecognized", msg);
     return null;
@@ -373,6 +375,8 @@ const result = {
     version: 1,
     state,
     target,
+    reason_code: reasonCode,
+    failure_stage: failureStage,
     updated_at: updatedAt,
     test_mode: TEST_MODE,
     observed_at: Date.now()
@@ -394,7 +398,7 @@ if (TEST_MODE) {
     return msg;
 }
 if (state === "failed") {
-    node.error("kia_uvo_codex_merge_failed target=" + target + " updated_at=" + updatedAt, msg);
+    node.error("kia_uvo_codex_merge_failed target=" + target + " reason=" + reasonCode + " stage=" + failureStage + " updated_at=" + updatedAt, msg);
 }
 return null;`;
 

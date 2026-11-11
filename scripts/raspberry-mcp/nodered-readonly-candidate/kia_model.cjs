@@ -1,7 +1,8 @@
 'use strict';
 // Pure fixed-source projection. No I/O, clock reads, imports or exported raw values.
 const SOURCES=['sensor','safe_update','worker_result','merge','promotion','promotion_public','pending','schedule'];
-const REASONS=new Set(['connect_timeout','transport_timeout','dns_resolution_failed','connection_failed','tls_verification_failed','audit_failed_unclassified','invalid_request','working_tree_changed','main_behind_remote','host_update_in_progress','git_publication_failed','candidate_preparation_error','candidate_preflight_error','runtime_application_unconfirmed','candidate_cleanup_error','promotion_stage_unknown']);
+const REASONS=new Set(['connect_timeout','transport_timeout','dns_resolution_failed','connection_failed','tls_verification_failed','audit_failed_unclassified','invalid_request','working_tree_changed','main_behind_remote','host_update_in_progress','git_publication_failed','candidate_preparation_error','candidate_preflight_error','runtime_application_unconfirmed','candidate_cleanup_error','promotion_stage_unknown','codex_authentication_failed','codex_auth_sync_failed','codex_execution_failed','worker_restarted','worker_failed_unclassified']);
+const MERGE_STAGES=new Set(['codex_authentication','codex_auth_sync','codex_execution','worker_runtime']);
 const STAGE_EFFECTS={candidate_validation:'runtime_not_attempted',candidate_extract:'runtime_not_attempted',candidate_preflight:'runtime_not_attempted',runtime_apply:'runtime_outcome_unknown',git_publication:'publication_outcome_unknown',candidate_cleanup:'cleanup_outcome_unknown'};
 const RESULTS={sensor:['unknown','compatible','conflict','applying','applied','rollback','failed'],safe_update:['unknown','compatible','conflict','applying','applied','rollback','failed','ready'],worker_result:['unknown','running','compatible','conflict','applied','rollback','failed','deferred','unavailable'],merge:['waiting','running','success','failed'],promotion:['deferred','applying','runtime_applied','applied_pending_git','main_published','completed','failed'],promotion_public:['deferred','applying','runtime_applied','applied_pending_git','main_published','completed','failed']};
 const record=x=>x!==null&&typeof x==='object'&&!Array.isArray(x)&&Object.getPrototypeOf(x)===Object.prototype;
@@ -54,6 +55,10 @@ function row(name,envelope,now){
    out.coverage.push('effect_state_current_attempt_only_not_current_service_or_vehicle_health');
    if(typeof d.failure_stage==='string'&&Object.hasOwn(STAGE_EFFECTS,d.failure_stage)&&d.effect_state===STAGE_EFFECTS[d.failure_stage]){out.failure_stage=d.failure_stage;out.effect_state=d.effect_state;}
    else if(d.failure_stage!=null)out.coverage.push('failure_stage_or_effect_unrecognized_or_inconsistent');
+  }
+  if(name==='merge'){
+   if(MERGE_STAGES.has(d.failure_stage))out.failure_stage=d.failure_stage;
+   else if(d.failure_stage!=null)out.coverage.push('failure_stage_unrecognized');
   }
   out.request_id=id(d.request_id);out.mode=['audit','install'].includes(d.mode)?d.mode:null;
   out.installed_version=version(d.installed_version);out.target_version=version(d.latest_version)||version(d.target);

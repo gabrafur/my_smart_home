@@ -16,6 +16,7 @@ const patchPath = process.env.KIA_UVO_MERGE_PATCH_PATH || "/run/kia-uvo-merge/ca
 const lockPath = process.env.KIA_UVO_MERGE_LOCK_PATH || "/run/kia-uvo-merge/codex-agent.lock";
 const maxRuntimeMs = Number(process.env.KIA_UVO_MERGE_TIMEOUT_MS || 3 * 60 * 60 * 1000);
 const pushEnabled = process.env.KIA_UVO_MERGE_PUSH !== "false";
+const codexAuthSource = process.env.KIA_UVO_CODEX_AUTH_SOURCE || "/worker-auth/codex/auth.json";
 const allowedPrefixes = ["homeassistant/custom_components/kia_uvo/"];
 const allowedExact = new Set(["scripts/kia-uvo-upstream.json"]);
 const requiredMarkers = [
@@ -61,9 +62,43 @@ function readStatus() {
 export function startupStatusPatch(existing) {
   if (["success", "failed"].includes(existing?.state)) return null;
   if (existing?.state === "running") {
-    return { ...existing, state: "failed", reason: "worker_restarted", finished_at: new Date().toISOString() };
+    return { ...existing, state: "failed", reason: "worker_restarted", reason_code: "worker_restarted",
+      failure_stage: "worker_runtime", finished_at: new Date().toISOString() };
   }
   return { state: "waiting" };
+}
+export function refreshCodexAuth(source = codexAuthSource, destination = path.join(process.env.CODEX_HOME || "", "auth.json")) {
+  if (!path.isAbsolute(source) || !path.isAbsolute(destination)) throw new Error("Codex auth paths must be absolute");
+  const sourceStat = fs.lstatSync(source);
+  if (!sourceStat.isFile() || sourceStat.isSymbolicLink() || sourceStat.size < 2 || sourceStat.size > 1024 * 1024 ||
+      (sourceStat.mode & 0o077) !== 0) throw new Error("Codex auth source is not a protected regular file");
+  const parent = path.dirname(destination);
+  const parentStat = fs.lstatSync(parent);
+  if (!parentStat.isDirectory() || parentStat.isSymbolicLink() || parentStat.uid !== process.getuid()) {
+    throw new Error("Codex auth destination is not owned by the worker");
+  }
+  if (fs.existsSync(destination)) {
+    const destinationStat = fs.lstatSync(destination);
+    if (!destinationStat.isFile() || destinationStat.isSymbolicLink() || destinationStat.uid !== process.getuid()) {
+      throw new Error("Codex auth destination is not a protected regular file");
+    }
+  }
+  const payload = fs.readFileSync(source);
+  const parsed = JSON.parse(payload.toString("utf8"));
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Codex auth source has an invalid envelope");
+  const temporary = path.join(parent, `.auth.json.${process.pid}.${Date.now()}.tmp`);
+  try {
+    fs.writeFileSync(temporary, payload, { mode: 0o600, flag: "wx" });
+    fs.renameSync(temporary, destination);
+  } finally {
+    fs.rmSync(temporary, { force: true });
+  }
+}
+export function classifyAgentFailure(stderr = "") {
+  if (/refresh token (?:has already been|was already) used|token_expired|access token could not be refreshed|401 Unauthorized/i.test(stderr)) {
+    return { reason_code: "codex_authentication_failed", failure_stage: "codex_authentication" };
+  }
+  return { reason_code: "codex_execution_failed", failure_stage: "codex_execution" };
 }
 function changedPaths(worktree) {
   const tracked = git(["diff", "--name-only", "-z", "HEAD"], worktree).split("\0").filter(Boolean);
@@ -80,14 +115,25 @@ function killChild(child) { try { process.kill(-child.pid, "SIGKILL"); } catch {
 function runAgent(prompt, worktree) {
   const args = ["-n", lockPath, "codex", "exec", "--ephemeral", "--model", "gpt-5.6-terra", "--config", 'model_reasoning_effort="high"', "--approve-for-me", "-C", worktree, "-"];
   return new Promise((resolve) => {
+    try {
+      refreshCodexAuth();
+    } catch (error) {
+      resolve({ ok: false, error, reason_code: "codex_auth_sync_failed", failure_stage: "codex_auth_sync" });
+      return;
+    }
     let settled = false;
-    const child = spawn("flock", args, { cwd: worktree, detached: true, env: { ...process.env, CI: "1", GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "remote.origin.pushurl", GIT_CONFIG_VALUE_0: "kia-uvo-codex-push-disabled" }, stdio: ["pipe", "inherit", "inherit"] });
+    let stderrTail = "";
+    const child = spawn("flock", args, { cwd: worktree, detached: true, env: { ...process.env, CI: "1", GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "remote.origin.pushurl", GIT_CONFIG_VALUE_0: "kia-uvo-codex-push-disabled" }, stdio: ["pipe", "inherit", "pipe"] });
     activeChild = child;
+    child.stderr.on("data", (chunk) => {
+      process.stderr.write(chunk);
+      stderrTail = (stderrTail + chunk.toString("utf8")).slice(-32 * 1024);
+    });
     child.stdin.on("error", (error) => log(`prompt stream closed early: ${error.message}`));
     child.stdin.end(prompt);
     const timeout = setTimeout(() => { log("Codex merge timed out; terminating"); killChild(child); }, maxRuntimeMs);
-    child.once("error", (error) => { if (!settled) { settled = true; clearTimeout(timeout); activeChild = undefined; resolve({ ok: false, error }); } });
-    child.once("close", (code, signal) => { if (!settled) { settled = true; clearTimeout(timeout); activeChild = undefined; resolve({ ok: code === 0, code, signal }); } });
+    child.once("error", (error) => { if (!settled) { settled = true; clearTimeout(timeout); activeChild = undefined; resolve({ ok: false, error, ...classifyAgentFailure(stderrTail) }); } });
+    child.once("close", (code, signal) => { if (!settled) { settled = true; clearTimeout(timeout); activeChild = undefined; resolve({ ok: code === 0, code, signal, ...(code === 0 ? {} : classifyAgentFailure(stderrTail)) }); } });
   });
 }
 function validateCandidate(worktree, target, upstreamCommit) {
@@ -123,7 +169,12 @@ export async function runMerge(rawTarget) {
     git(["remote", "set-url", "origin", remote], worktree);
     const prompt = `${fs.readFileSync(promptPath, "utf8")}\n\n## Alvo desta execução\n\n- versão: \`${target}\`\n- commit oficial da tag: \`${upstreamCommit}\`\n`;
     const agent = await runAgent(prompt, worktree);
-    if (!agent.ok) throw new Error(`Codex failed code=${agent.code ?? "start"} signal=${agent.signal ?? "none"}${agent.error ? `: ${agent.error.message}` : ""}`);
+    if (!agent.ok) {
+      const error = new Error(`Codex failed code=${agent.code ?? "start"} signal=${agent.signal ?? "none"}${agent.error ? `: ${agent.error.message}` : ""}`);
+      error.reason_code = agent.reason_code;
+      error.failure_stage = agent.failure_stage;
+      throw error;
+    }
     if (git(["rev-parse", "HEAD"], worktree) !== baseline) throw new Error("Codex created a commit despite the worker contract");
     const changed = validateCandidate(worktree, target, upstreamCommit);
     git(["add", "--", ...changed], worktree);
@@ -140,7 +191,9 @@ export async function runMerge(rawTarget) {
     log(`Kia UVO merge candidate ready target=${target} commit=${commit.slice(0, 12)} pushed=${pushEnabled} branch=${branch}`);
     return true;
   } catch (error) {
-    updateStatus({ state: "failed", target, reason: String(error.message).slice(0, 800), finished_at: new Date().toISOString() });
+    updateStatus({ state: "failed", target, reason: String(error.message).slice(0, 800),
+      reason_code: error.reason_code || "worker_failed_unclassified",
+      failure_stage: error.failure_stage || "worker_runtime", finished_at: new Date().toISOString() });
     log(`Kia UVO merge failed target=${target}: ${error.message}`);
     return false;
   } finally {
