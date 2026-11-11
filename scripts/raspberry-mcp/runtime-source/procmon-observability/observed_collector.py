@@ -19,11 +19,160 @@ WALL_IO_ENVELOPE_SECONDS = 15
 REASONS = frozenset(('not_regular','oversize','stat_format','negative','identity_format',
     'boot_format','output_limit','interrupted_scan_limit','unsafe_interrupted_sample',
     'interrupted_archive_full','unsafe_interrupted_archive','interrupted_sample_changed',
-    'interrupted_archive_conflict','unexpected_file_count','unexpected_history_entry',
+    'interrupted_archive_conflict','interrupted_rename_unavailable','collector_mutex_not_held','unexpected_file_count','unexpected_history_entry',
     'unsafe_history','reservation_exceeds_budget','clock_rollback','storage_budget',
     'unsafe_state','disk_pressure','duplicate_sample_no_retry','collection_interrupted'))
 KINDS = frozenset(('ValueError','PermissionError','FileNotFoundError','TimeoutError',
                   'MemoryError','OSError','BlockingIOError','JSONDecodeError'))
+
+
+"""Candidate wrapper-only preservation; no collector replay or evidence deletion."""
+import hashlib
+import os
+from pathlib import Path
+import re
+import stat
+
+REPEATED_DIRECTORY='interrupted-repeated'
+REPEATED_NAME=re.compile(
+ r'(?:history--[0-9]{20}-[a-f0-9]{16}\.json|hours--[0-9]{12}\.json|state--last\.json|public--(?:snapshot|health)\.json)'
+ r'--[a-f0-9]{64}--d([a-f0-9]{16})-i([a-f0-9]{16})\.tmp')
+
+def _preserve_need(ok,reason):
+ if not ok:raise ValueError(reason)
+def _preserve_identity(s):
+ return (s.st_dev,s.st_ino,s.st_uid,s.st_gid,stat.S_IMODE(s.st_mode),s.st_nlink,
+         s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+
+def _archive_inventory(mod,directory,repeated=False):
+ if not os.path.lexists(directory):return (0,0)
+ info=directory.lstat()
+ _preserve_need(stat.S_ISDIR(info.st_mode) and info.st_uid==os.geteuid()
+  and stat.S_IMODE(info.st_mode)==0o700,'unsafe_interrupted_archive')
+ count=size=0
+ with os.scandir(directory) as entries:
+  for entry in entries:
+   info=entry.stat(follow_symlinks=False)
+   match=REPEATED_NAME.fullmatch(entry.name) if repeated else mod.INTERRUPTED_NAME.fullmatch(entry.name)
+   _preserve_need(match is not None and stat.S_ISREG(info.st_mode) and info.st_uid==os.geteuid()
+    and info.st_nlink==1 and info.st_size<=mod.MAX_SAMPLE,'unsafe_interrupted_archive')
+   if repeated:
+    mode=0o640 if entry.name.startswith('public--') else 0o600
+    _preserve_need(stat.S_IMODE(info.st_mode)==mode
+     and int(match.group(1),16)==info.st_dev and int(match.group(2),16)==info.st_ino,
+     'unsafe_interrupted_archive')
+   count+=1;size+=info.st_size
+   _preserve_need(count<=mod.INTERRUPTED_COUNT and size<=mod.INTERRUPTED_CAP,'interrupted_archive_full')
+ return count,size
+
+def _pending_inventory(mod,state):
+ candidates=[]
+ for directory,pattern,mode,limit in (
+  (state/'history',mod.HISTORY_NAME,0o600,mod.MAX_SAMPLE),
+  (state/'hours',mod.HOUR_NAME,0o600,4096),
+  (state,re.compile(r'last\.json'),0o600,mod.MAX_SAMPLE),
+  (state/'public',re.compile(r'(?:snapshot|health)\.json'),0o640,65536)):
+  with os.scandir(directory) as entries:
+   for index,entry in enumerate(entries):
+    _preserve_need(index<2100,'interrupted_scan_limit')
+    if not entry.name.endswith('.tmp') or not pattern.fullmatch(entry.name[:-4]):continue
+    info=entry.stat(follow_symlinks=False)
+    _preserve_need(stat.S_ISREG(info.st_mode) and info.st_uid==os.geteuid() and info.st_nlink==1
+     and stat.S_IMODE(info.st_mode)==mode and info.st_size<=limit,'unsafe_interrupted_sample')
+    section='state' if directory==state else directory.name
+    candidates.append((directory/entry.name,info,section,limit))
+    _preserve_need(len(candidates)<=mod.INTERRUPTED_COUNT,'interrupted_archive_full')
+ return candidates
+
+def _rename_preserved_no_replace(source,target):
+ # Linux/glibc atomic RENAME_NOREPLACE; never check-then-overwrite or copy/unlink.
+ import ctypes
+ import errno
+ libc=ctypes.CDLL(None,use_errno=True)
+ try:rename=libc.renameat2
+ except AttributeError:raise ValueError('interrupted_rename_unavailable') from None
+ rename.argtypes=(ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint)
+ rename.restype=ctypes.c_int
+ if rename(-100,os.fsencode(source),-100,os.fsencode(target),1)!=0:
+  code=ctypes.get_errno()
+  if code==errno.EEXIST:raise ValueError('interrupted_archive_conflict')
+  if code in (errno.ENOSYS,errno.EINVAL):raise ValueError('interrupted_rename_unavailable')
+  raise OSError(code,'interrupted_preservation_unconfirmed')
+
+def _collector_mutex_held(mod,state):
+ path=state/'lock';before=path.lstat()
+ _preserve_need(stat.S_ISREG(before.st_mode) and before.st_uid==os.geteuid()
+  and stat.S_IMODE(before.st_mode)==0o600 and before.st_nlink==1,'collector_mutex_not_held')
+ token='%02x:%02x:%d'%(os.major(before.st_dev),os.minor(before.st_dev),before.st_ino)
+ kernel=mod.limited_read(Path('/proc/locks'),262144).decode('ascii').splitlines()
+ held=False
+ for line in kernel:
+  parts=line.split()
+  if len(parts)>=8 and parts[1:4]==['FLOCK','ADVISORY','WRITE'] and parts[4]==str(os.getpid())    and parts[5]==token and parts[6:]==['0','EOF']:held=True
+ _preserve_need(held and _preserve_identity(path.lstat())==_preserve_identity(before),'collector_mutex_not_held')
+
+def preserve_repeated(mod,original,state=None):
+ """Called only by cycle while its canonical collector flock remains held.
+
+ Both buckets plus ALL pending writes share the original64/8MiB cap. Original
+ collector bytes/regex stay immutable; its original preserve handles all normal
+ paths. Only exact repeated-content conflicts receive separate retained names.
+ """
+ state=Path(mod.STATE if state is None else state)
+ _collector_mutex_held(mod,state)
+ archive=state/'interrupted';bucket=state/REPEATED_DIRECTORY
+ old_count,old_size=_archive_inventory(mod,archive)
+ repeated_count,repeated_size=_archive_inventory(mod,bucket,True)
+ candidates=_pending_inventory(mod,state)
+ _preserve_need(old_count+repeated_count+len(candidates)<=mod.INTERRUPTED_COUNT
+  and old_size+repeated_size+sum(row[1].st_size for row in candidates)<=mod.INTERRUPTED_CAP,
+  'interrupted_archive_full')
+ try:return original(state)
+ except ValueError as error:
+  if error.args!=('interrupted_archive_conflict',):raise
+ # Original preflights ALL targets before its first move. A conflict therefore
+ # leaves every candidate intact. Validate every selected repeat before moving.
+ moves=[]
+ for path,info,section,limit in candidates:
+  _preserve_need(_preserve_identity(path.lstat())==_preserve_identity(info),'interrupted_sample_changed')
+  body=mod.limited_read(path,limit);digest=hashlib.sha256(body).hexdigest()
+  _preserve_need(_preserve_identity(path.lstat())==_preserve_identity(info),'interrupted_sample_changed')
+  name=f'{section}--{path.name[:-4]}--{digest}.tmp';prior=archive/name
+  if not os.path.lexists(prior):continue
+  before=prior.lstat()
+  _preserve_need(stat.S_ISREG(before.st_mode) and before.st_uid==os.geteuid() and before.st_nlink==1
+   and before.st_size==info.st_size and stat.S_IMODE(before.st_mode)==stat.S_IMODE(info.st_mode)
+   and (before.st_dev,before.st_ino)!=(info.st_dev,info.st_ino),'interrupted_archive_conflict')
+  _preserve_need(hashlib.sha256(mod.limited_read(prior,limit)).hexdigest()==digest
+   and _preserve_identity(prior.lstat())==_preserve_identity(before),'interrupted_archive_conflict')
+  _preserve_need(0<=info.st_dev<2**64 and 0<info.st_ino<2**64,'unsafe_interrupted_sample')
+  target=bucket/(name[:-4]+f'--d{info.st_dev:016x}-i{info.st_ino:016x}.tmp')
+  _preserve_need(not os.path.lexists(target),'interrupted_archive_conflict')
+  moves.append((path,info,target,digest))
+ _preserve_need(bool(moves),'interrupted_archive_conflict')
+ if not os.path.lexists(bucket):
+  bucket.mkdir(mode=0o700)
+  parent_fd=mod.os.open(state,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+  try:mod.os.fsync(parent_fd)
+  finally:mod.os.close(parent_fd)
+ _archive_inventory(mod,bucket,True)
+ bucket_info=bucket.lstat()
+ for path,info,target,digest in moves:
+  _preserve_need(_preserve_identity(path.lstat())==_preserve_identity(info)
+   and info.st_dev==bucket_info.st_dev,'interrupted_sample_changed')
+ # No exception path deletes evidence or retries collection.
+ evidence=[]
+ for path,info,target,digest in moves:
+  _preserve_need(_preserve_identity(path.lstat())==_preserve_identity(info),'interrupted_sample_changed')
+  _rename_preserved_no_replace(path,target)
+  for folder in (bucket,path.parent):
+   fd=mod.os.open(folder,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+   try:mod.os.fsync(fd)
+   finally:mod.os.close(fd)
+  row={'collection':'interrupted_sample_preserved','source':str(path.relative_to(state)),
+       'sha256':digest,'bytes':info.st_size,'promoted_to_observation':False,'repeated_content':True}
+  mod.sys.stderr.write(mod.json.dumps(row)+'\n');evidence.append(row)
+ return evidence+original(state)
 
 
 def classification(exc):
@@ -138,7 +287,7 @@ class Observer:
 
         def preserve(*args,**kwargs):
             self.stage='preserve_interrupted'
-            return original_preserve(*args,**kwargs)
+            return preserve_repeated(mod,original_preserve,*args,**kwargs)
 
         def cycle(state=mod.STATE,sampler=mod.collect):
             def observed_sampler():

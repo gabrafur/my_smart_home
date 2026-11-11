@@ -8,7 +8,7 @@
     "raspberry-procmon-acceptance.timer": "a1f3a1cd48671a01d5dfc1cb372d42cde1fb851be8b7064602b93cb12374937e"
   },
   "audit_runtime_source": "../runtime-source/procmon-observability/audit_runtime.py",
-  "audit_runtime_sha256": "ad4e40e235541b3447619975a35da47718f141c8464054e7b0c45589ef4310ce",
+  "audit_runtime_sha256": "e582f8c7144ff1c4108b4204d2d9e3466d63ce2799f76fbb9231a9705882cda3",
   "invocation_audit_source": "../procmon-observability/invocation_audit.py",
   "invocation_audit_sha256": "40731a78e5d3876113a3124946e09b108604546f0bef87e508b1179e018fc783"
 }

@@ -26,6 +26,11 @@ abaixo e `systemd-analyze verify` nos dois arquivos de unidade. Recuse qualquer
 arquivo instalado diferente; faça uma revisão com hashes anterior e proposto
 antes de atualizar uma instalação existente.
 
+O pin `audit_runtime_sha256` acompanha a fonte de referência pública atual.
+Atualizá-lo não altera a cópia separada já instalada em
+`/usr/local/lib/raspberry-procmon-acceptance/audit_runtime.py` nem reexecuta ou
+reescreve as seis capturas históricas.
+
 Com a autorização administrativa ainda válida, o instalador revisado cria
 `/usr/local/lib/raspberry-procmon-acceptance` e
 `/var/lib/raspberry-procmon-acceptance` como `root:root`, modo `0755`, instala

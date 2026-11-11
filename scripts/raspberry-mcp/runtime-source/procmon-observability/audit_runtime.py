@@ -11,7 +11,7 @@ PHASES=frozenset(('bootstrap','state_validation','cycle_validation','sample_proc
 REASONS=frozenset(('not_regular','oversize','stat_format','negative','identity_format',
     'boot_format','output_limit','interrupted_scan_limit','unsafe_interrupted_sample',
     'interrupted_archive_full','unsafe_interrupted_archive','interrupted_sample_changed',
-    'interrupted_archive_conflict','unexpected_file_count','unexpected_history_entry',
+    'interrupted_archive_conflict','interrupted_rename_unavailable','collector_mutex_not_held','unexpected_file_count','unexpected_history_entry',
     'unsafe_history','reservation_exceeds_budget','clock_rollback','storage_budget',
     'unsafe_state','disk_pressure','duplicate_sample_no_retry','collection_interrupted','unclassified'))
 

@@ -1,4 +1,5 @@
 import hashlib
+import fcntl
 import importlib.util
 import os
 from pathlib import Path
@@ -39,6 +40,8 @@ class AtomicModeTests(unittest.TestCase):
             state=Path(name)
             for part in ['history','hours','public']:(state/part).mkdir()
             real_open=os.open;handles=[]
+            lock_fd=os.open(state/'lock',os.O_RDWR|os.O_CREAT|os.O_EXCL,0o600)
+            os.fchmod(lock_fd,0o600)
             def interrupt(path,*args,**kwargs):
                 fd=real_open(path,*args,**kwargs)
                 if str(path).endswith('.tmp'):
@@ -53,15 +56,22 @@ class AtomicModeTests(unittest.TestCase):
                 self.assertEqual(temporary.stat().st_size,0)
                 if wrapped:
                     self.assertEqual(stat.S_IMODE(temporary.stat().st_mode),0o640)
-                    rows=mod.preserve_interrupted(state)
+                    fcntl.flock(lock_fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                    try:rows=mod.preserve_interrupted(state)
+                    finally:fcntl.flock(lock_fd,fcntl.LOCK_UN)
                     self.assertEqual(len(rows),1)
                     self.assertFalse(temporary.exists())
                     self.assertFalse((state/'public/snapshot.json').exists())
                 else:
                     self.assertEqual(stat.S_IMODE(temporary.stat().st_mode),0o600)
-                    with self.assertRaisesRegex(ValueError,'unsafe_interrupted_sample'):mod.preserve_interrupted(state)
+                    fcntl.flock(lock_fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                    try:
+                        with self.assertRaisesRegex(ValueError,'unsafe_interrupted_sample'):mod.preserve_interrupted(state)
+                    finally:fcntl.flock(lock_fd,fcntl.LOCK_UN)
                     self.assertTrue(temporary.exists())
-            finally:os.umask(previous)
+            finally:
+                os.close(lock_fd)
+                os.umask(previous)
 
     def test_original_creation_window_is_reproduced_only_in_isolated_fixture(self):
         self.interrupted_creation(False)

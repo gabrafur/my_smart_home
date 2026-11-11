@@ -157,15 +157,28 @@
     },
     "procmon-observability/observed_collector.py": {
       "source": "/usr/local/lib/raspberry-procmon-observability/observed_collector.py",
-      "source_sha256": "6ec3a67e7d034d77dedc2124f8cef46b2262c9ac51da3ac9fd3beb2eb50d219e",
-      "export_sha256": "6ec3a67e7d034d77dedc2124f8cef46b2262c9ac51da3ac9fd3beb2eb50d219e",
-      "normalizations": []
+      "source_sha256": "9065499427a5e82961878506081dba20eab6382c2de187bcbb3b167b549b3baf",
+      "export_sha256": "9065499427a5e82961878506081dba20eab6382c2de187bcbb3b167b549b3baf",
+      "normalizations": [
+        "reviewed_reference_update_repeated_interruption_preservation;not_original_captured_runtime_bytes"
+      ],
+      "native_source_matches_frozen_candidate": true,
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "ten_natural_collections_completed_after_application;not_interruption_scenario_or_24h_continuity_proof"
+      ]
     },
     "procmon-observability/audit_runtime.py": {
       "source": "/usr/local/lib/raspberry-procmon-observability/audit_runtime.py",
-      "source_sha256": "ad4e40e235541b3447619975a35da47718f141c8464054e7b0c45589ef4310ce",
-      "export_sha256": "ad4e40e235541b3447619975a35da47718f141c8464054e7b0c45589ef4310ce",
-      "normalizations": []
+      "source_sha256": "e582f8c7144ff1c4108b4204d2d9e3466d63ce2799f76fbb9231a9705882cda3",
+      "export_sha256": "e582f8c7144ff1c4108b4204d2d9e3466d63ce2799f76fbb9231a9705882cda3",
+      "normalizations": [
+        "reviewed_reference_update_reason_code_compatibility;not_original_captured_runtime_bytes"
+      ],
+      "native_source_matches_frozen_candidate": true,
+      "source_observation_coverage": [
+        "installed_source_bytes_only"
+      ]
     },
     "native-events/registry.py": {
       "source": "/usr/local/lib/raspberry-mcp-events/registry.py",

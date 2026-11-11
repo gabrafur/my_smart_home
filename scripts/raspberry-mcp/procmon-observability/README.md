@@ -33,6 +33,12 @@ A evidência pública sanitizada está em
 [procmon-mode-recovery.acceptance.json](../procmon-mode-recovery.acceptance.json).
 Os intents, identidade de inode e recibos originais permanecem privados.
 
+Após a aplicação da atualização da preservação de interrupções repetidas,
+dez coletas naturais foram concluídas sem reiniciar o serviço. Isso confirma
+somente a execução normal posterior à aplicação; nenhum cenário de interrupção
+foi injetado e não há aceite de 24 horas nem reexecução das seis capturas
+históricas do observador de aceite.
+
 
 ## Sinais, gravação e custo por invocação
 
@@ -167,3 +173,27 @@ verificam a seleção anterior e posterior, imutabilidade, ausência de efeitos
 e recusa de alterações fora da data e dos hashes existentes. O
 [aceite sanitizado](../procmon-cadence-headroom.acceptance.json) separa configuração,
 ciclos curtos e execução futura pendente. Não repetir IDs ou operações consumidas.
+
+## Interrupções repetidas durante a preservação
+
+O identificador legado do arquivo preservado combina basename e digest do
+conteúdo. Duas interrupções distintas com o mesmo nome e conteúdo podem,
+portanto, colidir. A preservação repetida usa um bucket append-only separado;
+arquivos legados e novos compartilham os limites globais de 64 itens e 8 MiB,
+incluindo os temporários pendentes. A movimentação usa `renameat2` com
+`RENAME_NOREPLACE`, recusando substituição em caso de corrida ou colisão.
+
+A recuperação exige o lock real do coletor, verificado com `flock`, antes de
+chamar a preservação ou mover qualquer arquivo. Os arquivos preservados são
+evidência de interrupção e nunca são promovidos a observação. Os testes cobrem
+colisão, limites combinados, recusa de substituição, ausência de lock e
+compatibilidade dos códigos de falha no resumo do journal, apenas em diretórios
+temporários.
+
+Uma reversão só é segura quando o bucket append-only está vazio e os códigos de
+razão permanecem compatíveis com o leitor do journal. Os testes públicos
+`test_repeated_preservation.py` e `test_reason_compatibility.py` exercitam os
+módulos canônicos; `test_atomic_mode.py` continua cobrindo a janela de criação
+com lock real somente na fixture temporária. A evidência operacional de
+preflight e aplicação não demonstra ainda um ciclo natural posterior para os
+casos de interrupção repetida.
