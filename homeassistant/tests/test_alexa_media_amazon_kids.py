@@ -52,6 +52,14 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.IsolatedAsyncioTestCase):
         sensor.remove()
         unsubscribe.assert_called_once()
 
+    async def drain_background(self, state):
+        while tasks := tuple(getattr(state, '_refresh_tasks', ())):
+            await asyncio.gather(*tasks)
+
+    async def start_and_refresh(self, state):
+        await state.async_start()
+        await self.drain_background(state)
+
     def shared_state_fixture(self):
         unsubscribe = Mock()
         schedule = Mock(return_value=unsubscribe)
@@ -62,14 +70,15 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.IsolatedAsyncioTestCase):
             'KIDS_SCAN_INTERVAL':timedelta(minutes=5), 'OPTION_NONE':'None',
             'AlexaAPI':api, '_LOGGER':Mock(), 'hide_email':lambda _: 'account',
         })
-        state = State(object(), SimpleNamespace(email='synthetic'))
+        hass = SimpleNamespace(async_create_background_task=lambda coroutine, name: asyncio.create_task(coroutine, name=name))
+        state = State(hass, SimpleNamespace(email='synthetic'))
         return state, api, schedule, unsubscribe
 
     async def test_shared_poll_starts_once_refreshes_and_stops(self):
         state, api, schedule, unsubscribe = self.shared_state_fixture()
         state.track('synthetic', 'test_type')
-        await state.async_start()
-        await state.async_start()
+        await self.start_and_refresh(state)
+        await self.start_and_refresh(state)
         schedule.assert_called_once_with(state.hass, state._async_interval, timedelta(minutes=5))
         # A second platform start may enter the real only_unknown wrapper, but
         # must never re-poll a device whose state is already known.
@@ -90,10 +99,10 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.IsolatedAsyncioTestCase):
     async def test_later_platform_start_initializes_only_new_devices(self):
         state, api, schedule, _ = self.shared_state_fixture()
         state.track('known', 'test_type')
-        await state.async_start()
+        await self.start_and_refresh(state)
         state.track('new', 'test_type')
-        await state.async_start()
-        await state.async_start()
+        await self.start_and_refresh(state)
+        await self.start_and_refresh(state)
         schedule.assert_called_once()
         self.assertEqual(api.get_child_profiles.await_count, 2)
         self.assertEqual(api.get_child_mode.await_args_list, [
@@ -108,12 +117,12 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.IsolatedAsyncioTestCase):
         state, api, schedule, _ = self.shared_state_fixture()
         api.get_child_mode.side_effect = [False, None, False]
         state.track('known', 'test_type')
-        await state.async_start()
+        await self.start_and_refresh(state)
         state.track('new', 'test_type')
-        await state.async_start()
+        await self.start_and_refresh(state)
         self.assertIsNone(state.state('new')['kids'])
-        await state.async_start()
-        await state.async_start()
+        await self.start_and_refresh(state)
+        await self.start_and_refresh(state)
         schedule.assert_called_once()
         self.assertEqual(api.get_child_profiles.await_count, 3)
         self.assertEqual(api.get_child_mode.await_args_list, [
@@ -128,7 +137,7 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.IsolatedAsyncioTestCase):
     async def test_concurrent_platform_starts_recheck_unknown_after_refresh_lock(self):
         state, api, schedule, _ = self.shared_state_fixture()
         state.track('known', 'test_type')
-        await state.async_start()
+        await self.start_and_refresh(state)
         state.track('new', 'test_type')
         entered, release = asyncio.Event(), asyncio.Event()
         async def read_new(login, serial, device_type):
@@ -145,6 +154,7 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(api.get_child_mode.await_count, 2)
             release.set()
             await asyncio.wait_for(asyncio.gather(first, second), 1)
+            await asyncio.wait_for(self.drain_background(state), 1)
         finally:
             release.set()
             for task in (first, second):
@@ -160,6 +170,37 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.IsolatedAsyncioTestCase):
         ])
         self.assertFalse(state.state('new')['kids'])
 
+
+    async def test_start_returns_before_network_and_unload_cancels_background_work(self):
+        state, api, schedule, unsubscribe = self.shared_state_fixture()
+        if not hasattr(state, '_refresh_tasks'):
+            self.skipTest('background startup is not present in the installed upstream')
+        state.track('new', 'test_type')
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        async def blocked_read(*args):
+            entered.set()
+            await release.wait()
+            return False
+        api.get_child_mode.side_effect = blocked_read
+        try:
+            await asyncio.wait_for(state.async_start(), 1)
+            await asyncio.wait_for(entered.wait(), 1)
+            self.assertIsNone(state.state('new')['kids'])
+            pending = tuple(state._refresh_tasks)
+            self.assertTrue(pending)
+            state.async_stop()
+            await asyncio.gather(*pending, return_exceptions=True)
+            self.assertTrue(all(task.cancelled() for task in pending))
+            self.assertFalse(state._refresh_tasks)
+            schedule.assert_called_once()
+            unsubscribe.assert_called_once()
+            await state._async_interval(None)
+            self.assertEqual(api.get_child_mode.await_count, 1)
+        finally:
+            release.set()
+            state.async_stop()
+            await self.drain_background(state)
 
     async def test_shared_refresh_notifies_consumers_and_preserves_failed_reads(self):
         api = SimpleNamespace(get_child_profiles=AsyncMock(return_value=[]),

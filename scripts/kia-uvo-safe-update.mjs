@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { kiaRepositoryRecordCode, requireLegacyInstallationRecord } from "./kia-repository-record.mjs";
+import { kiaRepositoryRecordCode } from "./kia-repository-record.mjs";
+import { snapshotRepository, restoreRepository } from "./integration-repository.mjs";
 import { auditFailureCategory } from "./kia-uvo-audit-failure.mjs";
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -17,7 +18,6 @@ const componentDir = path.join(
   repoRoot,
   "homeassistant/custom_components/kia_uvo",
 );
-const hacsContainerPath = "/config/.storage/hacs.repositories";
 const statusContainerPath = "/config/.storage/kia_uvo_safe_update";
 const backupRoot = path.join(
   repoRoot,
@@ -633,8 +633,6 @@ async function applyPrepared(prepared, token, options = {}) {
     throw new Error("local patch conflicts with target; nothing was installed");
   }
 
-  const hacsBefore = readHacsRecord();
-  requireLegacyInstallationRecord(hacsBefore);
   const states = await haRequest("GET", "/api/states", token);
   const updateEntity = states.find((entity) =>
     entity.entity_id.startsWith("update.") &&
@@ -649,11 +647,7 @@ async function applyPrepared(prepared, token, options = {}) {
   const metadataBefore = readJson(statePath);
   fs.mkdirSync(backupDir, { recursive: true });
   copyComponent(componentDir, path.join(backupDir, "kia_uvo"));
-  command("docker", [
-    "cp",
-    `homeassistant:${hacsContainerPath}`,
-    path.join(backupDir, "hacs.repositories"),
-  ]);
+  snapshotRepository("Hyundai-Kia-Connect/kia_uvo", backupDir);
 
   writeStatus(statusFor(prepared, "applying", {
     message: `Backup criado em ${path.relative(repoRoot, backupDir)}.`,
@@ -719,11 +713,7 @@ async function applyPrepared(prepared, token, options = {}) {
     fs.rmSync(componentDir, { recursive: true, force: true });
     copyComponent(path.join(backupDir, "kia_uvo"), componentDir);
     writeJson(statePath, metadataBefore);
-    command("docker", [
-      "cp",
-      path.join(backupDir, "hacs.repositories"),
-      `homeassistant:${hacsContainerPath}`,
-    ]);
+    restoreRepository("Hyundai-Kia-Connect/kia_uvo", backupDir, prepared.target);
     command("docker", ["compose", "start", "homeassistant"]);
     const rollback = statusFor(prepared, "rollback", {
       rollback_at: new Date().toISOString(),

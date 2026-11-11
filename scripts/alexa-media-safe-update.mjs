@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkPublicMemory } from "./public-memory-check.mjs";
+import { readRepositoryRecord, snapshotRepository, restoreRepository } from "./integration-repository.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
@@ -17,7 +18,6 @@ const stateRoot = process.env.ALEXA_MEDIA_UPDATER_STATE_DIR ||
   path.join(repoRoot, ".alexa-media-updater-state");
 const statusPath = path.join(stateRoot, "status.json");
 const backupRoot = path.join(stateRoot, "backups");
-const hacsContainerPath = "/config/.storage/hacs.repositories";
 
 export function normalizeVersion(value) {
   if (!value) return null;
@@ -393,15 +393,7 @@ function readHaToken() {
 }
 
 function readHacsRecord() {
-  const code = [
-    "import json",
-    `data=json.load(open('${hacsContainerPath}')).get('data',{})`,
-    "record=next((v for v in data.values() if v.get('full_name')=='alandtse/alexa_media_player'),None)",
-    "keys=['full_name','installed_commit','last_commit','last_version','version_installed']",
-    "print(json.dumps({k:record.get(k) for k in keys} if record else None))",
-  ].join(";");
-  const output = command("docker", ["exec", "homeassistant", "python", "-c", code], { capture: true }).trim();
-  return output ? JSON.parse(output) : null;
+  return readRepositoryRecord("alandtse/alexa_media_player");
 }
 
 function captureRegistryAndRecorder() {
@@ -589,7 +581,7 @@ async function apply(target) {
     writeJson(path.join(backupDir, "runtime-before.json"), before);
     copyComponent(targetDir, path.join(backupDir, "alexa_media"));
     fs.copyFileSync(metadataPath, path.join(backupDir, "alexa-media-upstream.json"));
-    command("docker", ["cp", `homeassistant:${hacsContainerPath}`, path.join(backupDir, "hacs.repositories")]);
+    snapshotRepository("alandtse/alexa_media_player", backupDir);
     writeJson(statusPath, statusFor(prepared, "applying"));
     try {
       if (!alreadyInstalled) {
@@ -630,7 +622,7 @@ async function apply(target) {
         fs.rmSync(targetDir, { recursive: true, force: true });
         copyComponent(path.join(backupDir, "alexa_media"), targetDir);
         fs.copyFileSync(path.join(backupDir, "alexa-media-upstream.json"), metadataPath);
-        command("docker", ["cp", path.join(backupDir, "hacs.repositories"), `homeassistant:${hacsContainerPath}`]);
+        restoreRepository("alandtse/alexa_media_player", backupDir, prepared.targetRef.version);
         command("docker", ["compose", "start", "homeassistant"]);
         rollbackRuntime = await waitForPreservedRuntime(token, before);
       } catch (restoreError) {
