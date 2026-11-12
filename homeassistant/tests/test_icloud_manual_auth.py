@@ -87,6 +87,7 @@ def loaded_adapter():
     modules['homeassistant.helpers.issue_registry'].async_delete_issue = Mock()
     modules['pyicloud'].PyiCloudService = FakeService
     modules['pyicloud.exceptions'].PyiCloudAuthRequiredException = type('AuthRequired', (Exception,), {})
+    modules['pyicloud.exceptions'].PyiCloudAPIResponseException = type('APIResponse', (Exception,), {})
     modules['requests.exceptions'].ConnectionError = type('RequestConnectionError', (ConnectionError,), {})
     modules['requests.exceptions'].Timeout = type('RequestTimeout', (TimeoutError,), {})
     not_ready = type('ConfigEntryNotReady', (Exception,), {})
@@ -427,6 +428,36 @@ class NativeRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
             local=importlib.import_module('custom_components.icloud.'+platform.value)
             native=importlib.import_module('homeassistant.components.icloud.'+platform.value)
             self.assertIs(local.async_setup_entry,native.async_setup_entry)
+
+    async def test_native_polling_recovers_rejected_service_without_reauth(self):
+        from unittest.mock import PropertyMock
+        from pyicloud.exceptions import PyiCloudAuthRequiredException
+        from custom_components.icloud.auth_gate import State, Outcome
+        account=self.entry.runtime_data
+        api=account.api
+        gate=api.auth_gate
+        gate.automatic_recovery=True
+        await self.hass.async_add_executor_job(gate.record,State.VALID)
+        recovery=Mock(return_value=Outcome.VALID)
+        def authenticate():
+            if gate.state==State.USER:
+                gate.recover_silently(recovery)
+        with (patch.object(api,'authenticate',side_effect=authenticate),
+              patch.object(type(api),'native_requires_2fa',new_callable=PropertyMock,return_value=False),
+              patch.object(type(api),'native_requires_2sa',new_callable=PropertyMock,return_value=False),
+              patch.object(account,'update_devices',side_effect=[PyiCloudAuthRequiredException('synthetic',None),None]),
+              patch.object(account,'_schedule_next_fetch') as schedule,
+              patch.object(account,'_require_reauth') as reauth):
+            await self.hass.async_add_executor_job(account.keep_alive)
+            self.assertIs(account.api,api)
+            self.assertEqual(gate.state,State.VALID)
+            self.assertTrue(gate.primary_attempted)
+            recovery.assert_called_once()
+            reauth.assert_not_called()
+            schedule.assert_called_once()
+            await self.hass.async_add_executor_job(account.keep_alive)
+            recovery.assert_called_once()
+            reauth.assert_not_called()
 
     async def test_native_unload_none_means_completed(self):
         self.entry.runtime_data._manual_platforms_loaded=True

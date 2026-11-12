@@ -12,7 +12,7 @@ def main():
     from homeassistant.const import __version__
     from homeassistant.components.icloud import account
     adapter=runpy.run_path('/review/device_owner.py')
-    expected_pyicloud = {'2026.10.1':'2.7.0','2026.10.4':'2.7.0','2026.11.0':'2026.10.1'}.get(__version__)
+    expected_pyicloud = {'2026.10.1':'2.7.0','2026.10.4':'2.7.0','2026.11.0':'2026.10.1','2026.11.1':'2026.10.1'}.get(__version__)
     if expected_pyicloud is None:
         raise RuntimeError('unsupported_icloud_core_version')
     if importlib.metadata.version('pyicloud')!=expected_pyicloud:

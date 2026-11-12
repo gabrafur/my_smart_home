@@ -196,6 +196,19 @@ class AuthGate:
             self.busy = False
             self._lock.release()
 
+    def prepare_rejected_session(self):
+        """Admit a confirmed service rejection without rearming a prior login."""
+        if not self._lock.acquire(blocking=False):
+            return self.result('operation_in_progress')
+        try:
+            if (not self.automatic_recovery or self.primary_attempted
+                    or self.state != State.VALID):
+                return self.result('automatic_recovery_not_permitted')
+            self.record(State.USER)
+            return self.result('service_session_rejected')
+        finally:
+            self._lock.release()
+
     def confirm_account_ready(self):
         """Close a recovered incident only after the caller verifies full setup.
 

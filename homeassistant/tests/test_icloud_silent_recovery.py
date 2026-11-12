@@ -350,5 +350,73 @@ class SilentRecovery(unittest.TestCase):
         self.assertEqual(SilentProvider.primary,1)
         self.assertEqual(SilentProvider.deliveries,0)
 
+    def polling_account(self, gate):
+        class SessionRejected(Exception): pass
+        class NativePoll(FakeAccount):
+            prompts=0
+            def _ask_to_authenticate(account, err):
+                NativePoll.prompts+=1
+                account.api=None
+                account._require_reauth()
+            def keep_alive(account, now=None):
+                account.api.authenticate()
+                try: account.update_devices()
+                except SessionRejected as error: account._ask_to_authenticate(error)
+        NativePoll.client=self.Client
+        Account=self.b.account_adapter(NativePoll,{'synthetic':gate},self.Client,
+            recoverable_session_error=lambda e:isinstance(e,SessionRejected))
+        account=Account();account.setup()
+        return account,NativePoll,SessionRejected
+
+    def test_polling_service_rejection_recovers_before_password_form(self):
+        SilentProvider.cached=True;gate=self.gate()
+        account,native,error=self.polling_account(gate)
+        FakeAccount.update_error=error('synthetic')
+        account.keep_alive()
+        self.assertEqual(SilentProvider.primary,1)
+        self.assertEqual(native.prompts,0)
+        self.assertEqual(FakeAccount.reauth,0)
+        self.assertEqual(gate.state,self.g.State.VALID)
+        self.assertIsNotNone(account.api)
+        self.assertEqual(SilentProvider.deliveries,0)
+        FakeAccount.update_error=None
+        account.keep_alive()
+        self.assertEqual(SilentProvider.primary,1)
+        self.assertEqual(FakeAccount.device_updates,2)
+
+    def test_rejected_recovered_poll_does_not_loop_primary_login(self):
+        SilentProvider.cached=True;gate=self.gate()
+        account,native,error=self.polling_account(gate)
+        FakeAccount.update_error=error('synthetic')
+        account.keep_alive();account.keep_alive()
+        self.assertEqual(SilentProvider.primary,1)
+        self.assertEqual(native.prompts,1)
+        self.assertEqual(SilentProvider.deliveries,0)
+
+    def test_polling_otp_challenge_keeps_delivery_manual(self):
+        SilentProvider.cached=True;gate=self.gate()
+        account,native,error=self.polling_account(gate)
+        SilentProvider.challenge=True
+        account._ask_to_authenticate(error('synthetic'))
+        self.assertEqual(SilentProvider.primary,1)
+        self.assertEqual(native.prompts,1)
+        self.assertEqual(SilentProvider.deliveries,0)
+
+    def test_poll_recovery_does_not_rearm_saved_attempt_or_disabled_policy(self):
+        for automatic,attempted in [(True,True),(False,False)]:
+            SilentProvider.primary=0;SilentProvider.cached=True
+            gate=self.gate(automatic=automatic);gate.primary_attempted=attempted
+            account,native,error=self.polling_account(gate)
+            account._ask_to_authenticate(error('synthetic'))
+            self.assertEqual(SilentProvider.primary,0)
+            self.assertEqual(native.prompts,1)
+
+    def test_service_rejection_does_not_overwrite_concurrent_operation(self):
+        gate=self.gate(self.g.State.VALID)
+        gate._lock.acquire()
+        try:self.assertEqual(gate.prepare_rejected_session().reason,'operation_in_progress')
+        finally:gate._lock.release()
+        self.assertEqual(gate.state,self.g.State.VALID)
+
 
 if __name__=='__main__':unittest.main()

@@ -273,8 +273,32 @@ def service_adapter(base, *, transport_errors=()):
             return self.auth_gate.submit('verify_code', action, explicit_submission=True)
     return GuardedService
 
-def account_adapter(base, gates, client_factory, *, auth_required_errors=()):
+def account_adapter(base, gates, client_factory, *, auth_required_errors=(),
+                    recoverable_session_error=None):
     class GuardedAccount(base):
+        def _ask_to_authenticate(self, err):
+            # Native polling catches device-service rejections internally.
+            # Recover before it discards the client and opens a password form.
+            gate = gates[self._config_entry.entry_id]
+            if (self.api is not None and recoverable_session_error is not None
+                    and recoverable_session_error(err)):
+                admission = gate.prepare_rejected_session()
+                if admission.reason == 'operation_in_progress':
+                    return
+                if admission.reason == 'service_session_rejected':
+                    try:
+                        self.api.authenticate()
+                    except (CachedSessionBusyError, CachedSessionTransportError):
+                        return
+                    except ManualActionRequired:
+                        pass
+                    else:
+                        if (gate.state == State.VALID
+                                and not self.api.native_requires_2fa
+                                and not self.api.native_requires_2sa):
+                            return
+            return super()._ask_to_authenticate(err)
+
         def _handle_auth_required(self, *, two_factor, keep_session, start_reauth=True):
             # New Core catches provider auth failures inside setup/polling.
             # Persist the challenge before native code can schedule another poll.

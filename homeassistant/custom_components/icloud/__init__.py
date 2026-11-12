@@ -5,7 +5,7 @@ import time
 import types
 from functools import partial
 from pyicloud import PyiCloudService
-from pyicloud.exceptions import PyiCloudAuthRequiredException
+from pyicloud.exceptions import PyiCloudAuthRequiredException, PyiCloudAPIResponseException
 from requests.exceptions import ConnectionError as RequestsConnectionError, Timeout
 from homeassistant.components import icloud as native
 from homeassistant.components.icloud import account as core_account
@@ -29,7 +29,12 @@ GATES={}
 PHASES={}
 GuardedService=service_adapter(PyiCloudService,transport_errors=(RequestsConnectionError,Timeout,TimeoutError))
 GuardedAccount=account_adapter(core_account.IcloudAccount,GATES,GuardedService,
-    auth_required_errors=(PyiCloudAuthRequiredException,))
+    auth_required_errors=(PyiCloudAuthRequiredException,),
+    recoverable_session_error=lambda error: (
+        not is_transport_failure(error) and (isinstance(error,PyiCloudAuthRequiredException)
+        or (isinstance(error,PyiCloudAPIResponseException)
+            and core_account.is_auth_error(error)
+            and not core_account.is_2fa_status(error)))))
 core_account.IcloudDevice=prepare_device_class(core_account,core_version)
 core_account.PyiCloudService=GuardedService
 

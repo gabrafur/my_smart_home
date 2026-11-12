@@ -193,3 +193,26 @@ residenciais. A validação de configuração pode usar cópias dos registros em
 tmpfs, preservando os originais em somente leitura, pois o Core migra o
 formato do registro durante a checagem. Dependências binárias dessa validação
 precisam de tmpfs executável próprio; nenhum serviço restaurado é iniciado.
+
+## Compatibilidade Core 2026.11.1
+
+A revisão de 2026.11.1 comparou os 19 arquivos nativos de código e recursos
+com o commit oficial registrado em `upstream.json`, sem divergências. Não há
+mudanças nesses arquivos nem em `pyicloud/base.py` em relação a 2026.11.0;
+seis traduções nativas mudaram. A licença upstream permanece idêntica.
+O preflight isolado e os seis testes de contrato nativo passaram na imagem
+fixada, sem rede ou configuração residencial. A allowlist continua explícita
+e o hash do construtor e a versão de pyicloud continuam obrigatórios.
+Essa revisão não comprova atualização nem autenticação em produção.
+
+## Rejeição de sessão durante polling
+
+O caminho nativo `_ask_to_authenticate` trata rejeições do serviço de
+dispositivos dentro do polling. O adaptador intercepta uma sessão rejeitada
+confirmada antes de o Core descartar o cliente e abrir o formulário de senha.
+Uma sessão antes válida pode usar a tentativa persistida de recuperação com
+a senha já configurada. Sucesso mantém o cliente e o agendamento nativo;
+uma segunda rejeição não repete o login. Desafios OTP, termos, falhas de
+transporte e códigos HTTP sem classificação de autenticação não autorizam
+um novo login por esse caminho. Cookies, confiança e o formato dos Stores
+são preservados. O teste nativo reproduz a rejeição no `keep_alive` real.
