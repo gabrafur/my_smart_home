@@ -42125,8 +42125,8 @@
             "global_observer_coverage__startup_readiness_tab__out",
             "global_observer_coverage__storage_health_tab__out",
             "global_observer_coverage__weekly_docs_review_tab__out",
-            "global_observer_test_event_out",
-            "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__out",
+            "global_observer_test_event_out"
         ],
         "x": 170,
         "y": 220,
@@ -42753,6 +42753,7 @@
             "global_observer_integration_alert_out",
             "external_confirmation_incident_out",
             "local_ai_rtx_alert_out",
+            "zg_guard_alert_out",
             "people_visual_refresh_alert_out",
             "internet_remote_access_alert_out",
             "weekly_docs_review_alert_out",
@@ -42763,8 +42764,7 @@
             "notification_hub_mobile_observer_out",
             "notification_hub_alexa_observer_out",
             "notification_hub_persistent_observer_out",
-            "mq_native_test_global_out",
-            "zg_guard_alert_out"
+            "mq_native_test_global_out"
         ],
         "x": 2620,
         "y": 300,
