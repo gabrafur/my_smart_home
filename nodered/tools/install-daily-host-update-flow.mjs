@@ -114,10 +114,15 @@ node.status({ fill: "red", shape: "ring", text: "ponte indisponível" });
 node.error("daily_update_bridge_unavailable detail=" + detail, msg);
 return null;`;
 
-const recordCompletion = `const code = Number(msg.payload?.code ?? msg.payload ?? -1);
-if (code !== 0) {
-    node.status({ fill: "red", shape: "ring", text: "ponte código " + String(code) });
-    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error("daily_update_bridge_exit_failed code=" + code, { _msgid: msg._msgid });
+const recordCompletion = `const result = msg.payload;
+const rawCode = result && typeof result === "object" ? result.code : result;
+const code = typeof rawCode === "number" && Number.isInteger(rawCode) ? rawCode : null;
+const signal = ["SIGTERM", "SIGKILL", "SIGINT"].includes(result?.signal) ? result.signal : "none";
+const reason = code !== null ? "exit_status" : signal !== "none" ? "interrupted" :
+    ["ETIMEDOUT", "ENOENT", "EACCES", "EAGAIN", "ENOMEM"].includes(rawCode) ? rawCode : "unknown_result";
+if (code !== 0 || signal !== "none") {
+    node.status({ fill: "red", shape: "ring", text: "ponte " + reason + " código " + String(code) });
+    if (msg._daily_update_test !== true && msg.payload?.test_mode !== true) node.error("daily_update_bridge_exit_failed code=" + String(code) + " reason=" + reason + " signal=" + signal, { _msgid: msg._msgid });
 }
 return null;`;
 
