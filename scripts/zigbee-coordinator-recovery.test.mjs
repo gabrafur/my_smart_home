@@ -35,12 +35,12 @@ test('native adapter snapshots and restores missing database without actuators; 
  const f=fixture(),root=fs.mkdtempSync(path.join(os.tmpdir(),'zigbee-guard-')),data=path.join(root,'zigbee2mqtt'),priv=path.join(root,'private'),pub=path.join(root,'nodered','zigbee-recovery');
  fs.mkdirSync(data,{recursive:true});
  fs.writeFileSync(path.join(data,'configuration.yaml'),JSON.stringify(f.config));fs.writeFileSync(path.join(data,'coordinator_backup.json'),JSON.stringify(f.backup));fs.writeFileSync(path.join(data,'database.db'),f.database);
- const calls=[],runtime={now:()=>now,docker:a=>{calls.push(a);return a[0]==='inspect'?(a.at(-1)==='{{.Image}}'?'sha256:'+'1'.repeat(64):JSON.stringify({Running:true,StartedAt:new Date(now-600000).toISOString()})):''},logs:()=>({status:0,stdout:'',stderr:''})};
+ let temporaryRunning=false;const calls=[],runtime={now:()=>now,docker:a=>{calls.push(a);if(a[0]==='ps')return temporaryRunning?'zigbee-firmware-network-restore':'';return a[0]==='inspect'?(a.at(-1)==='{{.Image}}'?'sha256:'+'1'.repeat(64):JSON.stringify({Running:true,StartedAt:new Date(now-600000).toISOString()})):''},logs:()=>({status:0,stdout:'',stderr:''})};
  const run=()=>tick(root,priv,runtime);
  const request=(facts,action,id)=>fs.writeFileSync(path.join(pub,'request.json'),JSON.stringify({id:id.repeat(32),action,facts_id:facts.id,requested_at:now}));
  const previousMask=process.umask(0o077);
  try {
-  let facts=run();assert.equal(fs.statSync(path.join(pub,'facts.json')).mode&0o777,0o644);request(facts,'snapshot','a');facts=run();assert.equal(facts.receipt.status,'snapshotted');
+  let facts=run();temporaryRunning=true;facts=run();assert.equal(facts.maintenance_active,true);request(facts,'snapshot','9');facts=run();assert.equal(facts.receipt.reason,'maintenance_active');assert.ok(!calls.some(a=>a[0]==='stop'));temporaryRunning=false;facts=run();assert.equal(fs.statSync(path.join(pub,'facts.json')).mode&0o777,0o644);request(facts,'snapshot','a');facts=run();assert.equal(facts.receipt.status,'snapshotted');
   const baseline=fs.readFileSync(path.join(priv,'last-good.json'),'utf8');
   fs.writeFileSync(path.join(data,'database.db'),JSON.stringify({type:'Coordinator',ieeeAddr:'0x0000000000000001'}));
   facts=run();request(facts,'snapshot','c');facts=run();assert.equal(facts.receipt.status,'failed');assert.equal(fs.readFileSync(path.join(priv,'last-good.json'),'utf8'),baseline);

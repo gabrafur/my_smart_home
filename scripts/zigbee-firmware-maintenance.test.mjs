@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newerStable,validFirmwareRequest,firmwareTransaction} from './zigbee-firmware-maintenance.mjs';
+import {newerStable,validFirmwareRequest,firmwareTransaction,decodeVendorResponse} from './zigbee-firmware-maintenance.mjs';
 const now=1800000000000;
 const request={version:1,id:'a'.repeat(32),requested_at:now,entity_id:'update.synthetic_coordinator',target_version:'20260101',expected_installed_version:'20240101',stable_only:true,source:'daily_updates'};
 test('only fresh, strictly scoped stable upgrades are admitted',()=>{
@@ -48,4 +48,11 @@ test('negative SDK acknowledgement without proof of rejection remains uncertain'
  const f=fixture();let reads=0;f.ops.state=async()=>reads++===0?{state:'on',installed:'20240101',latest:'20260101',in_progress:false}:{state:'on',installed:'20240101',latest:'20260101',in_progress:null};
  f.ops.install=async()=>{f.calls.push('install');return {accepted:false,dispatched:null}};
  const result=await firmwareTransaction(request,f.ops,f.job);assert.equal(result.status,'pending');assert.equal(f.job.dispatch_attempted,true);assert.ok(!f.calls.includes('start'));assert.ok(!f.calls.includes('restore'));
+});
+
+test('known pre-dispatch refusal is distinct from lost acknowledgement or vendor outage',()=>{
+ assert.deepEqual(decodeVendorResponse({ok:false,reason:'candidate_changed'},'install',1),{accepted:false,dispatched:false});
+ for(const reply of [{ok:false,reason:'vendor_observation_unavailable'},{ok:false,reason:'network_timeout'}])assert.throws(()=>decodeVendorResponse(reply,'install',1));
+ assert.throws(()=>decodeVendorResponse({ok:false,reason:'candidate_changed'},'install',1,true));
+ assert.deepEqual(decodeVendorResponse({accepted:false,dispatched:null},'install',0),{accepted:false,dispatched:null});
 });

@@ -68,6 +68,8 @@ function docker(args) {
   if(r.error || r.status !== 0)throw Error('docker_operation_failed');
   return r.stdout;
 }
+const temporaryRestoreFilter='name=^/zigbee-(coordinator|firmware-network)-restore$';
+const restoreActive=run=>!!run(['ps','--filter',temporaryRestoreFilter,'--format','{{.Names}}']).trim();
 export const adapterRestoreScript = String.raw`
 const fs=require('fs'),yaml=require('js-yaml'),{Adapter}=require('zigbee-herdsman/dist/adapter/adapter');
 const version=require('zigbee-herdsman/package.json').version;
@@ -135,7 +137,7 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
   facts.maintenance_active=['.daily-maintenance.lock','.offsite-backup.lock'].some(name=>{
     const file=path.join(root,name);if(!fs.existsSync(file))return false;
     return spawnSync('/usr/bin/flock',['-n',file,'/usr/bin/true'],{timeout:1000}).status!==0;
-  })||fs.existsSync(path.join(root,'.docker-auto-update.lock'))||fs.existsSync(path.join(privateDir,'firmware-active.json'));
+  })||fs.existsSync(path.join(root,'.docker-auto-update.lock'))||fs.existsSync(path.join(privateDir,'firmware-active.json'))||restoreActive(runDocker);
   const previous=optional(path.join(publicDir,'facts.json'),null);
   const requestFile=path.join(publicDir,'request.json');
   const request=optional(requestFile,null);
@@ -189,8 +191,7 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
             runDocker(['run','--rm','--name','zigbee-coordinator-restore','--network','host','--memory','192m','--memory-swap','192m','--cpus','0.5','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,size=16m','--volume',`${dataDir}:/app/data:rw`,'--entrypoint','node',image,'-e',adapterRestoreScript]);
           }
         } finally {
-          const temporary=runDocker(['ps','--filter','name=^/zigbee-coordinator-restore$','--format','{{.Names}}']);
-          if(temporary.trim())throw Error('radio_restore_still_running');
+          if(restoreActive(runDocker))throw Error('radio_restore_still_running');
           runDocker(['start','zigbee2mqtt']);
         }
         receipt.status='dispatched'; // Online and physical recovery must be observed later.

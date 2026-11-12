@@ -135,13 +135,21 @@ function coordinatorIdentity(config){
  const targets=entities.filter(e=>e.platform==='smlight'&&allowed.has(e.config_entry_id)&&!e.disabled_by&&['core_update','zigbee_update'].includes(e.translation_key)).map(e=>({entity_id:e.entity_id,role:e.translation_key}));
  if(!targets.length)throw Error('coordinator_entities_missing');return {host,targets};
 }
+export function decodeVendorResponse(result,mode,status,error=false){
+ if(error)throw Error('vendor_observation_unavailable');
+ if(status!==0||result?.ok===false){
+  if(mode==='install'&&result?.ok===false&&['ambiguous_radio','candidate_not_latest_stable','unapproved_vendor_url','candidate_changed'].includes(result.reason))return {accepted:false,dispatched:false};
+  throw Error(/^[a-z_]+$/.test(result?.reason)?result.reason:'vendor_observation_unavailable');
+ }
+ return result;
+}
 function vendor(identity,mode,request,dispatched=false){
  const target=request?identity.targets.find(t=>t.entity_id===request.entity_id):null;
  if(request&&!target)throw Error('target_not_coordinator');
  const q={host:identity.host,targets:identity.targets,target,mode,version:request?.target_version,expected_installed:request?.expected_installed_version,dispatched};
  const r=spawnSync('/usr/bin/docker',['exec','-i','homeassistant','python','-c',smlightScript],{input:JSON.stringify(q),encoding:'utf8',timeout:mode==='inventory'?90000:60000,maxBuffer:1024*1024});
  let result;try{result=JSON.parse(r.stdout)}catch{throw Error('vendor_observation_unavailable')}
- if(r.error||r.status!==0||result.ok===false)throw Error(/^[a-z_]+$/.test(result.reason)?result.reason:'vendor_observation_unavailable');return result;
+ return decodeVendorResponse(result,mode,r.status,!!r.error);
 }
 export async function publishFirmwareInventory(){
  const config=require('js-yaml').load(read(path.join(ROOT,'zigbee2mqtt/configuration.yaml'))),identity=coordinatorIdentity(config);
@@ -174,7 +182,7 @@ export async function processFirmwareQueue(){
   if(!job.dispatch_attempted&&!validFirmwareRequest(request,Date.now()))throw Error('request_expired');
   const identity=coordinatorIdentity(config);
   const ops={save:persist,wait:pause,state:async()=>vendor(identity,'state',request,job.dispatch_attempted),approveStable:async()=>vendor(identity,'approve',request),
-   preflight:async()=>{docker(['exec','zigbee2mqtt','node','-e',"if(require('zigbee-herdsman/package.json').version!=='11.2.0'||typeof require('zigbee-herdsman/dist/adapter/adapter').Adapter.create!=='function')process.exit(1)"])},
+   preflight:async()=>{if(docker(['ps','--filter','name=^/zigbee-(coordinator|firmware-network)-restore$','--format','{{.Names}}']).trim())throw Error('radio_restore_still_running');docker(['exec','zigbee2mqtt','node','-e',"if(require('zigbee-herdsman/package.json').version!=='11.2.0'||typeof require('zigbee-herdsman/dist/adapter/adapter').Adapter.create!=='function')process.exit(1)"])},
    probe:async()=>{docker(['exec','zigbee2mqtt','node','-e',probeScript],20000)},
    backup:async()=>{
     docker(['exec','zigbee2mqtt','node','-e',backupScript],55000);
@@ -199,8 +207,7 @@ export async function processFirmwareQueue(){
     const image=docker(['inspect','zigbee2mqtt','--format','{{.Image}}']).trim();if(!/^sha256:[a-f0-9]{64}$/.test(image))throw Error('invalid_image_identity');
     docker(['run','--rm','--name','zigbee-firmware-network-restore','--network','host','--memory','192m','--memory-swap','192m','--cpus','0.5','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,size=16m','--volume',dataDir+':/app/data:rw','--entrypoint','node',image,'-e',adapterRestoreScript],180000);
    },start:async()=>{
-    const temporary=spawnSync('/usr/bin/docker',['inspect','zigbee-firmware-network-restore','--format','{{.State.Running}}'],{encoding:'utf8',timeout:10000});
-    if(temporary.error||temporary.status===0&&temporary.stdout.trim()==='true')throw Error('radio_restore_still_running');
+    if(docker(['ps','--filter','name=^/zigbee-(coordinator|firmware-network)-restore$','--format','{{.Names}}']).trim())throw Error('radio_restore_still_running');
     docker(['start','zigbee2mqtt'],30000);
    },
   };
