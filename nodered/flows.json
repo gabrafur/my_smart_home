@@ -63064,6 +63064,7 @@
         "g": "grp_zigbee_detect",
         "name": "Receber mapa consultado",
         "links": [
+            "zigbee_test_route_scan_response_out",
             "zigbee_path_map_out"
         ],
         "x": 1310,

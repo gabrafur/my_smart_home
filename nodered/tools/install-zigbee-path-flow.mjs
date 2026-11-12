@@ -32,7 +32,7 @@ export function installZigbeePathFlow({nodes,group,fn,inject,sw,change,linkOut,l
  f('map_parents','Adaptar vínculo pai confirmado de dispositivos finais','zigbee-path-map-parents.js',1950,4570,[[id('map_store')]]);
  f('map_store','Guardar caminhos ativos; preservar ausentes','zigbee-path-map-store.js',2400,4570,[[id('map_out')]]);
  o('map_out','Mapa correlacionado → lifecycle existente','zigbee_route_scan_response_in',2810,4570);
- get('zigbee_route_scan_response_in').links=[id('map_out')];
+ get('zigbee_route_scan_response_in').links=[...get('zigbee_route_scan_response_in').links.filter(v=>v!=='zigbee_route_scan_response_out'),id('map_out')];
  // Plan before the existing configure serializer, sharing its final dry-run gate.
  get('zigbee_route_scan_response_status').wires[0]=[id('select_out')];
  linkOut(id('select_out'),get('zigbee_route_scan_response_status').g,'Mapa concluído → escolher caminho',id('select_in'),3085,1600);
