@@ -6,12 +6,15 @@ msg.policy_candidate = {
     hysteresis_pp: n("hysteresis_pp"), notification_cooldown_h: n("notification_cooldown_h"),
     command_error_cooldown_h: n("command_error_cooldown_h"), trend_24h_pp: n("trend_24h_pp"),
     trend_7d_pp: n("trend_7d_pp"), auto_remediation_cooldown_h: n("auto_remediation_cooldown_h"),
-    sample_interval_min: n("sample_interval_min"), history_retention_days: n("history_retention_days")
+    sample_interval_min: n("sample_interval_min"), history_retention_days: n("history_retention_days"),
+    collection_retry_delay_s: Number(p.collection_retry_delay_s ?? 60),
+    collection_max_retries: Number(p.collection_max_retries ?? 3), metric_max_age_s: Number(p.metric_max_age_s ?? 300)
 };
 const c = msg.policy_candidate;
 msg.policy_valid = integer(c.warning_pct, 1, 98) && integer(c.high_pct, 2, 99) && integer(c.critical_pct, 3, 100) &&
     c.warning_pct < c.high_pct && c.high_pct < c.critical_pct && integer(c.hysteresis_pp, 0, 20) &&
     integer(c.notification_cooldown_h, 24, 48) && integer(c.command_error_cooldown_h, 1, 48) &&
     integer(c.trend_24h_pp, 1, 50) && integer(c.trend_7d_pp, 1, 80) && integer(c.auto_remediation_cooldown_h, 1, 48) &&
-    integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30);
+    integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30) &&
+    integer(c.collection_retry_delay_s, 10, 600) && integer(c.collection_max_retries, 1, 5) && integer(c.metric_max_age_s, 60, 1800);
 return msg;

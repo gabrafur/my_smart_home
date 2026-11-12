@@ -119,7 +119,7 @@ discovery publica somente dados novos:
 - `sensor.raspberry_pi_raspberry_storage_last_maintenance`;
 - `sensor.raspberry_pi_raspberry_storage_last_reclaimed`.
 
-`Storage Health Last Check` marca cada avaliação leve, normalmente a cada 15
+`Storage Health Last Check` marca cada avaliação válida, normalmente a cada 15
 minutos. `Raspberry Storage Last Maintenance` e
 `Raspberry Storage Last Reclaimed` mudam somente depois de uma limpeza real no
 host, agendada a cada seis horas ou iniciada pelo painel/fluxo diário. As duas
@@ -142,7 +142,7 @@ de 90%. A histerese é de 3 pontos percentuais. Alertas repetidos usam cooldown
 compartilhado de 24 horas entre capacidade e tendência; falhas de coleta/manutencao usam 6 horas, escaladas alertam
 imediatamente e a volta a normal gera notificacao de recuperacao.
 
-Os onze valores ajustáveis têm unidade, limites e validação no canvas:
+Os valores ajustáveis têm unidade, limites e validação no canvas:
 thresholds de 1–100% com ordem estrita, histerese de 0–20 pp, cooldowns de
 24–48 h para lembretes de capacidade/tendência e 1–48 h nos demais casos, crescimento de 1–50 pp/24 h e 1–80 pp/7 d, amostragem de 1–120 min e
 retenção de 2–30 dias. Um candidato inválido não substitui a última política.
@@ -150,6 +150,33 @@ Classificação bruta, histerese, recovery, escalada/lembrete, tendência e gate
 de autocuidado são decisões nomeadas. O JavaScript remanescente calcula apenas
 janelas temporais/crescimento e adapta atributos/tópicos MQTT; os workers
 allowlisted continuam atrás da separação produção/dry-run.
+
+Falhas da API, estados ausentes/não numéricos e métricas com mais de 300 segundos
+são falhas de leitura. Não alteram a última severidade de capacidade, não entram
+no histórico de tendência, não atualizam a última avaliação válida e não
+solicitam limpeza. O tópico `smart_home/raspberry/storage/collection_status`,
+com discovery próprio, distingue `ok`, `retrying` e `read_error`. O fluxo tenta
+ler novamente até três vezes, com intervalo de 60 segundos; depois mantém a
+coleta periódica de 15 minutos e alerta sobre a leitura, sem afirmar defeito no
+disco. Uma leitura válida invalida timers antigos, limpa alertas de leitura
+pendentes e encerra o incidente. Uso alto/crítico só é classificado com métricas
+válidas e recentes. Os ajustes aceitam intervalo de retry de 10–600 s, 1–5 novas
+tentativas e idade máxima de 60–1.800 s, preservando a última política válida.
+
+Cada alerta confirmado tem identificador próprio e horário na notificação
+persistente do HA, evitando que outro alerta ou recuperação substitua seu
+conteúdo. A mesma ocorrência é registrada por `logbook.log`, associada ao sensor
+de status, com a retenção atual do Recorder de 30 dias. O cooldown só é
+confirmado após os aceites do celular, da notificação persistente e do Logbook.
+O aceite não comprova leitura no celular. Notificação persistente e histórico
+são superfícies distintas: dispensar a primeira não remove o registro do
+Logbook, sujeito à retenção. Produção/teste se separam antes dos três serviços.
+
+Para replay manual: resetar, executar normalidade/crescimento e usar o controle
+de falha de leitura quatro vezes. Ele avança apenas o relógio sintético; as
+intenções de retry terminam em dry-run sem timer residencial. Voltar ao controle
+normal confirma recuperação. Contexto, MQTT, exec e notificações de produção
+permanecem isolados.
 
 Uma amostra compacta é persistida a cada 15 minutos por no máximo oito dias.
 Ela permite calcular 24 h e 7 dias sem gravacao por minuto. O alerta de tendencia

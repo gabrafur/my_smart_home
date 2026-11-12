@@ -122,6 +122,10 @@ const discovery = `const device = {
 };
 const definitions = [
     {
+        topic: "homeassistant/sensor/raspberry_storage_collection_status/config",
+        payload: { name: "Raspberry Storage Collection Status", unique_id: "raspberry_storage_collection_status", object_id: "raspberry_storage_collection_status", state_topic: "smart_home/raspberry/storage/collection_status", icon: "mdi:database-clock", device }
+    },
+    {
         topic: "homeassistant/sensor/raspberry_storage_status/config",
         payload: { name: "Raspberry Storage Status", unique_id: "raspberry_storage_status", object_id: "raspberry_storage_status", state_topic: "smart_home/raspberry/storage/status", json_attributes_topic: "smart_home/raspberry/storage/attributes", icon: "mdi:harddisk", device }
     },
@@ -440,10 +444,20 @@ return {
 
 const notificationAck = `const ack = msg.notificationAck;
 if (!ack || !Number.isFinite(Number(ack.at)) || !Array.isArray(ack.targets)) return null;
+const channel = msg.storageNotificationChannel ?? msg.notification_delivery?.channel;
+if (!["mobile", "persistent", "logbook"].includes(channel)) return null;
 for (const target of ack.targets) {
     if (!target || typeof target.key !== "string") continue;
     if (typeof target.field === "string") {
         const value = flow.get(target.key, "persistent") ?? {};
+        const pending = value.pendingAlert;
+        if (pending?.notificationAck?.id === ack.id) {
+            pending.acceptedChannels = [...new Set([...(pending.acceptedChannels ?? []), channel])];
+            if (!["mobile", "persistent", "logbook"].every((c) => pending.acceptedChannels.includes(c))) {
+                flow.set(target.key, value, "persistent");
+                continue;
+            }
+        }
         value[target.field] = Number(ack.at);
         if (value.pendingAlert?.notificationAck?.id === ack.id) value.pendingAlert = null;
         flow.set(target.key, value, "persistent");
@@ -620,5 +634,9 @@ for (const node of flows) {
 }
 const missing = canonicalNodes.filter((node) => !installed.has(node.id));
 updated.splice(lastOwnedIndex + 1, 0, ...missing);
-fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(updated), null, 4)}\n`);
+if (process.argv.includes("--defer-notification-hubs")) {
+  fs.writeFileSync(outputPath, `${JSON.stringify(updated, null, 4)}\n`);
+} else {
+  fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(updated), null, 4)}\n`);
+}
 console.log(`Installed ${canonicalNodes.length} Storage Health nodes in ${outputPath}`);

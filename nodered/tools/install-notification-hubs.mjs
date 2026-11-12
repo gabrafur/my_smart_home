@@ -60,7 +60,7 @@ export const NOTIFICATION_MIGRATIONS = Object.freeze([
   persistent("4b48bc3c0c58d87c", "resfriamento_raspberry_pi", "dismiss", "immediate", '"raspberry_pi_emergency_cooling_recovered"'),
   mobile("rpi_emergency_cooling_push_primary", "resfriamento_raspberry_pi", "resident_primary", "simple", '"Raspberry Pi - resfriamento de emergencia"', rpiStartMessage),
   mobile("storage_notify", "storage_health", "resident_primary", "simple", "_notification_hub_context.payload.title", "_notification_hub_context.payload.message"),
-  persistent("storage_notify_persistent", "storage_health", "create", "queued", '"raspberry_storage_health"', "_notification_hub_context.payload.title", "_notification_hub_context.payload.message"),
+  persistent("storage_notify_persistent", "storage_health", "create", "queued", '_notification_hub_context.payload.notification_id', "_notification_hub_context.payload.title", "_notification_hub_context.payload.message"),
   mobile("564fdc36031eaef8", "localizacao_pessoas", "resident_primary", "background_command", null, '"request_location_update"', null, { testMode: "_location_test = true" }),
   mobile("e0b7c0ecf1d8ee28", "localizacao_pessoas", "resident_secondary", "background_command", null, '"request_location_update"', null, { testMode: "_location_test = true" }),
   persistent("vehicle_primary_manual_refresh_blocked_notification_v1", "contexto_vehicle_primary", "create", "immediate", "_notification_hub_context.notification.id", "_notification_hub_context.notification.title", "_notification_hub_context.notification.message"),

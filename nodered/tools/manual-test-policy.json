@@ -205,13 +205,14 @@
         "storage_test_normal",
         "storage_test_growth",
         "storage_test_prepare",
-        "storage_test_decision_terminal"
+        "storage_test_decision_terminal",
+        "storage_visual_test_read_failure"
       ],
       "dry_run_terminal_ids": [
         "storage_dry_run_terminal"
       ],
       "automated_test": "test-storage-health-flow.mjs",
-      "reason": "Normalidade e crescimento acelerado atravessam o mesmo diagnóstico e gate de autocuidado; test_mode bloqueia exec, MQTT e notificações e termina no dry-run compartilhado."
+      "reason": "Normalidade, crescimento, falha de leitura com retries limitados e recuperação atravessam a política canônica. TESTE mantém contexto separado e termina sem MQTT, exec, HTTP, push, persistente ou Logbook reais."
     },
     "recorder_retention_tab": {
       "strategy": "manual_full_dry_run",

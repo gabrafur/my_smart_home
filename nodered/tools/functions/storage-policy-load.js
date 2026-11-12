@@ -1,5 +1,6 @@
 msg.policy = flow.get("storage_health_policy_v2", "persistent");
 msg.policy_available = msg.policy?.version === 2;
+if (msg.policy_available) msg.policy = { collection_retry_delay_s: 60, collection_max_retries: 3, metric_max_age_s: 300, ...msg.policy };
 
 // Migrate the previous reminder interval without resetting incident history.
 if (msg.policy_available && msg.policy.notification_cooldown_h < 24) {

@@ -412,7 +412,8 @@
             "storage_visual_test_input_out",
             "storage_visual_manual_exec_out",
             "storage_visual_manual_host_out",
-            "storage_visual_manual_status_out"
+            "storage_visual_manual_status_out",
+            "storage_visual_retry_read_in"
         ],
         "x": 84,
         "y": 299,
@@ -430,26 +431,30 @@
         },
         "nodes": [
             "storage_notify",
-            "storage_notify__hub_call",
-            "storage_notify__hub_result",
             "storage_notify_persistent",
-            "storage_notify_persistent__hub_call",
-            "storage_notify_persistent__hub_result",
             "storage_notification_ack",
             "storage_notification_catch",
             "storage_notification_failure",
+            "storage_mqtt_state",
+            "storage_manual_status_mqtt",
+            "storage_visual_mqtt_in",
+            "storage_visual_notify_in",
+            "storage_visual_manual_status_in",
+            "storage_visual_notification_prepare",
+            "storage_visual_notification_ready_out",
+            "storage_visual_notification_ready_in",
+            "storage_visual_logbook_ack_in",
+            "storage_notify__hub_call",
+            "storage_notify__hub_result",
+            "storage_notify_persistent__hub_call",
+            "storage_notify_persistent__hub_result",
             "notification_hub_wire_in_168dc6db5cd7",
             "notification_hub_wire_out_b5cbe7a52037",
             "notification_hub_wire_in_b5cbe7a52037",
             "notification_hub_wire_out_0f2bad790b49",
             "notification_hub_wire_in_0f2bad790b49",
             "notification_hub_wire_out_34604f022367",
-            "notification_hub_wire_in_34604f022367",
-            "storage_mqtt_state",
-            "storage_manual_status_mqtt",
-            "storage_visual_mqtt_in",
-            "storage_visual_notify_in",
-            "storage_visual_manual_status_in"
+            "notification_hub_wire_in_34604f022367"
         ],
         "x": 1290,
         "y": 279,
@@ -471,6 +476,7 @@
             "storage_auto_gate",
             "storage_exec_maintenance",
             "storage_request_host_maintenance",
+            "storage_request_daily_build_cache",
             "storage_post_maintenance_delay",
             "storage_recheck_out",
             "storage_parse_maintenance",
@@ -481,7 +487,6 @@
             "storage_exec_inspection",
             "storage_parse_inspection",
             "storage_test_dry_out",
-            "storage_request_daily_build_cache",
             "storage_visual_manual_exec_in",
             "storage_visual_manual_host_in",
             "storage_visual_exec_done_out",
@@ -2737,7 +2742,10 @@
             "storage_visual_mqtt_out",
             "storage_visual_notify_out",
             "storage_test_decision_out",
-            "storage_auto_out"
+            "storage_auto_out",
+            "storage_visual_collection_assess_out",
+            "storage_visual_collection_return_in",
+            "storage_visual_retry_request_out"
         ],
         "x": 64,
         "y": 1549,
@@ -17683,7 +17691,7 @@
         "props": [
             {
                 "p": "payload",
-                "v": "{\"warning_pct\":70,\"high_pct\":80,\"critical_pct\":90,\"hysteresis_pp\":3,\"notification_cooldown_h\":24,\"command_error_cooldown_h\":6,\"trend_24h_pp\":5,\"trend_7d_pp\":10,\"auto_remediation_cooldown_h\":6,\"sample_interval_min\":15,\"history_retention_days\":8}",
+                "v": "{\"warning_pct\":70,\"high_pct\":80,\"critical_pct\":90,\"hysteresis_pp\":3,\"notification_cooldown_h\":24,\"command_error_cooldown_h\":6,\"trend_24h_pp\":5,\"trend_7d_pp\":10,\"auto_remediation_cooldown_h\":6,\"sample_interval_min\":15,\"history_retention_days\":8,\"collection_retry_delay_s\":60,\"collection_max_retries\":3,\"metric_max_age_s\":300}",
                 "vt": "json"
             }
         ],
@@ -17708,7 +17716,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_config",
         "name": "Publicar discovery",
-        "func": "const device = {\n    identifiers: [\"raspberry_pi_5_host\"],\n    name: \"Raspberry Pi\",\n    manufacturer: \"Raspberry Pi\",\n    model: \"Raspberry Pi 5\"\n};\nconst definitions = [\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_status/config\",\n        payload: { name: \"Raspberry Storage Status\", unique_id: \"raspberry_storage_status\", object_id: \"raspberry_storage_status\", state_topic: \"smart_home/raspberry/storage/status\", json_attributes_topic: \"smart_home/raspberry/storage/attributes\", icon: \"mdi:harddisk\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_health_last_run/config\",\n        payload: { name: \"Storage Health Last Check\", unique_id: \"raspberry_storage_health_last_run\", object_id: \"raspberry_storage_health_last_run\", default_entity_id: \"sensor.raspberry_pi_storage_health_last_run\", state_topic: \"smart_home/raspberry/storage/health_last_run\", device_class: \"timestamp\", icon: \"mdi:clock-check-outline\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_24h/config\",\n        payload: { name: \"Raspberry Storage Growth 24h\", unique_id: \"raspberry_storage_growth_24h\", object_id: \"raspberry_storage_growth_24h\", state_topic: \"smart_home/raspberry/storage/growth_24h\", availability_topic: \"smart_home/raspberry/storage/growth_24h_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_7d/config\",\n        payload: { name: \"Raspberry Storage Growth 7d\", unique_id: \"raspberry_storage_growth_7d\", object_id: \"raspberry_storage_growth_7d\", state_topic: \"smart_home/raspberry/storage/growth_7d\", availability_topic: \"smart_home/raspberry/storage/growth_7d_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_history_coverage/config\",\n        payload: { name: \"Raspberry Storage History Coverage\", unique_id: \"raspberry_storage_history_coverage\", object_id: \"raspberry_storage_history_coverage\", default_entity_id: \"sensor.raspberry_pi_storage_history_coverage\", state_topic: \"smart_home/raspberry/storage/history_coverage_hours\", unit_of_measurement: \"h\", device_class: \"duration\", state_class: \"measurement\", icon: \"mdi:timeline-clock-outline\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_maintenance/config\",\n        payload: { name: \"Raspberry Storage Last Maintenance\", unique_id: \"raspberry_storage_last_maintenance\", object_id: \"raspberry_storage_last_maintenance\", state_topic: \"smart_home/raspberry/storage/last_maintenance\", device_class: \"timestamp\", icon: \"mdi:broom\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_reclaimed/config\",\n        payload: { name: \"Raspberry Storage Last Reclaimed\", unique_id: \"raspberry_storage_last_reclaimed\", object_id: \"raspberry_storage_last_reclaimed\", state_topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", unit_of_measurement: \"MiB\", state_class: \"measurement\", icon: \"mdi:delete-sweep\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_cause/config\",\n        payload: { name: \"Raspberry Storage Growth Cause\", unique_id: \"raspberry_storage_growth_cause\", object_id: \"raspberry_storage_growth_cause\", state_topic: \"smart_home/raspberry/storage/growth_cause\", icon: \"mdi:magnify-scan\", device }\n    },\n    {\n        topic: \"homeassistant/binary_sensor/raspberry_storage_manual_running/config\",\n        payload: { name: \"Storage Health Manual Running\", unique_id: \"raspberry_storage_manual_running\", object_id: \"raspberry_storage_manual_running\", default_entity_id: \"binary_sensor.raspberry_pi_storage_manual_running\", state_topic: \"smart_home/raspberry/storage/manual_running\", payload_on: \"ON\", payload_off: \"OFF\", device_class: \"running\", icon: \"mdi:harddisk\", device }\n    }\n];\nreturn [[\n    ...definitions.map((entry) => ({ topic: entry.topic, payload: JSON.stringify(entry.payload), retain: true })),\n    { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true }\n]];",
+        "func": "const device = {\n    identifiers: [\"raspberry_pi_5_host\"],\n    name: \"Raspberry Pi\",\n    manufacturer: \"Raspberry Pi\",\n    model: \"Raspberry Pi 5\"\n};\nconst definitions = [\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_collection_status/config\",\n        payload: { name: \"Raspberry Storage Collection Status\", unique_id: \"raspberry_storage_collection_status\", object_id: \"raspberry_storage_collection_status\", state_topic: \"smart_home/raspberry/storage/collection_status\", icon: \"mdi:database-clock\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_status/config\",\n        payload: { name: \"Raspberry Storage Status\", unique_id: \"raspberry_storage_status\", object_id: \"raspberry_storage_status\", state_topic: \"smart_home/raspberry/storage/status\", json_attributes_topic: \"smart_home/raspberry/storage/attributes\", icon: \"mdi:harddisk\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_health_last_run/config\",\n        payload: { name: \"Storage Health Last Check\", unique_id: \"raspberry_storage_health_last_run\", object_id: \"raspberry_storage_health_last_run\", default_entity_id: \"sensor.raspberry_pi_storage_health_last_run\", state_topic: \"smart_home/raspberry/storage/health_last_run\", device_class: \"timestamp\", icon: \"mdi:clock-check-outline\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_24h/config\",\n        payload: { name: \"Raspberry Storage Growth 24h\", unique_id: \"raspberry_storage_growth_24h\", object_id: \"raspberry_storage_growth_24h\", state_topic: \"smart_home/raspberry/storage/growth_24h\", availability_topic: \"smart_home/raspberry/storage/growth_24h_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_7d/config\",\n        payload: { name: \"Raspberry Storage Growth 7d\", unique_id: \"raspberry_storage_growth_7d\", object_id: \"raspberry_storage_growth_7d\", state_topic: \"smart_home/raspberry/storage/growth_7d\", availability_topic: \"smart_home/raspberry/storage/growth_7d_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_history_coverage/config\",\n        payload: { name: \"Raspberry Storage History Coverage\", unique_id: \"raspberry_storage_history_coverage\", object_id: \"raspberry_storage_history_coverage\", default_entity_id: \"sensor.raspberry_pi_storage_history_coverage\", state_topic: \"smart_home/raspberry/storage/history_coverage_hours\", unit_of_measurement: \"h\", device_class: \"duration\", state_class: \"measurement\", icon: \"mdi:timeline-clock-outline\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_maintenance/config\",\n        payload: { name: \"Raspberry Storage Last Maintenance\", unique_id: \"raspberry_storage_last_maintenance\", object_id: \"raspberry_storage_last_maintenance\", state_topic: \"smart_home/raspberry/storage/last_maintenance\", device_class: \"timestamp\", icon: \"mdi:broom\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_reclaimed/config\",\n        payload: { name: \"Raspberry Storage Last Reclaimed\", unique_id: \"raspberry_storage_last_reclaimed\", object_id: \"raspberry_storage_last_reclaimed\", state_topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", unit_of_measurement: \"MiB\", state_class: \"measurement\", icon: \"mdi:delete-sweep\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_cause/config\",\n        payload: { name: \"Raspberry Storage Growth Cause\", unique_id: \"raspberry_storage_growth_cause\", object_id: \"raspberry_storage_growth_cause\", state_topic: \"smart_home/raspberry/storage/growth_cause\", icon: \"mdi:magnify-scan\", device }\n    },\n    {\n        topic: \"homeassistant/binary_sensor/raspberry_storage_manual_running/config\",\n        payload: { name: \"Storage Health Manual Running\", unique_id: \"raspberry_storage_manual_running\", object_id: \"raspberry_storage_manual_running\", default_entity_id: \"binary_sensor.raspberry_pi_storage_manual_running\", state_topic: \"smart_home/raspberry/storage/manual_running\", payload_on: \"ON\", payload_off: \"OFF\", device_class: \"running\", icon: \"mdi:harddisk\", device }\n    }\n];\nreturn [[\n    ...definitions.map((entry) => ({ topic: entry.topic, payload: JSON.stringify(entry.payload), retain: true })),\n    { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true }\n]];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -17876,6 +17884,31 @@
         "z": "storage_health_tab",
         "g": "storage_group_alerts",
         "name": "Preparar mobile para o hub",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":payload.title,\"message\":payload.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1540,
+        "y": 500,
+        "wires": [
+            [
+                "storage_notify__hub_call"
+            ]
+        ],
         "rules": [
             {
                 "t": "set",
@@ -17899,18 +17932,10 @@
                 "tot": "jsonata"
             }
         ],
-        "action": "",
         "property": "",
         "from": "",
         "to": "",
-        "reg": false,
-        "x": 1540,
-        "y": 500,
-        "wires": [
-            [
-                "storage_notify__hub_call"
-            ]
-        ]
+        "reg": false
     },
     {
         "id": "storage_notify__hub_call",
@@ -18188,6 +18213,31 @@
         "z": "storage_health_tab",
         "g": "storage_group_alerts",
         "name": "Preparar HA persistente para o hub",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":payload.title,\"message\":payload.message,\"notification_id\":\"raspberry_storage_health\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1560,
+        "y": 580,
+        "wires": [
+            [
+                "storage_notify_persistent__hub_call"
+            ]
+        ],
         "rules": [
             {
                 "t": "set",
@@ -18200,7 +18250,7 @@
                 "t": "set",
                 "p": "notification",
                 "pt": "msg",
-                "to": "{\"source\":\"storage_health\",\"operation\":\"create\",\"delivery\":\"queued\",\"notification_id\":\"raspberry_storage_health\",\"title\":_notification_hub_context.payload.title}",
+                "to": "{\"source\":\"storage_health\",\"operation\":\"create\",\"delivery\":\"queued\",\"notification_id\":_notification_hub_context.payload.notification_id,\"title\":_notification_hub_context.payload.title}",
                 "tot": "jsonata"
             },
             {
@@ -18211,18 +18261,10 @@
                 "tot": "jsonata"
             }
         ],
-        "action": "",
         "property": "",
         "from": "",
         "to": "",
-        "reg": false,
-        "x": 1560,
-        "y": 580,
-        "wires": [
-            [
-                "storage_notify_persistent__hub_call"
-            ]
-        ]
+        "reg": false
     },
     {
         "id": "storage_notify_persistent__hub_call",
@@ -18281,7 +18323,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_alerts",
         "name": "Confirmar entrega e iniciar cooldown",
-        "func": "const ack = msg.notificationAck;\nif (!ack || !Number.isFinite(Number(ack.at)) || !Array.isArray(ack.targets)) return null;\nfor (const target of ack.targets) {\n    if (!target || typeof target.key !== \"string\") continue;\n    if (typeof target.field === \"string\") {\n        const value = flow.get(target.key, \"persistent\") ?? {};\n        value[target.field] = Number(ack.at);\n        if (value.pendingAlert?.notificationAck?.id === ack.id) value.pendingAlert = null;\n        flow.set(target.key, value, \"persistent\");\n    } else {\n        flow.set(target.key, Number(ack.at), \"persistent\");\n    }\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
+        "func": "const ack = msg.notificationAck;\nif (!ack || !Number.isFinite(Number(ack.at)) || !Array.isArray(ack.targets)) return null;\nconst channel = msg.storageNotificationChannel ?? msg.notification_delivery?.channel;\nif (![\"mobile\", \"persistent\", \"logbook\"].includes(channel)) return null;\nfor (const target of ack.targets) {\n    if (!target || typeof target.key !== \"string\") continue;\n    if (typeof target.field === \"string\") {\n        const value = flow.get(target.key, \"persistent\") ?? {};\n        const pending = value.pendingAlert;\n        if (pending?.notificationAck?.id === ack.id) {\n            pending.acceptedChannels = [...new Set([...(pending.acceptedChannels ?? []), channel])];\n            if (![\"mobile\", \"persistent\", \"logbook\"].every((c) => pending.acceptedChannels.includes(c))) {\n                flow.set(target.key, value, \"persistent\");\n                continue;\n            }\n        }\n        value[target.field] = Number(ack.at);\n        if (value.pendingAlert?.notificationAck?.id === ack.id) value.pendingAlert = null;\n        flow.set(target.key, value, \"persistent\");\n    } else {\n        flow.set(target.key, Number(ack.at), \"persistent\");\n    }\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -18535,7 +18577,7 @@
         "type": "comment",
         "z": "storage_health_tab",
         "g": "storage_group_tests",
-        "name": "Ordem: 1 Reset; 2 Normal; 3 Crescimento. Tudo termina em dry-run, sem exec, MQTT ou notificacao.",
+        "name": "TESTE: reset; normal/crescimento; falha de leitura 4x; normal para recuperar. Sem efeitos reais.",
         "info": "",
         "x": 2720,
         "y": 980,
@@ -18717,7 +18759,9 @@
         "g": "storage_group_tests",
         "name": "Receber autocuidado simulado",
         "links": [
-            "storage_test_dry_out"
+            "storage_test_dry_out",
+            "storage_visual_retry_dry_out",
+            "storage_visual_notification_dry_out"
         ],
         "x": 3080,
         "y": 1140,
@@ -18781,7 +18825,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_config",
         "name": "Validar percentuais e tempos",
-        "func": "const p = msg.payload ?? {};\nconst n = (key) => Number(p[key]);\nconst integer = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;\nmsg.policy_candidate = {\n    warning_pct: n(\"warning_pct\"), high_pct: n(\"high_pct\"), critical_pct: n(\"critical_pct\"),\n    hysteresis_pp: n(\"hysteresis_pp\"), notification_cooldown_h: n(\"notification_cooldown_h\"),\n    command_error_cooldown_h: n(\"command_error_cooldown_h\"), trend_24h_pp: n(\"trend_24h_pp\"),\n    trend_7d_pp: n(\"trend_7d_pp\"), auto_remediation_cooldown_h: n(\"auto_remediation_cooldown_h\"),\n    sample_interval_min: n(\"sample_interval_min\"), history_retention_days: n(\"history_retention_days\")\n};\nconst c = msg.policy_candidate;\nmsg.policy_valid = integer(c.warning_pct, 1, 98) && integer(c.high_pct, 2, 99) && integer(c.critical_pct, 3, 100) &&\n    c.warning_pct < c.high_pct && c.high_pct < c.critical_pct && integer(c.hysteresis_pp, 0, 20) &&\n    integer(c.notification_cooldown_h, 24, 48) && integer(c.command_error_cooldown_h, 1, 48) &&\n    integer(c.trend_24h_pp, 1, 50) && integer(c.trend_7d_pp, 1, 80) && integer(c.auto_remediation_cooldown_h, 1, 48) &&\n    integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30);\nreturn msg;",
+        "func": "const p = msg.payload ?? {};\nconst n = (key) => Number(p[key]);\nconst integer = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;\nmsg.policy_candidate = {\n    warning_pct: n(\"warning_pct\"), high_pct: n(\"high_pct\"), critical_pct: n(\"critical_pct\"),\n    hysteresis_pp: n(\"hysteresis_pp\"), notification_cooldown_h: n(\"notification_cooldown_h\"),\n    command_error_cooldown_h: n(\"command_error_cooldown_h\"), trend_24h_pp: n(\"trend_24h_pp\"),\n    trend_7d_pp: n(\"trend_7d_pp\"), auto_remediation_cooldown_h: n(\"auto_remediation_cooldown_h\"),\n    sample_interval_min: n(\"sample_interval_min\"), history_retention_days: n(\"history_retention_days\"),\n    collection_retry_delay_s: Number(p.collection_retry_delay_s ?? 60),\n    collection_max_retries: Number(p.collection_max_retries ?? 3), metric_max_age_s: Number(p.metric_max_age_s ?? 300)\n};\nconst c = msg.policy_candidate;\nmsg.policy_valid = integer(c.warning_pct, 1, 98) && integer(c.high_pct, 2, 99) && integer(c.critical_pct, 3, 100) &&\n    c.warning_pct < c.high_pct && c.high_pct < c.critical_pct && integer(c.hysteresis_pp, 0, 20) &&\n    integer(c.notification_cooldown_h, 24, 48) && integer(c.command_error_cooldown_h, 1, 48) &&\n    integer(c.trend_24h_pp, 1, 50) && integer(c.trend_7d_pp, 1, 80) && integer(c.auto_remediation_cooldown_h, 1, 48) &&\n    integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30) &&\n    integer(c.collection_retry_delay_s, 10, 600) && integer(c.collection_max_retries, 1, 5) && integer(c.metric_max_age_s, 60, 1800);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -19003,7 +19047,9 @@
         "name": "Receber métricas reais ou sintéticas",
         "links": [
             "storage_visual_input_out",
-            "storage_visual_test_input_out"
+            "storage_visual_test_input_out",
+            "storage_visual_read_error_out",
+            "storage_visual_test_failure_out"
         ],
         "x": 105,
         "y": 1780,
@@ -19019,7 +19065,7 @@
         "z": "storage_health_tab",
         "g": "storage_visual_decision_group",
         "name": "Carregar política canônica",
-        "func": "msg.policy = flow.get(\"storage_health_policy_v2\", \"persistent\");\nmsg.policy_available = msg.policy?.version === 2;\n\n// Migrate the previous reminder interval without resetting incident history.\nif (msg.policy_available && msg.policy.notification_cooldown_h < 24) {\n    msg.policy = { ...msg.policy, notification_cooldown_h: 24 };\n    flow.set(\"storage_health_policy_v2\", msg.policy, \"persistent\");\n    const legacy = flow.get(\"storage_health_config_v1\", \"persistent\");\n    if (legacy) flow.set(\"storage_health_config_v1\", { ...legacy, notificationCooldownMs: 86400000 }, \"persistent\");\n}\nreturn msg;",
+        "func": "msg.policy = flow.get(\"storage_health_policy_v2\", \"persistent\");\nmsg.policy_available = msg.policy?.version === 2;\nif (msg.policy_available) msg.policy = { collection_retry_delay_s: 60, collection_max_retries: 3, metric_max_age_s: 300, ...msg.policy };\n\n// Migrate the previous reminder interval without resetting incident history.\nif (msg.policy_available && msg.policy.notification_cooldown_h < 24) {\n    msg.policy = { ...msg.policy, notification_cooldown_h: 24 };\n    flow.set(\"storage_health_policy_v2\", msg.policy, \"persistent\");\n    const legacy = flow.get(\"storage_health_config_v1\", \"persistent\");\n    if (legacy) flow.set(\"storage_health_config_v1\", { ...legacy, notificationCooldownMs: 86400000 }, \"persistent\");\n}\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -19087,7 +19133,7 @@
         "z": "storage_health_tab",
         "g": "storage_visual_decision_group",
         "name": "Validar métricas e carregar estado",
-        "func": "const input = msg.payload ?? {};\nconst now = Number(msg.testNow ?? Date.now());\nconst used = Number(input.used_percent);\nconst free = Number(input.free_gb);\nconst testMode = msg.test_mode === true;\nconst suffix = testMode ? \"__test\" : \"\";\nconst stateKey = \"storage_health_state_v1\" + suffix;\nconst historyKey = \"storage_health_history_v1\" + suffix;\nconst categoryHistoryKey = \"storage_health_category_history_v1\" + suffix;\nconst state = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) ?? {\n    severity: \"normal\", lastNotificationAt: 0, lastTrendNotificationAt: 0, lastErrorNotificationAt: 0\n};\nconst labels = { docker: \"Docker\", repository: \"repositorio\", vscode: \"VS Code Server\", recorder: \"Recorder\", backupArchives: \"backups operacionais do Home Assistant\", manualSnapshots: \"snapshots manuais do Home Assistant\", npmCache: \"cache npm\", knownLogs: \"logs\" };\nconst categories = {};\nfor (const [key, raw] of Object.entries(input.categories ?? {})) {\n    const value = Number(raw);\n    if (Number.isFinite(value) && value >= 0 && Object.hasOwn(labels, key)) categories[key] = value;\n}\nmsg.storage = {\n    input, now, used, free, state, labels, categories, testMode, stateKey, historyKey, categoryHistoryKey,\n    valid: Number.isFinite(used) && used >= 0 && used <= 100 && Number.isFinite(free) && free >= 0,\n    previous: state.severity ?? \"normal\",\n    error_due: now - Number(state.lastErrorNotificationAt || 0) >= msg.policy.command_error_cooldown_h * 3600000\n};\nreturn msg;",
+        "func": "const input = msg.payload ?? {};\nconst now = Number(msg.testNow ?? Date.now());\nconst metric = (v) => (typeof v === \"number\" || (typeof v === \"string\" && v.trim() !== \"\")) ? Number(v) : NaN;\nconst used = metric(input.used_percent);\nconst free = metric(input.free_gb);\nconst collected = Date.parse(input.collected_at);\nconst fresh = Number.isFinite(collected) && now - collected >= -60000 && now - collected <= msg.policy.metric_max_age_s * 1000;\nconst testMode = msg.test_mode === true;\nconst suffix = testMode ? \"__test\" : \"\";\nconst stateKey = \"storage_health_state_v1\" + suffix;\nconst historyKey = \"storage_health_history_v1\" + suffix;\nconst categoryHistoryKey = \"storage_health_category_history_v1\" + suffix;\nconst state = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) ?? {\n    severity: \"normal\", lastNotificationAt: 0, lastTrendNotificationAt: 0, lastErrorNotificationAt: 0\n};\nconst labels = { docker: \"Docker\", repository: \"repositorio\", vscode: \"VS Code Server\", recorder: \"Recorder\", backupArchives: \"backups operacionais do Home Assistant\", manualSnapshots: \"snapshots manuais do Home Assistant\", npmCache: \"cache npm\", knownLogs: \"logs\" };\nconst categories = {};\nfor (const [key, raw] of Object.entries(input.categories ?? {})) {\n    const value = Number(raw);\n    if (Number.isFinite(value) && value >= 0 && Object.hasOwn(labels, key)) categories[key] = value;\n}\nmsg.storage = {\n    input, now, used, free, state, labels, categories, testMode, stateKey, historyKey, categoryHistoryKey,\n    valid: !msg.storageReadError && fresh && Number.isFinite(used) && used >= 0 && used <= 100 && Number.isFinite(free) && free >= 0,\n    collection_reason: msg.storageReadError ? \"read_failed\" : !fresh ? \"stale_or_missing_timestamp\" : \"invalid_metrics\",\n    previous: state.severity ?? \"normal\",\n    error_due: now - Number(state.lastErrorNotificationAt || 0) >= msg.policy.command_error_cooldown_h * 3600000\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -19098,7 +19144,7 @@
         "y": 1780,
         "wires": [
             [
-                "storage_visual_metrics_valid"
+                "storage_visual_collection_assess_out"
             ]
         ]
     },
@@ -19107,7 +19153,7 @@
         "type": "switch",
         "z": "storage_health_tab",
         "g": "storage_visual_decision_group",
-        "name": "Percentual e espaço livre são válidos?",
+        "name": "Métricas válidas e recentes?",
         "property": "storage.valid",
         "propertyType": "msg",
         "rules": [
@@ -19137,7 +19183,7 @@
         "type": "switch",
         "z": "storage_health_tab",
         "g": "storage_visual_decision_group",
-        "name": "Alerta de coleta venceu cooldown de 6 h?",
+        "name": "Retries esgotados e alerta devido?",
         "property": "storage.error_due",
         "propertyType": "msg",
         "rules": [
@@ -19167,8 +19213,8 @@
         "type": "function",
         "z": "storage_health_tab",
         "g": "storage_visual_decision_group",
-        "name": "Publicar indisponibilidade sem autocuidado",
-        "func": "const s = msg.storage;\nlet alert = null;\nif (s.error_due) {\n    alert = {\n        payload: { title: \"Raspberry Pi - storage indisponivel\", message: \"Falha ao obter metricas validas de armazenamento do Home Assistant. Nenhuma manutencao foi executada.\" },\n        notificationAck: { id: `${s.now}:lastErrorNotificationAt`, at: s.now, targets: [{ key: s.stateKey, field: \"lastErrorNotificationAt\" }] }\n    };\n    s.state.pendingAlert = alert;\n}\nif (s.testMode) flow.set(s.stateKey, s.state); else flow.set(s.stateKey, s.state, \"persistent\");\nconst mqtt = [{ topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(s.now).toISOString(), retain: true }];\nconst event = { ...msg, payload: { event: \"invalid_metrics\", at: new Date(s.now).toISOString(), input: s.input } };\nreturn [msg.test_mode === true ? [] : mqtt, msg.test_mode === true ? null : alert, event, null];",
+        "name": "Registrar falha de coleta sem limpeza",
+        "func": "const s = msg.storage;\nlet alert = null;\nif (s.error_due) {\n    alert = s.state.pendingAlert?.collection_error ? s.state.pendingAlert : {\n        collection_error: true,\n        payload: { title: \"Raspberry Pi - falha na leitura do storage\", message: `Não foi possível obter métricas válidas após ${msg.policy.collection_max_retries} novas tentativas. Isso não confirma defeito nem falta de espaço no disco. A coleta periódica continuará; nenhuma limpeza foi solicitada por esta falha.` },\n        notificationAck: { id: `${s.now}:collection_error`, at: s.now, targets: [{ key: s.stateKey, field: \"lastCollectionErrorNotificationAt\" }] }\n    };\n    s.state.pendingAlert = alert;\n    s.state.collectionIncidentOpen = true;\n}\nif (s.testMode) flow.set(s.stateKey, s.state); else flow.set(s.stateKey, s.state, \"persistent\");\nconst mqtt = [{ topic: \"smart_home/raspberry/storage/collection_status\", payload: s.state.collectionStatus, retain: true }];\nconst event = { ...msg, payload: { event: \"collection_failure\", reason: s.collection_reason,\n    attempt: s.state.collectionFailureCount, retryScheduled: s.retry_due, at: new Date(s.now).toISOString() } };\nreturn [s.testMode ? [] : mqtt, s.testMode ? null : alert, event, s.retry_due ? msg : null];",
         "outputs": 4,
         "timeout": 0,
         "noerr": 0,
@@ -19187,7 +19233,9 @@
             [
                 "storage_visual_invalid_test_out"
             ],
-            []
+            [
+                "storage_visual_retry_request_out"
+            ]
         ]
     },
     {
@@ -20230,7 +20278,7 @@
         "z": "storage_health_tab",
         "g": "storage_visual_decision_group",
         "name": "Persistir estado e intenção",
-        "func": "const s = msg.storage;\nconst state = s.state;\nmsg.storage_selected_alert = msg.storage_alert ?? state.pendingAlert ?? null;\nif (msg.storage_alert) state.pendingAlert = msg.storage_alert;\nObject.assign(state, {\n    severity: s.severity, updatedAt: s.now, usedPercent: s.used, freeGiB: s.free,\n    growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n    growthCauseBytes: s.growth_cause_bytes, historySamples: s.history_samples,\n    historyCoverageHours: s.history_coverage_hours, historyOldestAt: s.history_oldest_at\n});\nmsg.storage_remediation = null;\nif (s.remediation_due) {\n    state.lastAutoRemediationAt = s.now;\n    msg.storage_remediation = {\n        ...msg, storageAutoRemediation: true, test_mode: msg.test_mode === true,\n        payload: { reason: s.accelerated ? \"accelerated-growth\" : \"capacity-threshold\", used: s.used,\n            growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n            growthCauseBytes: s.growth_cause_bytes }\n    };\n}\nif (s.testMode) flow.set(s.stateKey, state); else flow.set(s.stateKey, state, \"persistent\");\nreturn msg;",
+        "func": "const s = msg.storage;\nconst state = s.state;\nconst recovery = s.collection_recovered ? { collection_error: true,\n    payload: { title: \"Raspberry Pi - leitura do storage normalizada\", message: \"A coleta voltou a fornecer métricas válidas. O incidente de leitura foi encerrado.\" },\n    notificationAck: { id: `${s.now}:collection_recovery`, at: s.now, targets: [] } } : null;\nmsg.storage_selected_alert = msg.storage_alert ?? recovery ?? state.pendingAlert ?? null;\nif (msg.storage_alert) state.pendingAlert = msg.storage_alert;\nObject.assign(state, {\n    severity: s.severity, updatedAt: s.now, usedPercent: s.used, freeGiB: s.free,\n    growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n    growthCauseBytes: s.growth_cause_bytes, historySamples: s.history_samples,\n    historyCoverageHours: s.history_coverage_hours, historyOldestAt: s.history_oldest_at\n});\nmsg.storage_remediation = null;\nif (s.remediation_due) {\n    state.lastAutoRemediationAt = s.now;\n    msg.storage_remediation = {\n        ...msg, storageAutoRemediation: true, test_mode: msg.test_mode === true,\n        payload: { reason: s.accelerated ? \"accelerated-growth\" : \"capacity-threshold\", used: s.used,\n            growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n            growthCauseBytes: s.growth_cause_bytes }\n    };\n}\nif (s.testMode) flow.set(s.stateKey, state); else flow.set(s.stateKey, state, \"persistent\");\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -20272,7 +20320,7 @@
         "z": "storage_health_tab",
         "g": "storage_visual_decision_group",
         "name": "Adaptar tópicos MQTT",
-        "func": "const s = msg.storage;\nconst input = s.input;\nconst growth = (window, value) => value === null\n    ? [{ topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: \"offline\", retain: true }]\n    : [\n        { topic: `smart_home/raspberry/storage/growth_${window}`, payload: String(value), retain: true },\n        { topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: \"online\", retain: true }\n    ];\nmsg.storage_mqtt = [\n    { topic: \"smart_home/raspberry/storage/status\", payload: s.severity, retain: true },\n    { topic: \"smart_home/raspberry/storage/attributes\", payload: JSON.stringify(msg.storage_attributes), retain: true },\n    { topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(s.now).toISOString(), retain: true },\n    { topic: \"smart_home/raspberry/storage/history_coverage_hours\", payload: String(s.history_coverage_hours), retain: true },\n    { topic: \"smart_home/raspberry/storage/growth_cause\", payload: s.growth_cause, retain: true },\n    ...(input.maintenance_last_at && !Number.isNaN(Date.parse(input.maintenance_last_at))\n        ? [{ topic: \"smart_home/raspberry/storage/last_maintenance\", payload: input.maintenance_last_at, retain: true }] : []),\n    ...(Number.isFinite(Number(input.maintenance_reclaimed_bytes)) && Number(input.maintenance_reclaimed_bytes) >= 0\n        ? [{ topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", payload: String(Math.round(Number(input.maintenance_reclaimed_bytes) / 104857.6) / 10), retain: true }] : []),\n    ...growth(\"24h\", s.growth24h), ...growth(\"7d\", s.growth7d)\n];\nreturn msg;",
+        "func": "const s = msg.storage;\nconst input = s.input;\nconst growth = (window, value) => value === null\n    ? [{ topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: \"offline\", retain: true }]\n    : [\n        { topic: `smart_home/raspberry/storage/growth_${window}`, payload: String(value), retain: true },\n        { topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: \"online\", retain: true }\n    ];\nmsg.storage_mqtt = [\n    { topic: \"smart_home/raspberry/storage/collection_status\", payload: \"ok\", retain: true },\n    { topic: \"smart_home/raspberry/storage/status\", payload: s.severity, retain: true },\n    { topic: \"smart_home/raspberry/storage/attributes\", payload: JSON.stringify(msg.storage_attributes), retain: true },\n    { topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(s.now).toISOString(), retain: true },\n    { topic: \"smart_home/raspberry/storage/history_coverage_hours\", payload: String(s.history_coverage_hours), retain: true },\n    { topic: \"smart_home/raspberry/storage/growth_cause\", payload: s.growth_cause, retain: true },\n    ...(input.maintenance_last_at && !Number.isNaN(Date.parse(input.maintenance_last_at))\n        ? [{ topic: \"smart_home/raspberry/storage/last_maintenance\", payload: input.maintenance_last_at, retain: true }] : []),\n    ...(Number.isFinite(Number(input.maintenance_reclaimed_bytes)) && Number(input.maintenance_reclaimed_bytes) >= 0\n        ? [{ topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", payload: String(Math.round(Number(input.maintenance_reclaimed_bytes) / 104857.6) / 10), retain: true }] : []),\n    ...growth(\"24h\", s.growth24h), ...growth(\"7d\", s.growth7d)\n];\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -20378,8 +20426,7 @@
         "y": 560,
         "wires": [
             [
-                "storage_notify",
-                "storage_notify_persistent"
+                "storage_visual_notification_prepare"
             ]
         ]
     },
@@ -99283,6 +99330,674 @@
         "wires": [
             [
                 "zg_alert_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_collection_group",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "2. Leitura: frescor, 3 retries de 60 s e recuperação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#a16207",
+            "fill": "#fef9c3",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "storage_visual_collection_assess_in",
+            "storage_visual_collection_assess",
+            "storage_visual_collection_return_out",
+            "storage_visual_retry_request_in",
+            "storage_visual_retry_build",
+            "storage_visual_retry_test_gate",
+            "storage_visual_retry_dry_out",
+            "storage_visual_retry_delay",
+            "storage_visual_retry_guard",
+            "storage_visual_retry_read_out",
+            "storage_visual_read_catch",
+            "storage_visual_read_error",
+            "storage_visual_read_error_out",
+            "storage_visual_test_read_failure",
+            "storage_visual_test_failure_prepare",
+            "storage_visual_test_failure_out",
+            "storage_visual_notification_dispatch_in",
+            "storage_visual_notification_test_gate",
+            "storage_visual_notification_dry_out",
+            "storage_visual_notification_dispatch_out",
+            "storage_visual_logbook_in",
+            "storage_visual_logbook",
+            "storage_visual_logbook_ack_channel",
+            "storage_visual_logbook_ack_out"
+        ],
+        "x": 64,
+        "y": 2250,
+        "w": 1880,
+        "h": 820
+    },
+    {
+        "id": "storage_visual_collection_assess_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Métricas → lifecycle de leitura",
+        "mode": "link",
+        "links": [
+            "storage_visual_collection_assess_in"
+        ],
+        "x": 1000,
+        "y": 1730,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_collection_assess_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Receber leitura normalizada",
+        "links": [
+            "storage_visual_collection_assess_out"
+        ],
+        "x": 110,
+        "y": 2330,
+        "wires": [
+            [
+                "storage_visual_collection_assess"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_collection_assess",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Classificar coleta e tentativas",
+        "func": "const s = msg.storage;\nconst state = s.state;\ns.retry_due = false;\ns.error_due = false;\nif (s.valid) {\n    s.collection_recovered = state.collectionIncidentOpen === true;\n    state.collectionFailureCount = 0;\n    state.collectionNextRetryAt = 0;\n    state.collectionStatus = \"ok\";\n    state.lastValidReadAt = s.now;\n    state.collectionIncidentOpen = false;\n    if (state.pendingAlert?.collection_error || state.pendingAlert?.payload?.title === \"Raspberry Pi - storage indisponivel\") state.pendingAlert = null;\n} else {\n    if (!state.collectionFailureCount) state.collectionFailureStartedAt = s.now;\n    const due = !state.collectionNextRetryAt || s.now >= state.collectionNextRetryAt;\n    if (due) state.collectionFailureCount = Number(state.collectionFailureCount || 0) + 1;\n    s.retry_due = due && state.collectionFailureCount <= msg.policy.collection_max_retries;\n    if (s.retry_due) state.collectionNextRetryAt = s.now + msg.policy.collection_retry_delay_s * 1000;\n    state.collectionStatus = state.collectionFailureCount > msg.policy.collection_max_retries ? \"read_error\" : \"retrying\";\n    s.error_due = state.collectionStatus === \"read_error\" && (!state.lastCollectionErrorNotificationAt ||\n        s.now - state.lastCollectionErrorNotificationAt >= msg.policy.command_error_cooldown_h * 3600000);\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 2330,
+        "wires": [
+            [
+                "storage_visual_collection_return_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_collection_return_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Coleta classificada → decisão",
+        "mode": "link",
+        "links": [
+            "storage_visual_collection_return_in"
+        ],
+        "x": 620,
+        "y": 2330,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_collection_return_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Receber lifecycle de leitura",
+        "links": [
+            "storage_visual_collection_return_out"
+        ],
+        "x": 1000,
+        "y": 1810,
+        "wires": [
+            [
+                "storage_visual_metrics_valid"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_retry_request_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Falha → nova tentativa",
+        "mode": "link",
+        "links": [
+            "storage_visual_retry_request_in"
+        ],
+        "x": 2170,
+        "y": 1690,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_retry_request_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Receber intenção de retry",
+        "links": [
+            "storage_visual_retry_request_out"
+        ],
+        "x": 110,
+        "y": 2430,
+        "wires": [
+            [
+                "storage_visual_retry_build"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_retry_build",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Preparar retry com identidade",
+        "func": "const s = msg.storage;\nif (!s.retry_due) return null;\nreturn { test_mode: s.testMode, delay: msg.policy.collection_retry_delay_s * 1000,\n    storageRetry: { startedAt: s.state.collectionFailureStartedAt, dueAt: s.state.collectionNextRetryAt,\n        attempt: s.state.collectionFailureCount, stateKey: s.stateKey } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 2430,
+        "wires": [
+            [
+                "storage_visual_retry_test_gate"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_retry_test_gate",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Retry pertence a TESTE?",
+        "property": "test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 620,
+        "y": 2430,
+        "wires": [
+            [
+                "storage_visual_retry_dry_out"
+            ],
+            [
+                "storage_visual_retry_delay"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_retry_dry_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Retry TESTE → sem agendar efeito",
+        "mode": "link",
+        "links": [
+            "storage_test_dry_in"
+        ],
+        "x": 850,
+        "y": 2370,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_retry_delay",
+        "type": "delay",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Aguardar política: 60 s",
+        "pauseType": "delayv",
+        "timeout": "60",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 900,
+        "y": 2470,
+        "wires": [
+            [
+                "storage_visual_retry_guard"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_retry_guard",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Incidente ainda exige releitura?",
+        "func": "const r = msg.storageRetry;\nif (!r || msg.test_mode === true) return null;\nconst state = flow.get(r.stateKey, \"persistent\");\nif (!state || state.collectionStatus === \"ok\" || state.collectionFailureStartedAt !== r.startedAt ||\n    state.collectionFailureCount !== r.attempt || state.collectionNextRetryAt !== r.dueAt) return null;\nreturn {};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1210,
+        "y": 2470,
+        "wires": [
+            [
+                "storage_visual_retry_read_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_retry_read_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Retry validado → ler HA",
+        "mode": "link",
+        "links": [
+            "storage_visual_retry_read_in"
+        ],
+        "x": 1510,
+        "y": 2470,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_retry_read_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Receber retry sem limpeza",
+        "links": [
+            "storage_visual_retry_read_out"
+        ],
+        "x": 530,
+        "y": 470,
+        "wires": [
+            [
+                "storage_read_ha"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_read_catch",
+        "type": "catch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Capturar erro da leitura HA",
+        "scope": [
+            "storage_read_ha"
+        ],
+        "uncaught": false,
+        "x": 320,
+        "y": 2570,
+        "wires": [
+            [
+                "storage_visual_read_error"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_read_error",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Marcar falha sem métricas",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storageReadError",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{}",
+                "tot": "json"
+            },
+            {
+                "t": "delete",
+                "p": "error",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 620,
+        "y": 2570,
+        "wires": [
+            [
+                "storage_visual_read_error_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_read_error_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Erro de leitura → mesma política",
+        "mode": "link",
+        "links": [
+            "storage_visual_input_in"
+        ],
+        "x": 900,
+        "y": 2570,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_notification_prepare",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Preservar ocorrência e horário no HA",
+        "func": "const ack = msg.notificationAck;\nconst at = Number(ack?.at ?? Date.now());\nconst id = String(ack?.id ?? at).replace(/[^a-zA-Z0-9_-]/g, \"_\");\nmsg.payload = { ...msg.payload, notification_id: \"raspberry_storage_\" + id,\n    message: msg.payload.message + \"\\n\\nOcorrência: \" + new Date(at).toISOString() };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1570,
+        "y": 700,
+        "wires": [
+            [
+                "storage_visual_notification_ready_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_notification_ready_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Ocorrência → dois canais",
+        "mode": "link",
+        "links": [
+            "storage_visual_notification_dispatch_in"
+        ],
+        "x": 1820,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_notification_ready_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Entregar e persistir cada ocorrência",
+        "links": [
+            "storage_visual_notification_dispatch_out"
+        ],
+        "x": 1331,
+        "y": 500,
+        "wires": [
+            [
+                "storage_notify",
+                "storage_notify_persistent"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_test_read_failure",
+        "type": "inject",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "TESTE 4: falha de leitura (repetir 4x)",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{}",
+                "vt": "json"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "x": 320,
+        "y": 2700,
+        "wires": [
+            [
+                "storage_visual_test_failure_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_test_failure_prepare",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Avançar relógio sintético de retry",
+        "func": "const s = flow.get(\"storage_health_state_v1__test\");\nmsg.testNow = Math.max(Date.now(), Number(s?.collectionNextRetryAt || 0));\nreturn msg;",
+        "outputs": 1,
+        "x": 720,
+        "y": 2700,
+        "wires": [
+            [
+                "storage_visual_test_failure_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_test_failure_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Falha TESTE → política",
+        "mode": "link",
+        "links": [
+            "storage_visual_input_in"
+        ],
+        "x": 1000,
+        "y": 2700,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_notification_dispatch_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Receber ocorrência para entrega",
+        "links": [
+            "storage_visual_notification_ready_out"
+        ],
+        "x": 110,
+        "y": 2820,
+        "wires": [
+            [
+                "storage_visual_notification_test_gate"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_notification_test_gate",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Notificação pertence a TESTE?",
+        "property": "test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 380,
+        "y": 2820,
+        "wires": [
+            [
+                "storage_visual_notification_dry_out"
+            ],
+            [
+                "storage_visual_notification_dispatch_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_notification_dry_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Notificação TESTE → nenhum serviço",
+        "mode": "link",
+        "links": [
+            "storage_test_dry_in"
+        ],
+        "x": 660,
+        "y": 2760,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_notification_dispatch_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Produção → push, persistente e histórico",
+        "mode": "link",
+        "links": [
+            "storage_visual_notification_ready_in",
+            "storage_visual_logbook_in"
+        ],
+        "x": 660,
+        "y": 2860,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_logbook_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Arquivar ocorrência no HA",
+        "links": [
+            "storage_visual_notification_dispatch_out"
+        ],
+        "x": 110,
+        "y": 2970,
+        "wires": [
+            [
+                "storage_visual_logbook"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_logbook",
+        "type": "api-call-service",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Registrar no Logbook/Recorder (30 dias)",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "action": "logbook.log",
+        "domain": "logbook",
+        "service": "log",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"name\":payload.title,\"message\":payload.message,\"entity_id\":\"sensor.raspberry_pi_raspberry_storage_status\",\"domain\":\"sensor\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "x": 400,
+        "y": 2970,
+        "wires": [
+            [
+                "storage_visual_logbook_ack_channel"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_logbook_ack_channel",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Confirmar gravação no histórico",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storageNotificationChannel",
+                "pt": "msg",
+                "to": "logbook",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 780,
+        "y": 2970,
+        "wires": [
+            [
+                "storage_visual_logbook_ack_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_logbook_ack_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_collection_group",
+        "name": "Histórico aceito → cooldown",
+        "mode": "link",
+        "links": [
+            "storage_visual_logbook_ack_in"
+        ],
+        "x": 1050,
+        "y": 2970,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_logbook_ack_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Receber aceite do histórico",
+        "links": [
+            "storage_visual_logbook_ack_out"
+        ],
+        "x": 2770,
+        "y": 640,
+        "wires": [
+            [
+                "storage_notification_ack"
             ]
         ]
     },

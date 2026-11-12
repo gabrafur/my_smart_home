@@ -3014,6 +3014,34 @@
         "storage_visual_cache_done_out": {
           "x": 1190,
           "y": 1510
+        },
+        "storage_visual_collection_assess_out": {
+          "x": 1000,
+          "y": 1730
+        },
+        "storage_visual_collection_return_in": {
+          "x": 1000,
+          "y": 1810
+        },
+        "storage_visual_retry_request_out": {
+          "x": 2170,
+          "y": 1690
+        },
+        "storage_visual_retry_read_in": {
+          "x": 530,
+          "y": 470
+        },
+        "storage_visual_notification_prepare": {
+          "x": 1570,
+          "y": 700
+        },
+        "storage_visual_notification_ready_out": {
+          "x": 1820,
+          "y": 700
+        },
+        "storage_visual_notification_ready_in": {
+          "x": 1331,
+          "y": 500
         }
       },
       "geometry_final": true,

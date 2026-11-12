@@ -35,10 +35,13 @@ const f = {
   state: compile("storage_visual_state_finalize"), attributes: compile("storage_visual_attributes_build"),
   mqtt: compile("storage_visual_mqtt_build"), finalize: compile("storage_visual_output_route"), invalid: compile("storage_visual_invalid_finalize"),
   ack: compile("storage_notification_ack"), gate: compile("storage_auto_gate"),
+  collection: compile("storage_visual_collection_assess"), retry: compile("storage_visual_retry_build"),
+  retryGuard: compile("storage_visual_retry_guard"), notification: compile("storage_visual_notification_prepare"),
 };
 const defaults = { warning_pct: 70, high_pct: 80, critical_pct: 90, hysteresis_pp: 3,
   notification_cooldown_h: 24, command_error_cooldown_h: 6, trend_24h_pp: 5, trend_7d_pp: 10,
-  auto_remediation_cooldown_h: 6, sample_interval_min: 15, history_retention_days: 8 };
+  auto_remediation_cooldown_h: 6, sample_interval_min: 15, history_retention_days: 8,
+  collection_retry_delay_s: 60, collection_max_retries: 3, metric_max_age_s: 300 };
 const NOW = Date.parse("2026-08-13T12:00:00Z");
 const metric = (used, free = 20, categories = undefined) => ({
   used_percent: used, used_gb: 30, free_gb: free, inode_used_percent: 13, filesystem: "/",
@@ -51,8 +54,11 @@ function configured() {
   return flow;
 }
 function evaluate(flow, payload, now = NOW, testMode = false) {
+  // Nominal samples are fresh at each polling time; stale cases are explicit below.
+  if (payload.collected_at === new Date(NOW).toISOString()) payload = { ...payload, collected_at: new Date(now).toISOString() };
   let msg = call(f.load, { payload, testNow: now, test_mode: testMode }, flow);
   msg = call(f.normalize, msg, flow);
+  msg = call(f.collection, msg, flow);
   if (!msg.storage.valid) return call(f.invalid, msg, flow);
   msg = call(f.history, msg, flow);
   const s = msg.storage;
@@ -75,7 +81,7 @@ function evaluate(flow, payload, now = NOW, testMode = false) {
   msg = call(f.mqtt, msg, flow);
   return call(f.finalize, msg, flow);
 }
-const accept = (flow, alert) => call(f.ack, alert, flow);
+const accept = (flow, alert) => { for (const channel of ["mobile", "persistent", "logbook"]) call(f.ack, { ...alert, notification_delivery: { channel } }, flow); };
 
 for (const id of [
   "storage_visual_policy_switch", "storage_visual_policy_available", "storage_visual_metrics_valid",
@@ -140,9 +146,12 @@ assert.equal(result[0].find((message) => message.topic.endsWith("/history_covera
 
 flow = configured();
 result = evaluate(flow, { used_percent: "unknown", free_gb: -1 });
-assert.match(result[1].payload.message, /metricas validas/);
+assert.equal(result[1], null, "primeira falha não alerta sobre o disco");
+assert.equal(result[3].storage.retry_due, true);
+for (let i = 1; i <= 3; i++) result = evaluate(flow, {}, NOW + i * 60000);
+assert.match(result[1].payload.message, /não confirma defeito/);
 accept(flow, result[1]);
-assert.equal(evaluate(flow, {}, NOW + 60000)[1], null, "erro respeita cooldown após aceite");
+assert.equal(evaluate(flow, {}, NOW + 240000)[1], null, "erro respeita cooldown após aceite");
 
 flow = configured();
 flow.stores.persistent.set("storage_health_history_v1", [{ ts: NOW - 86400000, used: 55, source: "production" }]);
@@ -216,3 +225,68 @@ for (const field of ["storage.capacity_due", "storage.trend_due"]) {
  sample.storage.now=NOW+60000;sample.storage.escalated=true;
  assert.equal(await expression.evaluate(sample),field==="storage.capacity_due");
 }
+
+// Execute actual collection/retry adapters: no capacity decisions on invalid facts.
+for (const value of [null, '', ' ', false, [], {}, 'unknown', 'unavailable', Infinity, -1, 101]) {
+  const ctx = configured();
+  const sample = metric(value);
+  const normalized = call(f.normalize, call(f.load, { payload: sample, testNow: NOW }, ctx), ctx);
+  assert.equal(normalized.storage.valid, false, `invalid numeric reading: ${JSON.stringify(value)}`);
+  const output = evaluate(ctx, sample);
+  assert.equal(output[1], null); assert.equal(output[3]?.storage.retry_due, true);
+  assert.equal(ctx.get('storage_health_history_v1', 'persistent'), undefined);
+}
+flow = configured();
+let normalized = call(f.normalize, call(f.load, { payload: { ...metric(95), collected_at: new Date(NOW - 301000).toISOString() }, testNow: NOW }, flow), flow);
+assert.equal(normalized.storage.valid, false, 'stale critical reading is not a disk alarm');
+normalized = call(f.normalize, call(f.load, { payload: metric(95), storageReadError: true, testNow: NOW }, flow), flow);
+assert.equal(normalized.storage.valid, false, 'API failures never authorize cleanup');
+flow = configured();
+evaluate(flow, metric(81));
+const beforeSeverity = flow.get('storage_health_state_v1', 'persistent').severity;
+result = evaluate(flow, {}, NOW + 1000);
+const timer = call(f.retry, result[3], flow);
+assert.equal(timer.delay, 60000); assert.equal(timer.storageRetry.attempt, 1);
+assert.deepEqual(call(f.retryGuard, timer, flow), {});
+assert.equal(evaluate(flow, {}, NOW + 2000)[3], null, 'overlapping polls do not schedule another timer');
+assert.equal(flow.get('storage_health_state_v1', 'persistent').severity, beforeSeverity);
+result = evaluate(flow, metric(81), NOW + 3000);
+assert.equal(call(f.retryGuard, timer, flow), null, 'valid reading cancels stale queued retry');
+assert.notEqual(result[1]?.payload.title, 'Raspberry Pi - storage indisponivel');
+flow = configured();
+for (let i = 0; i <= 3; i++) result = evaluate(flow, {}, NOW + i * 60000);
+const confirmedAlert = result[1];
+assert.ok(confirmedAlert.collection_error); assert.equal(result[3], null, 'bounded retries');
+call(f.ack, { ...confirmedAlert, notification_delivery: { channel: 'mobile' } }, flow);
+assert.ok(flow.get('storage_health_state_v1', 'persistent').pendingAlert, 'mobile alone cannot acknowledge persistence');
+call(f.ack, { ...confirmedAlert, notification_delivery: { channel: 'persistent' } }, flow);
+assert.ok(flow.get('storage_health_state_v1', 'persistent').pendingAlert, 'history also requires acceptance');
+call(f.ack, { ...confirmedAlert, storageNotificationChannel: 'logbook' }, flow);
+assert.equal(flow.get('storage_health_state_v1', 'persistent').pendingAlert, null);
+result = evaluate(flow, metric(60), NOW + 240000);
+assert.match(result[1].payload.title, /leitura.*normalizada/);
+assert.equal(flow.get('storage_health_state_v1', 'persistent').collectionStatus, 'ok');
+assert.equal(evaluate(flow, metric(60), NOW + 241000)[1], null, 'collection recovery once');
+const firstNotice = call(f.notification, structuredClone(confirmedAlert), flow);
+const secondNotice = call(f.notification, structuredClone(result[1]), flow);
+assert.notEqual(firstNotice.payload.notification_id, secondNotice.payload.notification_id);
+assert.match(firstNotice.payload.message, /Ocorrência:/);
+const persistentIdRule = byId.get('storage_notify_persistent').rules.find(r => r.p === 'notification');
+assert.match(persistentIdRule.to, /payload.notification_id/);
+assert.equal(byId.get('storage_visual_retry_delay').pauseType, 'delayv');
+assert.deepEqual(logicalWireTargets('storage_visual_retry_read_in'), ['storage_read_ha']);
+assert.deepEqual(byId.get('storage_visual_read_catch').scope, ['storage_read_ha']);
+flow = configured();
+const realState = structuredClone(flow.stores.persistent);
+for (let i = 0; i <= 3; i++) {
+  result = evaluate(flow, {}, NOW + i * 60000, true);
+  assert.deepEqual(result[0], []); assert.equal(result[1], null);
+  assert.equal(result[2].test_mode, true);
+  if (result[3]) assert.equal(call(f.retry, result[3], flow).test_mode, true);
+}
+assert.deepEqual(flow.stores.persistent, realState, 'synthetic failures never mutate production');
+console.log('Storage collection: strict metrics, freshness, bounded retry, recovery, persistence and dry-run passed.');
+
+assert.equal(byId.get('storage_visual_logbook').action, 'logbook.log');
+assert.equal(byId.get('storage_visual_logbook').queue, 'all');
+assert.equal(byId.get('storage_visual_notification_test_gate').property, 'test_mode');

@@ -3,6 +3,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const inputPath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -46,7 +48,8 @@ Object.assign(required("storage_comment_architecture"), { x: 700, y: 60,
   name: "Política em unidades humanas; métricas HA são fatos; efeitos privilegiados permanecem allowlisted." });
 const policy = { warning_pct: 70, high_pct: 80, critical_pct: 90, hysteresis_pp: 3,
   notification_cooldown_h: 24, command_error_cooldown_h: 6, trend_24h_pp: 5, trend_7d_pp: 10,
-  auto_remediation_cooldown_h: 6, sample_interval_min: 15, history_retention_days: 8 };
+  auto_remediation_cooldown_h: 6, sample_interval_min: 15, history_retention_days: 8,
+  collection_retry_delay_s: 60, collection_max_retries: 3, metric_max_age_s: 300 };
 Object.assign(required("storage_init"), {
   name: "CONFIG: aplicar política visual", x: 190, y: 150,
   props: [{ p: "payload", v: JSON.stringify(policy), vt: "json" }], payload: "", payloadType: "date",
@@ -91,7 +94,7 @@ fn("storage_visual_input_normalize", decisionGroup.id, "Validar métricas e carr
 sw("storage_visual_metrics_valid", decisionGroup.id, "Percentual e espaço livre são válidos?", "storage.valid", "msg", [{ t: "true" }, { t: "else" }], 3660, 330, [["storage_visual_history_analyze"], ["storage_visual_error_due"]]);
 sw("storage_visual_error_due", decisionGroup.id, "Alerta de coleta venceu cooldown de 6 h?", "storage.error_due", "msg", [{ t: "true" }, { t: "else" }], 3930, 190, [["storage_visual_invalid_finalize"], ["storage_visual_invalid_finalize"]]);
 fn("storage_visual_invalid_finalize", decisionGroup.id, "Publicar indisponibilidade sem autocuidado", "storage-invalid-finalize.js", 4, 4240, 190,
-  [["storage_visual_invalid_mqtt_out"], ["storage_visual_invalid_notify_out"], ["storage_visual_invalid_test_out"], []]);
+    [["storage_visual_invalid_mqtt_out"], ["storage_visual_invalid_notify_out"], ["storage_visual_invalid_test_out"], ["storage_visual_retry_request_out"]]);
 linkOut("storage_visual_invalid_mqtt_out", decisionGroup.id, "Indisponível → MQTT", "storage_visual_mqtt_in", 4540, 140);
 linkOut("storage_visual_invalid_notify_out", decisionGroup.id, "Indisponível → alerta", "storage_visual_notify_in", 4540, 190);
 linkOut("storage_visual_invalid_test_out", decisionGroup.id, "Indisponível TESTE → resultado", "storage_test_decision_in", 4540, 240);
@@ -249,5 +252,76 @@ Object.assign(required("storage_dry_run_terminal"), { x: 3150, y: 980 });
 required("storage_test_decision_in").links = ["storage_test_decision_out", "storage_visual_invalid_test_out"];
 required(TAB).info = "Métricas HA são fatos. Política, thresholds, histerese, cooldowns, tendência, autocuidado, produção/teste e efeitos ficam explícitos; cálculo de janelas permanece adapter puro.";
 
+// Collection failures never enter the capacity/remediation branch. Each timer
+// rechecks the incident identity so recovery and overlapping inputs cancel it.
+const collection = group("storage_visual_collection_group", "2. Leitura: frescor, 3 retries de 60 s e recuperação", 64, 2250, 1880, 820, "#a16207", "#fef9c3");
+required("storage_visual_input_normalize").wires = [["storage_visual_collection_assess_out"]];
+linkOut("storage_visual_collection_assess_out", decisionGroup.id, "Métricas → lifecycle de leitura", "storage_visual_collection_assess_in", 3600, 280);
+linkIn("storage_visual_collection_assess_in", collection.id, "Receber leitura normalizada", "storage_visual_collection_assess_out", "storage_visual_collection_assess", 110, 2330);
+fn("storage_visual_collection_assess", collection.id, "Classificar coleta e tentativas", "storage-collection-assess.js", 1, 360, 2330, [["storage_visual_collection_return_out"]]);
+linkOut("storage_visual_collection_return_out", collection.id, "Coleta classificada → decisão", "storage_visual_collection_return_in", 620, 2330);
+linkIn("storage_visual_collection_return_in", decisionGroup.id, "Receber lifecycle de leitura", "storage_visual_collection_return_out", "storage_visual_metrics_valid", 3460, 390);
+Object.assign(required("storage_visual_metrics_valid"), { name: "Métricas válidas e recentes?" });
+Object.assign(required("storage_visual_error_due"), { name: "Retries esgotados e alerta devido?" });
+Object.assign(required("storage_visual_invalid_finalize"), { name: "Registrar falha de coleta sem limpeza" });
+linkOut("storage_visual_retry_request_out", decisionGroup.id, "Falha → nova tentativa", "storage_visual_retry_request_in", 4540, 90);
+linkIn("storage_visual_retry_request_in", collection.id, "Receber intenção de retry", "storage_visual_retry_request_out", "storage_visual_retry_build", 110, 2430);
+fn("storage_visual_retry_build", collection.id, "Preparar retry com identidade", "storage-collection-retry.js", 1, 350, 2430, [["storage_visual_retry_test_gate"]]);
+sw("storage_visual_retry_test_gate", collection.id, "Retry pertence a TESTE?", "test_mode", "msg", [{ t: "true" }, { t: "else" }], 620, 2430, [["storage_visual_retry_dry_out"], ["storage_visual_retry_delay"]]);
+linkOut("storage_visual_retry_dry_out", collection.id, "Retry TESTE → sem agendar efeito", "storage_test_dry_in", 850, 2370);
+required("storage_test_dry_in").links.push("storage_visual_retry_dry_out");
+grouped(collection.id, { id: "storage_visual_retry_delay", type: "delay", z: TAB, g: collection.id,
+  name: "Aguardar política: 60 s", pauseType: "delayv", timeout: "60", timeoutUnits: "seconds",
+  rate: "1", nbRateUnits: "1", rateUnits: "second", randomFirst: "1", randomLast: "5", randomUnits: "seconds",
+  drop: false, allowrate: false, outputs: 1, x: 900, y: 2470, wires: [["storage_visual_retry_guard"]] });
+fn("storage_visual_retry_guard", collection.id, "Incidente ainda exige releitura?", "storage-collection-retry-guard.js", 1, 1210, 2470, [["storage_visual_retry_read_out"]]);
+linkOut("storage_visual_retry_read_out", collection.id, "Retry validado → ler HA", "storage_visual_retry_read_in", 1510, 2470);
+linkIn("storage_visual_retry_read_in", healthGroup.id, "Receber retry sem limpeza", "storage_visual_retry_read_out", "storage_read_ha", 1660, 470);
+grouped(collection.id, { id: "storage_visual_read_catch", type: "catch", z: TAB, g: collection.id,
+  name: "Capturar erro da leitura HA", scope: ["storage_read_ha"], uncaught: false,
+  x: 320, y: 2570, wires: [["storage_visual_read_error"]] });
+change("storage_visual_read_error", collection.id, "Marcar falha sem métricas", [
+  { t: "set", p: "storageReadError", pt: "msg", to: "true", tot: "bool" },
+  { t: "set", p: "payload", pt: "msg", to: "{}", tot: "json" },
+  { t: "delete", p: "error", pt: "msg" }
+], 620, 2570, [["storage_visual_read_error_out"]]);
+linkOut("storage_visual_read_error_out", collection.id, "Erro de leitura → mesma política", "storage_visual_input_in", 900, 2570);
+required("storage_visual_input_in").links.push("storage_visual_read_error_out");
+required("storage_visual_notify_in").wires = [["storage_visual_notification_prepare"]];
+fn("storage_visual_notification_prepare", effects.id, "Preservar ocorrência e horário no HA", "storage-notification-prepare.js", 1, 9980, 700, [["storage_visual_notification_ready_out"]]);
+linkOut("storage_visual_notification_ready_out", effects.id, "Ocorrência → dois canais", "storage_visual_notification_ready_in", 10250, 700);
+linkIn("storage_visual_notification_ready_in", effects.id, "Entregar e persistir cada ocorrência", "storage_visual_notification_ready_out", "storage_notify", 9630, 500);
+required("storage_visual_notification_ready_in").wires = [["storage_notify", "storage_notify_persistent"]];
+required("storage_test_instructions").name = "TESTE: reset; normal/crescimento; falha de leitura 4x; normal para recuperar. Sem efeitos reais.";
+grouped(collection.id, { id: "storage_visual_test_read_failure", type: "inject", z: TAB, g: collection.id,
+  name: "TESTE 4: falha de leitura (repetir 4x)", props: [{ p: "payload", v: "{}", vt: "json" },
+    { p: "test_mode", v: "true", vt: "bool" }], repeat: "", crontab: "", once: false,
+  x: 320, y: 2700, wires: [["storage_visual_test_failure_prepare"]] });
+grouped(collection.id, { id: "storage_visual_test_failure_prepare", type: "function", z: TAB, g: collection.id,
+  name: "Avançar relógio sintético de retry", func: 'const s = flow.get("storage_health_state_v1__test");\nmsg.testNow = Math.max(Date.now(), Number(s?.collectionNextRetryAt || 0));\nreturn msg;',
+  outputs: 1, x: 720, y: 2700, wires: [["storage_visual_test_failure_out"]] });
+linkOut("storage_visual_test_failure_out", collection.id, "Falha TESTE → política", "storage_visual_input_in", 1000, 2700);
+required("storage_visual_input_in").links.push("storage_visual_test_failure_out");
+required("storage_visual_notification_ready_out").links = ["storage_visual_notification_dispatch_in"];
+required("storage_visual_notification_ready_in").links = ["storage_visual_notification_dispatch_out"];
+linkIn("storage_visual_notification_dispatch_in", collection.id, "Receber ocorrência para entrega", "storage_visual_notification_ready_out", "storage_visual_notification_test_gate", 110, 2820);
+sw("storage_visual_notification_test_gate", collection.id, "Notificação pertence a TESTE?", "test_mode", "msg", [{ t: "true" }, { t: "else" }], 380, 2820, [["storage_visual_notification_dry_out"], ["storage_visual_notification_dispatch_out"]]);
+linkOut("storage_visual_notification_dry_out", collection.id, "Notificação TESTE → nenhum serviço", "storage_test_dry_in", 660, 2760);
+required("storage_test_dry_in").links.push("storage_visual_notification_dry_out");
+linkOut("storage_visual_notification_dispatch_out", collection.id, "Produção → push, persistente e histórico", ["storage_visual_notification_ready_in", "storage_visual_logbook_in"], 660, 2860);
+linkIn("storage_visual_logbook_in", collection.id, "Arquivar ocorrência no HA", "storage_visual_notification_dispatch_out", "storage_visual_logbook", 110, 2970);
+grouped(collection.id, { id: "storage_visual_logbook", type: "api-call-service", z: TAB, g: collection.id,
+  name: "Registrar no Logbook/Recorder (30 dias)", server: required("storage_read_ha").server, version: 7,
+  action: "logbook.log", domain: "logbook", service: "log", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
+  data: '{"name":payload.title,"message":payload.message,"entity_id":"sensor.raspberry_pi_raspberry_storage_status","domain":"sensor"}',
+  dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true,
+  x: 400, y: 2970, wires: [["storage_visual_logbook_ack_channel"]] });
+change("storage_visual_logbook_ack_channel", collection.id, "Confirmar gravação no histórico", [{ t: "set", p: "storageNotificationChannel", pt: "msg", to: "logbook", tot: "str" }], 780, 2970, [["storage_visual_logbook_ack_out"]]);
+linkOut("storage_visual_logbook_ack_out", collection.id, "Histórico aceito → cooldown", "storage_visual_logbook_ack_in", 1050, 2970);
+linkIn("storage_visual_logbook_ack_in", effects.id, "Receber aceite do histórico", "storage_visual_logbook_ack_out", "storage_notification_ack", 2770, 640);
+
+const owned = (node) => node.z === TAB || node.id === TAB;
+const migrated = installNotificationHubs(structuredClone(flows), { routeWires: false });
+flows = reconcileGeneratedFlows(flows, migrated, { isOwned: owned, shouldUpdate: owned });
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Storage visual policy installed in ${outputPath}`);

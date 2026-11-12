@@ -1,13 +1,16 @@
 const s = msg.storage;
 let alert = null;
 if (s.error_due) {
-    alert = {
-        payload: { title: "Raspberry Pi - storage indisponivel", message: "Falha ao obter metricas validas de armazenamento do Home Assistant. Nenhuma manutencao foi executada." },
-        notificationAck: { id: `${s.now}:lastErrorNotificationAt`, at: s.now, targets: [{ key: s.stateKey, field: "lastErrorNotificationAt" }] }
+    alert = s.state.pendingAlert?.collection_error ? s.state.pendingAlert : {
+        collection_error: true,
+        payload: { title: "Raspberry Pi - falha na leitura do storage", message: `Não foi possível obter métricas válidas após ${msg.policy.collection_max_retries} novas tentativas. Isso não confirma defeito nem falta de espaço no disco. A coleta periódica continuará; nenhuma limpeza foi solicitada por esta falha.` },
+        notificationAck: { id: `${s.now}:collection_error`, at: s.now, targets: [{ key: s.stateKey, field: "lastCollectionErrorNotificationAt" }] }
     };
     s.state.pendingAlert = alert;
+    s.state.collectionIncidentOpen = true;
 }
 if (s.testMode) flow.set(s.stateKey, s.state); else flow.set(s.stateKey, s.state, "persistent");
-const mqtt = [{ topic: "smart_home/raspberry/storage/health_last_run", payload: new Date(s.now).toISOString(), retain: true }];
-const event = { ...msg, payload: { event: "invalid_metrics", at: new Date(s.now).toISOString(), input: s.input } };
-return [msg.test_mode === true ? [] : mqtt, msg.test_mode === true ? null : alert, event, null];
+const mqtt = [{ topic: "smart_home/raspberry/storage/collection_status", payload: s.state.collectionStatus, retain: true }];
+const event = { ...msg, payload: { event: "collection_failure", reason: s.collection_reason,
+    attempt: s.state.collectionFailureCount, retryScheduled: s.retry_due, at: new Date(s.now).toISOString() } };
+return [s.testMode ? [] : mqtt, s.testMode ? null : alert, event, s.retry_due ? msg : null];

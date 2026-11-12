@@ -7,6 +7,7 @@ const growth = (window, value) => value === null
         { topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: "online", retain: true }
     ];
 msg.storage_mqtt = [
+    { topic: "smart_home/raspberry/storage/collection_status", payload: "ok", retain: true },
     { topic: "smart_home/raspberry/storage/status", payload: s.severity, retain: true },
     { topic: "smart_home/raspberry/storage/attributes", payload: JSON.stringify(msg.storage_attributes), retain: true },
     { topic: "smart_home/raspberry/storage/health_last_run", payload: new Date(s.now).toISOString(), retain: true },
