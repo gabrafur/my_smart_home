@@ -28,6 +28,15 @@ Banco vazio, entrevista incompleta, perda de dispositivos e mudança de
 identidade não substituem a última cópia boa. PAN, identificador estendido,
 chave, endereço do coordenador, canal e membros precisam ser consistentes.
 
+O Z-Stack pode omitir da tabela nativa um roteador sem chave individual,
+mesmo quando ele continua respondendo. Nesse caso, a captura pode preservar
+somente seu endereço e vínculo já presentes no último bundle com hash válido,
+desde que ele continue como roteador no banco atual. A identidade nativa e
+todos os contadores novos continuam obrigatórios; chaves individuais antigas,
+dispositivos desconhecidos e tabela nativa vazia não são completados.
+`preserved_membership_count` explicita essa composição nos fatos e no bundle.
+Isso preserva o cadastro; não comprova que todos os dispositivos estão online.
+
 Após migração de canal, Z-Stack pode registrar o canal ativo correto e manter
 uma máscara antiga no backup. O adaptador alinha a máscara somente quando o
 canal ativo do backup já corresponde à configuração; nunca altera chaves ou

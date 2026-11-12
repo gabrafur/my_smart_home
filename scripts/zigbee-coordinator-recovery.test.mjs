@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
-import {validateNetwork,snapshotEligible,requestValid,tick,adapterRestoreScript} from './zigbee-coordinator-recovery.mjs';
+import crypto from 'node:crypto';
+import {validateNetwork,captureNetwork,snapshotEligible,requestValid,tick,adapterRestoreScript} from './zigbee-coordinator-recovery.mjs';
 const now=1800000000000;
 function fixture() {
  const config={advanced:{network_key:Array(16).fill(1),ext_pan_id:Array(8).fill(2),pan_id:123,channel:26}};
@@ -63,4 +64,24 @@ test('reviewed radio restoration forces NV recovery when a blank network already
   vm.runInNewContext(adapterRestoreScript,{require,process:fakeProcess});await new Promise(resolve=>setImmediate(resolve));
   assert.equal(restored,expectedRestores);assert.equal(fakeProcess.exitCode,failed?1:0);assert.equal(stopped,created);
  }
+});
+
+test('capture preserves only protected keyless router metadata without rolling back native counters',()=>{
+ const f=fixture();f.backup.devices.push({ieee_address:'0000000000000003',nwk_address:'1234',is_child:false});
+ f.database+='\n'+JSON.stringify({type:'Router',ieeeAddr:'0x0000000000000003',lastSeen:now,interviewCompleted:true});
+ const validated=validateNetwork(f.config,f.backup,f.database);
+ const makeBaseline=(backup=f.backup)=>{const b={version:1,saved_at:now,identity:validated.identity,devices:2,configuration:JSON.stringify(f.config),database:f.database,backup:JSON.stringify(backup)};b.digest=crypto.createHash('sha256').update(JSON.stringify(b)).digest('hex');return b};
+ const native=structuredClone(f.backup);native.devices.pop();native.network_key.frame_counter=999999;
+ const result=captureNetwork(f.config,native,f.database,makeBaseline());
+ assert.equal(result.devices,2);assert.equal(result.preserved_membership_count,1);assert.equal(result.backup.network_key.frame_counter,999999);assert.equal(native.devices.length,1);
+ assert.deepEqual(result.backup.devices[1],f.backup.devices[1]);
+ assert.throws(()=>captureNetwork(f.config,native,f.database,null));
+ assert.throws(()=>captureNetwork(f.config,native,f.database,{...makeBaseline(),digest:'corrupt'}));
+ for(const field of ['channel','pan_id','extended_pan_id','coordinator_ieee']){const bad=structuredClone(native);bad[field]=field==='channel'?25:'wrong';assert.throws(()=>captureNetwork(f.config,bad,f.database,makeBaseline()))}
+ const secured=structuredClone(f.backup);secured.devices[1].link_key={key:'11'.repeat(16),tx_counter:100,rx_counter:100};
+ assert.throws(()=>captureNetwork(f.config,native,f.database,makeBaseline(secured)));
+ assert.throws(()=>captureNetwork(f.config,{...native,devices:[]},f.database,makeBaseline()));
+ const extra=f.database+'\n'+JSON.stringify({type:'Router',ieeeAddr:'0x0000000000000004',lastSeen:now,interviewCompleted:true});
+ assert.throws(()=>captureNetwork(f.config,native,extra,makeBaseline()));
+ assert.throws(()=>captureNetwork(f.config,native,f.database.replace('"type":"Router","ieeeAddr":"0x0000000000000003"','"type":"EndDevice","ieeeAddr":"0x0000000000000003"'),makeBaseline()));
 });

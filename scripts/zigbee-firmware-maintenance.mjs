@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
-import {validateNetwork,adapterRestoreScript} from './zigbee-coordinator-recovery.mjs';
+import {validateNetwork,captureNetwork,adapterRestoreScript} from './zigbee-coordinator-recovery.mjs';
 const require=createRequire(import.meta.url);
 const ROOT='/mnt/data/docker',PRIVATE='/var/lib/zigbee-coordinator-recovery';
 const hash=v=>crypto.createHash('sha256').update(v).digest('hex');
@@ -186,10 +186,10 @@ export async function processFirmwareQueue(){
    probe:async()=>{docker(['exec','zigbee2mqtt','node','-e',probeScript],20000)},
    backup:async()=>{
     docker(['exec','zigbee2mqtt','node','-e',backupScript],55000);
-    const raw=read(path.join(dataDir,'database.db')),validated=validateNetwork(config,JSON.parse(read(path.join(dataDir,'coordinator_backup.json'))),raw);
     const last=optional(path.join(PRIVATE,'last-good.json'),null);
+    const raw=read(path.join(dataDir,'database.db')),validated=captureNetwork(config,JSON.parse(read(path.join(dataDir,'coordinator_backup.json'))),raw,last);
     if(last&&(validated.identity!==last.identity||validated.devices<last.devices))throw Error('backup_would_lose_devices');
-    const bundle={version:1,saved_at:Date.now(),identity:validated.identity,devices:validated.devices,configuration:read(path.join(dataDir,'configuration.yaml')),database:raw,backup:JSON.stringify(validated.backup,null,2)+'\n'};bundle.digest=hash(JSON.stringify(bundle));
+    const bundle={version:1,saved_at:Date.now(),identity:validated.identity,devices:validated.devices,preserved_membership_count:validated.preserved_membership_count,configuration:read(path.join(dataDir,'configuration.yaml')),database:raw,backup:JSON.stringify(validated.backup,null,2)+'\n'};bundle.digest=hash(JSON.stringify(bundle));
     atomic(path.join(PRIVATE,'pre-firmware-'+request.id+'.json'),bundle);atomic(path.join(PRIVATE,'last-good.json'),bundle);job.backup_digest=bundle.digest;persist();
    },
    stop:async()=>{docker(['stop','-t','20','zigbee2mqtt'],35000)},install:async()=>vendor(identity,'install',request),

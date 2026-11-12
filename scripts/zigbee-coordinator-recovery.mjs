@@ -44,6 +44,33 @@ export function snapshotEligible(candidate, baseline, facts) {
     Number.isFinite(facts.last_seen_age_s) && facts.last_seen_age_s <= 300 && (!baseline || candidate.identity === baseline.identity && candidate.devices >= baseline.devices);
 }
 
+// Z-Stack can omit an address-table entry for a router that uses no unique
+// link key. Preserve only its already protected address metadata, never old
+// credentials or counters. The complete native identity is still validated.
+export function captureNetwork(config, backup, database, baseline) {
+  try {return {...validateNetwork(config,backup,database),preserved_membership_count:0};} catch(error) {
+    if(error.message!=='network_identity_mismatch'||!baseline)throw error;
+    const {digest,...body}=baseline;
+    if(sha(JSON.stringify(body))!==digest)throw Error('snapshot_integrity_failed');
+    const previous=validateNetwork(config,JSON.parse(baseline.backup),baseline.database);
+    if(previous.identity!==baseline.identity)throw Error('network_changed');
+    const current=structuredClone(backup),rows=database.trim().split('\n').filter(Boolean).map(JSON.parse);
+    if(!Array.isArray(current.devices)||!current.devices.length)throw error;
+    const missing=rows.filter(d=>d.type==='Router'&&!current.devices.some(b=>b.ieee_address===d.ieeeAddr.replace(/^0x/,'')));
+    if(!missing.length)throw error;
+    for(const row of missing){
+      const known=previous.backup.devices.find(b=>b.ieee_address===row.ieeeAddr.replace(/^0x/,''));
+      if(!known||known.link_key||!/^[a-f0-9]{4}$/i.test(known.nwk_address)||typeof known.is_child!=='boolean'||
+        !baseline.database.trim().split('\n').map(JSON.parse).some(d=>d.type==='Router'&&d.ieeeAddr===row.ieeeAddr))throw error;
+      // Deliberately whitelist public membership fields; no security material.
+      current.devices.push({ieee_address:known.ieee_address,nwk_address:known.nwk_address,is_child:known.is_child});
+    }
+    const result=validateNetwork(config,current,database);
+    if(result.identity!==baseline.identity)throw Error('network_changed');
+    return {...result,preserved_membership_count:missing.length};
+  }
+}
+
 export function requestValid(r, facts, now, journal) {
   return r && Object.keys(r).sort().join(',') === 'action,facts_id,id,requested_at' &&
     /^[a-f0-9]{32}$/.test(r.id) && ['snapshot','restart','restore'].includes(r.action) &&
@@ -117,7 +144,7 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
   const now=runtime.now?.()??Date.now();
   const state=JSON.parse(runDocker(['inspect','zigbee2mqtt','--format','{{json .State}}']));
   let candidate=null;
-  try {candidate=validateNetwork(config,JSON.parse(read(path.join(dataDir,'coordinator_backup.json'))),read(path.join(dataDir,'database.db')));} catch {}
+  try {candidate=captureNetwork(config,JSON.parse(read(path.join(dataDir,'coordinator_backup.json'))),read(path.join(dataDir,'database.db')),baseline);} catch {}
   const database=read(path.join(dataDir,'database.db')).trim().split('\n').filter(Boolean).map(l=>JSON.parse(l));
   // Docker writes container stderr to stderr too; collect both streams privately.
   const logResult=runtime.logs?.()||spawnSync('/usr/bin/docker',['logs','--since','5m','--tail','500','zigbee2mqtt'],{encoding:'utf8',timeout:10000,maxBuffer:4*1024*1024});
@@ -127,7 +154,7 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
   const facts={schema_version:1,id:crypto.randomBytes(16).toString('hex'),observed_at:now,
     running:state.Running===true,uptime_s:Math.max(0,(now-Date.parse(state.StartedAt))/1000),
     device_count:database.filter(d=>d.type!=='Coordinator').length,
-    backup_valid:!!candidate,last_good_available:!!baseline,last_good_count:baseline?.devices||0,
+    backup_valid:!!candidate,preserved_membership_count:candidate?.preserved_membership_count||0,last_good_available:!!baseline,last_good_count:baseline?.devices||0,
     invalid_param_count:logsAvailable?(logs.match(/\(0x02: INVALID_PARAM\)/g)||[]).length:null,
     log_observation_reason:logsAvailable?'ok':String(logResult.error?.code||logResult.signal||`exit_${logResult.status}`).replace(/[^a-zA-Z0-9_]/g,'').slice(0,40),
     last_seen_age_s:lastSeen&&lastSeen<=now?(now-lastSeen)/1000:null,
@@ -154,9 +181,9 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
       if(request.action==='snapshot') {
         if(!snapshotEligible({identity:baseline?.identity,devices:facts.device_count},baseline,facts))throw Error('snapshot_not_healthy');
         runDocker(['exec','zigbee2mqtt','node','-e',backupRpc]);
-        candidate=validateNetwork(config,JSON.parse(read(path.join(dataDir,'coordinator_backup.json'))),read(path.join(dataDir,'database.db')));
+        candidate=captureNetwork(config,JSON.parse(read(path.join(dataDir,'coordinator_backup.json'))),read(path.join(dataDir,'database.db')),baseline);
         if(!snapshotEligible(candidate,baseline,facts))throw Error('snapshot_not_healthy');
-        const bundle={version:1,saved_at:now,identity:candidate.identity,devices:candidate.devices,
+        const bundle={version:1,saved_at:now,identity:candidate.identity,devices:candidate.devices,preserved_membership_count:candidate.preserved_membership_count,
           configuration:read(path.join(dataDir,'configuration.yaml')),
           database:read(path.join(dataDir,'database.db')),
           backup:JSON.stringify(candidate.backup,null,2)+'\n'};
