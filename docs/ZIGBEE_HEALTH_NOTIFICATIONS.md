@@ -251,11 +251,15 @@ comunicação nova após 300 s de estabilidade; o aceite isolado de configure n�
 O grupo de caminhos do `monitoramento_zigbee` consulta o mapa a cada 60 minutos,
 com ponte estável, sem manutenção do host e sem pedido nativo pendente. Guarda tabelas de roteamento
 ativas de ida ou retorno correlacionadas por transação, com identidade do coordenador e catálogo
-atual de dispositivos. Mapas incompletos não apagam caminhos anteriores. Dispositivos finais também
+atual de dispositivos. Mapas incompletos não apagam caminhos anteriores. Após reinício, uma consulta
+sem resposta pode ser renovada somente depois do intervalo configurado, com
+nova transação e registro da anterior como incerta. Essa renovação de leitura
+não libera nem repete configurações incertas. Dispositivos finais também
 podem usar um vínculo pai único observado na tabela de vizinhos, unido à rota
 ativa do pai; essa origem é registrada separadamente, sem inferir pai por LQI.
 
-A política visual aceita caminhos de até 24 horas e três roteadores
+A política visual exige fatos do coordenador de até 90 segundos e aceita
+caminhos de até 24 horas e três roteadores
 intermediários. Idade, intervalo, número de saltos e recuperação por offline
 são ajustáveis, com limites explícitos. O plano reconfigura os intermediários
 na ordem registrada e depois o destino. Cada salto possui transação própria;

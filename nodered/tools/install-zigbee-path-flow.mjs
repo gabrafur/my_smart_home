@@ -7,8 +7,8 @@ export function installZigbeePathFlow({nodes,group,fn,inject,sw,change,linkOut,l
  const o=(s,name,target,x,y)=>linkOut(id(s),g,name,target,x,y);
  const i=(s,name,from,target,x,y)=>linkIn(id(s),g,name,from,target,x,y);
  const switcher=(s,name,property,x,y,wires)=>sw(id(s),g,name,property,'jsonata',[{t:'true'},{t:'else'}],x,y,wires);
- const policy={max_age_min:1440,scan_interval_min:60,max_hops:3,upstream_configure:true,offline_recovery:true};
- inject(id('policy_default'),g,'CONFIG: caminho 24 h; mapa 60 min; até 3 roteadores',[{p:'payload',v:JSON.stringify(policy),vt:'json'}],330,4280,[[id('policy')]],{once:true,onceDelay:'2'});
+ const policy={facts_max_age_s:90,max_age_min:1440,scan_interval_min:60,max_hops:3,upstream_configure:true,offline_recovery:true};
+ inject(id('policy_default'),g,'CONFIG: caminho 24 h; mapa 60 min; fatos 90 s; 3 saltos',[{p:'payload',v:JSON.stringify(policy),vt:'json'}],330,4280,[[id('policy')]],{once:true,onceDelay:'2'});
  f('policy','Validar: idade 60–10.080 min; scan 30–1.440; saltos 1–8','zigbee-path-policy.js',850,4280,[[id('policy_valid')]]);
  switcher('policy_valid','Política válida?','zigbee_path_policy_valid',1330,4280,[[],[id('invalid')]]);
  f('invalid','Política inválida: preservar anterior','zigbee-path-no-effect.js',1730,4280,[]);
@@ -18,7 +18,7 @@ export function installZigbeePathFlow({nodes,group,fn,inject,sw,change,linkOut,l
  o('guard_out','Fatos → seleção comum',id('guard_in'),800,4480);
  i('guard_in','Receber fatos reais ou TESTE',id('guard_out'),id('scan_facts'),500,4340);
  f('scan_facts','Ler ponte, startup, política e pedido em andamento','zigbee-path-scan-facts.js',830,4400,[[id('scan_ready')]]);
- switcher('scan_ready','Ponte estável, livre e intervalo vencido?','zigbee_path_scan_ready = true and zigbee_path_scan_due = true',1370,4400,[[id('scan_build')],[]]);
+ switcher('scan_ready','Ponte estável, livre e intervalo vencido?',`$exists(zigbee_path_policy) and $exists(zigbee_path_monitor_policy) and zigbee_path_guard.schema_version=1 and zigbee_path_guard.running=true and zigbee_path_guard.maintenance_active=false and zigbee_path_guard.operation_active=false and zigbee_path_guard.blocked_unknown=false and zigbee_path_guard.invalid_param_count=0 and $type(zigbee_path_guard.observed_at)='number' and zigbee_path_guard.observed_at<=zigbee_path_now and zigbee_path_guard.observed_at>=zigbee_path_now-zigbee_path_policy.facts_max_age_s*1000 and zigbee_path_bridge_online=true and $type(zigbee_path_boot_age_ms)='number' and zigbee_path_boot_age_ms>=zigbee_path_monitor_policy.startup_grace_s*1000 and zigbee_path_bridge_age_ms>=zigbee_path_monitor_policy.recovery_confirmation_s*1000 and zigbee_path_native_pending=false and (zigbee_path_scan_pending=false or zigbee_path_scan_age_ms>=zigbee_path_policy.scan_interval_min*60000) and (zigbee_path_force_scan=true or zigbee_path_has_scan=false or zigbee_path_scan_age_ms>=zigbee_path_policy.scan_interval_min*60000)`,1370,4400,[[id('scan_build')],[]]);
  f('scan_build','Reservar consulta correlacionada de leitura','zigbee-path-scan-build.js',1900,4400,[[id('scan_test')]]);
  switcher('scan_test','FONTE: consulta é TESTE?','_zigbee_test = true',2330,4400,[[id('scan_dry')],[id('scan_mqtt')]]);
  o('scan_dry','Mapa TESTE → terminal seguro','zigbee_dry_in',2700,4350);
@@ -38,7 +38,7 @@ export function installZigbeePathFlow({nodes,group,fn,inject,sw,change,linkOut,l
  linkOut(id('select_out'),get('zigbee_route_scan_response_status').g,'Mapa concluído → escolher caminho',id('select_in'),3085,1600);
  i('select_in','Receber incidente correlacionado',id('select_out'),id('select'),120,4700);
  f('select','Normalizar identidade, histórico e catálogo atual','zigbee-path-select.js',600,4700,[[id('use')]]);
- switcher('use','Caminho íntegro, recente e roteadores habilitados?','zigbee_path_valid = true and zigbee_path_age_ms >= 0 and zigbee_path_age_ms <= zigbee_path_policy.max_age_min*60000 and zigbee_path_policy.upstream_configure = true',1190,4700,[[id('known')],[id('direct')]]);
+ switcher('use','Caminho íntegro, recente e roteadores habilitados?','zigbee_path_valid = true and zigbee_path_age_ms >= 0 and zigbee_path_age_ms <= zigbee_path_policy.max_age_min*60000 and zigbee_path_policy.upstream_configure = true and $count(zigbee_path_known.path) <= zigbee_path_policy.max_hops+2',1190,4700,[[id('known')],[id('direct')]]);
  change(id('known'),g,'DECISÃO: intermediários → dispositivo',[{t:'set',p:'zigbee_path_use',pt:'msg',to:'true',tot:'bool'}],1760,4660,[[id('plan')]]);
  change(id('direct'),g,'DECISÃO: tentativa direta, sem inventar caminho',[{t:'set',p:'zigbee_path_use',pt:'msg',to:'false',tot:'bool'}],1760,4760,[[id('plan')]]);
  f('plan','Serializar fila de destinos e evidência','zigbee-path-plan.js',2300,4700,[[id('plan_out')]]);
@@ -58,7 +58,7 @@ export function installZigbeePathFlow({nodes,group,fn,inject,sw,change,linkOut,l
  linkOut(id('offline_out'),get('zigbee_component_state_mutate').g,'Offline confirmado → recuperação limitada',id('offline_in'),4060,980);
  i('offline_in','Receber novo incidente offline',id('offline_out'),id('offline'),120,5140);
  f('offline','Adaptar incidente sem duplicar alerta','zigbee-path-offline.js',620,5140,[[id('offline_ok')]]);
- switcher('offline_ok','Novo offline e recuperação habilitada?','zigbee_path_offline_eligible = true',1190,5140,[[id('offline_recover')],[]]);
+ switcher('offline_ok','Novo offline e recuperação habilitada?',"zigbee_path_policy.offline_recovery = true and zigbee_component_action = 'open'",1190,5140,[[id('offline_recover')],[]]);
  o('offline_recover','Offline → política comum de recuperação','zigbee_route_error_in',1680,5140);get('zigbee_route_error_in').links.push(id('offline_recover'));
  const open=get('zigbee_route_open').rules.find(r=>r.p==='zigbee_route_event');open.to='zigbee_route_quiet_open = true ? "route_retry" : "route_failure"';open.tot='jsonata';
  grouped(g,{id:id('note'),type:'comment',z:tab,g,name:'Sem mapa válido: tentativa direta. Sem resposta: alertar; nunca remover nem resetar.',info:'Um caminho é evidência de tabela ativa, não uma rota imposta. Reconfigure passa pelos mesmos gates, dedupe e limites. Saída real da rede ou defeito físico pode exigir pareamento. Replay: RESET → CONFIG TESTE → catálogo/mapa → erro → confirmações de cada salto → telemetria + estabilidade.',x:1600,y:5270,wires:[]});

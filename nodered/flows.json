@@ -101619,11 +101619,11 @@
         "type": "inject",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
-        "name": "CONFIG: caminho 24 h; mapa 60 min; até 3 roteadores",
+        "name": "CONFIG: caminho 24 h; mapa 60 min; fatos 90 s; 3 saltos",
         "props": [
             {
                 "p": "payload",
-                "v": "{\"max_age_min\":1440,\"scan_interval_min\":60,\"max_hops\":3,\"upstream_configure\":true,\"offline_recovery\":true}",
+                "v": "{\"facts_max_age_s\":90,\"max_age_min\":1440,\"scan_interval_min\":60,\"max_hops\":3,\"upstream_configure\":true,\"offline_recovery\":true}",
                 "vt": "json"
             }
         ],
@@ -101648,7 +101648,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
         "name": "Validar: idade 60–10.080 min; scan 30–1.440; saltos 1–8",
-        "func": "const p=msg.payload,test=msg._zigbee_test===true;\nmsg.zigbee_path_policy_valid=!!p&&Number.isInteger(p.max_age_min)&&p.max_age_min>=60&&p.max_age_min<=10080&&Number.isInteger(p.scan_interval_min)&&p.scan_interval_min>=30&&p.scan_interval_min<=1440&&Number.isInteger(p.max_hops)&&p.max_hops>=1&&p.max_hops<=8&&typeof p.upstream_configure==='boolean'&&typeof p.offline_recovery==='boolean';\nif(msg.zigbee_path_policy_valid)flow.set('zigbee_path_policy_v1'+(test?'__test':''),{...p},test?undefined:'persistent');\nreturn msg;",
+        "func": "const p=msg.payload,test=msg._zigbee_test===true;\nmsg.zigbee_path_policy_valid=!!p&&Number.isInteger(p.facts_max_age_s)&&p.facts_max_age_s>=30&&p.facts_max_age_s<=300&&Number.isInteger(p.max_age_min)&&p.max_age_min>=60&&p.max_age_min<=10080&&Number.isInteger(p.scan_interval_min)&&p.scan_interval_min>=30&&p.scan_interval_min<=1440&&Number.isInteger(p.max_hops)&&p.max_hops>=1&&p.max_hops<=8&&typeof p.upstream_configure==='boolean'&&typeof p.offline_recovery==='boolean';\nif(msg.zigbee_path_policy_valid)flow.set('zigbee_path_policy_v1'+(test?'__test':''),{...p},test?undefined:'persistent');\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -101740,7 +101740,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
         "name": "Ler ponte, startup, política e pedido em andamento",
-        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',store=test?undefined:'persistent',memory=test?undefined:'memoryOnly';\nlet guard=test?msg.guard_test_facts:msg.payload;try{if(typeof guard==='string')guard=JSON.parse(guard)}catch{guard=null}\nconst p=flow.get('zigbee_path_policy_v1'+suffix,store),scan=flow.get('zigbee_path_scan'+suffix,store),now=Number(msg.monitor_now??Date.now());\nconst bridge=flow.get('zigbee_bridge_observation'+suffix,memory),boot=flow.get('zigbee_boot_at'+suffix,memory);\nconst policy=flow.get('zigbee_monitor_policy_v2','persistent');\nconst incidents=flow.get('zigbee_route_incidents_v1'+suffix,store)||{};\nmsg.zigbee_path_scan_ready=!!(guard?.schema_version===1&&guard.running===true&&guard.maintenance_active===false&&guard.operation_active===false&&guard.blocked_unknown===false&&guard.invalid_param_count===0&&Number.isFinite(guard.observed_at)&&now>=guard.observed_at&&now-guard.observed_at<=90000&&p&&policy&&bridge?.state==='online'&&Number.isFinite(boot)&&now-boot>=policy.startup_grace_s*1000&&now-bridge.changed_at>=policy.recovery_confirmation_s*1000&&\n !Object.values(incidents).some(c=>c.pending_transaction!=null)&&!scan?.pending);\nmsg.zigbee_path_scan_due=!!(p&&(msg.zigbee_path_force_scan===true||!scan||now-scan.at>=p.scan_interval_min*60000));msg.zigbee_path_now=now;return msg;",
+        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',store=test?undefined:'persistent',memory=test?undefined:'memoryOnly';\nlet guard=test?msg.guard_test_facts:msg.payload;try{if(typeof guard==='string')guard=JSON.parse(guard)}catch{guard=null}\nconst scan=flow.get('zigbee_path_scan'+suffix,store),now=Number(msg.monitor_now??Date.now());\nconst bridge=flow.get('zigbee_bridge_observation'+suffix,memory),boot=flow.get('zigbee_boot_at'+suffix,memory);\nconst incidents=flow.get('zigbee_route_incidents_v1'+suffix,store)||{};\nObject.assign(msg,{zigbee_path_guard:guard,zigbee_path_policy:flow.get('zigbee_path_policy_v1'+suffix,store),zigbee_path_monitor_policy:flow.get('zigbee_monitor_policy_v2','persistent'),\n zigbee_path_bridge_online:bridge?.state==='online',zigbee_path_boot_age_ms:Number.isFinite(boot)?now-boot:null,zigbee_path_bridge_age_ms:bridge?now-bridge.changed_at:null,\n zigbee_path_native_pending:Object.values(incidents).some(c=>c.pending_transaction!=null),zigbee_path_has_scan:!!scan,zigbee_path_scan_pending:scan?.pending===true,\n zigbee_path_scan_age_ms:scan?now-scan.at:null,zigbee_path_now:now});return msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -101761,7 +101761,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
         "name": "Ponte estável, livre e intervalo vencido?",
-        "property": "zigbee_path_scan_ready = true and zigbee_path_scan_due = true",
+        "property": "$exists(zigbee_path_policy) and $exists(zigbee_path_monitor_policy) and zigbee_path_guard.schema_version=1 and zigbee_path_guard.running=true and zigbee_path_guard.maintenance_active=false and zigbee_path_guard.operation_active=false and zigbee_path_guard.blocked_unknown=false and zigbee_path_guard.invalid_param_count=0 and $type(zigbee_path_guard.observed_at)='number' and zigbee_path_guard.observed_at<=zigbee_path_now and zigbee_path_guard.observed_at>=zigbee_path_now-zigbee_path_policy.facts_max_age_s*1000 and zigbee_path_bridge_online=true and $type(zigbee_path_boot_age_ms)='number' and zigbee_path_boot_age_ms>=zigbee_path_monitor_policy.startup_grace_s*1000 and zigbee_path_bridge_age_ms>=zigbee_path_monitor_policy.recovery_confirmation_s*1000 and zigbee_path_native_pending=false and (zigbee_path_scan_pending=false or zigbee_path_scan_age_ms>=zigbee_path_policy.scan_interval_min*60000) and (zigbee_path_force_scan=true or zigbee_path_has_scan=false or zigbee_path_scan_age_ms>=zigbee_path_policy.scan_interval_min*60000)",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -101789,7 +101789,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
         "name": "Reservar consulta correlacionada de leitura",
-        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',now=msg.zigbee_path_now;\nconst tx='nodered-zigbee-path-'+(test?'test-':'')+String(msg._msgid||'scan')+'-'+now;\nflow.set('zigbee_path_scan'+suffix,{transaction:tx,at:now,pending:true},test?undefined:'persistent');\nmsg.topic='zigbee2mqtt/bridge/request/networkmap';msg.payload={type:'raw',routes:true,transaction:tx};msg.retain=false;msg.qos='1';msg.zigbee_route_effect='route_scan';return msg;",
+        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',now=msg.zigbee_path_now;\nconst tx='nodered-zigbee-path-'+(test?'test-':'')+String(msg._msgid||'scan')+'-'+now;\nconst store=test?undefined:'persistent',old=flow.get('zigbee_path_scan'+suffix,store);\nconst unknown=Array.isArray(old?.unknown_transactions)?old.unknown_transactions:[];\nif(old?.pending===true&&typeof old.transaction==='string')unknown.push(old.transaction);\nflow.set('zigbee_path_scan'+suffix,{transaction:tx,at:now,pending:true,unknown_transactions:[...new Set(unknown)].slice(-8)},store);\nmsg.topic='zigbee2mqtt/bridge/request/networkmap';msg.payload={type:'raw',routes:true,transaction:tx};msg.retain=false;msg.qos='1';msg.zigbee_route_effect='route_scan';return msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -101951,7 +101951,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
         "name": "Normalizar identidade, histórico e catálogo atual",
-        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',store=test?undefined:'persistent';\nconst catalog=flow.get('zigbee_device_catalog_v1'+suffix)||{};\nconst ieee=msg.zigbee_route_ieee||Object.keys(catalog).find(id=>catalog[id].name===msg.zigbee_route_device);\nconst known=(flow.get('zigbee_paths_v1'+suffix,store)||{})[ieee];\nconst policy=flow.get('zigbee_path_policy_v1'+suffix,store);\nconst now=Number(msg.zigbee_route_now??msg.monitor_now??Date.now());\nmsg.zigbee_path_known=known||null;\nmsg.zigbee_path_policy=policy;\nmsg.zigbee_path_catalog=catalog;\nmsg.zigbee_path_age_ms=known?now-known.observed_at:null;\nmsg.zigbee_path_valid=!!(policy&&known&&['active_routing_table','parent_and_active_routing_table','neighbor_parent'].includes(known.kind)&&Array.isArray(known.path)&&known.path.at(-1)===ieee&&\n known.path[0]===known.coordinator&&catalog[known.coordinator]?.type==='Coordinator'&&\n Object.keys(catalog).filter(id=>catalog[id].type==='Coordinator').length===1&&known.path.every(id=>catalog[id])&&\n known.path.length<=policy.max_hops+2&&new Set(known.path).size===known.path.length&&\n known.path.slice(1,-1).every(id=>catalog[id].type==='Router'));\nreturn msg;",
+        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',store=test?undefined:'persistent';\nconst catalog=flow.get('zigbee_device_catalog_v1'+suffix)||{};\nconst ieee=msg.zigbee_route_ieee||Object.keys(catalog).find(id=>catalog[id].name===msg.zigbee_route_device);\nconst known=(flow.get('zigbee_paths_v1'+suffix,store)||{})[ieee];\nconst policy=flow.get('zigbee_path_policy_v1'+suffix,store);\nconst now=Number(msg.zigbee_route_now??msg.monitor_now??Date.now());\nmsg.zigbee_path_known=known||null;\nmsg.zigbee_path_policy=policy;\nmsg.zigbee_path_catalog=catalog;\nmsg.zigbee_path_age_ms=known?now-known.observed_at:null;\nmsg.zigbee_path_valid=!!(policy&&known&&['active_routing_table','parent_and_active_routing_table','neighbor_parent'].includes(known.kind)&&Array.isArray(known.path)&&known.path.at(-1)===ieee&&\n known.path[0]===known.coordinator&&catalog[known.coordinator]?.type==='Coordinator'&&\n Object.keys(catalog).filter(id=>catalog[id].type==='Coordinator').length===1&&known.path.every(id=>catalog[id])&&\n new Set(known.path).size===known.path.length&&\n known.path.slice(1,-1).every(id=>catalog[id].type==='Router'));\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -101972,7 +101972,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
         "name": "Caminho íntegro, recente e roteadores habilitados?",
-        "property": "zigbee_path_valid = true and zigbee_path_age_ms >= 0 and zigbee_path_age_ms <= zigbee_path_policy.max_age_min*60000 and zigbee_path_policy.upstream_configure = true",
+        "property": "zigbee_path_valid = true and zigbee_path_age_ms >= 0 and zigbee_path_age_ms <= zigbee_path_policy.max_age_min*60000 and zigbee_path_policy.upstream_configure = true and $count(zigbee_path_known.path) <= zigbee_path_policy.max_hops+2",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -102306,7 +102306,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
         "name": "Adaptar incidente sem duplicar alerta",
-        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'';\nconst policy=flow.get('zigbee_path_policy_v1'+suffix,test?undefined:'persistent');\nmsg.zigbee_path_offline_eligible=!!(policy?.offline_recovery&&msg.zigbee_component_action==='open');\nmsg.zigbee_route_key=msg.zigbee_component_key;msg.zigbee_route_device=msg.zigbee_component;\nmsg.zigbee_route_now=msg.zigbee_now;msg.zigbee_route_now_iso=msg.zigbee_now_iso;msg.zigbee_route_error='availability_offline';msg.zigbee_route_quiet_open=true;\nreturn msg;",
+        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'';\nconst policy=flow.get('zigbee_path_policy_v1'+suffix,test?undefined:'persistent');\nmsg.zigbee_path_policy=policy;\nmsg.zigbee_route_key=msg.zigbee_component_key;msg.zigbee_route_device=msg.zigbee_component;\nmsg.zigbee_route_now=msg.zigbee_now;msg.zigbee_route_now_iso=msg.zigbee_now_iso;msg.zigbee_route_error='availability_offline';msg.zigbee_route_quiet_open=true;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -102327,7 +102327,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
         "name": "Novo offline e recuperação habilitada?",
-        "property": "zigbee_path_offline_eligible = true",
+        "property": "zigbee_path_policy.offline_recovery = true and zigbee_component_action = 'open'",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -102383,7 +102383,7 @@
         "props": [
             {
                 "p": "payload",
-                "v": "{\"max_age_min\":1440,\"scan_interval_min\":60,\"max_hops\":3,\"upstream_configure\":true,\"offline_recovery\":true}",
+                "v": "{\"facts_max_age_s\":90,\"max_age_min\":1440,\"scan_interval_min\":60,\"max_hops\":3,\"upstream_configure\":true,\"offline_recovery\":true}",
                 "vt": "json"
             },
             {
@@ -102412,7 +102412,7 @@
         "type": "link out",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_paths",
-        "name": "Encurtar: CONFIG: caminho 24 h; mapa 60 min; até 3 roteadores",
+        "name": "Encurtar: CONFIG: caminho 24 h; mapa 60 min; fatos 90 s; 3 saltos",
         "mode": "link",
         "links": [
             "notification_hub_wire_in_83d940186d86"

@@ -31,7 +31,7 @@ assert.ok(!h.seen.some(id=>['zigbee_route_recovery_mqtt','zigbee_route_configure
  f.set('zigbee_route_incidents_v1__test',uncertain);
  const guard={schema_version:1,observed_at:now,running:true,maintenance_active:false,blocked_unknown:false,operation_active:false,invalid_param_count:0};
  for(const bad of [{maintenance_active:true},{blocked_unknown:true},{operation_active:true},{invalid_param_count:3},{observed_at:now-90001}]){
-  const m=fn('zigbee_path_scan_facts')({_zigbee_test:true,monitor_now:now,guard_test_facts:{...guard,...bad}},f,noop,{});assert.equal(m.zigbee_path_scan_ready,false);
+  await x.run('zigbee_path_clock',{_zigbee_test:true,monitor_now:now,guard_test_facts:{...guard,...bad}});assert.equal(x.dry.length,0);
  }
  await x.run('zigbee_path_clock',{_zigbee_test:true,monitor_now:now,guard_test_facts:guard});
  assert.equal(x.dry.filter(d=>d.msg.zigbee_route_effect==='route_scan').length,1);
@@ -39,6 +39,16 @@ assert.ok(!h.seen.some(id=>['zigbee_route_recovery_mqtt','zigbee_route_configure
  await x.run('zigbee_path_clock',{_zigbee_test:true,monitor_now:now+1,guard_test_facts:guard});
  assert.equal(x.dry.filter(d=>d.msg.zigbee_route_effect==='route_scan').length,1,'pending map cannot overlap');
  assert.deepEqual(f.get('zigbee_route_incidents_v1__test'),uncertain);
+ const oldTransaction=f.get('zigbee_path_scan__test').transaction,restarted=harness(),rf=restarted.flowFor(tab);
+ for(const [key,value] of f.values)rf.values.set(key,structuredClone(value));
+ const later=now+3600001;
+ await restarted.run('zigbee_path_clock',{_zigbee_test:true,monitor_now:later,guard_test_facts:{...guard,observed_at:later}});
+ assert.equal(restarted.dry.filter(d=>d.msg.zigbee_route_effect==='route_scan').length,1,'restart can renew only the read after its cadence');
+ assert.notEqual(rf.get('zigbee_path_scan__test').transaction,oldTransaction);
+ assert.ok(rf.get('zigbee_path_scan__test').unknown_transactions.includes(oldTransaction));
+ assert.deepEqual(rf.get('zigbee_route_incidents_v1__test'),uncertain,'uncertain configure operations stay blocked');
+ assert.equal(fn('zigbee_path_map_normalize')({_zigbee_test:true,monitor_now:later+1,payload:{transaction:oldTransaction,status:'ok',data:{value:{nodes:[],links:[]}}}},rf,noop,{}),null,'late old map cannot settle the new observation');
+
 }
 // A failed intermediate never dispatches the target or reports recovery.
 {
@@ -89,6 +99,6 @@ for(const [label,mutate,now] of [
 }
 // Offline confirmation enters the same bounded route policy without duplicate alert.
 const offline=fn('zigbee_path_offline')({_zigbee_test:true,zigbee_component_action:'open',zigbee_component_key:'sample',zigbee_component:'teste_rota',zigbee_now:t,zigbee_now_iso:new Date(t).toISOString()},flow,noop,{});
-assert.equal(offline.zigbee_path_offline_eligible,true);assert.equal(offline.zigbee_route_quiet_open,true);
-assert.equal(fn('zigbee_path_offline')({...offline,zigbee_component_action:'touch'},flow,noop,{}).zigbee_path_offline_eligible,false);
+assert.equal(offline.zigbee_path_policy.offline_recovery,true);assert.equal(offline.zigbee_route_quiet_open,true);
+const quiet=harness();await quiet.run('zigbee_path_offline_ok',{...offline,zigbee_component_action:'touch'});assert.ok(!quiet.seen.includes('zigbee_path_offline_recover'));
 console.log('Last Zigbee path: active-route history, upstream-before-target, per-hop correlation, stale/foreign/loop rejection, missing-map preservation, offline policy and full dry-run passed.');

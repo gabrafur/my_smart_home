@@ -315,3 +315,7 @@ Fresh stable telemetry is still required, and synthetic replay ends at dry-run.
 Radio restoration uses an independently pinned, reviewed container image. The
 application can update without replacing its restoration library. Missing helper
 images block updates before mutation; this does not guarantee physical repair.
+
+A read-only map request interrupted by restart may renew only after its scan
+interval. A new transaction preserves the previous unknown observation; this
+does not release or repeat any uncertain device configuration.
