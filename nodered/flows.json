@@ -98656,7 +98656,7 @@
         "id": "zg_alert",
         "type": "function",
         "name": "Deduplicar alerta de recuperação bloqueada",
-        "func": "const key=[msg.guard_state.failure_since,msg.guard_facts.last_recovery_at,msg.guard_facts.receipt?.id||''].join(':');if(msg.guard_state.alert_key===key)return null;msg.guard_state.alert_key=key;msg.guard_state.alert_open=true;flow.set('zg_state_v1'+(msg.test_mode===true?'__test':''),msg.guard_state,msg.test_mode===true?'memoryOnly':'persistent');msg.payload={observer_kind:'domain_alert',incident_key:'zigbee_recovery_blocked',test_mode:msg.test_mode===true,reason:'no_safe_recovery',source_observed_at:msg.guard_facts.observed_at,source_time_kind:'native',first_detected_at:msg.guard_state.failure_since,policy_decided_at:msg.guard_now};msg.alert={title:'Recuperação Zigbee bloqueada',message:'A rede Zigbee falhou e não há recuperação automática segura disponível. A última cópia boa foi preservada. Veja a aba recuperacao_zigbee.'};return msg;",
+        "func": "const facts=msg.guard_facts;\nconst receipt=facts.receipt;\nconst networkFailure=facts.running===false||facts.device_count===0||facts.invalid_param_count>=3;\nconst snapshotFailed=receipt?.action==='snapshot'&&receipt.status==='failed';\nif(snapshotFailed&&!networkFailure&&['snapshot_not_healthy','maintenance_active'].includes(receipt.reason)){\n node.status({fill:'yellow',shape:'ring',text:'cópia adiada; última cópia boa preservada'});\n return null;\n}\nconst kind=snapshotFailed&&!networkFailure?'zigbee_snapshot_failed':'zigbee_recovery_blocked';\nconst key=[kind,msg.guard_state.failure_since,facts.last_recovery_at,receipt?.id||''].join(':');\nconst alertKey='zg_alert_last_v1'+(msg.test_mode===true?'__test':'');\nconst store=msg.test_mode===true?'memoryOnly':'persistent';\nif(flow.get(alertKey,store)===key)return null;\nflow.set(alertKey,key,store);\nmsg.guard_state.alert_key=key;msg.guard_state.alert_open=true;\nflow.set('zg_state_v1'+(msg.test_mode===true?'__test':''),msg.guard_state,msg.test_mode===true?'memoryOnly':'persistent');\nmsg.payload={observer_kind:'domain_alert',incident_key:kind,test_mode:msg.test_mode===true,reason:kind==='zigbee_snapshot_failed'?'snapshot_failed':'no_safe_recovery',source_observed_at:facts.observed_at,source_time_kind:'native',first_detected_at:msg.guard_state.failure_since,policy_decided_at:msg.guard_now};\nmsg.alert=networkFailure?{title:'Recuperação Zigbee bloqueada',message:'A rede Zigbee falhou e não há recuperação automática segura disponível. A última cópia boa foi preservada. Veja a aba recuperacao_zigbee.'}:\n snapshotFailed?{title:'Cópia Zigbee não atualizada',message:'Não foi possível renovar a cópia de segurança Zigbee. A última cópia boa foi preservada. Essa falha não comprova queda da rede. Veja a aba recuperacao_zigbee.'}:\n {title:'Tentativa Zigbee bloqueada',message:'A tentativa de manutenção Zigbee não foi concluída. A última cópia boa foi preservada. O estado observado não comprova queda da rede. Veja a aba recuperacao_zigbee.'};\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "timeout": 0,
@@ -98977,7 +98977,7 @@
         "id": "zg_reset",
         "type": "function",
         "name": "Resetar somente replay",
-        "func": "flow.set('zg_state_v1__test',undefined,'memoryOnly');return null;",
+        "func": "flow.set('zg_state_v1__test',undefined,'memoryOnly');flow.set('zg_alert_last_v1__test',undefined,'memoryOnly');return null;",
         "outputs": 1,
         "noerr": 0,
         "timeout": 0,
@@ -99069,278 +99069,6 @@
         ],
         "z": "zigbee_coordinator_recovery_tab",
         "g": "zg_decision_group"
-    },
-    {
-        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
-        "type": "group",
-        "z": "zigbee_coordinator_recovery_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__zigbee_coordinator_recovery_tab__catch",
-            "global_observer_coverage__zigbee_coordinator_recovery_tab__status",
-            "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate",
-            "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
-        ],
-        "x": 3140,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__catch",
-        "type": "catch",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 3280,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__status",
-        "type": "status",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 3290,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate",
-        "type": "function",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"zigbee_coordinator_recovery_tab\",\"flow_label\":\"recuperacao_zigbee\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 3560,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__out",
-        "type": "link out",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 3805,
-        "y": 130,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_out_d0670a43539a",
-        "type": "link out",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Encurtar: Fonte fresca e política válida?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_d0670a43539a"
-        ],
-        "x": 560,
-        "y": 760,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_d0670a43539a",
-        "type": "link in",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Continuar: Fonte desconhecida → diagnóstico",
-        "links": [
-            "notification_hub_wire_out_d0670a43539a"
-        ],
-        "x": 790,
-        "y": 1230,
-        "wires": [
-            [
-                "zg_unknown_out"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_8f42607f453b",
-        "type": "link out",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Encurtar: Manutenção/incerteza/startup encerrados?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_8f42607f453b"
-        ],
-        "x": 930,
-        "y": 760,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_8f42607f453b",
-        "type": "link in",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Continuar: Fonte desconhecida → diagnóstico",
-        "links": [
-            "notification_hub_wire_out_8f42607f453b"
-        ],
-        "x": 790,
-        "y": 1130,
-        "wires": [
-            [
-                "zg_unknown_out"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_e3a7d8c39b2c",
-        "type": "link out",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Encurtar: Há queda, perda total ou erro do rádio?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_e3a7d8c39b2c"
-        ],
-        "x": 1310,
-        "y": 760,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_e3a7d8c39b2c",
-        "type": "link in",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Continuar: Encerrar contagem da falha",
-        "links": [
-            "notification_hub_wire_out_e3a7d8c39b2c"
-        ],
-        "x": 1350,
-        "y": 1070,
-        "wires": [
-            [
-                "zg_mark_healthy"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_365201100e1e",
-        "type": "link out",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Encurtar: Backup íntegro, cooldown e orçamento?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_365201100e1e"
-        ],
-        "x": 2470,
-        "y": 760,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_365201100e1e",
-        "type": "link in",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Continuar: Falha sem recuperação segura → alerta",
-        "links": [
-            "notification_hub_wire_out_365201100e1e"
-        ],
-        "x": 2350,
-        "y": 1230,
-        "wires": [
-            [
-                "zg_alert_out"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_9a633854400f",
-        "type": "link out",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Encurtar: Intervalo do backup venceu?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_9a633854400f"
-        ],
-        "x": 2490,
-        "y": 1070,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_9a633854400f",
-        "type": "link in",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Continuar: Persistir contagem sem efeito",
-        "links": [
-            "notification_hub_wire_out_9a633854400f"
-        ],
-        "x": 1740,
-        "y": 1210,
-        "wires": [
-            [
-                "zg_persist_wait"
-            ]
-        ]
-    },
-    {
-        "id": "notification_hub_wire_out_cf3320fd1179",
-        "type": "link out",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Encurtar: Último efeito falhou ou está incerto?",
-        "mode": "link",
-        "links": [
-            "notification_hub_wire_in_cf3320fd1179"
-        ],
-        "x": 560,
-        "y": 860,
-        "wires": []
-    },
-    {
-        "id": "notification_hub_wire_in_cf3320fd1179",
-        "type": "link in",
-        "z": "zigbee_coordinator_recovery_tab",
-        "g": "zg_decision_group",
-        "name": "Continuar: Falha sem recuperação segura → alerta",
-        "links": [
-            "notification_hub_wire_out_cf3320fd1179"
-        ],
-        "x": 2350,
-        "y": 1130,
-        "wires": [
-            [
-                "zg_alert_out"
-            ]
-        ]
     },
     {
         "id": "storage_visual_collection_group",
@@ -101501,6 +101229,278 @@
         "wires": [
             [
                 "daily_update_coordinator_dedupe"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "type": "group",
+        "z": "zigbee_coordinator_recovery_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__catch",
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__status",
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate",
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
+        ],
+        "x": 3140,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__catch",
+        "type": "catch",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 3280,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__status",
+        "type": "status",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 3290,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate",
+        "type": "function",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"zigbee_coordinator_recovery_tab\",\"flow_label\":\"recuperacao_zigbee\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3560,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__out",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 3805,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_d0670a43539a",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Fonte fresca e política válida?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_d0670a43539a"
+        ],
+        "x": 560,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_d0670a43539a",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Fonte desconhecida → diagnóstico",
+        "links": [
+            "notification_hub_wire_out_d0670a43539a"
+        ],
+        "x": 790,
+        "y": 1230,
+        "wires": [
+            [
+                "zg_unknown_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_8f42607f453b",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Manutenção/incerteza/startup encerrados?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_8f42607f453b"
+        ],
+        "x": 930,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_8f42607f453b",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Fonte desconhecida → diagnóstico",
+        "links": [
+            "notification_hub_wire_out_8f42607f453b"
+        ],
+        "x": 790,
+        "y": 1130,
+        "wires": [
+            [
+                "zg_unknown_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_e3a7d8c39b2c",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Há queda, perda total ou erro do rádio?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_e3a7d8c39b2c"
+        ],
+        "x": 1310,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_e3a7d8c39b2c",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Encerrar contagem da falha",
+        "links": [
+            "notification_hub_wire_out_e3a7d8c39b2c"
+        ],
+        "x": 1350,
+        "y": 1070,
+        "wires": [
+            [
+                "zg_mark_healthy"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_365201100e1e",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Backup íntegro, cooldown e orçamento?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_365201100e1e"
+        ],
+        "x": 2470,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_365201100e1e",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Falha sem recuperação segura → alerta",
+        "links": [
+            "notification_hub_wire_out_365201100e1e"
+        ],
+        "x": 2350,
+        "y": 1230,
+        "wires": [
+            [
+                "zg_alert_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_9a633854400f",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Intervalo do backup venceu?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_9a633854400f"
+        ],
+        "x": 2490,
+        "y": 1070,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_9a633854400f",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Persistir contagem sem efeito",
+        "links": [
+            "notification_hub_wire_out_9a633854400f"
+        ],
+        "x": 1740,
+        "y": 1210,
+        "wires": [
+            [
+                "zg_persist_wait"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_cf3320fd1179",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Último efeito falhou ou está incerto?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_cf3320fd1179"
+        ],
+        "x": 560,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_cf3320fd1179",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Falha sem recuperação segura → alerta",
+        "links": [
+            "notification_hub_wire_out_cf3320fd1179"
+        ],
+        "x": 2350,
+        "y": 1130,
+        "wires": [
+            [
+                "zg_alert_out"
             ]
         ]
     }

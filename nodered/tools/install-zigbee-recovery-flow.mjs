@@ -52,14 +52,34 @@ out('zg_dry_out',eff,'TESTE → terminal seguro','zg_dry_in',1080,1600);
 input('zg_unknown_in',eff,'Receber diagnóstico','zg_unknown_out','zg_unknown',110,1720);
 fn('zg_unknown',eff,'Diagnóstico: sem efeito com fonte incerta',`node.status({fill:'grey',shape:'ring',text:'aguardando fonte estável ou fim da manutenção'});return null;`,450,1720,[]);
 input('zg_alert_in',eff,'Receber falha bloqueada','zg_alert_out','zg_alert',1840,1660);
-fn('zg_alert',eff,'Deduplicar alerta de recuperação bloqueada',`const key=[msg.guard_state.failure_since,msg.guard_facts.last_recovery_at,msg.guard_facts.receipt?.id||''].join(':');if(msg.guard_state.alert_key===key)return null;msg.guard_state.alert_key=key;msg.guard_state.alert_open=true;flow.set('zg_state_v1'+(msg.test_mode===true?'__test':''),msg.guard_state,msg.test_mode===true?'memoryOnly':'persistent');msg.payload={observer_kind:'domain_alert',incident_key:'zigbee_recovery_blocked',test_mode:msg.test_mode===true,reason:'no_safe_recovery',source_observed_at:msg.guard_facts.observed_at,source_time_kind:'native',first_detected_at:msg.guard_state.failure_since,policy_decided_at:msg.guard_now};msg.alert={title:'Recuperação Zigbee bloqueada',message:'A rede Zigbee falhou e não há recuperação automática segura disponível. A última cópia boa foi preservada. Veja a aba recuperacao_zigbee.'};return msg;`,2200,1660,[['zg_alert_test_gate']]);
+fn('zg_alert',eff,'Deduplicar alerta de recuperação bloqueada',`const facts=msg.guard_facts;
+const receipt=facts.receipt;
+const networkFailure=facts.running===false||facts.device_count===0||facts.invalid_param_count>=3;
+const snapshotFailed=receipt?.action==='snapshot'&&receipt.status==='failed';
+if(snapshotFailed&&!networkFailure&&['snapshot_not_healthy','maintenance_active'].includes(receipt.reason)){
+ node.status({fill:'yellow',shape:'ring',text:'cópia adiada; última cópia boa preservada'});
+ return null;
+}
+const kind=snapshotFailed&&!networkFailure?'zigbee_snapshot_failed':'zigbee_recovery_blocked';
+const key=[kind,msg.guard_state.failure_since,facts.last_recovery_at,receipt?.id||''].join(':');
+const alertKey='zg_alert_last_v1'+(msg.test_mode===true?'__test':'');
+const store=msg.test_mode===true?'memoryOnly':'persistent';
+if(flow.get(alertKey,store)===key)return null;
+flow.set(alertKey,key,store);
+msg.guard_state.alert_key=key;msg.guard_state.alert_open=true;
+flow.set('zg_state_v1'+(msg.test_mode===true?'__test':''),msg.guard_state,msg.test_mode===true?'memoryOnly':'persistent');
+msg.payload={observer_kind:'domain_alert',incident_key:kind,test_mode:msg.test_mode===true,reason:kind==='zigbee_snapshot_failed'?'snapshot_failed':'no_safe_recovery',source_observed_at:facts.observed_at,source_time_kind:'native',first_detected_at:msg.guard_state.failure_since,policy_decided_at:msg.guard_now};
+msg.alert=networkFailure?{title:'Recuperação Zigbee bloqueada',message:'A rede Zigbee falhou e não há recuperação automática segura disponível. A última cópia boa foi preservada. Veja a aba recuperacao_zigbee.'}:
+ snapshotFailed?{title:'Cópia Zigbee não atualizada',message:'Não foi possível renovar a cópia de segurança Zigbee. A última cópia boa foi preservada. Essa falha não comprova queda da rede. Veja a aba recuperacao_zigbee.'}:
+ {title:'Tentativa Zigbee bloqueada',message:'A tentativa de manutenção Zigbee não foi concluída. A última cópia boa foi preservada. O estado observado não comprova queda da rede. Veja a aba recuperacao_zigbee.'};
+return msg;`,2200,1660,[['zg_alert_test_gate']]);
 sw('zg_alert_test_gate',eff,'Alerta é TESTE?',`test_mode = true`,2600,1660,[['zg_alert_dry_out'],['zg_guard_alert_out']]);
 out('zg_alert_dry_out',eff,'Alerta TESTE → dry-run','zg_dry_in',2840,1720);
 out('zg_guard_alert_out',eff,'Alerta de domínio → monitor global','global_observer_alert_to_dispatch_in',2840,1780);
 const t=Date.UTC(2026,0,1),base={schema_version:1,id:'a'.repeat(32),observed_at:t,running:true,uptime_s:600,device_count:8,maintenance_active:false,blocked_unknown:false,last_good_available:true,last_good_count:8,last_seen_age_s:1,last_snapshot_at:t,last_recovery_at:0,recoveries_24h:0,invalid_param_count:0};
 for(const [id,name,over,at,y] of [['zg_test_healthy','TESTE 1: estado saudável',{},t,1980],['zg_test_down','TESTE 2: ponte caiu',{running:false},t+10000,2050],['zg_test_confirm','TESTE 3: confirmar queda',{running:false},t+71000,2120],['zg_test_loss','TESTE 4: confirmar banco vazio',{device_count:0},t+1000000,2190],['zg_test_budget','TESTE 5: limite diário atingido',{running:false,recoveries_24h:2},t+2000000,2260],['zg_test_backup','TESTE 6: renovar backup',{last_snapshot_at:0},t+3000000,2330]])inject(id,tests,name,{...base,...over,observed_at:at},350,y,'zg_test_out',{props:[{p:'payload',v:JSON.stringify({...base,...over,observed_at:at}),vt:'json'},{p:'test_mode',v:'true',vt:'bool'},{p:'monitor_now',v:String(at),vt:'num'}]});
 inject('zg_test_reset',tests,'RESET: apenas contexto de TESTE',{},1100,1980,'zg_reset');
-fn('zg_reset',tests,'Resetar somente replay',`flow.set('zg_state_v1__test',undefined,'memoryOnly');return null;`,1470,1980,[]);
+fn('zg_reset',tests,'Resetar somente replay',`flow.set('zg_state_v1__test',undefined,'memoryOnly');flow.set('zg_alert_last_v1__test',undefined,'memoryOnly');return null;`,1470,1980,[]);
 out('zg_test_out',tests,'Sintético → decisões reais','zg_test_in',700,2160);
 input('zg_dry_in',tests,'Receber todos os efeitos simulados',['zg_dry_out','zg_alert_dry_out'],'zg_dry_run_terminal',1060,2160);
 fn('zg_dry_run_terminal',tests,'TESTE FINAL: sem dispositivo ou arquivo',`msg.simulated=true;msg.dispatched=false;node.log(JSON.stringify({simulated:true,dispatched:false,action:msg.guard_action||'alert'}));return null;`,1450,2160,[]);
