@@ -40,11 +40,11 @@
     },
     {
       "file": "auth_gate.py",
-      "change": "one saved-password primary attempt per confirmed session expiry; separate durable attempt marker; complete authenticated setup closes a recovered incident; token-only success, challenges and uncertainty never rearm; manual OTP and original auth-state schema preserved; locked admission of a confirmed device-service rejection never rearms a consumed primary attempt"
+      "change": "one saved-password primary attempt per confirmed session expiry; separate durable attempt marker; complete authenticated setup closes a recovered incident; token-only success, challenges and uncertainty never rearm; manual OTP and original auth-state schema preserved; locked admission of a confirmed device-service rejection never rearms a consumed primary attempt; separate cached-session renewal intent survives restarts and clears only after full authenticated setup"
     },
     {
       "file": "native_bridge.py",
-      "change": "direct native paused SRP with configured password and preserved trust tokens; no token-first fallback or automatic OTP/SMS; restart-safe recovery marker; one native setup retry after typed device-service auth rejection, without a primary-login loop; intercept native polling service-session rejections before the password repair; one persisted recovery without OTP delivery or repeated login"
+      "change": "direct native paused SRP with configured password and preserved trust tokens; no token-first fallback or automatic OTP/SMS; restart-safe recovery marker; one native setup retry after typed device-service auth rejection, without a primary-login loop; intercept native polling service-session rejections before the password repair; one persisted recovery without OTP delivery or repeated login; saved-token-only location recovery with separate persisted admission, existing primary budget and OTP stop"
     }
   ],
   "validated_compatibility": [

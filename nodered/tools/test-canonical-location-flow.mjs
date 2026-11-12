@@ -3,11 +3,23 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { runPeopleVisualEvents } from "./visual-flow-test-harness.mjs";
+import { installPeopleLocationRefresh } from "./install-people-location-refresh.mjs";
 
 const flows = JSON.parse(
   fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"),
 );
 const byId = new Map(flows.map((node) => [node.id, node]));
+{
+  const regenerated = structuredClone(flows);
+  installPeopleLocationRefresh(regenerated);
+  for (const node of regenerated) {
+    const original = byId.get(node.id);
+    if (!original) continue;
+    for (const field of ["x", "y", "w", "h"]) {
+      assert.deepEqual(node[field], original[field], `refresh generator preserves approved ${field}: ${node.id}`);
+    }
+  }
+}
 const LOCATION_POLICY = {
   version: 1,
   owner: "node_red",
@@ -841,6 +853,11 @@ for (const [name, ageMs, elapsed] of [
     byId.get("people_visual_secondary_icloud_update").data,
     /"role":"resident_secondary","action":"refresh_location"/,
   );
+  for (const role of ["primary", "secondary"]) {
+    const request = JSON.parse(byId.get(`people_visual_${role}_icloud_update`).data);
+    assert.deepEqual(request.data, { recover_session: true }, "canonical refresh authorizes bounded saved-session recovery");
+    assert.doesNotMatch(JSON.stringify(request), /password|token|verification_code/);
+  }
   const notificationTab = byId.get("resident_notifications_tab");
   assert.equal(
     flows.filter((node) => node.z === notificationTab.id && node.type === "server-state-changed").length,

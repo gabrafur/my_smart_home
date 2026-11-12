@@ -108,10 +108,13 @@ class ManualIcloudFlow(flow_adapter(IcloudFlowHandler), domain='icloud'):
             return self._manual_form({'base':'delivery_unknown'})
         if self.api is not None and self.api.auth_gate.state in (State.READY,State.CODE):
             if not self.api._manual_context_ready:
-                return self._manual_form({'base':'no_active_challenge'})
-            if self.api.auth_gate.state==State.READY and getattr(self,'_trusted_choices',None):
-                return await self.async_step_trusted_device()
-            return await self._show_verification_code_form({})
+                result=await self.hass.async_add_executor_job(self.api.auth_gate.reopen_cached_challenge)
+                if result.reason!='challenge_preparation_required':
+                    return self._manual_form({'base':'no_active_challenge'})
+            else:
+                if self.api.auth_gate.state==State.READY and getattr(self,'_trusted_choices',None):
+                    return await self.async_step_trusted_device()
+                return await self._show_verification_code_form({})
         diagnostic('manual_submission','submitted')
         changed_password=user_input.get(CONF_PASSWORD)
         if changed_password:

@@ -29,7 +29,8 @@ class ICloudRefreshTest(unittest.IsolatedAsyncioTestCase):
         )
         namespace = {"Any": Any, "hass": hass, "HomeAssistantError": RuntimeError,
                      "refresh_devices": MODULE.refresh_devices,
-                     "is_interrupted_transport": MODULE.is_interrupted_transport}
+                     "is_interrupted_transport": MODULE.is_interrupted_transport,
+                     "OTPRequired": MODULE.OTPRequired, "RecoveryUnavailable": MODULE.RecoveryUnavailable}
         exec(compile(ast.Module(body=[adapter], type_ignores=[]), "adapter", "exec"), namespace)
         await namespace[adapter.name]("test-account")
 

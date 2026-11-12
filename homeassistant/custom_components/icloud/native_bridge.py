@@ -30,6 +30,8 @@ async def load_native_gate(hass, entry_id, store_factory, *, automatic_recovery=
     saved = await store.async_load()
     recovery_store = store_factory(hass, 1, 'icloud_silent_recovery.' + entry_id)
     recovery_saved = await recovery_store.async_load()
+    cached_store = store_factory(hass, 1, 'icloud_cached_recovery.' + entry_id)
+    cached_saved = await cached_store.async_load()
     loop = asyncio.get_running_loop()
     def persist_to(target, row):
         try: current = asyncio.get_running_loop()
@@ -42,9 +44,11 @@ async def load_native_gate(hass, entry_id, store_factory, *, automatic_recovery=
     return AuthGate(lambda row: persist_to(store, row), saved,
                     automatic_recovery=automatic_recovery,
                     persist_recovery=lambda row: persist_to(recovery_store, row),
-                    recovery_saved=recovery_saved)
+                    recovery_saved=recovery_saved,
+                    persist_cached_recovery=lambda row: persist_to(cached_store, row),
+                    cached_recovery_saved=cached_saved)
 
-def service_adapter(base, *, transport_errors=()):
+def service_adapter(base, *, transport_errors=(), token_rejected=None, token_challenge=None):
     class GuardedService(base):
         def __init__(self, *args, **kwargs):
             self.auth_gate = BOUND_GATE.get()
@@ -142,6 +146,33 @@ def service_adapter(base, *, transport_errors=()):
                     raise
             finally:
                 self._silent_primary.reset(token)
+
+        def renew_saved_location_session(self):
+            def renew():
+                if not self.session.data.get('session_token'):
+                    return Outcome.EXPIRED
+                try:
+                    # The same accountLogin used by manual preparation, without
+                    # its credential fallback. Cookies and trust are retained.
+                    super(GuardedService, self)._authenticate_with_token(require_trust=False)
+                    if super(GuardedService, self).requires_2fa or super(GuardedService, self).requires_2sa:
+                        return Outcome.CHALLENGE
+                    return Outcome.VALID
+                except Exception as exc:
+                    if isinstance(exc, transport_errors) or is_transport_failure(exc):
+                        return Outcome.TRANSPORT
+                    if token_challenge is not None and token_challenge(exc):
+                        return Outcome.CHALLENGE
+                    if token_rejected is not None and token_rejected(exc):
+                        return Outcome.EXPIRED
+                    raise
+            result = self.auth_gate.renew_saved_session(renew)
+            if not result.effect_attempted:
+                return result
+            if result.reason == Outcome.EXPIRED:
+                # The existing separate primary-login budget still applies.
+                self.authenticate()
+            return self.auth_gate.snapshot_state()
 
         def _authenticate(self, *args, **kwargs):
             if not (self._explicit_auth.get() or self._silent_primary.get()): raise ManualActionRequired('primary_auth_requires_user')
@@ -276,6 +307,38 @@ def service_adapter(base, *, transport_errors=()):
 def account_adapter(base, gates, client_factory, *, auth_required_errors=(),
                     recoverable_session_error=None):
     class GuardedAccount(base):
+        def location_session_requires_otp(self):
+            gate = gates[self._config_entry.entry_id]
+            return gate.state in (State.READY, State.CODE) or (
+                self.api is not None and (self.api.native_requires_2fa or self.api.native_requires_2sa))
+
+        def location_session_failure(self, error):
+            return bool(recoverable_session_error is not None and recoverable_session_error(error))
+
+        def recover_location_session(self):
+            gate = gates[self._config_entry.entry_id]
+            if self.location_session_requires_otp():
+                self._require_reauth()
+                return 'otp_required'
+            if not gate.automatic_recovery or gate.state == State.UNCERTAIN:
+                return 'unavailable'
+            if self.api is None:
+                with bind_gate(gate):
+                    self.api = client_factory(self._username, self._password,
+                        self._icloud_dir.path, with_family=self._with_family)
+            try:
+                result = self.api.renew_saved_location_session()
+            except ManualActionRequired:
+                result = gate.snapshot_state()
+            if result.reason == 'operation_in_progress':
+                return 'busy'
+            if self.api.native_requires_2fa or self.api.native_requires_2sa:
+                self._require_reauth()
+                return 'otp_required'
+            if result.reason == 'cached_recovery_not_permitted':
+                return 'unavailable'
+            return 'session_ready' if result.state == State.VALID else 'unavailable'
+
         def _ask_to_authenticate(self, err):
             # Native polling catches device-service rejections internally.
             # Recover before it discards the client and opens a password form.

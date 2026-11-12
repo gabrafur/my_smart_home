@@ -34,7 +34,8 @@ from .location import (
     update_location_observation,
 )
 from .service_policy import is_best_effort_notification
-from .icloud import is_interrupted_transport, refresh_devices
+from .icloud import (is_interrupted_transport, refresh_devices, refresh_account_with_recovery,
+                     OTPRequired, RecoveryUnavailable)
 
 DOMAIN = "public_bindings"
 DEFAULT_PATH = "/run/private-bindings/private-bindings.json"
@@ -214,7 +215,9 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         device = devices.get(registry_entry.unique_id)
         return icloud_location_observed_at(getattr(device, "location", None))
 
-    async def force_icloud_location_refresh(account_identifier: Any) -> None:
+    icloud_recovery_locks: dict[str, asyncio.Lock] = {}
+
+    async def force_icloud_location_refresh(account_identifier: Any, *, recover_session=False) -> None:
         """Make Find My fetch current data instead of republishing its cache."""
         if not isinstance(account_identifier, str) or not account_identifier:
             raise HomeAssistantError("iCloud location refresh account is unavailable")
@@ -224,10 +227,19 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 continue
             api = getattr(account, "api", None)
             try:
+                if recover_session is True:
+                    lock = icloud_recovery_locks.setdefault(config_entry.entry_id, asyncio.Lock())
+                    if await refresh_account_with_recovery(hass, config_entry, lock):
+                        return
+                    break
                 if await hass.async_add_executor_job(refresh_devices, api):
                     return
             except Exception as err:
                 # Protocol classification only; Node-RED owns retries/backoff.
+                if isinstance(err, OTPRequired):
+                    raise HomeAssistantError('ICLOUD_OTP_REQUIRED') from None
+                if isinstance(err, RecoveryUnavailable):
+                    raise HomeAssistantError('ICLOUD_SESSION_RECOVERY_UNAVAILABLE') from None
                 if is_interrupted_transport(err):
                     raise HomeAssistantError("ICLOUD_TRANSPORT_INTERRUPTED") from err
                 raise
@@ -483,9 +495,15 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             if refresh_provider == "icloud":
                 configured_account = binding.get("data", {}).get("account")
                 data["account"] = configured_account
+                recover_session = data.pop("recover_session", False)
+                if type(recover_session) is not bool:
+                    raise HomeAssistantError('Invalid iCloud recovery intent')
                 record_icloud_refresh(diagnostic_role, "provider_refresh", "started")
                 try:
-                    await force_icloud_location_refresh(configured_account)
+                    if recover_session:
+                        await force_icloud_location_refresh(configured_account, recover_session=True)
+                    else:
+                        await force_icloud_location_refresh(configured_account)
                 except Exception as error:
                     record_icloud_refresh(diagnostic_role, "provider_refresh", "error", error)
                     raise

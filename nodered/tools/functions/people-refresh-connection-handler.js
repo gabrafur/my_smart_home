@@ -1,5 +1,9 @@
 const message = String(msg.error?.message ?? "");
 const normalized = message.toLowerCase();
+if (/^(?:HomeAssistantError: )?ICLOUD_OTP_REQUIRED$/.test(message)) {
+    node.status({ fill: "yellow", shape: "ring", text: "iCloud aguarda OTP; recuperação automática suspensa" });
+    return null;
+}
 if (/^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(message) &&
     msg.payload?.refresh_transport_retry_pending === true) {
     node.status({ fill: "yellow", shape: "ring", text: "iCloud interrompeu HTTP; retry canônico pendente" });

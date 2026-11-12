@@ -88,6 +88,8 @@ def loaded_adapter():
     modules['pyicloud'].PyiCloudService = FakeService
     modules['pyicloud.exceptions'].PyiCloudAuthRequiredException = type('AuthRequired', (Exception,), {})
     modules['pyicloud.exceptions'].PyiCloudAPIResponseException = type('APIResponse', (Exception,), {})
+    modules['pyicloud.exceptions'].PyiCloudFailedLoginException = type('FailedLogin', (Exception,), {})
+    modules['pyicloud.exceptions'].PyiCloud2FARequiredException = type('TwoFactorRequired', (Exception,), {})
     modules['requests.exceptions'].ConnectionError = type('RequestConnectionError', (ConnectionError,), {})
     modules['requests.exceptions'].Timeout = type('RequestTimeout', (TimeoutError,), {})
     not_ready = type('ConfigEntryNotReady', (Exception,), {})
@@ -458,6 +460,49 @@ class NativeRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
             await self.hass.async_add_executor_job(account.keep_alive)
             recovery.assert_called_once()
             reauth.assert_not_called()
+
+    async def test_saved_token_renewal_uses_account_login_without_password_or_code(self):
+        from unittest.mock import PropertyMock
+        from pyicloud import PyiCloudService
+        from custom_components.icloud.auth_gate import State
+        api=self.entry.runtime_data.api
+        gate=api.auth_gate
+        gate.automatic_recovery=True
+        api.session.data['session_token']='synthetic-token'
+        await self.hass.async_add_executor_job(gate.record,State.VALID)
+        with (patch.object(PyiCloudService,'_authenticate_with_token') as token_login,
+              patch.object(PyiCloudService,'requires_2fa',new_callable=PropertyMock,return_value=False),
+              patch.object(PyiCloudService,'requires_2sa',new_callable=PropertyMock,return_value=False),
+              patch.object(PyiCloudService,'_srp_authentication',side_effect=AssertionError('password forbidden')),
+              patch.object(PyiCloudService,'request_2fa_code',side_effect=AssertionError('OTP forbidden'))):
+            result=await self.hass.async_add_executor_job(api.renew_saved_location_session)
+            self.assertEqual(result.state,State.VALID)
+            token_login.assert_called_once_with(require_trust=False)
+            self.assertTrue(gate.cached_recovery_attempted)
+            result=await self.hass.async_add_executor_job(api.renew_saved_location_session)
+            self.assertEqual(result.reason,'cached_recovery_not_permitted')
+            token_login.assert_called_once()
+
+    async def test_saved_token_otp_wait_survives_without_automatic_delivery(self):
+        from unittest.mock import PropertyMock
+        from pyicloud import PyiCloudService
+        from custom_components.icloud.auth_gate import State
+        account=self.entry.runtime_data
+        api=account.api
+        gate=api.auth_gate
+        gate.automatic_recovery=True
+        api.session.data['session_token']='synthetic-token'
+        await self.hass.async_add_executor_job(gate.record,State.VALID)
+        with (patch.object(PyiCloudService,'_authenticate_with_token') as token_login,
+              patch.object(PyiCloudService,'requires_2fa',new_callable=PropertyMock,return_value=True),
+              patch.object(PyiCloudService,'request_2fa_code',side_effect=AssertionError('OTP forbidden')),
+              patch.object(account,'_require_reauth')):
+            await self.hass.async_add_executor_job(api.renew_saved_location_session)
+            self.assertEqual(gate.state,State.READY)
+            self.assertEqual(await self.hass.async_add_executor_job(account.recover_location_session),'otp_required')
+            token_login.assert_called_once()
+            await self.prepare()
+            self.assertTrue(api._manual_context_ready)
 
     async def test_native_unload_none_means_completed(self):
         self.entry.runtime_data._manual_platforms_loaded=True

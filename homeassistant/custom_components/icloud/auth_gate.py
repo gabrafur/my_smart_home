@@ -120,7 +120,8 @@ class Decision:
 
 class AuthGate:
     def __init__(self, persist: Callable[[dict], None], saved=None, *, automatic_recovery=False,
-                 persist_recovery=None, recovery_saved=None):
+                 persist_recovery=None, recovery_saved=None,
+                 persist_cached_recovery=None, cached_recovery_saved=None):
         if type(automatic_recovery) is not bool:
             raise ValueError('invalid_automatic_recovery_policy')
         self.automatic_recovery = automatic_recovery
@@ -134,6 +135,15 @@ class AuthGate:
                 or type(recovery_saved['primary_attempted']) is not bool):
             raise ValueError('invalid_recovery_metadata')
         self.persist_recovery = persist_recovery
+        if cached_recovery_saved is not None and (
+                type(cached_recovery_saved) is not dict
+                or set(cached_recovery_saved) != {'schema_version', 'attempted'}
+                or type(cached_recovery_saved['schema_version']) is not int
+                or cached_recovery_saved['schema_version'] != 1
+                or type(cached_recovery_saved['attempted']) is not bool):
+            raise ValueError('invalid_cached_recovery_metadata')
+        self.persist_cached_recovery = persist_cached_recovery
+        self.cached_recovery_attempted = bool(cached_recovery_saved and cached_recovery_saved['attempted'])
         self.primary_attempted = recovery_saved['primary_attempted'] if recovery_saved is not None else False
         self.persist = persist
         self.state = State.PROBE if saved is None else State(saved['state'])
@@ -209,6 +219,43 @@ class AuthGate:
         finally:
             self._lock.release()
 
+    def renew_saved_session(self, callback):
+        """One durable token renewal; never grants OTP or a password fallback."""
+        if not self._lock.acquire(blocking=False):
+            return self.result('operation_in_progress')
+        try:
+            if (not self.automatic_recovery or not callable(self.persist_cached_recovery)
+                    or self.cached_recovery_attempted
+                    or self.state not in (State.PROBE, State.VALID, State.USER, State.PRIMARY)):
+                return self.result('cached_recovery_not_permitted')
+            self.persist_cached_recovery({'schema_version': 1, 'attempted': True})
+            self.cached_recovery_attempted = True
+            self.record(State.UNCERTAIN)
+            try:
+                outcome = Outcome(callback())
+            except Exception as exc:
+                diagnostic_exception('silent_session_recovery', exc)
+                outcome = Outcome.UNKNOWN
+            self.record(State.VALID if outcome == Outcome.VALID else
+                        State.USER if outcome == Outcome.EXPIRED else
+                        State.READY if outcome == Outcome.CHALLENGE else State.UNCERTAIN)
+            diagnostic('silent_session_recovery', outcome.value)
+            return self.result(outcome.value, True)
+        finally:
+            self._lock.release()
+
+    def reopen_cached_challenge(self):
+        """Explicit form preparation of an OTP challenge not yet delivered."""
+        if not self._lock.acquire(blocking=False):
+            return self.result('operation_in_progress')
+        try:
+            if self.state != State.READY or not self.cached_recovery_attempted:
+                return self.result('no_active_challenge')
+            self.record(State.PRIMARY)
+            return self.result('challenge_preparation_required')
+        finally:
+            self._lock.release()
+
     def confirm_account_ready(self):
         """Close a recovered incident only after the caller verifies full setup.
 
@@ -221,6 +268,9 @@ class AuthGate:
         try:
             if self.state != State.VALID:
                 return self.result('authenticated_setup_required')
+            if self.automatic_recovery and self.cached_recovery_attempted:
+                self.persist_cached_recovery({'schema_version': 1, 'attempted': False})
+                self.cached_recovery_attempted = False
             if not self.automatic_recovery or not self.primary_attempted:
                 return self.result('account_ready')
             self.persist_recovery({'schema_version': 1, 'primary_attempted': False})

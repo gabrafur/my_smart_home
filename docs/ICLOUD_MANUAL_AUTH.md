@@ -216,3 +216,27 @@ uma segunda rejeição não repete o login. Desafios OTP, termos, falhas de
 transporte e códigos HTTP sem classificação de autenticação não autorizam
 um novo login por esse caminho. Cookies, confiança e o formato dos Stores
 são preservados. O teste nativo reproduz a rejeição no `keep_alive` real.
+
+## Recuperação solicitada pelo refresh de localização
+
+Os dois efeitos iCloud do canvas `localizacao_pessoas` enviam
+`data.recover_session=true` pelo binding lógico existente. A conta continua
+fixada pelo binding privado; a chamada não recebe senha, token ou código.
+O Home Assistant só usa essa autorização após rejeição tipada de sessão ou
+quando o cliente da conta não existe. Falhas de transporte e erros desconhecidos
+não viram permissão de login. Chamadas concorrentes compartilham um lock por
+entrada e reutilizam o cliente que a primeira recuperação carregou.
+
+A recuperação renova o token salvo por `accountLogin`, preservando cookies e
+confiança. Se o token expirou de fato, continua valendo o orçamento separado
+de uma tentativa com a senha salva. Um Store `icloud_cached_recovery` registra
+`attempted` antes da renovação: reinício ou resposta incerta não repetem o
+efeito. O marcador só é liberado após setup autenticado completo, com plataformas
+carregadas. A entrada iCloud é recarregada uma vez e uma leitura posterior do
+serviço confirma o resultado; aceitar o token sozinho não comprova recuperação.
+
+Um desafio real retorna `ICLOUD_OTP_REQUIRED`, mantém a espera persistida e
+não envia código nem faz novo login. A preparação da tela manual só é reaberta
+por envio explícito do formulário; receber ou abrir o aviso não solicita OTP.
+O handler Node-RED mostra essa espera, preservando os gates e o dry-run do
+fluxo de localização. A correção não simula expiração da conta residencial.

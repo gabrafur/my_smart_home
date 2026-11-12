@@ -37,7 +37,11 @@ export function installPeopleLocationRefresh(flows) {
   };
   const upsert = (node) => {
     const current = byId.get(node.id);
-    if (current) Object.assign(current, node);
+    if (current) {
+      const geometry = Object.fromEntries(["x", "y", "w", "h"]
+        .filter((field) => Object.hasOwn(current, field)).map((field) => [field, current[field]]));
+      Object.assign(current, node, geometry);
+    }
     else {
       flows.push(node);
       byId.set(node.id, node);
@@ -98,7 +102,7 @@ export function installPeopleLocationRefresh(flows) {
     deviceId: [],
     entityId: [],
     labelId: [],
-    data: `{"role":"${role}","action":"refresh_location"}`,
+    data: `{"role":"${role}","action":"refresh_location","data":{"recover_session":true}}`,
     dataType: "json",
     mergeContext: "",
     mustacheAltTags: false,
@@ -114,7 +118,7 @@ export function installPeopleLocationRefresh(flows) {
 
   const group = required(GROUP);
   group.name = "3. GPS preventivo: 5/10 min, retry limitado e diagnóstico";
-  group.h = Math.max(Number(group.h) || 0, 313);
+  group.h = Number(group.h) || 313;
 
   const decider = required("402fd0cc609443b7");
   decider.func = source("people-refresh-decide.js");
@@ -267,7 +271,7 @@ export function installPeopleLocationRefresh(flows) {
 
   const tab = required(PEOPLE_TAB);
   if (!tab.info.includes("Companion + iCloud")) {
-    tab.info += " O recovery de localização vencida usa Companion + iCloud, seletivamente por morador, com cooldown individual e confirmação por observação posterior.";
+    tab.info += " O recovery de localização vencida usa Companion + iCloud, seletivamente por morador, com cooldown individual e confirmação por observação posterior. O efeito iCloud autoriza recuperação limitada da sessão salva; OTP suspende a recuperação automática e aguarda ação manual.";
   }
 
   return { flows, ownedIds: IDS };
