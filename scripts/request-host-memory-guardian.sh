@@ -31,7 +31,10 @@ if ! mkdir "$request_lock" 2>/dev/null; then
   fi
 fi
 cleanup() { rmdir "$request_lock" 2>/dev/null || true; }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 if [ -f "$request_file" ] || [ -f "$processing_file" ]; then
   request_id=$(sed -n '1p' "$request_file" 2>/dev/null || sed -n '1p' "$processing_file" 2>/dev/null || printf 'pending')

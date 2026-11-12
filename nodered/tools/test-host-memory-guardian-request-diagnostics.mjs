@@ -31,7 +31,7 @@ for (const [input, reason, code, signal] of [
   assert.equal(result.guardian_request_status, "invalid");
   assert.equal(updates.length, 0, "failed response must not admit a new expected request");
   assert.equal(errors.length, 1);
-  assert.match(errors[0], new RegExp(`reason=${reason} exit_code=${code} signal=${signal}$`));
+  assert.match(errors[0], new RegExp(`reason=${reason} exit_code=${code} signal=${signal} elapsed_ms=unknown$`));
   assert.doesNotMatch(errors[0], /PRIVATE/);
 }
 for (const id of ["busy", "pending"]) {
@@ -41,3 +41,8 @@ for (const id of ["busy", "pending"]) {
   assert.equal(errors.length, 0);
 }
 console.log("Host memory guardian request diagnostics: exact acknowledgements, process failures, empty output and private-output exclusion passed.");
+
+const timed = run({ payload: "", rc: { code: null, signal: "SIGTERM" }, guardian_request_started_at: Date.now() - 15000 });
+assert.ok(timed.result.guardian_request_diagnostic.elapsed_ms >= 15000);
+assert.match(timed.errors[0], /elapsed_ms=\d+$/);
+assert.equal(timed.updates.length, 0);

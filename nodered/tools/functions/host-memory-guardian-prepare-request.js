@@ -1,5 +1,6 @@
 const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;
 msg._host_memory_guardian_test = testMode;
+msg.guardian_request_started_at = Date.now();
 msg.payload = {
     version: 1,
     event: "host_memory_guardian_requested",

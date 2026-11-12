@@ -9,6 +9,8 @@ msg.guardian_request_status = !failed && match ? match[1] : "invalid";
 msg.guardian_request_id = !failed && match ? match[2] : "invalid";
 msg.guardian_request_diagnostic = {
     reason: signal ? "execution_interrupted" : failed ? "execution_failed" : !text ? "empty_response" : match ? "recognized_response" : "invalid_response",
+    elapsed_ms: Number.isSafeInteger(msg.guardian_request_started_at) && msg.guardian_request_started_at <= Date.now()
+        ? Date.now() - msg.guardian_request_started_at : null,
     exit_code: exitCode,
     signal,
     response_length: Math.min(raw.length, 65536)

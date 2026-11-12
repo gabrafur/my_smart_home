@@ -42,7 +42,7 @@ assert.equal(byId.get("host_memory_guardian_result_tick").repeat, "30");
 assert.equal(byId.get("host_memory_guardian_result_tick").onceDelay, "90");
 assert.equal(byId.get("host_memory_guardian_request_host").timer, "15");
 assert.equal(byId.get("host_memory_guardian_read_result").timer, "15");
-assert.equal(byId.get("host_memory_guardian_request_host").command, "/opt/request-host-memory-guardian.sh");
+assert.equal(byId.get("host_memory_guardian_request_host").command, "exec /opt/request-host-memory-guardian.sh");
 assert.equal(byId.get("host_memory_guardian_read_result").command, "/opt/read-host-memory-guardian-result.sh");
 assert.match(byId.get("host_memory_guardian_architecture").info, /allowlist fechada/i);
 assert.match(byId.get("host_memory_guardian_architecture").info, /nunca recebe \/proc, sudo, CAP_KILL/);

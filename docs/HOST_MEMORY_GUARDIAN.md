@@ -82,10 +82,19 @@ ao Node-RED.
 
 Uma resposta vazia ou inválida da ponte continua sendo falha, sem reenvio
 automático. O diagnóstico preserva somente a razão classificada, o código de
-saída e o sinal do processo; não publica stdout, stderr, comandos ou caminhos.
+saída, o sinal do processo e a duração desde a preparação do pedido; não
+publica stdout, stderr, comandos ou caminhos.
 Um aceite textual com código de saída não zero não é aceito como confirmação.
 O retorno posterior de um resultado fresco comprova apenas aquele ciclo, sem
 atribuir retrospectivamente a causa de uma falha anterior.
+
+A solicitação usa `exec` para substituir a shell intermediária pelo helper:
+o limite de 15 segundos passa a sinalizar o processo que possui o lock. Os
+handlers de HUP, INT e TERM encerram o helper com código não zero e liberam o
+lock no handler de saída; uma interrupção não deve continuar até publicar aceite.
+Isso corrige o lifecycle da interrupção, mas SIGTERM isolado não distingue
+limite de tempo, deploy e sinal externo. Duração próxima do limite é evidência
+adicional, não uma atribuição automática de causa. Não há retry automático.
 
 O lock curto do pedido se recupera automaticamente quando fica órfão por mais
 de 120 segundos e não existe pedido pendente ou em processamento. Isso evita

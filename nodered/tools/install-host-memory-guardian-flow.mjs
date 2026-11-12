@@ -125,7 +125,7 @@ linkOut("host_memory_guardian_effect_out", groups.decision, "Produção → obse
 linkOut("host_memory_guardian_dry_out", groups.decision, "TESTE → terminal dry-run", "host_memory_guardian_dry_in", 4370, 480);
 
 linkIn("host_memory_guardian_request_host_in", groups.effect, "Receber pedido de produção", "host_memory_guardian_request_host_out", "host_memory_guardian_request_host", 4490, 100);
-execNode("host_memory_guardian_request_host", groups.effect, "EFEITO: solicitar worker (timeout 15 s)", "/opt/request-host-memory-guardian.sh", 4790, 100, [["host_memory_guardian_request_ack"], ["host_memory_guardian_request_error"], ["host_memory_guardian_request_complete"]]);
+execNode("host_memory_guardian_request_host", groups.effect, "EFEITO: solicitar worker (timeout 15 s)", "exec /opt/request-host-memory-guardian.sh", 4790, 100, [["host_memory_guardian_request_ack"], ["host_memory_guardian_request_error"], ["host_memory_guardian_request_complete"]]);
 fn("host_memory_guardian_request_ack", groups.effect, "Adaptar aceite da ponte", "host-memory-guardian-request-response-normalize.js", 1, 5080, 75, [["host_memory_guardian_request_ack_switch"]]);
 sw("host_memory_guardian_request_ack_switch", groups.effect, "Ponte aceitou, coalesceu ou rejeitou?", "guardian_request_status", "msg", [{ t: "eq", v: "accepted", vt: "str" }, { t: "eq", v: "coalesced", vt: "str" }, { t: "else" }], 5390, 75, [["host_memory_guardian_request_accepted"], ["host_memory_guardian_request_coalesced"], ["host_memory_guardian_request_invalid"]]);
 terminal("host_memory_guardian_request_accepted", groups.effect, "Solicitação aceita", { fill: "green", shape: "dot", text: "verificação aceita" }, 5800, 45);

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, spawn } from "node:child_process";
 import test from "node:test";
 
 const scriptsDir = path.dirname(new URL(import.meta.url).pathname);
@@ -151,4 +151,40 @@ test("cron installer is idempotent and keeps the worker unprivileged", () => {
   assert.match(contents, /flock -n/);
   assert.doesNotMatch(contents, /sudo|root/);
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+
+test("interrupted request exits without acknowledgement or pending marker and releases its lock", async () => {
+  const { root, trigger } = fixture();
+  const bin = path.join(root, "bin");
+  fs.mkdirSync(bin);
+  // Hold the helper inside date after acquiring the lock; no production state.
+  fs.writeFileSync(path.join(bin, "date"), '#!/bin/sh\nprintf ready > "$HOST_MEMORY_GUARDIAN_TRIGGER_DIR/ready"\nsleep 0.3\nexec /bin/date "$@"\n', { mode: 0o755 });
+  let child;
+  try {
+    child = spawn("/bin/bash", ["-c", 'exec "$1"', "guardian-test", requestScript], {
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, HOST_MEMORY_GUARDIAN_TRIGGER_DIR: trigger },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let output = "";
+    child.stdout.on("data", chunk => { output += chunk; });
+    const completed = new Promise((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", (code, signal) => resolve({ code, signal }));
+    });
+    const deadline = Date.now() + 2000;
+    while (!fs.existsSync(path.join(trigger, "ready")) && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.ok(fs.existsSync(path.join(trigger, "ready")), "helper reached locked phase");
+    assert.equal(child.kill("SIGTERM"), true);
+    const result = await completed;
+    assert.equal(result.code, 143);
+    assert.equal(output, "", "interrupted request cannot publish accepted");
+    assert.equal(fs.existsSync(path.join(trigger, "requested")), false);
+    assert.equal(fs.existsSync(path.join(trigger, "request.lock")), false);
+  } finally {
+    if (child?.exitCode === null) child.kill("SIGKILL");
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
