@@ -99,6 +99,7 @@
     { "path": "CODE_OF_CONDUCT.md", "area": "contributing", "strategy": "full pair", "format": "bilingual-single-file", "languages": ["pt-BR", "en"] },
     { "path": ".github/PULL_REQUEST_TEMPLATE.md", "area": "contributing", "strategy": "full pair", "format": "bilingual-single-file", "languages": ["pt-BR", "en"] },
 
+    { "path": "docs/ZIGBEE_COORDINATOR_RECOVERY.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md" },
     { "path": "docs/NODERED_STARTUP_RECOVERY.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md" },
     { "path": "docs/ALARME_CASA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/ALARME_DESARME_CHEGADA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },

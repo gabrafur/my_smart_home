@@ -136,6 +136,7 @@ zigbee2mqtt/configuration.yaml
 zigbee2mqtt/coordinator_backup.json
 zigbee2mqtt/database.db
 zigbee2mqtt/state.json
+nodered/zigbee-recovery/
 zigbee2mqtt/log/
 
 # Portainer contains app database, keys, certs, and Docker state

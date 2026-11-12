@@ -42078,7 +42078,8 @@
             "global_observer_coverage__startup_readiness_tab__out",
             "global_observer_coverage__storage_health_tab__out",
             "global_observer_coverage__weekly_docs_review_tab__out",
-            "global_observer_test_event_out"
+            "global_observer_test_event_out",
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
         ],
         "x": 170,
         "y": 220,
@@ -42715,7 +42716,8 @@
             "notification_hub_mobile_observer_out",
             "notification_hub_alexa_observer_out",
             "notification_hub_persistent_observer_out",
-            "mq_native_test_global_out"
+            "mq_native_test_global_out",
+            "zg_guard_alert_out"
         ],
         "x": 2620,
         "y": 300,
@@ -97677,5 +97679,1642 @@
                 "storage_post_maintenance_delay"
             ]
         ]
+    },
+    {
+        "id": "zg_source_group",
+        "type": "group",
+        "z": "zigbee_coordinator_recovery_tab",
+        "name": "1. Política visível e fatos locais; sem credenciais",
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.2"
+        },
+        "x": 64,
+        "y": 20,
+        "w": 3020,
+        "h": 600,
+        "nodes": [
+            "zg_policy_default",
+            "zg_policy_validate",
+            "zg_tick",
+            "zg_read_facts",
+            "zg_parse_facts",
+            "zg_facts",
+            "zg_source_out",
+            "zg_test_in",
+            "zg_backup_now"
+        ]
+    },
+    {
+        "id": "zg_decision_group",
+        "type": "group",
+        "z": "zigbee_coordinator_recovery_tab",
+        "name": "2. Decisões, confirmação, cooldown e limite diário",
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.2"
+        },
+        "x": 64,
+        "y": 680,
+        "w": 3020,
+        "h": 660,
+        "nodes": [
+            "zg_decision_in",
+            "zg_fresh",
+            "zg_ready",
+            "zg_fault",
+            "zg_mark_failure",
+            "zg_confirmed",
+            "zg_budget",
+            "zg_loss",
+            "zg_restore",
+            "zg_restart",
+            "zg_effect_out",
+            "zg_mark_healthy",
+            "zg_snapshot_health",
+            "zg_snapshot_due",
+            "zg_snapshot",
+            "zg_snapshot_out",
+            "zg_persist_wait",
+            "zg_unknown_out",
+            "zg_alert_out",
+            "zg_receipt_issue",
+            "notification_hub_wire_out_d0670a43539a",
+            "notification_hub_wire_in_d0670a43539a",
+            "notification_hub_wire_out_8f42607f453b",
+            "notification_hub_wire_in_8f42607f453b",
+            "notification_hub_wire_out_e3a7d8c39b2c",
+            "notification_hub_wire_in_e3a7d8c39b2c",
+            "notification_hub_wire_out_365201100e1e",
+            "notification_hub_wire_in_365201100e1e",
+            "notification_hub_wire_out_9a633854400f",
+            "notification_hub_wire_in_9a633854400f",
+            "notification_hub_wire_out_cf3320fd1179",
+            "notification_hub_wire_in_cf3320fd1179"
+        ]
+    },
+    {
+        "id": "zg_effect_group",
+        "type": "group",
+        "z": "zigbee_coordinator_recovery_tab",
+        "name": "3. Pedido fixo ao host e observabilidade",
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.2"
+        },
+        "x": 64,
+        "y": 1400,
+        "w": 3020,
+        "h": 420,
+        "nodes": [
+            "zg_effect_in",
+            "zg_request",
+            "zg_final_gate",
+            "zg_write_request",
+            "zg_requested",
+            "zg_dry_out",
+            "zg_unknown_in",
+            "zg_unknown",
+            "zg_alert_in",
+            "zg_alert",
+            "zg_alert_test_gate",
+            "zg_alert_dry_out",
+            "zg_guard_alert_out"
+        ]
+    },
+    {
+        "id": "zg_test_group",
+        "type": "group",
+        "z": "zigbee_coordinator_recovery_tab",
+        "name": "4. Replay completo; efeitos sempre simulados",
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.2"
+        },
+        "x": 64,
+        "y": 1880,
+        "w": 3020,
+        "h": 520,
+        "nodes": [
+            "zg_test_healthy",
+            "zg_test_down",
+            "zg_test_confirm",
+            "zg_test_loss",
+            "zg_test_budget",
+            "zg_test_backup",
+            "zg_test_reset",
+            "zg_reset",
+            "zg_test_out",
+            "zg_dry_in",
+            "zg_dry_run_terminal"
+        ]
+    },
+    {
+        "id": "zigbee_coordinator_recovery_tab",
+        "type": "tab",
+        "label": "recuperacao_zigbee",
+        "disabled": false,
+        "info": "Recupera somente Zigbee2MQTT usando cópias privadas validadas. Nunca controla portão, luzes, firmware ou outros serviços. Fonte nativa publica fatos; todas as decisões residenciais estão neste canvas.",
+        "env": []
+    },
+    {
+        "id": "zg_policy_default",
+        "type": "inject",
+        "name": "CONFIG: limites seguros",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"startup_grace_s\":300,\"failure_confirmation_s\":60,\"recovery_cooldown_min\":15,\"max_recoveries_24h\":2,\"backup_interval_min\":15}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 250,
+        "y": 100,
+        "wires": [
+            [
+                "zg_policy_validate"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
+    },
+    {
+        "id": "zg_policy_validate",
+        "type": "function",
+        "name": "Validar e guardar última política",
+        "func": "const p=msg.payload,limits={startup_grace_s:[300,900],failure_confirmation_s:[30,300],recovery_cooldown_min:[15,1440],max_recoveries_24h:[1,2],backup_interval_min:[5,120]};if(!p||Object.keys(p).sort().join()!==Object.keys(limits).sort().join()||!Object.entries(limits).every(([k,[lo,hi]])=>Number.isInteger(p[k])&&p[k]>=lo&&p[k]<=hi)){node.status({fill:'red',shape:'ring',text:'política inválida; anterior preservada'});return null}flow.set('zg_policy_v1',p,'persistent');return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 100,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
+    },
+    {
+        "id": "zg_tick",
+        "type": "inject",
+        "name": "FONTE: ler fatos a cada 30 s",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 12,
+        "topic": "",
+        "x": 250,
+        "y": 200,
+        "wires": [
+            [
+                "zg_read_facts"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
+    },
+    {
+        "id": "zg_read_facts",
+        "type": "file in",
+        "name": "Ler fatos sanitizados do host",
+        "filename": "/data/zigbee-recovery/facts.json",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "encoding": "none",
+        "allProps": false,
+        "x": 600,
+        "y": 200,
+        "wires": [
+            [
+                "zg_parse_facts"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
+    },
+    {
+        "id": "zg_parse_facts",
+        "type": "json",
+        "name": "JSON de observação",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 900,
+        "y": 200,
+        "wires": [
+            [
+                "zg_facts"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
+    },
+    {
+        "id": "zg_facts",
+        "type": "function",
+        "name": "Validar estrutura e ler estado isolado",
+        "func": "const f=msg.payload;msg.guard_valid=!!f&&f.schema_version===1&&typeof f.id==='string'&&Number.isFinite(f.observed_at)&&typeof f.running==='boolean'&&Number.isFinite(f.uptime_s)&&Number.isInteger(f.device_count)&&typeof f.maintenance_active==='boolean'&&typeof f.blocked_unknown==='boolean'&&(f.invalid_param_count===null||Number.isInteger(f.invalid_param_count));if(!msg.guard_valid)return msg;msg.guard_facts=f;msg.guard_now=Number(msg.monitor_now??Date.now());msg.guard_policy=flow.get('zg_policy_v1','persistent');const key='zg_state_v1'+(msg.test_mode===true?'__test':'');msg.guard_state=flow.get(key,msg.test_mode===true?'memoryOnly':'persistent')||{failure_since:0,last_request_at:0,last_snapshot_request_at:0,alert_open:false};return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1230,
+        "y": 200,
+        "wires": [
+            [
+                "zg_source_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
+    },
+    {
+        "id": "zg_source_out",
+        "type": "link out",
+        "name": "Fatos → decisões",
+        "mode": "link",
+        "links": [
+            "zg_decision_in"
+        ],
+        "x": 1480,
+        "y": 200,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
+    },
+    {
+        "id": "zg_test_in",
+        "type": "link in",
+        "name": "Receber fatos sintéticos",
+        "links": [
+            "zg_test_out"
+        ],
+        "x": 990,
+        "y": 330,
+        "wires": [
+            [
+                "zg_facts"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
+    },
+    {
+        "id": "zg_decision_in",
+        "type": "link in",
+        "name": "Receber fatos reais",
+        "links": [
+            "zg_source_out"
+        ],
+        "x": 110,
+        "y": 760,
+        "wires": [
+            [
+                "zg_fresh"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_fresh",
+        "type": "switch",
+        "name": "Fonte fresca e política válida?",
+        "property": "guard_valid = true and $exists(guard_policy) and guard_facts.observed_at <= guard_now and guard_facts.observed_at >= guard_now-90000",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 380,
+        "y": 760,
+        "wires": [
+            [
+                "zg_receipt_issue"
+            ],
+            [
+                "notification_hub_wire_out_d0670a43539a"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_ready",
+        "type": "switch",
+        "name": "Manutenção/incerteza/startup encerrados?",
+        "property": "guard_facts.maintenance_active = false and guard_facts.blocked_unknown = false and (guard_facts.running = false or guard_facts.uptime_s >= guard_policy.startup_grace_s)",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 750,
+        "y": 760,
+        "wires": [
+            [
+                "zg_fault"
+            ],
+            [
+                "notification_hub_wire_out_8f42607f453b"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_fault",
+        "type": "switch",
+        "name": "Há queda, perda total ou erro do rádio?",
+        "property": "guard_facts.running = false or guard_facts.device_count = 0 or guard_facts.invalid_param_count >= 3",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1130,
+        "y": 760,
+        "wires": [
+            [
+                "zg_mark_failure"
+            ],
+            [
+                "notification_hub_wire_out_e3a7d8c39b2c"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_mark_failure",
+        "type": "function",
+        "name": "Registrar início; mesma amostra não confirma",
+        "func": "if(!msg.guard_state.failure_since)msg.guard_state.failure_since=msg.guard_facts.observed_at;return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1530,
+        "y": 760,
+        "wires": [
+            [
+                "zg_confirmed"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_confirmed",
+        "type": "switch",
+        "name": "Falha confirmada em amostra posterior?",
+        "property": "guard_facts.observed_at >= guard_state.failure_since + guard_policy.failure_confirmation_s*1000",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1900,
+        "y": 760,
+        "wires": [
+            [
+                "zg_budget"
+            ],
+            [
+                "zg_persist_wait"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_budget",
+        "type": "switch",
+        "name": "Backup íntegro, cooldown e orçamento?",
+        "property": "guard_facts.last_good_available = true and guard_facts.recoveries_24h < guard_policy.max_recoveries_24h and guard_now >= guard_facts.last_recovery_at + guard_policy.recovery_cooldown_min*60000 and guard_now >= guard_state.last_request_at + guard_policy.recovery_cooldown_min*60000",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2290,
+        "y": 760,
+        "wires": [
+            [
+                "zg_loss"
+            ],
+            [
+                "notification_hub_wire_out_365201100e1e"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_loss",
+        "type": "switch",
+        "name": "Banco perdeu todos os dispositivos?",
+        "property": "guard_facts.device_count = 0",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2700,
+        "y": 760,
+        "wires": [
+            [
+                "zg_restore"
+            ],
+            [
+                "zg_restart"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_restore",
+        "type": "change",
+        "name": "DECISÃO: restaurar backup",
+        "rules": [
+            {
+                "t": "set",
+                "p": "guard_action",
+                "pt": "msg",
+                "to": "restore",
+                "tot": "str"
+            }
+        ],
+        "x": 2730,
+        "y": 850,
+        "wires": [
+            [
+                "zg_effect_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_restart",
+        "type": "change",
+        "name": "DECISÃO: reconectar ponte",
+        "rules": [
+            {
+                "t": "set",
+                "p": "guard_action",
+                "pt": "msg",
+                "to": "restart",
+                "tot": "str"
+            }
+        ],
+        "x": 2730,
+        "y": 930,
+        "wires": [
+            [
+                "zg_effect_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_effect_out",
+        "type": "link out",
+        "name": "Recuperação → efeito",
+        "mode": "link",
+        "links": [
+            "zg_effect_in"
+        ],
+        "x": 2940,
+        "y": 890,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_mark_healthy",
+        "type": "function",
+        "name": "Encerrar contagem da falha",
+        "func": "msg.guard_state.failure_since=0;msg.guard_state.alert_open=false;return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1530,
+        "y": 1070,
+        "wires": [
+            [
+                "zg_snapshot_health"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_snapshot_health",
+        "type": "switch",
+        "name": "Telemetria real recente e sem perda?",
+        "property": "guard_facts.invalid_param_count = 0 and $type(guard_facts.last_seen_age_s) = 'number' and guard_facts.last_seen_age_s <= 300 and guard_facts.device_count > 0 and guard_facts.device_count >= guard_facts.last_good_count",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1910,
+        "y": 1070,
+        "wires": [
+            [
+                "zg_snapshot_due"
+            ],
+            [
+                "zg_persist_wait"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_snapshot_due",
+        "type": "switch",
+        "name": "Intervalo do backup venceu?",
+        "property": "(guard_force_snapshot = true or guard_facts.device_count > guard_facts.last_good_count or guard_now >= guard_facts.last_snapshot_at + guard_policy.backup_interval_min*60000) and (guard_force_snapshot = true or guard_now >= guard_state.last_snapshot_request_at + guard_policy.backup_interval_min*60000)",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2310,
+        "y": 1070,
+        "wires": [
+            [
+                "zg_snapshot"
+            ],
+            [
+                "notification_hub_wire_out_9a633854400f"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_snapshot",
+        "type": "change",
+        "name": "DECISÃO: renovar cópia boa",
+        "rules": [
+            {
+                "t": "set",
+                "p": "guard_action",
+                "pt": "msg",
+                "to": "snapshot",
+                "tot": "str"
+            }
+        ],
+        "x": 2720,
+        "y": 1070,
+        "wires": [
+            [
+                "zg_snapshot_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_snapshot_out",
+        "type": "link out",
+        "name": "Backup → mesmo gate",
+        "mode": "link",
+        "links": [
+            "zg_effect_in"
+        ],
+        "x": 2940,
+        "y": 1070,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_persist_wait",
+        "type": "function",
+        "name": "Persistir contagem sem efeito",
+        "func": "flow.set('zg_state_v1'+(msg.test_mode===true?'__test':''),msg.guard_state,msg.test_mode===true?'memoryOnly':'persistent');return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1920,
+        "y": 1210,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_unknown_out",
+        "type": "link out",
+        "name": "Fonte desconhecida → diagnóstico",
+        "mode": "link",
+        "links": [
+            "zg_unknown_in"
+        ],
+        "x": 970,
+        "y": 1230,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_alert_out",
+        "type": "link out",
+        "name": "Falha sem recuperação segura → alerta",
+        "mode": "link",
+        "links": [
+            "zg_alert_in"
+        ],
+        "x": 2530,
+        "y": 1230,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "zg_effect_in",
+        "type": "link in",
+        "name": "Receber decisão de backup ou recuperação",
+        "links": [
+            "zg_effect_out",
+            "zg_snapshot_out"
+        ],
+        "x": 110,
+        "y": 1480,
+        "wires": [
+            [
+                "zg_request"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_request",
+        "type": "function",
+        "name": "Serializar pedido e reservar uma tentativa",
+        "func": "const now=msg.guard_now;const id=String(msg._msgid||'').replace(/[^a-f0-9]/gi,'').slice(0,16).padEnd(16,'0')+now.toString(16).padStart(16,'0');msg.guard_request={id,facts_id:msg.guard_facts.id,action:msg.guard_action,requested_at:now};if(msg.guard_action==='snapshot')msg.guard_state.last_snapshot_request_at=now;else msg.guard_state.last_request_at=now;flow.set('zg_state_v1'+(msg.test_mode===true?'__test':''),msg.guard_state,msg.test_mode===true?'memoryOnly':'persistent');msg.payload=JSON.stringify(msg.guard_request);return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 1480,
+        "wires": [
+            [
+                "zg_final_gate"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_final_gate",
+        "type": "switch",
+        "name": "GATE FINAL: TESTE?",
+        "property": "test_mode = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 810,
+        "y": 1480,
+        "wires": [
+            [
+                "zg_dry_out"
+            ],
+            [
+                "zg_write_request"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_write_request",
+        "type": "file",
+        "name": "EFEITO: pedido fixo; host valida novamente",
+        "filename": "/data/zigbee-recovery/request.json",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "utf8",
+        "x": 1240,
+        "y": 1480,
+        "wires": [
+            [
+                "zg_requested"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_requested",
+        "type": "function",
+        "name": "Aguardar prova posterior de recuperação",
+        "func": "node.status({fill:'yellow',shape:'ring',text:'pedido registrado; aguardando telemetria'});return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1660,
+        "y": 1480,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_dry_out",
+        "type": "link out",
+        "name": "TESTE → terminal seguro",
+        "mode": "link",
+        "links": [
+            "zg_dry_in"
+        ],
+        "x": 1080,
+        "y": 1600,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_unknown_in",
+        "type": "link in",
+        "name": "Receber diagnóstico",
+        "links": [
+            "zg_unknown_out"
+        ],
+        "x": 110,
+        "y": 1720,
+        "wires": [
+            [
+                "zg_unknown"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_unknown",
+        "type": "function",
+        "name": "Diagnóstico: sem efeito com fonte incerta",
+        "func": "node.status({fill:'grey',shape:'ring',text:'aguardando fonte estável ou fim da manutenção'});return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 1720,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_alert_in",
+        "type": "link in",
+        "name": "Receber falha bloqueada",
+        "links": [
+            "zg_alert_out"
+        ],
+        "x": 1840,
+        "y": 1660,
+        "wires": [
+            [
+                "zg_alert"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_alert",
+        "type": "function",
+        "name": "Deduplicar alerta de recuperação bloqueada",
+        "func": "const key=[msg.guard_state.failure_since,msg.guard_facts.last_recovery_at,msg.guard_facts.receipt?.id||''].join(':');if(msg.guard_state.alert_key===key)return null;msg.guard_state.alert_key=key;msg.guard_state.alert_open=true;flow.set('zg_state_v1'+(msg.test_mode===true?'__test':''),msg.guard_state,msg.test_mode===true?'memoryOnly':'persistent');msg.payload={observer_kind:'domain_alert',incident_key:'zigbee_recovery_blocked',test_mode:msg.test_mode===true,reason:'no_safe_recovery',source_observed_at:msg.guard_facts.observed_at,source_time_kind:'native',first_detected_at:msg.guard_state.failure_since,policy_decided_at:msg.guard_now};msg.alert={title:'Recuperação Zigbee bloqueada',message:'A rede Zigbee falhou e não há recuperação automática segura disponível. A última cópia boa foi preservada. Veja a aba recuperacao_zigbee.'};return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2200,
+        "y": 1660,
+        "wires": [
+            [
+                "zg_alert_test_gate"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_alert_test_gate",
+        "type": "switch",
+        "name": "Alerta é TESTE?",
+        "property": "test_mode = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2600,
+        "y": 1660,
+        "wires": [
+            [
+                "zg_alert_dry_out"
+            ],
+            [
+                "zg_guard_alert_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_alert_dry_out",
+        "type": "link out",
+        "name": "Alerta TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "zg_dry_in"
+        ],
+        "x": 2840,
+        "y": 1720,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_guard_alert_out",
+        "type": "link out",
+        "name": "Alerta de domínio → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 2840,
+        "y": 1780,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_effect_group"
+    },
+    {
+        "id": "zg_test_healthy",
+        "type": "inject",
+        "name": "TESTE 1: estado saudável",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed_at\":1767225600000,\"running\":true,\"uptime_s\":600,\"device_count\":8,\"maintenance_active\":false,\"blocked_unknown\":false,\"last_good_available\":true,\"last_good_count\":8,\"last_seen_age_s\":1,\"last_snapshot_at\":1767225600000,\"last_recovery_at\":0,\"recoveries_24h\":0,\"invalid_param_count\":0}",
+                "vt": "json"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225600000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 350,
+        "y": 1980,
+        "wires": [
+            [
+                "zg_test_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_test_down",
+        "type": "inject",
+        "name": "TESTE 2: ponte caiu",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed_at\":1767225610000,\"running\":false,\"uptime_s\":600,\"device_count\":8,\"maintenance_active\":false,\"blocked_unknown\":false,\"last_good_available\":true,\"last_good_count\":8,\"last_seen_age_s\":1,\"last_snapshot_at\":1767225600000,\"last_recovery_at\":0,\"recoveries_24h\":0,\"invalid_param_count\":0}",
+                "vt": "json"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225610000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 350,
+        "y": 2050,
+        "wires": [
+            [
+                "zg_test_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_test_confirm",
+        "type": "inject",
+        "name": "TESTE 3: confirmar queda",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed_at\":1767225671000,\"running\":false,\"uptime_s\":600,\"device_count\":8,\"maintenance_active\":false,\"blocked_unknown\":false,\"last_good_available\":true,\"last_good_count\":8,\"last_seen_age_s\":1,\"last_snapshot_at\":1767225600000,\"last_recovery_at\":0,\"recoveries_24h\":0,\"invalid_param_count\":0}",
+                "vt": "json"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225671000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 350,
+        "y": 2120,
+        "wires": [
+            [
+                "zg_test_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_test_loss",
+        "type": "inject",
+        "name": "TESTE 4: confirmar banco vazio",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed_at\":1767226600000,\"running\":true,\"uptime_s\":600,\"device_count\":0,\"maintenance_active\":false,\"blocked_unknown\":false,\"last_good_available\":true,\"last_good_count\":8,\"last_seen_age_s\":1,\"last_snapshot_at\":1767225600000,\"last_recovery_at\":0,\"recoveries_24h\":0,\"invalid_param_count\":0}",
+                "vt": "json"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767226600000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 350,
+        "y": 2190,
+        "wires": [
+            [
+                "zg_test_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_test_budget",
+        "type": "inject",
+        "name": "TESTE 5: limite diário atingido",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed_at\":1767227600000,\"running\":false,\"uptime_s\":600,\"device_count\":8,\"maintenance_active\":false,\"blocked_unknown\":false,\"last_good_available\":true,\"last_good_count\":8,\"last_seen_age_s\":1,\"last_snapshot_at\":1767225600000,\"last_recovery_at\":0,\"recoveries_24h\":2,\"invalid_param_count\":0}",
+                "vt": "json"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767227600000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 350,
+        "y": 2260,
+        "wires": [
+            [
+                "zg_test_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_test_backup",
+        "type": "inject",
+        "name": "TESTE 6: renovar backup",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed_at\":1767228600000,\"running\":true,\"uptime_s\":600,\"device_count\":8,\"maintenance_active\":false,\"blocked_unknown\":false,\"last_good_available\":true,\"last_good_count\":8,\"last_seen_age_s\":1,\"last_snapshot_at\":0,\"last_recovery_at\":0,\"recoveries_24h\":0,\"invalid_param_count\":0}",
+                "vt": "json"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767228600000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 350,
+        "y": 2330,
+        "wires": [
+            [
+                "zg_test_out"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_test_reset",
+        "type": "inject",
+        "name": "RESET: apenas contexto de TESTE",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 1100,
+        "y": 1980,
+        "wires": [
+            [
+                "zg_reset"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_reset",
+        "type": "function",
+        "name": "Resetar somente replay",
+        "func": "flow.set('zg_state_v1__test',undefined,'memoryOnly');return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1470,
+        "y": 1980,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_test_out",
+        "type": "link out",
+        "name": "Sintético → decisões reais",
+        "mode": "link",
+        "links": [
+            "zg_test_in"
+        ],
+        "x": 700,
+        "y": 2160,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_dry_in",
+        "type": "link in",
+        "name": "Receber todos os efeitos simulados",
+        "links": [
+            "zg_dry_out",
+            "zg_alert_dry_out"
+        ],
+        "x": 1060,
+        "y": 2160,
+        "wires": [
+            [
+                "zg_dry_run_terminal"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_dry_run_terminal",
+        "type": "function",
+        "name": "TESTE FINAL: sem dispositivo ou arquivo",
+        "func": "msg.simulated=true;msg.dispatched=false;node.log(JSON.stringify({simulated:true,dispatched:false,action:msg.guard_action||'alert'}));return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1450,
+        "y": 2160,
+        "wires": [],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_test_group"
+    },
+    {
+        "id": "zg_receipt_issue",
+        "type": "switch",
+        "name": "Último efeito falhou ou está incerto?",
+        "property": "guard_facts.receipt.status = 'failed' or (guard_facts.blocked_unknown = true and guard_facts.receipt.status = 'running')",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 380,
+        "y": 860,
+        "wires": [
+            [
+                "notification_hub_wire_out_cf3320fd1179",
+                "zg_ready"
+            ],
+            [
+                "zg_ready"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group"
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "type": "group",
+        "z": "zigbee_coordinator_recovery_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__catch",
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__status",
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate",
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
+        ],
+        "x": 3140,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__catch",
+        "type": "catch",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 3280,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__status",
+        "type": "status",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 3290,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__annotate",
+        "type": "function",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"zigbee_coordinator_recovery_tab\",\"flow_label\":\"recuperacao_zigbee\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3560,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__zigbee_coordinator_recovery_tab__out",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "global_observer_coverage__zigbee_coordinator_recovery_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 3805,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_out_d0670a43539a",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Fonte fresca e política válida?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_d0670a43539a"
+        ],
+        "x": 560,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_d0670a43539a",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Fonte desconhecida → diagnóstico",
+        "links": [
+            "notification_hub_wire_out_d0670a43539a"
+        ],
+        "x": 790,
+        "y": 1230,
+        "wires": [
+            [
+                "zg_unknown_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_8f42607f453b",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Manutenção/incerteza/startup encerrados?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_8f42607f453b"
+        ],
+        "x": 930,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_8f42607f453b",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Fonte desconhecida → diagnóstico",
+        "links": [
+            "notification_hub_wire_out_8f42607f453b"
+        ],
+        "x": 790,
+        "y": 1130,
+        "wires": [
+            [
+                "zg_unknown_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_e3a7d8c39b2c",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Há queda, perda total ou erro do rádio?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_e3a7d8c39b2c"
+        ],
+        "x": 1310,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_e3a7d8c39b2c",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Encerrar contagem da falha",
+        "links": [
+            "notification_hub_wire_out_e3a7d8c39b2c"
+        ],
+        "x": 1350,
+        "y": 1070,
+        "wires": [
+            [
+                "zg_mark_healthy"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_365201100e1e",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Backup íntegro, cooldown e orçamento?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_365201100e1e"
+        ],
+        "x": 2470,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_365201100e1e",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Falha sem recuperação segura → alerta",
+        "links": [
+            "notification_hub_wire_out_365201100e1e"
+        ],
+        "x": 2350,
+        "y": 1230,
+        "wires": [
+            [
+                "zg_alert_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_9a633854400f",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Intervalo do backup venceu?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_9a633854400f"
+        ],
+        "x": 2490,
+        "y": 1070,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_9a633854400f",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Persistir contagem sem efeito",
+        "links": [
+            "notification_hub_wire_out_9a633854400f"
+        ],
+        "x": 1740,
+        "y": 1210,
+        "wires": [
+            [
+                "zg_persist_wait"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_cf3320fd1179",
+        "type": "link out",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Encurtar: Último efeito falhou ou está incerto?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_cf3320fd1179"
+        ],
+        "x": 560,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_cf3320fd1179",
+        "type": "link in",
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_decision_group",
+        "name": "Continuar: Falha sem recuperação segura → alerta",
+        "links": [
+            "notification_hub_wire_out_cf3320fd1179"
+        ],
+        "x": 2350,
+        "y": 1130,
+        "wires": [
+            [
+                "zg_alert_out"
+            ]
+        ]
+    },
+    {
+        "id": "zg_backup_now",
+        "type": "inject",
+        "name": "PRODUÇÃO: validar e salvar backup agora",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{}",
+                "vt": "json"
+            },
+            {
+                "p": "guard_force_snapshot",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "topic": "",
+        "x": 330,
+        "y": 430,
+        "wires": [
+            [
+                "zg_read_facts"
+            ]
+        ],
+        "z": "zigbee_coordinator_recovery_tab",
+        "g": "zg_source_group"
     }
 ]

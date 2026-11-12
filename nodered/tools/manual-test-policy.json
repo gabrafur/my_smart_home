@@ -638,6 +638,24 @@
         "global_observer_dry_run_terminal"
       ],
       "reason": "Replay nominal, negativo, reset, perda, duplicata, autorização, domínio temporal e leitor antigo atravessa a mesma normalização, política visual, dedupe e gate final. Em test_mode, nenhum exec, arquivo, ACK, serviço, MQTT ou push é executado; o terminal compartilhado recebe simulated:true e dispatched:false. Ausência de eventos não comprova recuperação. Janela do componente: reset → início → corte com ACK pendente → drenar. Reset antes de cada falha. Tempo sintético avança 24h sem reduzir contrato; mudança de origem sem manutenção fica unknown; fonte desconhecida usa somente histórico próprio, sem ACK. O resultado passa pela mesma codificação e gate final dry-run. Nova intenção atravessa o mesmo registrador e gates: janela anterior arquivada exatamente, espera por ACK atual, duplicata após crash idempotente e capacidade8 preservada; observação atual em envelope separado da prova congelada."
+    },
+    "zigbee_coordinator_recovery_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "zg_test_group",
+        "zg_test_healthy",
+        "zg_test_down",
+        "zg_test_confirm",
+        "zg_test_loss",
+        "zg_test_budget",
+        "zg_test_backup",
+        "zg_test_reset"
+      ],
+      "automated_test": "test-zigbee-coordinator-recovery.mjs",
+      "dry_run_terminal_ids": [
+        "zg_dry_run_terminal"
+      ],
+      "reason": "Fatos sintéticos cruzam as decisões reais, confirmação, limites, dedupe e o gate final. Todos os efeitos de arquivo e alerta terminam em simulated:true e dispatched:false."
     }
   }
 }

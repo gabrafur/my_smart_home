@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {validateNetwork,snapshotEligible,requestValid,tick} from './zigbee-coordinator-recovery.mjs';
+const now=1800000000000;
+function fixture() {
+ const config={advanced:{network_key:Array(16).fill(1),ext_pan_id:Array(8).fill(2),pan_id:123,channel:26}};
+ const backup={metadata:{format:'zigpy/open-coordinator-backup',version:1},coordinator_ieee:'0000000000000001',pan_id:'7b',extended_pan_id:'02'.repeat(8),channel:26,channel_mask:[11],network_key:{key:'01'.repeat(16),frame_counter:100},devices:[{ieee_address:'0000000000000002'}]};
+ const database=[{type:'Coordinator',ieeeAddr:'0x0000000000000001'},{type:'Router',ieeeAddr:'0x0000000000000002',lastSeen:now-1000,interviewCompleted:true}].map(JSON.stringify).join('\n');
+ return {config,backup,database};
+}
+test('channel migration normalizes mask while preserving identity, keys and counters',()=>{
+ const f=fixture(),r=validateNetwork(f.config,f.backup,f.database);assert.deepEqual(r.backup.channel_mask,[26]);assert.deepEqual(r.backup.network_key,f.backup.network_key);assert.equal(f.backup.channel_mask[0],11);
+ for(const field of ['channel','pan_id','extended_pan_id','coordinator_ieee']){const b=structuredClone(f.backup);b[field]=field==='channel'?25:'wrong';assert.throws(()=>validateNetwork(f.config,b,f.database));}
+});
+test('empty, incomplete and mismatched backups cannot replace last good',()=>{
+ const f=fixture();assert.throws(()=>validateNetwork(f.config,f.backup,JSON.stringify({type:'Coordinator',ieeeAddr:'0x0000000000000001'})));
+ const b=structuredClone(f.backup);b.devices=[];assert.throws(()=>validateNetwork(f.config,b,f.database));
+ assert.throws(()=>validateNetwork(f.config,f.backup,f.database.replace('"interviewCompleted":true','"interviewCompleted":false')));
+ const c=validateNetwork(f.config,f.backup,f.database),facts={running:true,uptime_s:500,invalid_param_count:0,last_seen_age_s:1};
+ assert.equal(snapshotEligible(c,c,facts),true);
+ for(const bad of [{last_seen_age_s:null},{invalid_param_count:1},{uptime_s:1},{running:false},{last_seen_age_s:301}])assert.equal(snapshotEligible(c,c,{...facts,...bad}),false);
+ assert.equal(snapshotEligible(c,{...c,devices:2},facts),false);assert.equal(snapshotEligible(c,{...c,identity:'different'},facts),false);
+});
+test('requests require fresh exact observations; duplicates never replay',()=>{
+ const r={id:'a'.repeat(32),action:'restore',facts_id:'b',requested_at:now},f={id:'b'};
+ assert.equal(requestValid(r,f,now,{receipts:[]}),true);
+ for(const bad of [{action:'shell'},{facts_id:'other'},{requested_at:now+1},{requested_at:now-90001},{extra:1}])assert.equal(requestValid({...r,...bad},f,now,{receipts:[]}),false);
+ assert.equal(requestValid(r,f,now,{receipts:[{id:r.id}]}),false);
+});
+test('native adapter snapshots and restores missing database without actuators; uncertain intent blocks replay',()=>{
+ const f=fixture(),root=fs.mkdtempSync(path.join(os.tmpdir(),'zigbee-guard-')),data=path.join(root,'zigbee2mqtt'),priv=path.join(root,'private'),pub=path.join(root,'nodered','zigbee-recovery');
+ fs.mkdirSync(data,{recursive:true});
+ fs.writeFileSync(path.join(data,'configuration.yaml'),JSON.stringify(f.config));fs.writeFileSync(path.join(data,'coordinator_backup.json'),JSON.stringify(f.backup));fs.writeFileSync(path.join(data,'database.db'),f.database);
+ const calls=[],runtime={now:()=>now,docker:a=>{calls.push(a);return a[0]==='inspect'?JSON.stringify({Running:true,StartedAt:new Date(now-600000).toISOString()}):''},logs:()=>({status:0,stdout:'',stderr:''})};
+ const run=()=>tick(root,priv,runtime);
+ const request=(facts,action,id)=>fs.writeFileSync(path.join(pub,'request.json'),JSON.stringify({id:id.repeat(32),action,facts_id:facts.id,requested_at:now}));
+ const previousMask=process.umask(0o077);
+ try {
+  let facts=run();assert.equal(fs.statSync(path.join(pub,'facts.json')).mode&0o777,0o644);request(facts,'snapshot','a');facts=run();assert.equal(facts.receipt.status,'snapshotted');
+  const baseline=fs.readFileSync(path.join(priv,'last-good.json'),'utf8');
+  fs.writeFileSync(path.join(data,'database.db'),JSON.stringify({type:'Coordinator',ieeeAddr:'0x0000000000000001'}));
+  facts=run();request(facts,'snapshot','c');facts=run();assert.equal(facts.receipt.status,'failed');assert.equal(fs.readFileSync(path.join(priv,'last-good.json'),'utf8'),baseline);
+  request(facts,'restore','d');facts=run();assert.equal(facts.receipt.status,'dispatched');assert.equal(fs.readFileSync(path.join(data,'database.db'),'utf8'),f.database);
+  const mutations=calls.filter(a=>['start','stop'].includes(a[0]));assert.deepEqual(mutations.map(a=>a.at(-1)),['zigbee2mqtt','zigbee2mqtt']);
+  run();assert.equal(calls.filter(a=>['start','stop'].includes(a[0])).length,2,'same request never runs twice');
+  assert.ok(calls.every(a=>!a.includes('publish')&&!a.includes('set')));
+  const jf=path.join(priv,'journal.json'),j=JSON.parse(fs.readFileSync(jf,'utf8'));j.receipts.push({id:'f'.repeat(32),action:'restore',status:'running'});fs.writeFileSync(jf,JSON.stringify(j));
+  facts=run();request(facts,'snapshot','e');facts=run();assert.equal(facts.receipt.reason,'operation_unresolved');
+  assert.ok(JSON.parse(fs.readFileSync(jf,'utf8')).receipts.some(r=>r.id==='f'.repeat(32)&&r.status==='running'));
+ }finally {process.umask(previousMask);fs.rmSync(root,{recursive:true,force:true});}
+});

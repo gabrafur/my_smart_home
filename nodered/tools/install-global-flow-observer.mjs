@@ -21,6 +21,7 @@ const OBSERVER_TAB = "global_flow_observer_tab";
 const externalEventOutIds = [
   "external_confirmation_incident_out",
   "local_ai_rtx_alert_out",
+  "zg_guard_alert_out",
   "people_visual_refresh_alert_out",
   "internet_remote_access_alert_out",
   "weekly_docs_review_alert_out",

@@ -278,3 +278,11 @@ were registered exactly as `binary_sensor.internet_connection`,
 This is a partial record. The `PENDING` entries above are not passes, and the
 pull request must remain a draft until an observable physical window completes
 WAN, router, and mobile-delivery validation.
+
+## Coordinator recovery and protected backups
+
+The `recuperacao_zigbee` canvas evaluates host observations every 30 seconds. It confirms general failures before requesting a bounded Zigbee2MQTT reconnection or restoring a completely missing device database. Individual unavailable devices do not restart the entire network. Recovery has a minimum 15-minute cooldown and a maximum of two attempts per day. Maintenance, unknown observations and interrupted operations block new effects.
+
+A native host adapter publishes sanitized facts every 15 seconds. Healthy observations with recent real telemetry can request a native backup. Network identity, keys, channel, completed interviews and database membership must match. Empty or smaller databases cannot replace the last good snapshot. Private snapshots retain hashes and up to 32 versions; the canvas also provides a validated manual backup button. A stale channel mask is normalized only when the backup operating channel already matches configuration.
+
+Disable the coordinator internal firmware updater and keep a known failed version skipped. Firmware installation must use coordinated backups and service stops. Physical failures and devices that have left the network may require manual pairing; a recovery request does not prove functional restoration. See the [Portuguese operations guide](ZIGBEE_COORDINATOR_RECOVERY.md) for installation, validation and safe replay steps.

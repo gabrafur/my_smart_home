@@ -25,6 +25,7 @@ placeholders.
 | [Guardião de memória do host](HOST_MEMORY_GUARDIAN.md) | Alívio conservador de memória para sessões remotas abandonadas | resumo no [índice em inglês](README.en.md) |
 | [Auditoria de armazenamento — fase 2](operations/storage-audit-phase-2.md) | Limpeza de ferramentas de desenvolvimento, caches, PM2, Docker e análise do recorder | resumo no [índice em inglês](README.en.md) |
 | [Monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md) | Queda e recuperação de Zigbee, Tuya e Internet no Node-RED | [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
+| [Recuperação do coordenador Zigbee](ZIGBEE_COORDINATOR_RECOVERY.md) | Backup validado, reconexão limitada e preservação da última cópia boa | [English summary](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
 | [Recuperação do acesso remoto ao Codex](CODEX_REMOTE_RECOVERY.md) | Detecção de SSH/App Server, recuperação automática idempotente e separação do Tailscale | Português |
 | [MCP Raspberry: administração e portabilidade](raspberry-mcp/README.md) | Autoridade delegada, catálogo, instalação, conexão com outros clientes e revogação | resumo no índice em inglês |
 | [Observação nativa MQTT](MQTT_SOURCE_OBSERVER.md) | Candidato desligado por padrão: metadados, política visual, build, autorização e recuperação | resumo no índice em inglês |
