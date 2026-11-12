@@ -302,3 +302,16 @@ confirmed recovery; physical damage and storage loss remain outside this guarant
 The external LELLKI JZ-ZB-001 converter is scoped to application 5/firmware 2.0.1.
 It exposes the actual startup value as read-only because this firmware rejects
 writes; it does not pretend a rejected setting was applied.
+
+The monitor also retains correlated active routing-table paths. The history
+accepts uplinks and explicit, unambiguous end-device parent relations without
+guessing a parent from LQI. Its visual policy defaults to hourly scans, a 24-hour path lifetime and three intermediate
+routers. Incomplete scans preserve prior paths. Recovery configures those
+routers before the target, with a distinct transaction per hop; stale or foreign
+paths fall back to the target. Confirmed offline incidents share the same retry
+budget. No fixed route, reset, removal or unattended pairing is imposed.
+Fresh stable telemetry is still required, and synthetic replay ends at dry-run.
+
+Radio restoration uses an independently pinned, reviewed container image. The
+application can update without replacing its restoration library. Missing helper
+images block updates before mutation; this does not guarantee physical repair.

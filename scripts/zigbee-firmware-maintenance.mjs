@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
-import {validateNetwork,captureNetwork,adapterRestoreScript} from './zigbee-coordinator-recovery.mjs';
+import {validateNetwork,captureNetwork,adapterRestoreScript,restoreRuntimeImage} from './zigbee-coordinator-recovery.mjs';
 const require=createRequire(import.meta.url);
 const ROOT='/mnt/data/docker',PRIVATE='/var/lib/zigbee-coordinator-recovery';
 const hash=v=>crypto.createHash('sha256').update(v).digest('hex');
@@ -182,7 +182,7 @@ export async function processFirmwareQueue(){
   if(!job.dispatch_attempted&&!validFirmwareRequest(request,Date.now()))throw Error('request_expired');
   const identity=coordinatorIdentity(config);
   const ops={save:persist,wait:pause,state:async()=>vendor(identity,'state',request,job.dispatch_attempted),approveStable:async()=>vendor(identity,'approve',request),
-   preflight:async()=>{if(docker(['ps','--filter','name=^/zigbee-(coordinator|firmware-network)-restore$','--format','{{.Names}}']).trim())throw Error('radio_restore_still_running');docker(['exec','zigbee2mqtt','node','-e',"if(require('zigbee-herdsman/package.json').version!=='11.2.0'||typeof require('zigbee-herdsman/dist/adapter/adapter').Adapter.create!=='function')process.exit(1)"])},
+   preflight:async()=>{if(docker(['ps','--filter','name=^/zigbee-(coordinator|firmware-network)-restore$','--format','{{.Names}}']).trim())throw Error('radio_restore_still_running');docker(['run','--rm','--network','none','--read-only','--memory','128m','--entrypoint','node',restoreRuntimeImage(PRIVATE),'-e',"if(require('zigbee-herdsman/package.json').version!=='11.2.0'||typeof require('zigbee-herdsman/dist/adapter/adapter').Adapter.create!=='function')process.exit(1)"])},
    probe:async()=>{docker(['exec','zigbee2mqtt','node','-e',probeScript],20000)},
    backup:async()=>{
     docker(['exec','zigbee2mqtt','node','-e',backupScript],55000);
@@ -204,7 +204,7 @@ export async function processFirmwareQueue(){
     if(counter+2500>0xffffffff)throw Error('network_counter_exhausted');
     validated.backup.network_key.frame_counter=counter;job.restore_attempts++;persist();
     fs.writeFileSync(path.join(dataDir,'database.db'),bundle.database);fs.writeFileSync(path.join(dataDir,'coordinator_backup.json'),JSON.stringify(validated.backup,null,2)+'\n');
-    const image=docker(['inspect','zigbee2mqtt','--format','{{.Image}}']).trim();if(!/^sha256:[a-f0-9]{64}$/.test(image))throw Error('invalid_image_identity');
+    const image=restoreRuntimeImage(PRIVATE);
     docker(['run','--rm','--name','zigbee-firmware-network-restore','--network','host','--memory','192m','--memory-swap','192m','--cpus','0.5','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,size=16m','--volume',dataDir+':/app/data:rw','--entrypoint','node',image,'-e',adapterRestoreScript],180000);
    },start:async()=>{
     if(docker(['ps','--filter','name=^/zigbee-(coordinator|firmware-network)-restore$','--format','{{.Names}}']).trim())throw Error('radio_restore_still_running');

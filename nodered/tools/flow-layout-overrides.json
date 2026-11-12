@@ -11326,6 +11326,252 @@
         "zigbee_notify_effect__dismiss_call": {
           "x": 2730,
           "y": 2860
+        },
+        "grp_zigbee_paths": {
+          "x": 64,
+          "y": 4200,
+          "w": 3600,
+          "h": 1160
+        },
+        "zigbee_path_policy_default": {
+          "x": 330,
+          "y": 4280
+        },
+        "zigbee_path_policy": {
+          "x": 850,
+          "y": 4280
+        },
+        "zigbee_path_policy_valid": {
+          "x": 1330,
+          "y": 4280
+        },
+        "zigbee_path_invalid": {
+          "x": 1730,
+          "y": 4280
+        },
+        "zigbee_path_clock": {
+          "x": 330,
+          "y": 4400
+        },
+        "zigbee_path_scan_facts": {
+          "x": 830,
+          "y": 4400
+        },
+        "zigbee_path_scan_ready": {
+          "x": 1370,
+          "y": 4400
+        },
+        "zigbee_path_scan_build": {
+          "x": 1900,
+          "y": 4400
+        },
+        "zigbee_path_scan_test": {
+          "x": 2330,
+          "y": 4400
+        },
+        "zigbee_path_scan_dry": {
+          "x": 2700,
+          "y": 4350
+        },
+        "zigbee_path_scan_mqtt": {
+          "x": 2800,
+          "y": 4450
+        },
+        "zigbee_path_map_in": {
+          "x": 120,
+          "y": 4570
+        },
+        "zigbee_path_map_store": {
+          "x": 2400,
+          "y": 4570
+        },
+        "zigbee_path_map_out": {
+          "x": 2810,
+          "y": 4570
+        },
+        "zigbee_path_select_out": {
+          "x": 3085,
+          "y": 1600
+        },
+        "zigbee_path_select_in": {
+          "x": 120,
+          "y": 4700
+        },
+        "zigbee_path_select": {
+          "x": 600,
+          "y": 4700
+        },
+        "zigbee_path_use": {
+          "x": 1190,
+          "y": 4700
+        },
+        "zigbee_path_known": {
+          "x": 1760,
+          "y": 4660
+        },
+        "zigbee_path_direct": {
+          "x": 1760,
+          "y": 4760
+        },
+        "zigbee_path_plan": {
+          "x": 2300,
+          "y": 4700
+        },
+        "zigbee_path_plan_out": {
+          "x": 2740,
+          "y": 4700
+        },
+        "zigbee_path_plan_in": {
+          "x": 2990,
+          "y": 1530
+        },
+        "zigbee_path_next_out": {
+          "x": 3100,
+          "y": 1768
+        },
+        "zigbee_path_next_in": {
+          "x": 120,
+          "y": 4900
+        },
+        "zigbee_path_next": {
+          "x": 590,
+          "y": 4900
+        },
+        "zigbee_path_has_next": {
+          "x": 1100,
+          "y": 4900
+        },
+        "zigbee_path_next_build": {
+          "x": 1650,
+          "y": 4860
+        },
+        "zigbee_path_next_effect": {
+          "x": 2140,
+          "y": 4860
+        },
+        "zigbee_path_next_effect_in": {
+          "x": 3340,
+          "y": 1510
+        },
+        "zigbee_path_verified_out": {
+          "x": 1600,
+          "y": 4970
+        },
+        "zigbee_path_verified_in": {
+          "x": 3085,
+          "y": 1735
+        },
+        "zigbee_path_offline_out": {
+          "x": 4060,
+          "y": 980
+        },
+        "zigbee_path_offline_in": {
+          "x": 120,
+          "y": 5140
+        },
+        "zigbee_path_offline": {
+          "x": 620,
+          "y": 5140
+        },
+        "zigbee_path_offline_ok": {
+          "x": 1190,
+          "y": 5140
+        },
+        "zigbee_path_offline_recover": {
+          "x": 1680,
+          "y": 5140
+        },
+        "zigbee_path_note": {
+          "x": 1600,
+          "y": 5270
+        },
+        "zigbee_path_test_policy": {
+          "x": 2850,
+          "y": 4280
+        },
+        "zigbee_path_map_normalize": {
+          "x": 600,
+          "y": 4570
+        },
+        "zigbee_path_test_map": {
+          "x": 2800,
+          "y": 5030
+        },
+        "zigbee_path_test_seed": {
+          "x": 2800,
+          "y": 5100
+        },
+        "zigbee_path_test_hop_0": {
+          "x": 2850,
+          "y": 5180
+        },
+        "zigbee_path_test_hop_1": {
+          "x": 2850,
+          "y": 5260
+        },
+        "zigbee_path_test_hop_out_0": {
+          "x": 3250,
+          "y": 5180
+        },
+        "zigbee_path_test_hop_out_1": {
+          "x": 3250,
+          "y": 5260
+        },
+        "zigbee_path_test_seed_out": {
+          "x": 3260,
+          "y": 5100
+        },
+        "zigbee_path_test_seed_in": {
+          "x": 120,
+          "y": 4510
+        },
+        "zigbee_path_test_policy_out": {
+          "x": 3260,
+          "y": 4280
+        },
+        "zigbee_path_test_policy_in": {
+          "x": 500,
+          "y": 4220
+        },
+        "zigbee_path_scan_source_test": {
+          "x": 530,
+          "y": 4380
+        },
+        "zigbee_path_guard_file": {
+          "x": 530,
+          "y": 4480
+        },
+        "zigbee_path_guard_out": {
+          "x": 800,
+          "y": 4480
+        },
+        "zigbee_path_guard_in": {
+          "x": 500,
+          "y": 4340
+        },
+        "zigbee_path_map_catalog": {
+          "x": 1050,
+          "y": 4570
+        },
+        "zigbee_path_map_extract": {
+          "x": 1500,
+          "y": 4570
+        },
+        "zigbee_path_refresh_now": {
+          "x": 330,
+          "y": 5040
+        },
+        "zigbee_path_refresh_out": {
+          "x": 650,
+          "y": 5040
+        },
+        "zigbee_path_refresh_in": {
+          "x": 120,
+          "y": 4350
+        },
+        "zigbee_path_map_parents": {
+          "x": 1950,
+          "y": 4570
         }
       },
       "geometry_final": true

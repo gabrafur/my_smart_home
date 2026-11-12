@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
-import {validateNetwork,captureNetwork,snapshotEligible,requestValid,tick,adapterRestoreScript} from './zigbee-coordinator-recovery.mjs';
+import {validateNetwork,captureNetwork,snapshotEligible,requestValid,tick,adapterRestoreScript,pinRestoreRuntime,restoreRuntimeImage} from './zigbee-coordinator-recovery.mjs';
 const now=1800000000000;
 function fixture() {
  const config={advanced:{network_key:Array(16).fill(1),ext_pan_id:Array(8).fill(2),pan_id:123,channel:26}};
@@ -35,6 +35,7 @@ test('requests require fresh exact observations; duplicates never replay',()=>{
 test('native adapter snapshots and restores missing database without actuators; uncertain intent blocks replay',()=>{
  const f=fixture(),root=fs.mkdtempSync(path.join(os.tmpdir(),'zigbee-guard-')),data=path.join(root,'zigbee2mqtt'),priv=path.join(root,'private'),pub=path.join(root,'nodered','zigbee-recovery');
  fs.mkdirSync(data,{recursive:true});
+ fs.mkdirSync(priv,{recursive:true});fs.writeFileSync(path.join(priv,"restore-runtime.json"),JSON.stringify({schema_version:1,image_id:"sha256:"+"2".repeat(64),herdsman_version:"11.2.0"}));
  fs.writeFileSync(path.join(data,'configuration.yaml'),JSON.stringify(f.config));fs.writeFileSync(path.join(data,'coordinator_backup.json'),JSON.stringify(f.backup));fs.writeFileSync(path.join(data,'database.db'),f.database);
  let temporaryRunning=false;const calls=[],runtime={now:()=>now,docker:a=>{calls.push(a);if(a[0]==='ps')return temporaryRunning?'zigbee-firmware-network-restore':'';return a[0]==='inspect'?(a.at(-1)==='{{.Image}}'?'sha256:'+'1'.repeat(64):JSON.stringify({Running:true,StartedAt:new Date(now-600000).toISOString()})):''},logs:()=>({status:0,stdout:'',stderr:''})};
  const run=()=>tick(root,priv,runtime);
@@ -48,6 +49,7 @@ test('native adapter snapshots and restores missing database without actuators; 
   request(facts,'restore','d');facts=run();assert.equal(facts.receipt.status,'dispatched');assert.equal(fs.readFileSync(path.join(data,'database.db'),'utf8'),f.database);
   const mutations=calls.filter(a=>['start','stop'].includes(a[0]));assert.deepEqual(mutations.map(a=>a.at(-1)),['zigbee2mqtt','zigbee2mqtt']);
   assert.equal(calls.filter(a=>a[0]==='run'&&a.includes(adapterRestoreScript)).length,1,'loss restores radio keys as well as database');
+  assert.ok(calls.find(a=>a[0]==='run'&&a.includes(adapterRestoreScript)).includes('sha256:'+'2'.repeat(64)),'restore uses independently reviewed image, not running image');
   run();assert.equal(calls.filter(a=>['start','stop'].includes(a[0])).length,2,'same request never runs twice');
   assert.ok(calls.every(a=>!a.includes('publish')&&!a.includes('set')));
   const jf=path.join(priv,'journal.json'),j=JSON.parse(fs.readFileSync(jf,'utf8'));j.receipts.push({id:'f'.repeat(32),action:'restore',status:'running'});fs.writeFileSync(jf,JSON.stringify(j));
@@ -84,4 +86,12 @@ test('capture preserves only protected keyless router metadata without rolling b
  const extra=f.database+'\n'+JSON.stringify({type:'Router',ieeeAddr:'0x0000000000000004',lastSeen:now,interviewCompleted:true});
  assert.throws(()=>captureNetwork(f.config,native,extra,makeBaseline()));
  assert.throws(()=>captureNetwork(f.config,native,f.database.replace('"type":"Router","ieeeAddr":"0x0000000000000003"','"type":"EndDevice","ieeeAddr":"0x0000000000000003"'),makeBaseline()));
+});
+
+test('reviewed restoration image remains pinned when running application changes',()=>{
+ const p=fs.mkdtempSync(path.join(os.tmpdir(),'zigbee-reviewed-')),calls=[],image='sha256:'+'a'.repeat(64);
+ const run=a=>{calls.push(a);return a[0]==='inspect'?image:''};
+ try {assert.throws(()=>restoreRuntimeImage(p));assert.equal(pinRestoreRuntime(p,run),image);assert.ok(calls.some(a=>a[0]==='image'&&a[1]==='tag'));const count=calls.length;assert.equal(pinRestoreRuntime(p,()=>{throw Error('new application must not replace helper')}),image);assert.equal(calls.length,count);
+ fs.writeFileSync(path.join(p,'restore-runtime.json'),JSON.stringify({schema_version:1,image_id:image,herdsman_version:'99.0.0'}));assert.throws(()=>restoreRuntimeImage(p));
+ }finally{fs.rmSync(p,{recursive:true,force:true})}
 });

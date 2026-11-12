@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
+import { installZigbeePathFlow } from "./install-zigbee-path-flow.mjs";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -15,7 +16,7 @@ const MQTT = "721c47f31046b8bc";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const originalFlows = structuredClone(flows);
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
-const owned = (node) => node.id === TAB || node.z === TAB || node.id.startsWith("zigbee_") || node.id.startsWith("grp_zigbee_");
+const owned = (node) => node.id === TAB || node.z === TAB;
 const removed = new Set(flows.filter(owned).map((node) => node.id));
 const next = flows.filter((node) => !owned(node));
 for (const node of next) {
@@ -115,7 +116,7 @@ grouped(groups.input, { id: "zigbee_component_availability", type: "mqtt in", z:
   broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 230, y: 520, wires: [["zigbee_component_input_out"]] });
 linkOut("zigbee_component_input_out", groups.input, "Disponibilidade → componentes", "zigbee_component_input_in", 500, 520);
 grouped(groups.input, { id: "zigbee_devices_source", type: "mqtt in", z: TAB, g: groups.input,
-  name: "FONTE: bridge/devices", topic: "zigbee2mqtt/bridge/devices", qos: "1", datatype: "auto-detect",
+  name: "FONTE: bridge/devices e catálogo de caminhos", topic: "zigbee2mqtt/bridge/devices", qos: "1", datatype: "auto-detect",
   broker: MQTT, nl: false, rap: true, rh: 0, inputs: 0, x: 220, y: 580, wires: [["zigbee_device_map_store"]] });
 fn("zigbee_device_map_store", groups.input, "Mapear IEEE para nome", "zigbee-device-map-store.js", 0, 500, 580, []);
 grouped(groups.input, { id: "zigbee_history_retained", type: "mqtt in", z: TAB, g: groups.input,
@@ -409,7 +410,13 @@ linkOut("zigbee_settle_test_tick_out", settle, "Tick TESTE → mesma retomada", 
 inject("zigbee_settle_test_live", settle, "TESTE 21: dados novos após janela", [{ p: "topic", v: "zigbee2mqtt/teste_rota", vt: "str" }, { p: "payload", v: '{"state":"ON"}', vt: "json" }, { p: "monitor_now", v: String(routeT0 + 1204000), vt: "num" }, { p: "_zigbee_test", v: "true", vt: "bool" }], 1880, 3570, [["zigbee_settle_test_live_out"]]);
 linkOut("zigbee_settle_test_live_out", settle, "Dados TESTE → mesma evidência", "zigbee_live_in", 2170, 3570);
 grouped(settle, { id: "zigbee_settle_note", type: "comment", z: TAB, g: settle, name: "TESTE: reset → ponte online → erro → mapa → configure → 20 (silêncio) → 21 → 20 (recuperação).", info: "Retained não confirma rota. Repita MAC_NO_ACK ou NWK_NO_ROUTE durante a janela: o incidente e limite de tentativas devem continuar. Nenhum teste chama MQTT ou notificação real.", x: 2320, y: 3660, wires: [] });
+installZigbeePathFlow({nodes,group,fn,inject,sw,change,linkOut,linkIn,grouped,source});
 next.push(...nodes);
 const desired = installNotificationHubs(next);
-fs.writeFileSync(outputPath, `${JSON.stringify(reconcileGeneratedFlows(originalFlows, desired, { isOwned: owned, shouldUpdate: node => owned(node) }), null, 4)}\n`);
+const reconciled=reconcileGeneratedFlows(originalFlows, desired, { isOwned: owned, shouldUpdate: node => owned(node) });
+// The new path subflow owns its geometry; established canvases retain theirs.
+for(const n of reconciled.filter(n=>n.id.startsWith("zigbee_path_")||n.id==="grp_zigbee_paths")){
+ const generated=nodes.find(v=>v.id===n.id);if(generated)for(const key of ["x","y","w","h"])if(generated[key]!==undefined)n[key]=generated[key];
+}
+fs.writeFileSync(outputPath, `${JSON.stringify(reconciled, null, 4)}\n`);
 console.log(`Zigbee monitor visual flow installed in ${outputPath}`);

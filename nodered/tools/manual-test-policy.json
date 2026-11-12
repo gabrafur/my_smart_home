@@ -295,7 +295,11 @@
         "zigbee_test_route_failed_response",
         "zigbee_test_route_retry",
         "zigbee_test_route_scan_retry_response",
-        "zigbee_test_route_success_response"
+        "zigbee_test_route_success_response",
+        "zigbee_path_test_policy",
+        "zigbee_path_test_map",
+        "zigbee_path_test_hop_0",
+        "zigbee_path_test_hop_1"
       ],
       "dry_run_terminal_ids": [
         "zigbee_dry_run_terminal"

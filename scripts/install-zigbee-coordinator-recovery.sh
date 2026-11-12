@@ -9,6 +9,7 @@ install -m 0644 "$root/scripts/zigbee-coordinator-recovery.mjs" /opt/zigbee-coor
 install -m 0644 "$root/scripts/zigbee-coordinator-recovery.mjs" /opt/zigbee-coordinator-recovery/zigbee-coordinator-recovery.mjs
 install -m 0644 "$root/scripts/zigbee-firmware-maintenance.mjs" /opt/zigbee-coordinator-recovery/firmware.mjs
 install -d -m 0700 /var/lib/zigbee-coordinator-recovery
+node "$root/scripts/zigbee-coordinator-recovery.mjs" --pin-restore-runtime
 install -d -o 1000 -g 1000 -m 0750 "$root/nodered/zigbee-recovery"
 install -d -o 1000 -g 1000 -m 0750 "$root/nodered/zigbee-recovery/firmware-requests"
 if [ ! -e "$root/nodered/zigbee-recovery/firmware-result.json" ]; then

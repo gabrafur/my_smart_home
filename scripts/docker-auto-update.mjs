@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { probeService, requireReadinessCoverage } from "./container-readiness.mjs";
 import { assertCustomIntegrationCompatibility } from "./custom-integration-compatibility.mjs";
+import { restoreRuntimeImage } from "./zigbee-coordinator-recovery.mjs";
 import { createDockerRecoveryStore } from "./docker-update-recovery.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -276,6 +277,12 @@ async function reconcileImages(channels, options = {}) {
       plan.desiredImages.filter(row => changedServices.includes(row.service)),
       { repoRoot, run, dryRun });
     log(`custom integration compatibility: ${compatibility.state}`);
+    if (!dryRun && changedServices.includes("zigbee2mqtt")) {
+      // Keep the reviewed restoration runtime independently of the new app.
+      const reviewed = restoreRuntimeImage("/var/lib/zigbee-coordinator-recovery");
+      const present = run("docker", ["image", "inspect", reviewed, "--format", "{{.Id}}"], {capture:true}).trim();
+      if (present !== reviewed) throw new Error("reviewed_restore_runtime_unavailable");
+    }
     if (dryRun) validateAfterComposeEdit();
     else validateComposeCandidate(plan, {
       read: () => fs.readFileSync(composePath, "utf8"),

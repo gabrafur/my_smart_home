@@ -97,6 +97,21 @@ function docker(args) {
 }
 const temporaryRestoreFilter='name=^/zigbee-(coordinator|firmware-network)-restore$';
 const restoreActive=run=>!!run(['ps','--filter',temporaryRestoreFilter,'--format','{{.Names}}']).trim();
+export function restoreRuntimeImage(privateDir) {
+  const pinned=optional(path.join(privateDir,'restore-runtime.json'),null);
+  if(pinned?.schema_version!==1||pinned.herdsman_version!=='11.2.0'||!/^sha256:[a-f0-9]{64}$/.test(pinned.image_id))throw Error('reviewed_restore_runtime_missing');
+  return pinned.image_id;
+}
+export function pinRestoreRuntime(privateDir='/var/lib/zigbee-coordinator-recovery',run=docker) {
+  const file=path.join(privateDir,'restore-runtime.json');
+  if(fs.existsSync(file))return restoreRuntimeImage(privateDir);
+  const image=run(['inspect','zigbee2mqtt','--format','{{.Image}}']).trim();
+  if(!/^sha256:[a-f0-9]{64}$/.test(image))throw Error('invalid_image_identity');
+  run(['exec','zigbee2mqtt','node','-e',"if(require('zigbee-herdsman/package.json').version!=='11.2.0')process.exit(1)"]);
+  run(['image','tag',image,'local/zigbee-restore-runtime:reviewed']);
+  atomic(file,JSON.stringify({schema_version:1,image_id:image,herdsman_version:'11.2.0'}));
+  return image;
+}
 export const adapterRestoreScript = String.raw`
 const fs=require('fs'),yaml=require('js-yaml'),{Adapter}=require('zigbee-herdsman/dist/adapter/adapter');
 const version=require('zigbee-herdsman/package.json').version;
@@ -213,8 +228,7 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
           const b=request.action==='restore'?restored.backup:validateNetwork(config,JSON.parse(evidence.backup),evidence.database).backup;
           atomic(path.join(dataDir,'coordinator_backup.json'),JSON.stringify(b,null,2)+'\n',0o644);
           if(request.action==='restore') {
-            const image=runDocker(['inspect','zigbee2mqtt','--format','{{.Image}}']).trim();
-            if(!/^sha256:[a-f0-9]{64}$/.test(image))throw Error('invalid_image_identity');
+            const image=restoreRuntimeImage(privateDir);
             runDocker(['run','--rm','--name','zigbee-coordinator-restore','--network','host','--memory','192m','--memory-swap','192m','--cpus','0.5','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,size=16m','--volume',`${dataDir}:/app/data:rw`,'--entrypoint','node',image,'-e',adapterRestoreScript]);
           }
         } finally {
@@ -239,5 +253,5 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
   return result;
 }
 if(process.argv[1] && fileURLToPath(import.meta.url)===path.resolve(process.argv[1])) {
-  try {tick();} catch {console.error('ZIGBEE_GUARD observation_failed');process.exitCode=1;}
+  try {if(process.argv[2]==='--pin-restore-runtime')pinRestoreRuntime();else tick();} catch {console.error('ZIGBEE_GUARD observation_failed');process.exitCode=1;}
 }

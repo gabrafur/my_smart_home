@@ -18,4 +18,8 @@ else if (msg.zigbee_route_event === "route_recovery_failed") {
     message: `O dispositivo Zigbee “${device}” voltou a publicar dados após ${msg.policy.route_stability_s} segundos sem nova falha de rota. Recuperação confirmada em ${when}.`
 };
 else return null;
+if(msg.zigbee_route_event==='route_recovery_failed'&&msg.notification&&current.path_evidence?.via_names?.length){
+ const failed=current.configure_targets?.[current.configure_index]||device;
+ msg.notification.message+=' Último caminho conhecido: '+current.path_evidence.via_names.join(' → ')+' → '+device+'. Etapa sem confirmação: '+failed+'.';
+}
 return msg;

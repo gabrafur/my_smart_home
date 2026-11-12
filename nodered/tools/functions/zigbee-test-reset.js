@@ -6,6 +6,7 @@ for (const key of [
     "zigbee_route_incidents_v1__test",
     "zigbee_route_pending__test", "zigbee_route_live__test", "zigbee_boot_at__test",
     "zigbee_component_observations__test",
+    "zigbee_paths_v1__test", "zigbee_path_policy_v1__test", "zigbee_path_scan__test", "zigbee_device_catalog_v1__test",
     "zigbee_last_dry_run_v1__test"
 ]) flow.set(key, undefined);
 if (msg._zigbee_test !== true) node.status({ fill: "blue", shape: "dot", text: "estado TESTE resetado" });

@@ -129,7 +129,7 @@
         "type": "tab",
         "label": "localizacao_pessoas",
         "disabled": false,
-        "info": "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; o aviso tem raio independente de 700 m de HOME, exige posição anterior fora e retorno confirmado. A iluminação conserva 350 m do portão. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.",
+        "info": "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; o aviso tem raio independente de 700 m de HOME, exige posição anterior fora e retorno confirmado. A iluminação conserva 350 m do portão. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run. O recovery de localização vencida usa Companion + iCloud, seletivamente por morador, com cooldown individual e confirmação por observação posterior. O efeito iCloud autoriza recuperação limitada da sessão salva; OTP suspende a recuperação automática e aguarda ação manual.",
         "env": []
     },
     {
@@ -7168,6 +7168,12 @@
             "notification_hub_wire_in_314cc1223eae",
             "notification_hub_wire_out_1a76a5d8d87c",
             "notification_hub_wire_in_1a76a5d8d87c",
+            "zigbee_path_select_out",
+            "zigbee_path_plan_in",
+            "zigbee_path_next_out",
+            "zigbee_path_next_effect_in",
+            "zigbee_path_verified_in",
+            "zigbee_path_offline_out",
             "notification_hub_wire_out_e701eb22e5a2",
             "notification_hub_wire_in_e701eb22e5a2",
             "notification_hub_wire_out_0bb8d336406e",
@@ -60912,7 +60918,7 @@
         "type": "mqtt in",
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_triggers",
-        "name": "FONTE: bridge/devices",
+        "name": "FONTE: bridge/devices e catálogo de caminhos",
         "topic": "zigbee2mqtt/bridge/devices",
         "qos": "1",
         "datatype": "auto-detect",
@@ -60935,7 +60941,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_triggers",
         "name": "Mapear IEEE para nome",
-        "func": "let devices = msg.payload;\nif (typeof devices === \"string\") {\n    try { devices = JSON.parse(devices); } catch { devices = []; }\n}\nconst names = {};\nfor (const device of Array.isArray(devices) ? devices : []) {\n    const ieee = String(device.ieee_address || \"\").toLowerCase();\n    const name = String(device.friendly_name || \"\").trim();\n    if (/^0x[0-9a-f]{16}$/.test(ieee) && name) names[ieee] = name;\n}\nflow.set(\"zigbee_device_name_by_ieee_v1\", names);\nnode.status({ fill: \"green\", shape: \"dot\", text: `${Object.keys(names).length} dispositivos mapeados` });\nreturn null;",
+        "func": "let devices = msg.payload;\nif (typeof devices === \"string\") {\n    try { devices = JSON.parse(devices); } catch { devices = []; }\n}\nconst names = {},catalog={};\nfor (const device of Array.isArray(devices) ? devices : []) {\n    const ieee = String(device.ieee_address || \"\").toLowerCase();\n    const name = String(device.friendly_name || \"\").trim();\n    if (/^0x[0-9a-f]{16}$/.test(ieee) && name) {names[ieee] = name;catalog[ieee]={name,type:device.type};}\n}\nflow.set(\"zigbee_device_name_by_ieee_v1\", names);\nflow.set(\"zigbee_device_catalog_v1\"+(msg._zigbee_test===true?\"__test\":\"\"),catalog);\nnode.status({ fill: \"green\", shape: \"dot\", text: `${Object.keys(names).length} dispositivos mapeados` });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -61155,7 +61161,7 @@
         "name": "Mapa → reconfiguração limitada",
         "mode": "link",
         "links": [
-            "zigbee_route_scan_response_in"
+            "zigbee_path_map_in"
         ],
         "x": 580,
         "y": 1270,
@@ -62557,7 +62563,8 @@
         "y": 880,
         "wires": [
             [
-                "zigbee_component_effect_out"
+                "zigbee_component_effect_out",
+                "zigbee_path_offline_out"
             ]
         ]
     },
@@ -62583,7 +62590,8 @@
         "name": "Receber falha Zigbee",
         "links": [
             "zigbee_route_error_out",
-            "zigbee_settle_route_out"
+            "zigbee_settle_route_out",
+            "zigbee_path_offline_recover"
         ],
         "x": 1310,
         "y": 1430,
@@ -62748,8 +62756,8 @@
                 "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "to": "route_failure",
-                "tot": "str"
+                "to": "zigbee_route_quiet_open = true ? \"route_retry\" : \"route_failure\"",
+                "tot": "jsonata"
             }
         ],
         "action": "",
@@ -62919,7 +62927,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Montar alerta da rota",
-        "func": "const current = msg.zigbee_route_current || {};\nconst device = msg.zigbee_route_device || current.device || \"desconhecido\";\nconst id = `zigbee_route_${msg.zigbee_route_key}`;\nconst when = new Date(msg.zigbee_route_now).toLocaleString(\"pt-BR\");\nif (msg.zigbee_route_event === \"route_failure\") msg.notification = {\n    id, title: \"Falha de rota Zigbee\",\n    message: `O dispositivo Zigbee “${device}” apresentou ${current.last_error || \"falha de comunicação\"} em ${when}. A recuperação automática foi iniciada (tentativa 1 de ${msg.policy.route_recovery_max_attempts}).`\n};\nelse if (msg.zigbee_route_event === \"route_recovery_failed\") {\n    const exhausted = current.attempts >= msg.policy.route_recovery_max_attempts;\n    if (!exhausted) return null;\n    msg.notification = { id, title: \"Recuperação Zigbee não concluída\",\n        message: exhausted\n            ? `“${device}” continua sem rota após ${current.attempts} tentativas. O processo automático foi encerrado; verifique a alimentação e a malha Zigbee.`\n            : `A tentativa ${current.attempts} de recuperar “${device}” falhou. Uma nova tentativa poderá ocorrer após ${msg.policy.route_recovery_cooldown_min} minutos se o erro reaparecer.` };\n} else if (msg.zigbee_route_event === \"route_recovery\") msg.notification = {\n    id: `${id}_recovered`, dismiss_id: id, title: \"Rota Zigbee recuperada\",\n    message: `O dispositivo Zigbee “${device}” voltou a publicar dados após ${msg.policy.route_stability_s} segundos sem nova falha de rota. Recuperação confirmada em ${when}.`\n};\nelse return null;\nreturn msg;",
+        "func": "const current = msg.zigbee_route_current || {};\nconst device = msg.zigbee_route_device || current.device || \"desconhecido\";\nconst id = `zigbee_route_${msg.zigbee_route_key}`;\nconst when = new Date(msg.zigbee_route_now).toLocaleString(\"pt-BR\");\nif (msg.zigbee_route_event === \"route_failure\") msg.notification = {\n    id, title: \"Falha de rota Zigbee\",\n    message: `O dispositivo Zigbee “${device}” apresentou ${current.last_error || \"falha de comunicação\"} em ${when}. A recuperação automática foi iniciada (tentativa 1 de ${msg.policy.route_recovery_max_attempts}).`\n};\nelse if (msg.zigbee_route_event === \"route_recovery_failed\") {\n    const exhausted = current.attempts >= msg.policy.route_recovery_max_attempts;\n    if (!exhausted) return null;\n    msg.notification = { id, title: \"Recuperação Zigbee não concluída\",\n        message: exhausted\n            ? `“${device}” continua sem rota após ${current.attempts} tentativas. O processo automático foi encerrado; verifique a alimentação e a malha Zigbee.`\n            : `A tentativa ${current.attempts} de recuperar “${device}” falhou. Uma nova tentativa poderá ocorrer após ${msg.policy.route_recovery_cooldown_min} minutos se o erro reaparecer.` };\n} else if (msg.zigbee_route_event === \"route_recovery\") msg.notification = {\n    id: `${id}_recovered`, dismiss_id: id, title: \"Rota Zigbee recuperada\",\n    message: `O dispositivo Zigbee “${device}” voltou a publicar dados após ${msg.policy.route_stability_s} segundos sem nova falha de rota. Recuperação confirmada em ${when}.`\n};\nelse return null;\nif(msg.zigbee_route_event==='route_recovery_failed'&&msg.notification&&current.path_evidence?.via_names?.length){\n const failed=current.configure_targets?.[current.configure_index]||device;\n msg.notification.message+=' Último caminho conhecido: '+current.path_evidence.via_names.join(' → ')+' → '+device+'. Etapa sem confirmação: '+failed+'.';\n}\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -63056,8 +63064,7 @@
         "g": "grp_zigbee_detect",
         "name": "Receber mapa consultado",
         "links": [
-            "zigbee_route_scan_response_out",
-            "zigbee_test_route_scan_response_out"
+            "zigbee_path_map_out"
         ],
         "x": 1310,
         "y": 1650,
@@ -63192,7 +63199,7 @@
         "y": 1600,
         "wires": [
             [
-                "zigbee_route_configure_request_build"
+                "zigbee_path_select_out"
             ],
             [
                 "zigbee_route_scan_failed"
@@ -63205,7 +63212,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Montar reconfiguração do dispositivo",
-        "func": "const store = msg._zigbee_test === true ? undefined : \"persistent\";\nconst incidents = flow.get(msg.zigbee_route_state_key, store) || {};\nconst current = incidents[msg.zigbee_route_key];\nif (!current || current.phase !== \"scanning\" || current.pending_transaction !== msg.payload?.transaction ||\n    msg.zigbee_route_response_valid !== true || msg.zigbee_route_response_status !== \"ok\" ||\n    msg.zigbee_route_response_stage !== \"networkmap\" || msg.zigbee_route_response_reconcile_only === true ||\n    current.native_completion_state === \"unknown\") return null;\nincidents[msg.zigbee_route_key] = { ...current, phase: \"configuring\", native_stage: \"configure\",\n    native_completion_state: \"pending\", last_terminal_transaction: current.pending_transaction,\n    last_terminal_stage: \"networkmap\", last_terminal_status: \"ok\",\n    last_terminal_observed_at: msg.zigbee_route_now_iso, revision: Number(current.revision || 0) + 1 };\nflow.set(msg.zigbee_route_state_key, incidents, store);\nmsg.topic = \"zigbee2mqtt/bridge/request/device/configure\";\nmsg.payload = { id: msg.zigbee_route_device,\n    transaction: msg.zigbee_route_transaction || msg.payload?.transaction };\nmsg.retain = false;\nmsg.qos = \"1\";\nmsg.zigbee_route_effect = \"configure\";\nreturn msg;",
+        "func": "const store = msg._zigbee_test === true ? undefined : \"persistent\";\nconst incidents = flow.get(msg.zigbee_route_state_key, store) || {};\nconst current = incidents[msg.zigbee_route_key];\nif (!current || current.phase !== \"scanning\" || current.pending_transaction !== msg.payload?.transaction ||\n    msg.zigbee_route_response_valid !== true || msg.zigbee_route_response_status !== \"ok\" ||\n    msg.zigbee_route_response_stage !== \"networkmap\" || msg.zigbee_route_response_reconcile_only === true ||\n    current.native_completion_state === \"unknown\") return null;\nconst targets=msg.zigbee_route_targets||[msg.zigbee_route_device];\nconst base=current.pending_transaction,tx=targets.length>1?base+\"-hop-0\":base;\nincidents[msg.zigbee_route_key] = { ...current,configure_targets:targets,configure_index:0,configure_base_transaction:base,pending_transaction:tx,path_evidence:msg.zigbee_route_path_evidence, phase: \"configuring\", native_stage: \"configure\",\n    native_completion_state: \"pending\", last_terminal_transaction: current.pending_transaction,\n    last_terminal_stage: \"networkmap\", last_terminal_status: \"ok\",\n    last_terminal_observed_at: msg.zigbee_route_now_iso, revision: Number(current.revision || 0) + 1 };\nflow.set(msg.zigbee_route_state_key, incidents, store);\nmsg.topic = \"zigbee2mqtt/bridge/request/device/configure\";\nmsg.payload = { id: targets[0],transaction:tx };\nmsg.retain = false;\nmsg.qos = \"1\";\nmsg.zigbee_route_effect = \"configure\";\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -63343,7 +63350,9 @@
         "name": "Receber resposta de reconfiguração",
         "links": [
             "zigbee_route_response_out",
-            "zigbee_test_route_response_out"
+            "zigbee_test_route_response_out",
+            "zigbee_path_test_hop_out_0",
+            "zigbee_path_test_hop_out_1"
         ],
         "x": 1310,
         "y": 1780,
@@ -63478,7 +63487,7 @@
         "y": 1730,
         "wires": [
             [
-                "zigbee_route_recovered"
+                "zigbee_path_next_out"
             ],
             [
                 "zigbee_route_recovery_failed"
@@ -64376,7 +64385,7 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_tests",
         "name": "Resetar apenas estado sintético",
-        "func": "for (const key of [\n    \"zigbee_bridge_observation__test\",\n    \"zigbee_network_monitor_state_v1__test\",\n    \"zigbee_network_monitor_history_v1__test\",\n    \"zigbee_component_incidents_v1__test\",\n    \"zigbee_route_incidents_v1__test\",\n    \"zigbee_route_pending__test\", \"zigbee_route_live__test\", \"zigbee_boot_at__test\",\n    \"zigbee_component_observations__test\",\n    \"zigbee_last_dry_run_v1__test\"\n]) flow.set(key, undefined);\nif (msg._zigbee_test !== true) node.status({ fill: \"blue\", shape: \"dot\", text: \"estado TESTE resetado\" });\nreturn null;",
+        "func": "for (const key of [\n    \"zigbee_bridge_observation__test\",\n    \"zigbee_network_monitor_state_v1__test\",\n    \"zigbee_network_monitor_history_v1__test\",\n    \"zigbee_component_incidents_v1__test\",\n    \"zigbee_route_incidents_v1__test\",\n    \"zigbee_route_pending__test\", \"zigbee_route_live__test\", \"zigbee_boot_at__test\",\n    \"zigbee_component_observations__test\",\n    \"zigbee_paths_v1__test\", \"zigbee_path_policy_v1__test\", \"zigbee_path_scan__test\", \"zigbee_device_catalog_v1__test\",\n    \"zigbee_last_dry_run_v1__test\"\n]) flow.set(key, undefined);\nif (msg._zigbee_test !== true) node.status({ fill: \"blue\", shape: \"dot\", text: \"estado TESTE resetado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -65189,7 +65198,8 @@
             "zigbee_notification_dry_out",
             "zigbee_publication_dry_out",
             "zigbee_route_recovery_dry_out",
-            "zigbee_route_configure_dry_out"
+            "zigbee_route_configure_dry_out",
+            "zigbee_path_scan_dry"
         ],
         "x": 4140,
         "y": 2240,
@@ -101501,6 +101511,1728 @@
         "wires": [
             [
                 "zg_alert_out"
+            ]
+        ]
+    },
+    {
+        "id": "grp_zigbee_paths",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "6. Último caminho: fonte → histórico → plano → confirmação por salto",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "zigbee_path_policy_default",
+            "zigbee_path_policy",
+            "zigbee_path_policy_valid",
+            "zigbee_path_invalid",
+            "zigbee_path_clock",
+            "zigbee_path_scan_facts",
+            "zigbee_path_scan_ready",
+            "zigbee_path_scan_build",
+            "zigbee_path_scan_test",
+            "zigbee_path_scan_dry",
+            "zigbee_path_scan_mqtt",
+            "zigbee_path_map_in",
+            "zigbee_path_map_store",
+            "zigbee_path_map_out",
+            "zigbee_path_select_in",
+            "zigbee_path_select",
+            "zigbee_path_use",
+            "zigbee_path_known",
+            "zigbee_path_direct",
+            "zigbee_path_plan",
+            "zigbee_path_plan_out",
+            "zigbee_path_next_in",
+            "zigbee_path_next",
+            "zigbee_path_has_next",
+            "zigbee_path_next_build",
+            "zigbee_path_next_effect",
+            "zigbee_path_verified_out",
+            "zigbee_path_offline_in",
+            "zigbee_path_offline",
+            "zigbee_path_offline_ok",
+            "zigbee_path_offline_recover",
+            "zigbee_path_note",
+            "zigbee_path_test_policy",
+            "notification_hub_wire_out_83d940186d86",
+            "notification_hub_wire_in_83d940186d86",
+            "notification_hub_wire_out_93c65f410ab6",
+            "notification_hub_wire_in_93c65f410ab6",
+            "notification_hub_wire_out_94dbcd48b0ab",
+            "notification_hub_wire_in_94dbcd48b0ab",
+            "notification_hub_wire_out_f7e6e0ef8267",
+            "notification_hub_wire_in_f7e6e0ef8267",
+            "notification_hub_wire_out_500d8ce004fe",
+            "notification_hub_wire_in_500d8ce004fe",
+            "notification_hub_wire_out_bb6d87f45e49",
+            "notification_hub_wire_in_bb6d87f45e49",
+            "notification_hub_wire_out_5faa7ae80894",
+            "notification_hub_wire_in_5faa7ae80894",
+            "notification_hub_wire_out_d614060b3126",
+            "notification_hub_wire_in_d614060b3126",
+            "notification_hub_wire_out_7ebae4535ce5",
+            "notification_hub_wire_in_7ebae4535ce5",
+            "notification_hub_wire_out_496302ac2cce",
+            "notification_hub_wire_in_496302ac2cce",
+            "notification_hub_wire_out_fb35104c2b96",
+            "notification_hub_wire_in_fb35104c2b96",
+            "zigbee_path_map_normalize",
+            "zigbee_path_test_map",
+            "zigbee_path_test_seed",
+            "zigbee_path_test_hop_0",
+            "zigbee_path_test_hop_1",
+            "zigbee_path_test_hop_out_0",
+            "zigbee_path_test_hop_out_1",
+            "zigbee_path_test_seed_out",
+            "zigbee_path_test_seed_in",
+            "zigbee_path_test_policy_out",
+            "zigbee_path_test_policy_in",
+            "zigbee_path_scan_source_test",
+            "zigbee_path_guard_file",
+            "zigbee_path_guard_out",
+            "zigbee_path_guard_in",
+            "zigbee_path_map_catalog",
+            "zigbee_path_map_extract",
+            "zigbee_path_refresh_now",
+            "zigbee_path_refresh_out",
+            "zigbee_path_refresh_in",
+            "zigbee_path_map_parents",
+            "notification_hub_wire_out_50bb430d29ef",
+            "notification_hub_wire_in_50bb430d29ef"
+        ],
+        "x": 64,
+        "y": 4200,
+        "w": 3600,
+        "h": 1160
+    },
+    {
+        "id": "zigbee_path_policy_default",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "CONFIG: caminho 24 h; mapa 60 min; até 3 roteadores",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"max_age_min\":1440,\"scan_interval_min\":60,\"max_hops\":3,\"upstream_configure\":true,\"offline_recovery\":true}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 330,
+        "y": 4280,
+        "wires": [
+            [
+                "notification_hub_wire_out_83d940186d86"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_policy",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Validar: idade 60–10.080 min; scan 30–1.440; saltos 1–8",
+        "func": "const p=msg.payload,test=msg._zigbee_test===true;\nmsg.zigbee_path_policy_valid=!!p&&Number.isInteger(p.max_age_min)&&p.max_age_min>=60&&p.max_age_min<=10080&&Number.isInteger(p.scan_interval_min)&&p.scan_interval_min>=30&&p.scan_interval_min<=1440&&Number.isInteger(p.max_hops)&&p.max_hops>=1&&p.max_hops<=8&&typeof p.upstream_configure==='boolean'&&typeof p.offline_recovery==='boolean';\nif(msg.zigbee_path_policy_valid)flow.set('zigbee_path_policy_v1'+(test?'__test':''),{...p},test?undefined:'persistent');\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 4280,
+        "wires": [
+            [
+                "zigbee_path_policy_valid"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_policy_valid",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Política válida?",
+        "property": "zigbee_path_policy_valid",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1330,
+        "y": 4280,
+        "wires": [
+            [],
+            [
+                "zigbee_path_invalid"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_invalid",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Política inválida: preservar anterior",
+        "func": "return null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1730,
+        "y": 4280,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_clock",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "AGENDA: avaliar mapa a cada 60 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "240",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 330,
+        "y": 4400,
+        "wires": [
+            [
+                "zigbee_path_scan_source_test"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_scan_facts",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Ler ponte, startup, política e pedido em andamento",
+        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',store=test?undefined:'persistent',memory=test?undefined:'memoryOnly';\nlet guard=test?msg.guard_test_facts:msg.payload;try{if(typeof guard==='string')guard=JSON.parse(guard)}catch{guard=null}\nconst p=flow.get('zigbee_path_policy_v1'+suffix,store),scan=flow.get('zigbee_path_scan'+suffix,store),now=Number(msg.monitor_now??Date.now());\nconst bridge=flow.get('zigbee_bridge_observation'+suffix,memory),boot=flow.get('zigbee_boot_at'+suffix,memory);\nconst policy=flow.get('zigbee_monitor_policy_v2','persistent');\nconst incidents=flow.get('zigbee_route_incidents_v1'+suffix,store)||{};\nmsg.zigbee_path_scan_ready=!!(guard?.schema_version===1&&guard.running===true&&guard.maintenance_active===false&&guard.operation_active===false&&guard.blocked_unknown===false&&guard.invalid_param_count===0&&Number.isFinite(guard.observed_at)&&now>=guard.observed_at&&now-guard.observed_at<=90000&&p&&policy&&bridge?.state==='online'&&Number.isFinite(boot)&&now-boot>=policy.startup_grace_s*1000&&now-bridge.changed_at>=policy.recovery_confirmation_s*1000&&\n !Object.values(incidents).some(c=>c.pending_transaction!=null)&&!scan?.pending);\nmsg.zigbee_path_scan_due=!!(p&&(msg.zigbee_path_force_scan===true||!scan||now-scan.at>=p.scan_interval_min*60000));msg.zigbee_path_now=now;return msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 4400,
+        "wires": [
+            [
+                "notification_hub_wire_out_93c65f410ab6"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_scan_ready",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Ponte estável, livre e intervalo vencido?",
+        "property": "zigbee_path_scan_ready = true and zigbee_path_scan_due = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1370,
+        "y": 4400,
+        "wires": [
+            [
+                "notification_hub_wire_out_94dbcd48b0ab"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "zigbee_path_scan_build",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Reservar consulta correlacionada de leitura",
+        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',now=msg.zigbee_path_now;\nconst tx='nodered-zigbee-path-'+(test?'test-':'')+String(msg._msgid||'scan')+'-'+now;\nflow.set('zigbee_path_scan'+suffix,{transaction:tx,at:now,pending:true},test?undefined:'persistent');\nmsg.topic='zigbee2mqtt/bridge/request/networkmap';msg.payload={type:'raw',routes:true,transaction:tx};msg.retain=false;msg.qos='1';msg.zigbee_route_effect='route_scan';return msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1900,
+        "y": 4400,
+        "wires": [
+            [
+                "zigbee_path_scan_test"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_scan_test",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "FONTE: consulta é TESTE?",
+        "property": "_zigbee_test = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2330,
+        "y": 4400,
+        "wires": [
+            [
+                "zigbee_path_scan_dry"
+            ],
+            [
+                "zigbee_path_scan_mqtt"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_scan_dry",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Mapa TESTE → terminal seguro",
+        "mode": "link",
+        "links": [
+            "zigbee_dry_in"
+        ],
+        "x": 2700,
+        "y": 4350,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_scan_mqtt",
+        "type": "mqtt out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "EFEITO: consultar mapa, sem comandos de estado",
+        "topic": "",
+        "qos": "1",
+        "retain": "false",
+        "broker": "721c47f31046b8bc",
+        "x": 2800,
+        "y": 4450,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_map_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Mapa oficial → histórico",
+        "links": [
+            "zigbee_route_scan_response_out"
+        ],
+        "x": 120,
+        "y": 4570,
+        "wires": [
+            [
+                "zigbee_path_map_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_map_store",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Guardar caminhos ativos; preservar ausentes",
+        "func": "const updates=msg.zigbee_path_updates;if(!updates)return msg;\nconst test=msg._zigbee_test===true,suffix=test?'__test':'',store=test?undefined:'persistent';\nconst history=flow.get('zigbee_paths_v1'+suffix,store)||{};\n// An incomplete scan cannot erase a previously observed path.\nObject.assign(history,updates);\nconst bounded=Object.fromEntries(Object.entries(history).sort((a,b)=>b[1].observed_at-a[1].observed_at).slice(0,2048));\nflow.set('zigbee_paths_v1'+suffix,bounded,store);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2400,
+        "y": 4570,
+        "wires": [
+            [
+                "zigbee_path_map_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_map_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Mapa correlacionado → lifecycle existente",
+        "mode": "link",
+        "links": [
+            "zigbee_route_scan_response_in"
+        ],
+        "x": 2810,
+        "y": 4570,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_select_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Mapa concluído → escolher caminho",
+        "mode": "link",
+        "links": [
+            "zigbee_path_select_in"
+        ],
+        "x": 3085,
+        "y": 1600,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_select_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Receber incidente correlacionado",
+        "links": [
+            "zigbee_path_select_out"
+        ],
+        "x": 120,
+        "y": 4700,
+        "wires": [
+            [
+                "zigbee_path_select"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_select",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Normalizar identidade, histórico e catálogo atual",
+        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'',store=test?undefined:'persistent';\nconst catalog=flow.get('zigbee_device_catalog_v1'+suffix)||{};\nconst ieee=msg.zigbee_route_ieee||Object.keys(catalog).find(id=>catalog[id].name===msg.zigbee_route_device);\nconst known=(flow.get('zigbee_paths_v1'+suffix,store)||{})[ieee];\nconst policy=flow.get('zigbee_path_policy_v1'+suffix,store);\nconst now=Number(msg.zigbee_route_now??msg.monitor_now??Date.now());\nmsg.zigbee_path_known=known||null;\nmsg.zigbee_path_policy=policy;\nmsg.zigbee_path_catalog=catalog;\nmsg.zigbee_path_age_ms=known?now-known.observed_at:null;\nmsg.zigbee_path_valid=!!(policy&&known&&['active_routing_table','parent_and_active_routing_table','neighbor_parent'].includes(known.kind)&&Array.isArray(known.path)&&known.path.at(-1)===ieee&&\n known.path[0]===known.coordinator&&catalog[known.coordinator]?.type==='Coordinator'&&\n Object.keys(catalog).filter(id=>catalog[id].type==='Coordinator').length===1&&known.path.every(id=>catalog[id])&&\n known.path.length<=policy.max_hops+2&&new Set(known.path).size===known.path.length&&\n known.path.slice(1,-1).every(id=>catalog[id].type==='Router'));\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 4700,
+        "wires": [
+            [
+                "notification_hub_wire_out_f7e6e0ef8267"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_use",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Caminho íntegro, recente e roteadores habilitados?",
+        "property": "zigbee_path_valid = true and zigbee_path_age_ms >= 0 and zigbee_path_age_ms <= zigbee_path_policy.max_age_min*60000 and zigbee_path_policy.upstream_configure = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1190,
+        "y": 4700,
+        "wires": [
+            [
+                "notification_hub_wire_out_500d8ce004fe"
+            ],
+            [
+                "notification_hub_wire_out_bb6d87f45e49"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_known",
+        "type": "change",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "DECISÃO: intermediários → dispositivo",
+        "rules": [
+            {
+                "t": "set",
+                "p": "zigbee_path_use",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1760,
+        "y": 4660,
+        "wires": [
+            [
+                "notification_hub_wire_out_5faa7ae80894"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_direct",
+        "type": "change",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "DECISÃO: tentativa direta, sem inventar caminho",
+        "rules": [
+            {
+                "t": "set",
+                "p": "zigbee_path_use",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1760,
+        "y": 4760,
+        "wires": [
+            [
+                "notification_hub_wire_out_d614060b3126"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_plan",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Serializar fila de destinos e evidência",
+        "func": "const known=msg.zigbee_path_known,catalog=msg.zigbee_path_catalog||{};\nconst upstream=msg.zigbee_path_use===true?known.path.slice(1,-1).map(id=>catalog[id].name):[];\nmsg.zigbee_route_targets=[...upstream,msg.zigbee_route_device];\nmsg.zigbee_route_path_evidence={via_names:upstream,reason:upstream.length?'known_upstream_path':'direct_device',path:msg.zigbee_path_use===true?known.path:[],observed_at:msg.zigbee_path_use===true?known.observed_at:null};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2300,
+        "y": 4700,
+        "wires": [
+            [
+                "zigbee_path_plan_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_plan_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Plano → serializer e gate existentes",
+        "mode": "link",
+        "links": [
+            "zigbee_path_plan_in"
+        ],
+        "x": 2740,
+        "y": 4700,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_plan_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Plano de caminho → configurar",
+        "links": [
+            "zigbee_path_plan_out"
+        ],
+        "x": 2990,
+        "y": 1530,
+        "wires": [
+            [
+                "zigbee_route_configure_request_build"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_next_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Configure aceito → próximo salto",
+        "mode": "link",
+        "links": [
+            "zigbee_path_next_in"
+        ],
+        "x": 3100,
+        "y": 1768,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_next_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Receber confirmação individual",
+        "links": [
+            "zigbee_path_next_out"
+        ],
+        "x": 120,
+        "y": 4900,
+        "wires": [
+            [
+                "zigbee_path_next"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_next",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Normalizar resposta e fila restante",
+        "func": "const c=msg.zigbee_route_current||{};\nmsg.zigbee_path_next=msg.zigbee_route_response_valid===true&&msg.zigbee_route_response_status==='ok'&&\n msg.zigbee_route_response_reconcile_only!==true&&Array.isArray(c.configure_targets)&&Number.isInteger(c.configure_index)&&c.configure_index+1<c.configure_targets.length;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 4900,
+        "wires": [
+            [
+                "notification_hub_wire_out_7ebae4535ce5"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_has_next",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Há próximo destino confirmado?",
+        "property": "zigbee_path_next = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1100,
+        "y": 4900,
+        "wires": [
+            [
+                "notification_hub_wire_out_496302ac2cce"
+            ],
+            [
+                "notification_hub_wire_out_50bb430d29ef"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_next_build",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Reservar transação nova; não repetir salto anterior",
+        "func": "const test=msg._zigbee_test===true,store=test?undefined:'persistent';\nconst rows=flow.get(msg.zigbee_route_state_key,store)||{},c=rows[msg.zigbee_route_key];\nif(!c||msg.zigbee_path_next!==true||c.revision!==msg.zigbee_route_revision||c.pending_transaction!==msg.zigbee_route_response_transaction||c.native_completion_state!=='pending'||c.phase!=='configuring')return null;\nconst index=c.configure_index+1,tx=c.configure_base_transaction+'-hop-'+index;\nrows[msg.zigbee_route_key]={...c,configure_index:index,pending_transaction:tx,last_terminal_transaction:c.pending_transaction,last_terminal_stage:'configure',last_terminal_status:'ok',last_terminal_observed_at:msg.zigbee_route_now_iso,revision:c.revision+1};\nflow.set(msg.zigbee_route_state_key,rows,store);\nmsg.topic='zigbee2mqtt/bridge/request/device/configure';msg.payload={id:c.configure_targets[index],transaction:tx};msg.retain=false;msg.qos='1';msg.zigbee_route_effect='configure';\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1650,
+        "y": 4860,
+        "wires": [
+            [
+                "zigbee_path_next_effect"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_next_effect",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Próximo salto → mesmo gate final",
+        "mode": "link",
+        "links": [
+            "zigbee_path_next_effect_in"
+        ],
+        "x": 2140,
+        "y": 4860,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_next_effect_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Próximo salto → produção ou dry-run",
+        "links": [
+            "zigbee_path_next_effect"
+        ],
+        "x": 3340,
+        "y": 1510,
+        "wires": [
+            [
+                "zigbee_route_configure_test_gate"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_verified_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Último destino → aguardar dados estáveis",
+        "mode": "link",
+        "links": [
+            "zigbee_path_verified_in"
+        ],
+        "x": 1600,
+        "y": 4970,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_verified_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Todos os saltos aceitos",
+        "links": [
+            "zigbee_path_verified_out"
+        ],
+        "x": 3085,
+        "y": 1735,
+        "wires": [
+            [
+                "zigbee_route_recovered"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_offline_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Offline confirmado → recuperação limitada",
+        "mode": "link",
+        "links": [
+            "zigbee_path_offline_in"
+        ],
+        "x": 4060,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_offline_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Receber novo incidente offline",
+        "links": [
+            "zigbee_path_offline_out"
+        ],
+        "x": 120,
+        "y": 5140,
+        "wires": [
+            [
+                "zigbee_path_offline"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_offline",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Adaptar incidente sem duplicar alerta",
+        "func": "const test=msg._zigbee_test===true,suffix=test?'__test':'';\nconst policy=flow.get('zigbee_path_policy_v1'+suffix,test?undefined:'persistent');\nmsg.zigbee_path_offline_eligible=!!(policy?.offline_recovery&&msg.zigbee_component_action==='open');\nmsg.zigbee_route_key=msg.zigbee_component_key;msg.zigbee_route_device=msg.zigbee_component;\nmsg.zigbee_route_now=msg.zigbee_now;msg.zigbee_route_now_iso=msg.zigbee_now_iso;msg.zigbee_route_error='availability_offline';msg.zigbee_route_quiet_open=true;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 5140,
+        "wires": [
+            [
+                "notification_hub_wire_out_fb35104c2b96"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_offline_ok",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Novo offline e recuperação habilitada?",
+        "property": "zigbee_path_offline_eligible = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1190,
+        "y": 5140,
+        "wires": [
+            [
+                "zigbee_path_offline_recover"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "zigbee_path_offline_recover",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Offline → política comum de recuperação",
+        "mode": "link",
+        "links": [
+            "zigbee_route_error_in"
+        ],
+        "x": 1680,
+        "y": 5140,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_note",
+        "type": "comment",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Sem mapa válido: tentativa direta. Sem resposta: alertar; nunca remover nem resetar.",
+        "info": "Um caminho é evidência de tabela ativa, não uma rota imposta. Reconfigure passa pelos mesmos gates, dedupe e limites. Saída real da rede ou defeito físico pode exigir pareamento. Replay: RESET → CONFIG TESTE → catálogo/mapa → erro → confirmações de cada salto → telemetria + estabilidade.",
+        "x": 1600,
+        "y": 5270,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_test_policy",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "TESTE: configurar caminho isolado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"max_age_min\":1440,\"scan_interval_min\":60,\"max_hops\":3,\"upstream_configure\":true,\"offline_recovery\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_zigbee_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2850,
+        "y": 4280,
+        "wires": [
+            [
+                "zigbee_path_test_policy_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_83d940186d86",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: CONFIG: caminho 24 h; mapa 60 min; até 3 roteadores",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_83d940186d86"
+        ],
+        "x": 510,
+        "y": 4280,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_83d940186d86",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Validar: idade 60–10.080 min; scan 30–1.440; saltos 1–8",
+        "links": [
+            "notification_hub_wire_out_83d940186d86"
+        ],
+        "x": 670,
+        "y": 4280,
+        "wires": [
+            [
+                "zigbee_path_policy"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_93c65f410ab6",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Ler ponte, startup, política e pedido em andamento",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_93c65f410ab6"
+        ],
+        "x": 1010,
+        "y": 4400,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_93c65f410ab6",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Ponte estável, livre e intervalo vencido?",
+        "links": [
+            "notification_hub_wire_out_93c65f410ab6"
+        ],
+        "x": 1190,
+        "y": 4400,
+        "wires": [
+            [
+                "zigbee_path_scan_ready"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_94dbcd48b0ab",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Ponte estável, livre e intervalo vencido?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_94dbcd48b0ab"
+        ],
+        "x": 1550,
+        "y": 4400,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_94dbcd48b0ab",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Reservar consulta correlacionada de leitura",
+        "links": [
+            "notification_hub_wire_out_94dbcd48b0ab"
+        ],
+        "x": 1720,
+        "y": 4400,
+        "wires": [
+            [
+                "zigbee_path_scan_build"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_f7e6e0ef8267",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Normalizar identidade, histórico e catálogo atual",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_f7e6e0ef8267"
+        ],
+        "x": 780,
+        "y": 4700,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_f7e6e0ef8267",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Caminho íntegro, recente e roteadores habilitados?",
+        "links": [
+            "notification_hub_wire_out_f7e6e0ef8267"
+        ],
+        "x": 1010,
+        "y": 4700,
+        "wires": [
+            [
+                "zigbee_path_use"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_500d8ce004fe",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Caminho íntegro, recente e roteadores habilitados?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_500d8ce004fe"
+        ],
+        "x": 1370,
+        "y": 4700,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_500d8ce004fe",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: DECISÃO: intermediários → dispositivo",
+        "links": [
+            "notification_hub_wire_out_500d8ce004fe"
+        ],
+        "x": 1580,
+        "y": 4660,
+        "wires": [
+            [
+                "zigbee_path_known"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_bb6d87f45e49",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Caminho íntegro, recente e roteadores habilitados?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_bb6d87f45e49"
+        ],
+        "x": 1370,
+        "y": 4800,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_bb6d87f45e49",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: DECISÃO: tentativa direta, sem inventar caminho",
+        "links": [
+            "notification_hub_wire_out_bb6d87f45e49"
+        ],
+        "x": 1580,
+        "y": 4760,
+        "wires": [
+            [
+                "zigbee_path_direct"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_5faa7ae80894",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: DECISÃO: intermediários → dispositivo",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_5faa7ae80894"
+        ],
+        "x": 1940,
+        "y": 4660,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_5faa7ae80894",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Serializar fila de destinos e evidência",
+        "links": [
+            "notification_hub_wire_out_5faa7ae80894"
+        ],
+        "x": 2120,
+        "y": 4700,
+        "wires": [
+            [
+                "zigbee_path_plan"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_d614060b3126",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: DECISÃO: tentativa direta, sem inventar caminho",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_d614060b3126"
+        ],
+        "x": 1940,
+        "y": 4760,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_d614060b3126",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Serializar fila de destinos e evidência",
+        "links": [
+            "notification_hub_wire_out_d614060b3126"
+        ],
+        "x": 2120,
+        "y": 4800,
+        "wires": [
+            [
+                "zigbee_path_plan"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_7ebae4535ce5",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Normalizar resposta e fila restante",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_7ebae4535ce5"
+        ],
+        "x": 770,
+        "y": 4900,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_7ebae4535ce5",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Há próximo destino confirmado?",
+        "links": [
+            "notification_hub_wire_out_7ebae4535ce5"
+        ],
+        "x": 920,
+        "y": 4900,
+        "wires": [
+            [
+                "zigbee_path_has_next"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_496302ac2cce",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Há próximo destino confirmado?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_496302ac2cce"
+        ],
+        "x": 1280,
+        "y": 4900,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_496302ac2cce",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Reservar transação nova; não repetir salto anterior",
+        "links": [
+            "notification_hub_wire_out_496302ac2cce"
+        ],
+        "x": 1470,
+        "y": 4860,
+        "wires": [
+            [
+                "zigbee_path_next_build"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_fb35104c2b96",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Adaptar incidente sem duplicar alerta",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_fb35104c2b96"
+        ],
+        "x": 800,
+        "y": 5140,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_fb35104c2b96",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Novo offline e recuperação habilitada?",
+        "links": [
+            "notification_hub_wire_out_fb35104c2b96"
+        ],
+        "x": 1010,
+        "y": 5140,
+        "wires": [
+            [
+                "zigbee_path_offline_ok"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_map_normalize",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Correlacionar transação; validar formato nativo",
+        "func": "let p=msg.payload;\ntry {if(typeof p==='string')p=JSON.parse(p);} catch {return null;}\nconst test=msg._zigbee_test===true||String(p?.transaction||'').startsWith('nodered-zigbee-path-test-')||String(p?.transaction||'').startsWith('nodered-zigbee-route-test-');\nconst suffix=test?'__test':'',store=test?undefined:'persistent',tx=p?.transaction,now=Number(msg.monitor_now??Date.now());\nconst ticket=flow.get('zigbee_path_scan'+suffix,store);\nconst rows=flow.get('zigbee_route_incidents_v1'+suffix,store)||{};\nconst incident=Object.values(rows).find(c=>c.pending_transaction===tx&&c.native_stage==='networkmap'&&c.native_completion_state==='pending');\nconst background=typeof tx==='string'&&tx===ticket?.transaction&&now>=ticket.at&&now-ticket.at<=900000&&ticket.pending===true;\nif(msg.retain===true||(!background&&!incident))return null;\nmsg._zigbee_test=test;\nif(background)flow.set('zigbee_path_scan'+suffix,{...ticket,pending:false,status:p.status},store);\nlet map=p?.data?.value;\ntry {if(typeof map==='string')map=JSON.parse(map);}catch{map=null;}\nif(p.status!=='ok'||!Array.isArray(map?.nodes)||!Array.isArray(map?.links)||map.nodes.length>512||map.links.length>4096)return msg;\nmsg.zigbee_path_map=map;return msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 4570,
+        "wires": [
+            [
+                "zigbee_path_map_catalog"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_test_map",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "TESTE: semear catálogo e último caminho",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"transaction\":\"nodered-zigbee-path-test-manual\",\"status\":\"ok\",\"data\":{\"value\":{\"nodes\":[{\"ieeeAddr\":\"0x0000000000000001\",\"type\":\"Coordinator\",\"networkAddress\":0},{\"ieeeAddr\":\"0x0000000000000002\",\"type\":\"Router\",\"networkAddress\":2},{\"ieeeAddr\":\"0x0000000000000003\",\"type\":\"Router\",\"networkAddress\":3}],\"links\":[{\"target\":{\"ieeeAddr\":\"0x0000000000000001\",\"networkAddress\":0},\"source\":{\"ieeeAddr\":\"0x0000000000000002\",\"networkAddress\":2},\"lqi\":100,\"routes\":[{\"status\":\"ACTIVE\",\"destinationAddress\":3,\"nextHopAddress\":2}]},{\"target\":{\"ieeeAddr\":\"0x0000000000000002\",\"networkAddress\":2},\"source\":{\"ieeeAddr\":\"0x0000000000000003\",\"networkAddress\":3},\"lqi\":100,\"routes\":[{\"status\":\"ACTIVE\",\"destinationAddress\":3,\"nextHopAddress\":3}]}]}}}",
+                "vt": "json"
+            },
+            {
+                "p": "_zigbee_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225790000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2800,
+        "y": 5030,
+        "wires": [
+            [
+                "zigbee_path_test_seed"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_test_seed",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "TESTE: somente fontes e contexto isolados",
+        "func": "if(msg._zigbee_test!==true)return null;flow.set('zigbee_device_catalog_v1__test',{\"0x0000000000000001\":{\"name\":\"coordinator_test\",\"type\":\"Coordinator\"},\"0x0000000000000002\":{\"name\":\"router_test\",\"type\":\"Router\"},\"0x0000000000000003\":{\"name\":\"teste_rota\",\"type\":\"Router\"}});flow.set('zigbee_path_scan__test',{transaction:msg.payload.transaction,pending:true,at:msg.monitor_now});return msg;",
+        "outputs": 1,
+        "x": 2800,
+        "y": 5100,
+        "wires": [
+            [
+                "zigbee_path_test_seed_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_test_hop_0",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "TESTE: confirmar roteador intermediário",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"ok\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767225800000-hop-0\"}",
+                "vt": "json"
+            },
+            {
+                "p": "topic",
+                "v": "zigbee2mqtt/bridge/response/device/configure",
+                "vt": "str"
+            },
+            {
+                "p": "_zigbee_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225803000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2850,
+        "y": 5180,
+        "wires": [
+            [
+                "zigbee_path_test_hop_out_0"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_test_hop_1",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "TESTE: confirmar dispositivo final",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"status\":\"ok\",\"transaction\":\"nodered-zigbee-route-test-teste_rota_59894ed5-1767225800000-hop-1\"}",
+                "vt": "json"
+            },
+            {
+                "p": "topic",
+                "v": "zigbee2mqtt/bridge/response/device/configure",
+                "vt": "str"
+            },
+            {
+                "p": "_zigbee_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225804000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2850,
+        "y": 5260,
+        "wires": [
+            [
+                "zigbee_path_test_hop_out_1"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_test_hop_out_0",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Configure TESTE → resposta comum",
+        "mode": "link",
+        "links": [
+            "zigbee_route_response_in"
+        ],
+        "x": 3250,
+        "y": 5180,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_test_hop_out_1",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Configure TESTE → resposta comum",
+        "mode": "link",
+        "links": [
+            "zigbee_route_response_in"
+        ],
+        "x": 3250,
+        "y": 5260,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_test_seed_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Mapa TESTE → fonte comum",
+        "mode": "link",
+        "links": [
+            "zigbee_path_test_seed_in"
+        ],
+        "x": 3260,
+        "y": 5100,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_test_seed_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Receber mapa TESTE",
+        "links": [
+            "zigbee_path_test_seed_out"
+        ],
+        "x": 120,
+        "y": 4510,
+        "wires": [
+            [
+                "zigbee_path_map_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_test_policy_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "CONFIG TESTE → validador",
+        "mode": "link",
+        "links": [
+            "zigbee_path_test_policy_in"
+        ],
+        "x": 3260,
+        "y": 4280,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_test_policy_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Receber CONFIG TESTE",
+        "links": [
+            "zigbee_path_test_policy_out"
+        ],
+        "x": 500,
+        "y": 4220,
+        "wires": [
+            [
+                "zigbee_path_policy"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_50bb430d29ef",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Há próximo destino confirmado?",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_50bb430d29ef"
+        ],
+        "x": 1280,
+        "y": 5000,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_50bb430d29ef",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Último destino → aguardar dados estáveis",
+        "links": [
+            "notification_hub_wire_out_50bb430d29ef"
+        ],
+        "x": 1420,
+        "y": 4970,
+        "wires": [
+            [
+                "zigbee_path_verified_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_scan_source_test",
+        "type": "switch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "TESTE?",
+        "property": "_zigbee_test = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 530,
+        "y": 4380,
+        "wires": [
+            [
+                "zigbee_path_guard_out"
+            ],
+            [
+                "zigbee_path_guard_file"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_guard_file",
+        "type": "file in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "FONTE: fatos do coordenador",
+        "filename": "/data/zigbee-recovery/facts.json",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 530,
+        "y": 4480,
+        "wires": [
+            [
+                "zigbee_path_guard_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_guard_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Fatos → seleção comum",
+        "mode": "link",
+        "links": [
+            "zigbee_path_guard_in"
+        ],
+        "x": 800,
+        "y": 4480,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_guard_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Receber fatos reais ou TESTE",
+        "links": [
+            "zigbee_path_guard_out"
+        ],
+        "x": 500,
+        "y": 4340,
+        "wires": [
+            [
+                "zigbee_path_scan_facts"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_map_catalog",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Validar catálogo e coordenador do mapa nativo",
+        "func": "const map=msg.zigbee_path_map;if(!map)return msg;\nconst suffix=msg._zigbee_test===true?'__test':'';\nlet catalog=flow.get('zigbee_device_catalog_v1'+suffix)||{};\nconst derived={};\nfor(const n of map.nodes){\n const ieee=String(n?.ieeeAddr||'').toLowerCase(),name=String(n?.friendlyName||'').trim();\n if(/^0x[0-9a-f]{16}$/.test(ieee)&&name&&['Router','EndDevice','Coordinator'].includes(n.type))derived[ieee]={name,type:n.type};\n}\n// A correlated native map is itself an inventory producer. It also seeds a\n// deployment before the unchanged bridge/devices subscription republishes.\nif(!Object.keys(catalog).length&&Object.values(derived).filter(n=>n.type==='Coordinator').length===1){catalog=derived;flow.set('zigbee_device_catalog_v1'+suffix,catalog);}\nconst nodes=map.nodes.filter(n=>n&&/^0x[0-9a-f]{16}$/i.test(n.ieeeAddr)&&catalog[n.ieeeAddr.toLowerCase()]);\nconst co=nodes.filter(n=>n.type==='Coordinator'&&catalog[n.ieeeAddr.toLowerCase()].type==='Coordinator');\nif(co.length!==1||new Set(nodes.map(n=>n.ieeeAddr.toLowerCase())).size!==nodes.length)return msg;\nmsg.zigbee_path_nodes=nodes;msg.zigbee_path_coordinator=co[0].ieeeAddr.toLowerCase();return msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 4570,
+        "wires": [
+            [
+                "zigbee_path_map_extract"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_map_extract",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Extrair rotas ativas de ida ou retorno; rejeitar ciclos",
+        "func": "if(!msg.zigbee_path_nodes)return msg;\nconst map=msg.zigbee_path_map,nodes=new Map(msg.zigbee_path_nodes.map(n=>[n.ieeeAddr.toLowerCase(),n])),co=msg.zigbee_path_coordinator;\nfunction toward(start,end){\n const destination=nodes.get(end),path=[start];let current=start;\n while(current!==end&&path.length<=16){\n  if(nodes.get(current)?.failed?.length)break;\n  const hops=map.links.filter(l=>l&&String(l.target?.ieeeAddr).toLowerCase()===current&&Number(l.lqi??l.linkquality)>0&&Array.isArray(l.routes)&&\n   l.routes.some(r=>r&&r.status==='ACTIVE'&&r.destinationAddress===destination.networkAddress&&r.nextHopAddress===l.source?.networkAddress));\n  const next=[...new Set(hops.map(l=>String(l.source?.ieeeAddr).toLowerCase()))];\n  if(next.length!==1||path.includes(next[0])||!nodes.has(next[0]))break;\n  current=next[0];path.push(current);\n }\n return current===end?path:null;\n}\nconst updates={};\nfor(const [ieee,node] of nodes){\n if(ieee===co||node.failed?.length)continue;\n let path=toward(co,ieee),direction='from_coordinator';\n if(!path){const reverse=toward(ieee,co);path=reverse?.reverse();direction='toward_coordinator';}\n if(path&&path.slice(1,-1).every(id=>nodes.get(id)?.type==='Router'))updates[ieee]={coordinator:co,ieee,path,observed_at:Number(msg.monitor_now??Date.now()),kind:'active_routing_table',direction};\n}\nmsg.zigbee_path_updates=updates;return msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1500,
+        "y": 4570,
+        "wires": [
+            [
+                "zigbee_path_map_parents"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_refresh_now",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "PRODUÇÃO: atualizar mapa conhecido agora",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "zigbee_path_force_scan",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 330,
+        "y": 5040,
+        "wires": [
+            [
+                "zigbee_path_refresh_out"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_refresh_out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Pedido manual → fontes e gates",
+        "mode": "link",
+        "links": [
+            "zigbee_path_refresh_in"
+        ],
+        "x": 650,
+        "y": 5040,
+        "wires": []
+    },
+    {
+        "id": "zigbee_path_refresh_in",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Receber consulta manual",
+        "links": [
+            "zigbee_path_refresh_out"
+        ],
+        "x": 120,
+        "y": 4350,
+        "wires": [
+            [
+                "zigbee_path_scan_source_test"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_path_map_parents",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Adaptar vínculo pai confirmado de dispositivos finais",
+        "func": "if(!msg.zigbee_path_updates||!msg.zigbee_path_nodes)return msg;\nconst nodes=new Map(msg.zigbee_path_nodes.map(n=>[n.ieeeAddr.toLowerCase(),n])),updates=msg.zigbee_path_updates,co=msg.zigbee_path_coordinator;\nfor(const [ieee,n] of nodes){\n if(n.type!=='EndDevice'||n.failed?.length||updates[ieee])continue;\n // CHILD in a router's neighbor table identifies a parent relation, unlike\n // a generic neighbor or an LQI-based guess. Require one unambiguous parent.\n const parents=[...new Set(msg.zigbee_path_map.links.filter(l=>l&&String(l.source?.ieeeAddr).toLowerCase()===ieee&&l.relationship===1&&Number(l.lqi??l.linkquality)>0).map(l=>String(l.target?.ieeeAddr).toLowerCase()))];\n if(parents.length!==1)continue;\n const parent=parents[0];if(!['Router','Coordinator'].includes(nodes.get(parent)?.type))continue;\n const upstream=parent===co?[co]:updates[parent]?.path;\n if(!upstream||upstream.includes(ieee)||upstream.length>=16)continue;\n updates[ieee]={coordinator:co,ieee,path:[...upstream,ieee],observed_at:Number(msg.monitor_now??Date.now()),kind:parent===co?'neighbor_parent':'parent_and_active_routing_table',direction:'toward_coordinator'};\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1950,
+        "y": 4570,
+        "wires": [
+            [
+                "zigbee_path_map_store"
             ]
         ]
     }

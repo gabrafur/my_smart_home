@@ -112,11 +112,16 @@ para o Zigbee2MQTT e solicita o firmware pelo SDK oficial. A URL precisa ser do
 diretório HTTPS de firmware do fabricante; o pedido do Node-RED não aceita URL,
 comando nem credenciais.
 
-Depois da versão confirmada, restaura a memória do rádio pelo mesmo
-`zigbee-herdsman` revisado da imagem instalada, recupera o banco protegido,
-reinicia somente o Zigbee2MQTT e exige resposta real de um dispositivo para
-registrar sucesso. O código do restore é revisado para herdsman 11.2.0: uma
-versão diferente bloqueia a instalação antes de parar o serviço, até revisão.
+Depois da versão confirmada, restaura a memória do rádio pelo runtime revisado
+independente da aplicação, recupera o banco protegido, reinicia somente o
+Zigbee2MQTT e exige resposta real de um dispositivo para registrar sucesso.
+O instalador fixa o ID imutável da imagem com herdsman 11.2.0 em
+`/var/lib/zigbee-coordinator-recovery/restore-runtime.json` e preserva a tag
+local `local/zigbee-restore-runtime:reviewed`. Atualizações da aplicação não
+substituem esse runtime. Ausência da imagem bloqueia o update antes de trocar
+serviços; firmware também verifica a capacidade do helper antes de parar o rádio.
+Uma revisão futura do helper exige teste próprio, não acompanha automaticamente
+uma nova biblioteca da aplicação.
 Os contadores Zigbee são preservados/avançados; não se deve copiar um backup
 antigo diretamente para uma rede ativa.
 
