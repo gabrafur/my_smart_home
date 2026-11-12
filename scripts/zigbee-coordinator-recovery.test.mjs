@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {validateNetwork,snapshotEligible,requestValid,tick} from './zigbee-coordinator-recovery.mjs';
+import vm from 'node:vm';
+import {validateNetwork,snapshotEligible,requestValid,tick,adapterRestoreScript} from './zigbee-coordinator-recovery.mjs';
 const now=1800000000000;
 function fixture() {
  const config={advanced:{network_key:Array(16).fill(1),ext_pan_id:Array(8).fill(2),pan_id:123,channel:26}};
@@ -34,7 +35,7 @@ test('native adapter snapshots and restores missing database without actuators; 
  const f=fixture(),root=fs.mkdtempSync(path.join(os.tmpdir(),'zigbee-guard-')),data=path.join(root,'zigbee2mqtt'),priv=path.join(root,'private'),pub=path.join(root,'nodered','zigbee-recovery');
  fs.mkdirSync(data,{recursive:true});
  fs.writeFileSync(path.join(data,'configuration.yaml'),JSON.stringify(f.config));fs.writeFileSync(path.join(data,'coordinator_backup.json'),JSON.stringify(f.backup));fs.writeFileSync(path.join(data,'database.db'),f.database);
- const calls=[],runtime={now:()=>now,docker:a=>{calls.push(a);return a[0]==='inspect'?JSON.stringify({Running:true,StartedAt:new Date(now-600000).toISOString()}):''},logs:()=>({status:0,stdout:'',stderr:''})};
+ const calls=[],runtime={now:()=>now,docker:a=>{calls.push(a);return a[0]==='inspect'?(a.at(-1)==='{{.Image}}'?'sha256:'+'1'.repeat(64):JSON.stringify({Running:true,StartedAt:new Date(now-600000).toISOString()})):''},logs:()=>({status:0,stdout:'',stderr:''})};
  const run=()=>tick(root,priv,runtime);
  const request=(facts,action,id)=>fs.writeFileSync(path.join(pub,'request.json'),JSON.stringify({id:id.repeat(32),action,facts_id:facts.id,requested_at:now}));
  const previousMask=process.umask(0o077);
@@ -45,10 +46,21 @@ test('native adapter snapshots and restores missing database without actuators; 
   facts=run();request(facts,'snapshot','c');facts=run();assert.equal(facts.receipt.status,'failed');assert.equal(fs.readFileSync(path.join(priv,'last-good.json'),'utf8'),baseline);
   request(facts,'restore','d');facts=run();assert.equal(facts.receipt.status,'dispatched');assert.equal(fs.readFileSync(path.join(data,'database.db'),'utf8'),f.database);
   const mutations=calls.filter(a=>['start','stop'].includes(a[0]));assert.deepEqual(mutations.map(a=>a.at(-1)),['zigbee2mqtt','zigbee2mqtt']);
+  assert.equal(calls.filter(a=>a[0]==='run'&&a.includes(adapterRestoreScript)).length,1,'loss restores radio keys as well as database');
   run();assert.equal(calls.filter(a=>['start','stop'].includes(a[0])).length,2,'same request never runs twice');
   assert.ok(calls.every(a=>!a.includes('publish')&&!a.includes('set')));
   const jf=path.join(priv,'journal.json'),j=JSON.parse(fs.readFileSync(jf,'utf8'));j.receipts.push({id:'f'.repeat(32),action:'restore',status:'running'});fs.writeFileSync(jf,JSON.stringify(j));
   facts=run();request(facts,'snapshot','e');facts=run();assert.equal(facts.receipt.reason,'operation_unresolved');
   assert.ok(JSON.parse(fs.readFileSync(jf,'utf8')).receipts.some(r=>r.id==='f'.repeat(32)&&r.status==='running'));
  }finally {process.umask(previousMask);fs.rmSync(root,{recursive:true,force:true});}
+});
+test('reviewed radio restoration forces NV recovery when a blank network already started',async()=>{
+ for(const [result,version,expectedRestores,failed] of [['resumed','11.2.0',1,false],['restored','11.2.0',0,false],['reset','11.2.0',0,true],['resumed','99.0.0',0,true]]){
+  let restored=0,stopped=0,created=0;const fakeProcess={exitCode:0};
+  const adapter={start:async()=>result,stop:async()=>stopped++,adapterManager:{beginRestore:async()=>restored++}};
+  const {config}=fixture();config.serial={adapter:'zstack',port:'tcp://192.0.2.1:7638'};
+  const require=name=>name==='fs'?{readFileSync:()=>JSON.stringify(config)}:name==='js-yaml'?{load:JSON.parse}:name==='zigbee-herdsman/package.json'?{version}:{Adapter:{create:async()=>{created++;return adapter}}};
+  vm.runInNewContext(adapterRestoreScript,{require,process:fakeProcess});await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(restored,expectedRestores);assert.equal(fakeProcess.exitCode,failed?1:0);assert.equal(stopped,created);
+ }
 });

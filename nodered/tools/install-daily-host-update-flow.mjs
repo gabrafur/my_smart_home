@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
+import { installCoordinatorFirmwareFlow } from "./install-coordinator-firmware-flow.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -515,6 +516,8 @@ const validateUpdatePolicy = `const policy = msg.update_policy;
 const valid = policy && policy.version === 1 &&
     Number.isInteger(policy.scan_interval_minutes) && policy.scan_interval_minutes >= 5 && policy.scan_interval_minutes <= 1440 &&
     typeof policy.device_firmware_auto === "boolean" &&
+    Number.isInteger(policy.coordinator_facts_max_age_seconds) && policy.coordinator_facts_max_age_seconds >= 30 && policy.coordinator_facts_max_age_seconds <= 600 &&
+    Number.isInteger(policy.coordinator_inventory_max_age_minutes) && policy.coordinator_inventory_max_age_minutes >= 30 && policy.coordinator_inventory_max_age_minutes <= 120 &&
     typeof policy.versioned_hacs_auto_apply === "boolean" &&
     typeof policy.kia_uvo_auto_apply === "boolean" &&
     Number.isInteger(policy.manual_candidate_max_age_minutes) && policy.manual_candidate_max_age_minutes >= 5 && policy.manual_candidate_max_age_minutes <= 120;
@@ -566,6 +569,7 @@ const messages = updates.map((payload) => ({
     payload,
     topic: payload.entity_id,
     firmware_dedupe_topic: (TEST_MODE ? "test:" : "production:") + payload.entity_id,
+    ...(TEST_MODE ? {coordinator_test_facts:msg.coordinator_test_facts,monitor_now:msg.monitor_now} : {}),
     update_policy: msg.update_policy,
     _update_apply_authorized: msg._update_apply_authorized === true,
     _ha_updates_test: TEST_MODE,
@@ -1256,9 +1260,9 @@ const nodes = [
   },
   {
     id: "daily_update_inventory_parameters", type: "change", z: TAB, g: inventoryGroup,
-    name: "PARÂMETROS visuais de updates", rules: [{
+    name: "PARÂMETROS visuais de updates", info: "Coordenador: fatos do host frescos por 300 s (30–600); inventário estável por 40 min (30–120). Valores inválidos preservam a última política válida.", rules: [{
       t: "set", p: "update_policy", pt: "msg",
-      to: '{"version":1,"scan_interval_minutes":30,"device_firmware_auto":true,"versioned_hacs_auto_apply":true,"kia_uvo_auto_apply":true,"manual_candidate_max_age_minutes":40}', tot: "json",
+      to: '{"version":1,"scan_interval_minutes":30,"device_firmware_auto":true,"versioned_hacs_auto_apply":true,"kia_uvo_auto_apply":true,"manual_candidate_max_age_minutes":40,"coordinator_facts_max_age_seconds":300,"coordinator_inventory_max_age_minutes":40}', tot: "json",
     }], action: "", property: "", from: "", to: "", reg: false,
     x: 500, y: 2440, wires: [["daily_update_inventory_validate_policy"]],
   },
@@ -1604,14 +1608,14 @@ const nodes = [
   functionNode("daily_update_firmware_take_candidate", firmwareGroup, "Consumir próximo candidato uma vez", takeFirmwareCandidate, 1, 540, 3580, [["daily_update_firmware_fresh"]]),
   {
     id: "daily_update_firmware_fresh", type: "switch", z: TAB, g: firmwareGroup,
-    name: "Versão recente e ainda não em instalação?", property: "$exists(payload.entity_id) and $contains(payload.entity_id, /^update\\.[a-z0-9_]+$/) and payload.state_class = 'pending' and $type(payload.latest_version) = 'string' and payload.latest_version != '' and payload.latest_version != 'unknown' and payload.latest_version != 'unavailable' and payload.latest_version != payload.installed_version and payload.in_progress = false and $number(payload.observed_at) <= $millis() and $number(payload.observed_at) >= $millis() - (update_policy.manual_candidate_max_age_minutes * 60000)", propertyType: "jsonata",
+    name: "Firmware comum, recente e disponível?", info: "Coordenadores SLZB/SMLIGHT ficam fora do update.install genérico: exigem backup validado e parada coordenada para preservar a rede.", property: "$exists(payload.entity_id) and $contains(payload.entity_id, /^update\\.[a-z0-9_]+$/) and payload.state_class = 'pending' and $type(payload.latest_version) = 'string' and payload.latest_version != '' and payload.latest_version != 'unknown' and payload.latest_version != 'unavailable' and payload.latest_version != payload.installed_version and payload.in_progress = false and $not($contains(payload.search_key, /slzb|smlight|coordinator|coordenador/)) and $number(payload.observed_at) <= $millis() and $number(payload.observed_at) >= $millis() - (update_policy.manual_candidate_max_age_minutes * 60000)", propertyType: "jsonata",
     rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
     x: 850, y: 3580, wires: [["daily_update_firmware_manual_effect_out"], ["daily_update_firmware_invalid"]],
   },
   {
     id: "daily_update_firmware_test_auto", type: "inject", z: TAB, g: firmwareGroup,
     name: "TESTE: auto chega ao gate final", props: [
-      { p: "payload", v: '[{"entity_id":"update.synthetic_slzb_firmware","state":"on","attributes":{"device_class":"firmware","installed_version":"1","latest_version":"2","in_progress":false}}]', vt: "json" },
+      { p: "payload", v: '[{"entity_id":"update.synthetic_device_firmware","state":"on","attributes":{"device_class":"firmware","installed_version":"1","latest_version":"2","in_progress":false}}]', vt: "json" },
       { p: "_ha_updates_test", v: "true", vt: "bool" },
     ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
     x: 260, y: 3640, wires: [["daily_update_firmware_test_effect_out"]],
@@ -1673,7 +1677,7 @@ const nodes = [
     x: 1480, y: 3580, wires: [["daily_update_firmware_installed"]],
   },
   functionNode("daily_update_firmware_installed", firmwareGroup, "Registrar comando aceito", `node.status({fill:"green",shape:"dot",text:"comando enviado ao HA"}); return null;`, 0, 1460, 3640, []),
-  functionNode("daily_update_firmware_invalid", firmwareGroup, "Rejeitar candidato ausente/antigo", `node.status({fill:"yellow",shape:"ring",text:"aguarde instalação ou inventário válido"}); return null;`, 0, 870, 3660, []),
+  functionNode("daily_update_firmware_invalid", firmwareGroup, "Bloquear coordenador/antigo/inválido", `node.status({fill:"yellow",shape:"ring",text:"firmware não elegível; confira o gate visual"}); return null;`, 0, 870, 3660, []),
   {
     id: "daily_update_firmware_test_out", type: "link out", z: TAB, g: firmwareGroup,
     name: "Firmware TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"], x: 1510, y: 3500, wires: [],
@@ -2410,6 +2414,8 @@ for (const node of nodes) {
 for (const node of nodes) {
   if (node.z === TAB && Number.isFinite(node.x)) node.x += 20;
 }
+
+installCoordinatorFirmwareFlow(nodes, flows);
 
 const replacements = new Map(nodes.map((node) => [node.id, node]));
 // Preserve approved named routes when they still lead to the generated target.

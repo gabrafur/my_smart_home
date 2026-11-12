@@ -25,7 +25,7 @@ inject('zg_backup_now',src,'PRODUÇÃO: validar e salvar backup agora',{},330,43
 input('zg_test_in',src,'Receber fatos sintéticos','zg_test_out','zg_facts',990,330);
 input('zg_decision_in',dec,'Receber fatos reais','zg_source_out','zg_fresh',110,760);
 sw('zg_fresh',dec,'Fonte fresca e política válida?',`guard_valid = true and $exists(guard_policy) and guard_facts.observed_at <= guard_now and guard_facts.observed_at >= guard_now-90000`,380,760,[['zg_receipt_issue'],['zg_unknown_out']]);
-sw('zg_receipt_issue',dec,'Último efeito falhou ou está incerto?',`guard_facts.receipt.status = 'failed' or (guard_facts.blocked_unknown = true and guard_facts.receipt.status = 'running')`,380,860,[['zg_alert_out','zg_ready'],['zg_ready']]);
+sw('zg_receipt_issue',dec,'Último efeito falhou ou está incerto?',`guard_facts.receipt.status = 'failed' or (guard_facts.blocked_unknown = true and guard_facts.receipt.status = 'running' and guard_facts.operation_active != true)`,380,860,[['zg_alert_out','zg_ready'],['zg_ready']]);
 sw('zg_ready',dec,'Manutenção/incerteza/startup encerrados?',`guard_facts.maintenance_active = false and guard_facts.blocked_unknown = false and (guard_facts.running = false or guard_facts.uptime_s >= guard_policy.startup_grace_s)`,750,760,[['zg_fault'],['zg_unknown_out']]);
 sw('zg_fault',dec,'Há queda, perda total ou erro do rádio?',`guard_facts.running = false or guard_facts.device_count = 0 or guard_facts.invalid_param_count >= 3`,1130,760,[['zg_mark_failure'],['zg_mark_healthy']]);
 fn('zg_mark_failure',dec,'Registrar início; mesma amostra não confirma',`if(!msg.guard_state.failure_since)msg.guard_state.failure_since=msg.guard_facts.observed_at;return msg;`,1530,760,[['zg_confirmed']]);

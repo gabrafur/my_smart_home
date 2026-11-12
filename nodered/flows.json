@@ -1364,7 +1364,8 @@
             "notification_hub_wire_out_894ca3cdbfda",
             "notification_hub_wire_in_c43c40fbee8f",
             "notification_hub_wire_in_4fa7c5408756",
-            "daily_update_firmware_test_inventory_in"
+            "daily_update_firmware_test_inventory_in",
+            "daily_update_coordinator_inventory_out"
         ],
         "x": 102,
         "y": 2880,
@@ -1456,7 +1457,9 @@
             "daily_update_firmware_dispatch_rbe",
             "daily_update_firmware_dedupe_in",
             "daily_update_firmware_dedupe_out",
-            "notification_hub_wire_out_bab755e11aef"
+            "notification_hub_wire_out_bab755e11aef",
+            "daily_update_coordinator_route_out",
+            "daily_update_coordinator_ordinary_in"
         ],
         "x": 102,
         "y": 4600,
@@ -26889,7 +26892,9 @@
             "daily_update_dependency_result_test_out",
             "daily_update_dependency_summary_test_out",
             "daily_update_offsite_request_test_out",
-            "daily_update_offsite_result_test_out"
+            "daily_update_offsite_result_test_out",
+            "daily_update_coordinator_dry_out",
+            "daily_update_coordinator_alert_dry_out"
         ],
         "x": 807,
         "y": 2411,
@@ -29017,7 +29022,7 @@
                 "t": "set",
                 "p": "update_policy",
                 "pt": "msg",
-                "to": "{\"version\":1,\"scan_interval_minutes\":30,\"device_firmware_auto\":true,\"versioned_hacs_auto_apply\":true,\"kia_uvo_auto_apply\":true,\"manual_candidate_max_age_minutes\":40}",
+                "to": "{\"version\":1,\"scan_interval_minutes\":30,\"device_firmware_auto\":true,\"versioned_hacs_auto_apply\":true,\"kia_uvo_auto_apply\":true,\"manual_candidate_max_age_minutes\":40,\"coordinator_facts_max_age_seconds\":300,\"coordinator_inventory_max_age_minutes\":40}",
                 "tot": "json"
             }
         ],
@@ -29032,7 +29037,8 @@
             [
                 "daily_update_inventory_validate_policy"
             ]
-        ]
+        ],
+        "info": "Coordenador: fatos do host frescos por 300 s (30–600); inventário estável por 40 min (30–120). Valores inválidos preservam a última política válida."
     },
     {
         "id": "daily_update_inventory_validate_policy",
@@ -29040,7 +29046,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_inventory_group",
         "name": "Validar e preservar último válido",
-        "func": "const policy = msg.update_policy;\nconst valid = policy && policy.version === 1 &&\n    Number.isInteger(policy.scan_interval_minutes) && policy.scan_interval_minutes >= 5 && policy.scan_interval_minutes <= 1440 &&\n    typeof policy.device_firmware_auto === \"boolean\" &&\n    typeof policy.versioned_hacs_auto_apply === \"boolean\" &&\n    typeof policy.kia_uvo_auto_apply === \"boolean\" &&\n    Number.isInteger(policy.manual_candidate_max_age_minutes) && policy.manual_candidate_max_age_minutes >= 5 && policy.manual_candidate_max_age_minutes <= 120;\nconst key = \"daily_update_visual_policy_v1\";\nif (!valid) {\n    const previous = flow.get(key, \"persistent\");\n    if (!previous) {\n        node.error(\"daily_update_visual_policy_invalid_without_previous\", msg);\n        return null;\n    }\n    msg.update_policy = previous;\n    node.status({ fill: \"red\", shape: \"ring\", text: \"inválido; último válido preservado\" });\n    return msg;\n}\nflow.set(key, policy, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política visual válida\" });\nreturn msg;",
+        "func": "const policy = msg.update_policy;\nconst valid = policy && policy.version === 1 &&\n    Number.isInteger(policy.scan_interval_minutes) && policy.scan_interval_minutes >= 5 && policy.scan_interval_minutes <= 1440 &&\n    typeof policy.device_firmware_auto === \"boolean\" &&\n    Number.isInteger(policy.coordinator_facts_max_age_seconds) && policy.coordinator_facts_max_age_seconds >= 30 && policy.coordinator_facts_max_age_seconds <= 600 &&\n    Number.isInteger(policy.coordinator_inventory_max_age_minutes) && policy.coordinator_inventory_max_age_minutes >= 30 && policy.coordinator_inventory_max_age_minutes <= 120 &&\n    typeof policy.versioned_hacs_auto_apply === \"boolean\" &&\n    typeof policy.kia_uvo_auto_apply === \"boolean\" &&\n    Number.isInteger(policy.manual_candidate_max_age_minutes) && policy.manual_candidate_max_age_minutes >= 5 && policy.manual_candidate_max_age_minutes <= 120;\nconst key = \"daily_update_visual_policy_v1\";\nif (!valid) {\n    const previous = flow.get(key, \"persistent\");\n    if (!previous) {\n        node.error(\"daily_update_visual_policy_invalid_without_previous\", msg);\n        return null;\n    }\n    msg.update_policy = previous;\n    node.status({ fill: \"red\", shape: \"ring\", text: \"inválido; último válido preservado\" });\n    return msg;\n}\nflow.set(key, policy, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política visual válida\" });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -29169,7 +29175,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_inventory_group",
         "name": "Adaptar estrutura update.*",
-        "func": "const TEST_MODE = msg._ha_updates_test === true || msg.payload?.test_mode === true;\nconst states = Array.isArray(msg.ha_update_states) ? msg.ha_update_states : Array.isArray(msg.payload) ? msg.payload : null;\nif (!states) {\n    if (!TEST_MODE) node.error(\"home_assistant_update_inventory_invalid\", msg);\n    return [null, null];\n}\nconst observedAt = Number(msg.update_observed_at ?? Date.now());\nconst updates = states\n    .filter((entity) => typeof entity?.entity_id === \"string\" && entity.entity_id.startsWith(\"update.\"))\n    .map((entity) => {\n        const state = String(entity.state ?? \"unknown\").toLowerCase();\n        const friendlyName = String(entity.attributes?.friendly_name ?? entity.entity_id).slice(0, 160);\n        const item = {\n            version: 1,\n            entity_id: entity.entity_id,\n            friendly_name: friendlyName,\n            state,\n            state_class: state === \"on\" ? \"pending\" : state === \"off\" ? \"current\" : \"unavailable\",\n            installed_version: entity.attributes?.installed_version ?? null,\n            latest_version: entity.attributes?.latest_version ?? null,\n            device_class: entity.attributes?.device_class ?? null,\n            in_progress: entity.attributes?.in_progress === true || typeof entity.attributes?.in_progress === \"number\",\n            search_key: (entity.entity_id + \" \" + friendlyName + (entity.attributes?.device_class === \"firmware\" ? \" firmware\" : \"\")).toLowerCase(),\n            observed_at: observedAt,\n            test_mode: TEST_MODE\n        };\n        item.signature = [item.entity_id, item.state_class, item.installed_version, item.latest_version].join(\":\");\n        return item;\n    });\nconst messages = updates.map((payload) => ({\n    payload,\n    topic: payload.entity_id,\n    firmware_dedupe_topic: (TEST_MODE ? \"test:\" : \"production:\") + payload.entity_id,\n    update_policy: msg.update_policy,\n    _update_apply_authorized: msg._update_apply_authorized === true,\n    _ha_updates_test: TEST_MODE,\n    _kia_update_test: TEST_MODE\n}));\nconst summary = {\n    version: 1,\n    total: updates.length,\n    pending: updates.filter((item) => item.state_class === \"pending\").length,\n    unavailable: updates.filter((item) => item.state_class === \"unavailable\").length,\n    observed_at: observedAt,\n    test_mode: TEST_MODE,\n    apply_authorized: msg._update_apply_authorized === true\n};\nreturn [messages.length ? messages : null, { payload: summary, _ha_updates_test: TEST_MODE }];",
+        "func": "const TEST_MODE = msg._ha_updates_test === true || msg.payload?.test_mode === true;\nconst states = Array.isArray(msg.ha_update_states) ? msg.ha_update_states : Array.isArray(msg.payload) ? msg.payload : null;\nif (!states) {\n    if (!TEST_MODE) node.error(\"home_assistant_update_inventory_invalid\", msg);\n    return [null, null];\n}\nconst observedAt = Number(msg.update_observed_at ?? Date.now());\nconst updates = states\n    .filter((entity) => typeof entity?.entity_id === \"string\" && entity.entity_id.startsWith(\"update.\"))\n    .map((entity) => {\n        const state = String(entity.state ?? \"unknown\").toLowerCase();\n        const friendlyName = String(entity.attributes?.friendly_name ?? entity.entity_id).slice(0, 160);\n        const item = {\n            version: 1,\n            entity_id: entity.entity_id,\n            friendly_name: friendlyName,\n            state,\n            state_class: state === \"on\" ? \"pending\" : state === \"off\" ? \"current\" : \"unavailable\",\n            installed_version: entity.attributes?.installed_version ?? null,\n            latest_version: entity.attributes?.latest_version ?? null,\n            device_class: entity.attributes?.device_class ?? null,\n            in_progress: entity.attributes?.in_progress === true || typeof entity.attributes?.in_progress === \"number\",\n            search_key: (entity.entity_id + \" \" + friendlyName + (entity.attributes?.device_class === \"firmware\" ? \" firmware\" : \"\")).toLowerCase(),\n            observed_at: observedAt,\n            test_mode: TEST_MODE\n        };\n        item.signature = [item.entity_id, item.state_class, item.installed_version, item.latest_version].join(\":\");\n        return item;\n    });\nconst messages = updates.map((payload) => ({\n    payload,\n    topic: payload.entity_id,\n    firmware_dedupe_topic: (TEST_MODE ? \"test:\" : \"production:\") + payload.entity_id,\n    ...(TEST_MODE ? {coordinator_test_facts:msg.coordinator_test_facts,monitor_now:msg.monitor_now} : {}),\n    update_policy: msg.update_policy,\n    _update_apply_authorized: msg._update_apply_authorized === true,\n    _ha_updates_test: TEST_MODE,\n    _kia_update_test: TEST_MODE\n}));\nconst summary = {\n    version: 1,\n    total: updates.length,\n    pending: updates.filter((item) => item.state_class === \"pending\").length,\n    unavailable: updates.filter((item) => item.state_class === \"unavailable\").length,\n    observed_at: observedAt,\n    test_mode: TEST_MODE,\n    apply_authorized: msg._update_apply_authorized === true\n};\nreturn [messages.length ? messages : null, { payload: summary, _ha_updates_test: TEST_MODE }];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -29180,7 +29186,8 @@
         "y": 3441,
         "wires": [
             [
-                "daily_update_inventory_state"
+                "daily_update_inventory_state",
+                "daily_update_coordinator_inventory_out"
             ],
             [
                 "daily_update_inventory_record"
@@ -29756,7 +29763,7 @@
         "y": 4761,
         "wires": [
             [
-                "daily_update_firmware_state"
+                "daily_update_coordinator_route_out"
             ]
         ]
     },
@@ -30009,8 +30016,8 @@
         "type": "switch",
         "z": "daily_host_updates_tab",
         "g": "daily_update_firmware_group",
-        "name": "Versão recente e ainda não em instalação?",
-        "property": "$exists(payload.entity_id) and $contains(payload.entity_id, /^update\\.[a-z0-9_]+$/) and payload.state_class = 'pending' and $type(payload.latest_version) = 'string' and payload.latest_version != '' and payload.latest_version != 'unknown' and payload.latest_version != 'unavailable' and payload.latest_version != payload.installed_version and payload.in_progress = false and $number(payload.observed_at) <= $millis() and $number(payload.observed_at) >= $millis() - (update_policy.manual_candidate_max_age_minutes * 60000)",
+        "name": "Firmware comum, recente e disponível?",
+        "property": "$exists(payload.entity_id) and $contains(payload.entity_id, /^update\\.[a-z0-9_]+$/) and payload.state_class = 'pending' and $type(payload.latest_version) = 'string' and payload.latest_version != '' and payload.latest_version != 'unknown' and payload.latest_version != 'unavailable' and payload.latest_version != payload.installed_version and payload.in_progress = false and $not($contains(payload.search_key, /slzb|smlight|coordinator|coordenador/)) and $number(payload.observed_at) <= $millis() and $number(payload.observed_at) >= $millis() - (update_policy.manual_candidate_max_age_minutes * 60000)",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -30032,7 +30039,8 @@
             [
                 "daily_update_firmware_invalid"
             ]
-        ]
+        ],
+        "info": "Coordenadores SLZB/SMLIGHT ficam fora do update.install genérico: exigem backup validado e parada coordenada para preservar a rede."
     },
     {
         "id": "daily_update_firmware_test_auto",
@@ -30043,7 +30051,7 @@
         "props": [
             {
                 "p": "payload",
-                "v": "[{\"entity_id\":\"update.synthetic_slzb_firmware\",\"state\":\"on\",\"attributes\":{\"device_class\":\"firmware\",\"installed_version\":\"1\",\"latest_version\":\"2\",\"in_progress\":false}}]",
+                "v": "[{\"entity_id\":\"update.synthetic_device_firmware\",\"state\":\"on\",\"attributes\":{\"device_class\":\"firmware\",\"installed_version\":\"1\",\"latest_version\":\"2\",\"in_progress\":false}}]",
                 "vt": "json"
             },
             {
@@ -30224,8 +30232,8 @@
         "type": "function",
         "z": "daily_host_updates_tab",
         "g": "daily_update_firmware_group",
-        "name": "Rejeitar candidato ausente/antigo",
-        "func": "node.status({fill:\"yellow\",shape:\"ring\",text:\"aguarde instalação ou inventário válido\"}); return null;",
+        "name": "Bloquear coordenador/antigo/inválido",
+        "func": "node.status({fill:\"yellow\",shape:\"ring\",text:\"firmware não elegível; confira o gate visual\"}); return null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -42125,8 +42133,8 @@
             "global_observer_coverage__startup_readiness_tab__out",
             "global_observer_coverage__storage_health_tab__out",
             "global_observer_coverage__weekly_docs_review_tab__out",
-            "global_observer_coverage__zigbee_coordinator_recovery_tab__out",
-            "global_observer_test_event_out"
+            "global_observer_test_event_out",
+            "global_observer_coverage__zigbee_coordinator_recovery_tab__out"
         ],
         "x": 170,
         "y": 220,
@@ -42753,7 +42761,6 @@
             "global_observer_integration_alert_out",
             "external_confirmation_incident_out",
             "local_ai_rtx_alert_out",
-            "zg_guard_alert_out",
             "people_visual_refresh_alert_out",
             "internet_remote_access_alert_out",
             "weekly_docs_review_alert_out",
@@ -42764,7 +42771,9 @@
             "notification_hub_mobile_observer_out",
             "notification_hub_alexa_observer_out",
             "notification_hub_persistent_observer_out",
-            "mq_native_test_global_out"
+            "mq_native_test_global_out",
+            "zg_guard_alert_out",
+            "daily_update_coordinator_alert_out"
         ],
         "x": 2620,
         "y": 300,
@@ -99034,7 +99043,7 @@
         "id": "zg_receipt_issue",
         "type": "switch",
         "name": "Último efeito falhou ou está incerto?",
-        "property": "guard_facts.receipt.status = 'failed' or (guard_facts.blocked_unknown = true and guard_facts.receipt.status = 'running')",
+        "property": "guard_facts.receipt.status = 'failed' or (guard_facts.blocked_unknown = true and guard_facts.receipt.status = 'running' and guard_facts.operation_active != true)",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -100031,5 +100040,1468 @@
         ],
         "z": "zigbee_coordinator_recovery_tab",
         "g": "zg_source_group"
+    },
+    {
+        "id": "daily_update_coordinator_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "Coordenador: janela diária → backup → parada → firmware estável → restore verificado",
+        "style": {
+            "label": true,
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.2"
+        },
+        "nodes": [
+            "daily_update_coordinator_in",
+            "daily_update_coordinator_classify",
+            "daily_update_coordinator_ordinary_out",
+            "daily_update_coordinator_pending",
+            "daily_update_coordinator_daily",
+            "daily_update_coordinator_wait_daily",
+            "daily_update_coordinator_source_out",
+            "daily_update_coordinator_versions_in",
+            "daily_update_coordinator_versions",
+            "daily_update_coordinator_eligible",
+            "daily_update_coordinator_not_eligible",
+            "daily_update_coordinator_facts_out",
+            "daily_update_coordinator_facts_in",
+            "daily_update_coordinator_source_mode",
+            "daily_update_coordinator_test_facts",
+            "daily_update_coordinator_read_facts",
+            "daily_update_coordinator_facts",
+            "daily_update_coordinator_safe",
+            "daily_update_coordinator_safe_out",
+            "daily_update_coordinator_dedupe_in",
+            "daily_update_coordinator_not_safe",
+            "daily_update_coordinator_dedupe_prepare",
+            "daily_update_coordinator_dedupe",
+            "daily_update_coordinator_request",
+            "daily_update_coordinator_final_out",
+            "daily_update_coordinator_final_in",
+            "daily_update_coordinator_final_gate",
+            "daily_update_coordinator_dry_out",
+            "daily_update_coordinator_write_request",
+            "daily_update_coordinator_queued",
+            "daily_update_coordinator_result_tick",
+            "daily_update_coordinator_read_result",
+            "daily_update_coordinator_result",
+            "daily_update_coordinator_alert_gate",
+            "daily_update_coordinator_alert_dry_out",
+            "daily_update_coordinator_alert_out",
+            "daily_update_coordinator_inventory_in",
+            "daily_update_coordinator_inventory_filter",
+            "daily_update_coordinator_inventory_forward",
+            "daily_update_coordinator_classify_in",
+            "notification_hub_wire_in_fb9c4511ac12",
+            "notification_hub_wire_in_b9348e073fdb",
+            "notification_hub_wire_in_0a39675e30d0",
+            "notification_hub_wire_in_cf9d6a1a3b83",
+            "notification_hub_wire_in_8b8787848b29",
+            "notification_hub_wire_in_e49e63162eb9"
+        ],
+        "x": 64,
+        "y": 9162,
+        "w": 2840,
+        "h": 700
+    },
+    {
+        "id": "daily_update_coordinator_tests_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "TESTES do coordenador — mesmo caminho até dry-run",
+        "style": {
+            "label": true,
+            "stroke": "#0891b2"
+        },
+        "nodes": [
+            "daily_update_coordinator_test_nominal",
+            "daily_update_coordinator_test_beta",
+            "daily_update_coordinator_test_old",
+            "daily_update_coordinator_test_no_window",
+            "daily_update_coordinator_test_busy",
+            "daily_update_coordinator_test_failure",
+            "daily_update_coordinator_test_reset",
+            "daily_update_coordinator_reset",
+            "notification_hub_wire_out_fb9c4511ac12",
+            "notification_hub_wire_out_b9348e073fdb",
+            "notification_hub_wire_out_0a39675e30d0",
+            "notification_hub_wire_out_cf9d6a1a3b83",
+            "notification_hub_wire_out_8b8787848b29",
+            "notification_hub_wire_out_e49e63162eb9"
+        ],
+        "x": 64,
+        "y": 9922,
+        "w": 2840,
+        "h": 420
+    },
+    {
+        "id": "daily_update_coordinator_route_out",
+        "type": "link out",
+        "name": "Firmware → distinguir coordenador",
+        "mode": "link",
+        "links": [
+            "daily_update_coordinator_in"
+        ],
+        "x": 195,
+        "y": 4780,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_firmware_group"
+    },
+    {
+        "id": "daily_update_coordinator_ordinary_in",
+        "type": "link in",
+        "name": "Demais equipamentos → atualização normal",
+        "links": [
+            "daily_update_coordinator_ordinary_out"
+        ],
+        "x": 155,
+        "y": 4850,
+        "wires": [
+            [
+                "daily_update_firmware_state"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_firmware_group"
+    },
+    {
+        "id": "daily_update_coordinator_in",
+        "type": "link in",
+        "name": "Receber candidato físico",
+        "links": [
+            "daily_update_coordinator_route_out"
+        ],
+        "x": 114,
+        "y": 9252,
+        "wires": [
+            [
+                "daily_update_coordinator_classify"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_classify",
+        "type": "switch",
+        "name": "É coordenador Zigbee/SMLIGHT?",
+        "property": "$contains(payload.search_key, /slzb|smlight|coordinator|coordenador/)",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 420,
+        "y": 9252,
+        "wires": [
+            [
+                "daily_update_coordinator_pending"
+            ],
+            [
+                "daily_update_coordinator_ordinary_out"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_ordinary_out",
+        "type": "link out",
+        "name": "Equipamento comum → fluxo original",
+        "mode": "link",
+        "links": [
+            "daily_update_coordinator_ordinary_in"
+        ],
+        "x": 680,
+        "y": 9332,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_pending",
+        "type": "function",
+        "name": "Preservar entidade do inventário HA",
+        "func": "msg.coordinator_entity=msg.payload.entity_id;msg.coordinator_now=Number(msg.monitor_now??Date.now());return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 800,
+        "y": 9252,
+        "wires": [
+            [
+                "daily_update_coordinator_daily"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_daily",
+        "type": "switch",
+        "name": "Janela diária/manual autorizada?",
+        "property": "_update_apply_authorized = true and update_policy.device_firmware_auto = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1100,
+        "y": 9252,
+        "wires": [
+            [
+                "daily_update_coordinator_source_out"
+            ],
+            [
+                "daily_update_coordinator_wait_daily"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_wait_daily",
+        "type": "function",
+        "name": "Reservado para as atualizações das 03:00",
+        "func": "node.status({fill:'grey',shape:'ring',text:'aguardando candidato, janela ou fonte válida'});return null;",
+        "outputs": 0,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1100,
+        "y": 9352,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_source_out",
+        "type": "link out",
+        "name": "Janela autorizada → fonte estável",
+        "mode": "link",
+        "links": [
+            "daily_update_coordinator_facts_in"
+        ],
+        "x": 1300,
+        "y": 9252,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_versions_in",
+        "type": "link in",
+        "name": "Versão estável observada",
+        "links": [
+            "daily_update_coordinator_safe_out"
+        ],
+        "x": 1360,
+        "y": 9252,
+        "wires": [
+            [
+                "daily_update_coordinator_versions"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_versions",
+        "type": "function",
+        "name": "Normalizar versões e preservar candidato",
+        "func": "const p=msg.coordinator_candidate;function parts(v){const s=String(v||'');if(/^\\d{8}$/.test(s))return [Number(s),0,0,1,0];const m=s.match(/^v?(\\d+)\\.(\\d+)\\.(\\d+)(?:[.-](dev|beta|rc)(\\d*))?$/i);return m?[+m[1],+m[2],+m[3],m[4]?0:1,+(m[5]||0)]:null}const a=parts(p.latest_version),b=parts(p.installed_version);msg.coordinator_stable=!!a&&a[3]===1;msg.coordinator_newer=false;if(a&&b){for(let i=0;i<a.length;i++){if(a[i]!==b[i]){msg.coordinator_newer=a[i]>b[i];break}}}msg.coordinator_candidate=p;msg.coordinator_now=Number(msg.monitor_now??Date.now());return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1540,
+        "y": 9252,
+        "wires": [
+            [
+                "daily_update_coordinator_eligible"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_eligible",
+        "type": "switch",
+        "name": "Estável, mais recente e observação fresca?",
+        "property": "coordinator_stable = true and coordinator_newer = true and coordinator_candidate.observed_at <= coordinator_now and coordinator_candidate.observed_at >= coordinator_now-(update_policy.coordinator_inventory_max_age_minutes*60000)",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1920,
+        "y": 9252,
+        "wires": [
+            [
+                "daily_update_coordinator_facts_out"
+            ],
+            [
+                "daily_update_coordinator_not_eligible"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_not_eligible",
+        "type": "function",
+        "name": "Sem downgrade ou firmware de teste",
+        "func": "node.status({fill:'grey',shape:'ring',text:'aguardando candidato, janela ou fonte válida'});return null;",
+        "outputs": 0,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1920,
+        "y": 9352,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_facts_out",
+        "type": "link out",
+        "name": "Candidato elegível → deduplicação",
+        "mode": "link",
+        "links": [
+            "daily_update_coordinator_dedupe_in"
+        ],
+        "x": 2200,
+        "y": 9252,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_facts_in",
+        "type": "link in",
+        "name": "Receber janela autorizada",
+        "links": [
+            "daily_update_coordinator_source_out"
+        ],
+        "x": 114,
+        "y": 9472,
+        "wires": [
+            [
+                "daily_update_coordinator_source_mode"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_source_mode",
+        "type": "switch",
+        "name": "Fonte é TESTE?",
+        "property": "_ha_updates_test = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 370,
+        "y": 9472,
+        "wires": [
+            [
+                "daily_update_coordinator_test_facts"
+            ],
+            [
+                "daily_update_coordinator_read_facts"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_test_facts",
+        "type": "function",
+        "name": "Injetar apenas fatos sintéticos",
+        "func": "msg.payload=msg.coordinator_test_facts;return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 9432,
+        "wires": [
+            [
+                "daily_update_coordinator_facts"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_read_facts",
+        "type": "file in",
+        "name": "FONTE: saúde do adaptador e do backup",
+        "filename": "/data/zigbee-recovery/facts.json",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "encoding": "none",
+        "allProps": false,
+        "x": 700,
+        "y": 9522,
+        "wires": [
+            [
+                "daily_update_coordinator_facts"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_facts",
+        "type": "function",
+        "name": "Adaptar JSON sem decidir política",
+        "func": "try{msg.coordinator_facts=typeof msg.payload==='string'?JSON.parse(msg.payload):msg.payload}catch{msg.coordinator_facts=null}const i=msg.coordinator_facts?.firmware_inventory;msg.coordinator_candidate=i?.updates?.find(p=>p.entity_id===msg.coordinator_entity)||null;return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1060,
+        "y": 9472,
+        "wires": [
+            [
+                "daily_update_coordinator_safe"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_safe",
+        "type": "switch",
+        "name": "Backup preservado e adaptador disponível?",
+        "property": "coordinator_facts.schema_version = 1 and coordinator_facts.observed_at <= coordinator_now and coordinator_facts.observed_at >= coordinator_now-(update_policy.coordinator_facts_max_age_seconds*1000) and coordinator_facts.last_good_available = true and coordinator_facts.firmware_inventory.observed_at >= coordinator_now-(update_policy.coordinator_inventory_max_age_minutes*60000) and coordinator_facts.firmware_inventory.observed_at <= coordinator_now and $exists(coordinator_candidate) and coordinator_candidate.is_stable = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1430,
+        "y": 9472,
+        "wires": [
+            [
+                "daily_update_coordinator_safe_out"
+            ],
+            [
+                "daily_update_coordinator_not_safe"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_safe_out",
+        "type": "link out",
+        "name": "Fonte válida → comparar versões",
+        "mode": "link",
+        "links": [
+            "daily_update_coordinator_versions_in"
+        ],
+        "x": 1650,
+        "y": 9472,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_dedupe_in",
+        "type": "link in",
+        "name": "Receber candidato elegível",
+        "links": [
+            "daily_update_coordinator_facts_out"
+        ],
+        "x": 1650,
+        "y": 9402,
+        "wires": [
+            [
+                "daily_update_coordinator_dedupe_prepare"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_not_safe",
+        "type": "function",
+        "name": "Preservar rede e aguardar próxima janela",
+        "func": "node.status({fill:'grey',shape:'ring',text:'aguardando candidato, janela ou fonte válida'});return null;",
+        "outputs": 0,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1430,
+        "y": 9582,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_dedupe_prepare",
+        "type": "function",
+        "name": "Identificar entidade, versão e modo",
+        "func": "const p=msg.coordinator_candidate;msg.coordinator_topic=(msg._ha_updates_test===true?'test:':'production:')+p.entity_id;msg.coordinator_signature=p.entity_id+':'+p.latest_version+':'+Math.floor(msg.coordinator_now/86400000);return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1810,
+        "y": 9472,
+        "wires": [
+            [
+                "daily_update_coordinator_dedupe"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_dedupe",
+        "type": "rbe",
+        "name": "Uma fila por entidade e versão",
+        "func": "rbe",
+        "gap": "",
+        "start": "",
+        "inout": "out",
+        "septopics": true,
+        "property": "coordinator_signature",
+        "topi": "coordinator_topic",
+        "x": 2180,
+        "y": 9472,
+        "wires": [
+            [
+                "daily_update_coordinator_request"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_request",
+        "type": "function",
+        "name": "Serializar pedido fixo; nenhum segredo",
+        "func": "const p=msg.coordinator_candidate,now=msg.coordinator_now;let hash=2166136261;for(const c of p.entity_id+':'+p.latest_version)hash=Math.imul(hash^c.charCodeAt(0),16777619)>>>0;const id=String(msg._msgid||'').replace(/[^a-f0-9]/gi,'').slice(0,12).padEnd(12,'0')+now.toString(16).padStart(12,'0').slice(-12)+hash.toString(16).padStart(8,'0');msg.coordinator_request={version:1,id,requested_at:now,entity_id:p.entity_id,target_version:p.latest_version,expected_installed_version:p.installed_version,stable_only:true,source:'daily_updates'};msg.filename='/data/zigbee-recovery/firmware-requests/'+id+'.json';msg.payload=JSON.stringify(msg.coordinator_request);return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2500,
+        "y": 9472,
+        "wires": [
+            [
+                "daily_update_coordinator_final_out"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_final_out",
+        "type": "link out",
+        "name": "Pedido → gate final",
+        "mode": "link",
+        "links": [
+            "daily_update_coordinator_final_in"
+        ],
+        "x": 2730,
+        "y": 9472,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_final_in",
+        "type": "link in",
+        "name": "Receber plano validado",
+        "links": [
+            "daily_update_coordinator_final_out"
+        ],
+        "x": 114,
+        "y": 9702,
+        "wires": [
+            [
+                "daily_update_coordinator_final_gate"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_final_gate",
+        "type": "switch",
+        "name": "GATE FINAL: produção ou TESTE?",
+        "property": "_ha_updates_test = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 460,
+        "y": 9702,
+        "wires": [
+            [
+                "daily_update_coordinator_dry_out"
+            ],
+            [
+                "daily_update_coordinator_write_request"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_dry_out",
+        "type": "link out",
+        "name": "TESTE → dry-run compartilhado",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 760,
+        "y": 9652,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_write_request",
+        "type": "file",
+        "name": "EFEITO: fila da manutenção protegida",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "utf8",
+        "x": 830,
+        "y": 9742,
+        "wires": [
+            [
+                "daily_update_coordinator_queued"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_queued",
+        "type": "function",
+        "name": "Aguardar verificação de firmware e rede",
+        "func": "node.status({fill:'yellow',shape:'ring',text:'fila protegida; backup e restore antes da conclusão'});return null;",
+        "outputs": 0,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1230,
+        "y": 9742,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_result_tick",
+        "type": "inject",
+        "name": "Resultado a cada 60 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 30,
+        "x": 1660,
+        "y": 9742,
+        "wires": [
+            [
+                "daily_update_coordinator_read_result"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_read_result",
+        "type": "file in",
+        "name": "FONTE: recibos da manutenção",
+        "filename": "/data/zigbee-recovery/firmware-result.json",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 2030,
+        "y": 9742,
+        "wires": [
+            [
+                "daily_update_coordinator_result"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_result",
+        "type": "function",
+        "name": "Normalizar recibos e deduplicar falhas",
+        "func": "let p=msg.payload;try{if(typeof p==='string')p=JSON.parse(p)}catch{return null}if(p?.schema_version!==1||!Array.isArray(p.events))return null;const test=msg._ha_updates_test===true,key='coordinator_firmware_notices'+(test?'__test':''),store=test?'memoryOnly':'persistent',seen=flow.get(key,store)||{};const out=[];for(const r of p.events){const recovery=['updated','not_needed'].includes(r.status)&&Object.keys(seen).some(k=>k.startsWith(r.id+':'));if(!['failed','pending'].includes(r.status)&&!recovery)continue;const id=r.id+':'+r.status+':'+r.reason;if(seen[id])continue;seen[id]=true;out.push({...msg,coordinator_result:r,payload:{observer_kind:recovery?'domain_recovery':'domain_alert',persistent_incident_kind:'domain_alert',persistent_notification_operation:recovery?'dismiss':'create',mobile_notification:!recovery,incident_key:'coordinator_firmware_'+r.id,test_mode:test,reason:r.reason,source_observed_at:r.at,source_time_kind:'native',policy_decided_at:Date.now()},alert:{title:'Manutenção do coordenador requer atenção',message:'A atualização do coordenador não teve conclusão funcional confirmada. O backup foi preservado e a instalação não será repetida sem evidência. Veja atualizacoes_diarias.'}})}flow.set(key,seen,store);return [out];",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2450,
+        "y": 9742,
+        "wires": [
+            [
+                "daily_update_coordinator_alert_gate"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_alert_gate",
+        "type": "switch",
+        "name": "Alerta é TESTE?",
+        "property": "_ha_updates_test = true",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2690,
+        "y": 9812,
+        "wires": [
+            [
+                "daily_update_coordinator_alert_dry_out"
+            ],
+            [
+                "daily_update_coordinator_alert_out"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_alert_dry_out",
+        "type": "link out",
+        "name": "Alerta TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 2800,
+        "y": 9752,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_alert_out",
+        "type": "link out",
+        "name": "Falha de domínio → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 2800,
+        "y": 9842,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_inventory_out",
+        "type": "link out",
+        "name": "Inventário HA → canal estável do coordenador",
+        "mode": "link",
+        "links": [
+            "daily_update_coordinator_inventory_in"
+        ],
+        "x": 470,
+        "y": 3490,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_inventory_group"
+    },
+    {
+        "id": "daily_update_coordinator_inventory_in",
+        "type": "link in",
+        "name": "Coordenador ainda que HA mostre atual/beta",
+        "links": [
+            "daily_update_coordinator_inventory_out"
+        ],
+        "x": 114,
+        "y": 9592,
+        "wires": [
+            [
+                "daily_update_coordinator_inventory_filter"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_inventory_filter",
+        "type": "switch",
+        "name": "Inventário é do coordenador?",
+        "property": "$contains(payload.search_key, /slzb|smlight|coordinator|coordenador/)",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 420,
+        "y": 9592,
+        "wires": [
+            [
+                "daily_update_coordinator_inventory_forward"
+            ],
+            []
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_inventory_forward",
+        "type": "link out",
+        "name": "Coordenador → mesma normalização",
+        "mode": "link",
+        "links": [
+            "daily_update_coordinator_classify_in"
+        ],
+        "x": 660,
+        "y": 9592,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_classify_in",
+        "type": "link in",
+        "name": "Receber coordenador do inventário",
+        "links": [
+            "daily_update_coordinator_inventory_forward"
+        ],
+        "x": 114,
+        "y": 9332,
+        "wires": [
+            [
+                "daily_update_coordinator_classify"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group"
+    },
+    {
+        "id": "daily_update_coordinator_test_nominal",
+        "type": "inject",
+        "name": "TESTE: firmware estável após backup",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20260101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_update_apply_authorized",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "update_policy",
+                "v": "{\"device_firmware_auto\":true,\"coordinator_facts_max_age_seconds\":300,\"coordinator_inventory_max_age_minutes\":40}",
+                "vt": "json"
+            },
+            {
+                "p": "coordinator_test_facts",
+                "v": "{\"firmware_inventory\":{\"schema_version\":1,\"observed_at\":1767225600000,\"updates\":[{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20260101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\",\"is_stable\":true}]},\"schema_version\":1,\"observed_at\":1767225600000,\"running\":true,\"last_good_available\":true,\"backup_valid\":true,\"maintenance_active\":false,\"blocked_unknown\":false}",
+                "vt": "json"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225600000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "x": 400,
+        "y": 10012,
+        "wires": [
+            [
+                "notification_hub_wire_out_fb9c4511ac12"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group"
+    },
+    {
+        "id": "daily_update_coordinator_test_beta",
+        "type": "inject",
+        "name": "TESTE: beta bloqueada",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"v3.4.5.dev0\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_update_apply_authorized",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "update_policy",
+                "v": "{\"device_firmware_auto\":true,\"coordinator_facts_max_age_seconds\":300,\"coordinator_inventory_max_age_minutes\":40}",
+                "vt": "json"
+            },
+            {
+                "p": "coordinator_test_facts",
+                "v": "{\"firmware_inventory\":{\"schema_version\":1,\"observed_at\":1767225600000,\"updates\":[{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"v3.4.5.dev0\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\",\"is_stable\":true}]},\"schema_version\":1,\"observed_at\":1767225600000,\"running\":true,\"last_good_available\":true,\"backup_valid\":true,\"maintenance_active\":false,\"blocked_unknown\":false}",
+                "vt": "json"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225600000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "x": 400,
+        "y": 10092,
+        "wires": [
+            [
+                "notification_hub_wire_out_b9348e073fdb"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group"
+    },
+    {
+        "id": "daily_update_coordinator_test_old",
+        "type": "inject",
+        "name": "TESTE: downgrade bloqueado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20230101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_update_apply_authorized",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "update_policy",
+                "v": "{\"device_firmware_auto\":true,\"coordinator_facts_max_age_seconds\":300,\"coordinator_inventory_max_age_minutes\":40}",
+                "vt": "json"
+            },
+            {
+                "p": "coordinator_test_facts",
+                "v": "{\"firmware_inventory\":{\"schema_version\":1,\"observed_at\":1767225600000,\"updates\":[{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20230101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\",\"is_stable\":true}]},\"schema_version\":1,\"observed_at\":1767225600000,\"running\":true,\"last_good_available\":true,\"backup_valid\":true,\"maintenance_active\":false,\"blocked_unknown\":false}",
+                "vt": "json"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225600000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "x": 400,
+        "y": 10172,
+        "wires": [
+            [
+                "notification_hub_wire_out_0a39675e30d0"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group"
+    },
+    {
+        "id": "daily_update_coordinator_test_no_window",
+        "type": "inject",
+        "name": "TESTE: sem autorização diária",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20260101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_update_apply_authorized",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "update_policy",
+                "v": "{\"device_firmware_auto\":true,\"coordinator_facts_max_age_seconds\":300,\"coordinator_inventory_max_age_minutes\":40}",
+                "vt": "json"
+            },
+            {
+                "p": "coordinator_test_facts",
+                "v": "{\"firmware_inventory\":{\"schema_version\":1,\"observed_at\":1767225600000,\"updates\":[{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20260101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\",\"is_stable\":true}]},\"schema_version\":1,\"observed_at\":1767225600000,\"running\":true,\"last_good_available\":true,\"backup_valid\":true,\"maintenance_active\":false,\"blocked_unknown\":false}",
+                "vt": "json"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225600000",
+                "vt": "num"
+            },
+            {
+                "p": "_update_apply_authorized",
+                "v": "false",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "x": 1300,
+        "y": 10012,
+        "wires": [
+            [
+                "notification_hub_wire_out_cf9d6a1a3b83"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group"
+    },
+    {
+        "id": "daily_update_coordinator_test_busy",
+        "type": "inject",
+        "name": "TESTE: fila aguarda manutenção",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20260101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_update_apply_authorized",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "update_policy",
+                "v": "{\"device_firmware_auto\":true,\"coordinator_facts_max_age_seconds\":300,\"coordinator_inventory_max_age_minutes\":40}",
+                "vt": "json"
+            },
+            {
+                "p": "coordinator_test_facts",
+                "v": "{\"firmware_inventory\":{\"schema_version\":1,\"observed_at\":1767225600000,\"updates\":[{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20260101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\",\"is_stable\":true}]},\"schema_version\":1,\"observed_at\":1767225600000,\"running\":true,\"last_good_available\":true,\"backup_valid\":true,\"maintenance_active\":false,\"blocked_unknown\":false}",
+                "vt": "json"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767225600000",
+                "vt": "num"
+            },
+            {
+                "p": "coordinator_test_facts",
+                "v": "{\"firmware_inventory\":{\"schema_version\":1,\"observed_at\":1767225600000,\"updates\":[{\"entity_id\":\"update.synthetic_slzb_coordinator\",\"state_class\":\"pending\",\"installed_version\":\"20240101\",\"latest_version\":\"20260101\",\"in_progress\":false,\"observed_at\":1767225600000,\"search_key\":\"synthetic slzb firmware\",\"is_stable\":true}]},\"schema_version\":1,\"observed_at\":1767225600000,\"running\":true,\"last_good_available\":true,\"backup_valid\":true,\"maintenance_active\":true,\"blocked_unknown\":false}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "x": 1300,
+        "y": 10092,
+        "wires": [
+            [
+                "notification_hub_wire_out_8b8787848b29"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group"
+    },
+    {
+        "id": "daily_update_coordinator_test_failure",
+        "type": "inject",
+        "name": "TESTE: falha sem repetir firmware",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"events\":[{\"id\":\"synthetic\",\"status\":\"failed\",\"reason\":\"network_not_verified\",\"at\":1767225600000}]}",
+                "vt": "json"
+            },
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "x": 2200,
+        "y": 10012,
+        "wires": [
+            [
+                "daily_update_coordinator_result"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group"
+    },
+    {
+        "id": "daily_update_coordinator_test_reset",
+        "type": "inject",
+        "name": "RESET: somente dedupe de TESTE",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 1,
+        "x": 2200,
+        "y": 10172,
+        "wires": [
+            [
+                "daily_update_coordinator_reset"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group"
+    },
+    {
+        "id": "daily_update_coordinator_reset",
+        "type": "function",
+        "name": "Limpar somente replay",
+        "func": "flow.set('coordinator_firmware_notices__test',{},'memoryOnly');msg.reset=true;msg.topic='test:update.synthetic_slzb_coordinator';msg.coordinator_topic=msg.topic;delete msg.coordinator_signature;return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2550,
+        "y": 10172,
+        "wires": [
+            [
+                "notification_hub_wire_out_e49e63162eb9"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group"
+    },
+    {
+        "id": "notification_hub_wire_out_fb9c4511ac12",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group",
+        "name": "Encurtar: TESTE: firmware estável após backup",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_fb9c4511ac12"
+        ],
+        "x": 580,
+        "y": 10012,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_fb9c4511ac12",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group",
+        "name": "Continuar: É coordenador Zigbee/SMLIGHT?",
+        "links": [
+            "notification_hub_wire_out_fb9c4511ac12"
+        ],
+        "x": 240,
+        "y": 9252,
+        "wires": [
+            [
+                "daily_update_coordinator_classify"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_b9348e073fdb",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group",
+        "name": "Encurtar: TESTE: beta bloqueada",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_b9348e073fdb"
+        ],
+        "x": 580,
+        "y": 10092,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_b9348e073fdb",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group",
+        "name": "Continuar: É coordenador Zigbee/SMLIGHT?",
+        "links": [
+            "notification_hub_wire_out_b9348e073fdb"
+        ],
+        "x": 240,
+        "y": 9352,
+        "wires": [
+            [
+                "daily_update_coordinator_classify"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_0a39675e30d0",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group",
+        "name": "Encurtar: TESTE: downgrade bloqueado",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_0a39675e30d0"
+        ],
+        "x": 580,
+        "y": 10172,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_0a39675e30d0",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group",
+        "name": "Continuar: É coordenador Zigbee/SMLIGHT?",
+        "links": [
+            "notification_hub_wire_out_0a39675e30d0"
+        ],
+        "x": 240,
+        "y": 9452,
+        "wires": [
+            [
+                "daily_update_coordinator_classify"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_cf9d6a1a3b83",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group",
+        "name": "Encurtar: TESTE: sem autorização diária",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_cf9d6a1a3b83"
+        ],
+        "x": 1480,
+        "y": 10012,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_cf9d6a1a3b83",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group",
+        "name": "Continuar: É coordenador Zigbee/SMLIGHT?",
+        "links": [
+            "notification_hub_wire_out_cf9d6a1a3b83"
+        ],
+        "x": 240,
+        "y": 9552,
+        "wires": [
+            [
+                "daily_update_coordinator_classify"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_8b8787848b29",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group",
+        "name": "Encurtar: TESTE: fila aguarda manutenção",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_8b8787848b29"
+        ],
+        "x": 1480,
+        "y": 10092,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_8b8787848b29",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group",
+        "name": "Continuar: É coordenador Zigbee/SMLIGHT?",
+        "links": [
+            "notification_hub_wire_out_8b8787848b29"
+        ],
+        "x": 160,
+        "y": 9402,
+        "wires": [
+            [
+                "daily_update_coordinator_classify"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_e49e63162eb9",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_tests_group",
+        "name": "Encurtar: Limpar somente replay",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_e49e63162eb9"
+        ],
+        "x": 2730,
+        "y": 10172,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_e49e63162eb9",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_coordinator_group",
+        "name": "Continuar: Uma fila por entidade e versão",
+        "links": [
+            "notification_hub_wire_out_e49e63162eb9"
+        ],
+        "x": 2000,
+        "y": 9472,
+        "wires": [
+            [
+                "daily_update_coordinator_dedupe"
+            ]
+        ]
     }
 ]

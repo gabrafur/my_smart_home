@@ -109,7 +109,15 @@
         "operations_daily_test_reset",
         "daily_update_kia_promotion_test_reset",
         "daily_update_kia_promotion_test_pending",
-        "daily_update_kia_promotion_test_completed"
+        "daily_update_kia_promotion_test_completed",
+        "daily_update_coordinator_tests_group",
+        "daily_update_coordinator_test_nominal",
+        "daily_update_coordinator_test_beta",
+        "daily_update_coordinator_test_old",
+        "daily_update_coordinator_test_no_window",
+        "daily_update_coordinator_test_busy",
+        "daily_update_coordinator_test_failure",
+        "daily_update_coordinator_test_reset"
       ],
       "automated_test": "test-daily-host-update-flow.mjs",
       "dry_run_terminal_ids": [

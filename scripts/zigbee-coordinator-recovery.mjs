@@ -64,10 +64,28 @@ function read(file) {
 }
 function optional(file, fallback) {try {return JSON.parse(read(file));} catch(e) {if(e.code === 'ENOENT')return fallback;throw e;}}
 function docker(args) {
-  const r=spawnSync('/usr/bin/docker',args,{encoding:'utf8',timeout:45000,maxBuffer:4*1024*1024});
+  const r=spawnSync('/usr/bin/docker',args,{encoding:'utf8',timeout:args[0]==='run'?180000:45000,maxBuffer:4*1024*1024});
   if(r.error || r.status !== 0)throw Error('docker_operation_failed');
   return r.stdout;
 }
+export const adapterRestoreScript = String.raw`
+const fs=require('fs'),yaml=require('js-yaml'),{Adapter}=require('zigbee-herdsman/dist/adapter/adapter');
+const version=require('zigbee-herdsman/package.json').version;
+async function restore(){
+ if(version!=='11.2.0')throw Error('unreviewed_adapter_version');
+ const c=yaml.load(fs.readFileSync('/app/data/configuration.yaml','utf8')),a=c.advanced;
+ if(c.serial.adapter!=='zstack'||!String(c.serial.port).startsWith('tcp://'))throw Error('unsupported_adapter');
+ const adapter=await Adapter.create({panID:a.pan_id,extendedPanID:a.ext_pan_id,channelList:[a.channel],networkKey:a.network_key,networkKeyDistribute:false},{path:c.serial.port,baudRate:c.serial.baudrate||115200,adapter:'zstack'},'/app/data/coordinator_backup.json',{disableLED:!c.serial.disable_led,transmitPower:a.transmit_power});
+ try {
+  const result=await adapter.start();
+  if(result==='resumed'){
+   if(typeof adapter.adapterManager?.beginRestore!=='function')throw Error('restore_capability_missing');
+   await adapter.adapterManager.beginRestore();
+  }else if(result!=='restored')throw Error('unexpected_adapter_start');
+ }finally{await adapter.stop();}
+}
+restore().catch(()=>{process.exitCode=1});
+`;
 const backupRpc = String.raw`
 const fs=require('fs'),yaml=require('js-yaml'),mqtt=require('mqtt'),crypto=require('crypto');
 const c=yaml.load(fs.readFileSync('/app/data/configuration.yaml','utf8'));
@@ -109,14 +127,15 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
     device_count:database.filter(d=>d.type!=='Coordinator').length,
     backup_valid:!!candidate,last_good_available:!!baseline,last_good_count:baseline?.devices||0,
     invalid_param_count:logsAvailable?(logs.match(/\(0x02: INVALID_PARAM\)/g)||[]).length:null,
+    log_observation_reason:logsAvailable?'ok':String(logResult.error?.code||logResult.signal||`exit_${logResult.status}`).replace(/[^a-zA-Z0-9_]/g,'').slice(0,40),
     last_seen_age_s:lastSeen&&lastSeen<=now?(now-lastSeen)/1000:null,
     last_snapshot_at:baseline?.saved_at||0,last_recovery_at:journal.last_recovery_at,
     recoveries_24h:journal.recoveries.filter(t=>now-t<86400000).length,
-    blocked_unknown:!logsAvailable||journal.receipts.some(r=>r.status==='running')};
+    operation_active:false,blocked_unknown:!logsAvailable||journal.receipts.some(r=>r.status==='running')};
   facts.maintenance_active=['.daily-maintenance.lock','.offsite-backup.lock'].some(name=>{
     const file=path.join(root,name);if(!fs.existsSync(file))return false;
     return spawnSync('/usr/bin/flock',['-n',file,'/usr/bin/true'],{timeout:1000}).status!==0;
-  })||fs.existsSync(path.join(root,'.docker-auto-update.lock'));
+  })||fs.existsSync(path.join(root,'.docker-auto-update.lock'))||fs.existsSync(path.join(privateDir,'firmware-active.json'));
   const previous=optional(path.join(publicDir,'facts.json'),null);
   const requestFile=path.join(publicDir,'request.json');
   const request=optional(requestFile,null);
@@ -126,6 +145,7 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
     journal.receipts.push(receipt);
     journal.receipts=journal.receipts.filter((r,i,a)=>r.status==='running'||i>=a.length-64);
     atomic(journalFile,JSON.stringify(journal)); // Intent precedes any effect; interruption blocks replay.
+    atomic(path.join(publicDir,'facts.json'),JSON.stringify({...facts,receipt,blocked_unknown:true,operation_active:true})+'\n',0o644);
     try {
       if(facts.maintenance_active)throw Error('maintenance_active');
       if(facts.blocked_unknown)throw Error('operation_unresolved');
@@ -163,15 +183,28 @@ export function tick(root = '/mnt/data/docker', privateDir = '/var/lib/zigbee-co
           if(request.action==='restore')atomic(path.join(dataDir,'database.db'),baseline.database,0o644);
           const b=request.action==='restore'?restored.backup:validateNetwork(config,JSON.parse(evidence.backup),evidence.database).backup;
           atomic(path.join(dataDir,'coordinator_backup.json'),JSON.stringify(b,null,2)+'\n',0o644);
-        } finally {runDocker(['start','zigbee2mqtt']);}
+          if(request.action==='restore') {
+            const image=runDocker(['inspect','zigbee2mqtt','--format','{{.Image}}']).trim();
+            if(!/^sha256:[a-f0-9]{64}$/.test(image))throw Error('invalid_image_identity');
+            runDocker(['run','--rm','--name','zigbee-coordinator-restore','--network','host','--memory','192m','--memory-swap','192m','--cpus','0.5','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,size=16m','--volume',`${dataDir}:/app/data:rw`,'--entrypoint','node',image,'-e',adapterRestoreScript]);
+          }
+        } finally {
+          const temporary=runDocker(['ps','--filter','name=^/zigbee-coordinator-restore$','--format','{{.Names}}']);
+          if(temporary.trim())throw Error('radio_restore_still_running');
+          runDocker(['start','zigbee2mqtt']);
+        }
         receipt.status='dispatched'; // Online and physical recovery must be observed later.
+        const observed=JSON.parse(runDocker(['inspect','zigbee2mqtt','--format','{{json .State}}']));
+        facts.running=observed.Running===true;facts.uptime_s=Math.max(0,(Date.now()-Date.parse(observed.StartedAt))/1000);
+        facts.device_count=read(path.join(dataDir,'database.db')).trim().split('\n').filter(Boolean).map(l=>JSON.parse(l)).filter(d=>d.type!=='Coordinator').length;
       }
     } catch(e) {receipt.status='failed';receipt.reason=/^[a-z_]+$/.test(e.message)?e.message:'operation_failed';}
     atomic(journalFile,JSON.stringify(journal));
   }
   const result={...facts,last_snapshot_at:baseline?.saved_at||0,last_good_available:!!baseline,
     last_good_count:baseline?.devices||0,last_recovery_at:journal.last_recovery_at,
-    receipt:journal.receipts.at(-1)||null};
+    receipt:journal.receipts.at(-1)||null,
+    firmware_inventory:optional(path.join(publicDir,'firmware-inventory.json'),null)};
   journal.observations=[...(journal.observations||[]),{id:facts.id,observed_at:now}].slice(-8);
   atomic(journalFile,JSON.stringify(journal));
   atomic(path.join(publicDir,'facts.json'),JSON.stringify(result)+'\n',0o644);

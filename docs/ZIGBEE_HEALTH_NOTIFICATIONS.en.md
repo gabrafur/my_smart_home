@@ -286,3 +286,19 @@ The `recuperacao_zigbee` canvas evaluates host observations every 30 seconds. It
 A native host adapter publishes sanitized facts every 15 seconds. Healthy observations with recent real telemetry can request a native backup. Network identity, keys, channel, completed interviews and database membership must match. Empty or smaller databases cannot replace the last good snapshot. Private snapshots retain hashes and up to 32 versions; the canvas also provides a validated manual backup button. A stale channel mask is normalized only when the backup operating channel already matches configuration.
 
 Disable the coordinator internal firmware updater and keep a known failed version skipped. Firmware installation must use coordinated backups and service stops. Physical failures and devices that have left the network may require manual pairing; a recovery request does not prove functional restoration. See the [Portuguese operations guide](ZIGBEE_COORDINATOR_RECOVERY.md) for installation, validation and safe replay steps.
+
+
+The daily updates canvas also owns coordinator firmware updates. A read-only
+producer queries the SMLIGHT release catalog through the installed SDK every
+30 minutes. HA entity identity remains authoritative; development-channel or
+skipped HA offers cannot hide a newer stable release. The canvas requires a
+fresh stable upgrade and never downgrades. Its host worker serializes maintenance,
+proves device communication, saves and validates a native backup, stops only
+Zigbee2MQTT, installs the selected release, restores radio NV and verifies actual
+communication. Uncertain installation responses are reconciled without resending.
+Restoration support is checked before flashing. Failure alerts resolve after
+confirmed recovery; physical damage and storage loss remain outside this guarantee.
+
+The external LELLKI JZ-ZB-001 converter is scoped to application 5/firmware 2.0.1.
+It exposes the actual startup value as read-only because this firmware rejects
+writes; it does not pretend a rejected setting was applied.

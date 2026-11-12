@@ -379,7 +379,7 @@ assert.equal(policyValue.versioned_hacs_auto_apply, true);
 assert.equal(policyValue.kia_uvo_auto_apply, true);
 assert.equal(policyValue.manual_candidate_max_age_minutes, 40);
 assert.deepEqual(Object.keys(policyValue).sort(), [
-  "device_firmware_auto", "kia_uvo_auto_apply", "manual_candidate_max_age_minutes",
+  "coordinator_facts_max_age_seconds", "coordinator_inventory_max_age_minutes", "device_firmware_auto", "kia_uvo_auto_apply", "manual_candidate_max_age_minutes",
   "scan_interval_minutes", "version", "versioned_hacs_auto_apply",
 ]);
 

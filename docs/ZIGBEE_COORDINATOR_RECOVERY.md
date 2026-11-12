@@ -73,13 +73,75 @@ produção até o gate final e terminam com `simulated:true`, `dispatched:false`
 Não derrube a rede da casa para testar. Confira o timer, a idade dos fatos,
 `last_good_available` e um recibo `snapshotted` de um ciclo natural.
 
-## Firmware e limites
+## Firmware nas atualizações diárias
 
-Desative o atualizador interno do coordenador: ele pode apagar a memória do
-rádio enquanto o Zigbee2MQTT está ativo. Updates devem passar pela orquestração
-canônica, com backup validado e parada coordenada. Uma versão que causou perda
-da rede deve permanecer marcada como ignorada na entidade `update` até revisão.
+A aba `atualizacoes_diarias` decide a atualização às 03:00, na janela já
+existente, ou pelo controle manual de produção dessa aba. O atualizador
+interno do SMLIGHT deve continuar desligado. O `update.install` genérico não
+instala firmware de coordenadores; eles têm um caminho visual próprio.
 
-Firmware incompatível, defeito físico e dispositivos que saíram voluntariamente
-da rede podem exigir intervenção ou novo pareamento. O mecanismo não promete
-restaurar automaticamente esses casos e nunca abre o portão como teste.
+O inventário `update.*` identifica as entidades do SMLIGHT associado ao endereço
+TCP configurado no Zigbee2MQTT. Um produtor nativo somente de leitura consulta
+o canal **release** pelo SDK `pysmlight` instalado no Home Assistant, a cada
+30 minutos. Ele publica versões de core e rádio Zigbee, sem instalar nada.
+Isso evita que o canal de desenvolvimento ou uma versão ignorada no Home
+Assistant esconda futuras versões estáveis. Não altera a integração do HA.
+
+O canvas compara versões: exige release estável mais recente, não faz downgrade
+e rejeita desenvolvimento/beta. A idade máxima dos fatos do host (300 segundos,
+limites 30–600) e do inventário (40 minutos, limites 30–120) fica nos parâmetros
+visuais, com preservação do último valor válido. Uma intenção elegível entra em
+fila privada de manutenção. O worker usa o mesmo lock da manutenção diária;
+uma manutenção já em andamento não perde o pedido nem permite atualizações
+simultâneas.
+
+Antes de qualquer instalação, o adaptador confirma novamente a versão atual e
+a última release do fabricante, o destino registrado, a implementação de restore
+revisada e uma resposta Zigbee real, sem mudar o estado das cargas. Obtém novo
+backup nativo, valida identidade e membros e salva uma cópia com hash. Só então
+para o Zigbee2MQTT e solicita o firmware pelo SDK oficial. A URL precisa ser do
+diretório HTTPS de firmware do fabricante; o pedido do Node-RED não aceita URL,
+comando nem credenciais.
+
+Depois da versão confirmada, restaura a memória do rádio pelo mesmo
+`zigbee-herdsman` revisado da imagem instalada, recupera o banco protegido,
+reinicia somente o Zigbee2MQTT e exige resposta real de um dispositivo para
+registrar sucesso. O código do restore é revisado para herdsman 11.2.0: uma
+versão diferente bloqueia a instalação antes de parar o serviço, até revisão.
+Os contadores Zigbee são preservados/avançados; não se deve copiar um backup
+antigo diretamente para uma rede ativa.
+
+O diário privado grava a intenção antes da chamada de firmware. Resposta perdida
+não repete a instalação: o próximo ciclo apenas observa a versão. Resultado
+incerto mantém a proteção e gera alerta no monitor global. Depois da recuperação
+confirmada, o alerta é encerrado. Falhas de integridade e limites de restauração
+exigem intervenção; nenhuma condição desconhecida autoriza nova gravação.
+
+Os timers `zigbee-firmware-inventory` e `zigbee-firmware-maintenance` somente
+produzem fatos e executam pedidos admitidos pelo canvas. Não constituem uma
+segunda agenda de instalação. O instalador habilita esses timers e o de
+recuperação, mas não instala firmware por conta própria.
+
+Teste manual: RESET do coordenador → estável (dry-run) → beta, downgrade e sem
+janela (bloqueados) → RESET → manutenção ocupada (intenção em dry-run) → falha
+(alerta em dry-run). Os testes usam entidades sintéticas e contexto de teste;
+nenhum firmware ou dispositivo residencial é acionado. Execute também:
+
+```sh
+scripts/run-resource-safe.sh node --test scripts/zigbee-firmware-maintenance.test.mjs scripts/lellki-startup-behavior.test.mjs
+scripts/run-resource-safe.sh node nodered/tools/test-firmware-auto-update.mjs
+```
+
+## Limites físicos e comportamento após falta de energia
+
+Backups locais não protegem contra perda física do armazenamento. Firmware
+incompatível, defeito físico e dispositivos que saíram voluntariamente da rede
+podem exigir intervenção ou novo pareamento. O mecanismo não promete restaurar
+automaticamente esses casos e nunca abre o portão como teste.
+
+O conversor externo `lellki-jz-zb-001-v201.mjs` é limitado ao fingerprint
+LELLKI JZ-ZB-001, aplicação 5 e firmware 2.0.1. Esse firmware rejeita o atributo
+Tuya usado pelo conversor padrão e expõe `startUpOnOff` somente para leitura.
+A propriedade `power_outage_memory` mostra o valor real (`off`/`on`), sem comando
+de escrita na interface. A confirmação idempotente de um valor já existente
+não grava o atributo. Não generalize esse comportamento a outros firmwares.

@@ -36,6 +36,7 @@ function fixture() {
         const event = JSON.parse(n.rules[0].to); assert.equal(event.active, false);
         assert.equal(event.reason, 'firmware_automatic_enabled'); alerts.push(event); continue;
       }
+      if (id === 'operations_daily_resolved') continue;
       if (id.startsWith('operations_daily_')) {
         assert.fail(`normal automatic firmware must not ask for approval: ${id}`);
       }
@@ -69,6 +70,7 @@ function fixture() {
       } else if (n.type === 'rbe') {
         assert.equal(n.func, 'rbe'); assert.equal(n.septopics, true);
         const key = n.id + ':' + get(msg, n.topi), value = get(msg, n.property);
+        if (msg.reset !== undefined) { dedupe.delete(n.id + ':' + get(msg,n.topi)); if(value===undefined)continue; }
         if (!dedupe.has(key) || dedupe.get(key) !== value) { dedupe.set(key, value); send(0, msg); }
       } else if (n.type === 'link out') for (const target of n.links) queue.push([target, structuredClone(msg)]);
       else if (n.type === 'link in') send(0, msg);
@@ -109,4 +111,26 @@ const protectedCase = fixture();
 await protectedCase.run('daily_update_inventory_normalize', message(fact({ friendly_name: 'Kia UVO firmware' }, 'update.synthetic_kia_uvo')));
 assert.equal(protectedCase.effects.length, 0); assert.equal(protectedCase.protectedRoutes.length, 1,
   'versioned Bluelink cannot also reach generic firmware installation');
+for (const id of ['update.synthetic_slzb_firmware','update.synthetic_smlight_firmware','update.synthetic_coordinator_firmware']) {
+  const protectedCoordinator=fixture();await protectedCoordinator.run('daily_update_inventory_normalize',message(fact({},id)));
+  assert.equal(protectedCoordinator.effects.length,0,'coordinator firmware cannot use generic update.install');
+}
+const coordinator=fixture();
+await coordinator.run('daily_update_coordinator_test_nominal',{});
+assert.equal(coordinator.effects.length,0);assert.equal(coordinator.dry.length,1);
+assert.equal(coordinator.dry[0].coordinator_request.stable_only,true);assert.match(coordinator.dry[0].coordinator_request.id,/^[a-f0-9]{32}$/);
+for(const id of ['daily_update_coordinator_test_beta','daily_update_coordinator_test_old','daily_update_coordinator_test_no_window'])await coordinator.run(id,{});
+assert.equal(coordinator.dry.length,1,'beta, downgrade and periodic inventory cannot dispatch');
+await coordinator.run('daily_update_coordinator_test_reset',{});await coordinator.run('daily_update_coordinator_test_busy',{});
+assert.equal(coordinator.dry.length,2,'maintenance queues an intent; the host lock serializes the actual effect');
+await coordinator.run('daily_update_coordinator_test_failure',{});assert.equal(coordinator.dry.at(-1).payload.observer_kind,'domain_alert');
+assert.equal(coordinator.effects.length,0,'full replay never installs firmware');
 console.log('Firmware automatic latest: real generated decisions, freshness, in-progress, dedupe, protected integrations and full dry-run passed.');
+
+const independent=fixture(),now=Date.now(),stable={entity_id:'update.synthetic_slzb_coordinator',installed_version:'20240101',latest_version:'20260101',is_stable:true,observed_at:now};
+const stableFacts={schema_version:1,observed_at:now,last_good_available:true,firmware_inventory:{schema_version:1,observed_at:now,updates:[stable]}};
+await independent.run('daily_update_inventory_normalize',message({...fact({latest_version:'v9.0.0.dev0'},stable.entity_id),state:'off'},{_ha_updates_test:true,_update_apply_authorized:true,monitor_now:now,coordinator_test_facts:stableFacts}));
+assert.equal(independent.dry.filter(m=>m.coordinator_request).length,1,'stable vendor facts remain visible when HA selected a beta or skipped update');assert.equal(independent.dry.find(m=>m.coordinator_request).coordinator_request.target_version,'20260101');
+for(const facts of [{...stableFacts,firmware_inventory:{...stableFacts.firmware_inventory,observed_at:now-2400001}},{...stableFacts,firmware_inventory:null}]){
+ const f=fixture();await f.run('daily_update_inventory_normalize',message(fact({},stable.entity_id),{_ha_updates_test:true,_update_apply_authorized:true,monitor_now:now,coordinator_test_facts:facts}));assert.equal(f.dry.filter(m=>m.coordinator_request).length,0,'missing or stale vendor facts fail closed');
+}
