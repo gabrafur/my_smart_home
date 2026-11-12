@@ -129,7 +129,7 @@
         "type": "tab",
         "label": "localizacao_pessoas",
         "disabled": false,
-        "info": "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; o aviso tem raio independente de 700 m de HOME, exige posição anterior fora e retorno confirmado. A iluminação conserva 350 m do portão. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run. O recovery de localização vencida usa Companion + iCloud, seletivamente por morador, com cooldown individual e confirmação por observação posterior. O efeito iCloud autoriza recuperação limitada da sessão salva; OTP suspende a recuperação automática e aguarda ação manual.",
+        "info": "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. A entrada no anel técnico não decide chegada: ela agenda duas sondas atuais e limitadas; o aviso tem raio independente de 700 m de HOME, exige posição anterior fora e retorno confirmado. A iluminação conserva 350 m do portão. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.",
         "env": []
     },
     {
