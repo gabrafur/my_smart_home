@@ -1645,8 +1645,6 @@
             "gar_effect_dry_run_out",
             "gar_notify_relay_on",
             "gar_notify_relay_on__hub_call",
-            "gar_relay_on_publish_out",
-            "gar_relay_on_publish_in",
             "notification_hub_wire_out_270bc4ef8706",
             "notification_hub_wire_in_270bc4ef8706",
             "notification_hub_wire_out_92eda6ec8d9a",
@@ -10445,11 +10443,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1270,
+        "x": 1770,
         "y": 1360,
         "wires": [
             [
-                "gar_relay_on_publish_out",
+                "gar_relay_mqtt_out",
                 "gar_relay_safety_delay"
             ]
         ]
@@ -10472,8 +10470,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 1570,
-        "y": 1440,
+        "x": 1770,
+        "y": 1420,
         "wires": [
             [
                 "gar_relay_pulse_off"
@@ -10493,7 +10491,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1870,
+        "x": 1770,
         "y": 1480,
         "wires": [
             [
@@ -10506,7 +10504,7 @@
         "type": "mqtt out",
         "z": "29d64664bf8cbde8",
         "g": "gar_group_effect",
-        "name": "Efeito: publicar comando do relé",
+        "name": "Relé do portão — rele_acionador_portao",
         "topic": "",
         "qos": "",
         "retain": "",
@@ -11092,37 +11090,6 @@
         "x": 1460,
         "y": 1150,
         "wires": []
-    },
-    {
-        "id": "gar_relay_on_publish_out",
-        "type": "link out",
-        "z": "29d64664bf8cbde8",
-        "g": "gar_group_effect",
-        "name": "ON → publicação do relé",
-        "mode": "link",
-        "links": [
-            "gar_relay_on_publish_in"
-        ],
-        "x": 1490,
-        "y": 1360,
-        "wires": []
-    },
-    {
-        "id": "gar_relay_on_publish_in",
-        "type": "link in",
-        "z": "29d64664bf8cbde8",
-        "g": "gar_group_effect",
-        "name": "Receber publicação ON",
-        "links": [
-            "gar_relay_on_publish_out"
-        ],
-        "x": 1890,
-        "y": 1360,
-        "wires": [
-            [
-                "gar_relay_mqtt_out"
-            ]
-        ]
     },
     {
         "id": "global_observer_coverage__29d64664bf8cbde8__catch",
@@ -76782,7 +76749,7 @@
         "links": [
             "notification_hub_wire_out_270bc4ef8706"
         ],
-        "x": 1020,
+        "x": 1500,
         "y": 1360,
         "wires": [
             [

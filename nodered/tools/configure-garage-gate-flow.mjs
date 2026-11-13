@@ -2,6 +2,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
+import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const FLOWS = new URL("../flows.json", import.meta.url).pathname;
 const OUT = process.argv[2] || FLOWS;
@@ -10,6 +11,7 @@ const BROKER = "721c47f31046b8bc";
 const HA_SERVER = "4126427d5e161a03";
 
 const flows = JSON.parse(readFileSync(FLOWS, "utf8"));
+const originalFlows = structuredClone(flows);
 
 function required(id) {
   const node = flows.find((candidate) => candidate.id === id);
@@ -290,8 +292,8 @@ upsert({
 upsert({ id: "gar_request_test_in", type: "link in", z: TAB, g: "gar_group_request", name: "Receber pedidos TESTE", links: ["gar_test_request_out_left", "gar_test_request_out_right"], x: 820, y: 260, wires: [["gar_request_normalize"]] });
 upsert(functionNode("gar_request_normalize", "gar_group_request", "Adaptar envelope do pedido", requestNormalize, 1, 1120, 150, [["gar_request_action_switch"]]));
 upsert({ id: "gar_request_action_switch", type: "switch", z: TAB, g: "gar_group_request", name: "Ação é single, probe ou inválida?", property: "request.action", propertyType: "msg", rules: [{ t: "eq", v: "single", vt: "str" }, { t: "eq", v: "probe", vt: "str" }, { t: "else" }], checkall: "true", repair: false, outputs: 3, x: 1400, y: 150, wires: [["gar_request_load_policy"], ["gar_request_probe_terminal"], ["gar_request_invalid_terminal"]] });
-upsert({ id: "gar_request_probe_terminal", type: "debug", z: TAB, g: "gar_group_request", name: "Diagnóstico: probe sem efeito", active: true, tosidebar: true, console: false, tostatus: true, complete: "request", targetType: "msg", statusVal: "request.action", statusType: "msg", x: 1740, y: 190, wires: [] });
-upsert({ id: "gar_request_invalid_terminal", type: "debug", z: TAB, g: "gar_group_request", name: "Diagnóstico: ação ignorada", active: true, tosidebar: true, console: false, tostatus: true, complete: "request", targetType: "msg", statusVal: "request.action", statusType: "msg", x: 1740, y: 240, wires: [] });
+upsert({ id: "gar_request_probe_terminal", type: "debug", z: TAB, g: "gar_group_request", name: "Diagnóstico: probe sem efeito", active: false, tosidebar: true, console: false, tostatus: true, complete: "request", targetType: "msg", statusVal: "request.action", statusType: "msg", x: 1740, y: 190, wires: [] });
+upsert({ id: "gar_request_invalid_terminal", type: "debug", z: TAB, g: "gar_group_request", name: "Diagnóstico: ação ignorada", active: false, tosidebar: true, console: false, tostatus: true, complete: "request", targetType: "msg", statusVal: "request.action", statusType: "msg", x: 1740, y: 240, wires: [] });
 upsert({ id: "gar_request_load_policy", type: "change", z: TAB, g: "gar_group_request", name: "Carregar política visual válida", rules: [{ t: "set", p: "policy", pt: "msg", to: "$flowContext(\"garage_gate_policy_v1\", \"persistent\")", tot: "jsonata" }], x: 1690, y: 100, wires: [["gar_request_policy_out"]] });
 upsert({ id: "gar_request_policy_out", type: "link out", z: TAB, g: "gar_group_request", name: "Política carregada → avaliação", mode: "link", links: ["gar_request_policy_in"], x: 1900, y: 100, wires: [] });
 upsert({ id: "gar_request_policy_in", type: "link in", z: TAB, g: "gar_group_request", name: "Receber pedido com política", links: ["gar_request_policy_out"], x: 940, y: 270, wires: [["gar_request_evaluate"]] });
@@ -306,19 +308,17 @@ upsert({ id: "gar_effect_pulse_in", type: "link in", z: TAB, g: "gar_group_effec
 upsert({ id: "gar_effect_safe_off_in", type: "link in", z: TAB, g: "gar_group_effect", name: "Receber OFF seguro", links: ["gar_request_safe_off_out"], x: 960, y: 780, wires: [["gar_safe_off_test_gate"]] });
 upsert({ id: "gar_pulse_test_gate", type: "switch", z: TAB, g: "gar_group_effect", name: "Gate final: pulso produção ou TESTE?", property: "test_mode", propertyType: "msg", rules: [{ t: "neq", v: "true", vt: "bool" }, { t: "eq", v: "true", vt: "bool" }], checkall: "true", repair: false, outputs: 2, x: 1180, y: 500, wires: [["gar_prepare_pulse_delay"], ["gar_effect_dry_run_out"]] });
 upsert({ id: "gar_prepare_pulse_delay", type: "change", z: TAB, g: "gar_group_effect", name: "Aplicar largura da política", rules: [{ t: "set", p: "delay", pt: "msg", to: "policy.pulse_ms", tot: "msg" }], x: 1520, y: 500, wires: [["gar_relay_pulse_on", "gar_log_pulse_started"]] });
-upsert(functionNode("gar_relay_pulse_on", "gar_group_effect", "Adaptar MQTT: fechar contato (ON)", mqttCommand("ON"), 1, 2500, 460, [["gar_relay_on_publish_out", "gar_relay_safety_delay"]]));
-upsert({ id: "gar_relay_on_publish_out", type: "link out", z: TAB, g: "gar_group_effect", name: "ON → publicação do relé", mode: "link", links: ["gar_relay_on_publish_in"], x: 2750, y: 460, wires: [] });
-upsert({ id: "gar_relay_on_publish_in", type: "link in", z: TAB, g: "gar_group_effect", name: "Receber publicação ON", links: ["gar_relay_on_publish_out"], x: 3150, y: 460, wires: [["gar_relay_mqtt_out"]] });
-upsert({ id: "gar_relay_safety_delay", type: "delay", z: TAB, g: "gar_group_effect", name: "Aguardar msg.delay da política", pauseType: "delayv", timeout: "700", timeoutUnits: "milliseconds", rate: "1", nbRateUnits: "1", rateUnits: "second", randomFirst: "1", randomLast: "5", randomUnits: "seconds", drop: false, allowrate: false, outputs: 1, x: 2800, y: 540, wires: [["gar_relay_pulse_off"]] });
-upsert(functionNode("gar_relay_pulse_off", "gar_group_effect", "Adaptar MQTT: abrir contato (OFF)", mqttCommand("OFF"), 1, 3100, 580, [["gar_relay_mqtt_out"]]));
-upsert({ id: "gar_relay_mqtt_out", type: "mqtt out", z: TAB, g: "gar_group_effect", name: "Efeito: publicar comando do relé", topic: "", qos: "", retain: "", respTopic: "", contentType: "", userProps: "", correl: "", expiry: "", broker: BROKER, x: 3400, y: 500, wires: [] });
+upsert(functionNode("gar_relay_pulse_on", "gar_group_effect", "Adaptar MQTT: fechar contato (ON)", mqttCommand("ON"), 1, 3000, 460, [["gar_relay_mqtt_out", "gar_relay_safety_delay"]]));
+upsert({ id: "gar_relay_safety_delay", type: "delay", z: TAB, g: "gar_group_effect", name: "Aguardar msg.delay da política", pauseType: "delayv", timeout: "700", timeoutUnits: "milliseconds", rate: "1", nbRateUnits: "1", rateUnits: "second", randomFirst: "1", randomLast: "5", randomUnits: "seconds", drop: false, allowrate: false, outputs: 1, x: 3000, y: 520, wires: [["gar_relay_pulse_off"]] });
+upsert(functionNode("gar_relay_pulse_off", "gar_group_effect", "Adaptar MQTT: abrir contato (OFF)", mqttCommand("OFF"), 1, 3000, 580, [["gar_relay_mqtt_out"]]));
+upsert({ id: "gar_relay_mqtt_out", type: "mqtt out", z: TAB, g: "gar_group_effect", name: "Relé do portão — rele_acionador_portao", topic: "", qos: "", retain: "", respTopic: "", contentType: "", userProps: "", correl: "", expiry: "", broker: BROKER, x: 3400, y: 500, wires: [] });
 upsert({ id: "gar_log_pulse_started", type: "api-call-service", z: TAB, g: "gar_group_effect", name: "Confirmar pedido aceito no Logbook", server: HA_SERVER, version: 7, debugenabled: false, action: "logbook.log", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: '{"name":"Portão garagem","message":"pulso ÚNICO iniciado (origem: " & request.origin & ") — largura " & policy.pulse_ms & " ms, cooldown " & policy.cooldown_ms & " ms."}', dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "none", blockInputOverrides: true, domain: "logbook", service: "log", x: 2120, y: 580, wires: [[]] });
 upsert({ id: "gar_safe_off_test_gate", type: "switch", z: TAB, g: "gar_group_effect", name: "Gate final: OFF seguro ou TESTE?", property: "test_mode", propertyType: "msg", rules: [{ t: "neq", v: "true", vt: "bool" }, { t: "eq", v: "true", vt: "bool" }], checkall: "true", repair: false, outputs: 2, x: 1180, y: 780, wires: [["gar_effect_safe_off_adapter_out", "gar_notify_relay_on"], ["gar_effect_dry_run_out"]] });
 upsert({ id: "gar_effect_safe_off_adapter_out", type: "link out", z: TAB, g: "gar_group_effect", name: "OFF seguro → adapter MQTT", mode: "link", links: ["gar_effect_safe_off_adapter_in"], x: 1450, y: 740, wires: [] });
 upsert({ id: "gar_effect_safe_off_adapter_in", type: "link in", z: TAB, g: "gar_group_effect", name: "Receber OFF seguro", links: ["gar_effect_safe_off_adapter_out"], x: 2800, y: 780, wires: [["gar_relay_pulse_off"]] });
 upsert({ id: "gar_effect_dry_run_out", type: "link out", z: TAB, g: "gar_group_effect", name: "TESTE → terminal dry-run", mode: "link", links: ["gar_test_dry_run_in"], x: 1450, y: 640, wires: [] });
 upsert({ id: "gar_notify_relay_on", type: "api-call-service", z: TAB, g: "gar_group_effect", name: "Avisar: relé já estava ON", server: HA_SERVER, version: 7, debugenabled: false, action: "persistent_notification.create", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: '{"notification_id":"portao_garagem_rele_preso","title":"Portão da garagem - relé estava ligado","message":"O relé já estava ON. O Node-RED enviou somente OFF e recusou um novo pulso."}', dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "persistent_notification", service: "create", x: 1650, y: 820, wires: [[]] });
-upsert(group("gar_group_effect", "3. Gate final, efeitos e confirmação", ["gar_effect_pulse_in", "gar_effect_safe_off_in", "gar_pulse_test_gate", "gar_prepare_pulse_delay", "gar_relay_pulse_on", "gar_relay_on_publish_out", "gar_relay_on_publish_in", "gar_relay_safety_delay", "gar_relay_pulse_off", "gar_relay_mqtt_out", "gar_log_pulse_started", "gar_safe_off_test_gate", "gar_effect_safe_off_adapter_out", "gar_effect_safe_off_adapter_in", "gar_effect_dry_run_out", "gar_notify_relay_on"], 920, 390, 2600, 500, "#dc2626", "#fee2e2"));
+upsert(group("gar_group_effect", "3. Gate final, efeitos e confirmação", ["gar_effect_pulse_in", "gar_effect_safe_off_in", "gar_pulse_test_gate", "gar_prepare_pulse_delay", "gar_relay_pulse_on", "gar_relay_safety_delay", "gar_relay_pulse_off", "gar_relay_mqtt_out", "gar_log_pulse_started", "gar_safe_off_test_gate", "gar_effect_safe_off_adapter_out", "gar_effect_safe_off_adapter_in", "gar_effect_dry_run_out", "gar_notify_relay_on"], 920, 390, 2600, 500, "#dc2626", "#fee2e2"));
 
 const watchSet = required("gar_pulse_watch_set_in");
 Object.assign(watchSet, { g: "gar_group_observer", x: 190, y: 460, wires: [["gar_pulse_watch_normalize"]] });
@@ -348,5 +348,11 @@ upsert({ id: "gar_test_dry_run_in", type: "link in", z: TAB, g: "gar_group_tests
 upsert(functionNode("gar_test_dry_run_terminal", "gar_group_tests", "TESTE FINAL: nenhum efeito enviado", dryRun, 0, 1450, 1150, []));
 upsert(group("gar_group_tests", "4. Testes manuais completos — dry-run", ["gar_test_instructions", "gar_test_reset", "gar_test_reset_state", "gar_test_accept", "gar_test_duplicate", "gar_test_cooldown", "gar_test_boundary", "gar_test_request_out_left", "gar_test_relay_on", "gar_test_relay_on_prepare", "gar_test_request_out_right", "gar_test_dry_run_in", "gar_test_dry_run_terminal"], 64, 950, 1846, 340, "#0891b2", "#cffafe"));
 
-writeFileSync(OUT, JSON.stringify(installNotificationHubs(flows), null, 4) + "\n");
+const desired = installNotificationHubs(flows);
+const owned = node => node.id === TAB || node.z === TAB;
+const result = reconcileGeneratedFlows(originalFlows, desired, {
+  isOwned: owned,
+  shouldUpdate: owned,
+});
+writeFileSync(OUT, JSON.stringify(result, null, 4) + "\n");
 console.log(`Fluxo visual da garagem escrito em ${OUT}.`);

@@ -698,15 +698,15 @@
           "y": 1400
         },
         "gar_relay_pulse_on": {
-          "x": 1270,
+          "x": 1770,
           "y": 1360
         },
         "gar_relay_safety_delay": {
-          "x": 1570,
-          "y": 1440
+          "x": 1770,
+          "y": 1420
         },
         "gar_relay_pulse_off": {
-          "x": 1870,
+          "x": 1770,
           "y": 1480
         },
         "gar_relay_mqtt_out": {
@@ -746,7 +746,7 @@
           "y": 1360
         },
         "notification_hub_wire_in_270bc4ef8706": {
-          "x": 1020,
+          "x": 1500,
           "y": 1360
         },
         "notification_hub_wire_out_92eda6ec8d9a": {
@@ -852,14 +852,6 @@
         "global_observer_coverage__29d64664bf8cbde8__out": {
           "x": 765,
           "y": 802
-        },
-        "gar_relay_on_publish_out": {
-          "x": 1490,
-          "y": 1360
-        },
-        "gar_relay_on_publish_in": {
-          "x": 1890,
-          "y": 1360
         }
       },
       "geometry_final": true

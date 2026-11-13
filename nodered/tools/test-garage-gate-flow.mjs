@@ -153,9 +153,10 @@ assert.deepEqual(byId.get("gar_safe_off_test_gate")?.wires, [
 ]);
 assert.equal(byId.get("gar_relay_safety_delay")?.pauseType, "delayv");
 assert.equal(byId.get("gar_prepare_pulse_delay")?.rules?.[0]?.to, "policy.pulse_ms");
-assert.deepEqual(resolvedWireTargets("gar_relay_pulse_on"), ["gar_relay_on_publish_out", "gar_relay_safety_delay"]);
-assert.deepEqual(byId.get("gar_relay_on_publish_out")?.links, ["gar_relay_on_publish_in"]);
-assert.deepEqual(byId.get("gar_relay_on_publish_in")?.links, ["gar_relay_on_publish_out"]);
-assert.deepEqual(resolvedWireTargets("gar_relay_on_publish_in"), ["gar_relay_mqtt_out"]);
+assert.deepEqual(byId.get("gar_relay_pulse_on")?.wires, [["gar_relay_mqtt_out", "gar_relay_safety_delay"]]);
+assert.deepEqual(byId.get("gar_relay_pulse_off")?.wires, [["gar_relay_mqtt_out"]]);
+assert.equal(byId.has("gar_relay_on_publish_out"), false);
+assert.equal(byId.has("gar_relay_on_publish_in"), false);
+assert.equal(flows.filter(n => n.z === "29d64664bf8cbde8" && n.type === "mqtt out").length, 1);
 
 console.log("Fluxo visual do portão: política, limites, decisões e dry-run passaram.");
