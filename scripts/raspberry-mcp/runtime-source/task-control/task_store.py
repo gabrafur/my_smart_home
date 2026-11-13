@@ -559,7 +559,14 @@ class Store:
                 thread = workspace_thread(current['task'])
                 task = self.row('tasks', current['task']) if thread is None else None
                 if thread is not None:
-                    checked_workspace_receipt(proof, thread, workspace_context(thread))
+                    context = workspace_context(thread)
+                    if proof.get('delivery_mode') is not None:
+                        context = workspace_context(thread, {
+                            'operation_state': 'ready', 'thread_id': thread,
+                            'delivery_mode': proof.get('delivery_mode'),
+                            'expected_turn_id': proof.get('expected_turn_id'),
+                            'profile_preserved': True, 'authority_changed': False})
+                    checked_workspace_receipt(proof, thread, context)
                 else:
                     need(task is not None and task['state'] == 'created' and task['thread']
                          and UUID.fullmatch(task['thread']), 'task_not_admitted')

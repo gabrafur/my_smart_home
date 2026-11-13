@@ -23,10 +23,10 @@
     },
     "task-control/task_store.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_store.py",
-      "source_sha256": "47c86ce32e70e877e9de5b251012e3fdfd69a8d565b4c1fe5f6125142f784889",
-      "export_sha256": "47c86ce32e70e877e9de5b251012e3fdfd69a8d565b4c1fe5f6125142f784889",
+      "source_sha256": "515537a9413f028d4040eca17ba64c986957cc577e35d65805032566cc2f55f1",
+      "export_sha256": "515537a9413f028d4040eca17ba64c986957cc577e35d65805032566cc2f55f1",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T12:10:17Z",
+      "source_observed_at": "2026-11-13T17:57:40Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
