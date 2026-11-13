@@ -43,11 +43,19 @@ atuais não comprovam o perfil necessário para uma retomada fiel. Não signific
 thread concluída. Contrato nativo: [OpenAI App Server](https://learn.chatgpt.com/docs/app-server).
 
 O registro usa o namespace interno `workspace:<UUID>` na tabela de envios
-existente, sem criar tarefa ou mudar o esquema SQL. Cotas, intervalo, bloqueio
+existente, sem criar tarefa. Cotas, intervalo, bloqueio
 serial, revogação, prazo e confirmações da interface permanecem compartilhados.
 O intent é persistido antes do envio. Resposta perdida continua incerta;
 repetir a mesma referência só consulta o recibo, nunca reenvia. Uma operação
 pendente ou incerta também pode impedir comunicação com outra thread.
+
+Uma mensagem reconhecida pode receber continuação no mesmo turno ativo sem
+esperar seu término. Todos os envios pendentes precisam ter ACK verificado,
+pertencer à mesma destinatária e ao mesmo turno; o preflight nativo deve
+confirmar novamente esse turno. O limite é de oito mensagens pendentes,
+preservando também a cota e o intervalo da política. A continuação não altera
+o recibo anterior nem o marca como reconciliado. Tarefas de reparo reservadas,
+entregas incertas, ACK ausente e turnos diferentes continuam bloqueando envio.
 
 `codex_task_status` consulta somente o turno registrado. Uma resposta pública
 do assistente é limitada a 4 KiB, sanitizada e exportada somente quando sua
@@ -58,8 +66,15 @@ RPC, término do turno e ausência de erro não o substituem. ACK também não
 comprova a execução da solicitação nem a recuperação funcional da casa.
 
 O observador terminal exporta apenas referência opaca, hash, estado e horários;
-o namespace e os IDs das threads não atravessam o evento. Após registrar o
-resultado terminal no checkpoint, reconcilie seu hash exato. Nunca reconcilie
+o namespace e os IDs das threads não atravessam o evento. A observação de um
+terminal registra seu hash, estado e disponibilidade de texto na tabela
+aditiva `result_checkpoints`, dentro do banco e do limite de espaço existentes.
+O status publica `central_checkpoint` quando seu hash corresponde ao recibo
+atual. A reconciliação também garante esse registro na mesma transação antes
+do reconhecimento; o cliente não precisa escrever arquivo ou enviar tarefa.
+Texto indisponível permanece desconhecido e `functional_recovery_proven=false`:
+o checkpoint não inventa resultado nem comprova reparo. Reconcilie o hash
+terminal exato. Nunca reconcilie
 um turno ativo nem use outra referência para contornar entrega incerta.
 
 As regressões sintéticas ficam nos agregadores `owner-thread-access.test.mjs`

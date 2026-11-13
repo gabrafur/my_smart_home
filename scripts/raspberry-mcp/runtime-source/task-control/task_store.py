@@ -144,6 +144,10 @@ class Store:
             state TEXT NOT NULL, at REAL NOT NULL);
           CREATE TABLE IF NOT EXISTS creation_results(
             id TEXT PRIMARY KEY, result TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS result_checkpoints(
+            id TEXT PRIMARY KEY, result_hash TEXT NOT NULL,
+            terminal_state TEXT NOT NULL, reply_available INTEGER NOT NULL,
+            recorded REAL NOT NULL);
         ''')
 
     def close(self):
@@ -152,7 +156,73 @@ class Store:
     def row(self, table, op):
         need(table in ('tasks', 'sends'), 'invalid_table')
         row = self.db.execute('SELECT * FROM ' + table + ' WHERE id=?', (op,)).fetchone()
-        return dict(row) if row else None
+        result = dict(row) if row else None
+        if result and table == 'sends' and result.get('result'):
+            checkpoint = self.db.execute('SELECT * FROM result_checkpoints WHERE id=?',
+                                         (op,)).fetchone()
+            if checkpoint and checkpoint['result_hash'] == fingerprint(json.loads(result['result'])):
+                result['central_checkpoint'] = {
+                    'source': 'durable_exact_terminal_receipt_v1',
+                    'operation_id': op, 'result_hash': checkpoint['result_hash'],
+                    'terminal_state': checkpoint['terminal_state'],
+                    'reply_text_available': bool(checkpoint['reply_available']),
+                    'functional_recovery_proven': False,
+                    'recorded_at': checkpoint['recorded'], 'ready_for_reconciliation': True}
+        return result
+
+    def _checkpoint_terminal(self, row):
+        # Called inside the existing serial custody/SQL transaction. Metadata
+        # only: no paths, prompts, new dispatch, or invented functional result.
+        need(row and row['state'] in (*TERMINAL, 'not_dispatched') and row['result'],
+             'checkpoint_requires_terminal_receipt')
+        value = json.loads(row['result'])
+        digest = fingerprint(value)
+        prior = self.db.execute('SELECT result_hash FROM result_checkpoints WHERE id=?',
+                                (row['id'],)).fetchone()
+        need(not prior or prior['result_hash'] == digest, 'checkpoint_result_changed')
+        reply = value.get('agent_reply')
+        available = isinstance(reply, dict) and reply.get('state') == 'observed' and isinstance(reply.get('text'), str) and bool(reply['text'])
+        self.db.execute('INSERT OR IGNORE INTO result_checkpoints VALUES(?,?,?,?,?)',
+                        (row['id'], digest, row['state'], int(available), self.clock()))
+        return digest
+
+    def _acknowledged_workspace_turn(self, thread):
+        # Exempt only communication already acknowledged on this same active
+        # turn. Never release an old row or an actual registered repair task.
+        marks = ','.join('?' for _ in BUSY)
+        need(not self.db.execute('SELECT 1 FROM tasks WHERE state IN (' + marks +
+             ") OR (state='created' AND reconciled=0) LIMIT 1", BUSY).fetchone(),
+             'prior_task_requires_reconciliation')
+        rows = self.db.execute('SELECT * FROM sends WHERE reconciled=0 OR state IN (' +
+                               marks + ')', BUSY).fetchall()
+        need(0 < len(rows) < 8, 'workspace_followup_pending_limit')
+        expected = None
+        for raw in rows:
+            row = dict(raw)
+            need(row['task'] == WORKSPACE_PREFIX + thread and row['reconciled'] == 0
+                 and row['state'] in ('accepted', 'inProgress') and row['turn']
+                 and row['result'], 'prior_task_requires_reconciliation')
+            value = json.loads(row['result'])
+            # The first input may have started an idle receiver. Its immutable
+            # receipt keeps idle_start/None even after that turn becomes active.
+            # Validate that original delivery context; only the NEW preflight
+            # must prove active_steer on the exact recorded running turn.
+            context = workspace_context(thread, {
+                'operation_state': 'ready', 'thread_id': thread,
+                'delivery_mode': value.get('delivery_mode'),
+                'expected_turn_id': value.get('expected_turn_id'),
+                'profile_preserved': value.get('profile_preserved'),
+                'authority_changed': value.get('authority_changed')})
+            need(context['delivery_mode'] == 'idle_start'
+                 or context['expected_turn_id'] == row['turn'],
+                 'workspace_followup_turn_changed')
+            checked_workspace_receipt(value, thread, context, allow_ack=True,
+                                      operation=row['id'], turn=row['turn'])
+            need(value.get('assistant_acknowledged') is True and value.get('input_accepted') is True,
+                 'prior_task_requires_reconciliation')
+            need(expected is None or row['turn'] == expected, 'workspace_followup_turn_changed')
+            expected = row['turn']
+        return expected
 
     def audit(self, op, state):
         self.db.execute('INSERT INTO audit(id,state,at) VALUES(?,?,?)',
@@ -300,9 +370,15 @@ class Store:
         thread = workspace_reference(q['task_id'])
         namespace = WORKSPACE_PREFIX + thread
         need(self.row('tasks', q['task_id']) is None, 'workspace_reference_task_collision')
-        # Keep all current global BUSY, reservation and central-ACK gates. A
-        # message does not bypass an existing registered in-flight operation.
-        self.idle()
+        # All normal serial gates remain. A bounded same-turn followup may
+        # coexist only with exact acknowledged communication, never repair work.
+        followup_turn = None
+        try:
+            self.idle()
+        except ValueError as error:
+            need(str(error) in ('prior_task_requires_reconciliation',
+                               'result_requires_central_reconciliation'), str(error))
+            followup_turn = self._acknowledged_workspace_turn(thread)
         legacy_idle()
         references = self.db.execute("SELECT count(DISTINCT task) FROM sends WHERE task LIKE 'workspace:%'").fetchone()[0]
         already = self.db.execute('SELECT 1 FROM sends WHERE task=? LIMIT 1', (namespace,)).fetchone()
@@ -316,6 +392,10 @@ class Store:
         try:
             plan = invoke({'mode': 'workspace_message_preflight', 'thread_id': thread})
             context = workspace_context(thread, plan)
+            if followup_turn is not None:
+                need(context['delivery_mode'] == 'active_steer'
+                     and context['expected_turn_id'] == followup_turn,
+                     'workspace_followup_turn_changed')
         except Exception as error:
             reason = str(error) if isinstance(error, ValueError) and re.fullmatch('[a-z_]{1,60}', str(error)) else 'preflight_unconfirmed'
             result = {**context, 'operation_state': 'not_dispatched', 'send_called': False,
@@ -399,6 +479,9 @@ class Store:
                 if row['state'] != state:
                     self.audit(op, state)
             self.transaction(finish)
+        current = self.row('sends', op)
+        if current['state'] in (*TERMINAL, 'not_dispatched'):
+            self.transaction(lambda: self._checkpoint_terminal(self.row('sends', op)))
         return self.row('sends', op)
 
     def creation_result(self, op):
@@ -453,10 +536,10 @@ class Store:
                 'state': 'creation_lost_before_send'}
 
     def reconcile(self, op, result_hash):
-        """Called after the central checkpoint records a real terminal result.
+        """Durably checkpoint and acknowledge an exact terminal receipt.
 
-        A hash acknowledgment binds the reconciliation to the exact receipt.
-        It cannot release an uncertain or running operation.
+        No client file write is needed. Missing reply text remains unknown;
+        reconciliation cannot release uncertain/running work or prove recovery.
         """
         row = self.row('sends', op)
         need(row and row['state'] in (*TERMINAL, 'not_dispatched') and row['result'], 'not_terminal')
@@ -487,6 +570,7 @@ class Store:
                         (current['task'], op, *BUSY)).fetchone(), 'task_has_other_unresolved_sends')
                     self.db.execute('UPDATE tasks SET reconciled=1 WHERE id=? AND reconciled=0', (current['task'],))
                     self.audit(op, 'no_dispatch_reservation_released')
+            self._checkpoint_terminal(current)
             if not current['reconciled']:
                 self.db.execute('UPDATE sends SET reconciled=1 WHERE id=?', (op,))
                 self.audit(op, 'centrally_reconciled')
