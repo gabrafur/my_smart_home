@@ -30,6 +30,13 @@ confirma HEAD/remoto antes de vincular a correção ao horário da falha.
 recibo sem correção. Não comprova saúde permanente, ciclo diário, offsite ou
 restauração. Recibo inválido, divergente ou futuro fica desconhecido.
 
+Quando o pre-push falha em uma suíte TAP longa, o worker conserva no log privado
+até quatro trechos de falha, com até 48 linhas de 2.000 caracteres cada, além
+das últimas 160 linhas da saída. Isso mantém o diagnóstico de um teste que
+falhou antes de centenas de testes posteriores. Não exporta a saída pelo MCP,
+não reconstitui diagnósticos já descartados e não demonstra recuperação.
+O próximo ciclo natural continua exigindo sucesso da validação canônica.
+
 O recibo não cria agenda nem tópico de webhook. Os eventos atuais permanecem
 notificações HA e términos de tarefas registradas. Depois de um deploy, a
 aceitação com Eva deve consultar `backup_results` real; acesso visual ao catálogo

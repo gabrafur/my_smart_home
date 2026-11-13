@@ -334,6 +334,26 @@ test("backup retries an existing local commit after validation contention", () =
   assert.match(generatorFailure.stdout, /git-backup-reason=validation_failed/);
   assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "0");
   assert.equal(git("status", "--short", "state.txt").stdout, " M state.txt\n");
+
+  assert.equal(git("reset", "--hard", "origin/main").status, 0);
+  fs.writeFileSync(hook, "#!/bin/sh\n" +
+    "echo 'pre-push: running canonical public validation' >&2\n" +
+    "echo 'not ok 1 - early native validation failure' >&2\n" +
+    "echo '  ---' >&2\n" +
+    "echo '  error: isolated_failure_diagnostic' >&2\n" +
+    "echo '  ...' >&2\n" +
+    "i=0; while [ \"$i\" -lt 300 ]; do echo \"ok $i - later test\" >&2; i=$((i+1)); done\n" +
+    "echo 'make: *** [validate-scripts] Error 1' >&2\nexit 1\n");
+  fs.chmodSync(hook, 0o755);
+  fs.writeFileSync(path.join(repo, "state.txt"), "long validation invalid\n");
+  const longFailure = spawnSync("bash", ["scripts/git-backup.sh"], {cwd: repo, encoding: "utf8"});
+  assert.equal(longFailure.status, 1, longFailure.stderr);
+  assert.match(longFailure.stdout, /git-backup-reason=validation_failed/);
+  const retained = fs.readFileSync(path.join(repo, ".git-backup.log"), "utf8");
+  assert.match(retained, /not ok 1 - early native validation failure\n  ---\n  error: isolated_failure_diagnostic/);
+  assert.match(retained, /ok 299 - later test\nmake: \*\*\* \[validate-scripts\] Error 1/);
+  assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "0");
+  assert.equal(git("status", "--short", "state.txt").stdout, " M state.txt\n");
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
