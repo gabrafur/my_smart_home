@@ -49,6 +49,23 @@ classify_remote_error() {
   esac
 }
 
+retain_push_diagnostics() {
+  # Long TAP suites can finish hundreds of lines after the failed test. Keep
+  # bounded failure context as well as the tail; this is a private log, not a
+  # public diagnostic or evidence that the failing check has recovered.
+  printf '%s\n' "$1" | awk '
+    /^[[:space:]]*not ok [0-9]+([[:space:]]|$)/ {
+      if (remaining == 0 && blocks < 4) {
+        print "git-backup: retained TAP failure context"
+        remaining = 48
+        blocks++
+      }
+    }
+    remaining > 0 { print substr($0, 1, 2000); remaining-- }
+  '
+  printf '%s\n' "$1" | tail -n 160
+}
+
 cd "$REPO_DIR"
 
 # A operadora residencial bloqueia a porta SSH 22, mas permite o endpoint
@@ -136,7 +153,7 @@ fi
   if ! push_output=$(env -u GIT_BACKUP_RECOVERY_JOB git push "$REMOTE" "$push_ref" --quiet 2>&1); then
     # Keep the actual failed check in this private operational log; a generic
     # validation_failed code alone cannot diagnose or prevent recurrence.
-    printf '%s\n' "$push_output" | tail -n 160 >> "$LOG_FILE"
+    retain_push_diagnostics "$push_output" >> "$LOG_FILE"
     case "$push_output" in
       *"resource-safe: another broad validation is already running"*|\
       *"resource-safe: refusing validation"*)
