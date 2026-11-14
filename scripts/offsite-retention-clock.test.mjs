@@ -108,6 +108,13 @@ function cycleHarness(options = {}) {
     },
     delay: async ms => { tick += ms; },
     COMPOSE_BACKUP_NAME_PREFIX: "Daily off-site Compose v1 ",
+    runRollbackCloudContinuation: ({root}) => {
+      assert.equal(root,"/synthetic-only");
+      assert(events.includes("retention"));
+      return options.rollbackContinuation
+        ? options.rollbackContinuation(events)
+        : {state:"not_configured",retired:0};
+    },
     applyComposeRetention: async args => {
       retentionCalls++;
       assert(events.includes("remote-receipt-checked"));
@@ -273,7 +280,7 @@ test("cycle completes verified capture with eligible copies but no prune or remo
   const summary = await dailyOutput(result);
   assert.equal(summary.exitCode, 0);
   assert.match(summary.output, /capture_verified=true remote_verified=true protected=true reason=completed/);
-  assert.match(summary.output, /retention_eligible=1 retention_pruned=0 retention_mode=observe_only mqtt_coordination=not_installed\n$/);
+  assert.match(summary.output, /retention_eligible=1 retention_pruned=0 retention_mode=observe_only mqtt_coordination=not_installed rollback_state=not_configured rollback_retired=0 rollback_reason=none\n$/);
 });
 
 test("not-ready cycle result never claims verified capture or observation", async () => {
@@ -360,4 +367,25 @@ test("capture and service restoration failure cannot reach upload or observation
   await assert.rejects(h.run, /service readiness deadline exceeded/);
   assert.deepEqual(h.events, ["stop", "capture", "start", "services-ready", "cleanup"]);
   assert.equal(h.retentionCalls(), 0);
+});
+
+
+test("rollback image continuation follows the verified backup and retention", async () => {
+  let calls=0;
+  const harness=cycleHarness({rollbackContinuation: events => {
+    calls++;
+    assert(events.includes("remote-receipt-checked"));
+    assert(events.includes("retention"));
+    return {state:"observed",retired:0};
+  }});
+  const result=await harness.run();
+  assert.equal(calls,1);
+  assert.equal(result.rollback_retention.state,"observed");
+});
+
+test("failed backup cannot dispatch rollback image continuation", async () => {
+  const harness=cycleHarness({captureFailure:true,rollbackContinuation: () => {
+    assert.fail("failed backup reached image maintenance");
+  }});
+  await assert.rejects(harness.run());
 });
