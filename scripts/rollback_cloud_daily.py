@@ -15,7 +15,7 @@ FILES = ('rollback_cloud_daily.py', 'rollback_cloud_policy.py', 'rollback_cloud_
          'rollback_cloud_worker.py', 'rollback_cloud_verify_archive.py', 'rollback_cloud_locks.py', 'rollback_cloud_local.py')
 
 
-def policy():
+def policy(observation=False):
     path = ROOT/'.local-secrets/rollback-cloud-daily.json'
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     try:
@@ -25,7 +25,7 @@ def policy():
         value = json.loads(os.read(fd, 16385))
     finally:
         os.close(fd)
-    if value.get('enabled') is not True or value.get('revoked') is not False or value.get('maximum_images_per_cycle') not in (1, 2):
+    if (not observation and value.get('enabled') is not True) or value.get('revoked') is not False or value.get('maximum_images_per_cycle') not in (1, 2):
         raise ValueError('daily_policy_not_enabled')
     if value.get('maximum_compressed_bytes_per_24h') != 2 * 1024**3 or value.get('maximum_images_per_24h') != 2:
         raise ValueError('rolling_budget_policy_invalid')
@@ -58,14 +58,36 @@ def dry_run(backend):
             'exports': 0, 'uploads': 0, 'retired': 0}
 
 
-def main(arguments=None, backend_factory=None, policy_loader=policy):
+def policy_template():
+    return {
+        'schema': 'bounded-rollback-cloud-policy-v1',
+        'enabled': False,
+        'revoked': False,
+        'maximum_images_per_cycle': 2,
+        'maximum_images_per_24h': 2,
+        'maximum_compressed_bytes_per_24h': 2 * 1024**3,
+        'local_staging_minimum_free_bytes': 6 * 1024**3,
+        'local_staging_floor_free_bytes': 4 * 1024**3,
+        'allow_existing_pc_fallback': False,
+        'protected_image_ids': [],
+        'source_pins': {
+            name: hashlib.sha256((ROOT / 'scripts' / name).read_bytes()).hexdigest()
+            for name in FILES
+        },
+    }
+
+
+def main(arguments=None, backend_factory=None, policy_loader=None):
     arguments = sys.argv[1:] if arguments is None else arguments
+    if arguments == ['--policy-template']:
+        return policy_template()
     if arguments not in ([], ['--dry-run']):
-        raise ValueError('only_optional_dry_run_supported')
-    value, expected_policy = policy_loader()
+        raise ValueError('only_read_only_preview_or_template_supported')
+    load_policy = policy_loader or (lambda: policy(observation=arguments == ['--dry-run']))
+    value, expected_policy = load_policy()
     sys.path.insert(0, str(ROOT/"scripts"))
     def check_policy():
-        current, digest = policy_loader()
+        current, digest = load_policy()
         if digest != expected_policy:
             raise ValueError('policy_changed_or_revoked')
     if backend_factory is None:

@@ -12,7 +12,7 @@ from unittest.mock import patch
 import rollback_cloud_local as local
 from rollback_cloud_policy import operation_id, verify_proofs
 from rollback_cloud_cycle import run_cycle
-from test_policy import FakeBackend, MemoryLedger, IMAGE
+from test_rollback_cloud_policy import FakeBackend, MemoryLedger, IMAGE
 
 
 class FakeSave:

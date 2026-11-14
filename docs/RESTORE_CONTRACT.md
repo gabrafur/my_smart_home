@@ -515,3 +515,37 @@ A mudança de destino usa a API nativa e registra os valores anteriores e
 posteriores, preservando os demais campos. `--dry-run` da continuação mostra
 inventário, proteção e limites, com zero exportações, uploads ou retiradas. A
 primeira execução agendada deve ser verificada pelo seu próprio recibo.
+
+### Preparação em um fork
+
+O modo local requer Docker Compose, Python 3, Node.js e a integração oficial
+OneDrive configurada no Home Assistant, com pasta de backup disponível,
+credencial AppFolder e espaço remoto. O destino e a autenticação pertencem à
+instalação de quem fez o fork. O modelo de política contém somente limites,
+identidades protegidas opcionais e hashes do código público.
+
+Em um clone novo, prepare o modelo privado desativado e confira a prévia.
+
+```bash
+(
+  set -C
+  umask 077
+  mkdir -p .local-secrets
+  python3 -I -S -B scripts/rollback_cloud_daily.py --policy-template \
+    > .local-secrets/rollback-cloud-daily.json
+)
+python3 -I -S -B scripts/rollback_cloud_daily.py --dry-run
+```
+
+Revise os limites, `protected_image_ids` e o escopo do executor antes de definir
+`enabled` como `true`. `revoked: true` fecha o acesso dessa política. A opção
+`allow_existing_pc_fallback` começa em `false`. Sua habilitação exige os bindings
+do transporte privado existente, seu hash e a distribuição WSL já em execução.
+A rota local usa exclusivamente os arquivos temporários e a integração do
+próprio host. Logs operacionais, recibos privados, backups, tokens e dados de
+contas ficam nos diretórios privados da instalação.
+
+As regressões Python entram na validação canônica por
+`scripts/rollback-cloud-maintenance.test.mjs`. Os testes usam arquivos e
+backends fictícios. A prévia instalada e o recibo da execução diária têm
+propósitos de verificação próprios.
