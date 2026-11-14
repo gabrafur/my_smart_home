@@ -433,3 +433,42 @@ bin; permanent deletion and emptying the recycle bin are prohibited, and the
 runtime option is checked before every cycle. The activation dry-run found zero
 eligible candidates and performed zero removals; no copy was deleted during
 activation.
+
+## Local retention with verified cloud rollback
+
+The existing Node-RED offsite backup stage runs
+`scripts/rollback_cloud_daily.py` after completing the daily backup. Its private
+policy resides in `.local-secrets/rollback-cloud-daily.json`, owned by the
+executor with mode `0600`, source hashes, activation and revocation. The backup
+report publishes `rollback_state`, `rollback_retired` and `rollback_reason`.
+
+Selection considers up to 32 untagged Docker images at least 24 hours old.
+Running and stopped containers, Compose, versioned references and registered
+restore images protect their respective IDs. Pending Docker recovery suspends
+retirement. Rolling limits are two images and 2 GiB compressed per 24 hours.
+The executor defers work with less than 2 GiB available RAM or one-minute load
+above four.
+
+With at least 6 GiB free, the compressed archive uses the host's own temporary
+staging directory, maintaining a 4 GiB free-space floor while writing. The
+existing private PC transport can provide an explicitly enabled fallback.
+Local operation works without desktop configuration or connectivity. Archive
+validation checks the manifest, configuration, architecture and blob hashes.
+The installed OneDrive SDK uses the internal credential with
+`Files.ReadWrite.AppFolder`. The remote archive is downloaded completely and
+its SHA256 is compared with the exported archive.
+
+Retirement requires revalidated identity and references, locks, a durable
+receipt and matching archive and cloud proofs. Each image has a stable
+operation identity. An uncertain result requires observing the same receipt.
+Local staging is removed after remote verification and durable recording of
+image retirement. Recovery obtains the exact archive, verifies its SHA256 and
+loads it into Docker. Archive validation proves rollback material integrity.
+The restored service requires its own functional verification.
+
+The default native-backup destination is configured separately in Backup
+Manager. The operational policy selects only the protected OneDrive agent.
+Destination changes use the native API and record before/after values while
+preserving other fields. The continuation's `--dry-run` reports inventory,
+protection and limits with zero exports, uploads or retirements. The first
+scheduled run requires verification through its own receipt.

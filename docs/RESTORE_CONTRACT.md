@@ -476,3 +476,42 @@ OneDrive; exclusão permanente e esvaziamento da lixeira são proibidos e a opç
 de runtime é conferida antes de cada ciclo. A simulação de ativação encontrou
 zero candidatos e executou zero remoções; nenhuma cópia foi apagada nessa
 ativação.
+
+## Retenção local com rollback verificado na nuvem
+
+A etapa existente de backup externo do Node-RED executa a continuação
+`scripts/rollback_cloud_daily.py` após concluir o backup diário. A política
+privada fica em `.local-secrets/rollback-cloud-daily.json`, com proprietário do
+executor, modo `0600`, hashes das fontes, ativação e revogação. O relatório do
+backup publica `rollback_state`, `rollback_retired` e `rollback_reason`.
+
+A seleção considera até 32 imagens Docker sem tags, com idade mínima de 24
+horas. Contêineres ativos e parados, Compose, referências versionadas e imagens
+registradas de restauração protegem seus respectivos IDs. Uma recuperação
+Docker pendente suspende a retirada. O limite móvel é de duas imagens e 2 GiB
+comprimidos por 24 horas. O executor adia o trabalho com menos de 2 GiB de RAM
+disponíveis ou carga de um minuto acima de quatro.
+
+Com pelo menos 6 GiB livres, o arquivo comprimido usa armazenamento temporário
+próprio no host, mantendo piso de 4 GiB durante a escrita. O transporte privado
+existente do PC pode servir de alternativa quando habilitado. A operação local
+funciona sem a configuração ou conexão do PC. A validação do arquivo confere
+manifesto, configuração, arquitetura e hashes dos blobs. O SDK OneDrive já
+instalado usa a credencial interna com `Files.ReadWrite.AppFolder`. O arquivo
+remoto é baixado integralmente e seu SHA256 é comparado ao arquivo exportado.
+
+A retirada exige identidade revalidada, proteção das referências, locks,
+recibo durável e correspondência das provas do arquivo e da nuvem. Cada imagem
+tem operação estável. Um resultado incerto exige observar o mesmo recibo. O
+arquivo temporário local só é retirado depois da confirmação remota e do
+registro durável da retirada da imagem. A restauração consiste em obter o
+arquivo exato, conferir SHA256 e carregá-lo no Docker. A validação do arquivo
+comprova integridade do material de rollback. O funcionamento de um serviço
+restaurado exige sua própria verificação.
+
+O destino padrão dos backups nativos é configurado separadamente no Backup
+Manager. A política operacional seleciona somente o agente OneDrive protegido.
+A mudança de destino usa a API nativa e registra os valores anteriores e
+posteriores, preservando os demais campos. `--dry-run` da continuação mostra
+inventário, proteção e limites, com zero exportações, uploads ou retiradas. A
+primeira execução agendada deve ser verificada pelo seu próprio recibo.

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import crypto from "node:crypto";
+import {runRollbackCloudContinuation} from "./offsite-rollback-hook.mjs";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
@@ -1234,7 +1235,11 @@ export async function runDailyCycleCommand({
     write(`reason=${reason}\n`);
     return 1;
   }
-  write(`components=${result.components} capture_verified=${result.capture_verified} remote_verified=${result.remote_verified} protected=${result.protected} reason=${result.reason} outage_seconds=${result.outage_seconds ?? 0} backup_timestamp=${result.backup_timestamp ?? "none"} retention_eligible=${result.retention_eligible ?? 0} retention_pruned=${result.retention_pruned ?? 0} retention_mode=${result.retention_mode ?? "not_run"} mqtt_coordination=${result.mqtt_coordination ?? "unknown"}\n`);
+  const rollback = result.rollback_retention;
+  const rollbackDetail = rollback
+    ? ` rollback_state=${rollback.state} rollback_retired=${rollback.retired} rollback_reason=${rollback.reason ?? "none"}`
+    : "";
+  write(`components=${result.components} capture_verified=${result.capture_verified} remote_verified=${result.remote_verified} protected=${result.protected} reason=${result.reason} outage_seconds=${result.outage_seconds ?? 0} backup_timestamp=${result.backup_timestamp ?? "none"} retention_eligible=${result.retention_eligible ?? 0} retention_pruned=${result.retention_pruned ?? 0} retention_mode=${result.retention_mode ?? "not_run"} mqtt_coordination=${result.mqtt_coordination ?? "unknown"}${rollbackDetail}\n`);
   return result.ready ? 0 : 75;
 }
 
@@ -1386,9 +1391,11 @@ export async function runDailyCycle({
     now: new Date(),
   });
 
+  const rollbackRetention = runRollbackCloudContinuation({root: repoRoot});
   return {
     ready: true,
     reason: "completed",
+    rollback_retention: rollbackRetention,
     components: capture.components,
     capture_verified: true,
     remote_verified: true,
