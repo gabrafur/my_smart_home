@@ -3,8 +3,9 @@
 // repository and operational files. It produces evidence with identity,
 // revision, origin, time, age and collection error, turns it into tracked
 // recommendations with deduplication and history, runs only catalogued
-// automatic actions, and announces changes through one stable Home Assistant
-// persistent notification that the existing event pipeline already carries.
+// automatic actions, and announces changes through one stable private notice
+// that the existing event pipeline carries without showing it in the Home
+// Assistant frontend. Only items that need a person reach the owner.
 //
 // It never reads credentials, never restarts services, and never touches
 // household devices. The client assistant is not named here on purpose: any
@@ -49,6 +50,19 @@ export function validatePolicy(policy) {
   positive(policy.history?.max_runs, "history.max_runs", 5000);
   positive(policy.history?.max_events, "history.max_events", 5000);
   if (!/^[a-z][a-z0-9_]{2,63}$/.test(policy.notification?.notification_id ?? "")) fail("notification.notification_id");
+  if (!["private_spool", "home_assistant"].includes(policy.notification.channel)) fail("notification.channel");
+  if (policy.notification.channel === "private_spool") {
+    // The reserved prefix is what keeps the notice out of Home Assistant.
+    if (!/^eva_private_[a-z0-9_]{1,64}$/.test(policy.notification.notification_id)) fail("notification.notification_id");
+    if (typeof policy.notification.spool_dir !== "string" || !path.isAbsolute(policy.notification.spool_dir)) fail("notification.spool_dir");
+  }
+  const escalation = policy.owner_escalation;
+  if (!escalation || typeof escalation.enabled !== "boolean") fail("owner_escalation.enabled");
+  if (!/^[a-z][a-z0-9_]{2,63}$/.test(escalation.notification_id ?? "") || escalation.notification_id.startsWith("eva_private_") ||
+    escalation.notification_id === policy.notification.notification_id) fail("owner_escalation.notification_id");
+  if (!Array.isArray(escalation.priorities) || escalation.priorities.some((item) => !PRIORITIES.includes(item))) fail("owner_escalation.priorities");
+  positive(escalation.unresolved_after_hours, "owner_escalation.unresolved_after_hours", 8760);
+  positive(escalation.max_items, "owner_escalation.max_items", 20);
   const rotate = policy.auto_actions?.catalog?.rotate_worker_log;
   if (rotate) {
     if (!Array.isArray(rotate.paths) || rotate.paths.some((item) =>
@@ -300,11 +314,16 @@ export const SOURCES = [
       const base = path.join(ctx.repoRoot, "homeassistant");
       const markers = [];
       for (const dir of fs.readdirSync(base).filter((name) => /^\.[a-z0-9-]+-trigger$/.test(name))) {
-        const file = path.join(base, dir, "processing");
-        try {
-          const stat = fs.lstatSync(file);
-          markers.push({ trigger: dir, age_minutes: Math.round((ctx.now - stat.mtimeMs) / 60000) });
-        } catch { /* absent marker is the normal state */ }
+        // Every in-flight marker counts, including per-kind ones such as
+        // build-cache-processing; an absent marker is the normal state.
+        let names = [];
+        try { names = fs.readdirSync(path.join(base, dir)).filter((name) => /^(?:[a-z0-9-]+-)?processing$/.test(name)); } catch (error) { if (error.code === "ENOENT") continue; throw error; }
+        for (const name of names.sort()) {
+          try {
+            const stat = fs.lstatSync(path.join(base, dir, name));
+            markers.push({ trigger: name === "processing" ? dir : `${dir}/${name}`, age_minutes: Math.round((ctx.now - stat.mtimeMs) / 60000) });
+          } catch { /* removed between listing and stat */ }
+        }
       }
       return { markers };
     },
@@ -793,22 +812,88 @@ export function haRequest(servicePath, body, { tokenFile, host = "127.0.0.1", po
   });
 }
 
+// Private channel: one closed JSON file in the fixed spool that the notification
+// collector reads. Nothing is created in Home Assistant, so neither its
+// frontend nor a phone ever shows it. `created_at` moves on every publication
+// because the collector derives the event revision from it.
+export function writeSpoolNotice(directory, id, notice, now) {
+  const file = path.join(directory, `${id}.json`);
+  if (!notice) {
+    try { fs.unlinkSync(file); } catch (error) { if (error.code !== "ENOENT") throw error; }
+    return;
+  }
+  const body = JSON.stringify({ schema_version: 1, notification_id: id, title: notice.title.slice(0, 200),
+    message: notice.message.slice(0, 6000), created_at: iso(now) });
+  if (Buffer.byteLength(body) > 16384) throw new Error("private_notice_over_budget");
+  const temporary = path.join(directory, `.${id}.${process.pid}.tmp`);
+  const fd = fs.openSync(temporary, "wx", 0o640);
+  try { fs.fchmodSync(fd, 0o640); fs.writeSync(fd, body); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+  try { fs.renameSync(temporary, file); } catch (error) { fs.rmSync(temporary, { force: true }); throw error; }
+}
+
 async function publish(ledger, policy, now, send) {
   const digest = notificationDigest(ledger);
-  if (digest === ledger.notification.digest && !ledger.notification.pending) return { state: "unchanged" };
+  const channel = policy.notification.channel;
+  if (digest === ledger.notification.digest && !ledger.notification.pending && (ledger.notification.channel ?? "home_assistant") === channel) {
+    return { state: "unchanged", channel };
+  }
   const id = policy.notification.notification_id;
+  const notice = openRecommendations(ledger).length === 0 ? null : renderNotification(ledger, policy, now);
   try {
-    if (openRecommendations(ledger).length === 0) {
-      await send("/api/services/persistent_notification/dismiss", { notification_id: id });
-    } else {
-      await send("/api/services/persistent_notification/create", { notification_id: id, ...renderNotification(ledger, policy, now) });
-    }
-    ledger.notification = { digest, published_at: iso(now), pending: false };
-    return { state: "published" };
+    if (channel === "private_spool") writeSpoolNotice(policy.notification.spool_dir, id, notice, now);
+    else if (notice) await send("/api/services/persistent_notification/create", { notification_id: id, ...notice });
+    else await send("/api/services/persistent_notification/dismiss", { notification_id: id });
+    ledger.notification = { digest, published_at: iso(now), pending: false, channel };
+    return { state: "published", channel };
   } catch (error) {
     // Keep the old digest so the next run retries the same announcement once.
     ledger.notification.pending = true;
-    return { state: "publication_failed", reason: redact(error.message).slice(0, 120) };
+    return { state: "publication_failed", channel, reason: redact(error.code ?? error.message).slice(0, 120) };
+  }
+}
+
+// ------------------------------------------------------ owner escalation --
+// The owner hears about a recommendation only when it needs a person: it was
+// explicitly escalated for a decision, or it has a priority listed in the
+// policy and stayed unresolved past the allowed time. Everything else stays in
+// the private channel. Recovery withdraws the owner notice.
+
+export function escalatedRecommendations(ledger, policy, now) {
+  const rule = policy.owner_escalation;
+  return openRecommendations(ledger).filter((record) => record.owner_decision_required === true ||
+    (rule.priorities.includes(record.priority) && now - Date.parse(record.first_seen_at) >= rule.unresolved_after_hours * 3600000));
+}
+
+export function renderEscalation(ledger, policy, now) {
+  const items = escalatedRecommendations(ledger, policy, now);
+  const lines = items.slice(0, policy.owner_escalation.max_items).map((r) =>
+    `- **${r.priority}** ${r.title}\n  ${r.owner_decision_required ? `Decisão necessária: ${r.owner_decision_note ?? r.proposed_action}`
+      : `Sem solução há ${Math.floor((now - Date.parse(r.first_seen_at)) / 3600000)} h. Ação proposta: ${r.proposed_action}`}`);
+  return {
+    title: `Manutenção do servidor: ${items.length} item(ns) precisam da sua atenção`,
+    message: redact([...lines, items.length > lines.length ? `… e mais ${items.length - lines.length}.` : null,
+      "Os demais achados técnicos seguem com a assistente e não geram aviso aqui."].filter(Boolean).join("\n")),
+  };
+}
+
+async function publishEscalation(ledger, policy, now, send) {
+  const rule = policy.owner_escalation;
+  ledger.escalation ??= { digest: null, published_at: null, pending: false };
+  const items = rule.enabled ? escalatedRecommendations(ledger, policy, now) : [];
+  const digest = sha256(JSON.stringify(items.map((r) => [r.id, r.priority, r.signature, r.owner_decision_required === true])));
+  const empty = sha256("[]");
+  if ((digest === ledger.escalation.digest || (digest === empty && ledger.escalation.digest === null)) && !ledger.escalation.pending) {
+    return { state: "unchanged", items: items.length };
+  }
+  try {
+    if (items.length) await send("/api/services/persistent_notification/create", { notification_id: rule.notification_id, ...renderEscalation(ledger, policy, now) });
+    else await send("/api/services/persistent_notification/dismiss", { notification_id: rule.notification_id });
+    for (const record of items) if (!record.escalated_at) { record.escalated_at = iso(now); pushEvent(ledger, policy, now, "escalated_to_owner", record.id, { priority: record.priority }); }
+    ledger.escalation = { digest, published_at: iso(now), pending: false };
+    return { state: items.length ? "published" : "withdrawn", items: items.length };
+  } catch (error) {
+    ledger.escalation.pending = true;
+    return { state: "publication_failed", items: items.length, reason: redact(error.code ?? error.message).slice(0, 120) };
   }
 }
 
@@ -831,27 +916,32 @@ export async function runReview({ policy = loadPolicy(), stateDir = DEFAULT_STAT
     const actions = runAutoActions(context, ledger, findings, evidence, stateDir, now);
     const announcements = reconcile(ledger, findings, evidence, policy, now);
     let publication = { state: "not_requested" };
+    let escalation = { state: "not_requested" };
     if (publishNotification && policy.notification.enabled) {
       const tokenFile = path.join(context.repoRoot, ".local-secrets/ha-long-lived-token.txt");
-      publication = await publish(ledger, policy, now, send ?? ((servicePath, body) => haRequest(servicePath, body, { tokenFile })));
+      const deliver = send ?? ((servicePath, body) => haRequest(servicePath, body, { tokenFile }));
+      publication = await publish(ledger, policy, now, deliver);
+      escalation = await publishEscalation(ledger, policy, now, deliver);
     }
     ledger.runs.push({
       at: iso(now), duration_ms: Date.now() - started, sources: evidence.length,
       collection_errors: evidence.filter((item) => item.collection_error).map((item) => item.id),
       findings: findings.length, announcements: announcements.length, actions: actions.map((a) => `${a.action}:${a.state}`),
-      publication: publication.state, previous_run_at: last?.at ?? null,
+      publication: publication.state, channel: publication.channel ?? null, owner_escalation: escalation.state,
+      previous_run_at: last?.at ?? null,
     });
     if (ledger.runs.length > policy.history.max_runs) ledger.runs.splice(0, ledger.runs.length - policy.history.max_runs);
     writeLedger(stateDir, ledger, revision);
     fs.writeFileSync(path.join(stateDir, "latest-evidence.json"), `${JSON.stringify({ observed_at: iso(now), evidence }, null, 1)}\n`, { mode: 0o600 });
     return { state: "completed", ledger_revision: ledger.revision, findings: findings.length, announcements, actions, publication,
+      owner_escalation: escalation,
       open: openRecommendations(ledger).map((r) => ({ id: r.id, priority: r.priority, status: r.status, title: r.title })) };
   });
 }
 
 // Owner- or executor-driven status changes. `expectedRevision` is optional CAS.
 export function updateRecommendation({ stateDir = DEFAULT_STATE_DIR, policy = loadPolicy(), id, status, taskRef = null, note = null,
-  expectedRevision = null, now = Date.now() }) {
+  expectedRevision = null, ownerDecision = null, now = Date.now() }) {
   if (!["acknowledged", "dismissed", "open"].includes(status)) throw new Error("status_not_allowed");
   if (taskRef !== null && !/^[A-Za-z0-9._:-]{1,96}$/.test(taskRef)) throw new Error("task_ref_invalid");
   return withLock(stateDir, () => {
@@ -862,12 +952,18 @@ export function updateRecommendation({ stateDir = DEFAULT_STATE_DIR, policy = lo
     if (record.status === "resolved") throw new Error("recommendation_already_resolved");
     const revision = ledger.revision;
     record.status = status;
+    if (ownerDecision !== null) {
+      // Explicit request for a human decision: the next run tells the owner.
+      record.owner_decision_required = ownerDecision;
+      record.owner_decision_note = ownerDecision && note ? redact(note).slice(0, 300) : null;
+    }
     record.task_ref = taskRef ?? record.task_ref;
     record.note = note ? redact(note).slice(0, 300) : record.note;
     record.dismissed_until = status === "dismissed" ? iso(now + policy.dedupe.dismiss_default_hours * 3600000) : null;
-    pushEvent(ledger, policy, now, status, id, { task_ref: record.task_ref });
+    pushEvent(ledger, policy, now, ownerDecision === true ? "owner_decision_requested" : status, id, { task_ref: record.task_ref });
     writeLedger(stateDir, ledger, revision);
-    return { id, status, task_ref: record.task_ref, ledger_revision: ledger.revision };
+    return { id, status, task_ref: record.task_ref, owner_decision_required: record.owner_decision_required === true,
+      ledger_revision: ledger.revision };
   });
 }
 
@@ -912,8 +1008,11 @@ async function main(argv) {
     const ledger = readLedger(stateDir);
     output = { ledger_revision: ledger.revision, last_run: ledger.runs.at(-1) ?? null, notification: ledger.notification,
       enabled: policy.enabled && !fs.existsSync(path.join(stateDir, "disabled")),
-      open: openRecommendations(ledger).map(({ id, priority, risk, status, title, benefit, proposed_action, task_ref, first_seen_at, last_seen_at, occurrences }) =>
-        ({ id, priority, risk, status, title, benefit, proposed_action, task_ref, first_seen_at, last_seen_at, occurrences })),
+      owner_escalation: { ...(ledger.escalation ?? { digest: null, published_at: null, pending: false }),
+        current: escalatedRecommendations(ledger, policy, Date.now()).map((r) => r.id) },
+      open: openRecommendations(ledger).map(({ id, priority, risk, status, title, benefit, proposed_action, task_ref, first_seen_at, last_seen_at, occurrences, owner_decision_required }) =>
+        ({ id, priority, risk, status, title, benefit, proposed_action, task_ref, first_seen_at, last_seen_at, occurrences,
+          owner_decision_required: owner_decision_required === true })),
       recent_events: ledger.events.slice(-10), recent_actions: ledger.actions.slice(-5) };
   } else if (command === "show") {
     const record = readLedger(stateDir).recommendations[target];
@@ -925,6 +1024,22 @@ async function main(argv) {
     output = updateRecommendation({ stateDir, policy, id: target, status: "dismissed", note: options.note ?? null, expectedRevision });
   } else if (command === "reopen") {
     output = updateRecommendation({ stateDir, policy, id: target, status: "open", note: options.note ?? null, expectedRevision });
+  } else if (command === "escalate") {
+    // Keeps the current status; only marks that a person has to decide.
+    const current = readLedger(stateDir).recommendations[target];
+    if (!current) throw new Error("recommendation_not_found");
+    if (!options.note) throw new Error("decision_note_required");
+    output = updateRecommendation({ stateDir, policy, id: target, status: current.status === "dismissed" ? "open" : current.status,
+      note: options.note, ownerDecision: true, expectedRevision });
+  } else if (command === "retire-legacy-notice") {
+    // One-off removal of the Home Assistant notice used before the private
+    // channel. Run it only after the private notice was read through the MCP.
+    const legacy = "proactive_maintenance_review";
+    if (policy.notification.channel !== "private_spool") throw new Error("private_channel_not_active");
+    if (readLedger(stateDir).notification.channel !== "private_spool") throw new Error("private_publication_not_recorded");
+    await haRequest("/api/services/persistent_notification/dismiss", { notification_id: legacy },
+      { tokenFile: path.join(REPO_ROOT, ".local-secrets/ha-long-lived-token.txt") });
+    output = { state: "legacy_notice_dismissed", notification_id: legacy };
   } else if (command === "sources") {
     output = SOURCES.map(({ id, origin }) => ({ id, origin }));
   } else if (command === "evidence") {

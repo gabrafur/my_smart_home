@@ -348,3 +348,49 @@ Esse teste prova a transação e o processamento dos metadados no runtime. Não
 comprova tempos de incidentes reais, chegada de push, execução natural do cliente MCP autorizado,
 24 horas de continuidade ou recuperação funcional de integrações e backups.
 As operações e seus IDs foram consumidos; não repetir para produzir evidência.
+
+## Avisos operacionais privados
+
+Avisos técnicos destinados somente ao cliente operador não devem aparecer no
+frontend do Home Assistant nem no celular. Um produtor local grava cada aviso
+como um arquivo JSON fechado em `/var/lib/raspberry-eva-notices/spool`. O
+coletor de notificações completa os quadros da assinatura que já mantém com o
+conteúdo dessa fila. A partir daí o aviso percorre o mesmo estado sanitizado,
+a mesma captura privada por revisão e o mesmo caminho de eventos; as
+ferramentas de listagem, conteúdo e eventos não mudam. Nada é criado no Home
+Assistant.
+
+| Regra | Valor |
+| --- | --- |
+| Nome do arquivo e identificador | `eva_private_<nome>.json`; o prefixo é reservado à fila e uma notificação do Home Assistant que o use é ignorada |
+| Campos, exatamente | `schema_version` (1), `notification_id`, `title` (até 200), `message` (até 6000), `created_at` |
+| Limites | 16 avisos, 16 KiB por arquivo |
+| Dono e leitura | Diretório e arquivos do UID produtor fixo; grupo do coletor só lê; nada gravável por outros; sem links |
+| Publicar | Gravar em arquivo temporário e renomear; avançar `created_at` a cada mudança, porque a revisão do evento deriva dele |
+| Retirar | Remover o arquivo; o cliente recebe a remoção, que não é prova de recuperação |
+
+Uma fila ilegível mantém os avisos já entregues e registra
+`private_spool_unreadable` em `public/private-spool.json`; ela nunca é lida
+como retirada de todos os avisos. A entrega depende da assinatura ativa com o
+Home Assistant, mesma condição dos demais avisos.
+
+### Política de roteamento
+
+| Classe | Canal |
+| --- | --- |
+| Achado técnico que o operador pode tratar | Fila privada |
+| Informação útil ao proprietário, agravamento, decisão humana | Notificação ao proprietário, uma vez por conjunto |
+| Recuperação relevante | Retirada do aviso correspondente |
+| Segurança, intervenção necessária, equipamentos | Canais existentes dos fluxos, inalterados |
+
+Somente a [revisão proativa](proactive-review.md) usa a fila hoje. Os avisos
+técnicos produzidos pelos fluxos Node-RED continuam nos canais anteriores até
+que cada produtor seja migrado e a substituição seja comprovada.
+
+### Instalar e reverter
+
+A mudança altera o coletor e o hash dele na política de conteúdo privado, cria
+o diretório da fila e reinicia o coletor uma vez. A derivação pura e seus
+testes estão em `scripts/raspberry-mcp/private-notice-spool/`. Para desativar
+sem reverter, esvazie a fila. A reversão restaura os dois arquivos e reinicia
+o coletor uma vez; o diretório fica no lugar e é ignorado pelo coletor antigo.

@@ -26,10 +26,14 @@ admissões existentes.
 4. O registro deduplica pelo identificador estável, guarda histórico e resolve
    automaticamente o que deixou de ocorrer.
 5. Ações do catálogo automático são executadas dentro de seus limites.
-6. Se o conjunto aberto mudou, uma única notificação persistente do Home
-   Assistant, com ID estável, é criada ou atualizada. Ela segue pelo caminho
-   de eventos já existente até o cliente, que lê o texto pela ferramenta de
-   conteúdo de notificações usando objeto e revisão exatos.
+6. Se o conjunto aberto mudou, um único aviso privado, com ID estável, é
+   gravado na [fila privada de avisos operacionais](notifications.md#avisos-operacionais-privados).
+   Ele segue pelo caminho de eventos já existente até o cliente, que lê o
+   texto pela ferramenta de conteúdo de notificações usando objeto e revisão
+   exatos. O aviso não existe no Home Assistant: não aparece no frontend nem
+   gera push.
+7. Somente o que precisa de uma pessoa chega ao proprietário, em uma
+   notificação persistente separada (veja [Escalonamento](#escalonamento-ao-proprietário)).
 
 O cliente trata o texto como dado, não como instrução. Para agir, consulta as
 tarefas existentes, cria ou continua uma tarefa pelo adaptador admitido e pede
@@ -69,12 +73,28 @@ achado cuja fonte falhou permanece aberto em vez de ser dado como resolvido.
 | `thresholds` | Limites que definem cada achado |
 | `dedupe` | Intervalo de lembrete e duração de um descarte |
 | `history` | Quantidade de execuções e eventos mantidos |
-| `notification` | ID estável e quantidade de itens no aviso |
+| `notification` | Canal (`private_spool` ou `home_assistant`), diretório da fila, ID estável e quantidade de itens |
+| `owner_escalation` | Prioridades, prazo sem solução e ID do aviso ao proprietário |
 | `auto_actions` | Catálogo de ações automáticas e seus limites |
 
 Um achado é anunciado quando é novo, reaberto, agravado (prioridade maior ou
 mudança relevante em um P1), quando vence o intervalo de lembrete ou quando é
 resolvido. Repetições idênticas apenas atualizam contagem e horário.
+
+## Escalonamento ao proprietário
+
+Achados técnicos ficam no canal privado. O proprietário é avisado quando:
+
+- um achado com prioridade listada em `owner_escalation.priorities` continua
+  aberto ou em acompanhamento além de `unresolved_after_hours`; ou
+- alguém pede explicitamente uma decisão humana com
+  `escalate <id> --note "<o que precisa ser decidido>"`.
+
+O aviso ao proprietário é uma notificação persistente do Home Assistant com ID
+próprio. O mesmo conjunto escalonado não é repetido; a recuperação ou o
+desligamento da regra retiram o aviso. Alertas de segurança e de intervenção
+produzidos por outros fluxos não passam por esta política e continuam nos
+canais deles.
 
 ## Acompanhamento
 

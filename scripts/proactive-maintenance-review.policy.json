@@ -32,8 +32,19 @@
   },
   "notification": {
     "enabled": true,
-    "notification_id": "proactive_maintenance_review",
+    "channel": "private_spool",
+    "spool_dir": "/var/lib/raspberry-eva-notices/spool",
+    "notification_id": "eva_private_maintenance_review",
     "max_items": 8
+  },
+  "owner_escalation": {
+    "enabled": true,
+    "notification_id": "maintenance_owner_attention",
+    "priorities": [
+      "P1"
+    ],
+    "unresolved_after_hours": 24,
+    "max_items": 5
   },
   "paths": {
     "peer_proof": "/usr/local/lib/raspberry-task-control/task-peer-v2.json",

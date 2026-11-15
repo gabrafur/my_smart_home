@@ -38,8 +38,21 @@ const replace = (evidence, id, data, error = null) => evidence.map((item) => (it
 function fixtureRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "proactive-review-"));
   fs.mkdirSync(path.join(root, "state"));
-  return { root, stateDir: path.join(root, "state"), cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
+  fs.mkdirSync(path.join(root, "spool"));
+  return { root, stateDir: path.join(root, "state"), spool: path.join(root, "spool"), cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
 }
+
+// Tests never touch the host spool: every policy points at the fixture.
+const fixturePolicy = (fixture, change = () => {}) => {
+  const value = policy();
+  value.notification.spool_dir = fixture.spool;
+  change(value);
+  return value;
+};
+const privateNotice = (fixture) => {
+  const file = path.join(fixture.spool, "eva_private_maintenance_review.json");
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : null;
+};
 
 test("versioned policy is valid and rejects unsafe rotation paths", () => {
   const value = policy();
@@ -183,7 +196,7 @@ test("notification is bounded, redacted and changes only with the open set", () 
 import * as review from "./proactive-maintenance-review.mjs";
 
 function patchedRun(fixture, evidence, now, options = {}) {
-  const value = options.policy ?? policy();
+  const value = options.policy ?? fixturePolicy(fixture);
   const ctx = createContext({ policy: value, repoRoot: fixture.root, now });
   const sources = evidence.map((item) => ({ id: item.id, origin: item.origin, collect: () => {
     if (item.collection_error) throw new Error(item.collection_error);
@@ -192,34 +205,108 @@ function patchedRun(fixture, evidence, now, options = {}) {
   return review.runReview({ policy: value, stateDir: fixture.stateDir, now, ctx: { ...ctx, sources }, ...options });
 }
 
-test("run persists the ledger, publishes once and retries a failed publication", async () => {
+test("run persists the ledger, publishes privately once and retries a failed publication", async () => {
   const fixture = fixtureRepo();
   try {
     const sent = [];
-    let fail = true;
-    const send = async (servicePath, body) => { if (fail) throw new Error("home_assistant_api_503"); sent.push({ servicePath, body }); };
+    const send = async (servicePath, body) => { sent.push({ servicePath, body }); };
     const failing = replace(healthy(), "backup.git_result", { status: "failed", reason: "validation_failed", age_hours: 1 });
+    fs.chmodSync(fixture.spool, 0o500);
     const first = await patchedRun(fixture, failing, NOW, { send });
     assert.equal(first.publication.state, "publication_failed");
     assert.equal(readLedger(fixture.stateDir).notification.pending, true);
-    fail = false;
+    fs.chmodSync(fixture.spool, 0o750);
     const second = await patchedRun(fixture, failing, NOW + HOUR, { send });
-    assert.equal(second.publication.state, "published");
+    assert.deepEqual([second.publication.state, second.publication.channel], ["published", "private_spool"]);
     assert.equal(second.announcements.length, 0, "no duplicate announcement");
+    const notice = privateNotice(fixture);
+    assert.deepEqual(Object.keys(notice).sort(), ["created_at", "message", "notification_id", "schema_version", "title"]);
+    assert.equal(notice.notification_id, "eva_private_maintenance_review");
+    assert.equal(notice.created_at, new Date(NOW + HOUR).toISOString());
+    assert.match(notice.message, /validation_failed/);
+    assert.equal(fs.statSync(path.join(fixture.spool, "eva_private_maintenance_review.json")).mode & 0o777, 0o640);
     const third = await patchedRun(fixture, failing, NOW + 2 * HOUR, { send });
     assert.equal(third.publication.state, "unchanged");
-    assert.equal(sent.length, 1);
-    assert.equal(sent[0].servicePath, "/api/services/persistent_notification/create");
-    assert.equal(sent[0].body.notification_id, "proactive_maintenance_review");
+    assert.equal(privateNotice(fixture).created_at, notice.created_at, "an unchanged set is not republished");
+    // A technical finding alone never reaches Home Assistant or a phone.
+    assert.deepEqual(sent, []);
     const fourth = await patchedRun(fixture, healthy(), NOW + 3 * HOUR, { send });
     assert.deepEqual(fourth.announcements.map((a) => a.reason), ["resolved"]);
-    assert.equal(sent.at(-1).servicePath, "/api/services/persistent_notification/dismiss");
+    assert.equal(privateNotice(fixture), null, "recovery withdraws the private notice");
+    assert.deepEqual(sent, []);
+    assert.deepEqual(fs.readdirSync(fixture.spool), [], "no temporary file is left behind");
     const ledger = readLedger(fixture.stateDir);
     assert.equal(ledger.revision, 4);
     assert.equal(ledger.runs.length, 4);
+    assert.equal(ledger.runs.at(-1).channel, "private_spool");
     assert.equal(fs.statSync(path.join(fixture.stateDir, "ledger.json")).mode & 0o777, 0o600);
     assert.ok(!fs.existsSync(path.join(fixture.stateDir, "lock")), "lock released after async run");
+  } finally { fs.chmodSync(fixture.spool, 0o750); fixture.cleanup(); }
+});
+
+test("owner hears only about overdue priority items or explicit decisions, once, and recovery withdraws it", async () => {
+  const fixture = fixtureRepo();
+  try {
+    const sent = [];
+    const send = async (servicePath, body) => { sent.push({ servicePath, body }); };
+    const failing = replace(healthy(), "backup.git_result", { status: "failed", reason: "validation_failed", age_hours: 1 });
+    const first = await patchedRun(fixture, failing, NOW, { send });
+    assert.equal(first.open[0].priority, "P1");
+    assert.equal(first.owner_escalation.state, "unchanged");
+    await patchedRun(fixture, failing, NOW + 23 * HOUR, { send });
+    assert.deepEqual(sent, [], "inside the allowed time the item stays private");
+
+    const overdue = await patchedRun(fixture, failing, NOW + 25 * HOUR, { send });
+    assert.deepEqual([overdue.owner_escalation.state, overdue.owner_escalation.items], ["published", 1]);
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].servicePath, "/api/services/persistent_notification/create");
+    assert.equal(sent[0].body.notification_id, "maintenance_owner_attention");
+    assert.match(sent[0].body.message, /Sem solução há 25 h/);
+    await patchedRun(fixture, failing, NOW + 30 * HOUR, { send });
+    assert.equal(sent.length, 1, "the same escalated set is not repeated");
+    assert.ok(readLedger(fixture.stateDir).events.some((event) => event.type === "escalated_to_owner"));
+
+    const recovered = await patchedRun(fixture, healthy(), NOW + 31 * HOUR, { send });
+    assert.equal(recovered.owner_escalation.state, "withdrawn");
+    assert.equal(sent.at(-1).servicePath, "/api/services/persistent_notification/dismiss");
+    assert.equal(sent.at(-1).body.notification_id, "maintenance_owner_attention");
+
+    // A lower priority item reaches the owner only through an explicit request.
+    const grown = replace(healthy(), "logs.sizes", { total_bytes: 9e6, largest: [{ path: ".kia-uvo-promotion.cron.log", bytes: 9e6 }] });
+    const lower = await patchedRun(fixture, grown, NOW + 40 * HOUR, { send });
+    const id = lower.open[0].id;
+    assert.notEqual(lower.open[0].priority, "P1");
+    await patchedRun(fixture, grown, NOW + 400 * HOUR, { send });
+    assert.equal(sent.length, 2, "an old low priority item alone is not escalated");
+    const marked = updateRecommendation({ stateDir: fixture.stateDir, policy: fixturePolicy(fixture), id, status: "open",
+      ownerDecision: true, note: "apagar ou manter o histórico?", now: NOW + 401 * HOUR });
+    assert.equal(marked.owner_decision_required, true);
+    const decided = await patchedRun(fixture, grown, NOW + 402 * HOUR, { send });
+    assert.equal(decided.owner_escalation.state, "published");
+    assert.match(sent.at(-1).body.message, /Decisão necessária: apagar ou manter o histórico\?/);
+
+    const failingSend = async () => { throw new Error("home_assistant_api_503"); };
+    const off = fixturePolicy(fixture, (value) => { value.owner_escalation.enabled = false; });
+    const disabled = await patchedRun(fixture, grown, NOW + 403 * HOUR, { send: failingSend, policy: off });
+    assert.equal(disabled.owner_escalation.state, "publication_failed");
+    assert.equal(readLedger(fixture.stateDir).escalation.pending, true);
+    const retried = await patchedRun(fixture, grown, NOW + 404 * HOUR, { send, policy: off });
+    assert.equal(retried.owner_escalation.state, "withdrawn", "disabling escalation withdraws the owner notice");
   } finally { fixture.cleanup(); }
+});
+
+test("policy keeps the private notice out of Home Assistant by construction", () => {
+  const bad = (change) => { const value = policy(); change(value); assert.throws(() => validatePolicy(value)); };
+  bad((value) => { value.notification.notification_id = "proactive_maintenance_review"; });
+  bad((value) => { value.notification.spool_dir = "relative/spool"; });
+  bad((value) => { value.notification.channel = "mobile_push"; });
+  bad((value) => { value.owner_escalation.notification_id = "eva_private_owner"; });
+  bad((value) => { value.owner_escalation.priorities = ["P0"]; });
+  bad((value) => { delete value.owner_escalation; });
+  const legacy = policy();
+  legacy.notification.channel = "home_assistant";
+  legacy.notification.notification_id = "proactive_maintenance_review";
+  assert.doesNotThrow(() => validatePolicy(legacy));
 });
 
 test("revocation marker and disabled policy stop the review without effects", async () => {
@@ -316,4 +403,24 @@ test("CLI lists sources and reports an unknown source as an error", () => {
   const unknown = spawnSync(process.execPath, [script, "evidence", "not.registered"], { encoding: "utf8" });
   assert.equal(unknown.status, 1);
   assert.match(unknown.stderr, /source_not_registered/);
+});
+
+test("stale marker source sees per-kind in-flight markers, not only the generic one", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "review-markers-"));
+  try {
+    const dir = path.join(root, "homeassistant", ".storage-maintenance-trigger");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(path.join(root, "homeassistant", ".other-trigger"));
+    const old = new Date(NOW - 3 * 3600 * 1000);
+    for (const name of ["build-cache-processing", "processing", "manual-trigger", ".processor.lock"]) {
+      fs.writeFileSync(path.join(dir, name), "");
+      fs.utimesSync(path.join(dir, name), old, old);
+    }
+    const source = SOURCES.find((item) => item.id === "workers.stale_markers");
+    const { markers } = source.collect(createContext({ policy: loadPolicy(DEFAULT_POLICY_PATH), repoRoot: root, now: NOW }));
+    assert.deepEqual(markers, [
+      { trigger: ".storage-maintenance-trigger/build-cache-processing", age_minutes: 180 },
+      { trigger: ".storage-maintenance-trigger", age_minutes: 180 },
+    ]);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
