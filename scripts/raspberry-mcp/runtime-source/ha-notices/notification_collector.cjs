@@ -17,15 +17,16 @@ function load(directory){
  try{fd=fs.openSync(target,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);const s=fs.fstatSync(fd);if(!s.isFile()||s.nlink!==1||s.uid!==process.getuid()||(s.mode&0o077)||s.size>524288)throw Error('invalid_cache');return JSON.parse(fs.readFileSync(fd,'utf8'));}
  catch(e){if(e.code==='ENOENT')return null;throw e;}finally{if(fd!==undefined)fs.closeSync(fd);}
 }
-function connect({WebSocket,token,expectedUserHash,allowAdministrativeIdentity=false,state,publish,clock=Date.now,onTerminal=()=>{},onReconnect=()=>{}}){
+function connect({WebSocket,token,expectedUserHash,allowAdministrativeIdentity=false,state,publish,clock=Date.now,onTerminal=()=>{},onReconnect=()=>{},serviceProbe=null,privateCapture=null}){
  if(typeof expectedUserHash!=='string'||!/^[a-f0-9]{64}$/.test(expectedUserHash))throw Error('identity_binding_required');
+ privateCapture?.reconnect();
  let ended=false,authenticated=false,roleRequested=false,identityVerified=false,subscribed=false,lastPing=0;
  const ws=new WebSocket('ws://127.0.0.1:8123/api/websocket',{maxPayload:262144,handshakeTimeout:5000,perMessageDeflate:false});
- const finish=(reason,terminal=false)=>{if(ended)return;ended=true;clearTimeout(deadline);clearInterval(heartbeat);state.failure(reason);try{publish()}catch{}ws.terminate();terminal?onTerminal():onReconnect();};
+ const finish=(reason,terminal=false)=>{if(ended)return;ended=true;clearTimeout(deadline);clearInterval(heartbeat);try{serviceProbe?.stop();}catch{}privateCapture?.failure();state.failure(reason);try{publish()}catch{}ws.terminate();terminal?onTerminal():onReconnect();};
  const deadline=setTimeout(()=>finish('subscription_refused'),10000);
  const heartbeat=setInterval(()=>{
   if(ended)return;
-  if(process.memoryUsage().rss>96*1048576){finish('resource_budget_exceeded',true);return;}
+  if(process.memoryUsage().rss>160*1048576){finish('resource_budget_exceeded',true);return;}
   if(subscribed&&lastPing&&clock()-state.lastPong>10000){finish('pong_timeout');return;}
   if(subscribed){lastPing=clock();ws.ping();try{publish()}catch{finish('storage_failed',true)}}
  },5000);
@@ -42,9 +43,9 @@ function connect({WebSocket,token,expectedUserHash,allowAdministrativeIdentity=f
   }
   else if(msg.type==='auth_invalid')finish('auth_failed',true);
   else if(msg.type==='result'&&msg.id===2&&!msg.success)finish('subscription_refused',true);
-  else if(msg.type==='event'&&msg.id===2){if(!identityVerified||!subscribed&&msg.event?.type!=='current')throw Error('invalid_response');state.apply(msg.event,clock(),received);subscribed=true;clearTimeout(deadline);publish();}
+  else if(msg.type==='event'&&msg.id===2){if(!identityVerified||!subscribed&&msg.event?.type!=='current')throw Error('invalid_response');const observed=clock();state.apply(msg.event,observed,received);try{privateCapture?.observe(msg.event,[...state.current.values()],new Date(observed).toISOString());}catch{privateCapture?.collectionFailure();}const first=!subscribed;subscribed=true;clearTimeout(deadline);if(first){try{serviceProbe?.start();}catch{/* Native notices remain independent. */}}publish();}
  }catch{finish('invalid_response',true)}});
- return {stop:()=>{ended=true;clearTimeout(deadline);clearInterval(heartbeat);ws.terminate();}};
+ return {stop:()=>{ended=true;clearTimeout(deadline);clearInterval(heartbeat);privateCapture?.failure();try{serviceProbe?.stop();}catch{}ws.terminate();}};
 }
 function main(){
  if(process.getuid()===0||process.argv.length!==2)throw Error('fixed_nonroot_entrypoint_required');
@@ -56,9 +57,22 @@ function main(){
  try{const s=fs.fstatSync(identityFd);if(!s.isFile()||s.uid!==0||s.nlink!==1||(s.mode&0o022)||s.size>1024)throw Error('identity_binding_required');identity=JSON.parse(fs.readFileSync(identityFd,'utf8'));}finally{fs.closeSync(identityFd);}
  if(!['system-read-only','approved_existing_administrator'].includes(identity.role))throw Error('approved_identity_required');
  const WebSocket=require('./vendor/ws');const state=new NotificationState(load(STATE));
- const publish=()=>{const snapshot=state.snapshot(Date.now());atomic(STATE,'cache.json',snapshot,0o600);atomic(STATE+'/public','snapshot.json',snapshot,0o640);};
+ let privateCapture=null;
+ try{const {createPrivateCapture}=require('./private_capture.cjs');privateCapture=createPrivateCapture();}catch{/* No grant or failure keeps legacy notices independent. */}
+ const publish=()=>{const snapshot=state.snapshot(Date.now());
+  snapshot.private_content=privateCapture?privateCapture.status():{state:'not_activated_or_unavailable',collection_error:'private_content_access_not_activated'};
+  atomic(STATE,'cache.json',snapshot,0o600);atomic(STATE+'/public','snapshot.json',snapshot,0o640);
+  if(privateCapture)try{atomic(STATE+'/public','private-events.json',privateCapture.events(),0o640);}catch{privateCapture.collectionFailure();}
+ };
+ let serviceProbe=null;try{
+ const scopeFd=fs.openSync('/usr/local/lib/raspberry-ha-notices/icloud-readiness.json',fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);let scope;
+ try{const s=fs.fstatSync(scopeFd);if(!s.isFile()||s.uid!==0||s.nlink!==1||(s.mode&0o022)||s.size>2048)throw Error('readiness_scope_required');scope=JSON.parse(fs.readFileSync(scopeFd,'utf8'));}finally{fs.closeSync(scopeFd);}
+ if(scope.schema_version!==1||scope.minimum_poll_seconds!==60||typeof scope.expires_at!=='number'||scope.enabled!==true)throw Error('readiness_scope_required');
+ const {ServiceProbe}=require('./service_probe.cjs');
+ serviceProbe=new ServiceProbe(token,snapshot=>atomic(STATE+'/public','icloud-service.json',snapshot,0o640),{expiry:scope.expires_at,revoked:()=>fs.existsSync('/run/raspberry-icloud-read/revoked')});
+ }catch{/* Optional readiness failure never stops the original notification observer. */}
  publish();let attempt=0,connection,retry;
- const start=()=>{connection=connect({WebSocket,token,expectedUserHash:identity.user_id_sha256,allowAdministrativeIdentity:identity.role==='approved_existing_administrator',state,publish,onTerminal:()=>{process.exitCode=78;},onReconnect:()=>{retry=setTimeout(start,Math.min(60000,5000*2**Math.min(attempt++,4)));}})};
+ const start=()=>{connection=connect({WebSocket,token,expectedUserHash:identity.user_id_sha256,allowAdministrativeIdentity:identity.role==='approved_existing_administrator',state,publish,serviceProbe,privateCapture,onTerminal:()=>{process.exitCode=78;},onReconnect:()=>{retry=setTimeout(start,Math.min(60000,5000*2**Math.min(attempt++,4)));}})};
  start();process.once('SIGTERM',()=>{clearTimeout(retry);connection?.stop();state.failure('connection_closed');try{publish()}catch{}process.exitCode=0;});
 }
 module.exports={atomic,load,connect};

@@ -6,27 +6,31 @@
     "PROPOSAL.json": "037cc726c49e2f9f38005b71a217b737a8acf926f6fc07ab7d2d9ba8fc41ffa7",
     "README.md": "ec56ac8363f8752e72948de4e2ac7bec8dbd044f28023eefea7043d42db5b708",
     "bootstrap.py": "3ca2815a446f64350030a806b6802c756df684665538a76b0ab7593ae7d03630",
-    "coordination.py": "2fb15385a48325478442946cea0e4dd357c635b57ce002a02c948f101698584d",
+    "coordination.py": "83c2b8247b72532b8922ca687b890ff526295088e457c73a5ccae751fba2185b",
     "core-preservation-evidence.json": "ce74f7f4ca3af62eabf6b253fb0ada37218b05868270422dfe5c68d7190bf1e8",
     "core_preservation_harness.cjs": "1cd7a6f1e1b95dc6880970f1c9ba4e0950a5cca5062bf801a120e8c08caaacd5",
-    "engine.py": "2e7fff12647a9eed0262d39fd3f52256b205a9865e68853cfd5c74bd45f607e5",
-    "fixed_transport.py": "9e3fabaae2b742aa94c2ec75923ddf089e6a0742e106f2fe79908cba5ca8e4d2",
+    "engine.py": "7f1c72be495023e5bc681b45420a4aa3bbce0cd2c26e799d3e984fc31f023c6c",
+    "fixed_transport.py": "ece5192e382afcf118fa28a4c9155fa4e97b9597adc1f3f3026fa3041dd2e1c3",
     "frontend/nodered-admin-entry.mjs": "0a650c159484f2af86f8868ff2d674b98c16edbef8a776c2fec19570e0ed031a",
     "frontend/nodered-admin-parser.mjs": "698f3c56c2b28796a3c4cfb5174c421e02dcfbe171eb0ef637e108632f0b7cec",
     "frontend/nodered-admin-route.mjs": "953b1073b26f39ad84c0d170d39bb0324b96bf88ff46be908310560cbf98bd68",
     "frontend/test-nodered-admin.mjs": "6c83cdf6b87f7896b2dc7749e01a5fcac4bc4893b680f6d6c3759908ba05ea19",
-    "gateway.py": "7820fb964f32367dd115f8a5725f619667d13eab53eccb4afba792f0a1ae7360",
+    "gateway.py": "f75ce414397aece934d8305ad8aa14ee36a07b2437e050287b6ff6f27ed8b970",
     "lighting.patch": "992552b7300cd9458c21ee25cab1ec2c3b8956a18d431ae3e1dfc4c09bc7391c",
-    "native_guard.py": "f1b74398008951d37483a03588f4e110ea67cf790a1a8c00889366f81eefe5a7",
+    "native_guard.py": "8eff3f096d359787f82283048a2f218cc6781c7b79b8856da63f92a42cc84017",
+    "process_discovery.py": "20b88bb245e463602f71414f6f66d2969fd1f936e3c2ec7294cc895efc41060e",
     "public_source_validator.py": "70e46341e91ad2ee7fb3453165b68f5ef5c628b5ba667502dbc4233817d9294e",
     "systemd/nodered-admin-instance.service.in": "e9b3b220a12231ee1020a06390ad1d0913a3f75426b966e92dcc3653646b9545",
     "systemd/raspberry-nodered-admin.socket": "38a2bdbb77c36b29edf15fec612a8cc5a77f414d482ec3fbb3db9e980a773e5b",
     "test_engine.py": "8653f4d34608b5fbd27e87969e46fe0202f3a6de5908a038f440ddb771816bde",
-    "test_fixed_transport.py": "17ea6c6986bb0e6bfc9fbe78ca84db457a843c622b00a620f0d73600dfbe0410",
+    "test_fixed_transport.py": "f67808fae5b556ba7eee7a76007991b87d90ecf25425dcccdcf78c3c34eef674",
     "test_native.py": "3a94a5224813fac6c4e9ddaeb4c815b8a25e29e49dbcb1672ca4f5fcd956315e",
-    "test_native_guard.py": "5049a0f26de2b5e88bd8bebe0244c3a1150d813899bcc82853ccdaaa63505a09",
+    "test_native_guard.py": "ed797d2d5cdda227f63ebdfedc73b3e94c0eacb4b1be750afa858d598e6d5324",
     "test_peer.py": "d398cad0ccc7ecd857d801c925678034a60d2ce613c40297c9003e016a56c2ee",
-    "test_public_source_validator.py": "279968fa6fe83f0666a179530f8e7a381676d2d35b0a3dfb03240d2e85bee5a6"
+    "test_policy_diagnostic_classification.py": "cde16f2dc7a6765726b629108a19ee5ff630f462a9590f7e258700c3b397fa1e",
+    "test_process_discovery.py": "447d5b0611cb58244c4766e053c2b764811bb04d74a69b775136da6dedbcb95d",
+    "test_public_source_validator.py": "279968fa6fe83f0666a179530f8e7a381676d2d35b0a3dfb03240d2e85bee5a6",
+    "test_session_cleanup.py": "c6726db29598bca1cccf612f5ccb81bbbcc6ec6184f4f0dd20914348ef10836d"
   },
   "proposed_root_modules": [
     "bootstrap.py",
@@ -46,5 +50,8 @@
     "systemd/raspberry-nodered-admin.socket",
     "systemd/nodered-admin-instance.service.in"
   ],
-  "lighting_patch_is_review_only": true
+  "lighting_patch_is_review_only": true,
+  "reviewed_helpers_not_automatically_installed": [
+    "process_discovery.py"
+  ]
 }

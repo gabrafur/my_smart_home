@@ -46,7 +46,8 @@ LEDGERS = {
 SCHEMAS = {
  'task': {'tasks': 'id task_key spec_hash thread state created updated reconciled',
           'sends': 'id task input_hash state turn created updated result reconciled',
-          'audit': 'seq id state at', 'creation_results': 'id result'},
+          'audit': 'seq id state at', 'creation_results': 'id result',
+          'result_checkpoints': 'id result_hash terminal_state reply_available recorded'},
  'legacy': {'jobs': 'id thread intent state created updated attempts turn result',
             'audit': 'seq id state at',
             'repair_receipts': 'id task result_hash result ack'},

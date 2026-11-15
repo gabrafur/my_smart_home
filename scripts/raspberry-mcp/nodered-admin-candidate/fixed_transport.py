@@ -4,6 +4,14 @@ The sealed parent alone supplies credentials and proves the return peer.
 import http.client
 import ipaddress
 import json
+import time
+
+PEER_PRECHECK_SECONDS = 10.0
+TRANSIENT_PEER_ERRORS = frozenset({
+    'container_or_descendant_read_race',
+    'transient_process_unavailable',
+    'listener_fd_read_race',
+})
 
 class Refused(ValueError):
     pass
@@ -21,6 +29,22 @@ def decode(raw):
         return result
     return json.loads(raw, object_pairs_hook=unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(Refused('nonfinite_response')))
+
+def passive_peer_precheck(peer_check):
+    """At most two passive proofs; never retries an HTTP request."""
+    deadline = time.monotonic() + PEER_PRECHECK_SECONDS
+    for attempt in range(2):
+        try:
+            need(peer_check() is True, 'return_peer_identity_unconfirmed')
+            break
+        except ValueError as error:
+            transient = (len(error.args) == 1 and type(error.args[0]) is str
+                         and error.args[0] in TRANSIENT_PEER_ERRORS)
+            if attempt or not transient or time.monotonic() >= deadline:
+                raise
+    need(time.monotonic() < deadline, 'native_precheck_deadline_exceeded')
+    return True
+
 
 class FixedTransport:
     """Only /auth/token, /flows and /auth/revoke; no redirects or retry.
@@ -55,7 +79,7 @@ class FixedTransport:
     def _request(self, method, route, payload=None):
         need((method,route) in {('POST','/auth/token'),('GET','/flows'),('POST','/flows'),('POST','/auth/revoke')},
              'fixed_method_required')
-        need(self._peer_check() is True, 'return_peer_identity_unconfirmed')
+        passive_peer_precheck(self._peer_check)
         headers = {'Node-RED-API-Version':'v2','Accept':'application/json'}
         body = None
         if payload is not None:

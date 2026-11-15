@@ -26,6 +26,18 @@ ATTESTATIONS = STATE / 'attestations'
 REVOKED = STATE / 'revoked.json'
 SESSIONS = STATE / 'sessions'
 CLEANUP_BLOCK = STATE / 'session-unconfirmed.json'
+# Bounded all-or-nothing wait for the shared locks; nothing is held while
+# waiting, so a writer never blocks another holder (minute-start cron workers
+# and catalogue requests contend for the same files).
+LOCK_WAIT_SECONDS = 8.0
+LOCK_WAIT_TOTAL_SECONDS = 12.0
+# Own-session revocation has a separate bounded reserve that earlier waits
+# in the same transaction cannot consume. It ends early enough for the
+# revoke's peer proof (<=10 s), one HTTP revoke (<=12 s) and the receipt to fit
+# RuntimeMaxSec=45 measured from this module's import.
+CLEANUP_LOCK_WAIT_SECONDS = 15.0
+CLEANUP_LOCK_DEADLINE_SECONDS = 20.0
+PROCESS_STARTED = time.monotonic()
 LOCKS = (
     '/tmp/my-smart-home-public-validation.lock',
     '/mnt/data/docker/.daily-maintenance.lock',
@@ -146,23 +158,49 @@ class RootCoordinator:
              'policy_changed_during_operation')
 
     @contextlib.contextmanager
-    def locks(self):
+    def locks(self, cleanup=False):
+        need(cleanup is False or cleanup is True, 'fixed_lock_mode_required')
         need(not self.locked, 'nested_coordination_refused')
         self._unchanged()
         held = []
         try:
-            for path in LOCKS:
-                expected = self.document['shared_locks'][path]
-                need(type(expected) is list and len(expected) == 5 and all(type(n) is int for n in expected),
-                     'sealed_lock_identity_invalid')
-                fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-                held.append(fd)
-                info = os.fstat(fd)
-                need(stat.S_ISREG(info.st_mode) and info.st_nlink == 1
-                     and not info.st_mode & 0o002 and
-                     [info.st_dev, info.st_ino, info.st_uid, info.st_gid,
-                      stat.S_IMODE(info.st_mode)] == expected, 'shared_lock_identity_changed')
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # Bounded all-or-nothing wait: nothing is held while waiting.
+            started = time.monotonic()
+            spent = getattr(self, '_lock_wait_spent', 0.0)
+            if cleanup:
+                deadline = started + max(0.0, min(CLEANUP_LOCK_WAIT_SECONDS,
+                    PROCESS_STARTED + CLEANUP_LOCK_DEADLINE_SECONDS - started))
+            else:
+                deadline = started + max(0.0, min(LOCK_WAIT_SECONDS, LOCK_WAIT_TOTAL_SECONDS - spent))
+            delay = 0.05
+            while True:
+                try:
+                    for path in LOCKS:
+                        expected = self.document['shared_locks'][path]
+                        need(type(expected) is list and len(expected) == 5 and all(type(n) is int for n in expected),
+                             'sealed_lock_identity_invalid')
+                        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                        held.append(fd)
+                        info = os.fstat(fd)
+                        need(stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+                             and not info.st_mode & 0o002 and
+                             [info.st_dev, info.st_ino, info.st_uid, info.st_gid,
+                              stat.S_IMODE(info.st_mode)] == expected, 'shared_lock_identity_changed')
+                        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    while held:
+                        os.close(held.pop())
+                    now = time.monotonic()
+                    if now + delay > deadline:
+                        self._lock_wait_spent = spent + (now - started)
+                        self.last_lock_wait_seconds = now - started
+                        raise
+                    time.sleep(delay)
+                    delay = min(delay * 2, 0.5)
+            waited = time.monotonic() - started
+            self._lock_wait_spent = spent + waited
+            self.last_lock_wait_seconds = waited
             self.locked = True
             self._held_lock_fds = tuple(held)
             self.lock_lease_id = secrets.token_hex(16)
@@ -177,12 +215,12 @@ class RootCoordinator:
             for fd in reversed(held):
                 os.close(fd)
 
-    def revoked(self):
+    def execution_blocker(self):
         self._unchanged()
         if os.path.lexists(CLEANUP_BLOCK):
             value = sealed_json(CLEANUP_BLOCK)
             need(value.get('source') == 'own_nodered_admin_session_cleanup', 'session_block_unconfirmed')
-            return True
+            return 'owned_session_cleanup_unconfirmed'
         # A killed worker may leave an auth intent before receiving its token.
         # That outcome cannot be silently treated as successful revocation.
         entries = list(SESSIONS.iterdir())
@@ -196,16 +234,19 @@ class RootCoordinator:
                 continue
             receipt = SESSIONS / (identifier + '.receipt.json')
             if not os.path.lexists(receipt):
-                return True
+                return 'session_receipt_missing'
             proof = sealed_json(receipt)
             if proof.get('security_cleanup_confirmed') is not True:
-                return True
+                return 'session_cleanup_unconfirmed'
         if not os.path.lexists(REVOKED):
-            return False
+            return None
         value = sealed_json(REVOKED)
         need(value.get('source') == 'own_nodered_admin_revocation'
              and valid_id(value.get('operation_id')), 'revocation_record_unconfirmed')
-        return True
+        return 'authority_revocation_record'
+
+    def revoked(self):
+        return self.execution_blocker() is not None
 
     def revoke(self, operation_id):
         need(self.locked and valid_id(operation_id), 'locked_revocation_required')

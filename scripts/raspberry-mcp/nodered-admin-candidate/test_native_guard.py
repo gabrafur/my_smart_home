@@ -1,11 +1,13 @@
 """Synthetic guard tests. No real Root FS, API, proc or DB reads.
 Principal runs serially; this child only prepared them.
 """
+import ast
 import copy
 import hashlib
 import importlib.util
 import os
 from pathlib import Path
+import sqlite3
 import unittest
 from unittest.mock import patch
 
@@ -54,6 +56,26 @@ class FakeIO:
 
 
 class GuardTests(unittest.TestCase):
+    def test_task_schema_matches_canonical_store_without_selecting_checkpoint_data(self):
+        source = Path(__file__).resolve().parents[1]/'runtime-source/task-control/task_store.py'
+        tree = ast.parse(source.read_text())
+        scripts = [node.args[0].value for node in ast.walk(tree)
+                   if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                   and node.func.attr == 'executescript' and node.args
+                   and isinstance(node.args[0], ast.Constant)
+                   and isinstance(node.args[0].value, str)
+                   and 'CREATE TABLE IF NOT EXISTS tasks(' in node.args[0].value]
+        self.assertEqual(len(scripts), 1)
+        with sqlite3.connect(':memory:') as database:
+            database.executescript(scripts[0])
+            tables = {row[0] for row in database.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            self.assertEqual(tables, set(m.SCHEMAS['task']))
+            for name, columns in m.SCHEMAS['task'].items():
+                actual = [row[1] for row in database.execute('PRAGMA table_info(' + name + ')')]
+                self.assertEqual(actual, columns.split())
+        self.assertNotIn('result_checkpoints', m.SELECTS['task'])
+
     def setUp(self):
         self.now=100.0
         self.io=FakeIO()

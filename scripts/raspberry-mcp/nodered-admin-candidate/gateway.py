@@ -5,6 +5,7 @@ Accept=yes Unix socket. No MCP request can choose paths, credentials or peers.
 """
 import copy
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -18,7 +19,59 @@ from pathlib import Path
 from engine import Engine, Journal, OP, SHA, digest, exact, need, public_plan, raw, valid_id
 from coordination import (RootCoordinator, JOURNAL, POLICY, SESSIONS, CLEANUP_BLOCK,
                           atomic_create, decode, sealed_json)
+from coordination import STATE as NATIVE_STATE
 from fixed_transport import FixedTransport
+
+CLEANUP_EVIDENCE = NATIVE_STATE / 'session-cleanup-evidence'
+REVOKE_STAGES = ('no_client', 'no_token', 'revoked_confirmed', 'refused_before_dispatch',
+                 'backend_refused', 'dispatch_outcome_unconfirmed')
+
+
+CLEANUP_EVIDENCE_REASONS = frozenset({
+    'configuration_unconfirmed', 'native_precheck_deadline_exceeded',
+    'return_peer_identity_unconfirmed',
+})
+
+
+def evidence_reason(error):
+    """Fixed code identifiers only; never messages with data, paths or auth."""
+    if error is None:
+        return None
+    reason = safe_reason(error)
+    if (reason == 'nodered_admin_operation_unconfirmed' and isinstance(error, ValueError)
+            and len(error.args) == 1 and type(error.args[0]) is str
+            and error.args[0] in CLEANUP_EVIDENCE_REASONS):
+        reason = error.args[0]
+    kind = type(error).__name__
+    return {'reason': reason, 'exception_kind': kind if re.fullmatch(r'[A-Za-z]{1,40}', kind) else None}
+
+
+def write_cleanup_evidence(coordinator, session, receipt, evidence):
+    # Supplementary, append-only sidecar; the receipt stays authoritative.
+    try:
+        os.mkdir(CLEANUP_EVIDENCE, 0o700)
+    except FileExistsError:
+        pass
+    record = {'source': 'own_nodered_admin_session_cleanup_evidence_v1', 'session_id': session,
+              'root_policy_sha256': coordinator.root_policy_sha256,
+              'receipt_sha256': hashlib.sha256(raw(receipt) + b'\n').hexdigest(),
+              **evidence, 'observed_at': coordinator.clock(), 'automatic_retry': False}
+    atomic_create(CLEANUP_EVIDENCE / (session + '.json'), record)
+
+
+class ObservedConnection(http.client.HTTPConnection):
+    """Counts connection objects (built only after the passive precheck) and
+    keeps the bounded status code; never headers, bodies or tokens."""
+    def __init__(self, host, port, timeout, observer):
+        super().__init__(host, port, timeout=timeout)
+        self._observer = observer
+        observer['connections'] += 1
+
+    def getresponse(self):
+        response = super().getresponse()
+        status = response.status
+        self._observer['last_status'] = status if type(status) is int and 100 <= status <= 599 else None
+        return response
 
 MAX_REQUEST = 1048576 + 4096
 MAX_RESPONSE = 30 * 1024
@@ -112,7 +165,15 @@ def summary(plan):
     }
 
 
-SAFE_REASONS=frozenset({
+COORDINATION_EXECUTION_REASONS = frozenset({
+ 'standing_installation_unconfirmed',
+ 'combined_installation_unconfirmed',
+ 'owned_session_cleanup_unconfirmed',
+ 'session_receipt_missing',
+ 'session_cleanup_unconfirmed',
+})
+
+SAFE_REASONS=COORDINATION_EXECUTION_REASONS|frozenset({
  'global_compare_swap_conflict','node_compare_swap_conflict','operation_id_conflict',
  'validation_required','validation_attestation_binding_changed','validation_attestation_incomplete',
  'policy_not_activated','policy_revoked','policy_expired_or_completion_margin','prepared_plan_expired',
@@ -257,13 +318,45 @@ class Gateway:
             # refusal. Generic adapters/flags remain unknown and fail closed.
             dispatched = (self.transport.login_dispatch_attempted
                           if type(self.transport) is CredentialSessionTransport else None)
+            token_received = (type(self.transport) is CredentialSessionTransport
+                              and self.transport.token_received)
+            operation_error = sys.exc_info()[1]
+            cleanup_lock_error = None
+            cleanup_lock_wait = None
             try:
-                revoked = self.transport.revoke()
-            except Exception:
+                if token_received:
+                    # Acquire the shared locks BEFORE the revoke's peer proof, from
+                    # the separate cleanup reserve; peer_check then takes the
+                    # locked path instead of competing with minute-start holders.
+                    try:
+                        with self.coordinator.locks(cleanup=True):
+                            cleanup_lock_wait = getattr(self.coordinator, 'last_lock_wait_seconds', None)
+                            revoked = self.transport.revoke()
+                    finally:
+                        if cleanup_lock_wait is None:
+                            cleanup_lock_wait = getattr(self.coordinator, 'last_lock_wait_seconds', None)
+                else:
+                    revoked = self.transport.revoke()
+            except Exception as error:
                 revoked = False
+                cleanup_lock_error = evidence_reason(error)
+            if type(self.transport) is CredentialSessionTransport and self.transport.client is not None:
+                # revoke() always clears the client; still present means no
+                # revoke request was ever built for this token.
+                self.transport.discard()
             cleanup = bool(revoked and (not login_attempted or login_confirmed or dispatched is False))
             if type(self.sessions) is RootSessionJournal:
-                self.sessions.finish(session, cleanup, login_confirmed, login_dispatch_attempted=dispatched)
+                revoke_view = (self.transport.revoke_evidence
+                               if type(self.transport) is CredentialSessionTransport else None)
+                evidence = {'tool': method, 'token_received': bool(token_received),
+                            'login_dispatch_attempted': dispatched,
+                            'operation_error': evidence_reason(operation_error),
+                            'cleanup_lock_error': cleanup_lock_error,
+                            'cleanup_lock_wait_seconds': (round(cleanup_lock_wait, 3)
+                                if type(cleanup_lock_wait) is float else None),
+                            'revoke': revoke_view}
+                self.sessions.finish(session, cleanup, login_confirmed, login_dispatch_attempted=dispatched,
+                                     evidence=evidence)
             else:
                 self.sessions.finish(session, cleanup, login_confirmed)
         need(type(result) is dict, 'structured_result_required')
@@ -289,7 +382,7 @@ class RootSessionJournal:
             self.coordinator.current_session = session
             return session
 
-    def finish(self, session, cleanup, confirmed, login_dispatch_attempted=None):
+    def finish(self, session, cleanup, confirmed, login_dispatch_attempted=None, evidence=None):
         need(valid_id(session) and self.coordinator.current_session == session, 'own_session_required')
         value = {'source': 'own_nodered_admin_session_cleanup',
                  'root_policy_sha256': self.coordinator.root_policy_sha256,
@@ -302,6 +395,11 @@ class RootSessionJournal:
         atomic_create(SESSIONS / (session + '.receipt.json'), value)
         if not cleanup and not os.path.lexists(CLEANUP_BLOCK):
             atomic_create(CLEANUP_BLOCK, value)
+        if evidence is not None:
+            try:
+                write_cleanup_evidence(self.coordinator, session, value, evidence)
+            except Exception:
+                pass
         self.coordinator.current_session = None
 
 
@@ -309,6 +407,12 @@ class CredentialSessionTransport:
     def __init__(self, coordinator):
         self.coordinator = coordinator
         self.client = None
+        self.token_received = False
+        self.revoke_evidence = None
+        self._http = {'connections': 0, 'last_status': None}
+
+    def _observed_connection(self, host, port, timeout):
+        return ObservedConnection(host, port, timeout, self._http)
 
     @property
     def login_dispatch_attempted(self):
@@ -341,8 +445,9 @@ class CredentialSessionTransport:
         for index in range(len(data)):
             data[index] = 0
         try:
-            self.client = FixedTransport(binding, self.coordinator.peer_check)
+            self.client = FixedTransport(binding, self.coordinator.peer_check, connection=self._observed_connection)
             self.client.login(write=write)
+            self.token_received = True
         finally:
             binding.clear()
 
@@ -355,10 +460,40 @@ class CredentialSessionTransport:
         return self.client.deploy(revision, flows)
 
     def revoke(self):
+        if not self.client:
+            self.revoke_evidence = {'stage': 'no_client', 'http_status': None}
+            return True
+        had_token = self.token_received
+        before = self._http['connections']
+        self._http['last_status'] = None
+        result = None
         try:
-            return self.client.revoke() if self.client else True
+            result = self.client.revoke()
+            return result
         finally:
             self.client = None
+            self.token_received = False
+            opened = self._http['connections'] - before
+            status = self._http['last_status'] if opened else None
+            if not had_token:
+                stage = 'no_token'
+            elif result is True:
+                stage = 'revoked_confirmed'
+            elif opened == 0:
+                stage = 'refused_before_dispatch'
+            elif type(status) is int and not 200 <= status < 300:
+                stage = 'backend_refused'
+            else:
+                stage = 'dispatch_outcome_unconfirmed'
+            self.revoke_evidence = {'stage': stage, 'http_status': status}
+
+    def discard(self):
+        # Locks for cleanup were never acquired: no revoke request exists.
+        had_token = self.client is not None and self.token_received
+        self.client = None
+        self.token_received = False
+        self.revoke_evidence = {'stage': 'refused_before_dispatch' if had_token else 'no_token',
+                                'http_status': None}
 
 
 def serve_one():

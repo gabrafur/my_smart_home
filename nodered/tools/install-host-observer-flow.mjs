@@ -20,7 +20,7 @@ export function installHostObserver(flows) {
   const g = {policy:group('policy_group','0. Política visual: unidades, padrões e limites',64,40,980,320),
     timing:group('timing_group','0b. Medição passiva: contratos, contadores e relógios',1100,40,1840,320),
     input:group('input_group','1. Fonte fixa, validade e falhas de observação',64,400,1880,460),
-    decision:group('decision_group','2. Classificação visual e lifecycle (produção / TESTE)',64,900,2940,620),
+    decision:group('decision_group','2. Classificação visual e lifecycle (produção / TESTE)',64,900,3520,620),
     test:group('test_group','3. Replay manual completo: somente dry-run',64,1560,1880,450)};
   const node = (id,type,group,name,x,y,rest={}) => add({id:`host_obs_${id}`,type,z:TAB,g:group,name,x,y,wires:[],...rest});
   const fn = (id,group,name,file,x,y,wires,outputs=1) => node(id,'function',group,name,x,y,{func:source(file),outputs,timeout:0,noerr:0,initialize:'',finalize:'',libs:[],wires});
@@ -76,8 +76,12 @@ export function installHostObserver(flows) {
     input(`${id}_in`,g.decision,`${signal} → lifecycle`,[],`host_obs_${id}_set`,2160,y);
     change(`${id}_set`,g.decision,`Marcar ${signal}`,'_host_signal',signal,'str',2370,y,'host_obs_lifecycle');
   }
-  fn('lifecycle',g.decision,'Incidente, confirmação e dedupe persistentes','lifecycle',2720,1170,[['host_obs_alert_out']]);
-  out('alert_out',g.decision,'Decisão → gate global produção / dry-run',['global_observer_alert_to_dispatch_in'],2940,1170);
+  fn('lifecycle',g.decision,'Incidente, confirmação e dedupe persistentes','lifecycle',2720,1170,[['host_obs_mobile_delivery_scope']]);
+  sw('mobile_delivery_scope',g.decision,'Somente estes incidentes sem push','payload.incident_key',[
+    {t:'regex',v:'^(native_systemd_procmon|native_systemd_mcp_collection|native_systemd_external_heartbeat|native_docker_ai-bridge|observation_host_report)$',vt:'str',case:false},
+    {t:'else'}],3000,1170,[['host_obs_suppress_mobile'],['host_obs_alert_out']]);
+  change('suppress_mobile',g.decision,'Definir push móvel como false','payload.mobile_notification','false','bool',3280,1080,'host_obs_alert_out');
+  out('alert_out',g.decision,'Decisão → gate global produção / dry-run',['global_observer_alert_to_dispatch_in'],3450,1170);
   node('test_info','comment',g.test,'TESTE: reset → saudável (baseline) → falha → confirmar → repetir → saudável; conferir dry-run global',900,1610,{info:'Todos os cenários percorrem normalização,validade,decisões visuais e lifecycle até global_observer_dispatch_guard. Somente estado __test;sem exec,HA,MQTT,notificações ou dispositivos. source_failure e relatório stale não provam falha física; healthy encerra apenas evidência esperada. Resource_high exige nova amostra no confirmar. Start de container não encerra incidente de prontidão. Para histórico legado: reset → saudável → histórico inconsistente; conferir legacy_history_v1.records no contexto host_observer_incidents_v1__test. Deve reter o original e não enviar falha nem recuperação; repetir mantém um único registro. Produção não é alterada.'});
   for(const [i,[id,name]]of [['reset','0 reset'],['healthy','1 saudável'],['failure','2 falha'],['confirm','3 confirmar +25s'],['resource_high','4 CPU alta'],['source_failure','5 fonte ausente'],['stale','6 relatório antigo'],['malformed','7 inválido'],['legacy','8 histórico inconsistente']].entries()) {
     const x=260+(i%4)*370, y=1700+Math.floor(i/4)*90;
@@ -100,6 +104,18 @@ export function installHostObserver(flows) {
     }
   }
   const result=reconcileGeneratedFlows(flows,[...flows.filter(n=>!owned(n)),...nodes],{isOwned:owned});
+  // The reconciler preserves existing geometry. Admit only this owned layout
+  // delta so the new two-node policy fits without moving unrelated nodes.
+  const mobileLayout = new Map([
+    ['host_obs_decision_group', {w:3520}],
+    ['host_obs_mobile_delivery_scope', {x:3000, y:1170}],
+    ['host_obs_suppress_mobile', {x:3280, y:1080}],
+    ['host_obs_alert_out', {x:3450, y:1170}]
+  ]);
+  for (const node of result) {
+    const geometry = mobileLayout.get(node.id);
+    if (geometry) Object.assign(node, geometry);
+  }
   const dispatch=result.find(n=>n.id==='global_observer_alert_to_dispatch_in');
   if(dispatch&&!dispatch.links.includes('host_obs_alert_out'))dispatch.links.push('host_obs_alert_out');
   return result;

@@ -49,6 +49,75 @@ A vista `policy` de `read` informa a concessão específica, a validade e a
 permissão de manutenção ordinária por eventos, sem ler credenciais. Essa
 autorização é separada do monitor antigo e não transforma saúde em execução.
 
+A validação consome um atestado Root vinculado ao hash integral do plano,
+à política e ao inventário de efeitos. O produtor revisado reúne os resultados
+de sintaxe, grafo, layout, observabilidade, regressão isolada, tipos instalados
+e reconciliação das fontes. A admissão acrescenta a revisão de inicialização e
+efeitos sensíveis. O identificador dessa admissão referencia esses metadados;
+a confirmação exigida pelo cliente ocorre na chamada MCP de aplicação.
+
+## Compatibilidade dos registros de coordenação
+
+O guardião verifica o esquema exato dos bancos de tarefas, reparos e workflows
+antes do deploy. Alterações no DDL do produtor devem atualizar o consumidor e
+seus hashes na mesma revisão. O teste de conformidade compara o DDL canônico
+do store de tarefas com as tabelas e colunas reconhecidas pelo guardião.
+
+A tabela `result_checkpoints` preserva o hash e o estado terminal de resultados
+e a disponibilidade do texto. O guardião reconhece seu esquema e mantém as
+projeções existentes de estado e conciliação. As linhas desse checkpoint ficam
+fora das consultas de coordenação. As verificações de trabalho em andamento,
+resultado incerto e conciliação continuam obrigatórias.
+
+O erro `ledger_schema_tables_unknown` exige comparar os esquemas e as fontes
+instaladas. A auditoria deve informar cobertura, erro de coleta, diferenças de
+colunas e contagens sanitizadas sob os locks compartilhados. Cada atualização
+do guardião precisa fechar as referências da política e da unidade e prever
+recuperação de uma publicação parcial em que esses arquivos estejam em versões
+diferentes.
+
+## Encerramento da sessão e processos efêmeros
+
+Os locks compartilhados são adquiridos como um conjunto: a contenção libera
+todos os descritores antes de esperar. A operação dispõe de até 8 segundos por
+aquisição e 12 segundos acumulados. A revogação de um token confirmado usa uma
+reserva separada de até 15 segundos, limitada ao instante de 20 segundos desde
+a inicialização do módulo de coordenação. A aquisição inicial é tentada mesmo
+quando esse prazo já passou. Havendo contenção, a margem restante determina
+as novas tentativas. O lease permanece durante a prova do peer e a revogação.
+
+A prova passiva admite no máximo duas observações, dentro de 10 segundos,
+somente para os três motivos transitórios revisados de leitura de processos e
+listener. Não repete HTTP. O timeout HTTP de 12 segundos limita operações
+bloqueantes de I/O. A unidade possui limite de execução de 45 segundos.
+A espera dos locks, a descoberta de processos, a prova, a comunicação e a
+persistência dos recibos precisam caber nesse orçamento. Uma interrupção
+exige consultar o mesmo recibo antes de decidir o próximo passo.
+
+O recibo original permanece autoritativo e conserva seu esquema. Um sidecar
+somente de acréscimo registra etapa da revogação, status HTTP limitado, espera
+do lock e razão sanitizada. Recusa antes da criação da conexão distingue-se de
+resposta perdida depois do despacho. A falha desse diagnóstico complementar
+nunca impede a gravação do recibo. Nenhum token, corpo HTTP ou credencial é
+incluído.
+
+`process_discovery.py` preserva o núcleo público da descoberta revisada:
+somente descendentes não selecionados cuja saída o kernel comprove podem ser
+desconsiderados. A prova usa pidfd e sinal de saída, ou ausência confirmada
+por pidfd e procfs; ENOENT isolado não basta. Erros de permissão continuam
+estritos. Init ilegível, dono selecionado alterado, ancestralidade divergente
+e dois donos vivos do listener continuam bloqueando. O chamador selado fornece
+a âncora e o leitor de metadados revisado; importar esse módulo não autoriza
+adotar um processo nem instalar a integração. Os bindings e a composição do
+guard instalado permanecem privados; a equivalência desse núcleo não é uma
+declaração de igualdade integral entre o runtime e este diretório.
+
+As regressões públicas cobrem filhos próprios vivos, zumbis e recolhidos,
+identidade do dono selecionado, contenção sintética, orçamento reservado,
+falha antes/depois do despacho e preservação do bloqueio anterior. O aceite
+pela Eva exige uma leitura autorizada e o recibo independente de encerramento;
+um sucesso sem espera por lock não comprova contenção real.
+
 As entradas não aceitam shell, comandos, caminhos, URLs, credenciais, políticas
 ou flags de aprovação. Tipos que oferecem shell, escrita por caminho livre,
 instalação de módulos ou novos listeners ficam fora da candidata inicial;
@@ -174,3 +243,25 @@ produção. Até a ativação confirmada e a admissão concreta, nada é aplicad
 
 O vencimento ou a revogação da concessão administrativa fecha novos efeitos e
 preserva recibos. Não reverte automaticamente fluxos já aplicados.
+
+## Autoridade e bloqueios de execução
+
+Uma política permanente exige `lease_kind=persistent_revocable`,
+`standing_maintenance_authorized=true` e `expires_at=null`, além da ativação e
+dos limites validados pelo executor. As provas e admissões de cada operação
+mantêm prazo finito. Políticas finitas conservam o vencimento original.
+
+A implementação de referência do coordenador distingue `authority_revocation_record` de pendências de
+instalação, recibo ausente e encerramento de sessão não comprovado. A projeção
+MCP correspondente conserva `policy_revoked` para a revogação comprovada e retorna os códigos
+específicos revisados para os demais bloqueios. Todos continuam impedindo o
+efeito. Adaptadores antigos que oferecem somente `revoked()` mantêm a recusa
+compatível. Mensagens arbitrárias de exceções permanecem protegidas.
+
+Essa classificação permite que o cliente consulte o recibo e a dependência
+corretos. A existência de uma política ativa ainda exige a admissão concreta
+da operação e as confirmações obrigatórias da interface.
+
+Confira os hashes e a resposta do executor instalado antes de atribuir essa
+classificação ao runtime. A publicação da fonte de referência não instala a
+mudança.

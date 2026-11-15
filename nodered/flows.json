@@ -87026,11 +87026,13 @@
             "notification_hub_wire_out_8960c3262ab6",
             "notification_hub_wire_in_8960c3262ab6",
             "notification_hub_wire_out_c1da726c3fd7",
-            "notification_hub_wire_in_c1da726c3fd7"
+            "notification_hub_wire_in_c1da726c3fd7",
+            "host_obs_mobile_delivery_scope",
+            "host_obs_suppress_mobile"
         ],
         "x": 64,
         "y": 900,
-        "w": 2940,
+        "w": 3520,
         "h": 620
     },
     {
@@ -88080,7 +88082,7 @@
         "y": 1170,
         "wires": [
             [
-                "host_obs_alert_out"
+                "host_obs_mobile_delivery_scope"
             ]
         ],
         "func": "const test = msg._host_observer_test === true;\nconst store = test ? undefined : \"persistent\";\nconst key = test ? \"host_observer_incidents_v1__test\" : \"host_observer_incidents_v1\";\nconst state = flow.get(key, store) ?? {version: 1, incidents: {}};\nconst fact = msg._host_fact;\nconst name = `${fact.kind}_${fact.source ?? \"host\"}_${fact.name}`;\nif (!/^[a-z0-9_-]{1,90}$/.test(name) || ![\"failed\", \"healthy\", \"unknown\"].includes(msg._host_signal)) return null;\nconst now = msg._host_now;\n// Older lifecycle code could restart first_seen_at after notification. Preserve\n// that inconsistent row as unknown history; it is neither a current failure\n// nor evidence of recovery. This migration has no notification output.\nconst legacyReason = \"legacy_notified_before_first_seen\";\nconst knownNative = new Set([\n    ...[\"homeassistant\", \"nodered\", \"mosquitto\", \"portainer\", \"appdaemon\", \"matter_server\", \"zigbee2mqtt\",\n        \"ai-bridge\", \"docs-review-scheduler\", \"kia-uvo-codex-merge\"].map(role => `native_docker_${role}`),\n    ...[\"docker\", \"procmon\", \"mcp_collection\", \"external_heartbeat\", \"events\", \"ha_notices\", \"host_observation\"].map(role => `native_systemd_${role}`)\n]);\nconst nativeKey = key => knownNative.has(key);\nconst legacyFields = new Set([\"first_seen_at\", \"last_seen_at\", \"notified_at\", \"kind\",\n    \"source_first_observed_at\", \"source_time_kind\", \"current_evidence\", \"sample_count\",\n    \"last_sample_at\", \"clock_conflict\"]);\nconst legacyRow = row => row && typeof row === \"object\" && !Array.isArray(row) &&\n    Object.keys(row).every(key => legacyFields.has(key)) && row.kind === \"native\" &&\n    [row.first_seen_at, row.last_seen_at, row.notified_at].every(value => Number.isFinite(value) && value >= 0) &&\n    row.notified_at < row.first_seen_at && row.first_seen_at <= row.last_seen_at &&\n    [\"failed\", \"unknown\"].includes(row.current_evidence) &&\n    (row.source_first_observed_at == null || typeof row.source_first_observed_at === \"string\" && Number.isFinite(Date.parse(row.source_first_observed_at))) &&\n    [undefined, \"producer_occurrence\", \"producer_observation\", \"unknown\"].includes(row.source_time_kind) &&\n    (row.sample_count === undefined || Number.isSafeInteger(row.sample_count) && row.sample_count >= 0) &&\n    (row.last_sample_at == null || typeof row.last_sample_at === \"string\" && Number.isFinite(Date.parse(row.last_sample_at))) &&\n    (row.clock_conflict === undefined || typeof row.clock_conflict === \"boolean\");\nconst history = state.legacy_history_v1 ?? {version: 1, records: []};\nconst historyValid = history && history.version === 1 && Array.isArray(history.records) &&\n    history.records.length <= 64 && Object.keys(history).every(key => [\"version\", \"records\"].includes(key)) &&\n    history.records.every(record => record && Object.keys(record).length === 4 && nativeKey(record.role) &&\n        record.reason === legacyReason && Number.isFinite(record.quarantined_at) && record.quarantined_at >= 0 &&\n        legacyRow(record.original) && record.original.last_seen_at <= record.quarantined_at) &&\n    new Set(history.records.map(record => record.role)).size === history.records.length;\nif (Number.isFinite(now) && historyValid) {\n    for (const [key, row] of Object.entries(state.incidents)) {\n        if (!nativeKey(key) || !legacyRow(row) || row.last_seen_at > now) continue;\n        const existing = history.records.find(record => record.role === key);\n        if (existing) {\n            // An interrupted/replayed migration cannot append the same history\n            // twice, and a different later inconsistency remains unresolved.\n            if (Object.keys(existing.original).length !== Object.keys(row).length ||\n                Object.keys(row).some(field => row[field] !== existing.original[field])) continue;\n        } else {\n            if (history.records.length >= 64) continue;\n            history.records.push({role: key, reason: legacyReason, quarantined_at: now, original: {...row}});\n        }\n        state.legacy_history_v1 = history;\n        delete state.incidents[key];\n    }\n}\nconst priorLegacy = historyValid ? history.records.find(record => record.role === name) : null;\nif (priorLegacy && !state.incidents[name] &&\n    (!Number.isFinite(Date.parse(fact.occurred_at)) || Date.parse(fact.occurred_at) <= priorLegacy.original.last_seen_at)) {\n    // The cursor may still repeat the old cached event. Quarantining its row\n    // does not make that same historical event a new failure or recovery.\n    flow.set(key, state, store);\n    return null;\n}\nlet incident = state.incidents[name];\nif (incident && now < incident.last_seen_at) {\n    incident.clock_conflict = true;\n    flow.set(key, state, store);\n    return null;\n}\nif (msg._host_signal === \"unknown\") {\n    if (incident) { incident.current_evidence = \"unknown\"; incident.last_seen_at = now; }\n    flow.set(key, state, store);\n    return null;\n}\nconst label = fact.kind === \"resource\" ? `recurso ${fact.name}` :\n    fact.kind === \"observation\" ? `observação ${fact.name}` : `serviço ${fact.name}`;\nconst alert = (recovery) => ({\n    _global_observer_test: test,\n    ...(test && msg._host_test_run_id !== undefined ? {_observer_test_receipt: {\n        run_id: msg._host_test_run_id, source_flow_id: \"host_observer_tab\"\n    }} : {}),\n    payload: {test_mode: test, observer_kind: recovery ? \"host_recovery\" : \"host_failure\",\n        persistent_incident_kind: \"host_failure\", incident_key: name,\n        persistent_notification_operation: recovery ? \"dismiss\" : \"create\",\n        mobile_notification: !recovery, host_source: fact.source ?? \"host\", host_role: fact.name,\n        source_observed_at: recovery ? fact.occurred_at ?? fact.observed_at ?? null : incident.source_first_observed_at ?? null,\n        source_time_kind: recovery ? fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\" : incident.source_time_kind ?? \"unknown\",\n        first_detected_at: new Date(recovery ? now : incident.first_seen_at).toISOString(),\n        policy_decided_at: new Date(now).toISOString(),\n        resolution: recovery ? \"approved_observation_returned\" : undefined},\n    alert: {title: `${test ? \"TESTE — \" : \"\"}${recovery ? \"Observação recuperada\" : \"Servidor exige atenção\"}`,\n        message: recovery ? `A observação de ${label} voltou ao estado esperado. O incidente anterior foi encerrado.` :\n            `Foi confirmada uma condição de atenção em ${label}. A Eva pode consultar o MCP para verificar a causa e os próximos passos. ` +\n            \"Este aviso não comprova uma ação do assistente ou a saúde de todos os serviços.\"}\n});\nif (msg._host_signal === \"healthy\") {\n    delete state.incidents[name];\n    flow.set(key, state, store);\n    return incident?.notified_at ? alert(true) : null;\n}\nincident ??= {first_seen_at: now, last_seen_at: now, notified_at: null, kind: fact.kind,\n    source_first_observed_at: fact.occurred_at ?? fact.observed_at ?? null,\n    source_time_kind: fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\"};\n// Unknown evidence restarts an unconfirmed failure, while an existing\n// notification keeps its incident chronology and dedupe until actual recovery.\nif (incident.current_evidence === \"unknown\" && incident.notified_at === null) {\n    incident.first_seen_at = now; incident.sample_count = 0; incident.last_sample_at = null;\n    incident.source_first_observed_at = fact.occurred_at ?? fact.observed_at ?? null;\n    incident.source_time_kind = fact.occurred_at ? \"producer_occurrence\" : fact.observed_at ? \"producer_observation\" : \"unknown\";\n}\nincident.last_seen_at = now; incident.current_evidence = \"failed\";\nif (fact.kind === \"resource\" && fact.observed_at !== incident.last_sample_at) {\n    const observed = Date.parse(fact.observed_at);\n    if (!Number.isFinite(observed) || incident.last_sample_at && observed < Date.parse(incident.last_sample_at)) {\n        incident.clock_conflict = true;\n    } else {\n        incident.sample_count = (incident.sample_count ?? 0) + 1;\n        incident.last_sample_at = fact.observed_at;\n    }\n}\nconst confirmation = fact.kind === \"resource\" ? msg._host_policy.resource_confirm_ms :\n    fact.kind === \"observation\" ? msg._host_policy.observation_confirm_ms : msg._host_policy.event_confirm_ms;\nstate.incidents[name] = incident;\nif (!Number.isFinite(confirmation) || confirmation < 1000 || incident.clock_conflict ||\n    now - incident.first_seen_at < confirmation || fact.kind === \"resource\" && incident.sample_count < 2 ||\n    incident.notified_at !== null) {\n    flow.set(key, state, store);\n    return null;\n}\nincident.notified_at = now;\nflow.set(key, state, store);\nnode.log(`HOST_OBSERVATION_INCIDENT role=${fact.name} kind=${fact.kind} simulated=${test}`);\nreturn alert(false);",
@@ -88097,7 +88099,7 @@
         "z": "host_observer_tab",
         "g": "host_obs_decision_group",
         "name": "Decisão → gate global produção / dry-run",
-        "x": 2940,
+        "x": 3450,
         "y": 1170,
         "wires": [],
         "mode": "link",
@@ -103203,5 +103205,66 @@
                 "zigbee_path_map_store"
             ]
         ]
+    },
+    {
+        "checkall": "false",
+        "g": "host_obs_decision_group",
+        "id": "host_obs_mobile_delivery_scope",
+        "name": "Somente estes incidentes sem push",
+        "outputs": 2,
+        "property": "payload.incident_key",
+        "propertyType": "msg",
+        "repair": false,
+        "rules": [
+            {
+                "case": false,
+                "t": "regex",
+                "v": "^(native_systemd_procmon|native_systemd_mcp_collection|native_systemd_external_heartbeat|native_docker_ai-bridge|observation_host_report)$",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "type": "switch",
+        "wires": [
+            [
+                "host_obs_suppress_mobile"
+            ],
+            [
+                "host_obs_alert_out"
+            ]
+        ],
+        "x": 3000,
+        "y": 1170,
+        "z": "host_observer_tab"
+    },
+    {
+        "action": "",
+        "from": "",
+        "g": "host_obs_decision_group",
+        "id": "host_obs_suppress_mobile",
+        "name": "Definir push móvel como false",
+        "property": "",
+        "reg": false,
+        "rules": [
+            {
+                "p": "payload.mobile_notification",
+                "pt": "msg",
+                "t": "set",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "to": "",
+        "type": "change",
+        "wires": [
+            [
+                "host_obs_alert_out"
+            ]
+        ],
+        "x": 3280,
+        "y": 1080,
+        "z": "host_observer_tab"
     }
 ]

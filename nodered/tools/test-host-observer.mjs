@@ -225,3 +225,28 @@ measured.scenario('reset');
 assert.equal(measured.context('host_observer_tab').get('host_observer_timing_v1__test'),undefined);
 assert.equal(measured.context('host_observer_tab').get('host_observer_timing_runtime_v1__test','memoryOnly'),undefined);
 console.log('Passive accounting traverses the complete manual graph, preserves production separation and resets only test state.');
+
+// Only the exact five approved keys suppress mobile; every message still
+// traverses the same central dispatcher with persistent/audit fields intact.
+const exactMobileKeys=['native_systemd_procmon','native_systemd_mcp_collection',
+ 'native_systemd_external_heartbeat','native_docker_ai-bridge','observation_host_report'];
+const filterNode=byId.get('host_obs_mobile_delivery_scope');
+assert.equal(filterNode?.type,'switch');assert.equal(filterNode.property,'payload.incident_key');
+assert.deepEqual(filterNode.wires,[['host_obs_suppress_mobile'],['host_obs_alert_out']]);
+assert.deepEqual(byId.get('host_obs_lifecycle').wires,[['host_obs_mobile_delivery_scope']]);
+assert.deepEqual(byId.get('host_obs_suppress_mobile').rules,[{t:'set',p:'payload.mobile_notification',pt:'msg',to:'false',tot:'bool'}]);
+assert.deepEqual(byId.get('host_obs_alert_out').links,['global_observer_alert_to_dispatch_in']);
+const filterReplay=harness();
+for(const key of [...exactMobileKeys,...exactMobileKeys.map(key=>key+'_near_miss'),
+ 'resource_host_cpu','security_host_alarm','native_systemd_other_critical','native_docker_homeassistant']){
+ const payload={incident_key:key,observer_kind:'host_failure',mobile_notification:true,
+   persistent_notification_operation:'create',title:'fixture',message:'fixture'};
+ const start=filterReplay.decisions.length;
+ filterReplay.run('host_obs_mobile_delivery_scope',{_global_observer_test:true,payload});
+ assert.equal(filterReplay.decisions.length,start+1,`central route retained: ${key}`);
+ const received=filterReplay.decisions.at(-1).payload;
+ assert.equal(received.mobile_notification,!exactMobileKeys.includes(key),`mobile scope: ${key}`);
+ assert.equal(received.persistent_notification_operation,'create',`persistent route unchanged: ${key}`);
+ assert.equal(received.incident_key,key);assert.equal(received.observer_kind,payload.observer_kind);
+ assert.equal(received.title,payload.title);assert.equal(received.message,payload.message);
+}

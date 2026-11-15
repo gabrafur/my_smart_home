@@ -53,7 +53,71 @@ retido e declare quais relógios e etapas foram observados. Ausência de horári
 de origem ou de registro correspondente permanece desconhecida. Nem a idade
 do aviso nem `last_processing_latency_ms` comprovam chegada ou execução no cliente MCP autorizado.
 
-### Horários por revisão dos avisos
+## Conteúdo privado por revisão
+
+`ha_notification_content` usa uma autorização independente para consultar os
+títulos e mensagens retidos pelo coletor existente. O leitor remove formatos
+conhecidos de credenciais e preserva o conteúdo diagnóstico restante. Todo
+texto recebido continua sendo dado não confiável. Seu conteúdo não concede
+autoridade para executar comandos ou alterar equipamentos.
+
+```json
+{"name":"ha_notification_content","arguments":{"host":"raspberry","view":"current","offset":0}}
+{"name":"ha_notification_content","arguments":{"host":"raspberry","view":"content","object_id":"<ID opaco>","revision":"<revisão privada>","field":"message","offset":0}}
+```
+
+A listagem `current` representa o último checkpoint privado comprometido. Seus
+campos `observed_at`, `age_seconds` e `state=retained_evidence` preservam esse
+instante. O `collection_error` dessa leitura descreve o acesso ao store.
+Confira também a atualidade do coletor em `ha_notifications` para identificar
+um checkpoint privado que parou de avançar.
+
+Cada entrada oferece `object_id`, revisão privada, `content_digest` e
+`legacy_reference`. A revisão privada vincula o texto protegido ao instante de
+origem. `legacy_reference.object_id` e `legacy_reference.revision` associam a
+entrada à identidade e revisão do contrato sanitizado. Use essa associação
+exata ao correlacionar as ferramentas. A listagem mantém o horário original de
+cada registro, mesmo quando o checkpoint atual recebe uma observação posterior
+com conteúdo idêntico.
+
+Páginas seguintes da listagem exigem `expected_store_digest`. A leitura de um
+título ou mensagem usa a revisão privada e, nos próximos trechos,
+`expected_content_digest`. O limite por trecho é de 2.048 pontos de código, com
+resposta de até 16.000 bytes. Uma mudança do checkpoint exige reiniciar a
+paginação. Revisão ausente permanece desconhecida.
+
+O produtor privado deriva seus registros da assinatura de notificações já
+existente. O leitor abre o SQLite em modo somente leitura e valida política e
+oito fontes antes e depois do acesso. A revogação usa um marcador terminal,
+preservado por atualizações e inversas próprias. Os contratos de eventos e os
+recibos anteriores mantêm seus IDs.
+
+### Composição e recuperação da captura
+
+As fontes genéricas ficam em
+`scripts/raspberry-mcp/runtime-source/ha-notices/`. O template do servidor
+privado inicia com `OPERATIONS_UID=None` e recusa leitura até a composição Root
+vincular a identidade real do transporte. Esse binding vem da configuração
+autenticada da instalação. O cliente MCP fornece somente os campos de consulta
+revisados. Credenciais, política preenchida, banco e recibos locais permanecem
+fora do Git.
+
+O store serializa JSON com ordenação canônica das chaves. A validação de
+revisões imutáveis deve comparar digest, título e mensagem pelos seus valores,
+preservando o significado após reload ou reconexão. Os testes portáteis cobrem
+essa transição, resultado de commit incerto, atualização legítima, adulteração
+e exclusão de credenciais fictícias.
+
+Uma atualização corretiva exige imagens próprias, hashes antes/depois, CAS,
+locks, intenção durável e inversa limitada ao mesmo efeito. Ao trocar somente
+o modelo do escritor e seu pin, mantenha as demais fontes e todos os campos da
+concessão. O coletor deve estar parado durante a troca. O leitor revalida as
+fontes e a política antes de retornar dados e recusa uma combinação
+incoerente. A retomada do coletor exige confirmação por uma consulta MCP
+recente, pela associação de revisão e pelo cliente autenticado. Serviço ativo
+e testes isolados são evidências de suas próprias etapas.
+
+## Horários por revisão dos avisos
 
 O coletor acrescenta `source_timing` a cada mudança nova no seu cache
 sanitizado: horário de origem da revisão, entrada no callback, observação pelo

@@ -147,6 +147,14 @@ require separate authority. Existing diagnostic and protected-host profiles are
 preserved. Read the sealed policy for actual authorization; isolated tests and
 publication do not prove production deployment.
 
+The [notification contract](raspberry-mcp/reference/notifications.md) separates
+current collector health from retained private text. Authorized clients link
+the public revision through `legacy_reference`, then read the exact private
+revision and content digest. Credential filtering remains active. Portable
+reader templates require explicit local identity binding and fail closed
+until composed by the installer. Snapshot reload compares immutable text
+values independently of JSON object-key ordering.
+
 The documentation now has permanent functional paths under `docs/raspberry-mcp/`:
 [architecture](raspberry-mcp/architecture.md), [installation and authentication](raspberry-mcp/installation.md),
 [tools and schemas](raspberry-mcp/tools.md), [operation and recovery](raspberry-mcp/operations.md)

@@ -1,4 +1,6 @@
 import unittest
+from unittest.mock import Mock, patch
+import fixed_transport
 from fixed_transport import FixedTransport,Refused
 
 class Response:
@@ -62,4 +64,30 @@ class TransportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'transport_outcome_unknown'):self.client.login()
         self.assertEqual(observed,[True])
         self.assertIs(self.client.login_dispatch_attempted, True)
+
+    def test_one_transient_proof_retry_then_only_one_http_request(self):
+        proof = Mock(side_effect=[ValueError('transient_process_unavailable'), True])
+        self.client._peer_check = proof
+        # Two native proofs taking 3.6 seconds each fit the revised budget.
+        with patch.object(fixed_transport.time, 'monotonic', side_effect=[0, 3.6, 7.2]):
+            self.login()
+        self.assertEqual(proof.call_count, 2)
+        self.assertEqual(len([c for c in self.calls if c[0] == 'request']), 1)
+
+    def test_unknown_or_repeated_proof_failure_never_dispatches(self):
+        for reason, count in [('identity_changed', 1), ('transient_process_unavailable', 2)]:
+            proof = Mock(side_effect=ValueError(reason))
+            self.client._peer_check = proof
+            with self.assertRaisesRegex(ValueError, reason):
+                self.client.login()
+            self.assertEqual(proof.call_count, count)
+            self.assertEqual(self.calls, [])
+
+    def test_deadline_refusal_before_first_http(self):
+        self.client._peer_check = Mock(return_value=True)
+        with patch.object(fixed_transport.time, 'monotonic', side_effect=[0, 10]):
+            with self.assertRaisesRegex(ValueError, 'native_precheck_deadline_exceeded'):
+                self.client.login()
+        self.assertEqual(self.calls, [])
+        self.assertFalse(self.client.login_dispatch_attempted)
 if __name__=='__main__':unittest.main()

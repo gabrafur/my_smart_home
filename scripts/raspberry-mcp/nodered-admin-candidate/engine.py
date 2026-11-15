@@ -46,6 +46,34 @@ def exact(value, fields, reason='request_scope_refused'):
     need(type(value) is dict and set(value) == set(fields), reason)
 
 
+def standing_scope(policy):
+    """Only an explicitly enrolled standing scope may omit its expiry.
+
+    This is authority to use the existing closed executor, never admission of
+    an operation. Existing finite policies retain their original semantics.
+    """
+    return (policy.get('lease_kind') == 'persistent_revocable'
+            and policy.get('standing_maintenance_authorized') is True
+            and policy.get('expires_at', False) is None)
+
+
+def scope_window(policy, now, margin=0):
+    expiry = policy.get('expires_at')
+    return standing_scope(policy) or (type(expiry) in (int, float)
+            and math.isfinite(expiry) and now + margin < expiry)
+
+
+def finite_scope_deadline(policy, expiry, now, maximum=900):
+    """Every operation/proof remains finite even under standing authority."""
+    if not (type(expiry) in (int, float) and math.isfinite(expiry)
+            and now < expiry):
+        return False
+    if standing_scope(policy):
+        return expiry <= now + maximum
+    cap = policy.get('expires_at')
+    return type(cap) in (int, float) and math.isfinite(cap) and expiry <= cap
+
+
 def valid_id(value, pattern=OP):
     return type(value) is str and pattern.fullmatch(value) is not None
 
@@ -369,9 +397,13 @@ class Engine:
         need(p.get('enabled') is True and p.get('host') == 'raspberry'
              and p.get('project') == '/mnt/data/docker'
              and p.get('activation_confirmed') is True, 'policy_not_activated')
-        need(self.coordination.revoked() is False, 'policy_revoked')
-        need(type(p.get('expires_at')) in (int, float) and math.isfinite(p['expires_at'])
-             and self.clock() + (90 if effect else 0) < p['expires_at'], 'policy_expired_or_completion_margin')
+        execution_blocker = getattr(self.coordination, 'execution_blocker', None)
+        if callable(execution_blocker):
+            reason = execution_blocker()
+            need(reason is None, 'policy_revoked' if reason == 'authority_revocation_record' else reason)
+        else:
+            need(self.coordination.revoked() is False, 'policy_revoked')
+        need(scope_window(p, self.clock(), 90 if effect else 0), 'policy_expired_or_completion_margin')
         need(p.get('maximum_deploys_per_24h') == 4 and p.get('minimum_deploy_spacing_seconds') == 60
              and p.get('maximum_plan_age_seconds') == 900, 'policy_limits_changed')
         return digest(p)
