@@ -103217,10 +103217,10 @@
         "repair": false,
         "rules": [
             {
-                "case": false,
                 "t": "regex",
                 "v": "^(native_systemd_procmon|native_systemd_mcp_collection|native_systemd_external_heartbeat|native_docker_ai-bridge|observation_host_report)$",
-                "vt": "str"
+                "vt": "str",
+                "case": false
             },
             {
                 "t": "else"
@@ -103249,9 +103249,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "payload.mobile_notification",
                 "pt": "msg",
-                "t": "set",
                 "to": "false",
                 "tot": "bool"
             }
