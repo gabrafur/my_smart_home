@@ -64,27 +64,39 @@
     },
     "repair-control/repair_control.py": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_control.py",
-      "source_sha256": "bcc984d7905dd8f75084ce62018edc9d3ba60e5ebf6a6b97af8cb08e456386fa",
-      "export_sha256": "a4956fbb3bb24e8b33ffcdf551ff029b4d48f186c8a5725e08e9c0b0f3abd7c4",
-      "normalizations": [
-        "same_numeric_deadline_written_as_integer_plus_fraction",
-        "reference_update_exact_private_binding_0640_dependency_mode;not_original_captured_runtime_bytes"
+      "source_sha256": "d292d6ae97544083557e4c2a39ff8c2dfded1f4aad31b2d5e0585c762232885d",
+      "export_sha256": "d292d6ae97544083557e4c2a39ff8c2dfded1f4aad31b2d5e0585c762232885d",
+      "normalizations": [],
+      "source_observed_at": "2026-11-15T23:48:40.014946+00:00",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ]
     },
     "repair-control/repair_store.py": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_store.py",
-      "source_sha256": "db2a0f291f5de0b7ebcff598a8890430483031c479d33c297d05a40fea2d4e32",
-      "export_sha256": "4a9a9a71823c05ecaf0a02ea6f8ccac22a749644a6eb6080c95f68f1ad0e9351",
+      "source_sha256": "556096e4056c4b88408971cda3a8c4ac61cf0513e1a796e335f901dc5fe83048",
+      "export_sha256": "c1bdb675b1ce198c760a532a28e4d7bdd4ba8fc60916246a46db067b47fbb9fb",
       "normalizations": [
         "thread_identifiers_replaced_with_binding_markers"
+      ],
+      "source_observed_at": "2026-11-15T23:48:40.015100+00:00",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ]
     },
     "repair-control/repair_rpc.cjs": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_rpc.cjs",
-      "source_sha256": "1af7d0466236f3801be3a9e186a010318d5c24f989079752c237fa977025d621",
-      "export_sha256": "f5921f4218d834477b365dfb53a6225ce705842466184c216f60fc40d5f039d9",
+      "source_sha256": "a73f8bcd132f5e75a84e303389f3c6da9f86eb64c5035560af3e4d4360318bc2",
+      "export_sha256": "f2651d89edd6e17982be198896ce2bd47e11c94599b72770a046f2c507e52142",
       "normalizations": [
         "thread_identifiers_replaced_with_binding_markers"
+      ],
+      "source_observed_at": "2026-11-15T23:48:40.015189+00:00",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ]
     },
     "repair-control/health_summary.py": {

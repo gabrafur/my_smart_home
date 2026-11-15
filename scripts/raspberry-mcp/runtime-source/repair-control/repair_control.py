@@ -1,4 +1,5 @@
 """Typed fixed-task gateway. No caller prompt, thread, path, command or permissions."""
+import contextlib
 import hashlib
 import json
 import os
@@ -13,7 +14,7 @@ ROOT = Path('/usr/local/lib/raspberry-repair-control')
 POLICY = ROOT / 'policy.json'
 STATE = Path('/var/lib/raspberry-mcp-operations/task-control')
 RECEIPTS = Path('/home/gabriel/smart-home-proactive-review-20261023/evidence')
-EXPIRY = (1792941922 + 2443945 / 10000000)
+EXPIRY = 1794066708.0
 NAMES = ('submit', 'status', 'result', 'reconcile', 'revoke', 'capabilities')
 TOOLS = tuple('codex_repair_' + x for x in NAMES)
 FIELDS = {
@@ -26,9 +27,12 @@ FIELDS = {
 
 def configuration(tasks):
     policy = json.loads(tasks.read(POLICY, 0, 0o644))
-    need(set(policy) == {'enabled', 'expires_at', 'thread', 'tasks', 'source_hashes',
-                         'dependencies', 'maximum_submissions'}, 'repair_policy_changed')
-    need(type(policy['enabled']) is bool and policy['expires_at'] == EXPIRY and
+    fields = {'enabled', 'expires_at', 'thread', 'tasks', 'source_hashes',
+              'dependencies', 'maximum_submissions'}
+    need(set(policy) in (fields, fields | {'standing_repair'}), 'repair_policy_changed')
+    persistent = standing(policy)
+    need(type(policy['enabled']) is bool and
+         (policy['expires_at'] is None if persistent else policy['expires_at'] == EXPIRY) and
          policy['thread'] == THREAD and policy['tasks'] == [TASK] and
          policy['maximum_submissions'] == 2, 'repair_policy_changed')
     need(set(policy['source_hashes']) == {'repair_control.py', 'repair_store.py',
@@ -40,12 +44,49 @@ def configuration(tasks):
         need(hashlib.sha256(tasks.read(ROOT/name, 0, 0o644)).hexdigest() == h,
              'repair_source_changed')
     for path, h in policy['dependencies'].items():
-        # This fixed binding contains private entity IDs. Its integrity pin
-        # must not require making it world-readable like executable sources.
+        # Only the fixed private binding uses group-readable mode; all hashes remain required.
         mode = 0o640 if path == '/etc/raspberry-nodered-diagnostics/kia-runtime-binding.json' else 0o644
         need(hashlib.sha256(tasks.read(Path(path), 0, mode)).hexdigest() == h,
              'repair_dependency_changed')
     return policy
+
+
+def standing(policy):
+    grant = policy.get('standing_repair')
+    if grant is None:
+        return False
+    expected = {'schema', 'lease_kind', 'owner_confirmation_sha256', 'project',
+                'maximum_submissions_per_24h', 'maximum_receipts', 'revoked',
+                'interface_confirmations_required', 'legacy_administrative_grant'}
+    need(type(grant) is dict and set(grant) == expected and
+         grant['schema'] == 'fixed_health_repair_standing_v1' and
+         grant['lease_kind'] == 'persistent_revocable' and
+         type(grant['owner_confirmation_sha256']) is str and
+         len(grant['owner_confirmation_sha256']) == 64 and
+         all(c in '0123456789abcdef' for c in grant['owner_confirmation_sha256']) and
+         grant['owner_confirmation_sha256'] != '0' * 64 and
+         grant['project'] == '/mnt/data/docker' and
+         type(grant['maximum_submissions_per_24h']) is int and grant['maximum_submissions_per_24h'] == 2 and
+         type(grant['maximum_receipts']) is int and grant['maximum_receipts'] == 4096 and
+         type(grant['revoked']) is bool and
+         grant['interface_confirmations_required'] is True and
+         grant['legacy_administrative_grant'] is False,
+         'standing_repair_scope_changed')
+    return True
+
+
+def selected_admission(policy, tasks, old, *, observation=False):
+    if not standing(policy):
+        return tasks.policy(old)
+    task_policy, peer = tasks.task_policy(old, observation=observation)
+    need(peer.get('_v2') is True and not peer.get('_v2_peer_unconfirmed'),
+         'repair_peer_unconfirmed')
+    if not observation:
+        need(task_policy.get('enabled') is True and not (tasks.STATE / 'revoked').exists(),
+             'repair_task_admission_revoked')
+        need(policy['enabled'] and not policy['standing_repair']['revoked'],
+             'repair_standing_revoked')
+    return task_policy, peer
 
 
 def revoked(tasks):
@@ -56,12 +97,27 @@ def revoked(tasks):
     return True
 
 
-def invoke(q, old, legacy):
-    old.peer(legacy)
-    result = subprocess.run(['/usr/bin/node', '--jitless', '--no-expose-wasm',
+def invoke(q, old, legacy, tasks=None):
+    if tasks is not None:
+        current = configuration(tasks)
+        _, peer = selected_admission(current, tasks, old, observation=q['mode'] == 'observe')
+        need(peer.get('socket_identity') == legacy.get('socket_identity') and
+             peer.get('peer_pid') == legacy.get('peer_pid'), 'repair_peer_changed')
+        if q['mode'] != 'observe':
+            need(not revoked(tasks), 'repair_standing_revoked')
+    context = tasks.pinned_peer_connection(legacy, old) if tasks is not None else contextlib.nullcontext(None)
+    with context as peer:
+        if peer is None:
+            old.peer(legacy)
+        env = {'PATH': '/usr/bin:/bin', 'WS_NO_BUFFER_UTIL': '1', 'WS_NO_UTF_8_VALIDATE': '1'}
+        extra = {}
+        if peer is not None:
+            env['TASK_PEER_FD'] = str(peer.fileno())
+            extra['pass_fds'] = (peer.fileno(),)
+        result = subprocess.run(['/usr/bin/node', '--jitless', '--no-expose-wasm',
         '--max-old-space-size=24', str(ROOT/'repair_rpc.cjs')],
         input=json.dumps(q).encode(), capture_output=True, timeout=15,
-        env={'PATH': '/usr/bin:/bin', 'WS_NO_BUFFER_UTIL': '1', 'WS_NO_UTF_8_VALIDATE': '1'})
+        env=env, **extra)
     need(result.returncode == 0 and len(result.stdout) <= 16384, 'repair_rpc_unconfirmed')
     reply = json.loads(result.stdout)
     need(reply.get('ok') is True, 'repair_rpc_unconfirmed')
@@ -103,10 +159,101 @@ def publish_receipt(op, result):
     finally:os.close(directory)
 
 
+def archive_bytes(value):
+    raw = (json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False)+'\n').encode()
+    need(len(raw) <= 131072, 'repair_archive_size_limit')
+    return raw
+
+
+@contextlib.contextmanager
+def archive_directory():
+    fd = os.open('/', os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in RECEIPTS.parts[1:]:
+            nxt = os.open(part,os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,dir_fd=fd)
+            os.close(fd);fd=nxt
+        info=os.fstat(fd)
+        need(info.st_uid == 1001 and not info.st_mode & 0o002, 'unsafe_archive_directory')
+        yield fd
+    finally:
+        os.close(fd)
+
+
+def read_archive(op, expected_hash):
+    need(type(op) is str and len(op) == 32 and all(c in '0123456789abcdef' for c in op), 'archive_identity_invalid')
+    with archive_directory() as directory:
+        fd=os.open('eva-health-archive-'+op+'.json',os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,dir_fd=directory)
+        try:
+            info=os.fstat(fd)
+            need(stat.S_ISREG(info.st_mode) and info.st_uid == 1001 and info.st_nlink == 1 and
+                 stat.S_IMODE(info.st_mode)==0o600 and 0 < info.st_size <= 131072, 'unsafe_archive_file')
+            raw=os.read(fd,131073)
+            after=os.fstat(fd)
+            need(len(raw)==info.st_size and (info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns)==
+                 (after.st_ino,after.st_size,after.st_mtime_ns,after.st_ctime_ns), 'archive_file_changed')
+        finally:os.close(fd)
+    need(hashlib.sha256(raw).hexdigest()==expected_hash,'repair_archive_digest_changed')
+    value=json.loads(raw)
+    need(value.get('schema')=='fixed_repair_archive_v1' and value.get('operation_id')==op and
+         value.get('task')==TASK and value.get('thread_id')==THREAD and
+         value.get('terminal_state') in TERMINAL and digest(value['result'])==value['result_hash'],
+         'repair_archive_scope_changed')
+    return value
+
+
+def publish_archive(value):
+    # Exact terminal central receipt is independently preserved before compaction.
+    op=value['operation_id']
+    need(type(op)is str and len(op)==32 and all(c in '0123456789abcdef'for c in op),'archive_identity_invalid')
+    publish_receipt(op,value['result'])
+    raw=archive_bytes(value);h=hashlib.sha256(raw).hexdigest()
+    final='eva-health-archive-'+op+'.json';stage=final+'.staging'
+    with archive_directory() as directory:
+        try:
+            final_info=os.stat(final,dir_fd=directory,follow_symlinks=False)
+        except FileNotFoundError:final_info=None
+        if final_info is not None:
+            try:stage_info=os.stat(stage,dir_fd=directory,follow_symlinks=False)
+            except FileNotFoundError:stage_info=None
+            if stage_info is not None:
+                need((final_info.st_dev,final_info.st_ino)==(stage_info.st_dev,stage_info.st_ino) and
+                     final_info.st_uid==1001 and stat.S_ISREG(final_info.st_mode) and
+                     stat.S_IMODE(final_info.st_mode)==0o600 and final_info.st_nlink==2,
+                     'repair_archive_partial_link_conflict')
+                fd=os.open(stage,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=directory)
+                try:need(os.read(fd,131073)==raw,'repair_archive_partial_content_conflict')
+                finally:os.close(fd)
+                os.unlink(stage,dir_fd=directory);os.fsync(directory)
+            need(read_archive(op,h)==value,'repair_archive_conflict')
+            return h
+        # A same-operation prefix can be completed after an interrupted write.
+        # No target is overwritten and the live rows remain until readback.
+        fd=os.open(stage,os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW|os.O_NONBLOCK,0o600,dir_fd=directory)
+        try:
+            info=os.fstat(fd)
+            need(stat.S_ISREG(info.st_mode) and info.st_uid==1001 and info.st_nlink==1 and
+                 stat.S_IMODE(info.st_mode)==0o600 and info.st_size<=len(raw),'repair_archive_stage_unsafe')
+            existing=os.read(fd,131073)
+            need(raw.startswith(existing) and len(existing)==info.st_size,'repair_archive_stage_conflict')
+            remaining=memoryview(raw)[len(existing):]
+            while remaining:
+                n=os.write(fd,remaining);need(n>0,'repair_archive_write_no_progress');remaining=remaining[n:]
+            os.fsync(fd)
+            current=os.stat(stage,dir_fd=directory,follow_symlinks=False)
+            need((current.st_dev,current.st_ino)==(info.st_dev,info.st_ino),'repair_archive_stage_replaced')
+        finally:os.close(fd)
+        # link is no-replace. A conflict is observed rather than overwritten.
+        os.link(stage,final,src_dir_fd=directory,dst_dir_fd=directory,follow_symlinks=False)
+        os.fsync(directory);os.unlink(stage,dir_fd=directory);os.fsync(directory)
+    need(read_archive(op,h)==value,'repair_archive_readback_unconfirmed')
+    return h
+
+
 def handle(name, args, old, tasks):
     validate(name, args)
     need(os.geteuid() == 1001, 'repair_identity_refused')
     p = configuration(tasks)
+    persistent = standing(p)
     with tasks.locked():
         stopped = revoked(tasks)
         if name == 'codex_repair_revoke':
@@ -122,13 +269,26 @@ def handle(name, args, old, tasks):
             return {'revoked': True, 'duplicate': stopped, 'running_turn_cancelled': False,
                     'scope': 'new_fixed_repair_submissions_only', 'receipts_preserved': True}
         if name == 'codex_repair_capabilities':
+            reason = None
             try:
-                tasks.policy(old)
-                temporal = time.time() < EXPIRY
-            except (ValueError, OSError):
+                selected_admission(p, tasks, old)
+                temporal = persistent or time.time() < EXPIRY
+            except (ValueError, OSError) as error:
                 temporal = False
+                reason = str(error) if str(error) in {'repair_peer_unconfirmed', 'repair_task_admission_revoked',
+                    'repair_standing_revoked', 'control_lease_expired', 'task_admission_expired'} else 'repair_dependency_unconfirmed'
+            if stopped: reason = 'repair_revoked'
+            elif not p['enabled']: reason = 'repair_disabled'
+            elif not persistent and time.time() >= EXPIRY: reason = 'repair_lease_expired'
             return {'catalog': [TASK], 'thread_id': THREAD, 'enabled': p['enabled'] and temporal and not stopped,
-                    'expires_at': EXPIRY, 'maximum_submissions': 2, 'automatic_retry': False,
+                    'admission_block_reason': reason,
+                    'expires_at': None if persistent else EXPIRY, 'maximum_submissions': 2,
+                    'lease_kind': 'persistent_revocable' if persistent else 'finite',
+                    'submission_window': 'rolling_24h' if persistent else 'lifetime',
+                    'maximum_receipts': 4096 if persistent else 8,
+                    'storage_pressure': 'fail_closed_no_eviction_or_replay',
+                    'thread_resume': 'blocked_without_separate_profile_enrollment',
+                    'automatic_retry': False,
                     'scope': 'fixed_task_and_readonly_health_projection;not_general_root_or_filesystem_confinement',
                     'new_task_policy': 'root_review_and_existing_standing_goal_authorization'}
         # Reuse the existing durable ledger: dynamic/legacy admission already
@@ -139,7 +299,7 @@ def handle(name, args, old, tasks):
             legacy_store.db.execute('PRAGMA max_page_count=256')
             need(legacy_store.db.execute('PRAGMA page_size').fetchone()[0] == 4096,
                  'repair_database_page_size')
-            receipt = Store(legacy_store.db)
+            receipt = Store(legacy_store.db, clock=time.time, standing=persistent, archive_reader=read_archive if persistent else None)
             op = args['operation_id']
             known = receipt.get(op)
             was_known = known is not None
@@ -152,8 +312,8 @@ def handle(name, args, old, tasks):
                 publish_receipt(op, known['result'])
                 return receipt.reconcile(op, args['result_hash'])
             if name == 'codex_repair_submit' and known is None:
-                need(p['enabled'] and not stopped and time.time() < EXPIRY, 'repair_admission_closed')
-                tp, legacy = tasks.policy(old)
+                need(p['enabled'] and not stopped and (persistent or time.time() < EXPIRY), 'repair_admission_closed')
+                tp, legacy = selected_admission(p, tasks, old)
                 dynamic = tasks.store(tp)
                 try:
                     dynamic.idle()
@@ -162,15 +322,20 @@ def handle(name, args, old, tasks):
                     tasks.admission(count, latest, tp)
                 finally:
                     dynamic.close()
-                need(legacy_store.db.execute('SELECT count(*) FROM repair_receipts').fetchone()[0]
-                     < p['maximum_submissions'], 'repair_submission_budget_exhausted')
+                if persistent:
+                    for archived in receipt.archive_ready(time.time()):
+                        payload = receipt.archive_payload(archived)
+                        archive_hash = publish_archive(payload)
+                        receipt.archive_commit(archived, archive_hash)
+                repair_count = receipt.rolling_count(time.time()) if persistent else legacy_store.db.execute('SELECT count(*) FROM repair_receipts').fetchone()[0]
+                need(repair_count < p['maximum_submissions'], 'repair_submission_budget_exhausted')
                 # Registry commit precedes any daemon RPC. A duplicate never
                 # reaches send again, even if the first process died here.
-                tasks.legacy_idle(old, legacy)
+                tasks.dispatch_idle(old, legacy) if persistent else tasks.legacy_idle(old, legacy)
                 receipt.reserve(op)
                 try:
                     legacy_store.send({'operation_id': op, 'thread_id': THREAD, 'intent': TASK},
-                                      legacy, lambda q, _: invoke(q, old, legacy))
+                                      legacy, lambda q, _: invoke(q, old, legacy, tasks) if persistent else invoke(q, old, legacy))
                 except Exception:
                     if legacy_store.get(op) is None:
                         receipt.terminal(op, {'operation_state': 'failed',
@@ -188,21 +353,22 @@ def handle(name, args, old, tasks):
                     'outcome': 'reserved_without_dispatch', 'automatic_retry': False})
             if name in ('codex_repair_status', 'codex_repair_result') and job and job['turn'] and job['state'] in ('accepted', 'inProgress'):
                 try:
-                    _, legacy = tasks.policy(old)
+                    _, legacy = selected_admission(p, tasks, old, observation=True)
                     legacy_store.observe({'operation_id': op, 'thread_id': THREAD}, legacy,
-                                         lambda q, _: invoke(q, old, legacy))
+                                         lambda q, _: invoke(q, old, legacy, tasks) if persistent else invoke(q, old, legacy))
                 except Exception:
                     # Observation failure does not erase the accepted handle,
                     # complete a job, or authorize restarting it.
                     return {'operation_id': op, 'task': TASK, 'state': job['state'],
-                        'turn_id': job['turn'], 'observation': 'unavailable_or_admission_expired',
+                        'turn_id': job['turn'], 'observation': 'unavailable_peer_or_recorded_turn',
                         'automatic_retry': False, 'execution_replay_allowed': False}
                 job = legacy_store.get(op)
             if job and job['state'] in TERMINAL and job['result']:
                 receipt.terminal(op, json.loads(job['result']))
             known = receipt.get(op)
             value = {'operation_id': op, 'task': TASK, 'thread_id': THREAD,
-                'state': job['state'] if job else 'failed', 'turn_id': job['turn'] if job else None,
+                'state': job['state'] if job else (known['result'].get('operation_state', 'failed') if known['result'] else 'failed'),
+                'turn_id': job['turn'] if job else (known['result'].get('turn_id') if known['result'] else None),
                 'result_hash': known['result_hash'], 'reconciled': bool(known['ack']),
                 'automatic_retry': False, 'execution_replay_allowed': False}
             if name == 'codex_repair_submit':

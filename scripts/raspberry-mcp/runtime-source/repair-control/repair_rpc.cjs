@@ -1,5 +1,5 @@
 // Fixed RPC adapter. No shell, session database, auth file or arbitrary RPC input.
-const fs=require('node:fs'),WebSocket=require('/usr/local/lib/raspberry-ha-notices/vendor/ws');
+const fs=require('node:fs'),net=require('node:net'),WebSocket=require('/usr/local/lib/raspberry-ha-notices/vendor/ws');
 const SOCKET='/run/raspberry-mcp/codex-control.sock';
 const THREADS=['${AUTHORIZED_THREAD_ID_1}'];
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -25,7 +25,7 @@ function quota(account,usage){
  const buckets=[usage.rateLimits,...Object.values(usage.rateLimitsByLimitId||{})];
  for(const b of buckets)requireOk(b&&b.credits?.hasCredits===false&&b.credits?.unlimited===false&&[null,undefined,'0','0.0','0.00'].includes(b.credits?.balance)&&b.rateLimitReachedType==null&&b.spendControlReached!==true,'extra_credit_or_quota_refused');
 }
-function metadata(t,id){requireOk(t?.id===id&&STATES.has(t.status?.type),'thread_metadata_unconfirmed');return {thread_id:id,status:t.status.type,ephemeral:t.ephemeral===true,cwd_is_project:t.cwd==='/mnt/data/docker',cwd:'/home/gabriel'===t.cwd?'/home/gabriel':t.cwd==='/mnt/data/docker'?'/mnt/data/docker':'other',can_accept_direct_input:t.canAcceptDirectInput===true};}
+function metadata(t,id){requireOk(t?.id===id&&STATES.has(t.status?.type),'thread_metadata_unconfirmed');return {thread_id:id,status:t.status.type,ephemeral:t.ephemeral===true,cwd_is_project:t.cwd==='/mnt/data/docker',cwd:'/home/gabriel'===t.cwd?'/home/gabriel':t.cwd==='/mnt/data/docker'?'/mnt/data/docker':'other',can_accept_direct_input:t.canAcceptDirectInput===true,model_provider:t.modelProvider==='openai'?'openai':'unconfirmed'};}
 async function run(q,rpc){
  validate(q);let t=metadata((await rpc('thread/read',{threadId:q.thread_id,includeTurns:false})).thread,q.thread_id);
  if(q.mode==='metadata')return t;
@@ -43,25 +43,31 @@ async function run(q,rpc){
   }
   return result;
  }
- // Resume the same unloaded thread on this connection. No model, permission,
- // cwd or authentication overrides; no new thread and no user input here.
- if(t.status==='notLoaded'){
-  const resumed=await rpc('thread/resume',{threadId:q.thread_id,excludeTurns:true});
-  t=metadata(resumed.thread,q.thread_id);
- }
+ // Historical profile metadata is not a standing resume grant. Loading a
+ // legacy thread requires its own reviewed enrollment; never apply defaults.
+ requireOk(t.status!=='notLoaded','legacy_resume_profile_unenrolled');
+ requireOk(t.cwd_is_project&&t.model_provider==='openai','repair_thread_profile_unconfirmed');
  requireOk(t.status==='idle'&&t.can_accept_direct_input,'busy');
  quota(await rpc('account/read',{refreshToken:false}),await rpc('account/rateLimits/read',{}));
  if(q.mode==='preflight')return {...t,included_quota_confirmed:true};
  // Fresh status before sending. Other clients can race; do not claim a global CAS.
  const fresh=metadata((await rpc('thread/read',{threadId:q.thread_id,includeTurns:false})).thread,q.thread_id);
  requireOk(fresh.status==='idle'&&fresh.can_accept_direct_input,'busy');
+ requireOk(fresh.cwd_is_project&&fresh.model_provider==='openai','repair_thread_profile_unconfirmed');
  const reply=await rpc('turn/start',{threadId:q.thread_id,clientUserMessageId:q.operation_id,input:[{type:'text',text:prompt(q)}]});
  requireOk(UUID.test(reply?.turn?.id),'turn_acceptance_unconfirmed');
  return {thread_id:q.thread_id,operation_state:'accepted',turn_id:reply.turn.id,model_started_or_input_accepted:true};
 }
 async function connect(q){
  return new Promise((resolve,reject)=>{
-  const ws=new WebSocket('ws+unix://'+SOCKET+':/',{handshakeTimeout:3000,maxPayload:524288,perMessageDeflate:false});
+  const options={handshakeTimeout:3000,maxPayload:524288,perMessageDeflate:false};
+  const passedFd=process.env.TASK_PEER_FD;
+  if(passedFd!==undefined){
+   requireOk(/^[0-9]+$/.test(passedFd),'invalid_peer_fd');
+   const fd=Number(passedFd);requireOk(Number.isSafeInteger(fd)&&fd>=3&&fs.fstatSync(fd).isSocket(),'invalid_peer_fd');
+   let used=false;options.createConnection=()=>{requireOk(!used,'peer_fd_reused');used=true;return new net.Socket({fd,readable:true,writable:true});};
+  }
+  const ws=new WebSocket('ws+unix://'+SOCKET+':/',options);
   const pending=new Map();let next=1,closed=false,total=0;
   function finish(error,value){if(closed)return;closed=true;clearTimeout(timer);for(const p of pending.values())p.reject(new Refused('connection_closed'));pending.clear();ws.terminate();error?reject(error):resolve(value);}
   const timer=setTimeout(()=>finish(new Refused('protocol_timeout')),12000);
