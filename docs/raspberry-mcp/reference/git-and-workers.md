@@ -140,3 +140,19 @@ Assistant foi preservada fora do checkout para revisão. O Compose voltou
 à imagem que permanece em execução, sem reiniciar serviços nessa contenção.
 Antes de editar ou validar o projeto, confira a atividade de todas as etapas
 diárias; o fluxo existente pode avançar após o resultado offsite.
+
+## Arquivos novos reprovados pelo scanner
+
+O backup automático prepara todo o checkout. Trabalho interativo em andamento
+pode deixar arquivos novos, ainda não rastreados, que o scanner de segurança
+reprova. Quando todos os achados são de arquivos recém-adicionados, o backup
+retira somente esses arquivos da preparação, repete o scanner e publica o
+restante; o conteúdo em disco não é alterado e o log registra
+`security_scan_excluded_new_files` com os metadados dos achados. Achado em
+arquivo já rastreado, formato de relatório desconhecido ou job de recuperação
+continuam abortando com `security_scan_failed`.
+
+As atualizações diárias só são disparadas depois de um backup com sucesso.
+Falhas repetidas do backup por trabalho inacabado suspendem as atualizações;
+a [revisão proativa](proactive-review.md) acompanha essa recorrência.
+

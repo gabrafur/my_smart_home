@@ -82,6 +82,37 @@ elif [[ -n "$SSH_KEY" ]]; then
   export GIT_SSH_COMMAND="ssh -i \"$SSH_KEY\" -o IdentitiesOnly=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o BatchMode=yes -o StrictHostKeyChecking=yes"
 fi
 
+# Trabalho interativo em andamento pode deixar arquivos novos, ainda nao
+# rastreados, que o scanner reprova. Eles nunca devem ser publicados, mas
+# tambem nao devem impedir o backup do restante. Quando todos os achados sao de
+# arquivos recem-adicionados ao indice, retire somente esses arquivos do stage
+# (o conteudo em disco fica intacto) e repita o scan. Achado em arquivo ja
+# rastreado, em job de recovery ou em formato desconhecido continua abortando.
+exclude_flagged_new_files() {
+  local scan_output="$1" flagged added file rescan
+  [[ -z "${GIT_BACKUP_RECOVERY_JOB:-}" ]] || return 1
+  flagged=$(printf '%s\n' "$scan_output" |
+    sed -n 's/.*rule=[^ ]* file=\(.*\) line=[0-9][0-9]* category=.*/\1/p' | sort -u)
+  [[ -n "$flagged" ]] || return 1
+  # Todo achado precisa ter sido interpretado; qualquer outro tipo aborta.
+  [[ "$(printf '%s\n' "$scan_output" | grep -c 'category=')" -eq \
+     "$(printf '%s\n' "$scan_output" | grep -c 'rule=[^ ]* file=.* line=[0-9][0-9]* category=')" ]] || return 1
+  added=$(git diff --cached --name-only --diff-filter=A)
+  while IFS= read -r file; do
+    printf '%s\n' "$added" | grep -Fxq -- "$file" || return 1
+  done <<< "$flagged"
+  while IFS= read -r file; do
+    git reset --quiet -- "$file"
+  done <<< "$flagged"
+  if ! rescan="$(bash scripts/security-scan.sh --staged 2>&1)"; then
+    security_scan="$rescan"
+    return 1
+  fi
+  log "backup excluded $(printf '%s\n' "$flagged" | wc -l | tr -d ' ') flagged new file(s) from staging reason=security_scan_excluded_new_files"
+  printf '%s\n' "$scan_output" | grep 'category=' >> "$LOG_FILE"
+  return 0
+}
+
 {
   flock -n 9 || {
     log "backup skipped: another git backup is already running"
@@ -114,7 +145,8 @@ fi
   # O scanner canonico valida caminhos proibidos e conteudo sem confundir
   # scripts/testes legitimos que tenham palavras como "credentials" no nome.
   # Sua saida e somente metadado do achado; nenhum valor sensivel vai ao log.
-  if ! security_scan="$(bash scripts/security-scan.sh --staged 2>&1)"; then
+  if ! security_scan="$(bash scripts/security-scan.sh --staged 2>&1)" &&
+     ! exclude_flagged_new_files "$security_scan"; then
     log "backup aborted: staged security scan failed"
     printf '%s\n' "$security_scan" >> "$LOG_FILE"
     if [[ -z "${GIT_BACKUP_RECOVERY_JOB:-}" ]]; then git reset --quiet; fi
