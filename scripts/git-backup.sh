@@ -9,6 +9,7 @@ BRANCH="${BRANCH:-main}"
 SSH_KEY="${GIT_BACKUP_SSH_KEY:-}"
 LOG_FILE="$REPO_DIR/.git-backup.log"
 LOCK_FILE="$REPO_DIR/.git-backup.lock"
+SCOPE_FILE="${GIT_BACKUP_SCOPE_FILE:-$SCRIPT_DIR/git-backup-scope.conf}"
 
 log() {
   printf '[%s] %s\n' "$(date -Is)" "$*" >> "$LOG_FILE"
@@ -113,6 +114,40 @@ exclude_flagged_new_files() {
   return 0
 }
 
+# O backup automatico publica o estado escrito pelos servicos em execucao.
+# Caminhos de autoria interativa (scripts, documentacao, memoria) pertencem a
+# quem os esta editando: capturar um trabalho pela metade fazia a validacao
+# canonica reprovar o commit e bloqueava o backup inteiro e as atualizacoes
+# que dependem dele. As mudancas nesses caminhos saem apenas do stage; o
+# conteudo em disco fica intacto para o autor publicar. Sem arquivo de escopo
+# o comportamento anterior e mantido; o job de recovery usa a arvore aprovada.
+defer_development_paths() {
+  [[ -z "${GIT_BACKUP_RECOVERY_JOB:-}" && -r "$SCOPE_FILE" ]] || return 0
+  local -a defer=() keep=() staged=()
+  local kind value extra
+  while read -r kind value extra || [[ -n "$kind" ]]; do
+    case "$kind" in
+      ''|'#'*) continue ;;
+    esac
+    if [[ -n "$extra" || -z "$value" || "$value" == /* || "$value" == *..* || "$value" == *[:\*\?\[]* ]]; then
+      log "backup aborted: invalid scope rule reason=backup_scope_invalid"
+      return 1
+    fi
+    case "$kind" in
+      defer) defer+=("$value") ;;
+      keep) keep+=(":(exclude)$value") ;;
+      *) log "backup aborted: invalid scope rule reason=backup_scope_invalid"; return 1 ;;
+    esac
+  done < "$SCOPE_FILE"
+  ((${#defer[@]})) || return 0
+  # --no-renames keeps both sides of a rename inside the same decision.
+  mapfile -d '' -t staged < <(git diff --cached --name-only --no-renames -z -- "${defer[@]}" "${keep[@]}")
+  ((${#staged[@]})) || return 0
+  git reset --quiet -- "${staged[@]}"
+  log "backup left ${#staged[@]} development path(s) to their author reason=development_paths_deferred"
+  printf '  deferred=%s\n' "${staged[@]}" >> "$LOG_FILE"
+}
+
 {
   flock -n 9 || {
     log "backup skipped: another git backup is already running"
@@ -141,6 +176,11 @@ exclude_flagged_new_files() {
   starting_head="$(git rev-parse HEAD)"
   created_commit=0
   git add -A
+  if ! defer_development_paths; then
+    git reset --quiet
+    emit_reason "backup_scope_invalid"
+    exit 1
+  fi
 
   # O scanner canonico valida caminhos proibidos e conteudo sem confundir
   # scripts/testes legitimos que tenham palavras como "credentials" no nome.

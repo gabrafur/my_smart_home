@@ -141,10 +141,37 @@ Assistant foi preservada fora do checkout para revisão. O Compose voltou
 Antes de editar ou validar o projeto, confira a atividade de todas as etapas
 diárias; o fluxo existente pode avançar após o resultado offsite.
 
+## Escopo do backup automático
+
+O backup automático publica o estado escrito pelos serviços em execução. Os
+caminhos de autoria interativa listados em `scripts/git-backup-scope.conf`
+(scripts, documentação, memória, instruções) pertencem a quem os está editando
+e são publicados pelo próprio autor. Mudanças encontradas ali saem apenas da
+preparação do commit: o conteúdo em disco não é alterado, nada é descartado e
+o backup do restante continua. O log registra `development_paths_deferred` e
+os caminhos deixados.
+
+| Regra | Efeito |
+| --- | --- |
+| `defer <prefixo ou arquivo>` | Mudanças ali ficam com o autor |
+| `keep <arquivo>` | Arquivo escrito por worker dentro de um prefixo adiado continua no backup |
+
+Um backup em que só havia mudanças adiadas termina com sucesso e sem commit;
+as atualizações que dependem dele seguem. Trabalho deixado sem publicar por
+muito tempo aparece na [revisão proativa](proactive-review.md) pela fonte
+`repo.state`. Regra inválida no arquivo interrompe o backup antes de qualquer
+commit, com `backup_scope_invalid`. Sem o arquivo, vale o comportamento
+anterior de preparar o checkout inteiro. O job de recuperação usa a árvore
+aprovada e não aplica o escopo.
+
+Limite: mudanças em caminhos mantidos no backup (por exemplo fluxos Node-RED
+em edição) ainda podem ser reprovadas pela validação; essa falha é legítima e
+continua sendo reportada.
+
 ## Arquivos novos reprovados pelo scanner
 
-O backup automático prepara todo o checkout. Trabalho interativo em andamento
-pode deixar arquivos novos, ainda não rastreados, que o scanner de segurança
+Dentro do escopo acima, o backup prepara todo o restante do checkout. Trabalho
+em andamento pode deixar arquivos novos, ainda não rastreados, que o scanner de segurança
 reprova. Quando todos os achados são de arquivos recém-adicionados, o backup
 retira somente esses arquivos da preparação, repete o scanner e publica o
 restante; o conteúdo em disco não é alterado e o log registra
