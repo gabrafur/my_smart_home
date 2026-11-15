@@ -68,12 +68,14 @@ test("cron installer exposes an idempotent managed block", () => {
   assert.doesNotMatch(result.stdout, /storage-maintenance\.sh --apply/);
 });
 
-function cacheFixture(exit = 0) {
+function cacheFixture(exit = 0, reconcileExit = 1) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "storage-cache-request-"));
   const trigger = path.join(root, "trigger"); fs.mkdirSync(trigger);
   const calls = path.join(root, "calls");
   const helper = path.join(root, "cache.py");
-  fs.writeFileSync(helper, `import sys\nwith open(${JSON.stringify(calls)}, 'a') as f: f.write('cache:'+','.join(sys.argv[1:])+'\\n')\nsys.exit(${exit})\n`);
+  // The stub mirrors the helper contract: --reconcile is read-only and answers
+  // from the durable receipt (here a flag file) whether a dispatch is pending.
+  fs.writeFileSync(helper, `import os, sys\nwith open(${JSON.stringify(calls)}, 'a') as f: f.write('cache:'+','.join(sys.argv[1:])+'\\n')\nif sys.argv[1:] == ['--reconcile']:\n    sys.exit(int(open(${JSON.stringify(path.join(root, "reconcile-exit"))}).read()) if os.path.exists(${JSON.stringify(path.join(root, "reconcile-exit"))}) else ${reconcileExit})\nsys.exit(${exit})\n`);
   const report = path.join(root, "report.sh");
   fs.writeFileSync(report, `#!/bin/sh\nprintf 'report:%s\\n' "$*" >> '${calls}'\n`); fs.chmodSync(report, 0o755);
   return { root, trigger, calls, env: { ...process.env, STORAGE_MAINTENANCE_TRIGGER_DIR: trigger, STORAGE_MAINTENANCE_SCRIPT: report, STORAGE_BUILD_CACHE_HELPER: helper, STORAGE_MAINTENANCE_PROCESSOR_LOCK: path.join(root,"processor.lock") } };
@@ -106,8 +108,10 @@ test("uncertain cache result keeps processing receipt and never requeues or bloc
     assert.equal(spawnSync(requestScript,["--daily-build-cache"],{env:x.env}).status,75);
     assert.equal(spawnSync(requestScript,[],{env:x.env}).status,0);
     assert.equal(spawnSync(processScript,[],{env:x.env}).status,75);
+    assert.ok(fs.existsSync(path.join(x.trigger,"build-cache-processing")));
     const lines=fs.readFileSync(x.calls,"utf8").trim().split("\n");
-    assert.equal(lines.filter(l=>l.startsWith("cache:")).length,1);
+    assert.equal(lines.filter(l=>l==="cache:--daily").length,1);
+    assert.equal(lines.filter(l=>l==="cache:--reconcile").length,1);
     assert.equal(lines.filter(l=>l==="report:--apply --category report").length,2);
   } finally {fs.rmSync(x.root,{recursive:true,force:true});}
 });
@@ -148,4 +152,57 @@ test("transport lock prevents concurrent helper dispatch", () => {
     assert.equal(spawnSync(processScript,[],{env:x.env}).status,0);
     assert.equal(fs.readFileSync(x.calls,"utf8"),"cache:--daily\n");
   } finally {fs.rmSync(x.root,{recursive:true,force:true});}
+});
+
+test("refusal proven before dispatch drops the request instead of raising a standing alarm", () => {
+  const x = cacheFixture(74);
+  try {
+    assert.equal(spawnSync(requestScript, ["--daily-build-cache"], {env:x.env}).status, 0);
+    const processed = spawnSync(processScript, [], {encoding:"utf8", env:x.env});
+    assert.equal(processed.status, 0, processed.stderr);
+    assert.match(processed.stdout, /refused before dispatch; request dropped without retry/);
+    assert.ok(!fs.existsSync(path.join(x.trigger, "build-cache-processing")));
+    assert.ok(!fs.existsSync(path.join(x.trigger, "build-cache-trigger")));
+    // The next schedule is admitted again and nothing was replayed meanwhile.
+    assert.equal(spawnSync(processScript, [], {env:x.env}).status, 0);
+    assert.equal(spawnSync(requestScript, ["--daily-build-cache"], {env:x.env}).status, 0);
+    assert.equal(fs.readFileSync(x.calls, "utf8"), "cache:--daily\n");
+  } finally { fs.rmSync(x.root, {recursive:true, force:true}); }
+});
+
+test("stale marker is released only after the receipt proves no dispatch is pending", () => {
+  const x = cacheFixture(1, 1);
+  try {
+    fs.writeFileSync(path.join(x.trigger, "build-cache-processing"), "");
+    // Unresolved receipt: the alarm stays and the cache request is refused.
+    assert.equal(spawnSync(processScript, [], {env:x.env}).status, 75);
+    assert.equal(spawnSync(requestScript, ["--daily-build-cache"], {env:x.env}).status, 75);
+    assert.ok(fs.existsSync(path.join(x.trigger, "build-cache-processing")));
+    // Lock contention during reconciliation is silent and keeps the marker.
+    fs.writeFileSync(path.join(x.root, "reconcile-exit"), "75");
+    const busy = spawnSync(processScript, [], {encoding:"utf8", env:x.env});
+    assert.equal(busy.status, 75);
+    assert.equal(busy.stderr, "");
+    assert.ok(fs.existsSync(path.join(x.trigger, "build-cache-processing")));
+    // Proven clean receipt: marker released, nothing dispatched, requests reopen.
+    fs.writeFileSync(path.join(x.root, "reconcile-exit"), "0");
+    const released = spawnSync(processScript, [], {encoding:"utf8", env:x.env});
+    assert.equal(released.status, 0, released.stderr);
+    assert.match(released.stdout, /marker released: no dispatch pending/);
+    assert.ok(!fs.existsSync(path.join(x.trigger, "build-cache-processing")));
+    assert.equal(spawnSync(requestScript, ["--daily-build-cache"], {env:x.env}).status, 0);
+    const lines = fs.readFileSync(x.calls, "utf8").trim().split("\n");
+    assert.ok(lines.every((line) => line === "cache:--reconcile"), lines.join());
+  } finally { fs.rmSync(x.root, {recursive:true, force:true}); }
+});
+
+test("a symlinked processing marker is never removed", () => {
+  const x = cacheFixture(0, 0);
+  try {
+    const target = path.join(x.root, "protected"); fs.writeFileSync(target, "preserved");
+    fs.symlinkSync(target, path.join(x.trigger, "build-cache-processing"));
+    assert.equal(spawnSync(processScript, [], {env:x.env}).status, 75);
+    assert.equal(fs.readFileSync(target, "utf8"), "preserved");
+    assert.ok(fs.lstatSync(path.join(x.trigger, "build-cache-processing")).isSymbolicLink());
+  } finally { fs.rmSync(x.root, {recursive:true, force:true}); }
 });

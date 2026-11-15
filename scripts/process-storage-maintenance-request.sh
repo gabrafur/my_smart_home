@@ -25,8 +25,25 @@ exec 9>"$processor_lock"
 flock -n 9 || exit 0
 cache_status=0
 if [ -e "$trigger_dir/build-cache-processing" ] || [ -L "$trigger_dir/build-cache-processing" ]; then
-  echo "Build cache receipt reconciliation required; no retry" >&2
-  cache_status=75
+  # A retained marker is only an alarm while the helper's durable receipt says
+  # a dispatch may have happened. The read-only reconciliation never replays
+  # the request: it either proves that nothing is pending and releases the
+  # marker, or leaves the marker for the operator.
+  reconcile_status=0
+  if [ -f "$build_cache_helper" ]; then
+    "$python_bin" "$build_cache_helper" --reconcile || reconcile_status=$?
+  else
+    reconcile_status=66
+  fi
+  if [ "$reconcile_status" -eq 0 ] && [ ! -L "$trigger_dir/build-cache-processing" ]; then
+    rm -- "$trigger_dir/build-cache-processing"
+    echo "Build cache marker released: no dispatch pending; request dropped without retry"
+  elif [ "$reconcile_status" -eq 75 ]; then
+    cache_status=75
+  else
+    echo "Build cache receipt reconciliation required; no retry" >&2
+    cache_status=75
+  fi
 fi
 if [ "$cache_status" -eq 0 ] && [ -f "$trigger_dir/build-cache-trigger" ] && [ ! -L "$trigger_dir/build-cache-trigger" ]; then
   [ -f "$build_cache_helper" ] || { echo "Build cache helper unavailable" >&2; exit 66; }
@@ -41,6 +58,12 @@ if [ "$cache_status" -eq 0 ] && [ -f "$trigger_dir/build-cache-trigger" ] && [ !
       mv -- "$trigger_dir/build-cache-processing" "$trigger_dir/build-cache-trigger"
       echo "Build cache deferred before dispatch: maintenance busy"
       cache_status=75
+    elif [ "$helper_status" -eq 74 ]; then
+      # The helper reserves 74 for a refusal proven to precede any dispatch
+      # intent (inventory timeout, resource pressure, stale plan). Nothing can
+      # be reconciled, so the request ends here and the next schedule asks again.
+      rm -- "$trigger_dir/build-cache-processing"
+      echo "Build cache refused before dispatch; request dropped without retry"
     else
       # Even a timeout can follow dispatch. Keep the exact marker and helper
       # receipt for reconciliation instead of restoring an executable request.

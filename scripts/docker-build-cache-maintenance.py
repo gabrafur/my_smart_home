@@ -28,6 +28,7 @@ MAX_RECORDS = 32
 MAX_BYTES = 2_000_000_000
 MIN_AGE = 30 * 86400
 INTERVAL = 86400
+LOCK_WAIT = 25.0
 MAX_OUTPUT = 2 * 1024 * 1024
 ID = re.compile(r'^[a-z0-9]{16,64}$')
 DOCKER = ['/usr/bin/docker', '--host', 'unix:///var/run/docker.sock', 'buildx', '--builder', 'default']
@@ -90,7 +91,32 @@ def select(engine, cli, now):
         if total + row['bytes'] <= MAX_BYTES:
             picked.append(row)
             total += row['bytes']
-    return picked
+    return without_retained_descendants(picked, cli)
+
+
+def without_retained_descendants(picked, cli):
+    """The builder keeps a record while any other record lists it as a parent.
+
+    Selecting such a record only dispatches a prune that removes nothing, so a
+    candidate stays eligible only when every dependent record is selected too.
+    Unknown parent metadata keeps the record out of the plan.
+    """
+    children = {}
+    for row in cli:
+        parents = row.get('Parents')
+        if parents is None:
+            parents = []
+        if not isinstance(parents, list) or any(not isinstance(p, str) for p in parents):
+            raise Refused('parent_metadata_invalid')
+        for parent in parents:
+            children.setdefault(parent, set()).add(row.get('ID'))
+    kept = list(picked)
+    while True:
+        ids = {row['id'] for row in kept}
+        remaining = [row for row in kept if children.get(row['id'], set()) <= ids]
+        if len(remaining) == len(kept):
+            return remaining
+        kept = remaining
 
 
 class Engine(http.client.HTTPConnection):
@@ -165,7 +191,7 @@ def read_json(path):
 
 
 @contextmanager
-def locks(state=STATE, maintenance_lock=ROOT / '.daily-maintenance.lock'):
+def locks(state=STATE, maintenance_lock=ROOT / '.daily-maintenance.lock', wait=0.0):
     if state.is_symlink():
         raise Refused('unsafe_state_directory')
     state.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -173,13 +199,23 @@ def locks(state=STATE, maintenance_lock=ROOT / '.daily-maintenance.lock'):
         raise Refused('state_directory_owner_or_mode')
     held = []
     try:
-        for path in (maintenance_lock, state / 'lock'):
+        # A read-only reconciliation passes no maintenance lock: it must not
+        # wait behind unrelated daily workers to answer from the receipt.
+        for path in (maintenance_lock, state / 'lock') if maintenance_lock else (state / 'lock',):
             fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
             held.append(fd)
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise DeferredBeforeDispatch('maintenance_in_progress') from exc
+            # The minute workers queue on the maintenance lock at the same
+            # second; a single non-blocking attempt lost to them for hours.
+            # A short bounded wait takes a turn without holding anything else.
+            deadline = time.monotonic() + (wait if path == maintenance_lock else 0.0)
+            while True:
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError as exc:
+                    if time.monotonic() >= deadline:
+                        raise DeferredBeforeDispatch('maintenance_in_progress') from exc
+                    time.sleep(0.25)
         yield
     finally:
         for fd in held:
@@ -256,24 +292,70 @@ def run(mode, state=STATE, now=None):
     return receipt
 
 
+def unresolved_dispatch(state=STATE):
+    """Durable proof of whether a dispatch may have happened without a verdict.
+
+    The intent is written before the single dispatch, so a readable latest
+    receipt outside these two states proves that no dispatch is pending. An
+    unreadable receipt is treated as unresolved.
+    """
+    latest = state / 'latest.json'
+    if not latest.exists() and not latest.is_symlink():
+        return None
+    try:
+        previous = read_json(latest)
+        if previous['state'] in ('dispatch_intent', 'uncertain'):
+            return {'operation_id': previous.get('operation_id'), 'receipt_state': previous['state']}
+    except Exception:
+        return {'operation_id': None, 'receipt_state': 'unreadable'}
+    return None
+
+
+def reason_of(exc):
+    return str(exc) if isinstance(exc, Refused) else type(exc).__name__
+
+
+def execute(mode, state=STATE, runner=None, lock=None):
+    """Return (exit status, printable result). Exit statuses are a contract:
+
+    0 done; 75 lock contention before run(); 74 refused before any dispatch
+    intent existed (nothing to reconcile); 1 a dispatch needs reconciliation.
+    """
+    runner = run if runner is None else runner
+    if lock is None:
+        lock = (lambda: locks(state, None)) if mode == '--reconcile' else (lambda: locks(state, wait=LOCK_WAIT))
+    try:
+        with lock():
+            if mode == '--reconcile':
+                pending = unresolved_dispatch(state)
+                if pending:
+                    return 1, dict(pending, state='unresolved_dispatch', automatic_retry=False)
+                return 0, {'state': 'no_unresolved_dispatch', 'dispatched': False}
+            try:
+                return 0, runner(mode, state)
+            except Exception as exc:
+                pending = unresolved_dispatch(state)
+                if pending:
+                    return 1, dict(pending, state='refused', reason=reason_of(exc), automatic_retry=False)
+                return 74, {'state': 'refused_before_dispatch', 'reason': reason_of(exc), 'dispatched': False,
+                            'automatic_retry': False}
+    except DeferredBeforeDispatch as exc:
+        return 75, {'state': 'deferred', 'reason': str(exc), 'dispatched': False}
+    except Exception as exc:
+        return 1, {'state': 'refused', 'reason': reason_of(exc), 'automatic_retry': False}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
-    for flag in ('--dry-run', '--apply', '--daily'):
+    for flag in ('--dry-run', '--apply', '--daily', '--reconcile'):
         group.add_argument(flag, action='store_true')
     args = parser.parse_args()
-    mode = '--dry-run' if args.dry_run else '--apply' if args.apply else '--daily'
-    try:
-        with locks():
-            result = run(mode)
-        print(json.dumps(result, sort_keys=True))
-    except DeferredBeforeDispatch as exc:
-        print(json.dumps({'state': 'deferred', 'reason': str(exc), 'dispatched': False}))
-        return 75
-    except Exception as exc:
-        print(json.dumps({'state': 'refused', 'reason': str(exc) if isinstance(exc, Refused) else type(exc).__name__, 'automatic_retry': False}))
-        return 1
-    return 0
+    mode = ('--dry-run' if args.dry_run else '--apply' if args.apply else
+            '--reconcile' if args.reconcile else '--daily')
+    status, result = execute(mode)
+    print(json.dumps(result, sort_keys=True))
+    return status
 
 
 if __name__ == '__main__':

@@ -296,6 +296,30 @@ contornado com uma operação nova.
 Recusa do lock antes de entrar no executor retorna código 75 e mantém o mesmo
 pedido para o próximo ciclo. Esse caso comprovadamente sem despacho não cria
 um bloqueio de reconciliação. Falhas após despacho continuam sem repetição.
+O executor espera até 25 segundos pela trava de manutenção, porque os workers
+de minuto disputam essa trava no mesmo segundo.
+
+Os códigos de saída do executor formam um contrato com o worker:
+
+| Código | Significado | Efeito no pedido |
+| --- | --- | --- |
+| 0 | Concluído, sem candidatos ou dentro do intervalo diário | Encerrado |
+| 75 | Trava ocupada antes de qualquer consulta | Mesmo pedido no próximo minuto |
+| 74 | Recusa comprovadamente anterior ao despacho (inventário indisponível, pressão de recursos, plano vencido) | Encerrado sem repetição; a próxima agenda pede de novo |
+| 1 | Há intenção de despacho ou resultado incerto no recibo | Marcador mantido até reconciliação |
+
+A intenção é gravada antes do único despacho permitido. Por isso, um recibo
+legível fora dos estados `dispatch_intent` e `uncertain` prova que nada ficou
+pendente. `--reconcile` lê somente esse recibo, sem consultar o Docker nem
+repetir o pedido. O worker usa essa leitura quando encontra um marcador
+`build-cache-processing`: libera o marcador se nada estiver pendente e o
+mantém, com saída 75 no solicitante, se o recibo exigir reconciliação. Assim
+o aviso de falha de manutenção fica reservado ao caso que realmente pede uma
+pessoa.
+
+Um registro de cache só entra no plano quando todos os registros que dependem
+dele também entram. O construtor preserva um registro enquanto outro o lista
+como pai; selecioná-lo isoladamente despachava uma remoção que não removia nada.
 
 Backups, snapshots, Recorder, credenciais, ferramentas instaladas e imagens de
 rollback ficam fora desse caminho. A política de quarentena npm do MCP permanece
