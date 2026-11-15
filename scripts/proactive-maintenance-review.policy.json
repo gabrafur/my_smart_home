@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "enabled": true,
+  "schedule": {
+    "interval_hours": 6,
+    "cron_minute": 23
+  },
+  "budget": {
+    "max_runtime_seconds": 60,
+    "command_timeout_ms": 10000,
+    "max_source_bytes": 262144,
+    "max_evidence_output_bytes": 16384
+  },
+  "thresholds": {
+    "disk_warn_percent": 80,
+    "disk_high_percent": 85,
+    "memory_available_warn_kb": 1048576,
+    "backup_max_age_hours": 36,
+    "update_worker_max_age_hours": 60,
+    "backup_failures_7d_warn": 2,
+    "log_warn_bytes": 5242880,
+    "stale_marker_minutes": 120,
+    "dirty_worktree_warn_hours": 24
+  },
+  "dedupe": {
+    "remind_after_hours": 168,
+    "dismiss_default_hours": 720
+  },
+  "history": {
+    "max_runs": 200,
+    "max_events": 500
+  },
+  "notification": {
+    "enabled": true,
+    "notification_id": "proactive_maintenance_review",
+    "max_items": 8
+  },
+  "paths": {
+    "peer_proof": "/usr/local/lib/raspberry-task-control/task-peer-v2.json",
+    "executor_socket": "~/.codex/app-server-control/app-server-control.sock"
+  },
+  "auto_actions": {
+    "enabled": true,
+    "catalog": {
+      "rotate_worker_log": {
+        "enabled": true,
+        "max_per_run": 2,
+        "max_per_day": 4,
+        "min_bytes": 5242880,
+        "keep_bytes": 262144,
+        "max_archives": 6,
+        "blocked_above_disk_percent": 90,
+        "paths": [
+          ".vpn-health-publisher.cron.log",
+          ".codex-remote-health.cron.log",
+          ".storage-maintenance.cron.log",
+          ".codex-remote-recovery.cron.log",
+          ".host-memory-guardian.cron.log"
+        ]
+      }
+    }
+  }
+}

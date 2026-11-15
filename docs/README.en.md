@@ -131,6 +131,13 @@ server, or certification for an untested chatbot. The schema template removes
 private thread bindings, and the runtime source map distinguishes active code
 from the older task-control candidate preserved below.
 
+The [proactive maintenance review](raspberry-mcp/reference/proactive-review.md)
+inspects the host, repository and operational files on a versioned schedule and
+budget, keeps a deduplicated ledger of recommendations with benefit, priority,
+risk and proposed action, runs only catalogued reversible actions, and announces
+changes through one stable persistent notification carried by the existing event
+path. It is client-neutral and grants no repair authority.
+
 [Existing-thread communication](raspberry-mcp/reference/workspace-communication.md)
 uses a separately enabled policy on the current task tools. It preserves the
 recipient's profile, uses active-turn steering or idle-turn start, and refuses
