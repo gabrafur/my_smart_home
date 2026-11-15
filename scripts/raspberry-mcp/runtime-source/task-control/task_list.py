@@ -38,7 +38,7 @@ def validate(args):
     need(type(args['page_size']) is int and 1<=args['page_size']<=16,'invalid_list_page_size')
     need(args['cursor'] is None or isinstance(args['cursor'],str) and 1<=len(args['cursor'])<=512,'invalid_list_cursor')
 
-def read_database(path,tasks,queries):
+def read_database(path,tasks,queries,incident_tasks=False):
     tasks.read(path,1001,0o600,1048576)
     need(not any(os.path.lexists(str(path)+suffix) for suffix in ('-wal','-journal')),
          'database_journal_requires_reconciliation')
@@ -47,7 +47,11 @@ def read_database(path,tasks,queries):
     try:
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
-        return [list(map(dict,db.execute(sql))) for sql in queries]
+        result=[list(map(dict,db.execute(sql))) for sql in queries]
+        if incident_tasks:
+            from task_store import incident_task_projection
+            result.append({row['id']:incident_task_projection(db,row['id']) for row in result[0][:MAX_TASKS]})
+        return result
     finally:db.close()
 
 def registry(tasks,now):
@@ -58,9 +62,9 @@ def registry(tasks,now):
           for key,title in REFERENCES.items()}
     errors=[];truncated=False
     try:
-        creations,sends=read_database(tasks.STATE/'jobs.sqlite3',tasks,[
+        creations,sends,bindings=read_database(tasks.STATE/'jobs.sqlite3',tasks,[
           'SELECT id,task_key,thread,state,created,updated,reconciled FROM tasks ORDER BY created DESC,id DESC LIMIT 129',
-          'SELECT id,task,state,turn,created,updated,result,reconciled FROM sends ORDER BY updated DESC,id DESC LIMIT 1025'])
+          'SELECT id,task,state,turn,created,updated,result,reconciled FROM sends ORDER BY updated DESC,id DESC LIMIT 1025'],incident_tasks=True)
         truncated=len(creations)>MAX_TASKS or len(sends)>1024
         for task in creations[:MAX_TASKS]:
             identifier=task['thread']
@@ -69,6 +73,7 @@ def registry(tasks,now):
             rows[identifier]={'thread_id':identifier,'safe_title':'raspberry-task-'+task['id'],
               'title_source':'adapter_operation_alias_not_daemon_title','origin':'adapter_created',
               'task_id':task['id'],'task_key':task['task_key'],
+              'incident_binding':bindings[task['id']],
               'creation_operation_id':task['id'],'adapter_creation_state':task['state'],
               'created_at':task['created'] if valid_time(task['created'],now) else None,
               'registry_updated_at':task['updated'] if valid_time(task['updated'],now) else None,
@@ -194,8 +199,15 @@ def page(rows,args,registry_hash,errors,truncated,now):
         'last_executed_operation_id':row['last_executed_operation_id'],
         'last_executed_outcome':row['last_executed_outcome']} if row else None
     return {'source':'authorized_references_and_adapter_registry_plus_daemon_metadata',
-      'observed_at':iso(now),'collection_error':'partial_collection_failure' if errors or any(r['collection_error'] for r in ordered) else None,
-      'collection_errors':sorted(set(errors)),'coverage_partial':True,
+      'observed_at':iso(now),'collection_error':'partial_collection_failure' if errors else None,
+      'collection_errors':sorted(set(errors)),
+      'row_collection_errors':{'count':sum(1 for r in ordered if r['collection_error']),
+        'reasons':{reason:sum(1 for r in ordered if r['collection_error']==reason)
+          for reason in sorted({r['collection_error'] for r in ordered if r['collection_error']})},
+        'thread_ids':[r['thread_id'] for r in ordered if r['collection_error']][:8],
+        'registered_identities_listed':not truncated,
+        'semantics':'row_daemon_metadata_unavailable_identity_and_adapter_records_still_listed'},
+      'coverage_partial':True,
       'coverage':['authorized_fixed_existing_references','adapter_registered_thread_identities_and_own_recorded_workspace_messages',
        'no_global_native_thread_enumeration','no_prompts_raw_history_private_titles_logs_or_credentials',
        'point_in_time_metadata_not_execution_or_PC_off_proof'],
@@ -273,7 +285,7 @@ def collect(args,tasks,invoke,now=None,admission_closed=False,administrative_clo
     communication_policy=communication_policy or {'enabled':False,'expires_at':None,'state':'not_approved'}
     need(isinstance(communication_policy,dict) and set(communication_policy)=={'enabled','expires_at','state'}
          and type(communication_policy['enabled']) is bool
-         and communication_policy['state'] in ('not_approved','closed_expired','closed_revoked','closed_disabled','fresh_preflight_required')
+         and communication_policy['state'] in ('not_approved','closed_expired','closed_peer_unconfirmed','closed_legacy_transport','closed_revoked','closed_disabled','fresh_preflight_required')
          and (communication_policy['expires_at'] is None or type(communication_policy['expires_at']) in (int,float)),
          'invalid_workspace_communication_policy_metadata')
     result['workspace_thread_communication']={

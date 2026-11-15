@@ -11,6 +11,14 @@ EXPORT = Path(__file__).resolve().parent.parent / 'runtime-source/task-control/t
 NOW = 1767225600.0
 
 
+def prior_export():
+    # The canonical export now includes this release. Reconstruct its exact
+    # one-site preimage so the historical installer remains regression tested.
+    current = EXPORT.read_bytes()
+    assert current.count(derive.NEW) == 1
+    return current.replace(derive.NEW, derive.OLD, 1)
+
+
 def load(body):
     module = types.ModuleType('patched_task_list')
     exec(compile(body, 'task_list.py', 'exec'), module.__dict__)
@@ -29,7 +37,7 @@ ARGS = {'host': 'raspberry', 'page_size': 16, 'cursor': None}
 
 class PatchTests(unittest.TestCase):
     def setUp(self):
-        self.before = EXPORT.read_bytes()
+        self.before = prior_export()
         self.module = load(derive.patch_task_list(self.before))
 
     def page(self, rows, errors=(), truncated=False):
@@ -72,7 +80,7 @@ class PatchTests(unittest.TestCase):
 
 class DeriveTests(unittest.TestCase):
     def setUp(self):
-        self.task_list = EXPORT.read_bytes()
+        self.task_list = prior_export()
         self.policy = derive.canonical({
             'schema': 'raspberry-task-policy-v2', 'enabled': True, 'profile': 'restricted',
             'admin_delegation': {'enabled': False}, 'owner_approval_sha256': 'a' * 64, 'max_sends_per_24h': 48,

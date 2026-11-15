@@ -3,6 +3,7 @@
 Transport, admission and legacy serialization must be supplied by a sealed broker.
 This module is not installed and cannot admit work on its own.
 """
+import datetime
 import hashlib
 import json
 import re
@@ -25,6 +26,94 @@ def need(value, reason):
 def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True,
                          ensure_ascii=False).encode()).hexdigest()
+
+
+INCIDENT_PREFIX = 'incident_binding_v1:'
+INCIDENT_PROVENANCE = 'authenticated_request_binding_not_incident_cause_or_recovery'
+INCIDENT_TEMPLATE = re.compile(
+    r'Diagnostique e corrija somente o autorizado para objeto ([a-f0-9]{64}) e '
+    r'(?:revisão ([a-f0-9]{64}); prepare os demais e reporte evidências\.|'
+    r'revisao ([a-f0-9]{64}); prepare os demais e reporte evidencias\.)')
+
+
+def incident_request(text):
+    match = INCIDENT_TEMPLATE.fullmatch(text)
+    return (match.group(1), match.group(2) or match.group(3)) if match else None
+
+
+CONTEXT_MARKER = '\n\nTASK_CONTEXT_V1\n'
+
+
+def incident_context(text):
+    header, separator, raw = text.partition(CONTEXT_MARKER)
+    binding = incident_request(header)
+    if not separator or not binding:
+        return incident_request(text), None
+    def closed_object(pairs):
+        value = dict(pairs)
+        need(len(value) == len(pairs), 'incident_context_invalid')
+        return value
+    try:
+        context = json.loads(raw, object_pairs_hook=closed_object,
+                             parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+    except (ValueError, TypeError, RecursionError):
+        raise ValueError('incident_context_invalid') from None
+    need(type(context) is dict and set(context) == {'objective', 'acceptance', 'incident'},
+         'incident_context_invalid')
+    def bounded(value, limit):
+        return type(value) is str and 1 <= len(value) <= limit and '\x00' not in value
+    need(bounded(context['objective'], 4000) and bounded(context['acceptance'], 1500),
+         'incident_context_invalid')
+    incident = context['incident']
+    need(type(incident) is dict and set(incident) == {'object_id', 'revision', 'source',
+         'observed_at', 'collection_error', 'coverage', 'summary'}, 'incident_context_invalid')
+    need((incident['object_id'], incident['revision']) == binding,
+         'incident_context_identity_mismatch')
+    need(bounded(incident['source'], 128) and bounded(incident['summary'], 1000)
+         and (incident['collection_error'] is None or bounded(incident['collection_error'], 256))
+         and type(incident['coverage']) is list and len(incident['coverage']) <= 16
+         and all(bounded(item, 128) for item in incident['coverage']), 'incident_context_invalid')
+    timestamp = incident['observed_at']
+    need(timestamp is None or (bounded(timestamp, 40) and
+         re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z', timestamp)),
+         'incident_context_invalid')
+    if timestamp is not None:
+        try:
+            datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        except ValueError:
+            raise ValueError('incident_context_invalid') from None
+    return binding, context
+
+
+def incident_decode(state, op, send_state):
+    need(isinstance(state, str) and state.startswith(INCIDENT_PREFIX), 'invalid_incident_binding')
+    value = state[len(INCIDENT_PREFIX):].split(':')
+    need(len(value) == 2 and all(re.fullmatch('[a-f0-9]{64}', part) for part in value)
+         and re.fullmatch('[a-f0-9]{32}', op) and op == value[1][-32:],
+         'invalid_incident_binding')
+    return {'object_id': value[0], 'revision': value[1], 'operation_id': op,
+            'send_state': send_state, 'provenance': INCIDENT_PROVENANCE}
+
+
+def incident_task_projection(db, task_id):
+    # Scan the complete recorded binding history, bounded explicitly. Do not
+    # mistake either a recent-send window or a truncated scan for completeness.
+    rows = db.execute(
+        "SELECT a.state,a.id,s.state AS send_state FROM audit a JOIN sends s ON s.id=a.id "
+        "WHERE s.task=? AND a.state LIKE 'incident_binding_v1:%' ORDER BY a.seq LIMIT 2049",
+        (task_id,)).fetchall()
+    need(len(rows) <= 2048, 'incident_binding_history_capacity')
+    if not rows:
+        return {'state': 'unknown', 'history_coverage': 'no_recorded_binding'}
+    bindings = [incident_decode(row[0], row[1], row[2]) for row in rows]
+    first, latest = bindings[0], bindings[-1]
+    need(all(binding['object_id'] == first['object_id'] and
+             binding['object_id'][:32] == task_id for binding in bindings),
+         'incident_binding_conflict')
+    return {'state': 'recorded', 'object_id': first['object_id'],
+            'first_recorded': first, 'latest_recorded': latest,
+            'history_coverage': 'all_bindings_validated_first_and_latest_shown',
+            'provenance': INCIDENT_PROVENANCE}
 
 
 def workspace_thread(value):
@@ -157,6 +246,11 @@ class Store:
         need(table in ('tasks', 'sends'), 'invalid_table')
         row = self.db.execute('SELECT * FROM ' + table + ' WHERE id=?', (op,)).fetchone()
         result = dict(row) if row else None
+        if result and table == 'tasks':
+            result['incident_binding'] = incident_task_projection(self.db, op)
+        if result and table == 'sends':
+            binding = self.db.execute("SELECT state FROM audit WHERE id=? AND state LIKE 'incident_binding_v1:%' ORDER BY seq LIMIT 1", (op,)).fetchone()
+            result['incident_binding'] = incident_decode(binding[0], op, result['state']) if binding else {'state': 'unknown'}
         if result and table == 'sends' and result.get('result'):
             checkpoint = self.db.execute('SELECT * FROM result_checkpoints WHERE id=?',
                                          (op,)).fetchone()
@@ -342,11 +436,25 @@ class Store:
                 self.audit(op, 'preflight_refused_no_dispatch')
             self.transaction(refused)
             return self.row('sends', op)
+        binding, context = incident_context(q['text']) if task['task_key'].startswith('eva-workspace-') else (None, None)
         def intent():
+            if binding:
+                obj, revision = binding
+                if context is not None:
+                    spec = {'operation_id': task['id'], 'task_key': task['task_key'],
+                            'objective': context['objective'], 'acceptance': context['acceptance']}
+                    need(fingerprint(spec) == task['spec_hash'], 'incident_context_spec_mismatch')
+                need(task['id'] == obj[:32] and task['task_key'] == 'eva-workspace-' + obj[:32]
+                     and op == revision[-32:], 'incident_binding_recipe_mismatch')
+                prior = incident_task_projection(self.db, task['id'])
+                need(prior['state'] == 'unknown' or prior['object_id'] == obj,
+                     'incident_object_collision')
             now = self.clock()
             self.db.execute('INSERT INTO sends VALUES(?,?,?,?,?,?,?,?,0)',
                             (op, task['id'], hashed, 'send_intent', None, now, now, None))
             self.audit(op, 'send_intent')
+            if binding:
+                self.audit(op, INCIDENT_PREFIX + binding[0] + ':' + binding[1])
         self.transaction(intent)
         try:
             reply = invoke({'mode': 'send', 'thread_id': task['thread'],

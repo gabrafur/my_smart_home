@@ -282,6 +282,24 @@ def bind_profile(q, db, p, payload=None):
     return {**q, 'profile': 'eva_admin'}
 
 
+def communication_state(policy, legacy, revoked, now):
+    """Project admission causes without treating an unknown peer as expiry."""
+    if policy.get('workspace_thread_communication') is not True:
+        return 'not_approved'
+    if revoked:
+        return 'closed_revoked'
+    if policy.get('enabled') is not True:
+        return 'closed_disabled'
+    if legacy.get('_v2_peer_unconfirmed'):
+        return 'closed_peer_unconfirmed'
+    if legacy.get('_observation_only') and not legacy.get('_v2'):
+        return 'closed_legacy_transport'
+    expiry = policy.get('expires_at')
+    if expiry is not None and now >= expiry:
+        return 'closed_expired'
+    return 'fresh_preflight_required'
+
+
 def handle(name, args, old):
     need(os.geteuid() == UID, 'task_identity_refused')
     validate(name, args)
@@ -297,10 +315,8 @@ def handle(name, args, old):
         if name == 'codex_task_list':
             import task_list
             communication_enabled=p.get('workspace_thread_communication') is True
-            communication_state=('not_approved' if not communication_enabled else
-                'closed_expired' if legacy.get('_observation_only') or time.time()>=p['expires_at'] else
-                'closed_revoked' if (STATE/'revoked').exists() else
-                'closed_disabled' if not p['enabled'] else 'fresh_preflight_required')
+            communication_state_value=communication_state(p, legacy,
+                (STATE/'revoked').exists(), time.time())
             # No Store constructor, DDL, receipt writes, resume or inference.
             return task_list.collect(args, __import__(__name__), lambda q: rpc(q, legacy, old),
                                      admission_closed=admission_closed,
@@ -309,7 +325,7 @@ def handle(name, args, old):
                                      workspace_communication_closed=bool(admission_closed or
                                          not communication_enabled),
                                      communication_policy={'enabled':communication_enabled,
-                                         'expires_at':p['expires_at'],'state':communication_state})
+                                         'expires_at':p['expires_at'],'state':communication_state_value})
         db = store(p)
         try:
             invoke = lambda q: rpc(bind_profile(q, db, p, args), legacy, old)

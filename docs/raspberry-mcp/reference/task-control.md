@@ -48,6 +48,33 @@ Um envio sem recibo retorna `state=not_recorded` e
 `send_state=not_sent_by_adapter`; essa afirmação se limita ao adaptador.
 Recibos incertos já registrados nunca são reenviados, inclusive após restart.
 
+## Vínculo de incidente e diagnóstico de admissão
+
+A exportação atual em `scripts/raspberry-mcp/runtime-source/task-control/`
+registra o vínculo autenticado entre objeto, revisão e envio na auditoria do
+adaptador. O contexto estruturado preserva objetivo, aceite e evidência da
+fonte. Identidade divergente recusa o envio; horário, título ou prefixo do ID
+não são prova suficiente para preencher um vínculo histórico ausente.
+
+A listagem e os recibos expõem `incident_binding`. Sem registro anterior,
+retornam `unknown` e `no_recorded_binding`; não reescrevem o histórico. A
+projeção valida todos os vínculos retidos antes de mostrar o primeiro e o mais
+recente. Esse vínculo comprova a origem do pedido, não a causa nem a recuperação
+do incidente. Erros de metadados de uma thread ficam separados do erro global
+de coleta, preservando sua identidade registrada.
+
+A comunicação distingue `closed_peer_unconfirmed`, `closed_legacy_transport`,
+`closed_revoked`, `closed_disabled` e `closed_expired`. Somente a comparação
+com um prazo realmente expirado produz o último estado. A abertura do workspace
+não concede admissão administrativa; cada efeito continua exigindo seu próprio
+preflight e as confirmações da interface aplicáveis.
+
+A instalação desses deltas exige fechar os hashes de fontes, políticas,
+enrollment e unidades que os referenciam, com atestação nativa do mesmo peer,
+CAS e inversa própria. Não copie esta exportação sanitizada diretamente sobre
+o runtime nem fabrique a prova do peer. Em resultado incerto, observe o mesmo
+plano e os recibos antes de recuperar ou reverter.
+
 ## Ferramentas e esquemas
 
 Os esquemas executáveis completos estão em

@@ -22,3 +22,17 @@ pausa apenas do timer, conclusão da coleta em andamento e reversão das própri
 imagens. Depois, conferir ciclos naturais e a leitura real pelo MCP; testes
 isolados não comprovam ausência futura de timeout.
 
+
+O observador de resultados em `ExecStartPost` aplica um prazo único desde a
+leitura das fontes seladas até a publicação do snapshot. O sinal usa uma exceção
+própria que não é absorvida pelos tratamentos de erro de coleta. Ao vencer, o
+journal registra somente fase e duração; não exporta IDs ou conteúdo privado.
+Timeout anterior à publicação não atualiza o snapshot. Timeout durante publicação
+pode ocorrer após o rename: releia o mesmo snapshot e não infira ausência de
+escrita. O prazo do systemd continua sendo o limite externo; I/O ininterruptível
+e falta de escalonamento não têm garantia de interrupção em Python.
+
+O drop-in do observador também é dependência da política de tarefas. Seu hash
+novo exige fechamento transitivo das políticas e renovação da prova nativa do
+peer, sem substituir identidade nem fabricar atestação. Instalar somente
+bootstrap, configuração e drop-in quebra a admissão das tarefas.

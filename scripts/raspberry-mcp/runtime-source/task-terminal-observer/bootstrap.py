@@ -29,13 +29,38 @@ def decode(raw):
 def module(name,raw,path):
     m=types.ModuleType(name);m.__file__=str(path);sys.modules[name]=m;exec(compile(raw,str(path),'exec'),m.__dict__);return m
 
+class ObservationDeadline(BaseException):
+    pass
+
 def run(digest):
+    phase = ['initialization']
+    started = time.monotonic()
+    def expired(_sig, _frame):
+        raise ObservationDeadline()
+    previous = signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, 1.85)
+    try:
+        return _run(digest, phase)
+    except ObservationDeadline:
+        # Setup timeout publishes nothing; publication timeout may follow rename.
+        # Read back the same snapshot; never infer no write from this deadline.
+        os.write(2, (json.dumps({'schema_version': 1, 'source': 'task_terminal_budget_v1',
+            'phase': phase[0], 'failure_class': 'deadline',
+            'elapsed_ms': round((time.monotonic() - started) * 1000)}) + '\n').encode())
+        raise TimeoutError('observer_deadline') from None
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+def _run(digest, phase):
     need(os.geteuid()==1001 and len(digest)==64 and all(c in '0123456789abcdef' for c in digest),'fixed_observer_identity_required')
+    phase[0] = 'sealed_sources'
     raw=root_read(CONFIG);need(hashlib.sha256(raw).hexdigest()==digest,'observer_config_changed')
     cfg=decode(raw)
     need(type(cfg) is dict and set(cfg)=={'schema_version','enabled','scope_started_at','source_hashes'} and type(cfg['schema_version']) is int and cfg['schema_version']==1 and cfg['enabled'] is True and type(cfg['scope_started_at']) is int and 0<=cfg['scope_started_at']<=time.time() and type(cfg['source_hashes']) is dict and set(cfg['source_hashes'])==NAMES,'observer_config_scope_changed')
     sources={name:root_read(LIB/name) for name in NAMES}
     need(all(type(cfg['source_hashes'][name]) is str and hashlib.sha256(sources[name]).hexdigest()==cfg['source_hashes'][name] for name in NAMES),'observer_source_digest_changed')
+    phase[0] = 'load_verified_modules'
     o=module('task_terminal_observer',sources['observer.py'],LIB/'observer.py')
     adapter=module('task_terminal_native_adapter',sources['native_adapter.py'],LIB/'native_adapter.py')
     scope=cfg['scope_started_at']
@@ -45,14 +70,12 @@ def run(digest):
     transport=adapter.Adapter(rows)
     def check():
         need(not revoked(),'task_observation_revoked');return transport.policy_check()
-    def expired(_sig,_frame):raise TimeoutError('observer_deadline')
-    previous=signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,1.85)
+    phase[0] = 'collect'
     try:
         report=o.collect(rows,check,transport,scope_started_at=scope,budget_seconds=1.8)
     except Exception:
         report=o.public_snapshot({'observed_at':time.time(),'state':'unknown','collection_error':'observation_deadline_or_source_unconfirmed','pending':None,'terminal_unreconciled':[]},scope)
-    finally:
-        signal.setitimer(signal.ITIMER_REAL,0);signal.signal(signal.SIGALRM,previous)
+    phase[0] = 'publish'
     o.publish_snapshot(report)
     return report['state']
 if __name__=='__main__':
