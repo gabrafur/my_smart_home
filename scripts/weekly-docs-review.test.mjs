@@ -254,21 +254,45 @@ test("rejects a non-allowlisted receipt status", (t) => {
   assert.equal(item.remoteCount(), 1);
 });
 
-test("Node-RED owns the continuous schedule without starting the internal timer", (t) => {
+test("Node-RED owns the continuous schedule without starting the internal timer", async (t) => {
   const item = fixture(t);
-  const result = spawnSync(process.execPath, ["scripts/weekly-docs-review.mjs"], {
+  const child = spawn(process.execPath, ["scripts/weekly-docs-review.mjs"], {
     cwd: item.repo,
-    encoding: "utf8",
-    timeout: 500,
-    killSignal: "SIGTERM",
+    stdio: ["ignore", "pipe", "pipe"],
     env: {
       ...process.env,
       WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER: "node-red",
       WEEKLY_DOCS_REVIEW_STATUS_PATH: path.join(item.temporaryRoot, "status.json"),
     },
   });
-  assert.match(result.stdout, /weekly documentation schedule managed by Node-RED/);
-  assert.doesNotMatch(result.stdout, /next weekly documentation review:/);
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  const closed = new Promise((resolve) => child.once("close", (code, signal) => resolve({ code, signal })));
+  let deadline;
+  try {
+    // Wait for the scheduler's own readiness evidence, not a startup-speed budget.
+    await new Promise((resolve, reject) => {
+      deadline = setTimeout(() => reject(new Error(`scheduler readiness timed out: ${stderr}`)), 10_000);
+      child.once("error", reject);
+      child.once("close", () => reject(new Error(`scheduler exited before readiness: ${stderr}`)));
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk;
+        if (/weekly documentation schedule managed by Node-RED/.test(stdout)) resolve();
+      });
+    });
+  } finally {
+    clearTimeout(deadline);
+    child.kill("SIGTERM");
+    const killDeadline = setTimeout(() => child.kill("SIGKILL"), 5_000);
+    await closed;
+    clearTimeout(killDeadline);
+  }
+  assert.match(stdout, /weekly documentation schedule managed by Node-RED/);
+  assert.doesNotMatch(stdout, /next weekly documentation review:/);
+  assert.equal((await closed).code, 0, stderr);
 });
 
 
