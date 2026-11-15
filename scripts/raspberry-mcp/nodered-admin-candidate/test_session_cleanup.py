@@ -93,7 +93,7 @@ class Coordinator:
         self.current_session = None
         self.root_policy_sha256 = 'a' * 64
         self.clock = time.time
-        self.document = {'shared_locks': {}, 'backend': {'host': '10.9.9.9', 'username': 'u'}}
+        self.document = {'shared_locks': {}, 'backend': {'host': '192.0.2.9', 'username': 'u'}}
         for p in paths:
             i = os.stat(p)
             self.document['shared_locks'][p] = [i.st_dev, i.st_ino, i.st_uid, i.st_gid, stat.S_IMODE(i.st_mode)]
@@ -186,7 +186,7 @@ class Base(unittest.TestCase):
             def __init__(self, host, _port, _timeout, observer):
                 super().__init__('127.0.0.1', port, timeout, observer)
         def login(write=False):
-            t.client = T.FixedTransport({'host': '10.9.9.9', 'port': 1880, 'username': 'u', 'password': 'p'},
+            t.client = T.FixedTransport({'host': '192.0.2.9', 'port': 1880, 'username': 'u', 'password': 'p'},
                                         c.peer_check, connection=lambda h, p, timeout=None: Redirect(h, p, timeout, t._http))
             t.client.login(write=write)
             t.token_received = True
