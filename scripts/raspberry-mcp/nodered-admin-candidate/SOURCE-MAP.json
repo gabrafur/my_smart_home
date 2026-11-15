@@ -26,7 +26,7 @@
     "test_fixed_transport.py": "f67808fae5b556ba7eee7a76007991b87d90ecf25425dcccdcf78c3c34eef674",
     "test_native.py": "3a94a5224813fac6c4e9ddaeb4c815b8a25e29e49dbcb1672ca4f5fcd956315e",
     "test_native_guard.py": "ed797d2d5cdda227f63ebdfedc73b3e94c0eacb4b1be750afa858d598e6d5324",
-    "test_peer.py": "d398cad0ccc7ecd857d801c925678034a60d2ce613c40297c9003e016a56c2ee",
+    "test_peer.py": "52bbc0c3ab97c98ce611e468f96d1db52548106ce878a5402f1269364da29743",
     "test_policy_diagnostic_classification.py": "d977b19ecd83044e137e989a98d455acbc112ed895ed78a0aebc25106cba51d9",
     "test_process_discovery.py": "447d5b0611cb58244c4766e053c2b764811bb04d74a69b775136da6dedbcb95d",
     "test_public_source_validator.py": "279968fa6fe83f0666a179530f8e7a381676d2d35b0a3dfb03240d2e85bee5a6",

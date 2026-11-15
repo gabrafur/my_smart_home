@@ -24,6 +24,7 @@ g = load('peer_guard_candidate', 'native_guard.py')
 engine = types.ModuleType('engine')
 engine.OP, engine.SHA = re.compile('[a-f0-9]{32}'), re.compile('[a-f0-9]{64}')
 engine.digest, engine.raw, engine.need = g.digest, g.raw, g.need
+engine.finite_scope_deadline = load('peer_policy_engine_candidate', 'engine.py').finite_scope_deadline
 engine.valid_id = lambda v,p=engine.OP: type(v) is str and p.fullmatch(v) is not None
 engine.exact = lambda v,fields: g.need(type(v) is dict and set(v)==set(fields),'scope_refused')
 previous_engine = sys.modules.get('engine')
