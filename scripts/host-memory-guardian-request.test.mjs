@@ -188,3 +188,43 @@ test("interrupted request exits without acknowledgement or pending marker and re
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("terminal results are retained in a bounded history that a later run cannot erase", () => {
+  const { root, trigger } = fixture();
+  const guardian = path.join(root, "guardian.mjs");
+  const env = {
+    ...process.env,
+    HOST_MEMORY_GUARDIAN_TRIGGER_DIR: trigger,
+    HOST_MEMORY_GUARDIAN_SCRIPT: guardian,
+    HOST_MEMORY_GUARDIAN_STATE_FILE: path.join(trigger, "state.json"),
+    HOST_MEMORY_GUARDIAN_HISTORY_LIMIT: "3",
+  };
+  const run = (id, body) => {
+    fs.writeFileSync(guardian, body);
+    fs.writeFileSync(path.join(trigger, "requested"), `${id}\n`);
+    return spawnSync(processScript, [], { encoding: "utf8", env }).status;
+  };
+  const healthy = "console.log('memory-guardian status=healthy available_mib=4096 terminated=0');\n";
+  assert.equal(run("request-a", "console.error('private failure detail'); process.exit(143);\n"), 1);
+  assert.equal(run("request-b", healthy), 0);
+  // The single slot now shows only the success; the failure survives in history.
+  assert.match(fs.readFileSync(path.join(trigger, "result"), "utf8"), /status=healthy .*request_id=request-b/);
+  let history = fs.readFileSync(path.join(trigger, "result-history.log"), "utf8").trim().split("\n");
+  assert.equal(history.length, 2);
+  assert.match(history[0], /^host-memory-guardian status=failed request_id=request-a checked_at=\S+ reason=\S+ exit_code=143$/);
+  assert.match(history[1], /^host-memory-guardian status=healthy .*request_id=request-b checked_at=\S+ exit_code=0$/);
+  assert.ok(history.every((line) => !line.includes("status=running")), "only terminal results are retained");
+
+  assert.equal(run("request-c", healthy), 0);
+  assert.equal(run("request-d", healthy), 0);
+  history = fs.readFileSync(path.join(trigger, "result-history.log"), "utf8").trim().split("\n");
+  assert.deepEqual(history.map((line) => line.match(/request_id=(\S+)/)[1]), ["request-b", "request-c", "request-d"]);
+  assert.equal(fs.readdirSync(trigger).filter((name) => name.startsWith("result-history.") && name !== "result-history.log").length, 0);
+
+  // A history that cannot be written never changes the reported outcome.
+  fs.rmSync(path.join(trigger, "result-history.log"));
+  fs.mkdirSync(path.join(trigger, "result-history.log"));
+  assert.equal(run("request-e", healthy), 0);
+  assert.match(fs.readFileSync(path.join(trigger, "result"), "utf8"), /request_id=request-e/);
+  fs.rmSync(root, { recursive: true, force: true });
+});

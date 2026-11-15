@@ -48,6 +48,26 @@ publish_result() {
   mv "$temporary" "$result_file"
 }
 
+# The single result slot is overwritten by the next request. Terminal results
+# are also appended to a bounded history so a later run cannot erase the
+# evidence of an earlier failure. Retention is best effort and never changes
+# the outcome reported to the caller.
+history_limit="${HOST_MEMORY_GUARDIAN_HISTORY_LIMIT:-200}"
+case "$history_limit" in
+  ''|*[!0-9]*|0) history_limit=200 ;;
+esac
+retain_result() {
+  history="$trigger_dir/result-history.log"
+  temporary="$trigger_dir/result-history.$$"
+  umask 007
+  {
+    if [ -f "$history" ] && [ ! -L "$history" ] && [ "$history_limit" -gt 1 ]; then
+      tail -n "$((history_limit - 1))" "$history"
+    fi
+    printf '%s\n' "$1"
+  } > "$temporary" && mv "$temporary" "$history"
+}
+
 publish_result "host-memory-guardian status=running request_id=$request_id checked_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 set +e
 output=$("$node_bin" "$guardian_script" --state-file "$state_file" 2>&1)
@@ -59,10 +79,12 @@ checked_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 detail=$(printf '%s\n' "$output" | tail -n 1 | tr -cd 'A-Za-z0-9_.:= -' | cut -c 1-600)
 if [ "$status" -eq 0 ] && printf '%s\n' "$detail" | grep -q '^memory-guardian status='; then
   publish_result "host-$detail request_id=$request_id checked_at=$checked_at"
+  retain_result "host-$detail request_id=$request_id checked_at=$checked_at exit_code=0" || :
   exit 0
 fi
 
 reason=$(printf '%s' "$detail" | tr ' ' '_' | cut -c 1-160)
 [ -n "$reason" ] || reason="guardian_failed"
 publish_result "host-memory-guardian status=failed request_id=$request_id checked_at=$checked_at reason=$reason"
+retain_result "host-memory-guardian status=failed request_id=$request_id checked_at=$checked_at reason=$reason exit_code=$status" || :
 exit 1

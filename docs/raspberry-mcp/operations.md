@@ -67,6 +67,50 @@ inscrição e prova. Depois confirme pelo atestador e por `codex_task_list`. A
 fonte `executor.peer_binding` da [revisão proativa](reference/proactive-review.md)
 abre uma recomendação P1 quando o vínculo deixa de corresponder ao processo.
 
+### Identidade das travas compartilhadas após reinício
+
+Políticas seladas fixam a identidade (dispositivo, inode, dono, grupo e modo)
+das travas compartilhadas. A trava da validação pública era criada em `/tmp`,
+um tmpfs: a cada boot ganhava outra identidade e toda leitura ou operação
+dependente falhava fechada, com `shared_lock_identity_changed` na
+administração Node-RED e `native_observation_unconfirmed` na fase
+`shared_locks` do diagnóstico de liberações preparadas.
+
+A trava agora é um arquivo persistente em `/var/lib/raspberry-shared-locks`,
+vinculado sobre o mesmo caminho por `raspberry-validation-lock.service` antes
+do cron. O caminho não muda para nenhum consumidor e a identidade permanece a
+mesma entre reinícios. Cada política que fixava a identidade antiga precisa de
+uma única troca desse valor; a derivação pura está em
+`scripts/raspberry-mcp/shared-lock-identity/`. Para conferir:
+
+```bash
+mountpoint /tmp/my-smart-home-public-validation.lock
+```
+
+```bash
+systemctl is-enabled raspberry-validation-lock.service
+```
+
+Uma liberação preparada que venceu sem iniciar continua fixando a identidade
+antiga em seu plano. Seu diagnóstico segue falhando nessa fase; isso descreve
+o plano vencido, não o acesso atual. Confirme o acesso pela leitura do
+runtime da própria administração.
+
+A administração Node-RED também fixa o endereço do contêiner na rede Docker.
+Sem endereço estático na composição, o contêiner pode receber outro endereço
+após um reinício e a leitura do runtime falha com
+`backend_ip_not_local_in_pinned_namespace`. Corrigir de forma durável exige
+definir a sub-rede e o endereço na composição, o que recria a rede e reinicia
+os serviços em ponte; é uma decisão do proprietário.
+
+### Histórico de resultados do guardião de memória
+
+O resultado do guardião ocupa um único arquivo, substituído a cada pedido.
+Resultados terminais também são acrescentados a `result-history.log`, no mesmo
+diretório, limitado às 200 linhas mais recentes e com o código de saída. Uma
+execução posterior não apaga mais a evidência de uma falha anterior. Falhas
+anteriores a essa retenção não podem ser recuperadas.
+
 ### Erros de linha na listagem de tarefas
 
 `collection_error` no topo da listagem indica falha do coletor. Uma thread
