@@ -28,6 +28,9 @@ test("unknown scalars and a canonical observed signal retain their own meanings"
 });
 
 test("prefixes, suffixes, secrets, newlines, unknown reasons and signals cannot enter structured output", () => {
+  const syntheticCredentialURL = new URL("https://example.invalid/");
+  syntheticCredentialURL.username = "fixture-user";
+  syntheticCredentialURL.password = "fixture-secret";
   for (const message of [
     "token=fixture-secret " + exact,
     exact + " token=fixture-secret",
@@ -38,7 +41,7 @@ test("prefixes, suffixes, secrets, newlines, unknown reasons and signals cannot 
     exact.replace("elapsed_ms=17000", "elapsed_ms=-1"),
     exact.replace("elapsed_ms=17000", "elapsed_ms=9007199254740992"),
     exact + "\u0000",
-    "https://user:fixture-secret@example.invalid/ " + exact
+    syntheticCredentialURL.href + " " + exact
   ]) {
     const dto = sanitizer.errorDTO({ message });
     assert.equal(Object.hasOwn(dto, "guardian_request"), false);
