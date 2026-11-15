@@ -402,7 +402,7 @@ class Engine:
             reason = execution_blocker()
             need(reason is None, 'policy_revoked' if reason == 'authority_revocation_record' else reason)
         else:
-            need(self.coordination.revoked() is False, 'policy_revoked')
+            need(self.coordination.revoked() is False, 'legacy_authority_closed_unclassified')
         need(scope_window(p, self.clock(), 90 if effect else 0), 'policy_expired_or_completion_margin')
         need(p.get('maximum_deploys_per_24h') == 4 and p.get('minimum_deploy_spacing_seconds') == 60
              and p.get('maximum_plan_age_seconds') == 900, 'policy_limits_changed')

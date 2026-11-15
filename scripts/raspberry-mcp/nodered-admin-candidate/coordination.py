@@ -16,7 +16,7 @@ import secrets
 import sys
 import time
 
-from engine import OP, SHA, digest, exact, need, raw, valid_id
+from engine import OP, SHA, digest, exact, need, raw, finite_scope_deadline, valid_id
 
 ROOT = Path('/usr/local/lib/raspberry-nodered-admin')
 STATE = Path('/var/lib/raspberry-nodered-admin')
@@ -275,7 +275,8 @@ class RootCoordinator:
         need(type(seen) in (int, float) and type(expiry) in (int, float)
              and math.isfinite(seen) and math.isfinite(expiry)
              and 0 <= now - seen <= maximum_age and now < expiry
-             and expiry <= self.engine_policy.get('expires_at', 0), 'attestation_expired_or_unknown_clock')
+             and finite_scope_deadline(self.engine_policy, expiry, seen, maximum_age),
+             'attestation_expired_or_unknown_clock')
         need(value.get('root_policy_sha256') == self.root_policy_sha256
              and value.get('operation_id') == operation_id
              and value.get('producer') == 'sealed_nodered_admin_validator', 'attestation_authority_unconfirmed')
@@ -307,7 +308,7 @@ class RootCoordinator:
                  and owner.get('risk_sha256')==binding['risk_sha256']
                  and owner.get('effect_review_sha256')==digest(effect)
                  and type(owner.get('expires_at'))in(int,float)
-                 and self.clock()<owner['expires_at']<=self.engine_policy['expires_at'],
+                 and finite_scope_deadline(self.engine_policy, owner['expires_at'], self.clock()),
                  'specific_owner_effect_confirmation_unconfirmed')
         return True
 
@@ -445,7 +446,8 @@ class RootCoordinator:
                      and catalogue['producer_source_sha256'] == source_sha
                      and type(seen) in (int, float) and type(expiry) in (int, float)
                      and math.isfinite(seen) and math.isfinite(expiry)
-                     and 0 <= now - seen <= 86400 and now < expiry <= self.engine_policy['expires_at']
+                     and 0 <= now - seen <= 86400 and now < expiry
+                     and finite_scope_deadline(self.engine_policy, expiry, seen, 86400)
                      and type(catalogue['entries']) is list and len(catalogue['entries']) <= 10000,
                      'public_source_catalogue_authority_unconfirmed')
                 proven = {}
@@ -505,7 +507,9 @@ class RootCoordinator:
                  and type(review['observed_at']) in (int, float)
                  and type(review['expires_at']) in (int, float)
                  and 0 <= self.clock() - review['observed_at'] <= 86400
-                 and self.clock() < review['expires_at'] <= self.engine_policy['expires_at'],
+                 and self.clock() < review['expires_at']
+                 and finite_scope_deadline(self.engine_policy, review['expires_at'],
+                                           review['observed_at'], 86400),
                  'public_source_review_artifact_unconfirmed')
         except (ValueError, OSError, KeyError, TypeError):
             return None

@@ -16,7 +16,7 @@ import struct
 import sys
 from pathlib import Path
 
-from engine import Engine, Journal, OP, SHA, digest, exact, need, public_plan, raw, valid_id
+from engine import Engine, Journal, OP, SHA, digest, exact, need, public_plan, raw, scope_window, valid_id
 from coordination import (RootCoordinator, JOURNAL, POLICY, SESSIONS, CLEANUP_BLOCK,
                           atomic_create, decode, sealed_json)
 from coordination import STATE as NATIVE_STATE
@@ -171,6 +171,7 @@ COORDINATION_EXECUTION_REASONS = frozenset({
  'owned_session_cleanup_unconfirmed',
  'session_receipt_missing',
  'session_cleanup_unconfirmed',
+ 'legacy_authority_closed_unclassified',
 })
 
 SAFE_REASONS=COORDINATION_EXECUTION_REASONS|frozenset({
@@ -270,13 +271,25 @@ class Gateway:
                 return self.coordinator.revoke(args['operation_id'])
         if method=='read' and args['view']=='policy':
             p=self.engine.policy;now=self.coordinator.clock()
-            closed=self.coordinator.revoked();expiry=p.get('expires_at');active=(p.get('enabled')is True and p.get('activation_confirmed')is True and type(expiry)in(int,float) and now<expiry and not closed)
+            blocker_reader = getattr(self.coordinator, 'execution_blocker', None)
+            if callable(blocker_reader):
+                blocker = blocker_reader()
+            else:
+                blocker = ('legacy_authority_closed_unclassified'
+                           if self.coordinator.revoked() else None)
+            expiry = p.get('expires_at')
+            active = (p.get('enabled') is True and p.get('activation_confirmed') is True
+                      and scope_window(p, now) and blocker is None)
+            revoked = blocker == 'authority_revocation_record'
+            reason = ('policy_revoked' if revoked else
+                      None if blocker is None else safe_reason(ValueError(blocker)))
             return {'source':'sealed_nodered_administration_policy','observed_at':now,'age_seconds':0,
                     'collection_error':None,'host':'raspberry','client_neutral':True,
                     'policy_sha256':digest(p),'configured':p.get('enabled')is True,
                     'activation_confirmed':p.get('activation_confirmed')is True,
                     'standing_maintenance_authorized':p.get('standing_maintenance_authorized')is True,
-                    'expires_at':expiry,'revoked':closed,'policy_permission_active':active,
+                    'expires_at':expiry,'revoked':revoked,'execution_blocker':reason,
+                    'policy_permission_active':active,
                     'standing_maintenance_active':active and p.get('standing_maintenance_authorized')is True,
                     'allowed_tools':['nodered_admin_'+name for name in ('read','prepare','validate','preflight','apply','status','verify','rollback','revoke')],
                     'interface_confirmations_required':True,'household_device_testing_authorized':False,

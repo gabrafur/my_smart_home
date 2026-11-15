@@ -249,14 +249,18 @@ preserva recibos. Não reverte automaticamente fluxos já aplicados.
 Uma política permanente exige `lease_kind=persistent_revocable`,
 `standing_maintenance_authorized=true` e `expires_at=null`, além da ativação e
 dos limites validados pelo executor. As provas e admissões de cada operação
-mantêm prazo finito. Políticas finitas conservam o vencimento original.
+mantêm prazo finito. A consulta de política usa o mesmo contrato de prazo do
+motor. A validação compara cada prova com sua janela finita e com o teto
+aplicável à autoridade, incluindo revisão pública e confirmação de efeito
+sensível. Políticas finitas conservam o vencimento original.
 
 A implementação de referência do coordenador distingue `authority_revocation_record` de pendências de
 instalação, recibo ausente e encerramento de sessão não comprovado. A projeção
 MCP correspondente conserva `policy_revoked` para a revogação comprovada e retorna os códigos
 específicos revisados para os demais bloqueios. Todos continuam impedindo o
 efeito. Adaptadores antigos que oferecem somente `revoked()` mantêm a recusa
-compatível. Mensagens arbitrárias de exceções permanecem protegidas.
+com o código `legacy_authority_closed_unclassified`, sem afirmar que existe
+um recibo de revogação. Mensagens arbitrárias de exceções permanecem protegidas.
 
 Essa classificação permite que o cliente consulte o recibo e a dependência
 corretos. A existência de uma política ativa ainda exige a admissão concreta

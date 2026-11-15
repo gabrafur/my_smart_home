@@ -324,7 +324,7 @@ class CandidateTests(unittest.TestCase):
             self.apply(plan=plan)
         self.coord.guarded = True
         self.coord.is_revoked = True
-        with self.assertRaisesRegex(ValueError, 'policy_revoked'):
+        with self.assertRaisesRegex(ValueError, 'legacy_authority_closed_unclassified'):
             self.apply(plan=plan)
         # Stored receipts remain readable after revocation; no API call needed.
         self.assertEqual(self.engine.status(OP)['state'], 'prepared')
