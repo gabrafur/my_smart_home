@@ -96,12 +96,35 @@ antiga em seu plano. Seu diagnóstico segue falhando nessa fase; isso descreve
 o plano vencido, não o acesso atual. Confirme o acesso pela leitura do
 runtime da própria administração.
 
-A administração Node-RED também fixa o endereço do contêiner na rede Docker.
-Sem endereço estático na composição, o contêiner pode receber outro endereço
-após um reinício e a leitura do runtime falha com
-`backend_ip_not_local_in_pinned_namespace`. Corrigir de forma durável exige
-definir a sub-rede e o endereço na composição, o que recria a rede e reinicia
-os serviços em ponte; é uma decisão do proprietário.
+### Endereço e identidade do contêiner Node-RED
+
+A administração Node-RED fixa o endereço do contêiner na rede Docker, e o
+leitor fechado de metadados fixa a identidade exata do contêiner e o rótulo
+dos arquivos de composição. Dois eventos quebram essas ligações:
+
+| Evento | Sintoma na leitura do runtime |
+| --- | --- |
+| Reinício sem endereço estático | `backend_ip_not_local_in_pinned_namespace` |
+| Contêiner recriado (imagem nova, rede ou composição alteradas) | `metadata_closed_response_required` |
+
+O endereço fica estável com uma sobreposição privada da composição,
+`docker-compose.override.yml`, fora do Git: ela define a sub-rede da rede
+padrão, um intervalo separado para endereços dinâmicos e o endereço fixo do
+serviço. O intervalo separado impede que outro contêiner ocupe o endereço
+fixo durante a partida. Aplicar a sobreposição recria a rede e reinicia uma
+vez os serviços em ponte; os serviços em rede do host não são tocados. Em uma
+restauração, recrie a sobreposição antes de subir a stack.
+
+Depois de qualquer recriação do contêiner, refaça o vínculo uma vez: a
+derivação pura em `scripts/raspberry-mcp/nodered-container-identity/` troca a
+identidade e o rótulo no leitor e na guarda e atualiza somente os hashes que
+dependem deles (política e unidade do leitor, política e unidade da
+administração). A transação reinicia apenas o leitor de metadados. Confirme
+com a leitura do runtime pela própria administração; `collection_error` nulo
+é o critério.
+
+Atualizações de imagem do Node-RED recriam o contêiner e exigem esse mesmo
+passo antes de a administração voltar a responder.
 
 ### Histórico de resultados do guardião de memória
 
