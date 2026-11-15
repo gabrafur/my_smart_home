@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import socket
 import subprocess
 import tempfile
@@ -13,6 +14,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,7 +62,7 @@ class CodexChatCardBrowserTest(unittest.TestCase):
             headers={"Content-Type": "application/json; charset=utf-8"},
         )
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with urllib.request.urlopen(request, timeout=30) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", errors="replace")
@@ -160,6 +162,7 @@ window.addEventListener('unhandledrejection',(event)=>pageErrors.push(String(eve
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 text=True,
+                start_new_session=True,
             )
             session_id = None
             try:
@@ -183,6 +186,7 @@ window.addEventListener('unhandledrejection',(event)=>pageErrors.push(String(eve
                         "capabilities": {
                             "alwaysMatch": {
                                 "browserName": "chrome",
+                                "timeouts": {"pageLoad": 20000, "script": 10000, "implicit": 0},
                                 "goog:chromeOptions": {
                                     "binary": self.chromium,
                                     "args": [
@@ -230,12 +234,26 @@ window.addEventListener('unhandledrejection',(event)=>pageErrors.push(String(eve
                         self.webdriver_request(base_url, "DELETE", f"/session/{session_id}")
                     except (OSError, RuntimeError):
                         pass
-                driver.terminate()
+                # The group belongs to this isolated fixture, including a browser
+                # whose WebDriver session creation never returned an ID.
                 try:
-                    driver.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    driver.kill()
-                    driver.wait(timeout=5)
+                    os.killpg(driver.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                cleanup_deadline = time.monotonic() + 5
+                while time.monotonic() < cleanup_deadline:
+                    driver.poll()  # Reap the group leader while checking descendants.
+                    try:
+                        os.killpg(driver.pid, 0)
+                    except ProcessLookupError:
+                        break
+                    time.sleep(0.05)
+                else:
+                    try:
+                        os.killpg(driver.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                driver.wait(timeout=5)
         self.assertNotIn("fatal", result, result.get("fatal"))
         return result
 
@@ -260,6 +278,63 @@ window.addEventListener('unhandledrejection',(event)=>pageErrors.push(String(eve
                 self.assertEqual(result["restoredReasoning"], "ultra")
                 self.assertEqual(result["persistedBeforeRemount"]["draft"], "rascunho no navegador")
                 self.assertEqual(result["pageErrors"], [])
+
+
+
+class BrowserFixtureCleanupTest(unittest.TestCase):
+    def exercise_cleanup(self, group_remains):
+        browser = CodexChatCardBrowserTest()
+        browser.chromium = "synthetic-browser"
+        browser.chromedriver = "synthetic-driver"
+        driver = Mock(pid=12345)
+        driver.poll.return_value = 0
+        requests = []
+        signals = []
+
+        def reply(base, method, path, payload=None):
+            requests.append((method, path, payload))
+            if path == "/session" and method == "POST":
+                return {"value": {"sessionId": "synthetic-session"}}
+            if path.endswith("/execute/sync"):
+                return {"value": '{"fixture": true}'}
+            return {"value": {}}
+
+        def signal_group(pid, value):
+            self.assertEqual(pid, driver.pid)
+            signals.append(value)
+            if value == 0 and not group_remains:
+                raise ProcessLookupError()
+
+        clock = iter(range(100))
+        with patch.object(subprocess, "Popen", return_value=driver) as launch, \
+             patch.object(browser, "webdriver_request", side_effect=reply), \
+             patch.object(os, "killpg", side_effect=signal_group), \
+             patch.object(time, "monotonic", side_effect=lambda: next(clock)), \
+             patch.object(time, "sleep"):
+            self.assertEqual(browser.render_viewport(390, 844), {"fixture": True})
+        self.assertIs(launch.call_args.kwargs["start_new_session"], True)
+        self.assertEqual(requests[1][2]["capabilities"]["alwaysMatch"]["timeouts"],
+                         {"pageLoad": 20000, "script": 10000, "implicit": 0})
+        driver.wait.assert_called_once_with(timeout=5)
+        return signals
+
+    def test_own_process_group_is_terminated_without_generic_process_selection(self):
+        self.assertEqual(self.exercise_cleanup(False), [signal.SIGTERM, 0])
+
+    def test_stubborn_own_descendants_are_killed_after_finite_grace(self):
+        signals = self.exercise_cleanup(True)
+        self.assertEqual(signals[0], signal.SIGTERM)
+        self.assertEqual(signals[-1], signal.SIGKILL)
+
+    def test_transport_wait_is_finite_and_exceeds_browser_page_load_deadline(self):
+        response = Mock()
+        response.read.return_value = b'{"value": {}}'
+        context = Mock()
+        context.__enter__ = Mock(return_value=response)
+        context.__exit__ = Mock(return_value=False)
+        with patch.object(urllib.request, "urlopen", return_value=context) as request:
+            CodexChatCardBrowserTest.webdriver_request("http://127.0.0.1:1", "GET", "/status")
+        self.assertEqual(request.call_args.kwargs["timeout"], 30)
 
 
 if __name__ == "__main__":
