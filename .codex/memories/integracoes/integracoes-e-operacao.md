@@ -216,3 +216,17 @@ Uma recusa de snapshot por snapshot_not_healthy ou maintenance_active, sem queda
 O canvas envia recover_session=true somente nos efeitos iCloud das duas funções lógicas de morador, após os gates normais e fora do dry-run. O binding fixa a conta e remove a intenção antes da chamada downstream. A recuperação renova o token salvo e recarrega a entrada uma vez; falta de token usa somente o orçamento separado existente para senha salva. Um Store adicional com attempted é persistido antes da renovação e permanece consumido em resposta incerta ou reinício. Setup autenticado completo pode liberá-lo. Um desafio conhecido retorna ICLOUD_OTP_REQUIRED sem envio de código; a interface manual só prepara o desafio por envio explícito do formulário. Lock por entrada evita dois moradores renovarem a mesma sessão em paralelo. Testes isolados comprovam token aceito sem senha/OTP, espera persistente por código, rejeição posterior e ausência de replay.
 
 <!-- /memory-record -->
+
+<!-- memory-record {"id":"executor-peer-origem-de-inicializacao","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-11-15","evidence":[{"file":"scripts/raspberry-mcp/task-list-row-errors/derive.py","sha256":"2819c4f451d682bdb3a184d2553a489e48c398b6d9707f89b3302fbb685bfecf"},{"file":"scripts/raspberry-mcp/task-list-row-errors/test_derive.py","sha256":"c0b0268568affd86ab269e1c8beca9127d4923e00a8c1bc3e4b3bc79357cca25"}]} -->
+## Vínculo do executor de tarefas e erros de linha
+
+A inscrição do executor de tarefas fixa a unidade que o iniciou. Depois de um reinício, se o executor subir por outra origem, o atestador não emite a prova do boot: a política persistente continua válida, mas criação, envio e metadados ficam fechados e a listagem mostra `closed_expired` com `expires_at` nulo. Esse rótulo agrega peer não confirmado; não provar expiração nem revogação a partir dele. Comparar a unidade do processo com a inscrição antes de qualquer renovação. Uma única thread registrada sem metadados do daemon não torna a listagem incompleta: o erro global reflete só o coletor e as lacunas ficam em `row_collection_errors`. Trocar um módulo do adaptador exige repinar política, inscrição e prova na mesma transação, com o mesmo peer observado.
+
+<!-- /memory-record -->
+
+<!-- memory-record {"id":"revisao-proativa-e-backup-com-trabalho-em-andamento","category":"OPERATING_PROCEDURE","kind":"VERIFIED_FACT","last_verified":"2026-11-15","evidence":[{"file":"scripts/proactive-maintenance-review.policy.json","sha256":"ee220394f0d443b10e30d454fd5ddf1ab4871172d22807190575ccb0200f0ae1"},{"file":"scripts/git-backup-security-exclusion.test.mjs","sha256":"f58483aa87853bd65bd12f7c5d3d9fddaef5e0ab72988098383c6bf635c543f5"}]} -->
+## Revisão proativa e backup com trabalho em andamento
+
+A revisão proativa de manutenção é agendada pela política versionada, grava recomendações deduplicadas em registro privado e anuncia mudanças por uma notificação persistente de ID estável, que segue pelo caminho de eventos existente. Somente ações do catálogo da política são automáticas; logs que são evidência de backup e atualização ficam fora dele. O backup noturno prepara todo o checkout: arquivos novos reprovados pelo scanner são deixados fora da preparação e o restante é publicado, mas achado em arquivo rastreado continua abortando. As atualizações diárias só disparam após backup com sucesso, então trabalho interativo inacabado no checkout ativo pode suspender atualizações por várias noites.
+
+<!-- /memory-record -->

@@ -49,6 +49,35 @@ necessária, para revisão administrativa. A [reconciliação](#reconciliar-cont
 não modifica prazo ou escopo. Se também houver expiração, reaprovar binding não
 renova a lease. Não reiniciar a casa nem desativar o gate para reativar a ponte.
 
+### Vínculo do executor após reinício
+
+A inscrição do executor fixa executável, dono, papel e a unidade que o iniciou.
+O atestador roda a cada minuto e renova sozinho a prova de boot quando esses
+dados coincidem. Se o executor for iniciado por outra origem (por exemplo, por
+uma sessão interativa em vez do worker de recuperação), a prova não é emitida:
+a política continua válida, mas criação, envio e leitura de metadados ficam
+fechados. A listagem mostra então `closed_expired` com `expires_at` nulo; esse
+rótulo agrega peer não confirmado e não prova expiração nem revogação.
+
+Para diagnosticar, compare a unidade do processo atual com a inscrição e leia o
+journal do atestador. Para recuperar, deixe o executor ser iniciado pela origem
+inscrita ou prepare, revise e aplique a troca da origem inscrita como uma única
+transação com reversão própria, que atualiza motor, adaptador, política,
+inscrição e prova. Depois confirme pelo atestador e por `codex_task_list`. A
+fonte `executor.peer_binding` da [revisão proativa](reference/proactive-review.md)
+abre uma recomendação P1 quando o vínculo deixa de corresponder ao processo.
+
+### Erros de linha na listagem de tarefas
+
+`collection_error` no topo da listagem indica falha do coletor. Uma thread
+registrada cujos metadados do daemon estão indisponíveis aparece em
+`row_collection_errors` (contagem, motivos e até oito IDs) e mantém o erro na
+própria linha; a identidade e os registros do adaptador continuam listados.
+Clientes devem tratar a listagem como completa para localizar trabalho
+existente quando `collection_error` é nulo e `registered_identities_listed` é
+verdadeiro. A derivação e os testes estão em
+[`task-list-row-errors`](../../scripts/raspberry-mcp/task-list-row-errors/README.md).
+
 ## Manutenção de armazenamento
 
 O [catálogo de armazenamento](../../scripts/raspberry-mcp/runtime-source/storage-maintenance/README.md)
