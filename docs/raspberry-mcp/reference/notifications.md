@@ -193,6 +193,20 @@ usou os registros já existentes daquela manhã, sem novos eventos. A associaç�
 representa o último erro retido desse ID, não prova o disparo original ou a RCA.
 O histórico privado e a retenção anterior não foram alterados.
 
+O diagnóstico estruturado do pedido ao guardião de memória reconhece somente a
+mensagem técnica completa revisada. Publica `reason`, `exit_code`, `signal` e
+`elapsed_ms` com tipos e limites próprios. Valores desconhecidos permanecem
+nulos. Código de saída e duração não identificam o emissor de um sinal nem a
+causa do encerramento. Prefixos, sufixos, credenciais e campos adicionais
+impedem essa extração. A identificação de fluxo e nó usa o catálogo revisado.
+
+A atualização do catálogo alcança apenas diagnósticos que ainda conservam esses
+campos. Um índice antigo que já os descartou continua incompleto. A leitura do
+texto privado por revisão pode oferecer detalhes retidos separadamente, mantendo
+seus horários e sua associação exata. Instalar o leitor e publicar suas fontes
+não atualizam a função produtora carregada no Node-RED. Essa implantação exige
+plano próprio de um nó, revisão atual, CAS, admissão e confirmação da interface.
+
 ### Recibo do evento, lote e transporte
 
 Quando oferecido pelo produtor e pelo frontend carregados,

@@ -383,20 +383,20 @@
     },
     "ha-notices/diagnostic_templates.json": {
       "source": "/usr/local/lib/raspberry-ha-notices/diagnostic_templates.json",
-      "source_sha256": "e3ca97ef6c7df970537d896f1be1d38fe0e1b40cbb51d6421e2657a2ca4a17f6",
-      "export_sha256": "e3ca97ef6c7df970537d896f1be1d38fe0e1b40cbb51d6421e2657a2ca4a17f6",
+      "source_sha256": "b78ba9c1e4a8981f0242aaa5b51edcfd79716152b63b836194ab03c167fba59e",
+      "export_sha256": "b78ba9c1e4a8981f0242aaa5b51edcfd79716152b63b836194ab03c167fba59e",
       "normalizations": []
     },
     "ha-notices/content_sanitizer.cjs": {
       "source": "/usr/local/lib/raspberry-ha-notices/content_sanitizer.cjs",
-      "source_sha256": "2d05672b07166c90399adfd17aa3938a6edd9079f7ccb3aa236ff7d350d05e42",
-      "export_sha256": "2d05672b07166c90399adfd17aa3938a6edd9079f7ccb3aa236ff7d350d05e42",
+      "source_sha256": "452070af08fa74a0b8c6ad0eb3771668813833b9f633ed4473bae527e9b80466",
+      "export_sha256": "452070af08fa74a0b8c6ad0eb3771668813833b9f633ed4473bae527e9b80466",
       "normalizations": []
     },
     "ha-notices/content_reader.py": {
       "source": "/usr/local/lib/raspberry-ha-notices/content_reader.py",
-      "source_sha256": "5e3a072bdfa98b8d027aeb4e33d9dbe729fa3968a74448fb5da260d9dcb21b8f",
-      "export_sha256": "5e3a072bdfa98b8d027aeb4e33d9dbe729fa3968a74448fb5da260d9dcb21b8f",
+      "source_sha256": "edef2784fc30bcc884c19b7372d7edbadf286704430e337bcc9e04a6483067ed",
+      "export_sha256": "edef2784fc30bcc884c19b7372d7edbadf286704430e337bcc9e04a6483067ed",
       "normalizations": []
     },
     "ha-notices/notification_view.cjs": {

@@ -101,14 +101,31 @@ function stackFrames(input){
  }
  return {frames,dropped};
 }
+// Parse the exact bounded producer grammar. No substring match or raw text export.
+const guardianReasons=new Set(['execution_interrupted','execution_failed','empty_response','invalid_response']);
+const guardianSignals=new Set(['SIGHUP','SIGINT','SIGQUIT','SIGILL','SIGTRAP','SIGABRT','SIGBUS','SIGFPE',
+ 'SIGKILL','SIGUSR1','SIGSEGV','SIGUSR2','SIGPIPE','SIGALRM','SIGTERM','SIGCHLD','SIGCONT','SIGSTOP',
+ 'SIGTSTP','SIGTTIN','SIGTTOU','SIGURG','SIGXCPU','SIGXFSZ','SIGVTALRM','SIGPROF','SIGWINCH','SIGIO','SIGPWR','SIGSYS']);
+function guardianRequestDiagnostic(message){
+ if(typeof message!=='string'||message.length>256)return null;
+ const match=message.match(/^host_memory_guardian_request_unrecognized reason=([a-z_]{1,32}) exit_code=(unknown|-?(?:0|[1-9][0-9]{0,15})) signal=(none|SIG[A-Z0-9]{1,12}) elapsed_ms=(unknown|(?:0|[1-9][0-9]{0,15}))$/);
+ if(!match||match[0]!==message||!guardianReasons.has(match[1])||match[3]!=='none'&&!guardianSignals.has(match[3]))return null;
+ const exitCode=match[2]==='unknown'?null:Number(match[2]);
+ const elapsed=match[4]==='unknown'?null:Number(match[4]);
+ if(exitCode!==null&&!Number.isSafeInteger(exitCode)||elapsed!==null&&!Number.isSafeInteger(elapsed))return null;
+ return {schema_version:1,source:'host_memory_guardian_request_unrecognized',reason:match[1],
+  exit_code:exitCode,signal:match[3]==='none'?null:match[3],elapsed_ms:elapsed};
+}
 function errorDTO(error,embedded='',depth=0,seen=new Set(),frameBudget=6){
  const raw=error&&typeof error==='object'?error:{};seen.add(raw);const name=C.error_types.includes(raw.name)?raw.name:C.error_types.find(n=>new RegExp('\\b'+n+'\\s*:').test((typeof raw.message==='string'?raw.message:'')+' '+embedded))||null;
  const message=fragments(typeof raw.message==='string'?raw.message:embedded,'error.message');const stack=stackFrames(raw.stack||embedded);stack.frames=stack.frames.slice(0,frameBudget);
  const reason=message.codes.filter(c=>reasonCodes.has(c));
+ const guardian=guardianRequestDiagnostic(typeof raw.message==='string'?raw.message:embedded);
  const causes=[];if(depth<2&&raw.cause&&typeof raw.cause==='object'&&!seen.has(raw.cause)){const child=errorDTO(raw.cause,raw.cause.message||'',depth+1,seen,Math.max(0,frameBudget-stack.frames.length));child.stack=child.stack.slice(0,Math.max(0,6-stack.frames.length));causes.push(child);}
  return {exception_type:name,message_codes:message.codes,reason_codes:reason,stack:stack.frames,causes,
+  ...(guardian?{guardian_request:guardian}:{}),
   redacted_fields:[...message.redacted,...(stack.dropped?[{field:'error.stack',reason:'unreviewed_stack_frame'}]:[])],
-  collection_error:!name&&!reason.length&&!stack.frames.length?'exception_or_stack_not_present':null};
+  collection_error:!name&&!reason.length&&!stack.frames.length&&!guardian?'exception_or_stack_not_present':null};
 }
 function sanitizeContent(title,message,error=null){
  const reviewed=radioBrowserTemplate(title,message)||zigbeeTemplate(title,message);

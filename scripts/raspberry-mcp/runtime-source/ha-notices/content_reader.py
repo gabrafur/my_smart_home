@@ -23,6 +23,25 @@ def render(value):return ' '.join(C['fragments'][x]for x in codes(value))
 
 def count_frames(value):return len(value['stack'])+sum(count_frames(x)for x in value.get('causes',[]))
 
+GUARDIAN_REASONS={'execution_interrupted','execution_failed','empty_response','invalid_response'}
+GUARDIAN_SIGNALS={'SIGHUP','SIGINT','SIGQUIT','SIGILL','SIGTRAP','SIGABRT','SIGBUS','SIGFPE',
+ 'SIGKILL','SIGUSR1','SIGSEGV','SIGUSR2','SIGPIPE','SIGALRM','SIGTERM','SIGCHLD','SIGCONT','SIGSTOP',
+ 'SIGTSTP','SIGTTIN','SIGTTOU','SIGURG','SIGXCPU','SIGXFSZ','SIGVTALRM','SIGPROF','SIGWINCH','SIGIO','SIGPWR','SIGSYS'}
+
+
+def guardian_request(value):
+    if value is None:return None
+    if (type(value)is not dict or set(value)!={'schema_version','source','reason','exit_code','signal','elapsed_ms'}
+        or type(value['schema_version'])is not int or value['schema_version']!=1
+        or value['source']!='host_memory_guardian_request_unrecognized'
+        or type(value['reason'])is not str or value['reason']not in GUARDIAN_REASONS
+        or not(value['signal']is None or type(value['signal'])is str and value['signal']in GUARDIAN_SIGNALS)
+        or not(value['exit_code']is None or type(value['exit_code'])is int and abs(value['exit_code'])<=9007199254740991)
+        or not(value['elapsed_ms']is None or type(value['elapsed_ms'])is int and 0<=value['elapsed_ms']<=9007199254740991)):
+        raise ValueError('invalid_guardian_request_diagnostic')
+    return {key:value[key]for key in ('schema_version','source','reason','exit_code','signal','elapsed_ms')}
+
+
 def error(value,depth=0):
     if not isinstance(value,dict)or value.get('exception_type')not in [None,*C['error_types']]:raise ValueError('invalid_error')
     frames=value.get('stack');redacted=redactions(value.get('redacted_fields'))
@@ -35,7 +54,8 @@ def error(value,depth=0):
     if not isinstance(chain,list)or len(chain)>1 or depth>=2 and chain:raise ValueError('invalid_cause_chain')
     children=[error(child,depth+1)for child in chain]
     if len(safe)+sum(count_frames(child)for child in children)>6:raise ValueError('stack_limit')
-    return {'causes':children,'exception_type':value['exception_type'],'message':render(value.get('message_codes')),'reason':[C['fragments'][x]for x in codes(value.get('reason_codes'))],
+    guardian=guardian_request(value.get('guardian_request'))
+    return {**({'guardian_request':guardian}if guardian is not None else{}),'causes':children,'exception_type':value['exception_type'],'message':render(value.get('message_codes')),'reason':[C['fragments'][x]for x in codes(value.get('reason_codes'))],
         'stack':safe,'redacted_fields':redacted,'collection_error':None if value.get('collection_error')is None else'exception_or_stack_not_present'}
 
 def project(value):
