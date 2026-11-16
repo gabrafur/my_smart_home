@@ -133,8 +133,18 @@ não falha do guardião. Para conferir uma nova ocorrência, compare o horário 
 aviso com o atraso do timer `raspberry-procmon`. Um intervalo sem registros no
 journal, isolado, não prova travamento.
 
-Classificar esse caso como interrupção transitória, sem alerta no celular,
-exige mudar o canvas e fazer um novo deploy administrativo do Node-RED.
+O nó `Resposta da ponte inválida` classifica esse caso. Um `SIGTERM` com pelo
+menos 14 segundos decorridos, ou seja, no limite do `exec`, conta como
+travamento do host. Uma ou duas ocorrências na mesma hora geram apenas um aviso
+no log do Node-RED (`host_memory_guardian_request_transient
+reason=host_stall_timeout`) e um status amarelo, sem alerta no celular. A
+terceira ocorrência na mesma hora volta a ser falha, com o mesmo texto
+`host_memory_guardian_request_unrecognized reason=execution_interrupted` que o
+sanitizador de avisos já reconhece, e o status passa a "travamentos recorrentes
+do host". Um sinal antes do limite ou outro sinal continua sendo falha imediata.
+A contagem fica em memória (`memoryOnly`) e recomeça a cada reinício do
+Node-RED. O próximo ciclo do guardião refaz a verificação normalmente. Não há
+retry imediato.
 
 ## Testes seguros
 

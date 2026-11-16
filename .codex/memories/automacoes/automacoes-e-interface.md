@@ -252,7 +252,7 @@ O pedido substitui a shell intermediária com exec para que o sinal alcance o he
 
 O processador mantém um histórico limitado dos resultados terminais do worker; ele não registra as fases da solicitação do container, então resultado saudável posterior ou remoção de marcador órfão não explicam um SIGTERM anterior.
 
-O SIGTERM de execution_interrupted vem do limite de 15 s do nó exec. As ocorrências observadas coincidiram com travamentos do host inteiro (timer do procmon atrasado, journal sem registros) em cartão SD sem swap; compare o horário com o atraso do timer antes de atribuir a causa ao guardião.
+O SIGTERM de execution_interrupted vem do limite de 15 s do nó exec. As ocorrências observadas coincidiram com travamentos do host inteiro (timer do procmon atrasado, journal sem registros) em cartão SD sem swap; compare o horário com o atraso do timer antes de atribuir a causa ao guardião. O canvas trata até dois desses SIGTERM por hora (≥14 s decorridos) como aviso passageiro sem alerta; o terceiro na hora volta a alertar.
 
 <!-- /memory-record -->
 
