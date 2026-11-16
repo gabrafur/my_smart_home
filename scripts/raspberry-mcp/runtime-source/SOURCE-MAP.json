@@ -67,7 +67,7 @@
       "source_sha256": "e506cae469c7dcc69d6ade8f458cd94e21227bd321d20fcda6b0ae4ca43fe0a5",
       "export_sha256": "e506cae469c7dcc69d6ade8f458cd94e21227bd321d20fcda6b0ae4ca43fe0a5",
       "normalizations": [],
-      "source_observed_at": "2026-11-16T00:43:22.822287+00:00",
+      "source_observed_at": "2026-11-16T00:43:22Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -80,7 +80,7 @@
       "normalizations": [
         "thread_identifiers_replaced_with_binding_markers"
       ],
-      "source_observed_at": "2026-11-16T00:43:22.823804+00:00",
+      "source_observed_at": "2026-11-16T00:43:22Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -93,7 +93,7 @@
       "normalizations": [
         "thread_identifiers_replaced_with_binding_markers"
       ],
-      "source_observed_at": "2026-11-16T00:22:04.628332+00:00",
+      "source_observed_at": "2026-11-16T00:22:04Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
