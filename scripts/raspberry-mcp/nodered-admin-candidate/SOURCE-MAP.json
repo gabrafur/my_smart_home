@@ -17,7 +17,7 @@
     "frontend/test-nodered-admin.mjs": "6c83cdf6b87f7896b2dc7749e01a5fcac4bc4893b680f6d6c3759908ba05ea19",
     "gateway.py": "516190e6d9d453477612e4d9d4a709ee987e6f90e35cc01278f00f3dfe9f2e3c",
     "lighting.patch": "992552b7300cd9458c21ee25cab1ec2c3b8956a18d431ae3e1dfc4c09bc7391c",
-    "native_guard.py": "8eff3f096d359787f82283048a2f218cc6781c7b79b8856da63f92a42cc84017",
+    "native_guard.py": "5f5845c8c903454fadc555ccef7c1a5fe8ed1d5aa96c3ffdb7d257e5dffed8ff",
     "process_discovery.py": "20b88bb245e463602f71414f6f66d2969fd1f936e3c2ec7294cc895efc41060e",
     "public_source_validator.py": "70e46341e91ad2ee7fb3453165b68f5ef5c628b5ba667502dbc4233817d9294e",
     "systemd/nodered-admin-instance.service.in": "e9b3b220a12231ee1020a06390ad1d0913a3f75426b966e92dcc3653646b9545",

@@ -47,6 +47,8 @@ SCHEMAS = {
  'task': {'tasks': 'id task_key spec_hash thread state created updated reconciled',
           'sends': 'id task input_hash state turn created updated result reconciled',
           'audit': 'seq id state at', 'creation_results': 'id result',
+          'history_refs': 'kind id version',
+          'profile_transitions': 'id operation thread grant_sha256 mode state receipt created updated',
           'result_checkpoints': 'id result_hash terminal_state reply_available recorded'},
  'legacy': {'jobs': 'id thread intent state created updated attempts turn result',
             'audit': 'seq id state at',

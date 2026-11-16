@@ -9,5 +9,5 @@ test('bounded task observer rejects unregistered queries and source drift', () =
     '-s', directory, '-p', 'test_*.py'], {encoding: 'utf8', timeout: 10000, maxBuffer: 65536});
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Ran 13 tests/);
+  assert.match(result.stderr, /Ran 17 tests/);
 });
