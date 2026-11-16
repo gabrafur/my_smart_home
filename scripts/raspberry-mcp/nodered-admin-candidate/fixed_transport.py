@@ -1,17 +1,11 @@
 """Candidate internal transport; no CLI, URL input, discovery or MCP registration.
 The sealed parent alone supplies credentials and proves the return peer.
 """
+import hashlib
+import time
 import http.client
 import ipaddress
 import json
-import time
-
-PEER_PRECHECK_SECONDS = 10.0
-TRANSIENT_PEER_ERRORS = frozenset({
-    'container_or_descendant_read_race',
-    'transient_process_unavailable',
-    'listener_fd_read_race',
-})
 
 class Refused(ValueError):
     pass
@@ -31,20 +25,15 @@ def decode(raw):
                       parse_constant=lambda _: (_ for _ in ()).throw(Refused('nonfinite_response')))
 
 def passive_peer_precheck(peer_check):
-    """At most two passive proofs; never retries an HTTP request."""
-    deadline = time.monotonic() + PEER_PRECHECK_SECONDS
+    deadline=time.monotonic()+10
     for attempt in range(2):
         try:
-            need(peer_check() is True, 'return_peer_identity_unconfirmed')
-            break
+            need(peer_check()is True,'return_peer_identity_unconfirmed');break
         except ValueError as error:
-            transient = (len(error.args) == 1 and type(error.args[0]) is str
-                         and error.args[0] in TRANSIENT_PEER_ERRORS)
-            if attempt or not transient or time.monotonic() >= deadline:
-                raise
-    need(time.monotonic() < deadline, 'native_precheck_deadline_exceeded')
+            transient=len(error.args)==1 and type(error.args[0])is str and error.args[0]in('container_or_descendant_read_race','transient_process_unavailable','listener_fd_read_race')
+            if attempt or not transient or time.monotonic()>=deadline:raise
+    need(time.monotonic()<deadline,'native_precheck_deadline_exceeded')
     return True
-
 
 class FixedTransport:
     """Only /auth/token, /flows and /auth/revoke; no redirects or retry.
@@ -52,7 +41,7 @@ class FixedTransport:
     `binding` and proof are private parent data, never MCP arguments.
     A live deployment additionally requires sealed source/policy/parent checks.
     """
-    def __init__(self, binding, peer_check, connection=http.client.HTTPConnection):
+    def __init__(self, binding, peer_check, connection=http.client.HTTPConnection, token_observer=None):
         need(type(binding) is dict and set(binding) == {'host','port','username','password'}, 'fixed_binding_required')
         peer = ipaddress.IPv4Address(binding['host'])
         need(peer.is_private and not peer.is_unspecified and not peer.is_multicast and not peer.is_loopback,
@@ -65,8 +54,14 @@ class FixedTransport:
         self._peer_check = peer_check
         self._connection = connection
         self._token = None
+        need(token_observer is None or callable(token_observer),'sealed_token_observer_required')
+        self._token_observer=token_observer
+        self._login_success_confirmed=False
         self._scope = None
         self._login_dispatch_attempted = False
+
+    @property
+    def login_success_confirmed(self):return self._login_success_confirmed
 
     @property
     def login_dispatch_attempted(self):
@@ -124,6 +119,8 @@ class FixedTransport:
              0 < len(data['access_token']) <= 8192, 'authentication_refused')
         self._token = data['access_token']
         self._scope = 'write' if write else 'read'
+        self._login_success_confirmed=True
+        if self._token_observer is not None:self._token_observer({'token_sha256':hashlib.sha256(b'nodered-admin-owned-token-v1\0'+self._token.encode()).hexdigest(),'requested_scope':'*'if write else'read'})
 
     def fetch(self):
         need(self._token is not None, 'authenticated_session_required')

@@ -374,7 +374,11 @@ class PartialAndConcurrency(Base):
 
 class Budget(unittest.TestCase):
     def test_cleanup_reserve_fits_runtime_max(self):
-        self.assertLessEqual(C.CLEANUP_LOCK_DEADLINE_SECONDS + T.PEER_PRECHECK_SECONDS + 12.0 + 2.0, 45)
+        # Installed transport: passive peer precheck deadline 10 s, request timeout 12 s.
+        source = (HERE / 'fixed_transport.py').read_text()
+        self.assertIn('deadline=time.monotonic()+10', source)
+        self.assertIn('timeout=12)', source)
+        self.assertLessEqual(C.CLEANUP_LOCK_DEADLINE_SECONDS + 10.0 + 12.0 + 2.0, 45)
         self.assertLessEqual(C.CLEANUP_LOCK_WAIT_SECONDS, C.CLEANUP_LOCK_DEADLINE_SECONDS)
         self.assertEqual((C.LOCK_WAIT_SECONDS, C.LOCK_WAIT_TOTAL_SECONDS), (8.0, 12.0))
 

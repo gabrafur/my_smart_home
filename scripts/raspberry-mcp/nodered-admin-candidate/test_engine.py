@@ -230,6 +230,51 @@ class CandidateTests(unittest.TestCase):
             self.engine.apply(SECOND, other['plan_sha256'], APPROVAL)
         self.assertEqual(len(self.transport.calls), 1)
 
+    def sealed_reconciliation(self, op, **change):
+        plan = self.store.read(op, 'plan.json')
+        receipt = self.store.read(op, 'receipt.json')
+        value = {'producer': 'sealed_nodered_admin_reconciler', 'operation_id': op,
+                 'plan_sha256': E.digest(plan), 'intent_sha256': E.digest(self.store.read(op, 'intent.json')),
+                 'receipt_sha256': E.digest(receipt) if receipt else None,
+                 'observed_after_sha256': plan['after_sha256'], 'guard_after_sha256': 'c' * 64,
+                 'receipt_promoted': False, **change}
+        self.store.write(op, 'reconciliation.json', value)
+
+    def test_uncertain_stage_is_recorded_without_error_text(self):
+        plan = self.approved()
+        self.transport.fail = True
+        self.assertEqual(self.apply(plan=plan)['uncertain_stage'], 'deploy_response')
+        self.tearDown(); self.setUp()
+        plan = self.approved()
+        self.coord.post_guarded = False
+        self.assertEqual(self.apply(plan=plan)['uncertain_stage'], 'guard_after')
+        self.tearDown(); self.setUp()
+        plan = self.approved()
+        self.assertNotIn('uncertain_stage', self.apply(plan=plan))
+
+    def test_sealed_reconciliation_unblocks_without_promoting_receipt(self):
+        plan = self.approved()
+        self.transport.fail = True
+        self.assertEqual(self.apply(plan=plan)['state'], 'uncertain')
+        self.transport.fail = False
+        self.sealed_reconciliation(OP)
+        self.assertEqual(self.store.uncertain_operations(), [])
+        self.assertEqual(self.engine.status(OP)['state'], 'uncertain')
+        self.assertTrue(self.engine.apply(OP, plan['plan_sha256'], APPROVAL)['duplicate'])
+        with self.assertRaisesRegex(ValueError, 'own_applied_result_required'):
+            self.engine.rollback(OP, ROLLBACK)
+        self.assertEqual(len(self.transport.calls), 1)
+
+    def test_reconciliation_bound_to_exact_records(self):
+        for change in ({'producer': 'other'}, {'observed_after_sha256': 'd' * 64}, {'receipt_promoted': True},
+                       {'guard_after_sha256': None}, {'receipt_sha256': 'e' * 64}, {'intent_sha256': 'f' * 64}):
+            self.tearDown(); self.setUp()
+            plan = self.approved()
+            self.transport.fail = True
+            self.apply(plan=plan)
+            self.sealed_reconciliation(OP, **change)
+            self.assertEqual(self.store.uncertain_operations(), [OP], change)
+
     def test_interrupted_intent_without_receipt_never_replays(self):
         plan = self.approved()
         self.store.write(OP, 'intent.json', {'operation_id': OP, 'attempted_at': self.now})

@@ -290,7 +290,7 @@ def public_plan(plan):
 
 class Journal:
     """Private append-only phase files, constructor path fixed by sealed service."""
-    NAMES = {'plan.json', 'validation.json', 'intent.json', 'receipt.json'}
+    NAMES = {'plan.json', 'validation.json', 'intent.json', 'receipt.json', 'reconciliation.json'}
 
     def __init__(self, directory):
         self.directory = Path(directory).absolute()
@@ -386,8 +386,31 @@ class Journal:
             intent = self.read(folder.name, 'intent.json')
             receipt = self.read(folder.name, 'receipt.json')
             if intent and (not receipt or receipt.get('state') == 'uncertain'):
-                result.append(folder.name)
+                if not self.reconciled(folder.name, intent, receipt):
+                    result.append(folder.name)
         return result
+
+    def reconciled(self, operation_id, intent, receipt):
+        """A sealed Root reconciler may close an uncertain outcome without promoting it.
+
+        The receipt stays 'uncertain'; the record only proves, bound to the exact
+        plan, intent and receipt bytes, that the loaded configuration later equalled
+        the planned afterimage and the credential/context guard passed. It unblocks
+        new operations; it never turns the receipt into 'applied' or enables rollback.
+        """
+        value = self.read(operation_id, 'reconciliation.json')
+        if value is None:
+            return False
+        plan = self.read(operation_id, 'plan.json')
+        return (type(value) is dict and type(plan) is dict
+                and value.get('producer') == 'sealed_nodered_admin_reconciler'
+                and value.get('operation_id') == operation_id
+                and value.get('plan_sha256') == digest(plan)
+                and value.get('intent_sha256') == digest(intent)
+                and value.get('receipt_sha256') == (digest(receipt) if receipt else None)
+                and value.get('observed_after_sha256') == plan.get('after_sha256')
+                and valid_id(value.get('guard_after_sha256'), SHA)
+                and value.get('receipt_promoted') is False)
 
     def attempts(self, since):
         rows = []
@@ -593,6 +616,7 @@ class Engine:
                        'guard_before_sha256': preflight['guard_before_sha256'],
                        'guard_after_sha256': None, 'credentials_preservation_verified': False,
                        'context_preservation_verified': False}
+            stage = 'deploy_response'
             try:
                 reply = self.transport.deploy(plan['before_revision'], copy.deepcopy(plan['after_flows']))
                 if reply.get('state') == 'conflict' and reply.get('effect_proven_absent') is True:
@@ -601,10 +625,12 @@ class Engine:
                 elif reply.get('state') == 'accepted':
                     revision = reply.get('rev')
                     need(type(revision) is str and 0 < len(revision) <= 512, 'deploy_revision_unconfirmed')
+                    stage = 'loaded_configuration'
                     loaded = snapshot(self.transport.fetch())
                     need(loaded['rev'] == revision and digest(loaded['flows']) == plan['after_sha256'],
                          'loaded_configuration_unconfirmed')
                     receipt['collection_error'] = 'credential_or_context_after_unconfirmed'
+                    stage = 'guard_after'
                     after_guard_sha256 = self._guard(plan, 'after')
                     receipt.update(state='applied', after_revision=revision, collection_error=None,
                                    loaded_configuration_verified=True,
@@ -613,7 +639,8 @@ class Engine:
                                    context_preservation_verified=True)
             except Exception:
                 # Never export exception text, request body, authentication or logs.
-                pass
+                # Only the fixed stage name records where certainty was lost.
+                receipt['uncertain_stage'] = stage
             receipt['completed_at'] = self.clock()
             self.journal.write(operation_id, 'receipt.json', receipt)
             return receipt

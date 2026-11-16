@@ -9,8 +9,8 @@
     "coordination.py": "b255ffb3a44242d442b001bd47c5e40e9bf9fd3a027cefd062f44f4a33ecad7c",
     "core-preservation-evidence.json": "ce74f7f4ca3af62eabf6b253fb0ada37218b05868270422dfe5c68d7190bf1e8",
     "core_preservation_harness.cjs": "1cd7a6f1e1b95dc6880970f1c9ba4e0950a5cca5062bf801a120e8c08caaacd5",
-    "engine.py": "accec754ad03318d7d64e9ef67a5c747e65546a2f972c9b77949bde650bd7ad2",
-    "fixed_transport.py": "ece5192e382afcf118fa28a4c9155fa4e97b9597adc1f3f3026fa3041dd2e1c3",
+    "engine.py": "72747778f0fd56c6a6e3323ff8568a686db6c7f64244f84c8dbd2ee963a63516",
+    "fixed_transport.py": "544ec777527b693db808dc909eab8d78325b083ea0ae973fcfbbb38aef9844dc",
     "frontend/nodered-admin-entry.mjs": "0a650c159484f2af86f8868ff2d674b98c16edbef8a776c2fec19570e0ed031a",
     "frontend/nodered-admin-parser.mjs": "698f3c56c2b28796a3c4cfb5174c421e02dcfbe171eb0ef637e108632f0b7cec",
     "frontend/nodered-admin-route.mjs": "953b1073b26f39ad84c0d170d39bb0324b96bf88ff46be908310560cbf98bd68",
@@ -22,7 +22,7 @@
     "public_source_validator.py": "70e46341e91ad2ee7fb3453165b68f5ef5c628b5ba667502dbc4233817d9294e",
     "systemd/nodered-admin-instance.service.in": "e9b3b220a12231ee1020a06390ad1d0913a3f75426b966e92dcc3653646b9545",
     "systemd/raspberry-nodered-admin.socket": "38a2bdbb77c36b29edf15fec612a8cc5a77f414d482ec3fbb3db9e980a773e5b",
-    "test_engine.py": "b0551e0eca856489e15b4ed153978d2f9dc2c2610da12057d924aa0842ee0001",
+    "test_engine.py": "082282c25534a31325ec11e6ecc70e5d878c502e9e24b9ee734904fafd813035",
     "test_fixed_transport.py": "f67808fae5b556ba7eee7a76007991b87d90ecf25425dcccdcf78c3c34eef674",
     "test_native.py": "3a94a5224813fac6c4e9ddaeb4c815b8a25e29e49dbcb1672ca4f5fcd956315e",
     "test_native_guard.py": "ed797d2d5cdda227f63ebdfedc73b3e94c0eacb4b1be750afa858d598e6d5324",
@@ -30,7 +30,7 @@
     "test_policy_diagnostic_classification.py": "d977b19ecd83044e137e989a98d455acbc112ed895ed78a0aebc25106cba51d9",
     "test_process_discovery.py": "447d5b0611cb58244c4766e053c2b764811bb04d74a69b775136da6dedbcb95d",
     "test_public_source_validator.py": "279968fa6fe83f0666a179530f8e7a381676d2d35b0a3dfb03240d2e85bee5a6",
-    "test_session_cleanup.py": "02da2b111b6f9525f8199538910c0f02fa70a53732c4b99e3fabb0a0831a9544",
+    "test_session_cleanup.py": "b23c6005eb46a9aa13f0ff2db181850b602930487c0b0ad5a9151a36a0a9fc90",
     "test_builtins.py": "19b75689ba0e902ec4e0122032f70d768a1a5692db7e5b08f5eb864f419ac1af"
   },
   "proposed_root_modules": [
