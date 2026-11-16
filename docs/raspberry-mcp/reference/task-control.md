@@ -174,3 +174,27 @@ aprovados. Não envie um turno artificial para comprovar a listagem.
 
 Contrato de leitura do daemon:
 [documentação oficial OpenAI](https://learn.chatgpt.com/docs/app-server).
+
+## Política broad do cliente
+
+A política do cliente (`client-policy.json` do observador de tarefas) aceita a
+extensão opcional `broad_task_profile`, com contrato exato: perfil
+`danger-full-access`, aprovação `on-request` revisada pelo usuário, `cwd` do
+projeto, confirmações de interface obrigatórias e sem administração legada. O
+worker de eventos broad e o instalador fixo da manutenção
+(`validate_client_policy_payload`) aplicam o mesmo contrato. Campos a mais,
+escopo diferente ou flags não booleanas são recusados.
+`scripts/raspberry-mcp/installer-broad-policy/` deriva essa mudança no instalador
+e move só os pinos dele: `owner-policy`, `install-enrollment`, aprovação de
+registro de pacotes, `catalogue-manifest` e `bootstrap-manifest`, cujo domínio
+está inerte.
+
+A troca da política em uso segue o ciclo nativo do pacote do cliente:
+
+1. Rollback próprio da instalação atual pela Eva, com confirmação de interface.
+   Ele devolve a política v1 vencida, que conta como base inativa.
+2. Registro com escopo do pacote novo, ajuste do par de hashes do worker no
+   `install-enrollment` e seleção do pacote, feitos por operador Root.
+3. Instalação nova pela Eva.
+
+Enquanto a base está inativa, a continuação do cliente por eventos fica parada.
