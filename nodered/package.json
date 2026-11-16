@@ -85,6 +85,7 @@
     },
     "dependencies": {
         "elkjs": "0.12.0",
+        "js-yaml": "4.1.0",
         "node-red-contrib-dulonode": "~1.0.11",
         "node-red-contrib-home-assistant-websocket": "~0.80.3"
     },

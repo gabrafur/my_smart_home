@@ -29,6 +29,12 @@ jobs:
             nodered/package-lock.json
             validation/package-lock.json
 
+      # Same interpreter as the Raspberry host (Debian trixie); ubuntu-latest moved to 3.14.
+      - name: Use Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
       - name: Install deterministic Chrome for layout checks
         id: setup-chrome
         uses: browser-actions/setup-chrome@v2
