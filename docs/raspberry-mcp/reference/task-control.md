@@ -215,3 +215,8 @@ corrige o `native_binding.py` em três pontos:
 3. Essa prova também deixa de contar a operação como pendente.
 
 Nada é repetido nem reiniciado.
+
+O gateway da manutenção (`cg_completed`) também aceita essa prova
+(`gateway_derive.py`). Sem isso, um rollback comprovado mantinha desligada a
+entrega da continuação do cliente (`Root_standing_unconfirmed`), mesmo com a
+instalação seguinte concluída.
