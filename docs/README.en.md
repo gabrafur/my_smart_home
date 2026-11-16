@@ -146,6 +146,11 @@ and uncertain-delivery blocking remain in force. A bounded sanitized reply must
 be proven later than delivery; exact acknowledgement, turn completion and
 household recovery remain separate evidence.
 
+The [household lights tools](raspberry-mcp/reference/household-lights.md)
+(`ha_lights_read`, `ha_light_set`) switch only the lights registered in a
+Root policy and confirm the real Home Assistant state by readback; the gate,
+alarm and locks are not reachable.
+
 The [general Node-RED administration contract](raspberry-mcp/reference/nodered-administration.md)
 has a default-closed implementation with structured graph edits, opaque
 revision CAS, durable intents, native guards and own-operation rollback.

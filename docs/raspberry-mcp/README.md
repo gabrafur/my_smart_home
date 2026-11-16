@@ -30,6 +30,11 @@ A [comunicação com threads existentes](reference/workspace-communication.md)
 ou mudar o perfil da destinatária. Sua validade e disponibilidade são informadas
 por `codex_task_list`; um catálogo atualizado não concede essa autorização.
 
+As [luzes da casa](reference/household-lights.md) registradas na política do broker
+(garagem, varanda, abajur da sala e refletores) são lidas e acionadas por
+`ha_lights_read` e `ha_light_set`, com leitura do estado real depois do comando;
+portão, alarme e fechaduras ficam fora.
+
 A [proposta de administração geral do Node-RED](reference/nodered-administration.md)
 separa o grafo, a revisão de efeitos e a admissão de deploy. O código candidato
 permanece fechado e não instalado até confirmação específica; não amplia o

@@ -1,0 +1,14 @@
+[Unit]
+Description=Fixed household lighting control for the Raspberry MCP
+
+[Socket]
+ListenStream=/run/raspberry-mcp/ha-lights.sock
+SocketUser=root
+SocketGroup=raspberry-mcp
+SocketMode=0660
+Accept=yes
+MaxConnections=4
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

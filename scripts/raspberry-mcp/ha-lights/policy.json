@@ -1,0 +1,13 @@
+{
+  "schema": "ha_lights_policy_v1",
+  "enabled": true,
+  "revoked": false,
+  "targets": {
+    "lampadas_garagem": {"entity_id": "switch.lampadas_garagem", "label": "Lâmpadas da garagem"},
+    "lampada_varanda": {"entity_id": "switch.lampada_varanda", "label": "Lâmpada da varanda"},
+    "abajour_sala_de_estar": {"entity_id": "switch.abajour_sala_de_estar", "label": "Abajur da sala de estar"},
+    "refletores_jardim": {"entity_id": "switch.refletores_jardim", "label": "Refletores do jardim"},
+    "refletor_portao_carros": {"entity_id": "switch.refletor_portao_carros", "label": "Refletor do portão dos carros"}
+  },
+  "limits": {"commands_per_hour": 30, "minimum_spacing_seconds": 3, "readback_seconds": 6}
+}
