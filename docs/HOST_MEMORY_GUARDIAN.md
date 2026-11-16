@@ -88,6 +88,14 @@ Um aceite textual com código de saída não zero não é aceito como confirmaç
 O retorno posterior de um resultado fresco comprova apenas aquele ciclo, sem
 atribuir retrospectivamente a causa de uma falha anterior.
 
+O processador conserva os resultados terminais do worker em
+`result-history.log`, limitado por padrão às últimas 200 linhas. Esse histórico
+não registra as fases da solicitação feita pelo container: o helper apenas
+publica o marcador e retorna, sem esperar o worker. Portanto, um resultado
+saudável do worker não explica uma interrupção anterior do helper. Remover um
+marcador temporário órfão também não comprova corrigir a origem de um SIGTERM;
+essa investigação exige evidência da solicitação interrompida.
+
 A solicitação usa `exec` para substituir a shell intermediária pelo helper:
 o limite de 15 segundos passa a sinalizar o processo que possui o lock. Os
 handlers de HUP, INT e TERM encerram o helper com código não zero e liberam o
