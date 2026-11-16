@@ -38,7 +38,7 @@ class OwnerAccessTests(unittest.TestCase):
   value=tasks.project_reference_observations(task_list.REFERENCES,{'rows':rows},1002)
   self.assertTrue(all(r['last_activity_at']is None for r in value['threads']));self.assertNotIn('PRIVATE_SENTINEL',json.dumps(value))
  def test_readonly_fallback_calls_only_metadata_no_store_or_resume(self):
-  with patch.object(tasks,'coordinator_checkpoint',return_value={'state':'unknown'}),patch.object(tasks,'policy',return_value=({},{}))as policy,patch.object(tasks,'locked',return_value=contextlib.nullcontext())as locked,patch.object(tasks,'rpc',return_value={'rows':self.rows()})as rpc,patch.object(tasks,'store',side_effect=AssertionError('store_forbidden')):
+  with patch.object(tasks,'coordinator_checkpoint',return_value={'state':'unknown'}),patch.object(tasks,'task_policy',return_value=({},{}))as policy,patch.object(tasks,'locked',return_value=contextlib.nullcontext())as locked,patch.object(tasks,'rpc',return_value={'rows':self.rows()})as rpc,patch.object(tasks,'store',side_effect=AssertionError('store_forbidden')):
    value=tasks.reference_observations(legacy)
    policy.assert_called_once_with(legacy,observation=True);locked.assert_called_once_with(read_only=True);self.assertEqual(rpc.call_args.args[0]['mode'],'metadata_batch');self.assertEqual(value['assistant_dispatches'],0)
 if __name__=='__main__':unittest.main()

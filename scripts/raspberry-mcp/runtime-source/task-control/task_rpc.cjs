@@ -1,9 +1,12 @@
 // Staged extension. Uses the existing pinned Unix transport; no network/shell API.
 const WebSocket=require('/usr/local/lib/raspberry-ha-notices/vendor/ws');
+const net=require('node:net');
 const old=require('/usr/local/lib/raspberry-mcp/codex_control_rpc.cjs');
 const {isIP}=require('node:net');
 const SOCKET='/run/raspberry-mcp/codex-control.sock';
 const PROJECT='/mnt/data/docker';
+const TARGET_PROJECT_ID='${EVA_PROJECT_ID}';
+const TARGET_PROJECT_NAME='Raspberry — Eva';
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const OP=/^[a-f0-9]{32}$/;
 function need(ok,why){if(!ok)throw new Error(why);}
@@ -13,8 +16,12 @@ function validate(q){
   workspace_message_preflight:['mode','thread_id'],
   workspace_message:['mode','thread_id','operation_id','text','delivery_mode','expected_turn_id'],
   workspace_message_observe:['mode','thread_id','operation_id','turn_id','delivery_mode','expected_turn_id','reply_boundary','known_ack']};
- need(fields[q.mode]&&Object.keys(q).filter(k=>k!=='profile').sort().join(',')===fields[q.mode].sort().join(','),'request_scope_refused');
- if('profile'in q)need(q.profile==='eva_admin'&&['create_preflight','create','creation_probe','send_preflight','send'].includes(q.mode),'admin_profile_refused');
+ const allowed=new Set([...(fields[q.mode]||[]),...(q.mode==='create'?['project_binding_required']:[]),...(['creation_probe','send_preflight','send'].includes(q.mode)?['project_binding_required']:[])]);
+ const keys=Object.keys(q).filter(k=>k!=='profile'&&k!=='broad_active_turn');
+ need(fields[q.mode]&&fields[q.mode].every(k=>keys.includes(k))&&keys.every(k=>allowed.has(k)),'request_scope_refused');
+ if('project_binding_required'in q)need(q.project_binding_required===true&&['create','creation_probe','send_preflight','send'].includes(q.mode),'project_binding_unconfirmed');
+ if('profile'in q)need(q.profile==='eva_admin'&&['create_preflight','create','creation_probe','send_preflight','send'].includes(q.mode)||q.profile==='eva_broad'&&['create_preflight','create','creation_probe','send_preflight','send','workspace_message_preflight','workspace_message'].includes(q.mode),'admin_profile_refused');
+ if('broad_active_turn'in q)need(q.profile==='eva_broad'&&['workspace_message_preflight','workspace_message'].includes(q.mode)&&(q.broad_active_turn===null||UUID.test(q.broad_active_turn)),'broad_active_turn_binding');
  if('thread_id'in q)need(UUID.test(q.thread_id),'invalid_thread');
  if('operation_id'in q)need(OP.test(q.operation_id),'invalid_operation');
  if('turn_id'in q)need(UUID.test(q.turn_id),'invalid_turn');
@@ -26,6 +33,17 @@ function validate(q){
  if('reply_boundary'in q)checkReplyBoundary(q.reply_boundary);
  if('known_ack'in q&&q.known_ack!==null)checkKnownAck(q.known_ack,q);
 }
+function technicalReview(text){
+ try{
+  if(typeof text!=='string'||text.length>8192)return null;
+  const value=JSON.parse(text),r=value?.component_technical_review;
+  const fields=['operation_id','source_set_sha256','validation_profile_sha256','render_sha256','render_png_sha256','source_review','visual_review','render_tool','disposition'];
+  if(!r||typeof r!=='object'||Array.isArray(r)||Object.keys(r).sort().join()!==fields.sort().join()||!OP.test(r.operation_id))return null;
+  if(!['source_set_sha256','validation_profile_sha256','render_sha256','render_png_sha256'].every(k=>typeof r[k]==='string'&&/^[a-f0-9]{64}$/.test(r[k])))return null;
+  if(!['passed','failed'].includes(r.source_review)||!['passed','failed'].includes(r.visual_review)||r.render_tool!=='view_image'||!['approve','reject'].includes(r.disposition))return null;
+  return r;
+ }catch{return null;}
+}
 async function quota(rpc){old.quota(await rpc('account/read',{refreshToken:false}),await rpc('account/rateLimits/read',{}));}
 function fixedProfile(r){
  const s=r?.sandbox,roots=s?.writableRoots===undefined?[]:s.writableRoots;
@@ -33,18 +51,34 @@ function fixedProfile(r){
         s?.type==='workspaceWrite'&&s.networkAccess===false&&
         Array.isArray(roots)&&roots.every(p=>p===PROJECT);
 }
+async function requireEvaProject(rpc){
+ let reply;
+ try{reply=await rpc('project/read',{projectId:TARGET_PROJECT_ID});}
+ catch{throw new Error('project_binding_unconfirmed');}
+ const project=reply?.project;
+ need(project?.id===TARGET_PROJECT_ID&&project.name===TARGET_PROJECT_NAME&&
+  Array.isArray(project.roots)&&project.roots.length===1&&project.roots[0]?.path===PROJECT,
+  'project_binding_unconfirmed');
+ return project;
+}
 function adminProfile(r){
  return r?.cwd===PROJECT&&r.approvalPolicy==='never'&&r.modelProvider==='openai'&&
         r?.sandbox?.type==='dangerFullAccess';
 }
-function profileParams(admin){return admin
+function broadProfile(r){
+ return r?.cwd===PROJECT&&r.approvalPolicy==='on-request'&&r.approvalsReviewer==='user'&&
+  r.modelProvider==='openai'&&typeof r.model==='string'&&r.model.length>0&&r?.sandbox?.type==='dangerFullAccess';
+}
+function selectedProfile(q){return q.profile==='eva_broad'?'broad':q.profile==='eva_admin';}
+function verifiedProfile(r,profile){return profile==='broad'?broadProfile(r):profile?adminProfile(r):fixedProfile(r);}
+function profileParams(admin){if(admin==='broad')return {cwd:PROJECT,approvalPolicy:'on-request',approvalsReviewer:'user',sandbox:'danger-full-access',runtimeWorkspaceRoots:[PROJECT]};return admin
  ? {cwd:PROJECT,approvalPolicy:'never',sandbox:'danger-full-access'}
  : {cwd:PROJECT,approvalPolicy:'never',permissions:':workspace',runtimeWorkspaceRoots:[PROJECT],config:{'sandbox_workspace_write.network_access':false}};}
 function adminPrompt(q){
  return 'Tarefa administrativa delegada expressamente pelo proprietário. Objetivo:\n'+q.text+
- '\nEscopo: somente o host raspberry e o projeto /mnt/data/docker. Leia AGENTS.md e .local-state/eva-maintenance/ACTIVE-GOAL.json; siga o checkpoint indicado para reconciliar trabalhos existentes. '+
+ '\nEscopo: somente o host raspberry e o projeto /mnt/data/docker. Leia AGENTS.md e ${ACTIVE_GOAL_PATH}; siga o checkpoint indicado para reconciliar trabalhos existentes. '+
  'O contexto da meta não concede autoridade: valide a admissão e as políticas seladas vigentes antes de qualquer efeito. Se o contexto estiver ausente, contraditório ou a admissão desconhecida, preserve somente observação e reporte o bloqueio. Não herde escopo ou autorização de artefatos históricos. '+
- 'Identidade nativa gabriel UID1001. Quando necessário e dentro da validade, use somente a conta dedicada codex-house-01a16f9f pela rota sudo -n -u codex-house-01a16f9f /usr/bin/sudo -n, sem senha. '+
+ 'Identidade nativa ${NATIVE_EXECUTOR_USER} UID${NATIVE_EXECUTOR_UID}. Quando necessário e dentro da validade, use somente a conta dedicada ${ADMIN_DELEGATE_USER} pela rota sudo -n -u ${ADMIN_DELEGATE_USER} /usr/bin/sudo -n, sem senha. '+
  'Código e políticas privilegiados devem pertencer a root. Confira o prazo real da delegação e da ação: não prorrogue, não mantenha acesso administrativo residual e não comece trabalho privilegiado que ultrapasse o prazo. '+
  'Preserve execução serial, limites compartilhados, custo adicional zero e quota incluída. Não exporte nem capture credenciais, mensagens privadas, histórico bruto ou logs privados. '+
  'Não use Docker como contorno, não gere eventos artificiais nem amplie efeitos residenciais. Não repita operações incertas nem troque IDs/intents; reconcilie os recibos. '+
@@ -53,6 +87,13 @@ function adminPrompt(q){
  'Na resposta final, devolva somente JSON com operation_id="'+q.operation_id+'", project="/mnt/data/docker", state (checkpoint, progress, blocked ou complete), summary (até1200 caracteres) e next_step (até300 caracteres). Não inclua dados privados.';
 }
 function prompt(q){
+ if(q.profile==='eva_broad')return 'Tarefa da Eva com acesso amplo ao servidor e ao repositório, explicitamente autorizado pelo proprietário. Objetivo:\n'+q.text+
+ '\nLeia AGENTS.md. Execute investigações e correções autorizadas usando os acessos existentes, inclusive sudo quando admitido. Preserve trabalhos concorrentes, IDs, recibos, backups e recuperação própria. '+
+ 'Mantenha todas as confirmações obrigatórias da interface; aprovação necessária significa aguardar o proprietário. Exclusões permanentes e equipamentos sensíveis conservam seus gates específicos. '+
+ 'Não trate esta tarefa como renovação de delegações administrativas históricas. Não exporte credenciais, dados pessoais ou conversas privadas. Acesse conteúdo protegido apenas quando necessário ao objetivo autorizado. '+
+ 'Não repita operações incertas: observe o mesmo ID e reconcilie. Respeite limites de recursos e use PC isolado para testes amplos. Não crie sudo geral ou shell livre no MCP. '+
+ 'Não inicie nem altere a execução principal pausada. Registre resultado, checkpoint, efeitos e limitações com evidência; não declare conclusão apenas por ter iniciado trabalho. '+
+ 'Resposta final: JSON com operation_id="'+q.operation_id+'", project="/mnt/data/docker", state, summary (até1200 caracteres) e next_step (até300). Quando a tarefa pedir revisão técnica de componente, inclua component_technical_review exato após inspecionar realmente as imagens; testes não substituem revisão visual.';
  if(q.profile==='eva_admin')return adminPrompt(q);
  return 'Objetivo delimitado desta thread, autorizado pelo coordenador humano:\n'+q.text+
  '\nLimites obrigatórios: projeto /mnt/data/docker; execução serial no Raspberry. '+
@@ -68,15 +109,23 @@ function prompt(q){
  'summary (até 1200 caracteres) e next_step (até 300 caracteres). '+
  'Referencie os artefatos sanitizados em summary; não exporte IDs privados, notificações ou logs.';
 }
-async function ready(rpc,id,admin=false){
- const before=old.metadata((await rpc('thread/read',{threadId:id,includeTurns:false})).thread,id);
+async function ready(rpc,id,admin=false,expectedProjectId=null){
+ const beforeReply=await rpc('thread/read',{threadId:id,includeTurns:false});
+ if(expectedProjectId!==null)need(beforeReply?.thread?.projectId===expectedProjectId,'project_binding_unconfirmed');
+ const before=old.metadata(beforeReply.thread,id);
  need(['idle','notLoaded'].includes(before.status),'thread_not_ready');
  // Restore only the original restricted adapter profile. A plain resume uses
  // daemon defaults, which can differ from the profile approved at creation.
  const r=await rpc('thread/resume',{threadId:id,excludeTurns:true,...profileParams(admin)});
- need(admin?adminProfile(r):fixedProfile(r),'thread_profile_changed');
+ if(expectedProjectId!==null)need(r?.thread?.projectId===expectedProjectId,'project_binding_unconfirmed');
+ need(verifiedProfile(r,admin),'thread_profile_changed');
  const t=old.metadata(r.thread,id);
  need(t.cwd_is_project&&t.status==='idle'&&t.can_accept_direct_input,'thread_not_ready');
+ if(admin==='broad'){
+  const after=await rpc('thread/read',{threadId:id,includeTurns:false});
+  const observed=old.metadata(after?.thread,id);
+  need(after?.thread?.id===id&&after.thread.projectId===TARGET_PROJECT_ID&&after.thread.cwd===PROJECT&&after.thread.ephemeral===false&&after.thread.modelProvider==='openai'&&observed.status==='idle'&&observed.can_accept_direct_input,'thread_profile_changed');
+ }
  return t;
 }
 async function workspaceMetadata(rpc,id){
@@ -95,9 +144,25 @@ async function workspaceReady(rpc,id){
  if(state==='active'){
   const page=await rpc('thread/turns/list',{threadId:id,limit:32,itemsView:'notLoaded',sortDirection:'desc'});
   need(Array.isArray(page?.data)&&page.data.length<=32,'workspace_thread_metadata_unconfirmed');
-  const active=page.data.filter(t=>t?.status==='inProgress');
-  need(active.length===1&&typeof active[0].id==='string'&&UUID.test(active[0].id),'workspace_active_turn_unconfirmed');
-  expected=active[0].id;
+  const first=page.data[0];
+  need(first?.status==='inProgress'&&typeof first.id==='string'&&UUID.test(first.id),
+       'workspace_active_turn_unconfirmed');
+  const identifiers=new Set();
+  for(const turn of page.data){
+   need(typeof turn?.id==='string'&&UUID.test(turn.id)&&!identifiers.has(turn.id),
+        'workspace_active_turn_unconfirmed');
+   identifiers.add(turn.id);
+  }
+  // Older persisted inProgress records can survive a daemon crash. Keep them
+  // intact and require the server-ordered first record plus native steer CAS.
+  let previousStart=Infinity;
+  for(const turn of page.data.filter(t=>t.status==='inProgress')){
+   need(typeof turn.startedAt==='number'&&Number.isFinite(turn.startedAt)&&
+        turn.startedAt>0&&turn.startedAt<previousStart,
+        'workspace_active_turn_unconfirmed');
+   previousStart=turn.startedAt;
+  }
+  expected=first.id;
  }
  need(await workspaceMetadata(rpc,id)===state,'workspace_thread_state_changed');
  return {operation_state:'ready',thread_id:id,delivery_mode:state==='active'?'active_steer':'idle_start',
@@ -206,15 +271,25 @@ async function workspaceObserve(q,rpc){
 function exactMissing(error,method,id){
  return error?.code===-32600&&error?.message===(method==='thread/read'?'thread not loaded: '+id:'no rollout found for thread id '+id);
 }
-async function probeCreation(rpc,id,admin=false){
+async function probeCreation(rpc,id,admin=false,projectRequired=false){
+ if(projectRequired){try{await requireEvaProject(rpc);}catch{return {state:'present_not_ready',thread_id:id,reason:'project_binding_unconfirmed'};}}
  let readMissing=false;
  try{
   const r=await rpc('thread/read',{threadId:id,includeTurns:false});
   const t=old.metadata(r.thread,id);
+  if(projectRequired&&r.thread.projectId!==TARGET_PROJECT_ID)
+   return {state:'present_not_ready',thread_id:id,reason:'project_binding_unconfirmed'};
   if(t.cwd_is_project&&r.thread.ephemeral===false&&typeof r.thread.path==='string'&&r.thread.path.length>0){
-   try{await ready(rpc,id,admin);return {state:'durable_ready',thread_id:id};}
-   catch(e){return {state:'present_not_ready',thread_id:id,
-    reason:['thread_not_ready','thread_profile_changed'].includes(e?.message)?e.message:'resume_unconfirmed'};}
+   try{
+    await ready(rpc,id,admin,projectRequired?TARGET_PROJECT_ID:null);
+    const after=(await rpc('thread/read',{threadId:id,includeTurns:false})).thread;
+    need(after?.id===id&&(!projectRequired||after.projectId===TARGET_PROJECT_ID)&&after.cwd===PROJECT&&
+     after.ephemeral===false&&typeof after.path==='string'&&after.path.length>0,
+     projectRequired?'project_binding_unconfirmed':'thread_profile_changed');
+    if(projectRequired)await requireEvaProject(rpc);
+    return {state:'durable_ready',thread_id:id,...(admin==='broad'?{broad_profile_verified:true}:{})};
+   }catch(e){return {state:'present_not_ready',thread_id:id,
+    reason:['thread_not_ready','thread_profile_changed','project_binding_unconfirmed'].includes(e?.message)?e.message:'resume_unconfirmed'};}
   }
   return {state:'unconfirmed',thread_id:id};
  }catch(e){readMissing=exactMissing(e,'thread/read',id);}
@@ -223,22 +298,35 @@ async function probeCreation(rpc,id,admin=false){
  catch(e){if(exactMissing(e,'thread/resume',id))return {state:'missing_before_first_send',thread_id:id,read_code:-32600,resume_code:-32600};}
  return {state:'unconfirmed',thread_id:id};
 }
-async function run(q,rpc){
+async function run(q,rpc,onCreation=()=>{}){
  validate(q);
  if(q.mode==='workspace_message_preflight'){
-  const plan=await workspaceReady(rpc,q.thread_id);await quota(rpc);return plan;
+  const plan=await workspaceReady(rpc,q.thread_id);
+  if(q.profile==='eva_broad'){
+   await requireEvaProject(rpc);const own=await rpc('thread/read',{threadId:q.thread_id,includeTurns:false});need(own?.thread?.id===q.thread_id&&own.thread.projectId===TARGET_PROJECT_ID,'project_binding_unconfirmed');
+   if(plan.delivery_mode==='active_steer')need(q.broad_active_turn!==null&&plan.expected_turn_id===q.broad_active_turn,'broad_active_turn_unconfirmed');
+   else await ready(rpc,q.thread_id,'broad',TARGET_PROJECT_ID);
+   plan.broad_profile_verified=true;
+  }
+  await quota(rpc);return plan;
  }
  if(q.mode==='workspace_message_observe')return workspaceObserve(q,rpc);
  if(q.mode==='workspace_message'){
   // Never use ready()/thread-resume for existing references: that changes the
   // receiver profile. Active delivery is CAS against the recorded active turn.
   const expected=q.delivery_mode==='active_steer'?'active':'idle';
+  if(q.profile==='eva_broad'){
+   await requireEvaProject(rpc);const own=await rpc('thread/read',{threadId:q.thread_id,includeTurns:false});need(own?.thread?.id===q.thread_id&&own.thread.projectId===TARGET_PROJECT_ID,'project_binding_unconfirmed');
+   if(expected==='active')need(q.broad_active_turn!==null&&q.expected_turn_id===q.broad_active_turn,'broad_active_turn_unconfirmed');
+   else await ready(rpc,q.thread_id,'broad',TARGET_PROJECT_ID);
+  }
   need(await workspaceMetadata(rpc,q.thread_id)===expected,'workspace_thread_state_changed');
   await quota(rpc);
   need(await workspaceMetadata(rpc,q.thread_id)===expected,'workspace_thread_state_changed');
   const params={threadId:q.thread_id,input:[{type:'text',text:workspacePrompt(q)}]};
-  let reply,turn;
+  let reply,turn,preBoundary=null;
   if(q.delivery_mode==='active_steer'){
+   preBoundary=await postDeliveryBoundary(rpc,q.thread_id,q.expected_turn_id);
    params.expectedTurnId=q.expected_turn_id;
    reply=await rpc('turn/steer',params);turn=reply?.turnId;
    need(turn===q.expected_turn_id,'workspace_send_unconfirmed');
@@ -247,9 +335,9 @@ async function run(q,rpc){
    reply=await rpc('turn/start',params);turn=reply?.turn?.id;
   }
   need(typeof turn==='string'&&UUID.test(turn),'workspace_send_unconfirmed');
-  const boundary=q.delivery_mode==='active_steer'?await postDeliveryBoundary(rpc,q.thread_id,turn):{state:'post_delivery_empty',item_id:null};
+  const boundary=q.delivery_mode==='active_steer'?(preBoundary&&preBoundary.state!=='unknown'?preBoundary:await postDeliveryBoundary(rpc,q.thread_id,turn)):{state:'post_delivery_empty',item_id:null};
   return {...workspaceContext(q),operation_state:'accepted',turn_id:turn,input_accepted:true,
-   reply_boundary:boundary,acknowledgement_evidence:null};
+   reply_boundary:boundary,acknowledgement_evidence:null,...(q.profile==='eva_broad'?{broad_profile_verified:true}:{})};
  }
  if(q.mode==='metadata_batch'){
   const rows=[];
@@ -265,27 +353,35 @@ async function run(q,rpc){
    collection_error:unloaded?'thread_not_loaded_metadata_unavailable':'daemon_metadata_unconfirmed'});}}
   return {rows};
  }
- if(q.mode==='creation_probe')return probeCreation(rpc,q.thread_id,q.profile==='eva_admin');
- if(q.mode==='create_preflight'){await quota(rpc);return {included_quota_confirmed:true};}
+ if(q.mode==='creation_probe')return probeCreation(rpc,q.thread_id,selectedProfile(q),q.project_binding_required===true);
+ if(q.mode==='create_preflight'){await requireEvaProject(rpc);await quota(rpc);return {included_quota_confirmed:true,project_binding_verified:true};}
  if(q.mode==='create'){
+  need(q.project_binding_required===true,'project_binding_unconfirmed');
+  await requireEvaProject(rpc);
   await quota(rpc);
   // Exact values below match the installed generated schema, not a guessed
   // documentation spelling. No model, shell, root or caller-controlled config.
-  const r=await rpc('thread/start',{...profileParams(q.profile==='eva_admin'),
+  const r=await rpc('thread/start',{...profileParams(selectedProfile(q)),
+   projectId:TARGET_PROJECT_ID,
    serviceName:'raspberry_proactive_tasks',ephemeral:false,historyMode:'paginated'});
   need(UUID.test(r?.thread?.id),'creation_identity_unconfirmed');
-  const id=r.thread.id,profile=(q.profile==='eva_admin'?adminProfile(r):fixedProfile(r))&&r.thread.ephemeral===false;
+  const id=r.thread.id,profile=verifiedProfile(r,selectedProfile(q))&&r.thread.ephemeral===false;
+  const projectBinding=r.thread.projectId===TARGET_PROJECT_ID;
   // Keep an already returned identity on every later failure. Never replay start.
-  const receipt={thread_id:id,fixed_profile_verified:profile,durable_thread_verified:false};
-  if(!profile)return receipt;
+  const receipt={thread_id:id,fixed_profile_verified:profile,durable_thread_verified:false,
+   project_binding_verified:false,project_binding_in_start:projectBinding};
+  onCreation(receipt);
+  if(!profile||!projectBinding)return receipt;
   try{
    // Initial naming on a newly created thread materializes paginated persistence
    // in pinned upstream 0.162.1, without user input or inference. This never
    // renames an existing user thread. The name contains a fixed operation key.
    await rpc('thread/name/set',{threadId:id,name:'raspberry-task-'+q.operation_id});
-   const r=await probeCreation(rpc,id,q.profile==='eva_admin');
+   const r=await probeCreation(rpc,id,selectedProfile(q),true);
    receipt.durable_thread_verified=r.state==='durable_ready';
+   receipt.project_binding_verified=receipt.durable_thread_verified;
   }catch{}
+  if(q.profile==='eva_broad')receipt.broad_profile_verified=receipt.fixed_profile_verified&&receipt.durable_thread_verified&&receipt.project_binding_verified;
   return receipt;
  }
  if(q.mode==='observe'){
@@ -297,29 +393,59 @@ async function run(q,rpc){
   if(t.status==='completed'){
    const page=await rpc('thread/items/list',{threadId:q.thread_id,turnId:q.turn_id,limit:16,sortDirection:'desc'});
    const entry=page?.data?.find(e=>(e.item||e).type==='agentMessage'&&((e.item||e).phase==null||(e.item||e).phase==='final_answer'));
-   Object.assign(result,old.cleanAnswer((entry?.item||entry)?.text,q));
+   const final=(entry?.item||entry);Object.assign(result,old.cleanAnswer(final?.text,q));
+   const reviewed=technicalReview(final?.text);
+   if(reviewed){result.component_technical_review=reviewed;result.technical_review_source='native_own_turn_final_agent_message';}
   }
   return result;
  }
- await ready(rpc,q.thread_id,q.profile==='eva_admin');await quota(rpc);
- if(q.mode==='send_preflight')return {included_quota_confirmed:true};
- await ready(rpc,q.thread_id,q.profile==='eva_admin');
+ const projectRequired=q.project_binding_required===true;
+ await ready(rpc,q.thread_id,selectedProfile(q),projectRequired?TARGET_PROJECT_ID:null);await quota(rpc);
+ if(q.mode==='send_preflight')return {included_quota_confirmed:true,...(q.profile==='eva_broad'?{broad_profile_verified:true}:{})};
+ await ready(rpc,q.thread_id,selectedProfile(q),projectRequired?TARGET_PROJECT_ID:null);
  const r=await rpc('turn/start',{threadId:q.thread_id,clientUserMessageId:q.operation_id,input:[{type:'text',text:prompt(q)}]});
  need(UUID.test(r?.turn?.id),'turn_acceptance_unconfirmed');
- return {operation_state:'accepted',turn_id:r.turn.id};
+ return {operation_state:'accepted',turn_id:r.turn.id,...(q.profile==='eva_broad'?{broad_profile_verified:true}:{})};
 }
 async function connect(q){
  return new Promise((resolve,reject)=>{
-  const ws=new WebSocket('ws+unix://'+SOCKET+':/',{handshakeTimeout:3000,maxPayload:524288,perMessageDeflate:false});
-  const pending=new Map();let next=1,closed=false,total=0;
-  function finish(error,value){if(closed)return;closed=true;clearTimeout(timer);for(const p of pending.values())p.reject(new Error('connection_closed'));pending.clear();ws.terminate();error?reject(error):resolve(value);}
+  const passedFd=process.env.TASK_PEER_FD;
+  if(passedFd!==undefined&&!/^[3-9][0-9]*$/.test(passedFd)){
+   reject(new Error('task_peer_fd_invalid'));return;
+  }
+  const options={handshakeTimeout:3000,maxPayload:524288,perMessageDeflate:false,
+   followRedirects:false};
+  if(passedFd!==undefined){
+   let used=false;
+   options.createConnection=()=>{
+    need(!used,'task_peer_fd_reused');used=true;
+    return new net.Socket({fd:Number(passedFd),readable:true,writable:true});
+   };
+  }
+  const ws=new WebSocket('ws+unix://'+SOCKET+':/',options);
+  const pending=new Map();let next=1,closed=false,total=0,creationReceipt=null;
+  function finish(error,value){
+   if(closed)return;closed=true;clearTimeout(timer);
+   for(const p of pending.values())p.reject(new Error('connection_closed'));
+   pending.clear();ws.terminate();
+   if(error&&creationReceipt)return resolve({...creationReceipt,
+    durable_thread_verified:false,project_binding_verified:false,
+    operation_state:'outcome_unknown',creation_result_uncertain:true,
+    reconciliation_required:true,automatic_retry:false});
+   error?reject(error):resolve(value);
+  }
   const timer=setTimeout(()=>finish(new Error('protocol_timeout')),12000);
-  function rpc(method,params){return new Promise((resolve,reject)=>{const id=next++;pending.set(id,{resolve,reject});ws.send(JSON.stringify({jsonrpc:'2.0',id,method,params}));});}
-  ws.on('message',raw=>{try{total+=raw.length;need(total<=1048576,'response_limit');const m=JSON.parse(raw);const p=pending.get(m.id);if(p){pending.delete(m.id);if(m.error){const e=new Error(typeof m.error.message==='string'?m.error.message:'');e.code=m.error.code;p.reject(e);}else p.resolve(m.result);}}catch{finish(new Error('invalid_response'));}});
+  function rpc(method,params){need(!closed,'connection_closed');return new Promise((resolve,reject)=>{const id=next++;pending.set(id,{resolve,reject,method});ws.send(JSON.stringify({jsonrpc:'2.0',id,method,params}));});}
+  ws.on('message',raw=>{try{total+=raw.length;need(total<=1048576,'response_limit');const m=JSON.parse(raw);const p=pending.get(m.id);if(p){pending.delete(m.id);if(m.error){const e=new Error(typeof m.error.message==='string'?m.error.message:'');e.code=m.error.code;p.reject(e);}else{
+    if(q.mode==='create'&&p.method==='thread/start'&&UUID.test(m.result?.thread?.id))
+     creationReceipt={thread_id:m.result.thread.id,fixed_profile_verified:false,
+      durable_thread_verified:false,project_binding_verified:false};
+    p.resolve(m.result);
+   }}}catch{finish(new Error('invalid_response'));}});
   ws.on('error',()=>finish(new Error('connection_failed')));
   ws.on('close',()=>{if(!closed)finish(new Error('connection_closed'));});
-  ws.on('open',async()=>{try{await rpc('initialize',{clientInfo:{name:'raspberry_proactive_tasks',version:'0.2.0'},capabilities:{experimentalApi:true}});ws.send(JSON.stringify({jsonrpc:'2.0',method:'initialized',params:{}}));finish(null,await run(q,rpc));}catch(e){finish(new Error(['thread_not_ready','thread_profile_changed','invalid_metadata_scope','workspace_thread_not_loaded','workspace_thread_metadata_unconfirmed','workspace_thread_out_of_project','workspace_provider_unconfirmed','workspace_thread_not_ready','workspace_active_turn_unconfirmed','workspace_thread_state_changed'].includes(e?.message)?e.message:'task_rpc_unconfirmed'));}});
+  ws.on('open',async()=>{try{await rpc('initialize',{clientInfo:{name:'raspberry_proactive_tasks',version:'0.2.0'},capabilities:{experimentalApi:true}});ws.send(JSON.stringify({jsonrpc:'2.0',method:'initialized',params:{}}));finish(null,await run(q,rpc,receipt=>{creationReceipt=receipt;}));}catch(e){finish(new Error(['thread_not_ready','thread_profile_changed','project_binding_unconfirmed','creation_project_unconfirmed','invalid_metadata_scope','workspace_thread_not_loaded','workspace_thread_metadata_unconfirmed','workspace_thread_out_of_project','workspace_provider_unconfirmed','workspace_thread_not_ready','workspace_active_turn_unconfirmed','workspace_thread_state_changed'].includes(e?.message)?e.message:'task_rpc_unconfirmed'));}});
  });
 }
-module.exports={validate,run,prompt,fixedProfile,adminProfile,profileParams,workspaceReady,workspaceContext};
-if(require.main===module){let input='';process.stdin.setEncoding('utf8');process.stdin.on('data',s=>{input+=s;if(input.length>16384)process.exit(1);});process.stdin.on('end',async()=>{try{const q=JSON.parse(input);validate(q);console.log(JSON.stringify({ok:true,result:await connect(q)}));}catch(e){console.log(JSON.stringify({ok:false,error:['thread_not_ready','thread_profile_changed','invalid_metadata_scope','workspace_thread_not_loaded','workspace_thread_metadata_unconfirmed','workspace_thread_out_of_project','workspace_provider_unconfirmed','workspace_thread_not_ready','workspace_active_turn_unconfirmed','workspace_thread_state_changed'].includes(e?.message)?e.message:'task_rpc_unconfirmed',automatic_retry:false}));process.exitCode=1;}});}
+module.exports={validate,run,prompt,technicalReview,fixedProfile,adminProfile,broadProfile,profileParams,workspaceReady,workspaceContext,requireEvaProject};
+if(require.main===module){let input='';process.stdin.setEncoding('utf8');process.stdin.on('data',s=>{input+=s;if(input.length>16384)process.exit(1);});process.stdin.on('end',async()=>{try{const q=JSON.parse(input);validate(q);console.log(JSON.stringify({ok:true,result:await connect(q)}));}catch(e){console.log(JSON.stringify({ok:false,error:['thread_not_ready','thread_profile_changed','project_binding_unconfirmed','creation_project_unconfirmed','invalid_metadata_scope','workspace_thread_not_loaded','workspace_thread_metadata_unconfirmed','workspace_thread_out_of_project','workspace_provider_unconfirmed','workspace_thread_not_ready','workspace_active_turn_unconfirmed','workspace_thread_state_changed'].includes(e?.message)?e.message:'task_rpc_unconfirmed',automatic_retry:false}));process.exitCode=1;}});}

@@ -10,8 +10,10 @@ import json
 import os
 from pathlib import Path
 import re
+import socket
 import sqlite3
 import stat
+import struct
 import subprocess
 import time
 
@@ -20,6 +22,10 @@ from task_store import Store, BUSY, need, fingerprint
 ROOT = Path('/usr/local/lib/raspberry-task-control')
 STATE = Path('/var/lib/raspberry-mcp-operations/task-control')
 POLICY = ROOT / 'policy.json'
+V2_POLICY = ROOT / 'task-policy-v2.json'
+V2_PEER = ROOT / 'task-peer-v2.json'
+V2_MARKER = ROOT / 'task-v2-admitted.marker'
+V2_MARKER_BYTES = b'raspberry-task-v2-admitted\n'
 LEGACY_POLICY = Path('/usr/local/lib/raspberry-mcp/codex-control-approval.json')
 LEGACY_DB = Path('/var/lib/raspberry-mcp-operations/codex-control/jobs.sqlite3')
 UID = 1001
@@ -81,6 +87,22 @@ def observation_legacy(old):
     return {**legacy, '_observation_only': True}
 
 
+def legacy_boundary_v2(old):
+    """Verify the old code and scope without borrowing its finite lease."""
+    legacy = json.loads(read(LEGACY_POLICY, 0, 0o644))
+    need(legacy.get('threads') == list(old.THREADS) and
+         legacy.get('project') == '/mnt/data/docker' and
+         legacy.get('max_sends') == 6 and
+         legacy.get('allow_send') is False and
+         set(legacy.get('source_hashes', {})) ==
+         {'codex_control.py', 'codex_control_rpc.cjs'},
+         'task_v2_legacy_boundary_changed')
+    for name, digest in legacy['source_hashes'].items():
+        need(hashlib.sha256(read(old.ROOT / name, 0, 0o644)).hexdigest() == digest,
+             'task_v2_legacy_source_changed')
+    return {**legacy, '_observation_only': True}
+
+
 def policy(old, observation=False):
     legacy = observation_legacy(old) if observation else old.plan()
     p = json.loads(read(POLICY, 0, 0o644))
@@ -102,6 +124,94 @@ def policy(old, observation=False):
         # Dependency list itself is in the sealed root policy, not MCP input.
         need(hashlib.sha256(read(Path(path), 0, 0o644)).hexdigest() == digest,
              'sealed_dependency_changed')
+    return p, legacy
+
+
+BROAD_OWNER_SHA256='${EVA_BROAD_OWNER_APPROVAL_SHA256}'
+def broad_grant(p,active=False):
+    value=p.get('broad_task_profile')
+    if value is None:return None
+    fields={'schema','enabled','revoked','lease_kind','scope','owner_approval_sha256','profile','mandatory_interface_confirmations','preserve_existing_ids','exclude_legacy_admin','exclude_unregistered_references'}
+    need(type(value)is dict and set(value)==fields and value['schema']=='eva_broad_task_profile_v1'
+         and value['lease_kind']=='persistent_revocable'and value['scope']=='registered_tasks_in_eva_project'
+         and value['owner_approval_sha256']==BROAD_OWNER_SHA256
+         and type(value['enabled'])is bool and type(value['revoked'])is bool
+         and value['profile']=={'sandbox':'danger-full-access','approvalPolicy':'on-request','approvalsReviewer':'user','cwd':'/mnt/data/docker'}
+         and all(value[k]is True for k in ('mandatory_interface_confirmations','preserve_existing_ids','exclude_legacy_admin','exclude_unregistered_references')),
+         'broad_task_profile_scope_changed')
+    if active:need(value['enabled']and not value['revoked'],'broad_task_profile_revoked')
+    return value
+
+
+def task_policy(old, observation=False):
+    """Select the independent Root-sealed task grant if explicitly installed.
+
+    The legacy policy remains pinned for its own interface, but its finite
+    lease cannot become the clock for this new grant. An invalid v2 file
+    never falls back to the old route.
+    """
+    if not os.path.lexists(V2_POLICY):
+        need(not os.path.lexists(V2_MARKER),
+             'task_v2_policy_missing_after_admission')
+        return policy(old, observation)
+    need(os.path.lexists(V2_MARKER) and
+         read(V2_MARKER, 0, 0o644, 64) == V2_MARKER_BYTES,
+         'task_v2_admission_marker_changed')
+    raw = read(V2_POLICY, 0, 0o644)
+    p = json.loads(raw)
+    need(p.get('schema') == 'raspberry-task-policy-v2' and
+         type(p.get('enabled')) is bool and
+         p.get('lease_kind') == 'persistent_revocable' and
+         p.get('expires_at', 'missing') is None and
+         isinstance(p.get('owner_approval_sha256'), str) and
+         re.fullmatch('[a-f0-9]{64}', p['owner_approval_sha256']) and
+         p['owner_approval_sha256'] != '0' * 64 and
+         p.get('project') == '/mnt/data/docker' and
+         p.get('profile') == 'restricted' and
+         p.get('admin_delegation') == {'enabled': False} and
+         p.get('workspace_thread_communication') is True and
+         p.get('max_sends_per_24h') == 48 and
+         p.get('minimum_spacing_seconds') == 60 and
+         p.get('maximum_database_bytes') == 1048576 and
+         p.get('legacy_policy_sha256') == hashlib.sha256(read(LEGACY_POLICY, 0, 0o644)).hexdigest(),
+         'task_v2_scope_changed')
+    broad_grant(p)
+    need(set(p.get('source_hashes', {})) ==
+         {'task_control.py', 'task_store.py', 'task_rpc.cjs', 'task-broker.py', 'task_list.py'},
+         'task_v2_code_scope_changed')
+    for name, digest in p['source_hashes'].items():
+        need(hashlib.sha256(read(ROOT / name, 0, 0o644)).hexdigest() == digest,
+             'task_v2_source_changed')
+    need(isinstance(p.get('dependencies'), dict) and p['dependencies'],
+         'task_v2_dependencies_missing')
+    for path, digest in p['dependencies'].items():
+        need(isinstance(path, str) and path.startswith('/') and
+             hashlib.sha256(read(Path(path), 0, 0o644)).hexdigest() == digest,
+             'task_v2_dependency_changed')
+    legacy = legacy_boundary_v2(old)
+    need(legacy.get('project') == p['project'] and
+         legacy.get('allow_send') is False,
+         'task_v2_legacy_boundary_changed')
+    try:
+        proof = json.loads(read(V2_PEER, 0, 0o644))
+        boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+        need(proof.get('schema') == 'raspberry-task-peer-v2' and
+             proof.get('policy_sha256') == hashlib.sha256(raw).hexdigest() and
+             proof.get('boot_id') == boot and
+             type(proof.get('peer_pid')) is int and proof['peer_pid'] > 1 and
+             isinstance(proof.get('socket_identity'), list) and
+             len(proof['socket_identity']) == 2 and
+             all(type(x) is int and x > 0 for x in proof['socket_identity']),
+             'task_v2_peer_proof_changed')
+    except (OSError, ValueError, TypeError, KeyError):
+        if not observation:
+            raise
+        return p, {**legacy, '_v2': True, '_v2_peer_unconfirmed': True}
+    # The peer proof is Root-owned and bound to the current boot, socket inode
+    # and SO_PEERCRED PID. A new boot/socket requires a fresh Root proof.
+    legacy = {**legacy, '_v2': True, 'boot_id': boot,
+              'socket_identity': proof['socket_identity'],
+              'peer_pid': proof['peer_pid']}
     return p, legacy
 
 
@@ -171,10 +281,28 @@ def legacy_summary():
 def legacy_idle(old, legacy):
     need(legacy_summary()['busy'] == 0, 'legacy_operation_requires_reconciliation')
     for thread in legacy['threads']:
-        t = old.rpc({'mode': 'metadata', 'thread_id': thread}, legacy)
+        if legacy.get('_v2'):
+            t = rpc({'mode': 'metadata_batch', 'thread_ids': [thread]}, legacy, old)['rows'][0]
+        else:
+            t = old.rpc({'mode': 'metadata', 'thread_id': thread}, legacy)
         need(t.get('status') in ('idle', 'notLoaded'), 'legacy_thread_busy')
     # Status is a point-in-time check. Other native clients are not globally
     # locked by this adapter; the review/acceptance must retain this limitation.
+
+
+def dispatch_idle(old, legacy):
+    """Serialize old receipts without retaining the historical thread gate.
+
+    After v2 admission the legacy sender is permanently closed by
+    legacy_boundary_v2().  Its durable database must still have no unresolved
+    dispatch, but availability of the three historical thread references no
+    longer controls creation or workspace communication.
+    """
+    if legacy.get('_v2'):
+        need(legacy_summary()['busy'] == 0,
+             'legacy_operation_requires_reconciliation')
+        return
+    legacy_idle(old, legacy)
 
 
 def admission(count, latest, p):
@@ -187,32 +315,72 @@ def admission(count, latest, p):
     resources()
 
 
+@contextlib.contextmanager
+def pinned_peer_connection(legacy, old):
+    """Keep the exact SO_PEERCRED-verified connection for Node's WebSocket."""
+    path = old.SOCKET
+    before = os.stat(path, follow_symlinks=False)
+    need(stat.S_ISSOCK(before.st_mode) and before.st_uid == UID and
+         stat.S_IMODE(before.st_mode) == 0o600 and
+         [before.st_dev, before.st_ino] == legacy['socket_identity'],
+         'task_peer_socket_changed')
+    with socket.socket(socket.AF_UNIX) as connection:
+        connection.settimeout(2)
+        connection.connect(path)
+        pid, uid, gid = struct.unpack('3i', connection.getsockopt(
+            socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
+        after = os.stat(path, follow_symlinks=False)
+        need((before.st_dev, before.st_ino, before.st_uid, before.st_mode) ==
+             (after.st_dev, after.st_ino, after.st_uid, after.st_mode) and
+             pid == legacy['peer_pid'] and uid == UID,
+             'task_peer_identity_changed')
+        connection.settimeout(None)
+        yield connection
+
+
 def rpc(q, legacy, old):
-    if legacy.get('_observation_only'):
+    need(not legacy.get('_v2_peer_unconfirmed'), 'task_v2_peer_unconfirmed')
+    if legacy.get('_observation_only') and not legacy.get('_v2'):
         need(q['mode'] in ('metadata_batch', 'observe', 'workspace_message_observe'), 'expired_observation_only')
         need(legacy['boot_id'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
              'observation_peer_boot_unconfirmed')
     if q['mode'] in ('create_preflight', 'create', 'creation_probe', 'send_preflight', 'send',
                       'workspace_message_preflight', 'workspace_message'):
-        fresh = old.plan()
-        need(fresh['expires_at'] == legacy['expires_at'] and
-             time.time() < fresh['expires_at'], 'task_admission_expired')
-        current, _ = policy(old)
+        if not legacy.get('_v2'):
+            fresh = old.plan()
+            need(fresh['expires_at'] == legacy['expires_at'] and
+                 time.time() < fresh['expires_at'], 'task_admission_expired')
+        current, current_peer = task_policy(old)
+        need(current_peer.get('_v2') == legacy.get('_v2') and
+             current_peer.get('socket_identity') == legacy.get('socket_identity') and
+             current_peer.get('peer_pid') == legacy.get('peer_pid'),
+             'task_admission_changed')
         need(current['enabled'] is True, 'root_task_admission_disabled')
+        if q.get('profile')=='eva_broad':broad_grant(current,active=True)
         need(not (STATE / 'revoked').exists(), 'task_admission_revoked')
         if q['mode'] in ('workspace_message_preflight', 'workspace_message'):
             need(current.get('workspace_thread_communication') is True,
                  'workspace_communication_not_approved')
-    old.peer(legacy)  # Same pinned Unix socket inode and SO_PEERCRED identity.
-    p = subprocess.run(['/usr/bin/node', '--jitless', '--no-expose-wasm',
-                        '--max-old-space-size=24', str(ROOT / 'task_rpc.cjs')],
-                       input=json.dumps(q, ensure_ascii=False).encode(), capture_output=True, timeout=15,
-                       env={'PATH': '/usr/bin:/bin', 'WS_NO_BUFFER_UTIL': '1',
-                            'WS_NO_UTF_8_VALIDATE': '1'})
+    peer_context = (pinned_peer_connection(legacy, old) if legacy.get('_v2')
+                    else contextlib.nullcontext(None))
+    with peer_context as peer:
+        if peer is None:
+            old.peer(legacy)
+        env = {'PATH': '/usr/bin:/bin', 'WS_NO_BUFFER_UTIL': '1',
+               'WS_NO_UTF_8_VALIDATE': '1'}
+        kwargs = {'input': json.dumps(q, ensure_ascii=False).encode(),
+                  'capture_output': True, 'timeout': 15, 'env': env}
+        if peer is not None:
+            env['TASK_PEER_FD'] = str(peer.fileno())
+            kwargs['pass_fds'] = (peer.fileno(),)
+        p = subprocess.run(['/usr/bin/node', '--jitless', '--no-expose-wasm',
+                            '--max-old-space-size=24', str(ROOT / 'task_rpc.cjs')],
+                           **kwargs)
     need(len(p.stdout) <= 16384, 'task_response_limit')
     reply = json.loads(p.stdout)
     reason = reply.get('error') if reply.get('error') in (
-        'thread_not_ready', 'thread_profile_changed', 'invalid_metadata_scope',
+        'thread_not_ready', 'thread_profile_changed', 'project_binding_unconfirmed',
+        'creation_project_unconfirmed', 'invalid_metadata_scope',
         'workspace_thread_not_loaded', 'workspace_thread_metadata_unconfirmed',
         'workspace_thread_out_of_project', 'workspace_provider_unconfirmed', 'workspace_thread_not_ready',
         'workspace_active_turn_unconfirmed', 'workspace_thread_state_changed') else 'task_rpc_unconfirmed'
@@ -264,7 +432,7 @@ def bind_profile(q, db, p, payload=None):
     Ordinary tasks keep the original restricted-profile check unchanged.
     """
     if q.get('mode') not in ('create_preflight', 'create', 'creation_probe',
-                             'send_preflight', 'send'):
+                             'send_preflight', 'send','workspace_message_preflight','workspace_message'):
         return q
     task = None
     if q['mode'] in ('create_preflight', 'create'):
@@ -273,13 +441,53 @@ def bind_profile(q, db, p, payload=None):
         row = db.db.execute('SELECT task_key FROM tasks WHERE thread=?',
                             (q['thread_id'],)).fetchone()
         task = dict(row) if row else None
-    if not task or not task['task_key'].startswith('eva-admin-'):
+    if not task:
         return q
+    if not task['task_key'].startswith(('eva-admin-','workspace:')) and broad_grant(p) is not None:
+        grant=broad_grant(p,active=True)
+        if q['mode']in ('workspace_message_preflight','workspace_message'):
+            # Existing references acquire no grant. Only an independently
+            # registered task row can reach this branch, regardless RPC origin.
+            rows=db.db.execute("SELECT *FROM profile_transitions WHERE thread=?AND grant_sha256=?AND mode='send'ORDER BY updated DESC LIMIT 1",(q['thread_id'],fingerprint(grant))).fetchall()
+            proof=None
+            if rows:
+                record=dict(rows[0])
+                if record['state']=='archived':record=db.history_profile(record['id'])
+                if record['state']=='confirmed':proof=json.loads(record['receipt'])
+            turn=proof.get('turn_id')if proof and proof.get('broad_profile_verified')is True else None
+            return {**q,'profile':'eva_broad','broad_active_turn':turn}
+        return {**q,'profile':'eva_broad',**({'project_binding_required':True}if q['mode']!='create_preflight'else{})}
+    if not task['task_key'].startswith('eva-admin-'):
+        return q
+    need(p.get('schema') != 'raspberry-task-policy-v2',
+         'admin_delegation_requires_separate_review')
     need(p.get('admin_delegation') == ADMIN_DELEGATION,
          'admin_delegation_not_authorized')
     if q['mode'] != 'creation_probe':
         need(time.time() < ADMIN_DELEGATION['expires_at'], 'admin_delegation_expired')
     return {**q, 'profile': 'eva_admin'}
+
+
+def profile_rpc(q,db,p,payload,legacy,old):
+    bound=bind_profile(q,db,p,payload)
+    if bound.get('profile')!='eva_broad'or bound['mode']=='create_preflight':return rpc(bound,legacy,old)
+    operation=payload.get('operation_id')or payload.get('task_id')
+    need(type(operation)is str and re.fullmatch('[a-f0-9]{32}',operation),'broad_profile_operation_required')
+    grant=broad_grant(p,active=True);grant_sha=fingerprint(grant)
+    transition=hashlib.sha256((operation+':'+bound['mode']+':'+grant_sha).encode()).hexdigest()[:32]
+    previous=db.begin_profile_transition(transition,operation,bound.get('thread_id'),grant_sha,bound['mode'])
+    if previous is not None:
+        need(previous['state']=='confirmed','broad_profile_uncertain_observe_same_operation')
+        return json.loads(previous['receipt'])
+    try:
+        reply=rpc(bound,legacy,old)
+        confirmed=reply.get('broad_profile_verified')is True
+        db.finish_profile_transition(transition,'confirmed'if confirmed else'uncertain',reply)
+        need(confirmed,'broad_profile_readback_unconfirmed')
+        return reply
+    except Exception:
+        db.finish_profile_transition(transition,'uncertain',None)
+        raise
 
 
 def communication_state(policy, legacy, revoked, now):
@@ -303,14 +511,15 @@ def communication_state(policy, legacy, revoked, now):
 def handle(name, args, old):
     need(os.geteuid() == UID, 'task_identity_refused')
     validate(name, args)
-    p, legacy = policy(old, observation=name in ('codex_task_status', 'codex_task_list',
+    p, legacy = task_policy(old, observation=name in ('codex_task_status', 'codex_task_list',
                                                 'codex_task_reconcile', 'codex_task_revoke'))
-    admission_closed = bool(legacy.get('_observation_only') or not p['enabled'] or
+    admission_closed = bool(legacy.get('_v2_peer_unconfirmed') or
+                            (legacy.get('_observation_only') and not legacy.get('_v2')) or not p['enabled'] or
                             (STATE / 'revoked').exists())
     delegation = p.get('admin_delegation')
     administrative_closed = bool(admission_closed or delegation != ADMIN_DELEGATION or
         delegation.get('enabled') is not True or time.time() >= delegation['expires_at'])
-    legacy_send_closed = bool(admission_closed or legacy.get('allow_send', True) is not True)
+    legacy_send_closed = bool(legacy.get('_v2') or admission_closed or legacy.get('allow_send', True) is not True)
     with locked(read_only=name == 'codex_task_list'):
         if name == 'codex_task_list':
             import task_list
@@ -325,11 +534,11 @@ def handle(name, args, old):
                                      workspace_communication_closed=bool(admission_closed or
                                          not communication_enabled),
                                      communication_policy={'enabled':communication_enabled,
-                                         'expires_at':p['expires_at'],'state':communication_state_value})
+                                         'expires_at':p.get('expires_at'),'state':communication_state_value})
         db = store(p)
         try:
-            invoke = lambda q: rpc(bind_profile(q, db, p, args), legacy, old)
-            idle = lambda: legacy_idle(old, legacy)
+            invoke = lambda q: profile_rpc(q, db, p, args, legacy, old)
+            idle = lambda: dispatch_idle(old, legacy)
             payload = {k: v for k, v in args.items() if k != 'host'}
             if name == 'codex_task_revoke':
                 if (STATE / 'revoked').exists():
@@ -347,7 +556,10 @@ def handle(name, args, old):
                 return {'revoked': True, 'receipts_preserved': True}
             if name == 'codex_task_status':
                 if args['kind'] == 'creation':
-                    if admission_closed:
+                    known=db.row('tasks',args['operation_id']);grant=broad_grant(p)
+                    broad_task=bool(known and not known['task_key'].startswith(('eva-admin-','workspace:'))and grant is not None)
+                    broad_closed=bool(broad_task and(not grant['enabled']or grant['revoked']))
+                    if admission_closed or broad_closed:
                         cached = db.row('tasks', args['operation_id'])
                         need(cached is not None, 'task_not_found')
                         previous = db.creation_result(args['operation_id'])
@@ -362,19 +574,26 @@ def handle(name, args, old):
                             observation = {'thread_id': thread, 'status': 'unknown',
                                            'collection_error': 'daemon_metadata_unconfirmed'}
                         row['current_thread_observation'] = observation
-                        row['creation_identity_confirmed'] = observation.get('durable') is True and not observation.get('collection_error')
+                        row['creation_identity_confirmed'] = (
+                            (observation.get('durable') is True and not observation.get('collection_error'))
+                            or (observation.get('status') == 'notLoaded' and row.get('state') == 'created'))
                     counts = db.db.execute("SELECT count(*),sum(state!='not_dispatched'),sum(turn IS NOT NULL) FROM sends WHERE task=?", (args['operation_id'],)).fetchone()
                     row['dispatch_evidence'] = {'attempt_receipts': counts[0],
                         'dispatch_intent_rows': counts[1] or 0, 'recorded_turns': counts[2] or 0}
                     task_record = db.row('tasks', args['operation_id'])
-                    profile_closed = admission_closed or bool(task_record and
+                    profile_closed = admission_closed or broad_closed or bool(task_record and
                         task_record['task_key'].startswith(ADMIN_DELEGATION['task_key_prefix']) and
                         administrative_closed)
                     row['send_admission'] = 'closed' if profile_closed or row.get('state') in ('cancelled_before_first_send','creation_lost_before_send') else 'fresh_preflight_required'
+                    row['resume_supported'] = bool(row['send_admission'] != 'closed' and row.get('state') == 'created')
+                    row['interface_confirmation'] = 'client_policy_required_for_create_send_and_revoke'
                     row['notLoaded_is_terminal'] = False
                     row['observation_without_admission'] = profile_closed
                     row['workspace_admission_closed'] = admission_closed
                     row['administrative_admission_closed'] = administrative_closed
+                    row['broad_profile_scope']='registered_tasks_in_eva_project'if broad_task else None
+                    row['broad_profile_admission']='closed_revoked_or_disabled'if broad_closed else'fresh_native_readback_required'if broad_task else'not_enrolled'
+                    row['mandatory_interface_confirmations']=True
                     return row
                 try:
                     row = response(db.observe(args['operation_id'], invoke))
@@ -387,6 +606,9 @@ def handle(name, args, old):
                 row['observation_without_admission'] = admission_closed or bool(task_record and
                     task_record['task_key'].startswith(ADMIN_DELEGATION['task_key_prefix']) and
                     administrative_closed)
+                row['reconciliation_ready'] = bool(
+                    row.get('state') in ('completed', 'failed', 'interrupted', 'not_dispatched')
+                    and row.get('result_hash') and not row.get('reconciled'))
                 row['workspace_admission_closed'] = admission_closed
                 row['administrative_admission_closed'] = administrative_closed
                 return row
@@ -409,7 +631,7 @@ def handle(name, args, old):
 
 
 
-COORDINATOR_THREAD = '${AUTHORIZED_THREAD_ID_3}'
+COORDINATOR_THREAD = '${COORDINATOR_THREAD_ID}'
 COORDINATOR_REPORT = Path('${COORDINATOR_REPORT_PATH}')
 COORDINATION_WORK = frozenset(('owner_thread_access', 'icloud_core_compatibility', 'offsite_integrity',
     'acceptance_capture', 'event_latency_observation', 'listener_recovery_guard', 'final_goal_audit'))
@@ -538,7 +760,7 @@ def project_reference_observations(references, reply, now):
 
 def reference_observations(old):
     import task_list
-    _, legacy = policy(old, observation=True)
+    _, legacy = task_policy(old, observation=True)
     with locked(read_only=True):
         try:
             reply = rpc({'mode': 'metadata_batch', 'thread_ids': list(task_list.REFERENCES)}, legacy, old)

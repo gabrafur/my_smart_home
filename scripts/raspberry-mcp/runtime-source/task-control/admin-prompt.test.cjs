@@ -4,7 +4,17 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-const source = fs.readFileSync(path.join(__dirname, 'task_rpc.cjs'), 'utf8');
+// The public source keeps installation identifiers as placeholders; the
+// installer materializes them, so the test does the same with fixture values.
+const FIXTURE = {
+  ACTIVE_GOAL_PATH: '.local-state/eva-maintenance/ACTIVE-GOAL.json',
+  ADMIN_DELEGATE_USER: 'codex-house-fixture',
+  NATIVE_EXECUTOR_USER: 'operator',
+  NATIVE_EXECUTOR_UID: '1001',
+  EVA_PROJECT_ID: '00000000-0000-0000-0000-0000000000e0',
+};
+const source = fs.readFileSync(path.join(__dirname, 'task_rpc.cjs'), 'utf8')
+  .replace(/\$\{([A-Z_]+)\}/g, (match, key) => FIXTURE[key] ?? match);
 const target = {exports: {}};
 vm.runInNewContext(source, {module: target, require(name) {
   if (name === 'node:net') return {isIP: require('node:net').isIP};
@@ -35,7 +45,7 @@ test('delegated context uses the current goal and never historical grants', () =
 test('current goal context preserves fixed effects, safety gates and result identity', () => {
   const text = prompt(admin);
   for (const term of ['alvos fixos', 'confirmação da interface', 'concorrência', 'deduplicação', 'exclusão irreversível', 'política recorrente', 'Não repita operações incertas']) assert.ok(text.includes(term), term);
-  assert.ok(text.includes('sudo -n -u codex-house-01a16f9f /usr/bin/sudo -n'));
+  assert.ok(text.includes('sudo -n -u codex-house-fixture /usr/bin/sudo -n'));
   assert.ok(text.includes('operation_id="' + operation + '"'));
   assert.match(text, /Não crie threads\/agentes adicionais/);
 });

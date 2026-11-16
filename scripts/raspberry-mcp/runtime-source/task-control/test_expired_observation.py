@@ -31,6 +31,9 @@ def load_local(name, filename, bindings=None):
     sys.modules[name] = module
     with patch.dict(sys.modules, bindings or {}):
         exec(compile(source, module.__file__, 'exec'), module.__dict__)
+    # Synthetic fixture must never discover an installed host grant.
+    for key in ('V2_POLICY','V2_PEER','V2_MARKER'):
+        if hasattr(module,key):setattr(module,key,Path('/synthetic/not-installed')/key)
     return module
 
 store_module = load_local('_mcp_active_expiry_store', 'task_store.py')

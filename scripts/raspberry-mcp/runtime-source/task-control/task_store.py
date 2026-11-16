@@ -9,6 +9,8 @@ import json
 import re
 import sqlite3
 import time
+import os,stat,zlib
+from pathlib import Path
 
 BUSY = ('create_intent', 'create_unknown', 'send_intent', 'send_unknown',
         'accepted', 'inProgress', 'outcome_unknown')
@@ -16,6 +18,7 @@ TERMINAL = ('completed', 'failed', 'interrupted')
 UUID = re.compile(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}')
 WORKSPACE_PREFIX = 'workspace:'
 MAX_WORKSPACE_REFERENCES = 64
+HISTORY_RESULT='{"history_archive":true}'
 
 
 def need(value, reason):
@@ -95,6 +98,33 @@ def incident_decode(state, op, send_state):
             'send_state': send_state, 'provenance': INCIDENT_PROVENANCE}
 
 
+def history_read(db,kind,identity):
+    """Exact immutable snapshot lookup; archive is separate from active slots."""
+    need(kind in ('tasks','sends','profile_transitions','bindings')and re.fullmatch('[a-f0-9]{32}',identity),'history_lookup_scope')
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table'AND name='history_refs'").fetchone():return None
+    ref=db.execute('SELECT version FROM history_refs WHERE kind=?AND id=?',(kind,identity)).fetchone()
+    if ref is None:return None
+    main=[r[2]for r in db.execute('PRAGMA database_list')if r[1]=='main']
+    need(len(main)==1 and main[0],'history_file_database_required')
+    path=Path(main[0]).with_name('task-history.sqlite3');a=path.lstat();owner=Path(main[0]).lstat().st_uid
+    need(stat.S_ISREG(a.st_mode)and not path.is_symlink()and a.st_uid==owner and stat.S_IMODE(a.st_mode)==0o600 and a.st_nlink==1,'history_database_custody')
+    archive=sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=2)
+    try:
+        archive.execute('PRAGMA query_only=ON')
+        row=archive.execute('SELECT body FROM snapshots WHERE kind=?AND id=?AND version=?',(kind,identity,ref[0])).fetchone()
+        need(row is not None,'history_snapshot_missing')
+        raw=_bounded_history_inflate(row[0])
+        value=json.loads(raw);need(fingerprint(value)==ref[0]and value['kind']==kind and value['id']==identity,'history_snapshot_changed')
+    finally:archive.close()
+    z=path.lstat();need((a.st_dev,a.st_ino)==(z.st_dev,z.st_ino),'history_database_replaced')
+    return value
+
+def _bounded_history_inflate(raw):
+    need(type(raw)is bytes and len(raw)<=1048576,'history_snapshot_storage_bound')
+    inflater=zlib.decompressobj();body=inflater.decompress(raw,1048577)
+    need(len(body)<=1048576 and inflater.eof and not inflater.unused_data and not inflater.unconsumed_tail,'history_snapshot_expansion_bound')
+    return body
+
 def incident_task_projection(db, task_id):
     # Scan the complete recorded binding history, bounded explicitly. Do not
     # mistake either a recent-send window or a truncated scan for completeness.
@@ -103,9 +133,12 @@ def incident_task_projection(db, task_id):
         "WHERE s.task=? AND a.state LIKE 'incident_binding_v1:%' ORDER BY a.seq LIMIT 2049",
         (task_id,)).fetchall()
     need(len(rows) <= 2048, 'incident_binding_history_capacity')
+    history=history_read(db,'bindings',task_id)or history_read(db,'tasks',task_id)
+    prior=history.get('incident_binding')if history else None
     if not rows:
-        return {'state': 'unknown', 'history_coverage': 'no_recorded_binding'}
+        return prior or {'state': 'unknown', 'history_coverage': 'no_recorded_binding'}
     bindings = [incident_decode(row[0], row[1], row[2]) for row in rows]
+    if prior and prior.get('state')=='recorded':bindings=[prior['first_recorded'],prior['latest_recorded']]+bindings
     first, latest = bindings[0], bindings[-1]
     need(all(binding['object_id'] == first['object_id'] and
              binding['object_id'][:32] == task_id for binding in bindings),
@@ -178,7 +211,8 @@ def creation_observation(value, thread):
     fields = {'state', 'thread_id'}
     if value['state'] == 'present_not_ready':
         fields.add('reason')
-        need(value.get('reason') in ('thread_not_ready', 'thread_profile_changed', 'resume_unconfirmed'),
+        need(value.get('reason') in ('thread_not_ready', 'thread_profile_changed', 'resume_unconfirmed',
+                                     'project_binding_unconfirmed'),
              'creation_readiness_unconfirmed')
     if value['state'] == 'missing_before_first_send':
         fields |= {'read_code', 'resume_code'}
@@ -233,11 +267,176 @@ class Store:
             state TEXT NOT NULL, at REAL NOT NULL);
           CREATE TABLE IF NOT EXISTS creation_results(
             id TEXT PRIMARY KEY, result TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS history_refs(kind TEXT,id TEXT,version TEXT,PRIMARY KEY(kind,id));
+          CREATE TABLE IF NOT EXISTS profile_transitions(
+            id TEXT PRIMARY KEY, operation TEXT NOT NULL, thread TEXT,
+            grant_sha256 TEXT NOT NULL, mode TEXT NOT NULL, state TEXT NOT NULL,
+            receipt TEXT, created REAL NOT NULL, updated REAL NOT NULL);
           CREATE TABLE IF NOT EXISTS result_checkpoints(
             id TEXT PRIMARY KEY, result_hash TEXT NOT NULL,
             terminal_state TEXT NOT NULL, reply_available INTEGER NOT NULL,
             recorded REAL NOT NULL);
         ''')
+
+    def _archive_snapshot(self,kind,identity,snapshot):
+        """FULL-sync immutable write/readback BEFORE primary row compaction."""
+        main=[r[2]for r in self.db.execute('PRAGMA database_list')if r[1]=='main']
+        need(len(main)==1 and main[0],'history_file_database_required')
+        primary=Path(main[0]);path=primary.with_name('task-history.sqlite3');owner=primary.lstat().st_uid
+        if not path.exists():
+            fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+            try:os.fchmod(fd,0o600);os.fsync(fd)
+            finally:os.close(fd)
+        a=path.lstat();need(stat.S_ISREG(a.st_mode)and not path.is_symlink()and a.st_uid==owner and stat.S_IMODE(a.st_mode)==0o600 and a.st_nlink==1,'history_database_custody')
+        raw=json.dumps(snapshot,sort_keys=True,separators=(',',':')).encode();need(len(raw)<=1048576,'history_snapshot_bound')
+        version=fingerprint(snapshot);body=zlib.compress(raw)
+        archive=sqlite3.connect(path,timeout=2,isolation_level=None)
+        try:
+            need(archive.execute('PRAGMA page_size').fetchone()[0]==4096,'history_page_size')
+            need(archive.execute('PRAGMA max_page_count=8192').fetchone()[0]==8192,'history_physical_budget')
+            archive.execute('PRAGMA journal_mode=DELETE');archive.execute('PRAGMA synchronous=FULL')
+            archive.execute('CREATE TABLE IF NOT EXISTS snapshots(kind TEXT,id TEXT,version TEXT,body BLOB,created REAL,PRIMARY KEY(kind,id,version))')
+            archive.execute('BEGIN IMMEDIATE')
+            old=archive.execute('SELECT body FROM snapshots WHERE kind=?AND id=?AND version=?',(kind,identity,version)).fetchone()
+            if old:need(_bounded_history_inflate(old[0])==raw,'history_existing_snapshot_conflict')
+            else:archive.execute('INSERT INTO snapshots VALUES(?,?,?,?,?)',(kind,identity,version,body,self.clock()))
+            archive.execute('COMMIT')
+            saved=archive.execute('SELECT body FROM snapshots WHERE kind=?AND id=?AND version=?',(kind,identity,version)).fetchone()
+            need(saved is not None and _bounded_history_inflate(saved[0])==raw,'history_snapshot_readback')
+        finally:
+            if archive.in_transaction:archive.execute('ROLLBACK')
+            archive.close()
+        z=path.lstat();need((a.st_dev,a.st_ino)==(z.st_dev,z.st_ino),'history_database_replaced')
+        return version
+
+    def archive_terminal_history(self,limit=8):
+        """Only settled, acknowledged rows older than the quota window retire.
+        Stable tombstones keep uniqueness/IDs and original budget timestamps.
+        Uncertain, active or unacknowledged rows NEVER become archive candidates.
+        """
+        now=self.clock();cutoff=now-86400
+        profiles=self.db.execute("SELECT *FROM profile_transitions p WHERE state='confirmed'AND updated<?AND (EXISTS(SELECT 1 FROM sends s WHERE s.id=p.operation AND s.reconciled=1 AND s.state IN ('completed','failed','interrupted','not_dispatched','archived'))OR EXISTS(SELECT 1 FROM tasks t WHERE t.id=p.operation AND t.reconciled=1 AND t.state IN ('created','archived')))ORDER BY updated LIMIT ?",(cutoff,limit)).fetchall()
+        sends=self.db.execute("SELECT *FROM sends WHERE state IN ('completed','failed','interrupted','not_dispatched')AND reconciled=1 AND updated<?AND created<?AND (result IS NULL OR result!=?)ORDER BY updated LIMIT ?",(cutoff,cutoff,HISTORY_RESULT,limit)).fetchall()
+        tasks=self.db.execute("SELECT *FROM tasks WHERE state='created'AND reconciled=1 AND updated<?AND NOT EXISTS(SELECT 1 FROM sends WHERE task=tasks.id AND (reconciled!=1 OR state NOT IN ('completed','failed','interrupted','not_dispatched','archived')OR created>=?OR updated>=?))AND NOT EXISTS(SELECT 1 FROM profile_transitions WHERE thread=tasks.thread AND state IN ('intent','uncertain'))ORDER BY updated LIMIT ?",(cutoff,cutoff,cutoff,limit)).fetchall()
+        # Preserve first/latest association before deleting ANY per-send audit,
+        # even when a task spans several bounded compaction batches.
+        for task_id in sorted({r['task']for r in sends if re.fullmatch('[a-f0-9]{32}',r['task'])}):
+            projection=incident_task_projection(self.db,task_id)
+            snapshot={'schema':'task_exact_terminal_history_v1','kind':'bindings','id':task_id,'incident_binding':projection}
+            version=self._archive_snapshot('bindings',task_id,snapshot)
+            self.transaction(lambda:self.db.execute('INSERT INTO history_refs VALUES(?,?,?)ON CONFLICT(kind,id)DO UPDATE SET version=excluded.version',('bindings',task_id,version)))
+        task_context={r['id']:incident_task_projection(self.db,r['id'])for r in tasks}
+        for kind,rows in (('profile_transitions',profiles),('sends',sends),('tasks',tasks)):
+            for row in rows:
+                original=dict(row);identity=original['id'];prior_ref=self.db.execute('SELECT version FROM history_refs WHERE kind=?AND id=?',(kind,identity)).fetchone();snapshot={'schema':'task_exact_terminal_history_v1','kind':kind,'id':identity,'row':original,'previous_version':prior_ref[0]if prior_ref else None}
+                if kind in ('tasks','sends'):
+                    snapshot['audit']=[dict(r)for r in self.db.execute('SELECT *FROM audit WHERE id=?ORDER BY seq',(identity,))]
+                if kind=='sends':
+                    cp=self.db.execute('SELECT *FROM result_checkpoints WHERE id=?',(identity,)).fetchone()
+                    if cp is None or not original['result']or cp['result_hash']!=fingerprint(json.loads(original['result'])):continue
+                    snapshot['checkpoint']=dict(cp)
+                    bound=next((r for r in snapshot['audit']if r['state'].startswith(INCIDENT_PREFIX)),None)
+                    snapshot['incident_binding']=incident_decode(bound['state'],identity,original['state'])if bound else{'state':'unknown'}
+                if kind=='tasks':
+                    if self.db.execute("SELECT 1 FROM sends WHERE task=?AND (result IS NULL OR result!=?)LIMIT 1",(identity,HISTORY_RESULT)).fetchone():continue
+                    snapshot['incident_binding']=task_context[identity]
+                    snapshot['creation']=[dict(r)for r in self.db.execute('SELECT *FROM creation_results WHERE id IN (?,?)',(identity,'binding:'+identity))]
+                    prior=history_read(self.db,'tasks',identity)
+                    if prior:
+                        existing={r['id']for r in snapshot['creation']}
+                        snapshot['creation'] += [r for r in prior['creation']if r['id']not in existing]
+                version=self._archive_snapshot(kind,identity,snapshot)
+                def compact():
+                    current=self.db.execute('SELECT *FROM '+kind+' WHERE id=?',(identity,)).fetchone()
+                    need(current is not None and dict(current)==original,'history_primary_CAS_changed')
+                    self.db.execute('INSERT INTO history_refs VALUES(?,?,?)ON CONFLICT(kind,id)DO UPDATE SET version=excluded.version',(kind,identity,version))
+                    if kind=='profile_transitions':self.db.execute("UPDATE profile_transitions SET state='archived',receipt=NULL WHERE id=?",(identity,))
+                    elif kind=='sends':
+                        self.db.execute('UPDATE sends SET result=?WHERE id=?',(HISTORY_RESULT,identity));self.db.execute('DELETE FROM result_checkpoints WHERE id=?',(identity,))
+                        self.db.execute('DELETE FROM audit WHERE id=?',(identity,))
+                    else:
+                        self.db.execute("UPDATE tasks SET state='archived'WHERE id=?",(identity,));self.db.execute('DELETE FROM creation_results WHERE id IN (?,?)',(identity,'binding:'+identity));self.db.execute('DELETE FROM audit WHERE id=?',(identity,))
+                self.transaction(compact)
+
+    def restore_history_for_source_rollback(self):
+        """Own inverse before removing the history-capable source, under its lock.
+
+        One primary transaction restores exact results/checkpoints/association
+        records. Immutable archive is retained. Physical-budget failure rolls
+        back all primary changes; old source MUST NOT be installed on failure.
+        """
+        snapshots=[]
+        for ref in self.db.execute("SELECT kind,id FROM history_refs WHERE kind IN ('tasks','sends','profile_transitions')ORDER BY kind,id"):
+            snapshots.append((ref['kind'],ref['id'],history_read(self.db,ref['kind'],ref['id'])))
+        def restore():
+            for kind,identity,snapshot in snapshots:
+                need(snapshot is not None,'rollback_history_missing')
+                current=self.db.execute('SELECT *FROM '+kind+' WHERE id=?',(identity,)).fetchone()
+                need(current is not None,'rollback_tombstone_missing')
+                row=snapshot['row']
+                if kind=='tasks':
+                    need(current['task_key']==row['task_key']and current['thread']==row['thread'],'rollback_task_identity_changed')
+                    if current['state']=='archived':self.db.execute("UPDATE tasks SET state='created'WHERE id=?",(identity,))
+                    for saved in snapshot['creation']:
+                        old=self.db.execute('SELECT result FROM creation_results WHERE id=?',(saved['id'],)).fetchone()
+                        if old is None:self.db.execute('INSERT INTO creation_results VALUES(?,?)',(saved['id'],saved['result']))
+                elif kind=='sends':
+                    if current['result']!=HISTORY_RESULT:continue
+                    need(all(current[k]==row[k]for k in row if k!='result'),'rollback_send_tombstone_changed')
+                    self.db.execute('UPDATE sends SET result=?WHERE id=?',(row['result'],identity))
+                    cp=snapshot['checkpoint'];self.db.execute('INSERT INTO result_checkpoints VALUES(?,?,?,?,?)',(cp['id'],cp['result_hash'],cp['terminal_state'],cp['reply_available'],cp['recorded']))
+                else:
+                    if current['state']!='archived':continue
+                    self.db.execute('UPDATE profile_transitions SET state=?,receipt=?WHERE id=?',(row['state'],row['receipt'],identity))
+                if kind in ('tasks','sends'):
+                    for event in snapshot['audit']:
+                        if not self.db.execute('SELECT 1 FROM audit WHERE id=?AND state=?AND at=?',(event['id'],event['state'],event['at'])).fetchone():
+                            self.db.execute('INSERT INTO audit(id,state,at)VALUES(?,?,?)',(event['id'],event['state'],event['at']))
+            need(not self.db.execute("SELECT 1 FROM tasks WHERE state='archived'").fetchone()and not self.db.execute('SELECT 1 FROM sends WHERE result=?',(HISTORY_RESULT,)).fetchone(),'rollback_history_not_fully_restored')
+        self.transaction(restore)
+        return {'state':'exact_history_restored','immutable_archive_retained':True,'records':len(snapshots)}
+
+    def activate_task(self,identity):
+        row=self.db.execute('SELECT *FROM tasks WHERE id=?',(identity,)).fetchone()
+        if row is None or row['state']!='archived':return
+        snapshot=history_read(self.db,'tasks',identity);need(snapshot is not None,'task_archive_missing')
+        original=snapshot['row'];need(original['state']=='created'and original['reconciled']==1 and original['task_key']==row['task_key']and original['thread']==row['thread'],'task_archive_identity_changed')
+        def activate():
+            self.db.execute("UPDATE tasks SET state='created',updated=?WHERE id=?AND state='archived'",(self.clock(),identity))
+            self.audit(identity,'reactivated_from_exact_history')
+        self.transaction(activate)
+
+    def history_profile(self,identity):
+        snapshot=history_read(self.db,'profile_transitions',identity);need(snapshot is not None,'profile_history_missing');return snapshot['row']
+
+    def begin_profile_transition(self,identity,operation,thread,grant_sha256,mode):
+        """Durable resume/start intent before profile mutation; no prompt stored."""
+        self.archive_terminal_history()
+        previous=self.db.execute('SELECT * FROM profile_transitions WHERE id=?',(identity,)).fetchone()
+        if previous is not None and previous['state']=='archived':previous=history_read(self.db,'profile_transitions',identity)['row']
+        if previous:
+            need(previous['operation']==operation and previous['thread']==thread and previous['grant_sha256']==grant_sha256 and previous['mode']==mode,'profile_transition_identity_conflict')
+            return dict(previous)
+        if thread is not None:
+            need(not self.db.execute("SELECT 1 FROM profile_transitions WHERE thread=? AND state IN ('intent','uncertain')",(thread,)).fetchone(),'broad_profile_uncertain_observe_same_operation')
+        need(self.db.execute("SELECT count(*)FROM profile_transitions WHERE state!='archived'").fetchone()[0]<256,'profile_receipt_capacity_preserve_history')
+        def write():
+            now=self.clock();self.db.execute('INSERT INTO profile_transitions VALUES(?,?,?,?,?,?,?,?,?)',(identity,operation,thread,grant_sha256,mode,'intent',None,now,now))
+        self.transaction(write);return None
+
+    def finish_profile_transition(self,identity,state,reply):
+        need(state in ('confirmed','uncertain'),'profile_transition_state')
+        def finish():
+            row=self.db.execute('SELECT * FROM profile_transitions WHERE id=?',(identity,)).fetchone()
+            need(row is not None,'profile_transition_missing')
+            if row['state']!='intent':return
+            # RPC result is already sanitized/bounded; no input text/config or
+            # credential is accepted as a receipt. Complete bytes are retained.
+            body=json.dumps(reply,sort_keys=True)if reply is not None else None
+            need(body is None or len(body.encode())<=16384,'profile_transition_receipt_bound')
+            self.db.execute('UPDATE profile_transitions SET state=?,receipt=?,updated=?WHERE id=?',(state,body,self.clock(),identity))
+        self.transaction(finish)
+
 
     def close(self):
         self.db.close()
@@ -246,14 +445,20 @@ class Store:
         need(table in ('tasks', 'sends'), 'invalid_table')
         row = self.db.execute('SELECT * FROM ' + table + ' WHERE id=?', (op,)).fetchone()
         result = dict(row) if row else None
+        archived=history_read(self.db,table,op)if result and (table=='tasks'and result['state']=='archived'or table=='sends'and result.get('result')==HISTORY_RESULT)else None
+        if archived:result={**archived['row'],'record_storage':'immutable_archive','historical_record':True}
         if result and table == 'tasks':
             result['incident_binding'] = incident_task_projection(self.db, op)
+            proof = self.project_binding_proof(op)
+            if proof:
+                result['project_binding_proof'] = proof
         if result and table == 'sends':
             binding = self.db.execute("SELECT state FROM audit WHERE id=? AND state LIKE 'incident_binding_v1:%' ORDER BY seq LIMIT 1", (op,)).fetchone()
-            result['incident_binding'] = incident_decode(binding[0], op, result['state']) if binding else {'state': 'unknown'}
+            result['incident_binding'] = incident_decode(binding[0], op, result['state']) if binding else archived['incident_binding']if archived else {'state': 'unknown'}
         if result and table == 'sends' and result.get('result'):
             checkpoint = self.db.execute('SELECT * FROM result_checkpoints WHERE id=?',
                                          (op,)).fetchone()
+            if archived:checkpoint=archived['checkpoint']
             if checkpoint and checkpoint['result_hash'] == fingerprint(json.loads(result['result'])):
                 result['central_checkpoint'] = {
                     'source': 'durable_exact_terminal_receipt_v1',
@@ -263,6 +468,63 @@ class Store:
                     'functional_recovery_proven': False,
                     'recorded_at': checkpoint['recorded'], 'ready_for_reconciliation': True}
         return result
+
+    def _binding_row(self, op):
+        raw = self.db.execute('SELECT result FROM creation_results WHERE id=?',
+                              ('binding:' + op,)).fetchone()
+        if not raw:
+            snapshot=history_read(self.db,'tasks',op)
+            saved=next((r for r in snapshot['creation']if r['id']=='binding:'+op),None)if snapshot else None
+            if saved is None:return None
+            raw=(saved['result'],)
+        value = json.loads(raw[0])
+        need(isinstance(value, dict) and value.get('binding') == 'eva_project_v1'
+             and isinstance(value.get('project_id'), str)
+             and isinstance(value.get('project_name'), str)
+             and isinstance(value.get('project_root'), str)
+             and value.get('verified') in (0, 1)
+             and (value.get('verified_at') is None or type(value.get('verified_at')) in (int, float)),
+             'task_project_binding_schema')
+        return value
+
+    def project_binding_proof(self, op):
+        row = self._binding_row(op)
+        if not row:
+            return None
+        verified = row['verified'] == 1
+        latest = self.creation_result(op)
+        if latest is None:
+            collection_error = 'not_yet_collected'
+        elif latest.get('state') == 'durable_ready':
+            collection_error = None
+        elif latest.get('state') == 'present_not_ready':
+            collection_error = latest.get('reason') or 'readiness_unconfirmed'
+        elif latest.get('state') == 'missing_before_first_send':
+            collection_error = 'thread_missing_before_first_send'
+        else:
+            collection_error = 'creation_metadata_unconfirmed'
+        age = (None if not verified or row['verified_at'] is None else
+               max(0.0, self.clock() - row['verified_at']))
+        covered = bool(verified)
+        return {
+            'binding': row['binding'], 'project_id': row['project_id'],
+            'project_name': row['project_name'], 'project_root': row['project_root'],
+            'verified': verified, 'verified_at': row['verified_at'] if verified else None,
+            'source': 'native_project_and_durable_thread_readback_v1' if verified else None,
+            'age_seconds': age, 'collection_error': collection_error,
+            'coverage': {'project_identity': covered, 'thread_assignment': covered,
+                         'project_root': covered, 'durable_thread_path': covered,
+                         'live_membership': False},
+            'historical_only': True, 'live_membership_verified': False}
+
+    def _mark_project_binding_verified(self, op):
+        # First successful complete proof wins; later failures never erase it.
+        row = self._binding_row(op)
+        if row and row['verified'] == 0:
+            updated = {**row, 'verified': 1, 'verified_at': self.clock()}
+            self.db.execute('INSERT INTO creation_results VALUES(?,?) ON CONFLICT(id) '
+                            'DO UPDATE SET result=excluded.result',
+                            ('binding:' + op, json.dumps(updated, sort_keys=True)))
 
     def _checkpoint_terminal(self, row):
         # Called inside the existing serial custody/SQL transaction. Metadata
@@ -275,7 +537,11 @@ class Store:
                                 (row['id'],)).fetchone()
         need(not prior or prior['result_hash'] == digest, 'checkpoint_result_changed')
         reply = value.get('agent_reply')
-        available = isinstance(reply, dict) and reply.get('state') == 'observed' and isinstance(reply.get('text'), str) and bool(reply['text'])
+        answer = value.get('answer')
+        available = ((isinstance(reply, dict) and reply.get('state') == 'observed'
+                      and isinstance(reply.get('text'), str) and bool(reply['text']))
+                     or (value.get('answer_withheld') is False and isinstance(answer, dict)
+                         and isinstance(answer.get('summary'), str) and bool(answer['summary'])))
         self.db.execute('INSERT OR IGNORE INTO result_checkpoints VALUES(?,?,?,?,?)',
                         (row['id'], digest, row['state'], int(available), self.clock()))
         return digest
@@ -346,6 +612,7 @@ class Store:
 
     def create(self, q, invoke, legacy_idle):
         task_spec(q)
+        self.archive_terminal_history()
         op = q['operation_id']
         hashed = fingerprint(q)
         old = self.row('tasks', op)
@@ -362,15 +629,25 @@ class Store:
             now = self.clock()
             self.db.execute('INSERT INTO tasks VALUES(?,?,?,?,?,?,?,0)',
                             (op, q['task_key'], hashed, None, 'create_intent', now, now))
+            marker = {'binding': 'eva_project_v1',
+                      'project_id': '${EVA_PROJECT_ID}',
+                      'project_name': 'Raspberry — Eva',
+                      'project_root': '/mnt/data/docker',
+                      'verified': 0, 'verified_at': None}
+            self.db.execute('INSERT INTO creation_results VALUES(?,?)',
+                            ('binding:' + op, json.dumps(marker, sort_keys=True)))
             self.audit(op, 'create_intent')
         self.transaction(intent)
         thread = None
+        reply = None
         try:
-            reply = invoke({'mode': 'create', 'operation_id': op})
+            reply = invoke({'mode': 'create', 'operation_id': op,
+                            'project_binding_required': True})
             need(isinstance(reply.get('thread_id'), str) and
                  UUID.fullmatch(reply['thread_id']), 'creation_unconfirmed')
             thread = reply['thread_id']
             need(reply.get('fixed_profile_verified') is True, 'creation_profile_unconfirmed')
+            need(reply.get('project_binding_verified') is True, 'creation_project_unconfirmed')
             need(reply.get('durable_thread_verified') is True, 'creation_persistence_unconfirmed')
             state = 'created'
         except Exception:
@@ -380,6 +657,12 @@ class Store:
         def finish():
             self.db.execute('UPDATE tasks SET thread=?,state=?,updated=? WHERE id=?',
                             (thread, state, self.clock(), op))
+            proof_verified = (thread is not None and isinstance(reply, dict) and
+                              reply.get('fixed_profile_verified') is True and
+                              reply.get('project_binding_verified') is True and
+                              reply.get('durable_thread_verified') is True)
+            if proof_verified:
+                self._mark_project_binding_verified(op)
             self.audit(op, state)
         self.transaction(finish)
         return self.row('tasks', op)
@@ -403,6 +686,8 @@ class Store:
                         'execution_replay_allowed': False}
             need(old['input_hash'] == hashed, 'operation_id_conflict')
             return {**old, 'duplicate': True}
+        self.archive_terminal_history()
+        self.activate_task(q['task_id'])
         task = self.row('tasks', q['task_id'])
         if task is None and allow_workspace is True:
             return self.send_workspace(q, invoke, admission, legacy_idle, hashed)
@@ -422,8 +707,9 @@ class Store:
         # Admission checks root policy expiry, budget including legacy sends,
         # resources and spacing. The caller cannot supply a policy or expiry.
         admission(count, latest)
+        rpc_binding = {'project_binding_required': True} if self._binding_row(task['id']) else {}
         try:
-            invoke({'mode': 'send_preflight', 'thread_id': task['thread']})
+            invoke({'mode': 'send_preflight', 'thread_id': task['thread'], **rpc_binding})
         except Exception as error:
             reason = str(error) if isinstance(error, ValueError) and re.fullmatch('[a-z_]{1,60}', str(error)) else 'preflight_unconfirmed'
             result = {'operation_state': 'not_dispatched', 'send_called': False,
@@ -458,7 +744,7 @@ class Store:
         self.transaction(intent)
         try:
             reply = invoke({'mode': 'send', 'thread_id': task['thread'],
-                            'operation_id': op, 'text': q['text']})
+                            'operation_id': op, 'text': q['text'], **rpc_binding})
             need(reply.get('operation_state') == 'accepted' and
                  isinstance(reply.get('turn_id'), str) and
                  UUID.fullmatch(reply['turn_id']), 'send_unconfirmed')
@@ -506,7 +792,9 @@ class Store:
                      'workspace_followup_turn_changed')
         except Exception as error:
             reason = str(error) if isinstance(error, ValueError) and re.fullmatch('[a-z_]{1,60}', str(error)) else 'preflight_unconfirmed'
-            result = {**context, 'operation_state': 'not_dispatched', 'send_called': False,
+            extra = ({'prior_acknowledged_turn_id': followup_turn}
+                     if followup_turn is not None and reason == 'workspace_followup_turn_changed' else {})
+            result = {**context, **extra, 'operation_state': 'not_dispatched', 'send_called': False,
                       'execution_proven': False, 'reason': reason, 'automatic_retry': False}
             def refused():
                 now = self.clock()
@@ -570,6 +858,19 @@ class Store:
                 need(reply.get('input_accepted') is True and type(reply.get('answer_withheld')) is bool
                      and reply.get('completion_scope') == 'receiver_turn_and_bounded_agent_reply',
                      'workspace_observation_unconfirmed')
+                prior_reply = previous.get('agent_reply')
+                current_reply = reply.get('agent_reply')
+                if (isinstance(prior_reply, dict) and prior_reply.get('state') == 'observed'
+                        and isinstance(prior_reply.get('text'), str) and bool(prior_reply['text'])
+                        and prior_reply.get('operation_reference_observed') is True
+                        and prior_reply.get('ordering_after_delivery_proven') is True
+                        and isinstance(previous.get('acknowledgement_evidence'), dict)
+                        and reply.get('assistant_acknowledged') is True
+                        and reply.get('acknowledgement_evidence') == previous.get('acknowledgement_evidence')
+                        and isinstance(current_reply, dict)
+                        and current_reply.get('collection_error') == 'verified_ack_retained_reply_not_in_bounded_page'):
+                    reply = {**reply, 'answer_withheld': False,
+                             'agent_reply': {**prior_reply, 'retained_from_prior_verified_observation': True}}
             else:
                 task = self.row('tasks', row['task'])
                 need(task and task['thread'], 'task_not_admitted')
@@ -594,7 +895,11 @@ class Store:
 
     def creation_result(self, op):
         row = self.db.execute('SELECT result FROM creation_results WHERE id=?', (op,)).fetchone()
-        return json.loads(row[0]) if row else None
+        if row is None:
+            snapshot=history_read(self.db,'tasks',op)
+            saved=next((r for r in snapshot['creation']if r['id']==op),None)if snapshot else None
+            return json.loads(saved['result'])if saved else None
+        return json.loads(row[0])
 
     def observe_creation(self, op, invoke):
         task = self.row('tasks', op)
@@ -604,8 +909,9 @@ class Store:
             self.db.execute('SELECT 1 FROM sends WHERE task=? LIMIT 1', (op,)).fetchone()):
             return {**task, **({'result': json.dumps(previous)} if previous else {})}
         # Runtime failures are observations, never authorization to start again.
-        observed = creation_observation(invoke({'mode': 'creation_probe', 'thread_id': task['thread']}),
-                                        task['thread'])
+        rpc_binding = {'project_binding_required': True} if self._binding_row(op) else {}
+        observed = creation_observation(invoke({'mode': 'creation_probe', 'thread_id': task['thread'],
+                                                **rpc_binding}), task['thread'])
         result = {**observed, 'kind': 'creation', 'operation_id': op, 'send_rows': 0}
         raw = json.dumps(result, sort_keys=True)
         need(len(raw.encode()) <= 2048, 'creation_observation_limit')
@@ -615,6 +921,8 @@ class Store:
             if observed['state'] == 'durable_ready' and task['state'] == 'create_unknown':
                 self.db.execute('UPDATE tasks SET state=?,updated=? WHERE id=?',
                                 ('created', self.clock(), op))
+            if observed['state'] == 'durable_ready' and self._binding_row(op):
+                self._mark_project_binding_verified(op)
             self.audit(op, 'creation_observed_' + observed['state'])
         self.transaction(persist)
         return {**self.row('tasks', op), 'result': raw}
@@ -631,8 +939,9 @@ class Store:
              not self.db.execute('SELECT 1 FROM sends WHERE task=? LIMIT 1', (op,)).fetchone(),
              'creation_has_send_or_changed_state')
         # Re-check absence under the same serial lock before releasing reservation.
-        current = creation_observation(invoke({'mode': 'creation_probe', 'thread_id': task['thread']}),
-                                       task['thread'])
+        rpc_binding = {'project_binding_required': True} if self._binding_row(op) else {}
+        current = creation_observation(invoke({'mode': 'creation_probe', 'thread_id': task['thread'],
+                                               **rpc_binding}), task['thread'])
         current = {**current, 'kind': 'creation', 'operation_id': op, 'send_rows': 0}
         need(fingerprint(current) == result_hash, 'creation_observation_changed')
         def finish():

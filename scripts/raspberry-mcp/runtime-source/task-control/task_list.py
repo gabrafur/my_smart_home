@@ -63,8 +63,8 @@ def registry(tasks,now):
     errors=[];truncated=False
     try:
         creations,sends,bindings=read_database(tasks.STATE/'jobs.sqlite3',tasks,[
-          'SELECT id,task_key,thread,state,created,updated,reconciled FROM tasks ORDER BY created DESC,id DESC LIMIT 129',
-          'SELECT id,task,state,turn,created,updated,result,reconciled FROM sends ORDER BY updated DESC,id DESC LIMIT 1025'],incident_tasks=True)
+          "SELECT id,task_key,thread,state,created,updated,reconciled FROM tasks WHERE state!='archived' ORDER BY created DESC,id DESC LIMIT 129",
+          "SELECT id,task,state,turn,created,updated,result,reconciled FROM sends WHERE (result IS NULL OR result!='{\"history_archive\":true}') ORDER BY updated DESC,id DESC LIMIT 1025"],incident_tasks=True)
         truncated=len(creations)>MAX_TASKS or len(sends)>1024
         for task in creations[:MAX_TASKS]:
             identifier=task['thread']
@@ -75,6 +75,7 @@ def registry(tasks,now):
               'task_id':task['id'],'task_key':task['task_key'],
               'incident_binding':bindings[task['id']],
               'creation_operation_id':task['id'],'adapter_creation_state':task['state'],
+              'task_reconciled':bool(task['reconciled']),
               'created_at':task['created'] if valid_time(task['created'],now) else None,
               'registry_updated_at':task['updated'] if valid_time(task['updated'],now) else None,
               'operations':[]}
@@ -119,7 +120,20 @@ def project(raw,observation,now):
     if message:
         try:
             receipt=json.loads(message['result'])if isinstance(message.get('result'),str)else{}
+            unreconciled_ops=[op['id'] for op in ops if is_workspace(op) and not op.get('reconciled')]
+            followup_turn=(message['turn'] if message['state'] in ('accepted','inProgress')
+                and not message.get('reconciled') and receipt.get('assistant_acknowledged') is True
+                and receipt.get('input_accepted') is True and isinstance(message.get('turn'),str) else None)
+            reply_meta=receipt.get('agent_reply') if isinstance(receipt.get('agent_reply'),dict) else {}
+            receipt_hash=(hashlib.sha256(json.dumps(receipt,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+                if isinstance(message.get('result'),str) else None)
             communication={'operation_id':message['id'],'state':message['state'],
+                'reconciled':bool(message.get('reconciled')),
+                'central_reconciliation_required':bool(message['state'] in ('completed','failed','interrupted','not_dispatched') and not message.get('reconciled')),
+                'result_hash':receipt_hash,
+                'reply_text_available':bool(reply_meta.get('state')=='observed' and isinstance(reply_meta.get('text'),str) and reply_meta.get('text')),
+                'unreconciled_operation_ids':unreconciled_ops,
+                'followup_expected_turn_id':followup_turn,
                 'delivery_mode':receipt.get('delivery_mode'),'input_accepted':receipt.get('input_accepted'),
                 'assistant_acknowledged':receipt.get('assistant_acknowledged'),
                 'receiver_turn_completed':message['state']=='completed',
@@ -158,9 +172,17 @@ def project(raw,observation,now):
       'created_at':iso(created),'last_activity_at':iso(activity),'activity_source':activity_source,
       'state':status,'daemon_can_accept_input':daemon_ready,
       'can_accept_input':daemon_ready and admission!='closed',
-      'adapter_send_admission':admission,'fresh_scope_budget_quota_check_required':True,
+      'adapter_send_admission':admission,
+      'resume_supported':bool(raw.get('origin')=='adapter_created' and raw.get('adapter_creation_state')=='created' and admission!='closed'),
+      'fresh_scope_budget_quota_check_required':True,
       'latest_operation_id':latest['id'] if latest else None,
       'latest_operation_state':latest['state'] if latest else None,
+      'latest_operation_reconciled':bool(latest.get('reconciled')) if latest and 'reconciled' in latest else None,
+      'central_reconciliation_required':bool(
+          (raw.get('origin')=='adapter_created' and raw.get('adapter_creation_state')=='created'
+           and raw.get('task_reconciled') is False and not ops)
+          or any(op.get('state') in ('completed','failed','interrupted','not_dispatched')
+                 and op.get('reconciled')==0 for op in ops)),
       'last_executed_operation_id':execution['id'] if execution else None,
       'last_executed_at':iso(operation_time(execution)) if execution else None,
       'last_execution_observed_at':iso(execution['updated']) if execution and valid_time(execution['updated'],now) else None,
@@ -211,7 +233,7 @@ def page(rows,args,registry_hash,errors,truncated,now):
       'coverage':['authorized_fixed_existing_references','adapter_registered_thread_identities_and_own_recorded_workspace_messages',
        'no_global_native_thread_enumeration','no_prompts_raw_history_private_titles_logs_or_credentials',
        'point_in_time_metadata_not_execution_or_PC_off_proof'],
-      'registry_truncated':truncated,'maximum_registered_tasks':MAX_TASKS,
+      'registry_truncated':truncated,'maximum_registered_tasks':MAX_TASKS,'registry_window_scope':'active_records_only_archived_ids_remain_readable_by_status',
       'ordering':'last_activity_desc_thread_id_desc','snapshot_hash':order_hash,
       'total_authorized_threads_observed':len(ordered),'page_size':args['page_size'],
       'next_cursor':token,'threads':chosen,'latest_created_thread':summary(created[0] if created else None),
@@ -265,6 +287,7 @@ def collect(args,tasks,invoke,now=None,admission_closed=False,administrative_clo
         if closed:
             row['adapter_send_admission']='closed'
             row['can_accept_input']=False
+            row['resume_supported']=False
         if row.get('workspace_message_reference') is True:
             observation=by_id.get(row['thread_id'],{})
             ready=bool(not observation.get('collection_error') and observation.get('cwd_is_project') is True
