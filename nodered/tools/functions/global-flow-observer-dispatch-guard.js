@@ -13,6 +13,11 @@ const TEST_MODE =
     msg.payload?.test_mode === true;
 const DELIVERY_TEST = msg._observer_delivery_test === true;
 
+if(msg._eva_private_delivery_test===true){
+ if(msg.payload?.incident_key!=='delivery_test'||msg.payload?.notification_delivery_under_test!==true||msg.payload?.notification_audience!=='eva_private'||msg.payload?.owner_escalation===true)throw Error('private_delivery_test_scope');
+ return [null,null,null,msg];
+}
+
 if (TEST_MODE && !DELIVERY_TEST) return [null, null, msg];
 
 if (DELIVERY_TEST) {
@@ -47,6 +52,13 @@ msg._observer_persistent_notification_id =
     `nodered_observabilidade_global_${persistentKind}_${incident}`
         .replace(/[^a-zA-Z0-9_-]+/g, "_")
         .slice(0, 255);
+
+// Explicit audience from the canonical producer, never inferred from muted mobile.
+if (msg.payload?.notification_audience === 'eva_private') {
+    if (msg.payload?.owner_escalation === true) return [msg, msg, null, msg];
+    if(msg._eva_policy?.delivery_mode!=='exclusive')return [null,msg,null,msg];
+    return [null, null, null, msg];
+}
 
 if (msg.payload?.mobile_notification === false) {
     return [null, msg, null];

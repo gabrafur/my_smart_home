@@ -56,6 +56,7 @@
     {"path": "docs/raspberry-mcp/reference/git-and-workers.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/notifications.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/proactive-review.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
+    {"path": "docs/raspberry-mcp/reference/private-notice-transport.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/read-only-base.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/task-control.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/nodered-administration.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md"},

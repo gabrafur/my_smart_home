@@ -80,8 +80,38 @@ export function installHostObserver(flows) {
   sw('mobile_delivery_scope',g.decision,'Somente estes incidentes sem push','payload.incident_key',[
     {t:'regex',v:'^(native_systemd_procmon|native_systemd_mcp_collection|native_systemd_external_heartbeat|native_docker_ai-bridge|observation_host_report)$',vt:'str',case:false},
     {t:'else'}],3000,1170,[['host_obs_suppress_mobile'],['host_obs_alert_out']]);
-  change('suppress_mobile',g.decision,'Definir push móvel como false','payload.mobile_notification','false','bool',3280,1080,'host_obs_alert_out');
+  change('suppress_mobile',g.decision,'Definir push móvel como false','payload.mobile_notification','false','bool',3280,1080,'host_obs_eva_in_out');
+  nodes.find(n => n.id === 'host_obs_suppress_mobile').rules.push({t:'set',p:'payload.notification_audience',pt:'msg',to:'eva_private',tot:'str'});
   out('alert_out',g.decision,'Decisão → gate global produção / dry-run',['global_observer_alert_to_dispatch_in'],3450,1170);
+  const deliveryGroup=group('eva_delivery_group','5. TESTE explícito de entrega privada — sem HA/celular',64,3040,1880,320);
+  inject('eva_delivery_create',deliveryGroup,'TESTE REAL: entregar somente à Eva','create',300,3120,'host_obs_eva_delivery_test');
+  inject('eva_delivery_cleanup',deliveryGroup,'TESTE REAL: retirar somente o teste','dismiss',300,3240,'host_obs_eva_delivery_test');
+  input('eva_delivery_ack_in',deliveryGroup,'Recibo de transporte do TESTE',['global_observer_eva_private_test_ack_out'],'host_obs_eva_delivery_test',650,3280);
+  fn('eva_delivery_test',deliveryGroup,'Controlar TESTE privado e limpeza própria','eva-delivery-test',950,3180,[['host_obs_eva_delivery_out']]);
+  out('eva_delivery_out',deliveryGroup,'TESTE privado → gate real',['global_observer_alert_to_dispatch_in'],1300,3180);
+  const evaGroup=group('eva_group','4. Eva: prazo, retenção e escalonamento explícitos',64,2260,1880,720);
+  node('eva_policy_info','comment',evaGroup,'MODO shadow até prova; prazo24h [1h..7d]; retenção30d [7..90]; transporte120s [30..600]',960,2310,{info:'Prazo de incidente sem resolução antes de informar proprietário. Retenção dos recibos detalhados: descarte somente após limite explícito, com acumulador de retenção. Falha confirmada do transporte usa canal do proprietário. delivery_mode=shadow mantém fonte HA; exclusive só após prova do mesmo object_id canônico e revisão exata. Inválidos preservam a política anterior.'});
+  inject('eva_policy_tick',evaGroup,'Carregar política Eva','',260,2370,'host_obs_eva_policy_config',{once:true,onceDelay:'0.2'});
+  change('eva_policy_config',evaGroup,'POLÍTICA Eva em ms/dias','payload',JSON.stringify({owner_escalation_ms:86400000,audit_retention_days:30,transport_confirm_ms:120000,delivery_mode:'shadow'}),'json',650,2370,'host_obs_eva_policy');
+  fn('eva_policy',evaGroup,'Validar e preservar política','eva-policy',1030,2370,[],0);
+  out('eva_in_out',g.decision,'Classificação → registro Eva',['host_obs_eva_in'],3450,1080);
+  input('eva_in',evaGroup,'Incidente classificado',['host_obs_eva_in_out'],'host_obs_eva_registry',140,2460);
+  fn('eva_registry',evaGroup,'Registrar lifecycle privado / consultar pendências','eva-registry',520,2460,[['host_obs_eva_return_out'],['host_obs_eva_due']],2);
+  out('eva_return_out',evaGroup,'Aviso privado → monitor global',['global_observer_alert_to_dispatch_in'],960,2460);
+  inject('eva_tick',evaGroup,'Reavaliar pendências a cada 60s','',260,2590,'host_obs_eva_tick_flag',{repeat:'60',once:false});
+  change('eva_tick_flag',evaGroup,'Solicitar leitura das pendências','_eva_escalation_tick','true','bool',650,2590,'host_obs_eva_tick_out');
+  sw('eva_due',evaGroup,'Idade ≥ prazo aprovado?','_eva_unresolved_ms',[{t:'gte',v:'_eva_policy.owner_escalation_ms',vt:'msg'}],1100,2550,[['host_obs_eva_escalate']]);
+  fn('eva_escalate',evaGroup,'Uma intenção por incidente; proprietário','eva-escalate',1510,2550,[['host_obs_eva_return_out']]);
+  node('eva_manual_info','comment',evaGroup,'TESTE: reset → novo → tick (não escala) → vencer → tick (escala) → tick (dedupe) → recuperar',960,2700,{info:'Somente registry __test e gate dry-run global. Não cria arquivo, não entrega aviso, não chama equipamentos. Cenário transporte: atrasado → repetido → confirmado → atrasado, no teste automatizado direcionado.'});
+
+  for(const [i,label] of ['reset','novo','tick','vencer','recuperar'].entries()){inject('eva_test_'+label,evaGroup,'TESTE Eva: '+label,label,260+i*320,2800,'host_obs_eva_scenario_'+label+'_out');out('eva_scenario_'+label+'_out',evaGroup,'TESTE '+label+' → cenário',['host_obs_eva_scenario_in'],420+i*320,2800);}
+  input('eva_scenario_in',evaGroup,'Receber cenário manual',['reset','novo','tick','vencer','recuperar'].map(label=>'host_obs_eva_scenario_'+label+'_out'),'host_obs_eva_test',450,2900);
+  fn('eva_test',evaGroup,'Estado sintético separado; nunca escreve produção','eva-test',650,2900,[['host_obs_eva_test_out']]);
+  out('eva_test_out',evaGroup,'Cenário TESTE → registro privado',['host_obs_eva_test_in'],850,2900);
+  input('eva_test_in',evaGroup,'Receber cenário TESTE',['host_obs_eva_test_out'],'host_obs_eva_registry',340,2500);
+  out('eva_tick_out',evaGroup,'Consulta periódica → registro privado',['host_obs_eva_tick_in'],850,2590);
+  input('eva_tick_in',evaGroup,'Receber consulta periódica',['host_obs_eva_tick_out'],'host_obs_eva_registry',340,2420);
+
   node('test_info','comment',g.test,'TESTE: reset → saudável (baseline) → falha → confirmar → repetir → saudável; conferir dry-run global',900,1610,{info:'Todos os cenários percorrem normalização,validade,decisões visuais e lifecycle até global_observer_dispatch_guard. Somente estado __test;sem exec,HA,MQTT,notificações ou dispositivos. source_failure e relatório stale não provam falha física; healthy encerra apenas evidência esperada. Resource_high exige nova amostra no confirmar. Start de container não encerra incidente de prontidão. Para histórico legado: reset → saudável → histórico inconsistente; conferir legacy_history_v1.records no contexto host_observer_incidents_v1__test. Deve reter o original e não enviar falha nem recuperação; repetir mantém um único registro. Produção não é alterada.'});
   for(const [i,[id,name]]of [['reset','0 reset'],['healthy','1 saudável'],['failure','2 falha'],['confirm','3 confirmar +25s'],['resource_high','4 CPU alta'],['source_failure','5 fonte ausente'],['stale','6 relatório antigo'],['malformed','7 inválido'],['legacy','8 histórico inconsistente']].entries()) {
     const x=260+(i%4)*370, y=1700+Math.floor(i/4)*90;

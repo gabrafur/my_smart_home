@@ -383,9 +383,11 @@ Home Assistant, mesma condição dos demais avisos.
 | Recuperação relevante | Retirada do aviso correspondente |
 | Segurança, intervenção necessária, equipamentos | Canais existentes dos fluxos, inalterados |
 
-Somente a [revisão proativa](proactive-review.md) usa a fila hoje. Os avisos
-técnicos produzidos pelos fluxos Node-RED continuam nos canais anteriores até
-que cada produtor seja migrado e a substituição seja comprovada.
+A [revisão proativa](proactive-review.md) usa a fila. Cinco famílias técnicas
+do Node-RED também chegam a ela pelo
+[transporte de incidentes técnicos privados](private-notice-transport.md), em
+modo `shadow`: continuam também nos canais anteriores até a substituição ser
+comprovada. Os demais avisos técnicos permanecem nos canais anteriores.
 
 ### Instalar e reverter
 

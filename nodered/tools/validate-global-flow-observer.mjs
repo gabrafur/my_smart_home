@@ -104,7 +104,10 @@ assert.match(persistentRules, /_observer_persistent_notification_id/);
 assert.match(persistentRules, /persistent_notification_operation/);
 assert.equal(required("global_observer_notify_persistent__hub_call").type, "link call");
 assert.deepEqual(required("global_observer_notify_persistent__hub_call").links, ["notification_hub_persistent_in"]);
-assert.equal(guard.outputs, 3);
+assert.equal(guard.outputs, 4);
+assert.deepEqual(logicalWireTargets(guard.id, 3), ["global_observer_eva_private_out"]);
+assert.deepEqual(required("global_observer_eva_private_out").links, ["global_observer_eva_private_in"]);
+assert.equal(required("global_observer_eva_private_export").type,"function");
 assert.deepEqual(logicalWireTargets(guard.id, 0), [notify.id]);
 assert.deepEqual(logicalWireTargets(guard.id, 1), [persistent.id]);
 assert.deepEqual(logicalWireTargets(guard.id, 2), ["global_observer_dry_run_out"]);
@@ -129,6 +132,8 @@ const expectedInternalScope = [
   "global_observer_evaluate_confirm",
   "global_observer_evaluate_alert",
   guard.id,
+  "global_observer_eva_private_export",
+  "global_observer_eva_private_status",
   "global_observer_integration_entries",
   "global_observer_integration_normalize",
   "global_observer_integration_lifecycle",

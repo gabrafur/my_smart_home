@@ -55,6 +55,7 @@ function harness(){
  };
  run('host_obs_policy_config',{payload:null});
  run('host_obs_timing_policy_config',{payload:null});
+ run('host_obs_eva_policy_config',{payload:null});
  return {run,context,dry,effects,decisions,errors,scenario(name){run('host_obs_test_build',{_host_observer_test:true,payload:name});}};
 }
 const h=harness();h.scenario('reset');h.scenario('healthy');h.scenario('failure');assert.equal(h.dry.length,0);
@@ -234,15 +235,15 @@ const filterNode=byId.get('host_obs_mobile_delivery_scope');
 assert.equal(filterNode?.type,'switch');assert.equal(filterNode.property,'payload.incident_key');
 assert.deepEqual(filterNode.wires,[['host_obs_suppress_mobile'],['host_obs_alert_out']]);
 assert.deepEqual(byId.get('host_obs_lifecycle').wires,[['host_obs_mobile_delivery_scope']]);
-assert.deepEqual(byId.get('host_obs_suppress_mobile').rules,[{t:'set',p:'payload.mobile_notification',pt:'msg',to:'false',tot:'bool'}]);
+assert.deepEqual(byId.get('host_obs_suppress_mobile').rules,[{t:'set',p:'payload.mobile_notification',pt:'msg',to:'false',tot:'bool'},{t:'set',p:'payload.notification_audience',pt:'msg',to:'eva_private',tot:'str'}]);
 assert.deepEqual(byId.get('host_obs_alert_out').links,['global_observer_alert_to_dispatch_in']);
 const filterReplay=harness();
 for(const key of [...exactMobileKeys,...exactMobileKeys.map(key=>key+'_near_miss'),
  'resource_host_cpu','security_host_alarm','native_systemd_other_critical','native_docker_homeassistant']){
  const payload={incident_key:key,observer_kind:'host_failure',mobile_notification:true,
-   persistent_notification_operation:'create',title:'fixture',message:'fixture'};
+   persistent_notification_operation:'create',title:'fixture',message:'fixture',first_detected_at:'2026-01-01T00:00:00.000Z',policy_decided_at:'2026-01-01T00:00:00.000Z'};
  const start=filterReplay.decisions.length;
- filterReplay.run('host_obs_mobile_delivery_scope',{_global_observer_test:true,payload});
+ filterReplay.run('host_obs_mobile_delivery_scope',{_global_observer_test:true,observer_now:1767225600000,payload,alert:{title:'fixture',message:'fixture'}});
  assert.equal(filterReplay.decisions.length,start+1,`central route retained: ${key}`);
  const received=filterReplay.decisions.at(-1).payload;
  assert.equal(received.mobile_notification,!exactMobileKeys.includes(key),`mobile scope: ${key}`);
@@ -250,3 +251,14 @@ for(const key of [...exactMobileKeys,...exactMobileKeys.map(key=>key+'_near_miss
  assert.equal(received.incident_key,key);assert.equal(received.observer_kind,payload.observer_kind);
  assert.equal(received.title,payload.title);assert.equal(received.message,payload.message);
 }
+
+// New manual controls traverse the same registry, visual deadline and global dry-run.
+const evaReplay=harness();
+evaReplay.run('host_obs_eva_test',{payload:'reset'});
+evaReplay.run('host_obs_eva_test',{payload:'novo'});assert.equal(evaReplay.dry.length,1);
+evaReplay.run('host_obs_eva_test',{payload:'tick'});assert.equal(evaReplay.dry.length,1,'negative deadline gate');
+evaReplay.run('host_obs_eva_test',{payload:'vencer'});
+evaReplay.run('host_obs_eva_test',{payload:'tick'});assert.equal(evaReplay.dry.length,2);assert.equal(evaReplay.dry.at(-1).payload.owner_escalation,true);
+evaReplay.run('host_obs_eva_test',{payload:'tick'});assert.equal(evaReplay.dry.length,2,'escalation dedupe');
+evaReplay.run('host_obs_eva_test',{payload:'recuperar'});assert.equal(evaReplay.dry.length,3);
+assert.deepEqual(evaReplay.effects,[]);assert.equal(evaReplay.context('host_observer_tab').get('eva_incidents_v1','persistent'),undefined);

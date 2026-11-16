@@ -597,13 +597,26 @@
         "host_obs_test_source_failure",
         "host_obs_test_stale",
         "host_obs_test_malformed",
-        "host_obs_test_legacy"
+        "host_obs_test_legacy",
+        "host_obs_eva_group",
+        "host_obs_eva_test_reset",
+        "host_obs_eva_test_novo",
+        "host_obs_eva_test_tick",
+        "host_obs_eva_test_vencer",
+        "host_obs_eva_test_recuperar",
+        "host_obs_eva_delivery_group",
+        "host_obs_eva_delivery_create",
+        "host_obs_eva_delivery_cleanup"
       ],
       "dry_run_terminal_ids": [
         "global_observer_dry_run_terminal"
       ],
       "automated_test": "test-host-observer.mjs",
-      "reason": "Replay completo da fonte sanitizada,validade,thresholds visuais,dedupe/cursor/lifecycle e gate global;contexto sintético separado;sem exec,HA,MQTT ou dispositivos."
+      "reason": "Replay completo da fonte sanitizada,validade,thresholds visuais,dedupe/cursor/lifecycle e gate global;contexto sintético separado;sem exec,HA,MQTT ou dispositivos. Audiência privada explícita, prazo de escalonamento e dedupe usam registro de teste e terminal global dry-run. O TESTE REAL privado é opcional, explícito e isolado dos incidentes reais; passa pelo exportador/consumidor e nunca por HA/mobile. Limpeza restrita ao ID de teste após recibo.",
+      "explicit_exception": "notification_delivery_under_test",
+      "delivery_node_ids": [
+        "global_observer_eva_private_export"
+      ]
     },
     "mqtt_native_observer_tab": {
       "strategy": "manual_full_dry_run",

@@ -29,6 +29,9 @@ const externalEventOutIds = [
   "operations_daily_alert_out",
   "operations_memory_alert_out",
   "host_obs_alert_out",
+  "host_obs_eva_return_out",
+  "host_obs_eva_delivery_out",
+  "global_observer_eva_private_failure_out",
   "daily_update_kia_audit_alert_out",
   "notification_hub_mobile_observer_out",
   "notification_hub_alexa_observer_out",
@@ -79,6 +82,7 @@ for (const node of next) {
   if (Array.isArray(node.links)) {
     node.links = node.links.filter((id) =>
       !owned(id) ||
+      (node.id === "host_obs_eva_delivery_ack_in" && id === "global_observer_eva_private_test_ack_out") ||
       (
         externalEventOutIds.includes(node.id) &&
         ["global_observer_events_in", "global_observer_alert_to_dispatch_in"].includes(id)
@@ -365,6 +369,7 @@ const observerNodes = [
       "global_observer_alert_to_dispatch_out",
       "global_observer_alert_to_dispatch_in",
       "global_observer_dispatch_guard",
+      "global_observer_eva_private_out",
       "global_observer_dry_run_out",
       "global_observer_notify_primary",
       "global_observer_notify_primary__hub_call",
@@ -619,15 +624,27 @@ const observerNodes = [
     productionGroup,
     "Separar produção, TESTE real e dry-run",
     source("global-flow-observer-dispatch-guard.js"),
-    3,
+    4,
     830,
     180,
     [
       ["global_observer_notify_primary"],
       ["global_observer_notify_persistent"],
       ["global_observer_dry_run_out"],
+      ["global_observer_eva_private_out"],
     ],
   ),
+  {id:"global_observer_eva_private_out",type:"link out",z:OBSERVER_TAB,g:productionGroup,name:"Aviso exclusivo → fila privada",mode:"link",links:["global_observer_eva_private_in"],x:3100,y:280,wires:[]},
+  {id:"global_observer_eva_private_group",type:"group",z:OBSERVER_TAB,name:"Transporte privado Eva — decisão recebida, sem efeitos HA",style:{label:true},nodes:["global_observer_eva_private_in","global_observer_eva_private_export","global_observer_eva_private_status_tick","global_observer_eva_private_status","global_observer_eva_private_timeout","global_observer_eva_private_status_gate","global_observer_eva_private_failure","global_observer_eva_private_failure_out","global_observer_eva_private_test_ack_out"],x:64,y:2400,w:2000,h:500},
+  {id:"global_observer_eva_private_in",type:"link in",z:OBSERVER_TAB,g:"global_observer_eva_private_group",name:"Decisão privada",links:["global_observer_eva_private_out"],x:140,y:2480,wires:[["global_observer_eva_private_export"]]},
+  {...functionNode("global_observer_eva_private_export","global_observer_eva_private_group","Exportar revisão fechada / CAS",source("eva-private-notice-export.js"),0,450,2480,[]),libs:[{var:"fs",module:"fs"},{var:"crypto",module:"crypto"}]},
+  {id:"global_observer_eva_private_status_tick",type:"inject",z:OBSERVER_TAB,g:"global_observer_eva_private_group",name:"Conferir recibos (30s)",props:[{p:"_eva_transport_check",v:"true",vt:"bool"}],repeat:"30",once:true,onceDelay:"30",x:280,y:2600,wires:[["global_observer_eva_private_status"]]},
+  {...functionNode("global_observer_eva_private_status","global_observer_eva_private_group","Ler revisão e recibo exatos",source("eva-private-notice-status.js"),2,650,2600,[["global_observer_eva_private_status_gate"],["global_observer_eva_private_test_ack_out"]]),libs:[{var:"fs",module:"fs"}]},
+  {id:"global_observer_eva_private_test_ack_out",type:"link out",z:OBSERVER_TAB,g:"global_observer_eva_private_group",name:"Recibo TESTE → controle privado",mode:"link",links:["host_obs_eva_delivery_ack_in"],x:850,y:2530,wires:[]},
+  {id:"global_observer_eva_private_status_gate",type:"switch",z:OBSERVER_TAB,g:"global_observer_eva_private_group",name:"Transporte confirmado?",property:"_eva_transport_ok",propertyType:"msg",rules:[{t:"true"},{t:"else"}],outputs:2,checkall:"false",x:1050,y:2600,wires:[["global_observer_eva_private_failure"],["global_observer_eva_private_timeout"]]},
+  {id:"global_observer_eva_private_timeout",type:"switch",z:OBSERVER_TAB,g:"global_observer_eva_private_group",name:"Pendente ≥ prazo configurado?",property:"_eva_transport_age_ms",propertyType:"msg",rules:[{t:"gte",v:"_eva_transport_confirm_ms",vt:"msg"}],outputs:1,checkall:"false",x:1450,y:2670,wires:[["global_observer_eva_private_failure"]]},
+  {...functionNode("global_observer_eva_private_failure","global_observer_eva_private_group","Lifecycle de falha para proprietário",source("eva-private-notice-failure.js"),1,1050,2780,[["global_observer_eva_private_failure_out"]])},
+  {id:"global_observer_eva_private_failure_out",type:"link out",z:OBSERVER_TAB,g:"global_observer_eva_private_group",name:"Falha transporte → proprietário",mode:"link",links:["global_observer_alert_to_dispatch_in"],x:1500,y:2780,wires:[]},
   {
     id: "global_observer_dry_run_out",
     type: "link out",
@@ -766,6 +783,8 @@ const observerNodes = [
       "global_observer_evaluate_confirm",
       "global_observer_evaluate_alert",
       "global_observer_dispatch_guard",
+      "global_observer_eva_private_export",
+      "global_observer_eva_private_status",
       "global_observer_integration_entries",
       "global_observer_integration_normalize",
       "global_observer_integration_lifecycle",
