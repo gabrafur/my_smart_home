@@ -217,10 +217,12 @@ O canvas envia recover_session=true somente nos efeitos iCloud das duas funçõe
 
 <!-- /memory-record -->
 
-<!-- memory-record {"id":"executor-peer-origem-de-inicializacao","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-11-15","evidence":[{"file":"scripts/raspberry-mcp/task-list-row-errors/derive.py","sha256":"2819c4f451d682bdb3a184d2553a489e48c398b6d9707f89b3302fbb685bfecf"},{"file":"scripts/raspberry-mcp/task-list-row-errors/test_derive.py","sha256":"98a1fea2ab6d3599ae712b554fc73cd7a740c1de9ec0b77896555e8d2c3d8627"},{"file":"scripts/raspberry-mcp/runtime-source/task-control/task_control.py","sha256":"83f3fb25832d9aea7d771b4112485bd3366a367b1249c72e7ae25af4e56a7949"},{"file":"scripts/raspberry-mcp/runtime-source/task-control/test_admission_projection.py","sha256":"c4eb001e7154f4327e7eac4b9afaa13d316bda35a27ffa30aeb7425f59e883f5"}]} -->
+<!-- memory-record {"id":"executor-peer-origem-de-inicializacao","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-11-16","evidence":[{"file":"scripts/raspberry-mcp/task-list-row-errors/derive.py","sha256":"2819c4f451d682bdb3a184d2553a489e48c398b6d9707f89b3302fbb685bfecf"},{"file":"scripts/raspberry-mcp/task-list-row-errors/test_derive.py","sha256":"98a1fea2ab6d3599ae712b554fc73cd7a740c1de9ec0b77896555e8d2c3d8627"},{"file":"scripts/raspberry-mcp/runtime-source/task-control/task_control.py","sha256":"3567ca7790047bfb94507f32584e8444d29d9266dcde38a92cbc23d84e6ba0d2"},{"file":"scripts/raspberry-mcp/runtime-source/task-control/test_admission_projection.py","sha256":"c4eb001e7154f4327e7eac4b9afaa13d316bda35a27ffa30aeb7425f59e883f5"}]} -->
 ## Vínculo do executor de tarefas e erros de linha
 
 A inscrição do executor de tarefas fixa a unidade que o iniciou. Depois de um reinício, se o executor subir por outra origem, o atestador não emite a prova do boot: a política persistente continua válida, mas criação, envio e metadados ficam fechados e a listagem distingue `closed_peer_unconfirmed` de `closed_expired`. A projeção também separa transporte legado, revogação e desativação; não inferir expiração a partir da ausência de prova do peer. Comparar a unidade do processo com a inscrição antes de qualquer renovação. Uma única thread registrada sem metadados do daemon não torna a listagem incompleta: o erro global reflete só o coletor e as lacunas ficam em `row_collection_errors`. Trocar um módulo do adaptador exige repinar política, inscrição e prova na mesma transação, com o mesmo peer observado.
+
+Quando um grant v2 de tarefas selado por Root está instalado, ele substitui a política legada sem herdar o prazo dela; arquivo v2 inválido ou marcador divergente fecha a rota em vez de voltar à antiga.
 
 <!-- /memory-record -->
 
