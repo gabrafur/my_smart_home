@@ -220,3 +220,10 @@ O gateway da manutenção (`cg_completed`) também aceita essa prova
 (`gateway_derive.py`). Sem isso, um rollback comprovado mantinha desligada a
 entrega da continuação do cliente (`Root_standing_unconfirmed`), mesmo com a
 instalação seguinte concluída.
+
+A causa das trocas incertas em `tunnel_start_pending` era uma corrida. O worker de
+eventos é `Type=simple`, e depois do `start` o processo fica cerca de 730 ms como
+`(python3)` com UID 0, antes do `exec`. O ciclo de vida lia a identidade do worker
+nessa janela e recusava. `scripts/raspberry-mcp/client-worker-start-race/` faz o
+`post_start` esperar, com prazo limitado por `maximum_phase_seconds`, só por essas
+recusas de pré-`exec`. Qualquer outra recusa continua imediata.
