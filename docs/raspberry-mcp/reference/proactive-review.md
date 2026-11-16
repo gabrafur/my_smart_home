@@ -58,6 +58,13 @@ ao executor que registre o acompanhamento com `ack`.
 | `workers.stale_markers` | Pedidos presos em processamento |
 | `nodered_admin.chain_drift` | Status do verificador da cadeia administrativa do Node-RED |
 
+Instâncias por conexão (`Accept=yes`) do executor admin e do leitor de avisos
+privados usam `CollectMode=inactive-or-failed`
+(`scripts/systemd/per-connection-collect.conf`). Cada pedido recusado de
+propósito, como a prontidão do iCloud com escopo vencido consultada a cada
+leitura de capacidades, continua registrado no journal, mas não deixa uma unidade
+"failed" por pedido, o que inflava `host.failed_units` sem indisponibilidade real.
+
 Leituras de arquivo usam somente o final do arquivo, até o limite de bytes da
 política. Textos passam por remoção de credenciais, endereços, e-mails e
 valores opacos antes de qualquer saída. Fonte que falha vira erro de coleta
