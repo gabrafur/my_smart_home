@@ -198,3 +198,20 @@ A troca da política em uso segue o ciclo nativo do pacote do cliente:
 3. Instalação nova pela Eva.
 
 Enquanto a base está inativa, a continuação do cliente por eventos fica parada.
+
+O ciclo de vida do cliente marca a operação como `uncertain_observe_only` se
+qualquer exceção acontecer depois de os arquivos serem gravados, inclusive ao
+confirmar o início dos serviços. Para a instalação, a observação pós-início do
+Root resolve esse caso. Para um rollback, nada resolvia, e a operação bloqueava
+toda manutenção nova. `scripts/raspberry-mcp/client-rollback-completion/`
+corrige o `native_binding.py` em três pontos:
+
+1. O diagnóstico registra também os códigos de reverificação de travas e de
+   leitura selada, então a próxima falha mostra a causa real.
+2. O status aceita uma prova Root imutável de rollback concluído. Ela fixa os
+   bytes dos recibos de ciclo de vida, de arquivos e de referências. O operador
+   só a grava depois de conferir, uma vez, que os arquivos e as referências vivas
+   correspondem aos recibos e que os três serviços estão ativos.
+3. Essa prova também deixa de contar a operação como pendente.
+
+Nada é repetido nem reiniciado.
