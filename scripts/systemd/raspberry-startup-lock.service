@@ -1,0 +1,21 @@
+[Unit]
+Description=Stable identity for the diagnostic startup lock
+Documentation=file:/mnt/data/docker/docs/raspberry-mcp/operations.md
+# /run is a tmpfs: the lock tmpfiles creates there gets a new inode on every
+# boot, and install-enrollment pins its identity, so every maintenance plan or
+# apply failed closed with shared_lock_identity_changed after a reboot. A
+# persistent file bound over the same path keeps one identity across boots.
+DefaultDependencies=no
+After=local-fs.target systemd-tmpfiles-setup.service
+Before=raspberry-maintenance-catalogue.socket multi-user.target shutdown.target
+Conflicts=shutdown.target
+RequiresMountsFor=/var/lib/raspberry-shared-locks /run
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'set -eu; s=/var/lib/raspberry-shared-locks/diagnostic-startup.lock; t=/run/raspberry-maintenance-startup/diagnostic-startup.lock; [ -f "$s" ] && [ ! -L "$s" ]; if /usr/bin/mountpoint -q "$t"; then exit 0; fi; [ -e "$t" ] || /usr/bin/install -o 0 -g 985 -m 0640 /dev/null "$t"; [ -f "$t" ] && [ ! -L "$t" ]; /usr/bin/mount --bind "$s" "$t"'
+ExecStop=/bin/sh -c '/usr/bin/mountpoint -q /run/raspberry-maintenance-startup/diagnostic-startup.lock && /usr/bin/umount /run/raspberry-maintenance-startup/diagnostic-startup.lock || :'
+
+[Install]
+WantedBy=multi-user.target

@@ -91,6 +91,22 @@ mountpoint /tmp/my-smart-home-public-validation.lock
 systemctl is-enabled raspberry-validation-lock.service
 ```
 
+A trava `diagnostic_startup` (`/run/raspberry-maintenance-startup/diagnostic-startup.lock`)
+tinha o mesmo problema: `/run` também é tmpfs, e o `install-enrollment` da
+manutenção fixa sua identidade. Depois do boot de 15/11, todo
+`maintenance_prepare` e `maintenance_apply` falhava fechado com
+`shared_lock_identity_changed`. O gateway mostra apenas
+`native_enrollment_or_operation_unconfirmed`. Agora ela é um arquivo persistente
+em `/var/lib/raspberry-shared-locks`, vinculado por `raspberry-startup-lock.service`
+(`scripts/systemd/`), e o `install-enrollment` passou a fixar as identidades
+estáveis das duas travas.
+
+O núcleo da manutenção abre `operations.sqlite3` com `timeout=0` e journal
+DELETE. Ler esse banco por fora durante uma operação faz a gravação dela falhar.
+Acompanhe operações só por `maintenance_read`. Uma leitura de ID inexistente
+também devolve `unknown`, então para confirmar presença ou ausência use o próprio
+`rollback_plan` ou `plan` idempotente com o mesmo ID.
+
 Uma liberação preparada que venceu sem iniciar continua fixando a identidade
 antiga em seu plano. Seu diagnóstico segue falhando nessa fase; isso descreve
 o plano vencido, não o acesso atual. Confirme o acesso pela leitura do

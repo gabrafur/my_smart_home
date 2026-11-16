@@ -168,3 +168,4 @@ nodered/.notification-diagnostics.json.*
 
 # Runtime receipts of the private Eva notice transport (host consumer state).
 /nodered/.eva-notice-receipts/
+/nodered/.eva-notice-outbox/
