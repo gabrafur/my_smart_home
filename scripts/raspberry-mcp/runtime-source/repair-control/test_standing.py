@@ -30,7 +30,7 @@ class PolicyTests(unittest.TestCase):
  def test_capabilities_persistent_after_legacy_expiry(self):
   with tempfile.TemporaryDirectory()as td:
    tasks=types.SimpleNamespace(STATE=Path(td),locked=contextlib.nullcontext,task_policy=lambda old,**kw:({'enabled':True},{'_v2':True}))
-   with patch.object(c,'configuration',return_value=policy()),patch.object(c,'STATE',Path(td)),patch.object(c.os,'geteuid',return_value=1001),patch.object(c.time,'time',return_value=NOW):
+   with patch.object(c,'quota_observation',return_value={'state':'observed','unknown_timestamp_reserved_count':0}),patch.object(c,'configuration',return_value=policy()),patch.object(c,'STATE',Path(td)),patch.object(c.os,'geteuid',return_value=1001),patch.object(c.time,'time',return_value=NOW):
     r=c.handle('codex_repair_capabilities',{'host':'raspberry'},None,tasks)
    self.assertTrue(r['enabled']);self.assertIsNone(r['expires_at']);self.assertEqual(r['submission_window'],'rolling_24h')
 class StoreTests(unittest.TestCase):

@@ -8,25 +8,23 @@
   "files": {
     "task-control/task_control.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_control.py",
-      "source_sha256": "9fb7af1c38986e701ad5a2f2589ae53baacf8b293c0024eb1fb4aa39cc83f611",
-      "export_sha256": "83f3fb25832d9aea7d771b4112485bd3366a367b1249c72e7ae25af4e56a7949",
+      "source_sha256": "461664125698ccdc4d4c75757c664adde58444522ef2d8326049453104e5d82e",
+      "export_sha256": "3567ca7790047bfb94507f32584e8444d29d9266dcde38a92cbc23d84e6ba0d2",
       "normalizations": [
-        "authorized_reference_ids_replaced_with_canonical_binding_markers",
-        "coordinator_report_path_replaced_with_binding_marker",
-        "administrative_identity_and_temporary_approval_replaced_with_binding_markers"
+        "private_identity_project_and_owner_approval_bindings_replaced_with_markers"
       ],
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
       ],
-      "source_observed_at": "2026-11-15T23:16:02Z"
+      "source_observed_at": "2026-11-16T00:44:43Z"
     },
     "task-control/task_store.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_store.py",
-      "source_sha256": "4d9e5bf05b8c796b68e777f8f7714fe7346a0870b3d579f8f888cab1c10306f3",
-      "export_sha256": "048fce52e89bbcaafbe3ad78894bed14788933a252cc888343fb464673514816",
+      "source_sha256": "ea32bf99adb2a516810327d9681815045c366f87d34972e0d9436fb277157174",
+      "export_sha256": "c9b300d32de3875255fe6760f53dd5b6565c3e44ea4100ac8f31cde9eaeb9807",
       "normalizations": [],
-      "source_observed_at": "2026-11-15T23:16:02Z",
+      "source_observed_at": "2026-11-16T00:44:43Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -34,10 +32,12 @@
     },
     "task-control/task_rpc.cjs": {
       "source": "/usr/local/lib/raspberry-task-control/task_rpc.cjs",
-      "source_sha256": "8f3dfea23c26b9bfd7b4cd4e34df7ff0e9ffc965e9047c50dfcdbe0654c8fd3e",
-      "export_sha256": "8f3dfea23c26b9bfd7b4cd4e34df7ff0e9ffc965e9047c50dfcdbe0654c8fd3e",
-      "normalizations": [],
-      "source_observed_at": "2026-11-02T12:10:17Z",
+      "source_sha256": "5cd78bf797a71009de359b11b2a4d42084c4d9cff1ee56071983c533625f160d",
+      "export_sha256": "70b12607ac990053140dce97f01aa20558ae7f9f29682a739ee182c653fcf6a6",
+      "normalizations": [
+        "private_identity_project_and_owner_approval_bindings_replaced_with_markers"
+      ],
+      "source_observed_at": "2026-11-16T00:44:43Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -45,16 +45,16 @@
     },
     "task-control/task_list.py": {
       "source": "/usr/local/lib/raspberry-task-control/task_list.py",
-      "source_sha256": "5ab5b702e08cc184a797b79c41d63cc68610297cd5d0063eb23a4438117a2b71",
-      "export_sha256": "2c7f701db20c69808d7d96ba9e63fcfe8918d1c2e15f3846cd8c86d9785a2ebc",
+      "source_sha256": "983e1d0e120225fd0a00ec83e608ec89fc4e858f66b640b96691042807bd13bf",
+      "export_sha256": "4107e5b3fd81a0aa32ae097552e9c8b08271c29d4521cce5f9e1f05fb5bdbf7c",
       "normalizations": [
-        "authorized_reference_ids_replaced_with_canonical_binding_markers"
+        "private_identity_project_and_owner_approval_bindings_replaced_with_markers"
       ],
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
       ],
-      "source_observed_at": "2026-11-15T23:16:02Z"
+      "source_observed_at": "2026-11-16T00:44:43Z"
     },
     "task-control/task-broker.py": {
       "source": "/usr/local/lib/raspberry-task-control/task-broker.py",
@@ -64,10 +64,10 @@
     },
     "repair-control/repair_control.py": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_control.py",
-      "source_sha256": "d292d6ae97544083557e4c2a39ff8c2dfded1f4aad31b2d5e0585c762232885d",
-      "export_sha256": "d292d6ae97544083557e4c2a39ff8c2dfded1f4aad31b2d5e0585c762232885d",
+      "source_sha256": "e506cae469c7dcc69d6ade8f458cd94e21227bd321d20fcda6b0ae4ca43fe0a5",
+      "export_sha256": "e506cae469c7dcc69d6ade8f458cd94e21227bd321d20fcda6b0ae4ca43fe0a5",
       "normalizations": [],
-      "source_observed_at": "2026-11-15T23:48:40.014946+00:00",
+      "source_observed_at": "2026-11-16T00:43:22.822287+00:00",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -75,12 +75,12 @@
     },
     "repair-control/repair_store.py": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_store.py",
-      "source_sha256": "556096e4056c4b88408971cda3a8c4ac61cf0513e1a796e335f901dc5fe83048",
-      "export_sha256": "c1bdb675b1ce198c760a532a28e4d7bdd4ba8fc60916246a46db067b47fbb9fb",
+      "source_sha256": "a0db2d2849f41c214cbbf4891a86d5b8b8f282a1f8998f55557a81897dc6bfa3",
+      "export_sha256": "06c741d42077029a7f67150cf2918fd5aebd0b52f24c6f25c870428802cbb61d",
       "normalizations": [
         "thread_identifiers_replaced_with_binding_markers"
       ],
-      "source_observed_at": "2026-11-15T23:48:40.015100+00:00",
+      "source_observed_at": "2026-11-16T00:43:22.823804+00:00",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"
@@ -88,12 +88,12 @@
     },
     "repair-control/repair_rpc.cjs": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_rpc.cjs",
-      "source_sha256": "a73f8bcd132f5e75a84e303389f3c6da9f86eb64c5035560af3e4d4360318bc2",
-      "export_sha256": "f2651d89edd6e17982be198896ce2bd47e11c94599b72770a046f2c507e52142",
+      "source_sha256": "9954c94287ff8fe15add1a98434cd511e1b85dc7ae97c4b0f4bdab81a418a643",
+      "export_sha256": "0537196d55ab0f6732e28ef53ee57cabbe35dd15860731252ab69591f9d63796",
       "normalizations": [
         "thread_identifiers_replaced_with_binding_markers"
       ],
-      "source_observed_at": "2026-11-15T23:48:40.015189+00:00",
+      "source_observed_at": "2026-11-16T00:22:04.628332+00:00",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"

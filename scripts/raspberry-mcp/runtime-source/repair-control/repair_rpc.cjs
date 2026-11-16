@@ -25,10 +25,35 @@ function quota(account,usage){
  const buckets=[usage.rateLimits,...Object.values(usage.rateLimitsByLimitId||{})];
  for(const b of buckets)requireOk(b&&b.credits?.hasCredits===false&&b.credits?.unlimited===false&&[null,undefined,'0','0.0','0.00'].includes(b.credits?.balance)&&b.rateLimitReachedType==null&&b.spendControlReached!==true,'extra_credit_or_quota_refused');
 }
-function metadata(t,id){requireOk(t?.id===id&&STATES.has(t.status?.type),'thread_metadata_unconfirmed');return {thread_id:id,status:t.status.type,ephemeral:t.ephemeral===true,cwd_is_project:t.cwd==='/mnt/data/docker',cwd:'/home/gabriel'===t.cwd?'/home/gabriel':t.cwd==='/mnt/data/docker'?'/mnt/data/docker':'other',can_accept_direct_input:t.canAcceptDirectInput===true,model_provider:t.modelProvider==='openai'?'openai':'unconfirmed'};}
-async function run(q,rpc){
+function metadata(t,id){requireOk(t?.id===id&&STATES.has(t.status?.type),'thread_metadata_unconfirmed');return {thread_id:id,status:t.status.type,ephemeral:t.ephemeral===true,cwd_is_project:t.cwd==='/mnt/data/docker',cwd:'/home/gabriel'===t.cwd?'/home/gabriel':t.cwd==='/mnt/data/docker'?'/mnt/data/docker':'other',can_accept_direct_input:t.canAcceptDirectInput===true,model_provider:t.modelProvider==='openai'?'openai':'unconfirmed',approval_needed:t.status.type==='active'&&t.status.activeFlags?.includes('waitingOnApproval')===true,user_input_needed:t.status.type==='active'&&t.status.activeFlags?.includes('waitingOnUserInput')===true};}
+function enrolledProfile(p){
+ requireOk(p&&typeof p==='object'&&Object.keys(p).sort().join(',')==='approvalPolicy,approvalsReviewer,cwd,model,modelProvider,reasoningEffort,sandbox,threadId','repair_resume_profile_shape');
+ requireOk(p.threadId===THREADS[0]&&p.cwd==='/mnt/data/docker'&&p.model==='gpt-6.1-sol'&&p.modelProvider==='openai'&&p.approvalPolicy==='on-request'&&p.approvalsReviewer==='user'&&p.sandbox==='danger-full-access'&&p.reasoningEffort==='high','repair_resume_profile_scope');
+ return p;
+}
+function checkProfile(r,p){
+ requireOk(r&&r.thread?.id===p.threadId&&r.thread?.ephemeral!==true&&r.cwd===p.cwd&&r.thread.cwd===p.cwd&&r.model===p.model&&r.modelProvider===p.modelProvider&&r.thread.modelProvider===p.modelProvider&&r.approvalPolicy===p.approvalPolicy&&r.approvalsReviewer===p.approvalsReviewer&&r.sandbox?.type==='dangerFullAccess','repair_resume_effective_profile_mismatch');
+ // Optional response fields are not identity/permission attestations.
+ requireOk(r.reasoningEffort==null||r.reasoningEffort===p.reasoningEffort,'repair_resume_reported_effort_mismatch');
+ requireOk(r.runtimeWorkspaceRoots===undefined||(Array.isArray(r.runtimeWorkspaceRoots)&&r.runtimeWorkspaceRoots.every(x=>x===p.cwd)),'repair_resume_reported_roots_mismatch');
+ requireOk(!r.thread.turns||r.thread.turns.length===0,'repair_resume_history_unrequested');
+ return {thread_id:p.threadId,cwd:r.cwd,model:r.model,model_provider:r.modelProvider,approval_policy:r.approvalPolicy,approvals_reviewer:r.approvalsReviewer,reasoning_effort:r.reasoningEffort??null,reasoning_effort_observation:r.reasoningEffort==null?'unreported':'reported',sandbox_type:r.sandbox.type,network_is_sandbox_restricted:false,runtime_workspace_roots:r.runtimeWorkspaceRoots??null,runtime_workspace_roots_observation:r.runtimeWorkspaceRoots===undefined?'unreported':'reported',profile_readback_verified:true};
+}
+async function resumeProfile(q,rpc,p,t){
+ enrolledProfile(p);requireOk(q.mode==='preflight'&&/^[a-f0-9]{32}$/.test(q.operation_id),'repair_resume_operation_required');
+ requireOk(t.status==='notLoaded'||(t.status==='idle'&&t.can_accept_direct_input),'repair_resume_thread_busy');
+ requireOk(t.model_provider==='openai','repair_resume_provider_unconfirmed');
+ const reply=await rpc('thread/resume',{threadId:p.threadId,excludeTurns:true,cwd:p.cwd,model:p.model,modelProvider:p.modelProvider,approvalPolicy:p.approvalPolicy,approvalsReviewer:p.approvalsReviewer,sandbox:p.sandbox,runtimeWorkspaceRoots:[p.cwd],config:{model_reasoning_effort:p.reasoningEffort}});
+ const observed=checkProfile(reply,p);
+ const readback=metadata((await rpc('thread/read',{threadId:p.threadId,includeTurns:false})).thread,p.threadId);
+ requireOk(readback.status==='idle'&&readback.can_accept_direct_input&&readback.cwd_is_project&&readback.model_provider==='openai','repair_resume_readback_unconfirmed');
+ return observed;
+}
+async function run(q,rpc,profile=null){
  validate(q);let t=metadata((await rpc('thread/read',{threadId:q.thread_id,includeTurns:false})).thread,q.thread_id);
  if(q.mode==='metadata')return t;
+ let resumed=null;
+ if(profile&&q.mode==='preflight'){quota(await rpc('account/read',{refreshToken:false}),await rpc('account/rateLimits/read',{}));resumed=await resumeProfile(q,rpc,profile,t);t=metadata((await rpc('thread/read',{threadId:q.thread_id,includeTurns:false})).thread,q.thread_id);}
  if(q.mode==='observe'){
   requireOk(q.turn_id&&UUID.test(q.turn_id),'outcome_unknown_reconciliation_required');
   const page=await rpc('thread/turns/list',{threadId:q.thread_id,limit:32,itemsView:'notLoaded',sortDirection:'desc'});
@@ -49,7 +74,7 @@ async function run(q,rpc){
  requireOk(t.cwd_is_project&&t.model_provider==='openai','repair_thread_profile_unconfirmed');
  requireOk(t.status==='idle'&&t.can_accept_direct_input,'busy');
  quota(await rpc('account/read',{refreshToken:false}),await rpc('account/rateLimits/read',{}));
- if(q.mode==='preflight')return {...t,included_quota_confirmed:true};
+ if(q.mode==='preflight')return {...t,included_quota_confirmed:true,...(resumed?{resume_profile:resumed,profile_readback_verified:true}:{})};
  // Fresh status before sending. Other clients can race; do not claim a global CAS.
  const fresh=metadata((await rpc('thread/read',{threadId:q.thread_id,includeTurns:false})).thread,q.thread_id);
  requireOk(fresh.status==='idle'&&fresh.can_accept_direct_input,'busy');
@@ -72,11 +97,11 @@ async function connect(q){
   function finish(error,value){if(closed)return;closed=true;clearTimeout(timer);for(const p of pending.values())p.reject(new Refused('connection_closed'));pending.clear();ws.terminate();error?reject(error):resolve(value);}
   const timer=setTimeout(()=>finish(new Refused('protocol_timeout')),12000);
   function rpc(method,params){return new Promise((resolve,reject)=>{const id=next++;pending.set(id,{resolve,reject});ws.send(JSON.stringify({jsonrpc:'2.0',id,method,params}));});}
-  ws.on('message',raw=>{try{total+=raw.length;requireOk(total<=1048576,'response_limit');const m=JSON.parse(raw);const p=pending.get(m.id);if(p){pending.delete(m.id);m.error?p.reject(new Refused('rpc_refused')):p.resolve(m.result);}}catch{finish(new Refused('invalid_response'));}});
+  ws.on('message',raw=>{try{total+=raw.length;requireOk(total<=1048576,'response_limit');const m=JSON.parse(raw);if(m.method)return;const p=pending.get(m.id);if(p){pending.delete(m.id);m.error?p.reject(new Refused('rpc_refused')):p.resolve(m.result);}}catch{finish(new Refused('invalid_response'));}});
   ws.on('error',()=>finish(new Refused('connection_failed')));
   ws.on('close',()=>{if(!closed)finish(new Refused('connection_closed'));});
-  ws.on('open',async()=>{try{await rpc('initialize',{clientInfo:{name:'raspberry_fixed_repair_control',version:'0.1.0'},capabilities:{experimentalApi:true}});ws.send(JSON.stringify({jsonrpc:'2.0',method:'initialized',params:{}}));finish(null,await run(q,rpc));}catch(e){finish(e instanceof Refused?e:new Refused('rpc_unconfirmed'));}});
+  ws.on('open',async()=>{try{await rpc('initialize',{clientInfo:{name:'raspberry_fixed_repair_control',version:'0.1.0'},capabilities:{experimentalApi:true}});ws.send(JSON.stringify({jsonrpc:'2.0',method:'initialized',params:{}}));finish(null,await run(q,rpc,process.env.REPAIR_RESUME_PROFILE_JSON?JSON.parse(process.env.REPAIR_RESUME_PROFILE_JSON):null));}catch(e){finish(e instanceof Refused?e:new Refused('rpc_unconfirmed'));}});
  });
 }
-module.exports={THREADS,CHECKS,validate,prompt,quota,metadata,cleanAnswer,run,Refused};
+module.exports={THREADS,CHECKS,validate,prompt,quota,metadata,cleanAnswer,run,Refused,enrolledProfile,checkProfile,resumeProfile};
 if(require.main===module){let input='';process.stdin.setEncoding('utf8');process.stdin.on('data',s=>{input+=s;if(input.length>4096)process.exit(1);});process.stdin.on('end',async()=>{try{const q=JSON.parse(input);validate(q);console.log(JSON.stringify({ok:true,result:await connect(q)}));}catch(e){console.log(JSON.stringify({ok:false,error:e instanceof Refused?e.message:'adapter_unconfirmed',automatic_retry:false}));process.exitCode=1;}});}

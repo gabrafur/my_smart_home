@@ -5,10 +5,11 @@ import json
 import os
 from pathlib import Path
 import stat
+import sqlite3
 import subprocess
 import time
 
-from repair_store import Store, TASK, THREAD, TERMINAL, need, validate, digest
+from repair_store import Store, ResumeStore, TASK, THREAD, TERMINAL, need, validate, digest
 
 ROOT = Path('/usr/local/lib/raspberry-repair-control')
 POLICY = ROOT / 'policy.json'
@@ -29,8 +30,10 @@ def configuration(tasks):
     policy = json.loads(tasks.read(POLICY, 0, 0o644))
     fields = {'enabled', 'expires_at', 'thread', 'tasks', 'source_hashes',
               'dependencies', 'maximum_submissions'}
-    need(set(policy) in (fields, fields | {'standing_repair'}), 'repair_policy_changed')
+    need(set(policy) in (fields, fields | {'standing_repair'}, fields | {'standing_repair','resume_enrollment'}), 'repair_policy_changed')
     persistent = standing(policy)
+    if 'resume_enrollment' in policy:
+        resume_enrollment(policy)
     need(type(policy['enabled']) is bool and
          (policy['expires_at'] is None if persistent else policy['expires_at'] == EXPIRY) and
          policy['thread'] == THREAD and policy['tasks'] == [TASK] and
@@ -86,7 +89,23 @@ def selected_admission(policy, tasks, old, *, observation=False):
              'repair_task_admission_revoked')
         need(policy['enabled'] and not policy['standing_repair']['revoked'],
              'repair_standing_revoked')
+        enrolled=resume_enrollment(policy)
+        need(enrolled is None or enrolled['enabled'],'repair_resume_enrollment_closed')
     return task_policy, peer
+
+
+def resume_enrollment(policy):
+    entry=policy.get('resume_enrollment')
+    if entry is None:return None
+    need(standing(policy), 'repair_resume_requires_standing')
+    need(type(entry)is dict and set(entry)=={'schema','enabled','thread_id','task','owner_scope_sha256','owner_addendum_sha256','metadata_evidence_sha256','profile','legacy_administrative_grant','interface_confirmations_required','normalizes_project_cwd'},'repair_resume_enrollment_shape')
+    need(entry['schema']=='fixed_repair_profile_enrollment_v1' and type(entry['enabled'])is bool and entry['thread_id']==THREAD and entry['task']==TASK and entry['legacy_administrative_grant']is False and entry['interface_confirmations_required']is True and entry['normalizes_project_cwd']is True,'repair_resume_enrollment_scope')
+    for key in ('owner_scope_sha256','owner_addendum_sha256','metadata_evidence_sha256'):
+        need(type(entry[key])is str and len(entry[key])==64 and all(c in '0123456789abcdef'for c in entry[key])and entry[key]!='0'*64,'repair_resume_evidence_required')
+    need(entry['owner_scope_sha256']==policy['standing_repair']['owner_confirmation_sha256'],'repair_resume_owner_scope_changed')
+    expected={'threadId':THREAD,'cwd':'/mnt/data/docker','model':'gpt-6.1-sol','modelProvider':'openai','approvalPolicy':'on-request','approvalsReviewer':'user','sandbox':'danger-full-access','reasoningEffort':'high'}
+    need(entry['profile']==expected,'repair_resume_profile_scope')
+    return entry
 
 
 def revoked(tasks):
@@ -97,7 +116,8 @@ def revoked(tasks):
     return True
 
 
-def invoke(q, old, legacy, tasks=None):
+def invoke(q, old, legacy, tasks=None, resume_store=None):
+    enrollment=None;resume_hash=None
     if tasks is not None:
         current = configuration(tasks)
         _, peer = selected_admission(current, tasks, old, observation=q['mode'] == 'observe')
@@ -105,12 +125,22 @@ def invoke(q, old, legacy, tasks=None):
              peer.get('peer_pid') == legacy.get('peer_pid'), 'repair_peer_changed')
         if q['mode'] != 'observe':
             need(not revoked(tasks), 'repair_standing_revoked')
+        enrollment=resume_enrollment(current)
+        if enrollment and q['mode']in('preflight','send'):
+            need(enrollment['enabled'] and resume_store is not None,'repair_resume_enrollment_closed')
+            resume_hash=digest({'enrollment':enrollment,'boot_id':peer.get('boot_id'),'peer_pid':peer.get('peer_pid'),'socket_identity':peer.get('socket_identity')})
+            if q['mode']=='preflight':
+                if not resume_store.begin(q['operation_id'],resume_hash,time.time()):
+                    return resume_store.ready(q['operation_id'],resume_hash)
+            else:resume_store.ready(q['operation_id'],resume_hash)
     context = tasks.pinned_peer_connection(legacy, old) if tasks is not None else contextlib.nullcontext(None)
     with context as peer:
         if peer is None:
             old.peer(legacy)
         env = {'PATH': '/usr/bin:/bin', 'WS_NO_BUFFER_UTIL': '1', 'WS_NO_UTF_8_VALIDATE': '1'}
         extra = {}
+        if enrollment and q['mode']=='preflight':
+            env['REPAIR_RESUME_PROFILE_JSON']=json.dumps(enrollment['profile'],sort_keys=True)
         if peer is not None:
             env['TASK_PEER_FD'] = str(peer.fileno())
             extra['pass_fds'] = (peer.fileno(),)
@@ -121,7 +151,11 @@ def invoke(q, old, legacy, tasks=None):
     need(result.returncode == 0 and len(result.stdout) <= 16384, 'repair_rpc_unconfirmed')
     reply = json.loads(result.stdout)
     need(reply.get('ok') is True, 'repair_rpc_unconfirmed')
-    return reply['result']
+    result=reply['result']
+    if enrollment and q['mode']=='preflight':
+        need(result.get('resume_profile',{}).get('profile_readback_verified')is True,'repair_resume_readback_required')
+        resume_store.verified(q['operation_id'],resume_hash,result)
+    return result
 
 
 def publish_receipt(op, result):
@@ -249,6 +283,18 @@ def publish_archive(value):
     return h
 
 
+def quota_observation(tasks):
+    # Read-only metadata query, including after revocation. No schema migration.
+    try:
+        tasks.read(tasks.LEGACY_DB, 1001, 0o600, 1048576)
+        with contextlib.closing(sqlite3.connect('file:'+str(tasks.LEGACY_DB)+'?mode=ro', uri=True)) as db:
+            db.row_factory = sqlite3.Row
+            return dict(state='observed', **Store.rolling_accounting(db, time.time()))
+    except (ValueError, OSError, sqlite3.Error):
+        return {'state': 'unconfirmed', 'unknown_timestamp_reserved_count': None,
+                'unknown_timestamp_policy': 'settled_unknown_charged_in_every_window'}
+
+
 def handle(name, args, old, tasks):
     validate(name, args)
     need(os.geteuid() == 1001, 'repair_identity_refused')
@@ -285,9 +331,10 @@ def handle(name, args, old, tasks):
                     'expires_at': None if persistent else EXPIRY, 'maximum_submissions': 2,
                     'lease_kind': 'persistent_revocable' if persistent else 'finite',
                     'submission_window': 'rolling_24h' if persistent else 'lifetime',
+                    'quota_observation': quota_observation(tasks) if persistent else None,
                     'maximum_receipts': 4096 if persistent else 8,
                     'storage_pressure': 'fail_closed_no_eviction_or_replay',
-                    'thread_resume': 'blocked_without_separate_profile_enrollment',
+                    'thread_resume': ('enrolled_explicit_profile_readback_required' if p.get('resume_enrollment',{}).get('enabled') else 'blocked_without_separate_profile_enrollment'),
                     'automatic_retry': False,
                     'scope': 'fixed_task_and_readonly_health_projection;not_general_root_or_filesystem_confinement',
                     'new_task_policy': 'root_review_and_existing_standing_goal_authorization'}
@@ -300,6 +347,7 @@ def handle(name, args, old, tasks):
             need(legacy_store.db.execute('PRAGMA page_size').fetchone()[0] == 4096,
                  'repair_database_page_size')
             receipt = Store(legacy_store.db, clock=time.time, standing=persistent, archive_reader=read_archive if persistent else None)
+            resume_store=ResumeStore(legacy_store.db) if p.get('resume_enrollment') else None
             op = args['operation_id']
             known = receipt.get(op)
             was_known = known is not None
@@ -335,7 +383,7 @@ def handle(name, args, old, tasks):
                 receipt.reserve(op)
                 try:
                     legacy_store.send({'operation_id': op, 'thread_id': THREAD, 'intent': TASK},
-                                      legacy, lambda q, _: invoke(q, old, legacy, tasks) if persistent else invoke(q, old, legacy))
+                                      legacy, lambda q, _: (invoke({**q,'operation_id':op}, old, legacy, tasks, resume_store) if resume_store is not None else invoke(q, old, legacy, tasks)) if persistent else invoke(q, old, legacy))
                 except Exception:
                     if legacy_store.get(op) is None:
                         receipt.terminal(op, {'operation_state': 'failed',
@@ -355,7 +403,7 @@ def handle(name, args, old, tasks):
                 try:
                     _, legacy = selected_admission(p, tasks, old, observation=True)
                     legacy_store.observe({'operation_id': op, 'thread_id': THREAD}, legacy,
-                                         lambda q, _: invoke(q, old, legacy, tasks) if persistent else invoke(q, old, legacy))
+                                         lambda q, _: (invoke({**q,'operation_id':op}, old, legacy, tasks, resume_store) if resume_store is not None else invoke(q, old, legacy, tasks)) if persistent else invoke(q, old, legacy))
                 except Exception:
                     # Observation failure does not erase the accepted handle,
                     # complete a job, or authorize restarting it.

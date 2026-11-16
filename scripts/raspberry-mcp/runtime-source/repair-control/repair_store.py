@@ -62,13 +62,32 @@ class Store:
             self.db.execute('UPDATE repair_receipts SET created=(SELECT created FROM jobs '
                             'WHERE jobs.id=repair_receipts.id) WHERE created IS NULL')
 
+    @staticmethod
+    def rolling_accounting(db, now):
+        rows = db.execute('SELECT id,task,created,ack,result,result_hash FROM repair_receipts').fetchall()
+        count = unknown = 0
+        for row in rows:
+            if row['created'] is None:
+                # No timestamp is invented or forgiven: a settled unknown
+                # reservation occupies one slot in every rolling window.
+                try: result = json.loads(row['result'])
+                except (TypeError, ValueError): result = None
+                need(row['task'] == TASK and row['ack'] == 1 and type(result) is dict
+                     and result.get('operation_state') in TERMINAL
+                     and digest(result) == row['result_hash'],
+                     'historical_repair_timestamp_unconfirmed')
+                unknown += 1
+                count += 1
+            else:
+                need(type(row['created']) in (int, float) and 0 < row['created'] <= now,
+                     'historical_repair_timestamp_unconfirmed')
+                count += row['created'] > now - 86400
+        return {'rolling_reserved_count': count, 'unknown_timestamp_reserved_count': unknown,
+                'unknown_timestamp_policy': 'settled_unknown_charged_in_every_window'}
+
     def rolling_count(self, now):
         need(self.standing, 'standing_accounting_required')
-        rows = self.db.execute('SELECT id,created FROM repair_receipts').fetchall()
-        for row in rows:
-            need(type(row['created']) in (int, float) and 0 < row['created'] <= now,
-                 'historical_repair_timestamp_unconfirmed')
-        return sum(row['created'] > now - 86400 for row in rows)
+        return self.rolling_accounting(self.db, now)['rolling_reserved_count']
 
 
     def reserve(self, op):
@@ -184,3 +203,42 @@ class Store:
         self.db.execute('UPDATE repair_receipts SET ack=1 WHERE id=?', (op,))
         return {'operation_id': op, 'reconciled': True, 'result_hash': h,
                 'duplicate': bool(row['ack'])}
+
+
+class ResumeStore:
+    """Operation-bound profile application; uncertainty never repeats resume."""
+    def __init__(self, db):
+        self.db = db
+        db.execute('CREATE TABLE IF NOT EXISTS repair_resume_receipts('
+                   'id TEXT PRIMARY KEY,request_hash TEXT NOT NULL,state TEXT NOT NULL,'
+                   'result TEXT,created REAL NOT NULL)')
+
+    def begin(self, op, request_hash, now):
+        need(re.fullmatch('[a-f0-9]{32}',op) and re.fullmatch('[a-f0-9]{64}',request_hash),
+             'repair_resume_identity')
+        row = self.db.execute('SELECT request_hash,state FROM repair_resume_receipts WHERE id=?',(op,)).fetchone()
+        if row is not None:
+            need(row[0] == request_hash, 'repair_resume_binding_changed')
+            need(row[1] == 'verified', 'repair_resume_uncertain_observe_same_operation')
+            return False
+        need(self.db.execute("SELECT count(*) FROM repair_resume_receipts WHERE state!='verified'").fetchone()[0]==0,'repair_resume_prior_uncertain_observe_same_operation')
+        need(self.db.execute('SELECT count(*) FROM repair_resume_receipts').fetchone()[0]<4096,'repair_resume_history_capacity')
+        self.db.execute('INSERT INTO repair_resume_receipts VALUES(?,?,?,?,?)',
+                        (op,request_hash,'resume_intent',None,now))
+        return True
+
+    def verified(self, op, request_hash, result):
+        need(type(result) is dict and result.get('profile_readback_verified') is True,
+             'repair_resume_profile_unconfirmed')
+        encoded=json.dumps(result,sort_keys=True,separators=(',',':'))
+        need(len(encoded.encode())<=4096,'repair_resume_result_bound')
+        changed=self.db.execute("UPDATE repair_resume_receipts SET state='verified',result=? "
+                                "WHERE id=? AND request_hash=? AND state='resume_intent'",
+                                (encoded,op,request_hash)).rowcount
+        need(changed==1,'repair_resume_receipt_cas')
+
+    def ready(self, op, request_hash):
+        row=self.db.execute('SELECT request_hash,state,result FROM repair_resume_receipts WHERE id=?',(op,)).fetchone()
+        need(row is not None and row[0]==request_hash and row[1]=='verified',
+             'repair_resume_verified_receipt_required')
+        return json.loads(row[2])
