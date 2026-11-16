@@ -8,5 +8,5 @@ test("Node-RED guard ledger schema derivation passes its synthetic suite", () =>
   const cwd = fileURLToPath(new URL("./nodered-guard-ledger-schema/", import.meta.url));
   const result = spawnSync("python3", ["-B", "-m", "unittest", "test_derive"], { cwd, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Ran 3 tests/);
+  assert.match(result.stderr, /Ran 4 tests/);
 });

@@ -72,6 +72,10 @@ política administrativa (hash fixado duas vezes) e unidade modelo. A operação
 Root confere antes as colunas do banco real em modo somente leitura e recarrega
 apenas as unidades; nenhum serviço é reiniciado. Foi assim que entraram
 `history_refs` e `profile_transitions`, criadas pelo perfil amplo de tarefas.
+O mesmo vale para o ledger de reparos: `derive_legacy` admite as colunas novas
+de `repair_receipts` e a tabela `repair_resume_receipts`, criadas pela retomada
+explícita de reparo. Conferir os quatro ledgers do guardião contra o banco real
+antes do preflight evita descobrir uma divergência por vez.
 
 A tabela `result_checkpoints` preserva o hash e o estado terminal de resultados
 e a disponibilidade do texto. O guardião reconhece seu esquema e mantém as

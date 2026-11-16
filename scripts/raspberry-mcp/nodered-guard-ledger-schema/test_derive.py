@@ -4,11 +4,13 @@ import unittest
 
 import derive as d
 
+LEGACY = b"            'repair_receipts': 'id task result_hash result ack'},\n"
 GUARD = (b"SCHEMAS = {\n"
          b" 'task': {'tasks': 'id task_key spec_hash thread state created updated reconciled',\n"
          b"          'audit': 'seq id state at', 'creation_results': 'id result',\n"
          b"          'result_checkpoints': 'id result_hash terminal_state reply_available recorded'},\n"
-         b" 'legacy': {'jobs': 'id thread intent state created updated attempts turn result'},\n}\n")
+         b" 'legacy': {'jobs': 'id thread intent state created updated attempts turn result',\n"
+         b"            'repair_receipts': 'id task result_hash result ack'},\n}\n")
 NEW = {'history_refs': 'kind id version',
        'profile_transitions': 'id operation thread grant_sha256 mode state receipt created updated'}
 
@@ -34,7 +36,7 @@ class DeriveTests(unittest.TestCase):
         self.assertEqual(set(namespace['SCHEMAS']['task']),
                          {'tasks', 'audit', 'creation_results', 'result_checkpoints', *NEW})
         self.assertEqual(namespace['SCHEMAS']['task']['history_refs'], 'kind id version')
-        self.assertEqual(namespace['SCHEMAS']['legacy'], {'jobs': 'id thread intent state created updated attempts turn result'})
+        self.assertEqual(namespace['SCHEMAS']['legacy']['repair_receipts'], 'id task result_hash result ack')
         policy = json.loads(after['admin_policy'])
         self.assertEqual(policy['sources']['native_guard.py'], sha(after['guard']))
         self.assertEqual(policy['native_guard_producer']['source_sha256'], sha(after['guard']))
@@ -50,6 +52,18 @@ class DeriveTests(unittest.TestCase):
             d.derive(drifted, NEW)
         with self.assertRaisesRegex(ValueError, 'guard_task_schema_anchor'):
             d.derive(fixture(GUARD.replace(b'reply_available', b'reply')), NEW)
+
+    def test_legacy_growth_moves_only_dependent_pins(self):
+        after = d.derive_legacy(fixture(), 'id task result_hash result ack created archive_hash terminal_state',
+                                'id request_hash state result created')
+        namespace = {}
+        exec(after['guard'], namespace)
+        legacy = namespace['SCHEMAS']['legacy']
+        self.assertEqual(legacy['repair_receipts'].split()[-3:], ['created', 'archive_hash', 'terminal_state'])
+        self.assertEqual(legacy['repair_resume_receipts'], 'id request_hash state result created')
+        self.assertEqual(json.loads(after['admin_policy'])['sources']['native_guard.py'], sha(after['guard']))
+        with self.assertRaisesRegex(ValueError, 'legacy_column_shape'):
+            d.derive_legacy(fixture(), 'id ack', 'id')
 
     def test_rejects_unsafe_table_shapes(self):
         for tables in ({}, {'Bad': 'id'}, {'ok': "id'); import os"}, {'x' * 41: 'id'}):

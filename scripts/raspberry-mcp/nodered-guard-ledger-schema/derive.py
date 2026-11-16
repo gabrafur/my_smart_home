@@ -37,6 +37,23 @@ def swap(body, old, new, count, reason):
     return body.replace(old, new)
 
 
+LEGACY_OLD = b"            'repair_receipts': 'id task result_hash result ack'},\n"
+
+
+def legacy_line(columns, resume_columns):
+    return ("            'repair_receipts': '" + columns + "',\n"
+            "            'repair_resume_receipts': '" + resume_columns + "'},\n").encode()
+
+
+def derive_legacy(before, columns, resume_columns):
+    """Admit the repair ledger growth: extra repair_receipts columns and the resume receipts table."""
+    need(all(type(v) is str and COLUMNS.match(v) for v in (columns, resume_columns))
+         and columns.startswith('id task result_hash result ack '), 'legacy_column_shape')
+    guard = before['guard']
+    need(guard.count(LEGACY_OLD) == 1 and guard.count(b"'repair_resume_receipts'") == 0, 'guard_legacy_schema_anchor')
+    return _pins(before, guard.replace(LEGACY_OLD, legacy_line(columns, resume_columns)))
+
+
 def derive(before, tables):
     need(type(before) is dict and set(before) == set(NAMES)
          and all(type(v) is bytes and 0 < len(v) <= 1048576 for v in before.values()), 'three_fixed_inputs_required')
@@ -49,8 +66,12 @@ def derive(before, tables):
     block = guard[guard.index(HEAD):guard.index(ANCHOR)]
     need(all(("'" + name + "':").encode() not in block for name in tables), 'table_already_admitted')
     added = b''.join(("          '" + name + "': '" + columns + "',\n").encode() for name, columns in sorted(tables.items()))
-    after = {'guard': guard.replace(ANCHOR, added + ANCHOR)}
+    return _pins(before, guard.replace(ANCHOR, added + ANCHOR))
 
+
+def _pins(before, guard_after):
+    need(type(before) is dict and set(before) == set(NAMES), 'three_fixed_inputs_required')
+    after = {'guard': guard_after}
     h = {name: sha(body).encode() for name, body in before.items()}
     admin = json.loads(before['admin_policy'])
     need(admin['sources']['native_guard.py'] == h['guard'].decode()
