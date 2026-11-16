@@ -104,8 +104,10 @@ estáveis das duas travas.
 O núcleo da manutenção abre `operations.sqlite3` com `timeout=0` e journal
 DELETE. Ler esse banco por fora durante uma operação faz a gravação dela falhar.
 Acompanhe operações só por `maintenance_read`. Uma leitura de ID inexistente
-também devolve `unknown`, então para confirmar presença ou ausência use o próprio
-`rollback_plan` ou `plan` idempotente com o mesmo ID.
+também devolvia `unknown`. Agora o gateway responde `state: absent` quando não existe
+linha no núcleo nem diário de artefato para o ID. Toda recusa traz `refusal_code`:
+o literal estático do erro ou o nome do tipo da exceção, nunca a mensagem
+(`scripts/raspberry-mcp/gateway-refusal-codes/`).
 
 Uma liberação preparada que venceu sem iniciar continua fixando a identidade
 antiga em seu plano. Seu diagnóstico segue falhando nessa fase; isso descreve
