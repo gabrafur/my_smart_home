@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for own unrevoked Node-RED admin tokens every 10 minutes
+
+[Timer]
+OnBootSec=5min
+OnCalendar=*:03/10:20
+RandomizedDelaySec=5
+Persistent=false
+
+[Install]
+WantedBy=timers.target

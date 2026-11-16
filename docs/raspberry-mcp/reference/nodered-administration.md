@@ -88,6 +88,19 @@ lê esse status e recomenda a atualização antes do próximo deploy. Docker
 indisponível resulta em `unknown`, nunca em `aligned`. O verificador não altera
 a cadeia.
 
+O mesmo status cobre duas falhas que antes só apareciam no deploy seguinte:
+
+- `session_cleanup_pins`: a recuperação nativa de sessões fixa a identidade
+  (dispositivo, inode, dono e modo) de cada diretório acima das três fontes de
+  autenticação dentro do contêiner. Recriar o contêiner, mesmo com a mesma
+  imagem, muda o dispositivo do overlay e o inode da raiz. Sem novo vínculo,
+  toda recuperação falha com `runtime_ancestor_identity_changed`. O novo vínculo
+  usa `scripts/raspberry-mcp/nodered-admin-cleanup-pins/derive.py`: a política
+  muda só nesses pinos, e o operador Root lê as identidades vivas depois de
+  conferir os hashes das três fontes.
+- `unrevoked_own_sessions`: sessões próprias com revogação não confirmada e
+  sem prova de limpeza, entre 30 minutos e 7 dias de idade.
+
 A tabela `result_checkpoints` preserva o hash e o estado terminal de resultados
 e a disponibilidade do texto. O guardião reconhece seu esquema e mantém as
 projeções existentes de estado e conciliação. As linhas desse checkpoint ficam
@@ -102,6 +115,35 @@ recuperação de uma publicação parcial em que esses arquivos estejam em vers�
 diferentes.
 
 ## Encerramento da sessão e processos efêmeros
+
+### Revogação automática do token próprio
+
+O apply segura os locks durante quase todo o orçamento de 45 segundos da
+unidade e costuma terminar por volta de 20 segundos. A reserva de revogação
+também termina 20 segundos após o início do processo. Por isso, basta que outro
+processo esteja com um lock nesse instante para a revogação ser recusada antes
+do envio (`shared_lock_busy`). O token de escrita continua válido por 7 dias, e o
+MCP passa a recusar novas sessões com `nodered_admin_operation_unconfirmed`.
+Isso aconteceu nos applies `b69b5659` e `5cf65c14`.
+
+O timer Root `raspberry-nodered-admin-session-cleanup` roda a cada 10 minutos,
+no segundo 20 dos minutos 3, 13, 23 e seguintes, e fecha esse caso pela mesma
+rota nativa, `RootCoordinator.recover_session_native`:
+
+- trata uma sessão própria por vez, com diário de impressão digital do token, a
+  partir de 2 minutos de idade;
+- usa uma permissão finita de 15 minutos, uma leitura do armazenamento e uma
+  revogação, sem login nem acesso aos fluxos;
+- depois de gravada a intenção, nunca repete: um resultado incerto fica para
+  inspeção;
+- uma recusa antes desse ponto, como lock ocupado ou pinos desatualizados, é
+  tentada de novo no máximo três vezes.
+
+Revogar o próprio token só remove acesso. A fonte fica em
+`scripts/raspberry-mcp/nodered-admin-session-cleanup/` e é instalada em
+`/usr/local/lib/raspberry-nodered-admin-session-cleanup/`. Os registros ficam em
+`/var/lib/raspberry-nodered-admin-session-cleanup/`. Se a sessão continuar sem
+revogação depois de 30 minutos, o verificador de defasagem passa a acusar.
 
 Os locks compartilhados são adquiridos como um conjunto: a contenção libera
 todos os descritores antes de esperar. A operação dispõe de até 8 segundos por
@@ -212,7 +254,20 @@ as observações precisam continuar vivas; processos mortos e divergências dos
 vínculos continuam recusados.
 
 Um intent ou resultado incerto bloqueia novos efeitos, inclusive com outra
-chave. Não há retry, novo deploy ou reversão automática. A reversão própria
+chave. Não há retry, novo deploy ou reversão automática. O recibo incerto
+registra em `uncertain_stage` a etapa em que a certeza se perdeu:
+`deploy_response`, `loaded_configuration` ou `guard_after`. O texto do erro não
+é exportado.
+
+Para sair do bloqueio, existe a reconciliação selada. Um operador Root grava
+`reconciliation.json` uma única vez no diário da operação, vinculado aos hashes
+exatos do plano, do intent e do recibo. Ele parte de um `nodered_admin_verify`
+recente da mesma operação, com a configuração carregada igual à afterimage e o
+guarda de credenciais e contexto aprovado. O registro libera novas operações,
+mas o recibo continua `uncertain`: não vira `applied` e não habilita reversão
+própria. Qualquer divergência de produtor, hash ou guarda mantém o bloqueio. O
+primeiro uso foi no deploy `aeb3158a`, cujos nós reiniciaram em 9 segundos
+enquanto o recibo perdeu a certeza antes da releitura. A reversão própria
 exige revisão e hash integral da configuração posterior ainda iguais; mudanças
 posteriores de terceiros impedem sobrescrita. A reversão de criação mantém os nós novos desabilitados, com os mesmos IDs e
 dados. Config nodes sem quarentena comprovada não são removidos nem apresentados

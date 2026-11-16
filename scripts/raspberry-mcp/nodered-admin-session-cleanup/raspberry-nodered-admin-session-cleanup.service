@@ -1,0 +1,15 @@
+[Unit]
+Description=Revoke own Node-RED admin tokens left unrevoked by the in-call cleanup
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+Nice=15
+IOSchedulingClass=idle
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-nodered-admin-session-cleanup/auto_cleanup.py
+TimeoutStartSec=60
+MemoryMax=256M
+NoNewPrivileges=yes
+PrivateTmp=yes
