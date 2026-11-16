@@ -13,7 +13,12 @@ import {
 } from "./proactive-maintenance-review.mjs";
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "proactive-maintenance-review.mjs");
-const policy = () => structuredClone(loadPolicy(DEFAULT_POLICY_PATH));
+// Host status files must never leak into tests, even when world-readable.
+const policy = () => {
+  const value = structuredClone(loadPolicy(DEFAULT_POLICY_PATH));
+  value.paths.nodered_admin_drift_status = "/nonexistent-review-root/nodered-admin-drift.json";
+  return value;
+};
 const HOUR = 3600000;
 const NOW = Date.parse("2026-01-10T12:00:00Z");
 
@@ -31,6 +36,7 @@ const healthy = () => [
   source("logs.sizes", { total_bytes: 10, largest: [] }),
   source("executor.peer_binding", { boot_matches: true, peer_process_alive: true, cgroup_matches: true, socket_matches: true }),
   source("workers.stale_markers", { markers: [] }),
+  source("nodered_admin.chain_drift", { state: "aligned", drifted: [], age_hours: 0.5 }),
 ];
 
 const replace = (evidence, id, data, error = null) => evidence.map((item) => (item.id === id ? source(id, data, error) : item));
@@ -423,4 +429,13 @@ test("stale marker source sees per-kind in-flight markers, not only the generic 
       { trigger: ".storage-maintenance-trigger", age_minutes: 180 },
     ]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test("node-red administration chain drift is announced before a deploy needs it", () => {
+  let findings = evaluate(replace(healthy(), "nodered_admin.chain_drift",
+    { state: "drift", drifted: ["ledger:task:drift"], age_hours: 0.2 }), policy());
+  assert.deepEqual(findings.map((f) => [f.key, f.priority]), [["nodered_admin.chain_drift", "P2"]]);
+  assert.match(findings[0].title, /ledger:task:drift/);
+  findings = evaluate(replace(healthy(), "nodered_admin.chain_drift", { state: "aligned", drifted: [], age_hours: 7 }), policy());
+  assert.deepEqual(findings.map((f) => [f.key, f.priority]), [["nodered_admin.chain_drift", "P3"]]);
 });

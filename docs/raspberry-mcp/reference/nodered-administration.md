@@ -77,6 +77,17 @@ de `repair_receipts` e a tabela `repair_resume_receipts`, criadas pela retomada
 explícita de reparo. Conferir os quatro ledgers do guardião contra o banco real
 antes do preflight evita descobrir uma divergência por vez.
 
+O verificador `scripts/raspberry-mcp/nodered-admin-drift/check.py` roda como
+Root a cada hora pelo timer `raspberry-nodered-admin-drift`. Ele abre os ledgers
+somente para leitura, compara tabelas e colunas com o esquema do guardião,
+confere identidade, imagem, rótulo Compose e endereço do contêiner Node-RED
+contra os pinos e verifica se a política fixa o hash atual do guardião. O
+resultado sanitizado fica em `/var/lib/raspberry-nodered-admin-drift/status.json`:
+só nomes de tabelas e estados, nunca linhas ou credenciais. A revisão proativa
+lê esse status e recomenda a atualização antes do próximo deploy. Docker
+indisponível resulta em `unknown`, nunca em `aligned`. O verificador não altera
+a cadeia.
+
 A tabela `result_checkpoints` preserva o hash e o estado terminal de resultados
 e a disponibilidade do texto. O guardião reconhece seu esquema e mantém as
 projeções existentes de estado e conciliação. As linhas desse checkpoint ficam

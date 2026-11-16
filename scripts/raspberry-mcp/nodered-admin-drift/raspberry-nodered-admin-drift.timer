@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly drift check of the sealed Node-RED administration chain
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+RandomizedDelaySec=2min
+
+[Install]
+WantedBy=timers.target

@@ -308,6 +308,22 @@ export const SOURCES = [
     },
   },
   {
+    id: "nodered_admin.chain_drift",
+    origin: "status of the read-only Node-RED administration chain drift check",
+    collect(ctx) {
+      const tail = boundedTail(ctx.resolvePath(ctx.policy.paths.nodered_admin_drift_status), 16384);
+      const status = JSON.parse(tail.text);
+      const ledgers = status.checks?.ledger_schemas ?? {};
+      const container = status.checks?.container ?? {};
+      const drifted = [
+        ...Object.entries(ledgers).filter(([, v]) => v.state !== "aligned").map(([name, v]) => `ledger:${name}:${v.state}`),
+        ...Object.entries(container).filter(([name, v]) => name !== "collection_error" && v !== "aligned").map(([name, v]) => `container:${name}:${v}`),
+        ...(status.checks?.guard_pins === "aligned" ? [] : [`guard_pins:${status.checks?.guard_pins ?? "unknown"}`]),
+      ].sort();
+      return { state: status.state, drifted, age_hours: Math.round((Date.now() - tail.mtimeMs) / 36e5 * 10) / 10 };
+    },
+  },
+  {
     id: "workers.stale_markers",
     origin: "processing markers under the Home Assistant trigger directories",
     collect(ctx) {
@@ -518,6 +534,22 @@ export function evaluate(evidence, policy) {
       proposed_action: "Aguardar um ciclo do atestador; se persistir, comparar a origem de inicialização do executor com a inscrição e seguir a recuperação documentada.",
       bucket: [peer.boot_matches, peer.peer_process_alive, peer.cgroup_matches, peer.socket_matches].join(","),
       evidence: ["executor.peer_binding"],
+    });
+  }
+
+  const chain = data("nodered_admin.chain_drift");
+  if (chain && (chain.state !== "aligned" || chain.age_hours > t.nodered_admin_drift_max_age_hours)) {
+    const drift = chain.state === "drift";
+    add({
+      key: "nodered_admin.chain_drift", priority: drift ? "P2" : "P3", risk: "baixo",
+      title: drift ? `Cadeia administrativa do Node-RED defasada: ${chain.drifted.join(", ")}`
+        : "Verificação da cadeia administrativa do Node-RED sem resultado atual",
+      benefit: "Evita descobrir a recusa do guarda somente na hora de um deploy Node-RED.",
+      proposed_action: drift
+        ? "Atualizar o guarda ou religar a identidade do contêiner pelo procedimento documentado antes do próximo deploy."
+        : "Conferir o timer raspberry-nodered-admin-drift e a leitura do Docker e dos ledgers.",
+      bucket: [chain.state, ...chain.drifted].join(","),
+      evidence: ["nodered_admin.chain_drift"],
     });
   }
 

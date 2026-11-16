@@ -118,6 +118,24 @@ Depois de atualizar o `docker-compose.yml`, recrie somente o serviço Node-RED
 para montar os dois helpers e o diretório de troca. Não reinicie a stack
 residencial inteira.
 
+## Interrupções por travamento do host
+
+O SIGTERM registrado em `execution_interrupted` vem do limite de 15 segundos
+do nó `exec`, não de outro processo. O helper do pedido é instantâneo, mas as
+duas ocorrências observadas em 15/11 (por volta de 19:53 e 23:47 UTC)
+coincidiram com travamentos do host inteiro. Nesse intervalo o journal ficou
+sem registros, e o timer do procmon, que dispara a cada 50 segundos com
+precisão de 1 segundo, atrasou 7 e 19 segundos. O sistema roda em cartão SD,
+sem swap e sem PSI no kernel. O kernel não registrou tarefa bloqueada (ele
+registra só bloqueios acima de 120 segundos), então a causa provável é
+contenção de escrita no armazenamento durante trabalho pesado simultâneo, e
+não falha do guardião. Para conferir uma nova ocorrência, compare o horário do
+aviso com o atraso do timer `raspberry-procmon`. Um intervalo sem registros no
+journal, isolado, não prova travamento.
+
+Classificar esse caso como interrupção transitória, sem alerta no celular,
+exige mudar o canvas e fazer um novo deploy administrativo do Node-RED.
+
 ## Testes seguros
 
 No grupo `TESTE — pedidos e resultados completos em dry-run`, execute na ordem:

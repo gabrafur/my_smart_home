@@ -56,6 +56,7 @@ ao executor que registre o acompanhamento com `ack`.
 | `logs.sizes` | Tamanho dos logs de workers |
 | `executor.peer_binding` | Vínculo do executor de tarefas com o boot e o processo atuais |
 | `workers.stale_markers` | Pedidos presos em processamento |
+| `nodered_admin.chain_drift` | Status do verificador da cadeia administrativa do Node-RED |
 
 Leituras de arquivo usam somente o final do arquivo, até o limite de bytes da
 política. Textos passam por remoção de credenciais, endereços, e-mails e

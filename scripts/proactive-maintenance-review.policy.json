@@ -20,7 +20,8 @@
     "backup_failures_7d_warn": 2,
     "log_warn_bytes": 5242880,
     "stale_marker_minutes": 120,
-    "dirty_worktree_warn_hours": 24
+    "dirty_worktree_warn_hours": 24,
+    "nodered_admin_drift_max_age_hours": 3
   },
   "dedupe": {
     "remind_after_hours": 168,
@@ -48,7 +49,8 @@
   },
   "paths": {
     "peer_proof": "/usr/local/lib/raspberry-task-control/task-peer-v2.json",
-    "executor_socket": "~/.codex/app-server-control/app-server-control.sock"
+    "executor_socket": "~/.codex/app-server-control/app-server-control.sock",
+    "nodered_admin_drift_status": "/var/lib/raspberry-nodered-admin-drift/status.json"
   },
   "auto_actions": {
     "enabled": true,

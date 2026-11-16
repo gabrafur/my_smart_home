@@ -1,0 +1,15 @@
+[Unit]
+Description=Read-only drift check of the sealed Node-RED administration chain
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-nodered-admin-drift/check.py
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=60
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/raspberry-nodered-admin-drift
