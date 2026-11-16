@@ -63,6 +63,16 @@ antes do deploy. Alterações no DDL do produtor devem atualizar o consumidor e
 seus hashes na mesma revisão. O teste de conformidade compara o DDL canônico
 do store de tarefas com as tabelas e colunas reconhecidas pelo guardião.
 
+Quando o store de tarefas ganha tabelas já presentes no banco instalado, o
+guardião instalado precisa ser atualizado antes de qualquer preflight; senão a
+recusa é `ledger_schema_tables_unknown`. A derivação pura
+`scripts/raspberry-mcp/nodered-guard-ledger-schema/derive.py` acrescenta só as
+entradas de tabela ao esquema `task` e move os pinos dependentes: guardião,
+política administrativa (hash fixado duas vezes) e unidade modelo. A operação
+Root confere antes as colunas do banco real em modo somente leitura e recarrega
+apenas as unidades; nenhum serviço é reiniciado. Foi assim que entraram
+`history_refs` e `profile_transitions`, criadas pelo perfil amplo de tarefas.
+
 A tabela `result_checkpoints` preserva o hash e o estado terminal de resultados
 e a disponibilidade do texto. O guardião reconhece seu esquema e mantém as
 projeções existentes de estado e conciliação. As linhas desse checkpoint ficam
