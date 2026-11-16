@@ -21,14 +21,16 @@ class NotificationState {
  }
  failure(reason){this.connected=false;this.error=ERRORS.has(reason)?reason:'invalid_response';}
  pong(now){this.lastPong=now;}
- apply(event,now,receivedAt=now){
+ apply(event,now,receivedAt=now,sourceForId=()=>null){
   if(!Number.isFinite(now)||!Number.isFinite(receivedAt)||receivedAt>now||!event||!['current','added','updated','removed'].includes(event.type)||!event.notifications||Array.isArray(event.notifications)||typeof event.notifications!=='object'||Object.keys(event.notifications).length>MAX_NOTICES)throw Error('invalid_response');
   const candidate=event.type==='current'?new Map():new Map(this.current), observedAt=new Date(now).toISOString();
   for(const [rawId,value] of Object.entries(event.notifications)){
    if(!value||value.notification_id!==rawId)throw Error('invalid_response');
    const clean=sanitize(value,observedAt);if(!clean)throw Error('invalid_response');
    if(event.type==='removed')candidate.delete(clean.id);
-   else candidate.set(clean.id,{...clean,revision:revision(clean)});
+   else {const source=sourceForId(rawId);if(source!==null&&!['private_operational_spool','homeassistant.persistent_notification'].includes(source))throw Error('invalid_source_provenance');
+    const source_provenance=source===null?null:{schema_version:1,source,basis:'collector_transport_boundary',observed_at:observedAt};
+    candidate.set(clean.id,{...clean,revision:revision(clean),source_provenance});}
   }
   if(candidate.size>MAX_NOTICES)throw Error('notification_limit');
   const changes=[];
@@ -45,7 +47,7 @@ class NotificationState {
    const source_timing={schema_version:1,frame_kind:event.type,
     source_occurred_at:change.phase==='removed'?null:notice.created_or_updated_at,
     collector_received_at:new Date(receivedAt).toISOString(),collector_observed_at:observedAt};
-   this.events.push({...change,id,sequence:this.sequence,observed_at:observedAt,source:'ha_persistent_notification',topic:'ha_notification',recovery_proven:false,source_timing});
+   this.events.push({...change,id,sequence:this.sequence,observed_at:observedAt,source:'ha_persistent_notification',topic:'ha_notification',recovery_proven:false,source_timing,source_provenance:(notice??this.current.get(change.object_id))?.source_provenance??null});
   }
   while(this.events.length>MAX_EVENTS){this.events.shift();this.dropped++;}
   this.current=candidate;this.initialized=true;this.connected=true;this.error=null;

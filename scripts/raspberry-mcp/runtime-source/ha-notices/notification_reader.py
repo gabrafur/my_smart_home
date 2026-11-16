@@ -112,6 +112,17 @@ def zigbee_target(row, content_valid=False):
     except(ValueError,TypeError,KeyError):return _zigbee_unknown(row,'zigbee_target_invalid_or_unsupported')
 
 
+def provenance(value):
+    if value is None:
+        return {'source':'notification_ingress_unknown','origin':'historical_ingress_not_retained','source_provenance':None}
+    if (type(value)is not dict or set(value)!={'schema_version','source','basis','observed_at'}
+            or value['schema_version']!=1 or value['source']not in ('private_operational_spool','homeassistant.persistent_notification')
+            or value['basis']!='collector_transport_boundary'):
+        raise ValueError('invalid_source_provenance')
+    iso(value['observed_at'])
+    return {'source':value['source'],'origin':value['basis'],'source_provenance':value}
+
+
 def notice(row):
     if (not isinstance(row, dict) or row.get('category') not in LABELS or
             row.get('summary') not in LABELS[row['category']] or
@@ -124,7 +135,7 @@ def notice(row):
         iso(row['created_or_updated_at'])
     diagnostic = reviewed_identifier_diagnostic(row['id'], content.project(row.get('diagnostics')))
     return {**diagnostic, **{k: row[k] for k in ('id','revision','observed_at','created_or_updated_at','category','summary','category_basis')},
-            'source':'homeassistant.persistent_notification','origin':'not_provided_by_HA',
+            **provenance(row.get('source_provenance')),
             'content_withheld':True,'destination_delivery':'not_applicable','zigbee_target':zigbee_target(row,diagnostic['content_collection_error']is None)}
 
 
@@ -189,7 +200,7 @@ def evidence(args, path=SNAPSHOT, clock=time.time):
     if offset and expected is None:
         raise ValueError('snapshot_digest_required')
     now=clock()
-    result={'source':'ha_persistent_notification_observer','observed_at':None,'age_seconds':None,
+    result={'source':'mixed_notification_ingress_observer','observed_at':None,'age_seconds':None,
             'state':'unknown','collection_error':None,'notifications':[],'next_offset':None,
             'coverage':['sanitized_persistent_notifications','not_mobile_delivery_receipts',
                         'notification_removal_not_recovery','no_live_HA_queries_from_MCP']}

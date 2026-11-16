@@ -14,7 +14,7 @@ try:b.patch_collector(before+b' ');raise Exception('drift accepted')
 except ValueError:pass
 sys.stdout.buffer.write(after)
 `;
-const built=spawnSync('python3',['-B','-c',code,path.join(exported,'notification_collector.cjs'),path.join(here,'private-notice-spool/derive.py'),path.join(here,'private-notice-alias/derive.py')]);assert.equal(built.status,0,built.stderr.toString());fs.writeFileSync(path.join(work,'notification_collector.cjs'),built.stdout);
+const built=spawnSync('python3',['-B','-c',code,path.join(here,'private-notice-spool/baseline-collector.cjs'),path.join(here,'private-notice-spool/derive.py'),path.join(here,'private-notice-alias/derive.py')]);assert.equal(built.status,0,built.stderr.toString());fs.writeFileSync(path.join(work,'notification_collector.cjs'),built.stdout);
 const require=createRequire(path.join(work,'x.cjs'));const {connect,readSpool,SPOOL_ALIASES}=require('./notification_collector.cjs');const {NotificationState}=require('./notification_state.cjs');
 const uid=process.getuid(),sha=s=>createHash('sha256').update(s).digest('hex');const privateId='eva_private_native_systemd_procmon',canonical=SPOOL_ALIASES[privateId];
 const dir=()=>{const p=fs.mkdtempSync(path.join(work,'queue-'));fs.chmodSync(p,0o750);return p;};

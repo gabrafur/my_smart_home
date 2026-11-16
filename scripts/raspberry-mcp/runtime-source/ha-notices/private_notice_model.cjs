@@ -4,12 +4,17 @@
 const {hash}=require('./notification_text.cjs');
 const MAX_RECORDS=1024,MAX_EVENTS=256,MAX_BYTES=4*1024*1024,RETENTION_MS=7*86400*1000;
 const HEX=/^[0-9a-f]{64}$/;
-const PROJECTION_KEYS=new Set(['schema_version','source','object_id','observed_at','source_occurred_at','content_digest','text','redacted_fields','content_complete','complete_except_protected_secret_values','collection_error','content_bytes','mime_type','untrusted_source_text','execution_authority','coverage','revision','retained_at','legacy_ref']);
+const PROJECTION_KEYS=new Set(['schema_version','source','object_id','observed_at','source_occurred_at','content_digest','text','redacted_fields','content_complete','complete_except_protected_secret_values','collection_error','content_bytes','mime_type','untrusted_source_text','execution_authority','coverage','revision','retained_at','legacy_ref','ingress_provenance']);
 const REDACTION_REASONS=new Set(['private_key','credential_header','bearer_credential','credential_value','url_userinfo','signed_token','authentication_code','ping_credential']);
 const copy=v=>JSON.parse(JSON.stringify(v));
 function need(ok,why){if(!ok)throw Error(why);}
 function at(value){const n=typeof value==='string'&&value.length<=40?Date.parse(value):NaN;need(Number.isFinite(n),'invalid_private_clock');return n;}
+function validateIngress(p){
+ if(p===null||p===undefined)return;
+ need(p&&Object.keys(p).sort().join(',')==='basis,observed_at,schema_version,source'&&p.schema_version===1&&['private_operational_spool','homeassistant.persistent_notification'].includes(p.source)&&p.basis==='collector_transport_boundary','invalid_source_provenance');at(p.observed_at);
+}
 function validateProjection(p){
+ validateIngress(p.ingress_provenance);
  need(p&&Object.keys(p).every(k=>PROJECTION_KEYS.has(k))&&p.schema_version===1&&typeof p.object_id==='string'&&HEX.test(p.object_id)&&typeof p.content_digest==='string'&&HEX.test(p.content_digest)&&
       p.source==='homeassistant.persistent_notification.private_text'&&p.collection_error===null&&
       p.content_complete===true&&p.complete_except_protected_secret_values===true&&
@@ -50,6 +55,7 @@ class PrivateNoticeModel{
    records.set(key(record),record);
   }
   need(Object.keys(s.current).length<=512,'private_current_limit');
+  if(s.current_source!==undefined){need(s.current_source&&typeof s.current_source==='object'&&!Array.isArray(s.current_source)&&Object.keys(s.current_source).length<=512,'invalid_current_source');for(const[id,v]of Object.entries(s.current_source)){need(v&&s.current[id]===v.revision&&Object.keys(v).sort().join(',')==='provenance,revision','current_source_binding');validateIngress(v.provenance);}}
   for(const [id,rev]of Object.entries(s.current))need(HEX.test(id)&&HEX.test(rev)&&records.has(id+':'+rev),'current_content_missing');
   need(s.sequence===s.evicted_events+s.events.length,'private_event_sequence_gap');
   for(let i=0;i<s.events.length;i++){
@@ -67,12 +73,12 @@ class PrivateNoticeModel{
   const next=copy(this.state),byKey=new Map(next.records.map(r=>[key(r),r]));
   const refs=new Map();
   for(const r of legacyRefs){need(r&&HEX.test(r.object_id)&&HEX.test(r.revision)&&!refs.has(r.object_id),'invalid_legacy_association');refs.set(r.object_id,copy(r));}
-  const current={};
+  const current={},currentSource={};
   for(const raw of projections){
    const p=validateProjection(raw);need(!Object.hasOwn(current,p.object_id),'private_duplicate_identity');
    need(at(p.observed_at)<=now,'frame_observation_mismatch');
    const rev=hash(JSON.stringify(['private-notice-v1',p.object_id,p.source_occurred_at,p.content_digest]));
-   current[p.object_id]=rev;
+   current[p.object_id]=rev;currentSource[p.object_id]={revision:rev,provenance:copy(p.ingress_provenance??null)};
    const r={...copy(p),revision:rev,retained_at:new Date(now).toISOString(),legacy_ref:refs.get(p.object_id)||null};
    const existing=byKey.get(key(r));
    if(existing){
@@ -96,7 +102,7 @@ class PrivateNoticeModel{
   const required=new Set([...Object.entries(current).map(([id,r])=>id+':'+r),
    ...next.events.map(e=>e.object_id+':'+e.revision)]);
   next.records=[...byKey.values()].filter(r=>required.has(key(r))||now-at(r.retained_at)<=RETENTION_MS);
-  next.current=current;next.initialized=true;next.observed_at=new Date(now).toISOString();next.collection_error=null;
+  next.current=current;next.current_source=currentSource;next.initialized=true;next.observed_at=new Date(now).toISOString();next.collection_error=null;
   // Validate a disposable next state before committing anything in memory.
   const checked=new PrivateNoticeModel(next);this.state=checked.state;
   return changes.length;

@@ -311,12 +311,13 @@
     },
     "repair-control/test_events.mjs": {
       "source": "/usr/local/lib/raspberry-repair-control/test_events.mjs",
-      "source_sha256": "32918b6431f64531c610e1e6022b55dddee2cf477ff914b809519c10b2178c8d",
-      "export_sha256": "434468b58351974bfecf37d5e6b390f975d12a7579d965f82baf5f8b27114fbd",
+      "source_sha256": "084a4399238f118b19e9f13e53d59e3173ac8e900f67b9db3aeef8e35da7adb6",
+      "export_sha256": "424f309e362270b5aff842a2b339108eb56a3e933c064dc7f4172732b71a4813",
       "normalizations": [
         "out_of_scope_private_test_thread_identifier_replaced_with_binding_marker",
         "relative_frontend_test_import_points_to_public_snapshot"
-      ]
+      ],
+      "source_observed_at": "2026-11-16T14:38:51Z"
     },
     "administrative-recovery/apply_procmon_signal_accounting.py": {
       "source": "/run/raspberry-procmon-signal-accounting-20261025/apply-r2.py",
@@ -421,23 +422,36 @@
     },
     "ha-notices/notification_state.cjs": {
       "source": "/usr/local/lib/raspberry-ha-notices/notification_state.cjs",
-      "source_sha256": "b2edc3604c7929b28e2f087174b77992d68ac4fec38fce47b36d6899c6908874",
-      "export_sha256": "b2edc3604c7929b28e2f087174b77992d68ac4fec38fce47b36d6899c6908874",
-      "normalizations": []
+      "source_sha256": "2734e9561cea0778de3f19ce74ce46bc3fd9f54feccf0a34fcd55ee68c5f3163",
+      "export_sha256": "2734e9561cea0778de3f19ce74ce46bc3fd9f54feccf0a34fcd55ee68c5f3163",
+      "normalizations": [],
+      "source_observed_at": "2026-11-16T14:38:51Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_assistant_execution_or_household_functional_recovery_proof"
+      ]
     },
     "ha-notices/notification_reader.py": {
       "source": "/usr/local/lib/raspberry-ha-notices/notification_reader.py",
-      "source_sha256": "4cd5dd21a76e17c902aa3c1a6d7bcb97a764aa348628db9f36c2e102ef8dc147",
-      "export_sha256": "098ec64781ecdfbc487201043f44378ec5759738074ca6d2cd39f521e7aa87f1",
-      "normalizations": [
-        "reviewed_reference_update_structured_notice_target_identity;not_original_captured_runtime_bytes"
+      "source_sha256": "d8443e25b01c0cf6309e98a11e7b468155f7174a36ccaf4e2a8f34a6612822cc",
+      "export_sha256": "d8443e25b01c0cf6309e98a11e7b468155f7174a36ccaf4e2a8f34a6612822cc",
+      "normalizations": [],
+      "source_observed_at": "2026-11-16T14:38:51Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_assistant_execution_or_household_functional_recovery_proof"
       ]
     },
     "ha-notices/notification_collector.cjs": {
       "source": "/usr/local/lib/raspberry-ha-notices/notification_collector.cjs",
-      "source_sha256": "262190860786034b573e3b9fcb840b3726f7291cb5bb120ce0fbe1c5efaddc54",
-      "export_sha256": "262190860786034b573e3b9fcb840b3726f7291cb5bb120ce0fbe1c5efaddc54",
-      "normalizations": []
+      "source_sha256": "94d8ca78b71c2a02a455ab73e302a2ed6d4509d65dd8a8cb979d3489b560172a",
+      "export_sha256": "94d8ca78b71c2a02a455ab73e302a2ed6d4509d65dd8a8cb979d3489b560172a",
+      "normalizations": [],
+      "source_observed_at": "2026-11-16T14:38:51Z",
+      "source_observation_coverage": [
+        "installed_source_bytes_only",
+        "not_assistant_execution_or_household_functional_recovery_proof"
+      ]
     },
     "ha-notices/notices-broker.py": {
       "source": "/usr/local/lib/raspberry-ha-notices/notices-broker.py",

@@ -28,7 +28,8 @@ for (const name of fs.readdirSync(exported)) {
 }
 const built = python(
   "import sys,derive;sys.stdout.buffer.write(derive.patch_collector(sys.stdin.buffer.read()))",
-  fs.readFileSync(path.join(exported, "notification_collector.cjs")),
+  // Historical baseline: the derivation is pinned to the collector it was installed over.
+  fs.readFileSync(path.join(here, "private-notice-spool", "baseline-collector.cjs")),
 );
 assert.equal(built.status, 0, built.stderr);
 fs.writeFileSync(path.join(work, "notification_collector.cjs"), built.stdout);
@@ -64,7 +65,7 @@ for bad in (policy.replace(b'true',b'false'), policy.replace(derive.sha(before).
     except ValueError: pass
 print(derive.sha(after))
 `;
-  const result = spawnSync("python3", ["-B", "-c", code, path.join(exported, "notification_collector.cjs")], { cwd: candidate, encoding: "utf8" });
+  const result = spawnSync("python3", ["-B", "-c", code, path.join(here, "private-notice-spool", "baseline-collector.cjs")], { cwd: candidate, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   assert.equal(result.stdout.trim(), sha(built.stdout));
 });

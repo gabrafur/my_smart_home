@@ -389,6 +389,15 @@ do Node-RED também chegam a ela pelo
 modo `shadow`: continuam também nos canais anteriores até a substituição ser
 comprovada. Os demais avisos técnicos permanecem nos canais anteriores.
 
+Cada linha informa a origem medida na fronteira do coletor: `source` é
+`private_operational_spool` para avisos da fila privada e
+`homeassistant.persistent_notification` para avisos do Home Assistant, com
+`origin` igual a `collector_transport_boundary`. Linhas anteriores a essa
+marcação aparecem como `notification_ingress_unknown`, sem origem presumida.
+A origem não altera a revisão do aviso nem cria eventos. O texto privado e o
+modelo retido levam a mesma procedência, e um rótulo fora desses dois valores
+é recusado.
+
 ### Instalar e reverter
 
 A mudança altera o coletor e o hash dele na política de conteúdo privado, cria

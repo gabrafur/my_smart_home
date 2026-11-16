@@ -41,7 +41,7 @@ function protectSecrets(input,field){
   'authentication_code',(_,prefix)=>prefix+MARKER);
  return {text,redactions};
 }
-function projectPersistent(notification,observedAt){
+function projectPersistent(notification,observedAt,ingress=null){
  if(!notification||typeof notification!=='object'||Array.isArray(notification)||
     typeof notification.notification_id!=='string'||!notification.notification_id.length||notification.notification_id.length>512||
     !validTime(observedAt))throw Error('invalid_notification_identity_or_clock');
@@ -50,7 +50,8 @@ function projectPersistent(notification,observedAt){
  const text={title:title.text,message:message.text};
  const bytes=Buffer.byteLength(JSON.stringify(text),'utf8');
  if(bytes>MAX_TEXT_BYTES)throw Error('notification_text_limit_or_type');
- return {schema_version:1,source:'homeassistant.persistent_notification.private_text',
+ if(ingress!==null&&(!ingress||ingress.schema_version!==1||!['private_operational_spool','homeassistant.persistent_notification'].includes(ingress.source)||ingress.basis!=='collector_transport_boundary'||ingress.observed_at!==new Date(observedAt).toISOString()))throw Error('invalid_source_provenance');
+ return {schema_version:1,source:'homeassistant.persistent_notification.private_text',ingress_provenance:ingress,
   object_id:hash(notification.notification_id),observed_at:new Date(observedAt).toISOString(),
   source_occurred_at:validTime(notification.created_at)?new Date(notification.created_at).toISOString():null,
   content_digest:hash(JSON.stringify([text.title,text.message])),text,

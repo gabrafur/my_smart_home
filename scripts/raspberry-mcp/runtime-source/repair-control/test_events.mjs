@@ -63,21 +63,20 @@ test('quota refuses API and paid credits without sending',()=>{
  assert.throws(()=>rpc.quota({account:{type:'chatgpt',planType:'pro'}},
   {ordinaryUsageAllowed:true,rateLimits:{credits:{hasCredits:true}}}));
 });
-test('unloaded fixed thread resumes without configuration overrides before preflight',async()=>{
+test('unloaded fixed thread without an enrolled resume profile is refused before any resume',async()=>{
  const calls=[];const id=rpc.THREADS[0];
- const thread=state=>({id,status:{type:state},ephemeral:false,cwd:'/home/gabriel',canAcceptDirectInput:state==='idle'});
+ const thread=state=>({id,status:{type:state},ephemeral:false,cwd:'/home/fixture',canAcceptDirectInput:state==='idle'});
  const invoke=async(method,params)=>{
-  calls.push({method,params});
+  calls.push(method);
   if(method==='thread/read')return {thread:thread('notLoaded')};
-  if(method==='thread/resume')return {thread:thread('idle')};
   if(method==='account/read')return {account:{type:'chatgpt',planType:'pro'}};
   if(method==='account/rateLimits/read')return {ordinaryUsageAllowed:true,rateLimits:{credits:{hasCredits:false,unlimited:false,balance:null}}};
   throw Error('unexpected effect');
  };
- const out=await rpc.run({mode:'preflight',thread_id:id},invoke);
- assert.equal(out.included_quota_confirmed,true);
- assert.deepEqual(calls.find(x=>x.method==='thread/resume').params,{threadId:id,excludeTurns:true});
- assert.equal(calls.some(x=>['turn/start','thread/start'].includes(x.method)),false);
+ // Historical profile metadata is not a standing resume grant.
+ await assert.rejects(rpc.run({mode:'preflight',thread_id:id},invoke),/legacy_resume_profile_unenrolled/);
+ assert.equal(calls.includes('thread/resume'),false);
+ assert.equal(calls.some(m=>['turn/start','thread/start'].includes(m)),false);
 });
 test('resume to active or failed resume never sends and observation does not resume',async()=>{
  const id=rpc.THREADS[0],base={id,status:{type:'notLoaded'},ephemeral:false,cwd:'/home/gabriel',canAcceptDirectInput:false};

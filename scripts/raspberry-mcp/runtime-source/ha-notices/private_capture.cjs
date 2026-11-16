@@ -91,7 +91,7 @@ class PrivateCapture{
    if(!value||value.notification_id!==rawId)throw Error('invalid_private_frame');
    const id=hash(rawId);
    if(event.type==='removed')candidate.delete(id);
-   else candidate.set(id,projectPersistent(value,observedAt));
+   else candidate.set(id,projectPersistent(value,observedAt,legacyRows.find(r=>r.id===id)?.source_provenance??null));
   }
   const refs=legacyRows.map(r=>({object_id:r.id,revision:r.revision}));
   const next=new PrivateNoticeModel(this.model.snapshot());next.applyCurrent([...candidate.values()],refs,observedAt);
