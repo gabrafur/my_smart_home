@@ -227,3 +227,10 @@ eventos é `Type=simple`, e depois do `start` o processo fica cerca de 730 ms co
 nessa janela e recusava. `scripts/raspberry-mcp/client-worker-start-race/` faz o
 `post_start` esperar, com prazo limitado por `maximum_phase_seconds`, só por essas
 recusas de pré-`exec`. Qualquer outra recusa continua imediata.
+
+Com o runtime contínuo de componente (fechamento 3a), as units `job` e `validate`
+executam `continuity_entry.py <anchor>`. O anchor fixa o escopo da política de
+componentes sem as duas folhas que o cliente gerencia (worker e política de reparo).
+Por isso `scripts/raspberry-mcp/client-reference-continuity/` faz a recomposição de
+referências do cliente manter essas units intactas, em vez de recusá-las. A `guard`
+continua sendo repinada.
