@@ -82,6 +82,10 @@ O Git cobre somente os arquivos públicos versionáveis. Ele não substitui o
 backup privado e criptografado do estado do Home Assistant, Node-RED, Zigbee,
 MQTT, Matter ou das credenciais.
 
+Caminhos de desenvolvimento adiados para o autor não bloqueiam mais o push:
+o backup chama o `pre-push` com `GIT_BACKUP_CLEAN_VALIDATION=1`, que valida o
+`HEAD` exato num worktree temporário limpo, sob a mesma trava de validação.
+
 Se o `pre-push` encontrar a validação canônica ocupada ou recursos abaixo do
 limite seguro, o commit local permanece pendente e o worker retoma a mesma
 solicitação nos minutos seguintes. Uma execução sem novas mudanças também

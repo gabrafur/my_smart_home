@@ -18,6 +18,22 @@ while read -r local_ref local_oid remote_ref remote_oid; do
 done
 
 worktree_status=$(git -C "$repository_root" status --porcelain --untracked-files=all)
+if [ -n "$worktree_status" ] && [ "${GIT_BACKUP_CLEAN_VALIDATION:-}" = "1" ]; then
+  # The nightly backup leaves authors' in-progress paths untouched. Validate the
+  # exact pushed HEAD in a temporary clean detached worktree instead of refusing.
+  validation_dir=$(mktemp -d "${TMPDIR:-/tmp}/my-smart-home-prepush.XXXXXX")
+  cleanup_validation() {
+    git -C "$repository_root" worktree remove --force "$validation_dir/tree" >/dev/null 2>&1 || :
+    git -C "$repository_root" worktree prune >/dev/null 2>&1 || :
+    rm -rf "$validation_dir"
+  }
+  trap cleanup_validation EXIT HUP INT TERM
+  git -C "$repository_root" worktree add --quiet --detach "$validation_dir/tree" "$head_oid"
+  printf 'pre-push: worktree has in-progress paths; validating %s in a clean temporary worktree\n' "$head_oid"
+  env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_COMMON_DIR -u GIT_PREFIX \
+    make -C "$validation_dir/tree" --no-print-directory validate-public
+  exit $?
+fi
 if [ -n "$worktree_status" ]; then
   printf 'pre-push: the worktree must be clean before canonical validation\n' >&2
   printf '%s\n' "$worktree_status" >&2

@@ -122,6 +122,9 @@ atualmente em checkout e executa `make validate-public`; qualquer falha impede
 o envio. Commits e pushes feitos pelo terminal ou por IDEs que respeitam hooks
 Git ficam protegidos pelos mesmos contratos da CI. `--no-verify` consegue
 ignorar hooks por design do Git e não deve ser usado no fluxo normal.
+Só o backup noturno define `GIT_BACKUP_CLEAN_VALIDATION=1`: com caminhos em
+andamento de autores no worktree, o hook valida o `HEAD` exato num worktree
+temporário limpo em vez de recusar, sem tocar nesses caminhos.
 
 Exemplo de bloqueio:
 

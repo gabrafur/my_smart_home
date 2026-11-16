@@ -37,6 +37,11 @@ conector ChatGPT -> túnel -> frontend raspberry-mcp@ (sem rede)
   `/var/lib/raspberry-ha-lights/commands.json` antes do envio (histórico de 24 h).
 - `ha_light_set` não é somente leitura, então o conector mantém sua confirmação de
   interface.
+- Cada chamada às duas ferramentas entra no log de auditoria do frontend
+  (namespace `raspberry-mcp`, campos `tool`, `id` e `success`).
+- `maintenance_capabilities` ganha um bloco `household_lights` com as ferramentas
+  e os alvos. O `no_actuators` do broker selado de diagnóstico continua valendo
+  para as ferramentas de diagnóstico e manutenção e não é reescrito.
 - O token é o long-lived existente, com direitos de administrador no Home
   Assistant; o broker o limita aos switches registrados. Um usuário dedicado de
   menor privilégio no Home Assistant é um endurecimento possível.
@@ -45,8 +50,10 @@ conector ChatGPT -> túnel -> frontend raspberry-mcp@ (sem rede)
 
 Fontes e testes ficam em `scripts/raspberry-mcp/ha-lights/` (`test_broker.py`,
 `lights-route.test.mjs`). `install.py` é o operador Root, com os verbos
-`prepare`, `apply`, `verify` e `rollback`. O `rollback` restaura a imagem
+`prepare`, `apply`, `verify` e `rollback`; esse `rollback` restaura a imagem
 anterior da rota de conteúdo privado e remove o socket, as units e o broker.
+`upgrade.py` troca a rota da v1 pela v2 com compare-and-swap nos bytes exatos da
+v1, e seu `rollback` volta para a v1.
 
 Ferramentas novas só aparecem numa nova conexão do frontend. Depois de instalar,
 reinicie o túnel (`raspberry-mcp-tunnel.service`) sem operação MCP em andamento

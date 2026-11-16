@@ -26,6 +26,19 @@ export function invokeLights(request,socket=SOCKET){return new Promise((resolve,
  c.on('data',b=>{if(out.length+b.length>32768)return finish(Error('lights_response_limit'));out=Buffer.concat([out,b]);});
  c.on('end',()=>{try{if(out.at(-1)!==10)throw Error();finish(null,JSON.parse(out.toString('utf8')))}catch{finish(Error('lights_response_unconfirmed'))}});
 });}
+// The sealed diagnostics broker lists "no_actuators" for its own diagnostic scope.
+// Add, never rewrite, an explicit statement of the separate lighting tools.
+export const householdLights={tools:['ha_lights_read','ha_light_set'],targets:TARGETS,
+ scope:'registered_household_lights_only',not_reachable:['gate','alarm','locks','other_devices'],
+ note:'no_actuators refers to the diagnostic and maintenance tools; registered lights are switched only with ha_light_set, confirmed by Home Assistant readback.'};
+export function annotateCapabilities(response){
+ const r=response?.result;
+ if(!r||!plain(r.structuredContent))return response;
+ r.structuredContent.household_lights=structuredClone(householdLights);
+ const t=Array.isArray(r.content)?r.content.find(x=>x?.type==='text'):undefined;
+ if(t){try{const v=JSON.parse(t.text);if(plain(v)){v.household_lights=structuredClone(householdLights);t.text=JSON.stringify(v);}}catch{}}
+ return response;
+}
 export function makeLightsRoute(prior,invoke=invokeLights,audit=()=>{}){
  return async(q,...rest)=>{
   if(q?.method==='tools/call'&&names.has(q.params?.name)){
@@ -37,13 +50,14 @@ export function makeLightsRoute(prior,invoke=invokeLights,audit=()=>{}){
     value=await invoke({name,arguments:args});
     if(!plain(value))throw Error();
    }catch{value={state:'unknown',source:'fixed_home_assistant_lighting_broker',collection_error:'lights_route_unavailable',automatic_retry:false};}
-   audit({tool:name,id:q.id,state:typeof value.state==='string'?value.state.slice(0,32):'unknown'});
-   return{jsonrpc:'2.0',id:q.id,result:{content:[{type:'text',text:JSON.stringify(value)}],structuredContent:value,
-    isError:!!value.collection_error||['refused','unknown'].includes(value.state)}};
+   const isError=!!value.collection_error||['refused','unknown'].includes(value.state);
+   try{audit({tool:name,id:q.id,success:!isError,state:typeof value.state==='string'?value.state.slice(0,32):'unknown'});}catch{}
+   return{jsonrpc:'2.0',id:q.id,result:{content:[{type:'text',text:JSON.stringify(value)}],structuredContent:value,isError}};
   }
   const response=await prior(q,...rest);
   if(q?.method==='tools/list'&&Array.isArray(response?.result?.tools))
    for(const d of lightDescriptors)if(!response.result.tools.some(t=>t.name===d.name))response.result.tools.push(structuredClone(d));
+  if(q?.method==='tools/call'&&q.params?.name==='maintenance_capabilities')annotateCapabilities(response);
   return response;
  };
 }

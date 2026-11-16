@@ -100,3 +100,30 @@ test("installer preserves an existing custom hooks path", (t) => {
   const configured = run("git", ["config", "--local", "--get", "core.hooksPath"], root);
   assert.equal(configured.stdout.trim(), "custom-hooks");
 });
+
+test("backup pre-push validates the exact HEAD in a clean worktree despite in-progress paths", (t) => {
+  const root = fixture(t);
+  const remote = fs.mkdtempSync(path.join(os.tmpdir(), "git-hooks-remote-"));
+  t.after(() => fs.rmSync(remote, { recursive: true, force: true }));
+  assert.equal(run("git", ["init", "--bare", "-q"], remote).status, 0);
+  assert.equal(run("./scripts/install-git-hooks.sh", [], root).status, 0);
+  assert.equal(run("git", ["config", "user.name", "Hook Test"], root).status, 0);
+  assert.equal(run("git", ["config", "user.email", "hook-test@example.invalid"], root).status, 0);
+  assert.equal(run("git", ["remote", "add", "origin", remote], root).status, 0);
+  // The committed Makefile fails if the author's in-progress file is visible.
+  fs.writeFileSync(path.join(root, "Makefile"), "validate-public:\n\t@test ! -e in-progress.txt\n\t@echo validated-clean-head\n");
+  assert.equal(run("git", ["add", "."], root).status, 0);
+  assert.equal(run("git", ["commit", "-m", "test: validate clean backup head"], root).status, 0);
+  assert.equal(run("git", ["branch", "-M", "main"], root).status, 0);
+  fs.writeFileSync(path.join(root, "in-progress.txt"), "author work\n");
+
+  const strict = run("git", ["push", "origin", "main"], root);
+  assert.notEqual(strict.status, 0);
+  assert.match(strict.stderr, /worktree must be clean/);
+
+  const backup = spawnSync("git", ["push", "origin", "main"], { cwd: root, encoding: "utf8", env: { ...process.env, GIT_BACKUP_CLEAN_VALIDATION: "1" } });
+  assert.equal(backup.status, 0, backup.stderr);
+  assert.match(backup.stdout + backup.stderr, /validated-clean-head/);
+  assert.equal(fs.readFileSync(path.join(root, "in-progress.txt"), "utf8"), "author work\n");
+  assert.equal(run("git", ["worktree", "list", "--porcelain"], root).stdout.split("\n").filter((l) => l.startsWith("worktree ")).length, 1);
+});
