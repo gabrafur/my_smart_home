@@ -18,6 +18,8 @@ export function records(markdown) {
   return found;
 }
 
+export const VOLATILE_EVIDENCE = new Set(["docker-compose.yml", "compose.modules.yml"]);
+
 // Fingerprints detect source drift; they do not establish semantic truth.
 export function checkEvidence(markdown, readPublic) {
   const errors = [];
@@ -32,6 +34,8 @@ export function checkEvidence(markdown, readPublic) {
       if (!Array.isArray(m.evidence) || !m.evidence.length) throw new Error("missing memory evidence");
       for (const e of m.evidence) {
         if (typeof e.file !== "string" || !/^[a-f0-9]{64}$/.test(e.sha256)) throw new Error("invalid evidence reference");
+        // Automated update workers rewrite image pins here; a fingerprint would fail every update backup.
+        if (VOLATILE_EVIDENCE.has(e.file)) throw new Error(`volatile evidence source ${e.file}; cite a stable source instead`);
         const source = readPublic(e.file);
         if (digest(source) !== e.sha256) errors.push(`${m.id}: evidence_changed; revalidate source ${e.file}`);
       }

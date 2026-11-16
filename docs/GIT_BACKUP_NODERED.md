@@ -86,6 +86,15 @@ Caminhos de desenvolvimento adiados para o autor não bloqueiam mais o push:
 o backup chama o `pre-push` com `GIT_BACKUP_CLEAN_VALIDATION=1`, que valida o
 `HEAD` exato num worktree temporário limpo, sob a mesma trava de validação.
 
+As atualizações diárias (DietPi, depois Home Assistant Core, depois contêineres) só
+começam depois de um backup Git e de um backup externo verificados. Uma
+atualização de imagem reescreve o pin do `docker-compose.yml` e registra a
+mudança com o próprio backup. Se uma nota de memória citar esse arquivo como
+evidência, a validação do push recusa (`evidence_changed`) e a atualização falha.
+Foi o que aconteceu com o Core em 14/11 e com os contêineres em 09/11. Por isso
+a checagem de memória recusa `docker-compose.yml` e `compose.modules.yml` como
+evidência.
+
 Se o `pre-push` encontrar a validação canônica ocupada ou recursos abaixo do
 limite seguro, o commit local permanece pendente e o worker retoma a mesma
 solicitação nos minutos seguintes. Uma execução sem novas mudanças também
