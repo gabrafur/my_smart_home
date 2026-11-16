@@ -185,6 +185,23 @@ def effect_inventory(before, after, diff):
             'requires_exact_effect_review': True}
 
 
+# Exactly reviewed Node-RED builtins; no npm resolution, alias or caller module.
+# Function bytes are pinned as well as identity, so a later func-only patch cannot
+# reuse a filesystem capability for a different program.
+EVA_PRIVATE_BUILTINS = {'global_observer_eva_private_export': {'func_sha256': '4d3d7a759db707d8a79342e222cb6308ce00315fd6d9cbc9100ed88c66f65289', 'libs': [{'var': 'fs', 'module': 'fs'}, {'var': 'crypto', 'module': 'crypto'}], 'outputs': 0}, 'global_observer_eva_private_status': {'func_sha256': 'aca1791556f118de16ed12b7ebec380e0f2db041491d0de40712f021dcb9401d', 'libs': [{'var': 'fs', 'module': 'fs'}], 'outputs': 2}}
+
+
+def admitted_private_builtins(node):
+    spec = EVA_PRIVATE_BUILTINS.get(node.get('id'))
+    return (spec is not None and node.get('type') == 'function'
+            and node.get('z') == 'global_flow_observer_tab'
+            and node.get('libs') == spec['libs']
+            and type(node.get('func')) is str
+            and hashlib.sha256(node['func'].encode()).hexdigest() == spec['func_sha256']
+            and node.get('initialize', '') == '' and node.get('finalize', '') == ''
+            and type(node.get('outputs')) is int and node['outputs'] == spec['outputs'])
+
+
 def build_plan(operation_id, base, edits, policy_sha256, now, ttl=900, projector=None):
     need(valid_id(operation_id) and valid_id(policy_sha256, SHA), 'invalid_identity')
     before = snapshot(base)
@@ -205,7 +222,8 @@ def build_plan(operation_id, base, edits, policy_sha256, now, ttl=900, projector
             need(node['id'] not in index, 'create_node_exists')
             need(node['type'] not in FORBIDDEN_TYPES, 'shell_node_refused')
             need(not protected_input(node), 'protected_field_refused')
-            need(not node.get('libs'), 'module_install_not_admitted')
+            need(not node.get('libs') or admitted_private_builtins(node),
+                 'module_install_not_admitted')
             flows.append(node)
             index[node['id']] = node
             identifier = node['id']
@@ -226,11 +244,14 @@ def build_plan(operation_id, base, edits, policy_sha256, now, ttl=900, projector
                 keys = set(fields) | set(remove)
                 need(not protected_input(fields), 'protected_field_refused')
                 need(keys and not any(k in ('id', 'type') or PROTECTED.search(k) for k in keys), 'protected_field_refused')
-                need('libs' not in keys, 'module_install_not_admitted')
+                need('libs' not in keys or identifier in EVA_PRIVATE_BUILTINS,
+                     'module_install_not_admitted')
                 for key in remove:
                     need(key in node, 'unset_field_missing')
                     del node[key]
                 node.update(copy.deepcopy(fields))
+                if identifier in EVA_PRIVATE_BUILTINS and node.get('libs'):
+                    need(admitted_private_builtins(node), 'module_install_not_admitted')
             else:
                 # Configuration nodes have no reliable generic disable effect.
                 # Keep them unchanged until a separately proven retirement path.

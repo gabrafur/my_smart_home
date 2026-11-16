@@ -1,0 +1,7 @@
+[Unit]
+Description=Observe closed Node-RED private-notice outbox
+[Path]
+PathChanged=/mnt/data/docker/nodered/.eva-notice-outbox
+Unit=raspberry-eva-notice-transport.service
+[Install]
+WantedBy=multi-user.target

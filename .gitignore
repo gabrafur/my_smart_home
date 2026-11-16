@@ -162,3 +162,9 @@ nodered/.notification-diagnostics.json.*
 /zigbee2mqtt/database.db.tmp.*
 /homeassistant/.mcp-icloud-contract-scope.json
 /homeassistant/.mcp-icloud-contract-revoked
+
+# Fixed unprivileged proposal inbox for the sealed maintenance provider.
+/.eva-component-proposals/
+
+# Runtime receipts of the private Eva notice transport (host consumer state).
+/nodered/.eva-notice-receipts/

@@ -19,3 +19,21 @@ arbitrary contrib-node shutdown handlers or physical device behavior.
 baseline. The canonical implementation now lives in the Node-RED generator,
 functions and regression tests. Do not reapply the artifact to corrected sources
 or copy fixture flows over the active file instead of the admitted API CAS.
+
+## Closed Eva private-event builtins
+
+The engine admits `fs`/`crypto` only on the exact reviewed private-event exporter
+and `fs` only on its status reader. Node identity, tab, complete function body,
+empty initialization/finalization and output count are pinned together. Any
+subsequent function patch rechecks that contract, including a function-only
+patch that retains existing libraries. Generic modules, aliases, subpaths, npm
+installation and arbitrary filesystem programs remain refused. Native Node-RED
+resolves these exact builtin names without installing a package.
+
+Admission does not deploy flows: existing exact-effect review, interface
+confirmation, quotas, shared locks and API revision checks still apply. Tests
+load the canonical function sources directly so changing their bytes requires
+a separately reviewed pin update. Before reverting to an engine without this
+function-only guard after a builtin flow deployment, use the existing native
+revocation and retain it during source rollback; source rollback is not a flow
+rollback and never erases operation journals.

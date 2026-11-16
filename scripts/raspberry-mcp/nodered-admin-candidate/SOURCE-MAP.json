@@ -4,12 +4,12 @@
   "source_sha256": {
     "CONTRACT.json": "73f40680aaf4e250eb8899c8e0f3878a628c679a6ace1e24a8ea429461df95f6",
     "PROPOSAL.json": "037cc726c49e2f9f38005b71a217b737a8acf926f6fc07ab7d2d9ba8fc41ffa7",
-    "README.md": "ec56ac8363f8752e72948de4e2ac7bec8dbd044f28023eefea7043d42db5b708",
+    "README.md": "bd92dfaee38a4464caa8dec5cf46f8945d910c409c619a707516dfb089ef77e8",
     "bootstrap.py": "3ca2815a446f64350030a806b6802c756df684665538a76b0ab7593ae7d03630",
     "coordination.py": "b255ffb3a44242d442b001bd47c5e40e9bf9fd3a027cefd062f44f4a33ecad7c",
     "core-preservation-evidence.json": "ce74f7f4ca3af62eabf6b253fb0ada37218b05868270422dfe5c68d7190bf1e8",
     "core_preservation_harness.cjs": "1cd7a6f1e1b95dc6880970f1c9ba4e0950a5cca5062bf801a120e8c08caaacd5",
-    "engine.py": "ccc4917e9fd42581c12b75ef52d95d8cab0f5d1abf125e4e1065dc11189408f0",
+    "engine.py": "accec754ad03318d7d64e9ef67a5c747e65546a2f972c9b77949bde650bd7ad2",
     "fixed_transport.py": "ece5192e382afcf118fa28a4c9155fa4e97b9597adc1f3f3026fa3041dd2e1c3",
     "frontend/nodered-admin-entry.mjs": "0a650c159484f2af86f8868ff2d674b98c16edbef8a776c2fec19570e0ed031a",
     "frontend/nodered-admin-parser.mjs": "698f3c56c2b28796a3c4cfb5174c421e02dcfbe171eb0ef637e108632f0b7cec",
@@ -30,7 +30,8 @@
     "test_policy_diagnostic_classification.py": "d977b19ecd83044e137e989a98d455acbc112ed895ed78a0aebc25106cba51d9",
     "test_process_discovery.py": "447d5b0611cb58244c4766e053c2b764811bb04d74a69b775136da6dedbcb95d",
     "test_public_source_validator.py": "279968fa6fe83f0666a179530f8e7a381676d2d35b0a3dfb03240d2e85bee5a6",
-    "test_session_cleanup.py": "02da2b111b6f9525f8199538910c0f02fa70a53732c4b99e3fabb0a0831a9544"
+    "test_session_cleanup.py": "02da2b111b6f9525f8199538910c0f02fa70a53732c4b99e3fabb0a0831a9544",
+    "test_builtins.py": "19b75689ba0e902ec4e0122032f70d768a1a5692db7e5b08f5eb864f419ac1af"
   },
   "proposed_root_modules": [
     "bootstrap.py",

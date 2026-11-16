@@ -1,0 +1,24 @@
+[Unit]
+Description=Transport canonical Node-RED decisions to the private notice spool
+[Service]
+Type=oneshot
+User=1001
+Group=1001
+SupplementaryGroups=1000
+UMask=0027
+ExecStart=/usr/bin/python3 -I -B /opt/raspberry-eva-notice-transport/consume.py
+Nice=15
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/mnt/data/docker/nodered/.eva-notice-outbox
+ReadWritePaths=/mnt/data/docker/nodered/.eva-notice-receipts /var/lib/raspberry-eva-notices/spool /var/lib/raspberry-eva-notice-transport
+TimeoutStartSec=20
+MemoryMax=96M
+CPUQuota=20%
+[Install]
+WantedBy=multi-user.target
