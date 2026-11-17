@@ -177,7 +177,7 @@ adaptador/daemon Codex. Trocar o executor também requer implementação e aceit
 ## Runtime contínuo do componente (instalado em 17/11/2026)
 
 O fechamento 3a instalou o provedor contínuo do componente `observacao_host`
-(operação `0d1a2c0e78f5781061ea5f5d3f2753b8`, ativada às 00:52 UTC). É uma
+(operação `0d1a2c0e78f5781061ea5f5d3f2753b8`, ativada às 00:32 UTC). É uma
 autoridade Root permanente e revogável. A Eva propõe, revisa, prepara e aplica
 reparos comuns desse componente por `maintenance_read`, `maintenance_prepare` e
 `maintenance_apply`, no alvo "Observacao do host" (`component_repair`). Os limites
