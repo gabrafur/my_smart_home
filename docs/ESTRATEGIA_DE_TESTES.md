@@ -53,6 +53,13 @@ O hook versionado `pre-push`, ativado por `make install-git-hooks`, exige uma
 o envio do `HEAD`. Assim, o estado validado localmente corresponde ao commit
 enviado, e uma falha bloqueia o push antes de chegar ao GitHub Actions.
 
+No Raspberry, a árvore local enxerga componentes instalados que o GitHub não tem.
+Em 17/11 isso deixou o CI vermelho por oito execuções com o pre-push verde.
+`scripts/ci-parity-run.sh` roda o mesmo alvo (ou outro comando) com
+`/usr/local/lib/raspberry-*` e `/etc/raspberry-*` ocultos num namespace de montagem
+privado, com o usuário original; os módulos Node globais do Debian continuam
+visíveis, porque o próprio Node e o npm do Debian dependem deles.
+
 ## Critério de conclusão e handoff
 
 Cada tarefa deve ter um objetivo e um critério de conclusão declarado. Ao

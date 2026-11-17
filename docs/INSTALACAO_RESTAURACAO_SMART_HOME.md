@@ -378,6 +378,7 @@ Depois de revisar o resultado e garantir backup:
 
 ```bash
 sudo scripts/install-docker-live-restore.sh
+sudo scripts/install-container-shutdown-guard.sh
 sudo scripts/install-dietpi-daily-upgrade-helper.sh
 scripts/install-daily-update-nodered-bridge.sh
 scripts/install-git-backup-nodered-bridge.sh
@@ -398,6 +399,10 @@ Proteções da janela noturna:
 - `install-docker-live-restore.sh` liga `live-restore` no Docker (reload, sem
   reiniciar contêineres). Um upgrade do `docker-ce` pelo APT ou um reinício do
   daemon não derruba mais a casa; sem isso, em 17/11 a pilha caiu às 04:03.
+- Com `live-restore`, parar o Docker não para os contêineres. Por isso
+  `install-container-shutdown-guard.sh` instala uma unidade que, só no
+  desligamento do host, roda `docker stop --time 60` antes de o Docker parar;
+  todos os contêineres precisam de `restart: always` para voltarem no boot.
 - As etapas DietPi, Core e contêineres esperam (código 75, pedido mantido e
   repetido no minuto seguinte) enquanto houver menos de 2 GiB disponíveis, com
   `deferred reason=memory_low` no log.

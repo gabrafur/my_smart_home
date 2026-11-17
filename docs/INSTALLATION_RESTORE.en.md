@@ -348,6 +348,7 @@ clone can run the synthetic tests without enabling these jobs.
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
 sudo scripts/install-docker-live-restore.sh
+sudo scripts/install-container-shutdown-guard.sh
 sudo scripts/install-dietpi-daily-upgrade-helper.sh
 scripts/install-daily-update-nodered-bridge.sh
 scripts/install-git-backup-nodered-bridge.sh
@@ -363,7 +364,9 @@ version when available without an automatic reboot, then uses the
 script to resolve channel tags to digests, update Compose, validate, and
 recreate services. Node-RED receives neither `sudo` nor the Docker socket.
 `install-docker-live-restore.sh` enables Docker `live-restore` (reload only), so
-an APT `docker-ce` upgrade or daemon restart keeps containers running. The
+an APT `docker-ce` upgrade or daemon restart keeps containers running;
+`install-container-shutdown-guard.sh` stops them gracefully (60 s) before Docker
+only when the host shuts down. The
 DietPi, Core and containers stages wait (exit 75, request kept) while less than
 2 GiB is available; DietPi reports `containers_restarted=N` and failed image
 stages report `reason=`. The stock Raspberry Pi kernel lacks the cgroup memory

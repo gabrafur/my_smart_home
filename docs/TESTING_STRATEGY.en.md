@@ -52,6 +52,13 @@ clean worktree and runs that same canonical target before allowing `HEAD` to be
 pushed. The locally validated state therefore matches the commit being sent,
 and any failure blocks the push before it reaches GitHub Actions.
 
+On the Raspberry the local tree sees installed components that GitHub lacks; on
+17/11 that left CI red for eight runs while pre-push stayed green.
+`scripts/ci-parity-run.sh` runs the same target (or another command) with
+`/usr/local/lib/raspberry-*` and `/etc/raspberry-*` hidden in a private mount
+namespace, as the original user. Debian's global Node modules stay visible
+because Debian's node and npm load their own code from them.
+
 ## Completion criteria and handoff
 
 Each task needs one objective and a stated completion criterion. When
