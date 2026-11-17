@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newerStable,validFirmwareRequest,firmwareTransaction,decodeVendorResponse} from './zigbee-firmware-maintenance.mjs';
+import {newerStable,validFirmwareRequest,firmwareTransaction,decodeVendorResponse,classifyFirmwareUpdate,normalizeFirmwareInventory} from './zigbee-firmware-maintenance.mjs';
 const now=1800000000000;
 const request={version:1,id:'a'.repeat(32),requested_at:now,entity_id:'update.synthetic_coordinator',target_version:'20260101',expected_installed_version:'20240101',stable_only:true,source:'daily_updates'};
 test('only fresh, strictly scoped stable upgrades are admitted',()=>{
@@ -55,4 +55,50 @@ test('known pre-dispatch refusal is distinct from lost acknowledgement or vendor
  for(const reply of [{ok:false,reason:'vendor_observation_unavailable'},{ok:false,reason:'network_timeout'}])assert.throws(()=>decodeVendorResponse(reply,'install',1));
  assert.throws(()=>decodeVendorResponse({ok:false,reason:'candidate_changed'},'install',1,true));
  assert.deepEqual(decodeVendorResponse({accepted:false,dispatched:null},'install',0),{accepted:false,dispatched:null});
+});
+
+test('inventory marks installed firmware ahead of release as current',()=>{
+ const inventory=normalizeFirmwareInventory({
+  schema_version:1,
+  observed_at:now,
+  updates:[
+   {entity_id:'update.synthetic_core',installed_version:'v3.4.5.dev0',latest_version:'v3.3.1',is_stable:true,in_progress:false,observed_at:now,search_key:'smlight coordinator firmware'},
+   {entity_id:'update.synthetic_zigbee',installed_version:'20260311',latest_version:'20240716',is_stable:true,in_progress:false,observed_at:now,search_key:'smlight coordinator firmware'},
+  ],
+ });
+ assert.equal(inventory.updates[0].state_class,'current');
+ assert.equal(inventory.updates[0].release_relation,'installed_ahead_of_release');
+ assert.equal(inventory.updates[1].state_class,'current');
+ assert.equal(inventory.updates[1].release_relation,'installed_ahead_of_release');
+});
+
+test('inventory marks newer stable releases as pending and equal versions as current',()=>{
+ for(const [installed_version,latest_version] of [['v3.3.1','v3.4.0'],['20240716','20260311'],['v3.4.5.dev0','v3.4.5']]){
+  const item=classifyFirmwareUpdate({entity_id:'update.synthetic_coordinator',installed_version,latest_version,is_stable:true});
+  assert.equal(item.state_class,'pending');
+  assert.equal(item.release_relation,'newer_stable_available');
+ }
+ for(const [installed_version,latest_version] of [['v3.3.1','v3.3.1'],['v3.3.1','3.3.1'],['20260311','20260311']]){
+  const item=classifyFirmwareUpdate({entity_id:'update.synthetic_coordinator',installed_version,latest_version,is_stable:true});
+  assert.equal(item.state_class,'current');
+  assert.equal(item.release_relation,'same');
+ }
+});
+
+test('inventory never marks development or unreadable versions as pending',()=>{
+ for(const candidate of [
+  {installed_version:'v3.3.1',latest_version:'v3.5.0.dev0',is_stable:false},
+  {installed_version:'v3.3.1',latest_version:'v3.5.0-beta1',is_stable:true},
+  {installed_version:'v3.3.1',latest_version:'v3.5.0',is_stable:false},
+  {installed_version:'v3.3.1',latest_version:null,is_stable:false},
+  {installed_version:'v3.3.1',latest_version:'',is_stable:true},
+  {installed_version:'v3.3.1',latest_version:'unknown',is_stable:true},
+  {installed_version:'v3.3.1',latest_version:'not-a-version',is_stable:true},
+  {installed_version:'unavailable',latest_version:'v3.3.1',is_stable:true},
+ ]){
+  const item=classifyFirmwareUpdate({entity_id:'update.synthetic_coordinator',...candidate});
+  assert.notEqual(item.state_class,'pending');
+  assert.ok(['current','unavailable'].includes(item.state_class));
+  assert.equal(item.release_relation,'unknown');
+ }
 });

@@ -96,6 +96,12 @@ o canal **release** pelo SDK `pysmlight` instalado no Home Assistant, a cada
 Isso evita que o canal de desenvolvimento ou uma versão ignorada no Home
 Assistant esconda futuras versões estáveis. Não altera a integração do HA.
 
+Cada item de `firmware-inventory.json` mantém `state_class` restrito a
+`pending`, `current` ou `unavailable` (`pending` somente quando há release
+estável mais nova que a instalada) e expõe `release_relation` com
+`newer_stable_available`, `same`, `installed_ahead_of_release` ou `unknown`,
+evitando rotular como pendente um firmware instalado à frente do canal estável.
+
 O canvas compara versões: exige release estável mais recente, não faz downgrade
 e rejeita desenvolvimento/beta. A idade máxima dos fatos do host (300 segundos,
 limites 30–600) e do inventário (40 minutos, limites 30–120) fica nos parâmetros

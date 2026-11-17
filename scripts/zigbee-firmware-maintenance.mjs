@@ -52,7 +52,7 @@ async def main():
    out=[]
    for t in q['targets']:
     fw=await releases(t['role']);v=installed(t['role']);latest=str(fw[0].ver) if fw else None
-    out.append({'entity_id':t['entity_id'],'installed_version':v,'latest_version':latest,'is_stable':bool(fw and not fw[0].dev),'in_progress':False,'state_class':'pending' if latest and latest!=v else 'current','observed_at':int(time.time()*1000),'search_key':'smlight coordinator firmware'})
+    out.append({'entity_id':t['entity_id'],'installed_version':v,'latest_version':latest,'is_stable':bool(fw and not fw[0].dev),'in_progress':False,'observed_at':int(time.time()*1000),'search_key':'smlight coordinator firmware'})
    return {'schema_version':1,'observed_at':int(time.time()*1000),'updates':out}
   t=q['target'];v=installed(t['role'])
   if q['mode']=='state':return {'state':'off' if v==q['version'] else 'on','installed':v,'latest':q['version'],'in_progress':None if q.get('dispatched') and v!=q['version'] else False}
@@ -151,9 +151,20 @@ function vendor(identity,mode,request,dispatched=false){
  let result;try{result=JSON.parse(r.stdout)}catch{throw Error('vendor_observation_unavailable')}
  return decodeVendorResponse(result,mode,r.status,!!r.error);
 }
+export function classifyFirmwareUpdate(item){
+ const installed=versionParts(item?.installed_version),latest=versionParts(item?.latest_version);
+ if(!installed||!latest)return {...item,state_class:'unavailable',release_relation:'unknown'};
+ if(item?.is_stable===false||latest[3]!==1)return {...item,state_class:'current',release_relation:'unknown'};
+ if(newerStable(item.latest_version,item.installed_version))return {...item,state_class:'pending',release_relation:'newer_stable_available'};
+ const same=installed.every((n,i)=>n===latest[i]);
+ return {...item,state_class:'current',release_relation:same?'same':'installed_ahead_of_release'};
+}
+export function normalizeFirmwareInventory(inventory){
+ return {...inventory,updates:Array.isArray(inventory?.updates)?inventory.updates.map(classifyFirmwareUpdate):[]};
+}
 export async function publishFirmwareInventory(){
  const config=require('js-yaml').load(read(path.join(ROOT,'zigbee2mqtt/configuration.yaml'))),identity=coordinatorIdentity(config);
- const inventory=vendor(identity,'inventory');
+ const inventory=normalizeFirmwareInventory(vendor(identity,'inventory'));
  atomic(path.join(ROOT,'nodered/zigbee-recovery/firmware-inventory.json'),inventory,0o644);return inventory;
 }
 
