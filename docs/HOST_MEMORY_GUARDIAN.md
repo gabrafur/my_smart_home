@@ -92,7 +92,17 @@ O processador conserva os resultados terminais do worker em
 `result-history.log`, limitado por padrão às últimas 200 linhas (cerca de três
 horas). `daily-minimum.log` guarda, para cada dia UTC dos últimos 30, o resultado
 com menor memória disponível; só é regravado quando o mínimo do dia cai, e
-permite conferir o pico da janela de atualizações da madrugada. Esse histórico
+permite conferir o pico da janela de atualizações da madrugada.
+
+Por contêiner, `scripts/container-memory-peaks.mjs` (cron de 10 em 10 minutos,
+instalado por `scripts/install-container-memory-peaks-cron.sh`) lê `memory.peak` do
+cgroup v2 de cada contêiner e guarda o maior valor de cada dia, por 30 dias, em
+`.local-state/host-memory-guardian/container-peaks.json`. O kernel zera esse pico
+quando o contêiner reinicia, e as atualizações noturnas reiniciam contêineres; por
+isso a gravação é periódica. Exige o controlador de memória do cgroup
+(`cgroup_enable=memory`, ativo desde 17/11/2026). Só lê: serve para dimensionar
+limites por contêiner com base em dados reais. Na primeira leitura, `ai-bridge`
+tinha pico de 3,7 GiB, acima do Home Assistant (1,1 GiB). Esse histórico
 não registra as fases da solicitação feita pelo container: o helper apenas
 publica o marcador e retorna, sem esperar o worker. Portanto, um resultado
 saudável do worker não explica uma interrupção anterior do helper. Remover um
