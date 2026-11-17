@@ -19,7 +19,7 @@ _DIAGNOSTIC_STAGES = frozenset({
     'silent_session_recovery',
 })
 _DIAGNOSTIC_CATEGORIES = frozenset({
-    'submitted', 'started', 'created', 'manual_form', 'code_form',
+    'submitted', 'started', 'created', 'manual_form', 'code_form', 'reconciled', 'refused',
     'trusted_device_form', 'completed', 'other_result',
     'session_valid', 'session_expired', 'challenge_required', 'challenge_sent',
     'delivery_unavailable', 'invalid_code', 'primary_authentication_required',
@@ -276,6 +276,23 @@ class AuthGate:
             self.persist_recovery({'schema_version': 1, 'primary_attempted': False})
             self.primary_attempted = False
             return self.result('recovered_incident_closed')
+        finally:
+            self._lock.release()
+
+    def reconcile_unknown(self, *, explicit_submission=False):
+        """Owner-confirmed exit from an unknown result; contacts no provider.
+
+        An ambiguous login or delivery blocks every retry, even after restart.
+        Only the owner, after checking that no code is pending, can release one
+        new manual attempt. Automatic recovery stays consumed.
+        """
+        if not explicit_submission: return self.result('explicit_submission_required')
+        if not self._lock.acquire(blocking=False): return self.result('operation_in_progress')
+        try:
+            if self.busy: return self.result('operation_in_progress')
+            if self.state != State.UNCERTAIN: return self.result('nothing_to_reconcile')
+            self.record(State.USER)
+            return self.result('reconciled_by_owner')
         finally:
             self._lock.release()
 

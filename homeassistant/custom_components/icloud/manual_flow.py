@@ -15,9 +15,13 @@ class ManualIcloudFlow(flow_adapter(IcloudFlowHandler), domain='icloud'):
     VERSION=1
 
     def _manual_form(self,errors=None):
+        fields={probatio.Optional(CONF_PASSWORD):str}
+        api=getattr(self,'api',None)
+        if api is not None and api.auth_gate.state==State.UNCERTAIN:
+            # The only way out of an unknown result: the owner confirms it.
+            fields[probatio.Optional('reconcile_unknown_result',default=False)]=bool
         return self.async_show_form(step_id='manual_reauth',
-            data_schema=probatio.Schema({probatio.Optional(CONF_PASSWORD):str}),
-            errors=errors or {})
+            data_schema=probatio.Schema(fields),errors=errors or {})
 
     async def async_step_reauth(self,entry_data):
         entry=self._get_reauth_entry()
@@ -105,7 +109,14 @@ class ManualIcloudFlow(flow_adapter(IcloudFlowHandler), domain='icloud'):
     async def _submit_manual_reauth(self,user_input=None):
         if user_input is None:return self._manual_form()
         if self.api is not None and self.api.auth_gate.state==State.UNCERTAIN:
-            return self._manual_form({'base':'delivery_unknown'})
+            if user_input.get('reconcile_unknown_result') is not True:
+                return self._manual_form({'base':'delivery_unknown'})
+            gate=self.api.auth_gate
+            result=await self.hass.async_add_executor_job(
+                lambda:gate.reconcile_unknown(explicit_submission=True))
+            diagnostic('manual_submission','reconciled' if result.reason=='reconciled_by_owner' else 'refused')
+            # Reconciling never authenticates; the next submit is the single new attempt.
+            return self._manual_form() if result.reason=='reconciled_by_owner' else self._manual_form({'base':result.reason})
         if self.api is not None and self.api.auth_gate.state in (State.READY,State.CODE):
             if not self.api._manual_context_ready:
                 result=await self.hass.async_add_executor_job(self.api.auth_gate.reopen_cached_challenge)

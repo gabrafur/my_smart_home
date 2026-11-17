@@ -62,7 +62,13 @@ Quando for necessário reautenticar:
 
 Código vazio ou inválido não dispara outro envio. Em timeout ou resultado de
 entrega desconhecido, o estado persistido bloqueia repetição, inclusive após
-reinício: reconcilie o resultado antes de tentar novamente. Formulários antigos
+reinício: reconcilie o resultado antes de tentar novamente. Nesse estado o
+formulário mostra a confirmação **Conferi: nenhum código de verificação está
+pendente**. Marcada e enviada, ela só registra a decisão do proprietário e volta
+o portão para aguardar ação, sem contatar a Apple; o envio seguinte é a única
+nova tentativa. A recuperação automática continua consumida. Antes de 17/11 não
+havia saída desse estado: uma recuperação silenciosa ambígua (02:58) deixou o
+formulário bloqueado em definitivo. Formulários antigos
 não podem atuar sobre uma entrada que já foi recarregada. Se o provedor exigir
 chave de segurança ou não oferecer uma rota compatível, não há garantia de OTP.
 

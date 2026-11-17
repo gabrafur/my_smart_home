@@ -26,10 +26,11 @@
       "challenge_required": "Action not completed (challenge_required). No automatic retry.",
       "delivery_context_unavailable": "Apple did not provide complete delivery options. No code was requested.",
       "security_key_required": "Apple requires a physical security key for this challenge. No code was requested.",
-      "delivery_unknown": "The previous action has an unknown result. Reconcile its status before trying again.",
+      "delivery_unknown": "The previous action has an unknown result. If no verification code is pending, tick the confirmation and submit; this releases one new attempt without contacting Apple.",
       "challenge_already_prepared": "A challenge is already prepared. Continue with its current form.",
       "challenge_already_sent": "Delivery was already accepted. Enter the code for this challenge.",
-      "challenge_not_sent": "Request delivery before entering a code."
+      "challenge_not_sent": "Request delivery before entering a code.",
+      "nothing_to_reconcile": "Nothing to reconcile. Continue with the current form."
     },
     "step": {
       "reauth_confirm": {
@@ -68,7 +69,8 @@
         "title": "Manual iCloud authentication",
         "description": "iCloud is waiting for your action. Submitting starts one authentication attempt. Requesting a code is a separate action. Change the password only if needed.",
         "data": {
-          "password": "New password (optional)"
+          "password": "New password (optional)",
+          "reconcile_unknown_result": "I checked: no verification code is pending. Release one new attempt."
         }
       }
     }

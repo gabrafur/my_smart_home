@@ -227,6 +227,19 @@ class ManualOtpServiceTest(unittest.TestCase):
         restored.cached_session(effect)
         effect.assert_not_called()
 
+    def test_owner_reconcile_releases_one_attempt_without_provider_call(self):
+        self.prepare()
+        with patch.object(FakeService, 'request_2fa_code', side_effect=RuntimeError('synthetic')) as call:
+            self.assertEqual(self.client.request_manual_2fa_code().state, self.env.sut.State.UNCERTAIN)
+        restored = self.env.sut.AuthGate(self.saved.append, self.saved[-1])
+        self.assertEqual(restored.reconcile_unknown().reason, 'explicit_submission_required')
+        self.assertEqual(restored.state, self.env.sut.State.UNCERTAIN)
+        self.assertEqual(restored.reconcile_unknown(explicit_submission=True).reason, 'reconciled_by_owner')
+        self.assertEqual(self.saved[-1]['state'], self.env.sut.State.USER.value)
+        self.assertEqual(restored.reconcile_unknown(explicit_submission=True).reason, 'nothing_to_reconcile')
+        call.assert_called_once()
+        self.assertEqual(self.client.deliveries, 0)
+
 
 class NativeFlowTest(unittest.IsolatedAsyncioTestCase):
     """Run the actual local flow even when the host lacks the native HA runtime."""
@@ -287,6 +300,24 @@ class NativeFlowTest(unittest.IsolatedAsyncioTestCase):
             send.assert_called_once()
         self.assertEqual(self.hass.stores['icloud_manual_reauth.synthetic_entry']['state'],
                          self.env.sut.State.UNCERTAIN)
+
+    async def test_owner_reconciles_unknown_result_then_submits_once(self):
+        await self.prepared()
+        with patch.object(FakeService, 'request_2fa_code', side_effect=RuntimeError('synthetic')) as send:
+            await self.flow.async_step_verification_code({'request_new_code': True})
+            blocked = await self.flow.async_step_manual_reauth({})
+            self.assertEqual(blocked['errors']['base'], 'delivery_unknown')
+            self.assertIn('reconcile_unknown_result', [str(k) for k in blocked['data_schema'].schema])
+            primary = self.api.primary_calls
+            released = await self.flow.async_step_manual_reauth({'reconcile_unknown_result': True})
+            self.assertEqual(released['step_id'], 'manual_reauth')
+            self.assertEqual(released['errors'], {})
+            self.assertNotIn('reconcile_unknown_result', [str(k) for k in released['data_schema'].schema])
+            self.assertEqual(self.api.primary_calls, primary)
+            send.assert_called_once()
+        self.assertEqual(self.api.auth_gate.state, self.env.sut.State.USER)
+        self.assertEqual(self.hass.stores['icloud_manual_reauth.synthetic_entry']['state'],
+                         self.env.sut.State.USER)
 
     async def test_existing_accounts_and_config_flows_use_the_same_guard(self):
         self.assertIs(self.env.account.PyiCloudService, self.env.sut.GuardedService)

@@ -25,10 +25,11 @@
       "challenge_required": "Ação não concluída (challenge_required). Nenhuma nova tentativa automática.",
       "delivery_context_unavailable": "A Apple não forneceu opções completas de entrega. Nenhum código foi solicitado.",
       "security_key_required": "A Apple exige uma chave física de segurança neste desafio. Nenhum código foi solicitado.",
-      "delivery_unknown": "O resultado da ação anterior é desconhecido. Reconcilie o estado antes de tentar novamente.",
+      "delivery_unknown": "O resultado da ação anterior é desconhecido. Se nenhum código de verificação estiver pendente, marque a confirmação e envie; isso libera uma nova tentativa sem contatar a Apple.",
       "challenge_already_prepared": "Um desafio já está preparado. Continue no formulário atual.",
       "challenge_already_sent": "A entrega já foi aceita. Informe o código deste desafio.",
-      "challenge_not_sent": "Solicite o envio antes de informar um código."
+      "challenge_not_sent": "Solicite o envio antes de informar um código.",
+      "nothing_to_reconcile": "Nada a reconciliar. Continue com o formulário atual."
     },
     "step": {
       "reauth_confirm": {
@@ -60,7 +61,8 @@
         "title": "Autenticação manual do iCloud",
         "description": "O iCloud aguarda sua ação. Enviar este formulário inicia uma tentativa de autenticação. Pedir um código é uma ação separada. Altere a senha somente se necessário.",
         "data": {
-          "password": "Nova senha (opcional)"
+          "password": "Nova senha (opcional)",
+          "reconcile_unknown_result": "Conferi: nenhum código de verificação está pendente. Liberar uma nova tentativa."
         }
       }
     }
