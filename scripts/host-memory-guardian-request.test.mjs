@@ -221,6 +221,15 @@ test("terminal results are retained in a bounded history that a later run cannot
   assert.deepEqual(history.map((line) => line.match(/request_id=(\S+)/)[1]), ["request-b", "request-c", "request-d"]);
   assert.equal(fs.readdirSync(trigger).filter((name) => name.startsWith("result-history.") && name !== "result-history.log").length, 0);
 
+  // The lowest point of each day survives the bounded rolling history.
+  const minimum = () => fs.readFileSync(path.join(trigger, "daily-minimum.log"), "utf8").trim().split("\n");
+  assert.equal(minimum().length, 1);
+  assert.match(minimum()[0], /^\d{4}-\d\d-\d\d 4096 host-memory-guardian status=healthy .*request_id=request-b /);
+  assert.equal(run("request-low", "console.log('memory-guardian status=healthy available_mib=1500 terminated=0');\n"), 0);
+  assert.equal(run("request-high", "console.log('memory-guardian status=healthy available_mib=5000 terminated=0');\n"), 0);
+  assert.equal(minimum().length, 1);
+  assert.match(minimum()[0], / 1500 .*request_id=request-low /);
+
   // A history that cannot be written never changes the reported outcome.
   fs.rmSync(path.join(trigger, "result-history.log"));
   fs.mkdirSync(path.join(trigger, "result-history.log"));

@@ -10,6 +10,9 @@ sudo_bin="${DAILY_UPDATE_SUDO_BIN:-/usr/bin/sudo}"
 dietpi_helper="${DIETPI_UPDATE_HELPER:-/usr/local/sbin/smart-home-dietpi-daily-upgrade}"
 dietpi_status_file="${DIETPI_UPDATE_STATUS_FILE:-/run/smart-home-dietpi-daily-upgrade.result}"
 detail_file="${DAILY_UPDATE_DETAIL_FILE:-}"
+docker_bin="${DAILY_UPDATE_DOCKER_BIN:-/usr/bin/docker}"
+meminfo_file="${DAILY_UPDATE_MEMINFO:-/proc/meminfo}"
+minimum_available_mib="${DAILY_UPDATE_MIN_AVAILABLE_MIB:-2048}"
 dry_run=false
 stage="all"
 
@@ -35,6 +38,36 @@ write_detail() {
   umask 077
   printf '%s\n' "$1" > "$temporary"
   mv "$temporary" "$detail_file"
+}
+
+# Heavy stages wait (exit 75: the request is kept and retried next minute) while the
+# host has less than the minimum available memory, so an update never starts under pressure.
+require_memory() {
+  available_kib=$(sed -n 's/^MemAvailable: *\([0-9][0-9]*\) kB$/\1/p' "$meminfo_file" 2>/dev/null | head -n 1)
+  case "$available_kib" in ''|*[!0-9]*) available_kib=0 ;; esac
+  available_mib=$((available_kib / 1024))
+  if [ "$available_mib" -lt "$minimum_available_mib" ]; then
+    echo "daily-host-update stage=$1 deferred reason=memory_low available_mib=$available_mib minimum_mib=$minimum_available_mib"
+    exit 75
+  fi
+}
+
+# Running containers and their start times; used to report which ones a stage restarted.
+container_starts() {
+  ids=$("$docker_bin" ps --quiet --no-trunc 2>/dev/null) || return 1
+  [ -n "$ids" ] || return 0
+  # shellcheck disable=SC2086
+  "$docker_bin" inspect --format '{{.Id}} {{.State.StartedAt}}' $ids 2>/dev/null | sort
+}
+
+restarted_count() {
+  before=$1
+  after=$2
+  [ "$before" != unknown ] && [ "$after" != unknown ] || { echo unknown; return; }
+  printf '%s\n' "$before" | while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    printf '%s\n' "$after" | grep -qxF -- "$line" || echo changed
+  done | wc -l | tr -d ' '
 }
 
 run_dietpi() {
@@ -91,12 +124,17 @@ if [ "$stage" = "offsite-backup" ]; then
 fi
 
 if [ "$stage" = "dietpi" ]; then
+  [ "$dry_run" = true ] || require_memory dietpi
+  starts_before=$(container_starts) || starts_before=unknown
   run_dietpi
-  write_detail "stage=dietpi stage_exit=$dietpi_status failure_stage=$dietpi_stage mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
+  starts_after=$(container_starts) || starts_after=unknown
+  containers_restarted=$(restarted_count "$starts_before" "$starts_after")
+  write_detail "stage=dietpi stage_exit=$dietpi_status failure_stage=$dietpi_stage containers_restarted=$containers_restarted mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
   exit "$dietpi_status"
 fi
 
 if [ "$stage" = "home-assistant-core" ] || [ "$stage" = "containers" ]; then
+  [ "$dry_run" = true ] || require_memory "$stage"
   echo "daily-host-update stage=$stage started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   # Keep streaming to the cron log, but also record the last static refusal code so the
   # result says why the stage stopped (for example a safety gate) instead of only exit 1.

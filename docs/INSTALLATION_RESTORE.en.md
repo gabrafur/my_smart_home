@@ -347,6 +347,7 @@ clone can run the synthetic tests without enabling these jobs.
 
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
+sudo scripts/install-docker-live-restore.sh
 sudo scripts/install-dietpi-daily-upgrade-helper.sh
 scripts/install-daily-update-nodered-bridge.sh
 scripts/install-git-backup-nodered-bridge.sh
@@ -360,7 +361,14 @@ Its host bridge updates the
 DietPi package index and packages, runs `dietpi-update 1` to apply a new DietPi
 version when available without an automatic reboot, then uses the
 script to resolve channel tags to digests, update Compose, validate, and
-recreate services. Node-RED receives neither `sudo` nor the Docker socket. Any
+recreate services. Node-RED receives neither `sudo` nor the Docker socket.
+`install-docker-live-restore.sh` enables Docker `live-restore` (reload only), so
+an APT `docker-ce` upgrade or daemon restart keeps containers running. The
+DietPi, Core and containers stages wait (exit 75, request kept) while less than
+2 GiB is available; DietPi reports `containers_restarted=N` and failed image
+stages report `reason=`. The stock Raspberry Pi kernel lacks the cgroup memory
+controller, so Docker `--memory` limits are ignored without
+`cgroup_enable=memory` (reboot required). Any
 failure enters `observabilidade_global` and notifies `resident_primary`. Read
 upstream release notes for database or protocol migrations. Do
 not replace the legacy Matter Server with the matter.js successor without a

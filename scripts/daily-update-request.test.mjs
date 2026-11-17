@@ -459,6 +459,42 @@ test("image stage result names the static refusal code that stopped it", () => {
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
+test("heavy stages wait for memory and the DietPi stage reports restarted containers", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "host-update-memory-test-"));
+  const meminfo = path.join(fixture, "meminfo");
+  const detail = path.join(fixture, "detail");
+  const calls = path.join(fixture, "calls");
+  const sudo = path.join(fixture, "sudo");
+  const helper = path.join(fixture, "helper");
+  const node = path.join(fixture, "node");
+  const docker = path.join(fixture, "docker");
+  const starts = path.join(fixture, "starts");
+  fs.writeFileSync(sudo, "#!/bin/sh\n[ \"$1\" = \"-n\" ] && shift\n\"$@\"\n");
+  // The helper "restarts" one of two containers, as an engine upgrade without live-restore would.
+  fs.writeFileSync(helper, `#!/bin/sh\nprintf 'dietpi\\n' >> "${calls}"\nprintf 'a 2026-11-17T01:00:00Z\\nb 2026-11-17T04:04:07Z\\n' > "${starts}"\n`);
+  fs.writeFileSync(node, `#!/bin/sh\nprintf 'node %s\\n' "$2" >> "${calls}"\n`);
+  fs.writeFileSync(docker, `#!/bin/sh\ncase "$1" in ps) printf 'a\\nb\\n' ;; inspect) cat "${starts}" ;; esac\n`);
+  fs.writeFileSync(starts, "a 2026-11-17T01:00:00Z\nb 2026-11-17T01:00:00Z\n");
+  for (const file of [sudo, helper, node, docker]) fs.chmodSync(file, 0o755);
+  const env = {...process.env, DAILY_UPDATE_SUDO_BIN: sudo, DIETPI_UPDATE_HELPER: helper, DAILY_UPDATE_NODE_BIN: node,
+    DOCKER_UPDATE_SCRIPT: "fixture", DAILY_UPDATE_DOCKER_BIN: docker, DAILY_UPDATE_MEMINFO: meminfo,
+    DIETPI_UPDATE_STATUS_FILE: path.join(fixture, "missing"), DAILY_UPDATE_DETAIL_FILE: detail};
+  fs.writeFileSync(meminfo, "MemTotal: 8000000 kB\nMemAvailable: 1048576 kB\n");
+  for (const stage of ["dietpi", "home-assistant-core", "containers"]) {
+    const low = spawnSync(runScript, [stage], {encoding: "utf8", env});
+    assert.equal(low.status, 75);
+    assert.match(low.stdout, new RegExp(`stage=${stage} deferred reason=memory_low available_mib=1024 minimum_mib=2048`));
+  }
+  assert.equal(fs.existsSync(calls), false);
+  fs.writeFileSync(meminfo, "MemTotal: 8000000 kB\nMemAvailable: 4194304 kB\n");
+  const ok = spawnSync(runScript, ["dietpi"], {encoding: "utf8", env});
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(fs.readFileSync(detail, "utf8"), /^stage=dietpi stage_exit=0 failure_stage=unknown containers_restarted=1 mode=production$/m);
+  assert.equal(spawnSync(runScript, ["containers"], {encoding: "utf8", env}).status, 0);
+  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), ["dietpi", "node containers"]);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
 test("Codex CLI updater resolves an exact version and skips an already current install", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "codex-cli-update-test-"));
   const prefix = path.join(fixture, ".local");

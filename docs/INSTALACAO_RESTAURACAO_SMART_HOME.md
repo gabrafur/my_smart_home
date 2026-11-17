@@ -377,6 +377,7 @@ node scripts/docker-auto-update.mjs daily --dry-run
 Depois de revisar o resultado e garantir backup:
 
 ```bash
+sudo scripts/install-docker-live-restore.sh
 sudo scripts/install-dietpi-daily-upgrade-helper.sh
 scripts/install-daily-update-nodered-bridge.sh
 scripts/install-git-backup-nodered-bridge.sh
@@ -390,7 +391,21 @@ A ponte atualiza o índice e os pacotes do
 DietPi, chama `dietpi-update 1` para aplicar uma versão nova do próprio DietPi
 quando disponível, sem reboot automático, e depois usa o script para resolver tags de canal
 para digests, atualizar o Compose, validar e recriar. O Node-RED não recebe
-`sudo` nem socket Docker. Qualquer falha entra em `observabilidade_global` e
+`sudo` nem socket Docker.
+
+Proteções da janela noturna:
+
+- `install-docker-live-restore.sh` liga `live-restore` no Docker (reload, sem
+  reiniciar contêineres). Um upgrade do `docker-ce` pelo APT ou um reinício do
+  daemon não derruba mais a casa; sem isso, em 17/11 a pilha caiu às 04:03.
+- As etapas DietPi, Core e contêineres esperam (código 75, pedido mantido e
+  repetido no minuto seguinte) enquanto houver menos de 2 GiB disponíveis, com
+  `deferred reason=memory_low` no log.
+- O resultado do DietPi traz `containers_restarted=N`, quantos contêineres a
+  etapa reiniciou; Core e contêineres trazem `reason=` quando falham.
+- O kernel padrão do Raspberry Pi não liga o controlador de memória do cgroup;
+  sem `cgroup_enable=memory` no `cmdline.txt` (exige reboot), limites `--memory`
+  do Docker são ignorados. Qualquer falha entra em `observabilidade_global` e
 notifica `resident_primary`. Leia notas de versão antes de migrações de banco ou protocolo. O Matter
 Server legado não deve ser trocado pelo sucessor matter.js sem plano específico
 de migração da fabric.

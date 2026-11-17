@@ -89,7 +89,10 @@ O retorno posterior de um resultado fresco comprova apenas aquele ciclo, sem
 atribuir retrospectivamente a causa de uma falha anterior.
 
 O processador conserva os resultados terminais do worker em
-`result-history.log`, limitado por padrão às últimas 200 linhas. Esse histórico
+`result-history.log`, limitado por padrão às últimas 200 linhas (cerca de três
+horas). `daily-minimum.log` guarda, para cada dia UTC dos últimos 30, o resultado
+com menor memória disponível; só é regravado quando o mínimo do dia cai, e
+permite conferir o pico da janela de atualizações da madrugada. Esse histórico
 não registra as fases da solicitação feita pelo container: o helper apenas
 publica o marcador e retorna, sem esperar o worker. Portanto, um resultado
 saudável do worker não explica uma interrupção anterior do helper. Remover um

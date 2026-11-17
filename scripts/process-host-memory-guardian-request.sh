@@ -68,6 +68,25 @@ retain_result() {
   } > "$temporary" && mv "$temporary" "$history"
 }
 
+# The rolling history covers only a few hours. Keep the lowest available memory of each
+# UTC day (last 30 days) so the nightly update window can still be checked later. The
+# file is rewritten only when the day's minimum drops.
+retain_daily_minimum() {
+  minimum="$trigger_dir/daily-minimum.log"
+  temporary="$trigger_dir/daily-minimum.$$"
+  available=$(printf '%s\n' "$1" | sed -n 's/.* available_mib=\([0-9][0-9]*\) .*/\1/p')
+  day=$(printf '%s\n' "$1" | sed -n 's/.* checked_at=\([0-9]\{4\}-[0-9][0-9]-[0-9][0-9]\)T.*/\1/p')
+  [ -n "$available" ] && [ -n "$day" ] || return 0
+  [ ! -L "$minimum" ] || return 0
+  current=$(awk -v d="$day" '$1 == d {print $2}' "$minimum" 2>/dev/null | head -n 1)
+  [ -z "$current" ] || [ "$available" -lt "$current" ] || return 0
+  umask 007
+  {
+    [ -f "$minimum" ] && awk -v d="$day" '$1 != d' "$minimum" | tail -n 29
+    printf '%s %s %s\n' "$day" "$available" "$1"
+  } > "$temporary" && mv "$temporary" "$minimum"
+}
+
 publish_result "host-memory-guardian status=running request_id=$request_id checked_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 set +e
 output=$("$node_bin" "$guardian_script" --state-file "$state_file" 2>&1)
@@ -80,6 +99,7 @@ detail=$(printf '%s\n' "$output" | tail -n 1 | tr -cd 'A-Za-z0-9_.:= -' | cut -c
 if [ "$status" -eq 0 ] && printf '%s\n' "$detail" | grep -q '^memory-guardian status='; then
   publish_result "host-$detail request_id=$request_id checked_at=$checked_at"
   retain_result "host-$detail request_id=$request_id checked_at=$checked_at exit_code=0" || :
+  retain_daily_minimum "host-$detail request_id=$request_id checked_at=$checked_at exit_code=0" || :
   exit 0
 fi
 
