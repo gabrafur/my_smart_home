@@ -18,6 +18,12 @@ Publicações interativas usam `python3 scripts/git-publication-evidence.py publ
 com checkout limpo, lock residencial e pre-push preservado. Para um envio já
 concluído, `observe` apenas compara e registra: não repete o push. O worker chama
 a mesma observação depois de sucesso, inclusive quando não houve mudanças.
+Quando a validação do pre-push recusa o envio, `publish` continua mostrando a
+saída ao vivo, mas também guarda as linhas que nomeiam a falha (`not ok`,
+`ERROR:`, `FAILED (` e as falhas do make) em `.git/publication-failures/last-push-failure.txt`
+(modo 0600, substituído a cada recusa) e devolve `failure_summary` e
+`failure_lines` no JSON. Assim um teste instável fica identificável sem repetir a
+validação; o motivo continua `push_not_confirmed_inspect_remote_no_retry`.
 O log fixo existente recebe uma linha própria `git publication verified`, nunca
 uma linha falsa de sucesso do backup. Falha de observação não reenvia publicação.
 

@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import stat
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 SHA = re.compile(r'^[a-f0-9]{40}$')
@@ -119,6 +120,55 @@ def record(origin, correction=False, root=ROOT):
             os.close(fd)
 
 
+# Lines that name what failed in the pre-push validation (TAP, unittest and make).
+FAILURE_LINE = re.compile(r'^(?:not ok \d|(?:ERROR|FAIL): |FAILED \(|make(?:\[\d+\])?: \*\*\* |Error: Cannot find module|AssertionError|# fail [1-9])')
+
+
+class PushNotConfirmed(RuntimeError):
+    def __init__(self, summary, failures):
+        super().__init__('push_not_confirmed_inspect_remote_no_retry')
+        self.summary, self.failures = summary, failures
+
+
+def push_main(env, root=ROOT, popen=subprocess.Popen, out=None):
+    """Stream git push (it runs the pre-push validation) and keep the failure lines."""
+    out = out or sys.stdout
+    process = popen(['git', 'push', 'origin', 'main'], cwd=root, env=env, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, text=True, errors='replace')
+    kept = []
+    for line in process.stdout:
+        out.write(line)
+        out.flush()
+        if len(kept) < 200 and FAILURE_LINE.search(line.strip()):
+            kept.append(line.strip()[:300])
+    return process.wait(), kept
+
+
+def save_failure_summary(lines, root=ROOT, now=None):
+    """Private, bounded record of which checks failed; replaced on every failed push.
+
+    Kept under .git/ (owned by the publisher, never tracked). Best effort: a failure to
+    record never hides the refused push itself.
+    """
+    directory = root / '.git' / 'publication-failures'
+    try:
+        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    except OSError:
+        return None
+    path = directory / 'last-push-failure.txt'
+    stamp = (now or datetime.now(timezone.utc)).isoformat()
+    body = '\n'.join([f'# push refused at {stamp}; {len(lines)} failure line(s)', *lines]) + '\n'
+    temporary = path.with_name(path.name + f'.{os.getpid()}')
+    try:
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'w') as handle:
+            handle.write(body)
+        os.replace(temporary, path)
+    except OSError:
+        return None
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['observe', 'worker', 'hacs-correction', 'publish'])
@@ -129,9 +179,10 @@ def main():
             if command(['git', 'branch', '--show-current']) != 'main' or command(['git', 'status', '--porcelain', '--untracked-files=all']):
                 raise RuntimeError('clean_main_required')
             env = dict(os.environ, GIT_SSH_COMMAND=SSH)
-            result = subprocess.run(['git', 'push', 'origin', 'main'], cwd=ROOT, env=env, check=False)
-            if result.returncode:
-                raise RuntimeError('push_not_confirmed_inspect_remote_no_retry')
+            code, failures = push_main(env)
+            if code:
+                summary = save_failure_summary(failures)
+                raise PushNotConfirmed(summary.relative_to(ROOT).as_posix() if summary else 'not_recorded', len(failures))
             return record('interactive')
     return record('worker' if args.mode == 'worker' else 'interactive', correction=args.mode == 'hacs-correction')
 
@@ -141,5 +192,8 @@ if __name__ == '__main__':
     try:
         print(json.dumps(main(), sort_keys=True))
     except Exception as exc:
-        print(json.dumps({'state': 'unconfirmed', 'reason': str(exc) if isinstance(exc, RuntimeError) else type(exc).__name__, 'automatic_retry': False}))
+        row = {'state': 'unconfirmed', 'reason': str(exc) if isinstance(exc, RuntimeError) else type(exc).__name__, 'automatic_retry': False}
+        if isinstance(exc, PushNotConfirmed):
+            row.update(failure_summary=exc.summary, failure_lines=exc.failures)
+        print(json.dumps(row))
         raise SystemExit(1)

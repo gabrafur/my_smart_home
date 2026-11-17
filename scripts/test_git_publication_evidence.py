@@ -47,4 +47,39 @@ class Publication(unittest.TestCase):
    with patch.object(m,'verified_head',return_value=SHA),self.assertRaises(OSError):m.record('interactive',root=root)
    p.unlink();p.write_text(LOG);p.chmod(0o666)
    with patch.object(m,'verified_head',return_value=SHA),self.assertRaises(RuntimeError):m.record('interactive',root=root)
+class PushFailureSummary(unittest.TestCase):
+    def test_streams_output_and_keeps_only_failure_lines(self):
+        import io
+        lines=['pre-push: running canonical public validation\n','ok 1 - fine\n',
+               '    not ok 525 - codex account status route and classifier pass their suite\n',
+               'ERROR: test_composer (test_codex_chat_card_browser.CodexChatCardBrowserTest)\n',
+               'FAILED (errors=5, skipped=13)\n','make[1]: *** [Makefile:246: validate-scripts] Error 1\n',
+               '# fail 0\n','error: failed to push some refs\n']
+        class Fake:
+            def __init__(self,*a,**k):self.stdout=iter(lines);self.args=a
+            def wait(self):return 1
+        out=io.StringIO()
+        code,kept=m.push_main({}, popen=Fake, out=out)
+        self.assertEqual(code,1)
+        self.assertEqual(out.getvalue(),''.join(lines))
+        self.assertEqual(kept,['not ok 525 - codex account status route and classifier pass their suite',
+            'ERROR: test_composer (test_codex_chat_card_browser.CodexChatCardBrowserTest)',
+            'FAILED (errors=5, skipped=13)','make[1]: *** [Makefile:246: validate-scripts] Error 1'])
+    def test_summary_is_private_and_replaced(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            first=m.save_failure_summary(['not ok 1 - a'],root)
+            second=m.save_failure_summary(['not ok 2 - b'],root)
+            self.assertEqual(first,second)
+            self.assertEqual(oct(second.stat().st_mode&0o777),'0o600')
+            self.assertEqual(oct(second.parent.stat().st_mode&0o777),'0o700')
+            text=second.read_text()
+            self.assertIn('not ok 2 - b',text);self.assertNotIn('not ok 1 - a',text)
+            self.assertEqual(list(second.parent.iterdir()),[second])
+            self.assertEqual(second.relative_to(root).as_posix(),'.git/publication-failures/last-push-failure.txt')
+    def test_unwritable_location_never_hides_the_refused_push(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);(root/'.git').write_text('gitdir: elsewhere\n')
+            self.assertIsNone(m.save_failure_summary(['not ok 1 - a'],root))
+
 if __name__=='__main__':unittest.main()
