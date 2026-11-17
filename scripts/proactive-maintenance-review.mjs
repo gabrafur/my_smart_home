@@ -350,6 +350,27 @@ export const SOURCES = [
     },
   },
   {
+    id: "ci.public",
+    origin: "gh run list on main (GitHub Actions, read-only)",
+    collect(ctx) {
+      // Latest completed runs of the public validation on main, newest first.
+      const rows = JSON.parse(runCommand(ctx, "gh", ["run", "list", "--branch", "main", "--limit", "20",
+        "--json", "conclusion,status,headSha,createdAt,workflowName"]));
+      if (!Array.isArray(rows)) throw new Error("ci_runs_unreadable");
+      const done = rows.filter((r) => r.status === "completed" && r.workflowName === "public-validation");
+      let failures = 0;
+      while (failures < done.length && done[failures].conclusion === "failure") failures += 1;
+      const first = failures ? done[failures - 1] : null;
+      return {
+        latest_conclusion: done[0]?.conclusion ?? null,
+        latest_commit: done[0]?.headSha?.slice(0, 7) ?? null,
+        consecutive_failures: failures,
+        failing_since_commit: first?.headSha?.slice(0, 7) ?? null,
+        failing_since: first?.createdAt ?? null,
+      };
+    },
+  },
+  {
     id: "workers.stale_markers",
     origin: "processing markers under the Home Assistant trigger directories",
     collect(ctx) {
@@ -597,6 +618,20 @@ export function evaluate(evidence, policy) {
         : "Conferir o login do Codex no host; a cota só é aceita com assinatura ChatGPT pessoal.",
       bucket: [ai.reason, ai.resets_at ?? "unknown"].join(","),
       evidence: ["ai.codex_account"],
+    });
+  }
+
+  const ci = data("ci.public");
+  if (ci?.latest_conclusion === "failure") {
+    const since = ci.failing_since ? new Date(ci.failing_since) : null;
+    const when = since && Number.isFinite(since.getTime())
+      ? since.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "horário desconhecido";
+    add({
+      key: "ci.public_red", priority: "P1", risk: "baixo",
+      title: `CI público vermelho em main desde ${ci.failing_since_commit ?? "?"} (${when}, ${ci.consecutive_failures} execução(ões))`,
+      benefit: "Publicações seguem direto para main; sem CI verde uma regressão passa despercebida (já ficou 9 dias vermelho sem aviso).",
+      proposed_action: "Ler o primeiro teste que falhou com gh run view --log-failed e corrigir antes da próxima publicação.",
+      bucket: String(ci.failing_since_commit), evidence: ["ci.public"],
     });
   }
 

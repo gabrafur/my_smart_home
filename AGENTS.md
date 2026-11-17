@@ -89,8 +89,8 @@ Respostas MCP e notificações citam a causa concreta (ex.: créditos de IA esgo
 
 Em tarefas interativas, trabalhe e publique direto na `main`, sem pull requests.
 
-Publique via `python3 scripts/git-publication-evidence.py publish`; após push
-concluído, use `observe` sem reenviar.
+Publique via `python3 scripts/git-publication-evidence.py publish`, depois
+`observe` sem reenviar; CI vermelho em `main` se corrige antes de publicar.
 
 ## Commit message policy
 

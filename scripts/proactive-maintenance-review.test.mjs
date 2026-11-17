@@ -39,6 +39,7 @@ const healthy = () => [
   source("nodered_admin.chain_drift", { state: "aligned", drifted: [], age_hours: 0.5 }),
   source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
   source("host.update_protections", { docker_live_restore: true, cgroup_memory_controller: true }),
+  source("ci.public", { latest_conclusion: "success", latest_commit: "abc1234", consecutive_failures: 0, failing_since_commit: null, failing_since: null }),
 ];
 
 const replace = (evidence, id, data, error = null) => evidence.map((item) => (item.id === id ? source(id, data, error) : item));
@@ -479,4 +480,26 @@ test("update protections source reads docker info and the cgroup root controller
   const ctx = createContext({ policy: policy(), run, cgroupControllersPath: controllers });
   assert.deepEqual(source.collect(ctx), { docker_live_restore: true, cgroup_memory_controller: false });
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("a red public CI on main is a P1 that names the first failing commit", () => {
+  const findings = evaluate(replace(healthy(), "ci.public", { latest_conclusion: "failure", latest_commit: "965a33f",
+    consecutive_failures: 7, failing_since_commit: "1a7c600", failing_since: "2026-11-17T01:08:19Z" }), policy());
+  assert.deepEqual(findings.map((f) => [f.key, f.priority, f.bucket]), [["ci.public_red", "P1", "1a7c600"]]);
+  assert.match(findings[0].title, /desde 1a7c600 \(16\/11\/2026, 22:08, 7 execução/);
+  assert.deepEqual(evaluate(replace(healthy(), "ci.public", null, "command_exit_1"), policy()).map((f) => f.key), ["review.collection_gaps"]);
+});
+
+test("ci source counts consecutive failures of the public validation only", () => {
+  const runs = [
+    { status: "in_progress", conclusion: "", headSha: "f".repeat(40), createdAt: "2026-11-17T13:00:00Z", workflowName: "public-validation" },
+    { status: "completed", conclusion: "failure", headSha: "9".repeat(40), createdAt: "2026-11-17T12:33:00Z", workflowName: "public-validation" },
+    { status: "completed", conclusion: "success", headSha: "8".repeat(40), createdAt: "2026-11-17T12:00:00Z", workflowName: "dependabot" },
+    { status: "completed", conclusion: "failure", headSha: "1".repeat(40), createdAt: "2026-11-17T01:08:00Z", workflowName: "public-validation" },
+    { status: "completed", conclusion: "success", headSha: "a".repeat(40), createdAt: "2026-11-17T00:46:00Z", workflowName: "public-validation" },
+  ];
+  const run = (command) => ({ status: 0, stdout: command === "gh" ? JSON.stringify(runs) : "", stderr: "" });
+  const source = SOURCES.find((item) => item.id === "ci.public");
+  assert.deepEqual(source.collect(createContext({ policy: policy(), run })), { latest_conclusion: "failure", latest_commit: "9999999",
+    consecutive_failures: 2, failing_since_commit: "1111111", failing_since: "2026-11-17T01:08:00Z" });
 });

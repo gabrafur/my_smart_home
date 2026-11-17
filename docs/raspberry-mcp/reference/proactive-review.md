@@ -59,6 +59,7 @@ ao executor que registre o acompanhamento com `ack`.
 | `nodered_admin.chain_drift` | Status do verificador da cadeia administrativa do Node-RED |
 | `ai.codex_account` | Uso da conta ChatGPT/Codex: liberado, limite atingido e horário de reset |
 | `host.update_protections` | `live-restore` do Docker e controlador de memória do cgroup |
+| `ci.public` | Últimas execuções da validação pública em `main` (GitHub Actions) |
 
 Instâncias por conexão (`Accept=yes`) do executor admin e do leitor de avisos
 privados usam `CollectMode=inactive-or-failed`
@@ -85,6 +86,10 @@ quando não há código).
 perde o `live-restore` (um reinício do motor voltaria a derrubar a casa) e P3
 `host.cgroup_memory_disabled` enquanto o kernel ignorar limites de memória; ligar
 o controlador exige reboot e decisão do proprietário.
+
+`ci.public` abre P1 `ci.public_red` quando a última validação pública concluída em
+`main` falhou, com o primeiro commit da sequência vermelha e quantas execuções
+falharam. Como as publicações vão direto para `main`, esse é o aviso de regressão.
 
 Leituras de arquivo usam somente o final do arquivo, até o limite de bytes da
 política. Textos passam por remoção de credenciais, endereços, e-mails e

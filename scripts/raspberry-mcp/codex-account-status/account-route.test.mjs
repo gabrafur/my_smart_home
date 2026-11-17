@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
 import {makeAccountRoute, accountDescriptor} from './account-route.mjs';
+import fs from 'node:fs';
+import vm from 'node:vm';
 import {createRequire} from 'node:module';
-const {classify, METHODS} = createRequire(import.meta.url)('./broker.cjs');
+// The broker loads ws from the path installed on the Raspberry; CI has no such file.
+// Load the source with a stand-in that refuses any connection, so only pure code runs.
+const hostRequire = createRequire(import.meta.url);
+const stubRequire = name => name === '/usr/local/lib/raspberry-ha-notices/vendor/ws'
+  ? class NoNetwork { constructor() { throw Error('network forbidden in tests'); } } : hostRequire(name);
+const loaded = {exports: {}};
+// Same realm as the route, so plain objects keep their prototypes.
+vm.runInThisContext('(function (module, exports, require) {' +
+  fs.readFileSync(new URL('./broker.cjs', import.meta.url), 'utf8') + '\n})')(loaded, loaded.exports, stubRequire);
+const {classify, METHODS} = loaded.exports;
 const limited = classify({account: {type: 'chatgpt', planType: 'prolite'}},
   {ordinaryUsageAllowed: false, rateLimits: {rateLimitReachedType: 'rate_limit_reached', credits: {hasCredits: false, unlimited: false}, primary: {usedPercent: 100, resetsAt: 1795262780}}});
 assert.equal(limited.reason, 'codex_usage_limit_reached');
