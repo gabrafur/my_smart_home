@@ -174,6 +174,33 @@ O núcleo e os contratos não selecionam modelo. Outro chatbot pode usar o mesmo
 MCP e a mesma autoridade local; a rota atual de tarefas ainda depende do
 adaptador/daemon Codex. Trocar o executor também requer implementação e aceite.
 
+## Runtime contínuo do componente (instalado em 17/11/2026)
+
+O fechamento 3a instalou o provedor contínuo do componente `observacao_host`
+(operação `0d1a2c0e78f5781061ea5f5d3f2753b8`, ativada às 00:52 UTC). É uma
+autoridade Root permanente e revogável. A Eva propõe, revisa, prepara e aplica
+reparos comuns desse componente por `maintenance_read`, `maintenance_prepare` e
+`maintenance_apply`, no alvo "Observacao do host" (`component_repair`). Os limites
+são estes:
+
+- nove chaves de fonte e os dezesseis nós de função existentes;
+- sem fios, tipos, startup ou ações de dispositivo novos;
+- validação nativa e render do grafo;
+- revisão delegada registrada;
+- CAS na fonte, operação finita de 900 s e confirmação de interface em cada efeito.
+
+`events_status` mostra o estado em `component_execution_policy`.
+
+- O anchor (`standing-continuity/enrollment.json`) fixa o escopo da política de
+  componentes sem as folhas que o pacote do cliente gerencia (worker e política de
+  reparo). As units `job` e `validate` executam `continuity_entry.py <anchor>`, e a
+  recomposição de referências do cliente as mantém intactas.
+- O motor da administração Node-RED passou a somar as tentativas do componente na
+  mesma cota diária de deploys (`continuity_quota.py`). Os dois foram instalados juntos.
+- A revogação pelo operador local sempre é executável. Observação, recibos e o
+  inverso próprio continuam disponíveis depois dela.
+- A prova funcional com a Eva ainda não foi feita.
+
 ## Protótipo histórico de doze ferramentas desativadas
 
 O [protótipo e seus esquemas](../../../scripts/raspberry-mcp/component-repair-candidate/README.md)
