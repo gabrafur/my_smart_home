@@ -119,6 +119,6 @@ if __name__ == '__main__':
     try:
         result = main()
     except Exception as error:
-        reason = str(error) if isinstance(error, ValueError) and __import__('re').fullmatch(r'[a-z][a-z0-9_]{0,95}', str(error)) else 'unexpected_failure_inspect_receipt'
+        reason = str(error) if isinstance(error, (ValueError, RuntimeError)) and __import__('re').fullmatch(r'[a-z][a-z0-9_]{0,95}', str(error)) else 'unexpected_failure_inspect_receipt'
         result = {'state': 'blocked', 'reason': reason, 'exception_kind': type(error).__name__, 'retired': 0, 'automatic_retry': False}
     print(json.dumps(result, separators=(',', ':')))

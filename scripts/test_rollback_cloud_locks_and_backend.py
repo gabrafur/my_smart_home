@@ -113,5 +113,47 @@ class BackendTests(unittest.TestCase):
         self.assertNotIn(values[2], [r['image_id'] for r in observed])
 
 
+    def test_nameless_pinned_compose_image_stays_protected(self):
+        backend, calls = self.load_backend([])
+        running = 'sha256:' + 'd' * 64
+        candidate = 'sha256:' + 'e' * 64
+        rows = {identity: {'image_id': identity, 'created_at': 0, 'tags': [], 'rollback_in_use': False}
+                for identity in (running, candidate)}
+        def docker(*args):
+            if args[:2] == ('image', 'ls'):
+                return (running + '\n' + candidate).encode()
+            if args[:2] == ('compose', 'config'):
+                return ('ghcr.io/example/core@' + running + '\nexample/tagged:stable').encode()
+            if args[:2] == ('image', 'inspect') and args[-1].endswith(running):
+                raise RuntimeError('docker_read_failed')
+            if args[:2] == ('image', 'inspect'):
+                return b'sha256:' + b'f' * 64
+            return b''
+        glob = backend.inventory.__globals__
+        glob['transport'].docker = docker
+        glob['transport'].POLICY['protected_image_ids'] = []
+        backend.repository_reference = lambda identity: False
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(glob, {'ROOT': Path(directory), 'snapshot': lambda identity: rows[identity]}):
+                observed, protected = backend.inventory()
+        self.assertIn(running, protected)
+        self.assertNotIn(running, [r['image_id'] for r in observed])
+
+    def test_unresolved_tag_reference_still_fails(self):
+        backend, calls = self.load_backend([])
+        def docker(*args):
+            if args[:2] == ('compose', 'config'):
+                return b'example/tagged:stable'
+            if args[:2] == ('image', 'inspect'):
+                raise RuntimeError('docker_read_failed')
+            return b''
+        glob = backend.inventory.__globals__
+        glob['transport'].docker = docker
+        glob['transport'].POLICY['protected_image_ids'] = []
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(glob, {'ROOT': Path(directory)}):
+                with self.assertRaisesRegex(RuntimeError, 'docker_read_failed'):
+                    backend.inventory()
+
 if __name__ == '__main__':
     unittest.main()

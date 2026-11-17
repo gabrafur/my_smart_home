@@ -47,7 +47,7 @@ class AdapterTests(unittest.TestCase):
   self.assertIs(cls.update,native.IcloudDevice.update)
   self.assertNotIn(native.ATTR_OWNER_NAME,cls(self.account,object(),self.status)._attrs)
  def test_next_minor_rejected(self):
-  with self.assertRaisesRegex(RuntimeError,'unsupported_icloud_core_version'):adapter.prepare_device_class(self.core,'2026.11.2')
+  with self.assertRaisesRegex(RuntimeError,'unsupported_icloud_core_version'):adapter.prepare_device_class(self.core,'2026.11.3')
  def test_second_install_is_idempotent(self):
   cls=adapter.prepare_device_class(self.core,'2026.10.1');self.core.IcloudDevice=cls
   self.assertIs(adapter.prepare_device_class(self.core,'2026.10.1'),cls)
@@ -61,8 +61,11 @@ class AdapterTests(unittest.TestCase):
    # Unload is now guarded: a waiting entry has no platforms to unload.
    self.assertIsNot(env.sut.async_unload_entry,env.core.async_unload_entry)
  def test_reviewed_november_patch_preserves_adapter(self):
-  cls=adapter.prepare_device_class(self.core,'2026.11.1')
-  obj=cls(self.account,object(),self.status)
-  self.assertNotIn(native.ATTR_OWNER_NAME,obj._attrs)
-  self.assertIs(cls.update,native.IcloudDevice.update)
+  for version in('2026.11.1','2026.11.2'):
+   with self.subTest(version=version):
+    self.core.IcloudDevice=native.IcloudDevice
+    cls=adapter.prepare_device_class(self.core,version)
+    obj=cls(self.account,object(),self.status)
+    self.assertNotIn(native.ATTR_OWNER_NAME,obj._attrs)
+    self.assertIs(cls.update,native.IcloudDevice.update)
 if __name__=='__main__':unittest.main()

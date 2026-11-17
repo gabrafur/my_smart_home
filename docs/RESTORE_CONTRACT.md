@@ -487,7 +487,12 @@ backup publica `rollback_state`, `rollback_retired` e `rollback_reason`.
 
 A seleção considera até 32 imagens Docker sem tags, com idade mínima de 24
 horas. Contêineres ativos e parados, Compose, referências versionadas e imagens
-registradas de restauração protegem seus respectivos IDs. Uma recuperação
+registradas de restauração protegem seus respectivos IDs. Uma referência do
+Compose fixada por digest continua protegida pelo próprio digest quando um pull
+posterior move a tag e a imagem em uso fica sem nome (no armazenamento
+containerd, o ID é o digest); referência por tag que não resolve ainda bloqueia
+o ciclo. Falhas de leitura do Docker aparecem como `rollback_reason=docker_read_failed`,
+não como `unexpected_failure_inspect_receipt`. Uma recuperação
 Docker pendente suspende a retirada. O limite móvel é de duas imagens e 2 GiB
 comprimidos por 24 horas. O executor adia o trabalho com menos de 2 GiB de RAM
 disponíveis ou carga de um minuto acima de quatro.

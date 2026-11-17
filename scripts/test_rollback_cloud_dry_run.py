@@ -3,6 +3,9 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 import rollback_cloud_daily as daily
+# Load the real modules before fixtures put a fake scripts/ folder on the import path.
+import rollback_cloud_cycle  # noqa: F401
+import rollback_cloud_policy  # noqa: F401
 
 
 class FakeReadBackend:

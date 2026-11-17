@@ -72,7 +72,7 @@ com a Apple. Sessões e tokens continuam sob armazenamento da biblioteca.
 
 ## Compatibilidade e manutenção
 
-Compatibilidade revisada para Home Assistant Core 2026.10.1/2026.10.4 com pyicloud 2.7.0 e Core 2026.11.0 com pyicloud 2026.10.1. A revisão instalada deve preservar o par de versões; rollback exige restaurar também o manifesto e o overlay correspondentes.
+Compatibilidade revisada para Home Assistant Core 2026.10.1/2026.10.4 com pyicloud 2.7.0 e Core 2026.11.0/2026.11.1/2026.11.2 com pyicloud 2026.10.1. A revisão instalada deve preservar o par de versões; rollback exige restaurar também o manifesto e o overlay correspondentes.
 `manual_auth.ManualOtpService` é um nome de compatibilidade para `GuardedService`;
 `config_flow.py` registra `ManualIcloudFlow`, implementado em `manual_flow.py`.
 O adaptador substitui a fábrica de cliente em `account` e usa um fluxo local
@@ -204,6 +204,17 @@ O preflight isolado e os seis testes de contrato nativo passaram na imagem
 fixada, sem rede ou configuração residencial. A allowlist continua explícita
 e o hash do construtor e a versão de pyicloud continuam obrigatórios.
 Essa revisão não comprova atualização nem autenticação em produção.
+
+## Compatibilidade Core 2026.11.2
+
+A atualização diária de 17/11 parou com `unsupported_icloud_core_version`:
+a imagem nova trazia o Core 2026.11.2, fora da allowlist. A revisão comparou
+os 19 arquivos nativos com o commit oficial da tag (`ff5d56b`), sem
+divergências e sem mudanças de código em relação a 2026.11.1; só as traduções
+`pt` e `sv` mudaram. Os arquivos do pyicloud 2026.10.1 são idênticos aos da
+imagem anterior e a licença upstream não mudou. O preflight isolado, sem rede,
+configuração residencial ou autenticação Apple, retornou `compatible` com o
+mesmo hash de construtor. A próxima versão continua bloqueada até nova revisão.
 
 ## Rejeição de sessão durante polling
 

@@ -4,6 +4,7 @@ from datetime import datetime
 import hashlib
 import json
 import os
+import re
 import time
 from pathlib import Path
 import subprocess
@@ -78,7 +79,16 @@ class Backend:
         if len(references) > 128:
             raise ValueError('compose_inventory_limit')
         for reference in references:
-            protected.add(transport.docker('image', 'inspect', '--format', '{{.Id}}', reference).decode().strip())
+            pinned = re.fullmatch(r'[^@\s]+@(sha256:[a-f0-9]{64})', reference)
+            if pinned:
+                # A later pull can move the tag and leave the pinned image nameless while the
+                # container still runs it; its digest stays protected (it is the containerd image ID).
+                protected.add(pinned.group(1))
+            try:
+                protected.add(transport.docker('image', 'inspect', '--format', '{{.Id}}', reference).decode().strip())
+            except RuntimeError:
+                if not pinned:
+                    raise
         protected.update(transport.POLICY['protected_image_ids'])
         rows = [snapshot(identity) for identity in identities]
         from rollback_cloud_policy import select_images

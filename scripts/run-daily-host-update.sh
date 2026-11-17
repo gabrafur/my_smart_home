@@ -98,11 +98,20 @@ fi
 
 if [ "$stage" = "home-assistant-core" ] || [ "$stage" = "containers" ]; then
   echo "daily-host-update stage=$stage started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  # Keep streaming to the cron log, but also record the last static refusal code so the
+  # result says why the stage stopped (for example a safety gate) instead of only exit 1.
+  image_output=$(mktemp)
+  image_status_file=$(mktemp)
   set +e
-  run_images "$stage"
-  image_status=$?
+  { run_images "$stage" 2>&1; echo $? > "$image_status_file"; } | tee "$image_output"
+  image_status=$(cat "$image_status_file")
   set -e
-  write_detail "stage=$stage stage_exit=$image_status mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
+  image_reason=$(grep -aoE '(update blocked reason|git-backup-reason)=[a-z0-9_]{1,64}' "$image_output" | tail -n 1 | sed 's/.*=//')
+  rm -f -- "$image_output" "$image_status_file"
+  case "$image_status" in ''|*[!0-9]*) image_status=70 ;; esac
+  reason_field=""
+  [ "$image_status" -eq 0 ] || reason_field=" reason=${image_reason:-unclassified}"
+  write_detail "stage=$stage stage_exit=$image_status${reason_field} mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
   exit "$image_status"
 fi
 

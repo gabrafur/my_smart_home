@@ -72,6 +72,14 @@ hora de Brasília>" e explica que tarefas Codex, revisões delegadas e reparos d
 componente ficam parados até o reset. Se a conta não puder ser lida, isso aparece
 como lacuna de coleta, e não como afirmação sobre créditos.
 
+Em `updates.workers`, uma atualização recusada por trava de segurança
+(`update blocked reason=`) conta como falha do worker. O título traz o motivo
+mais recente de cada worker, por exemplo `core: unsupported_icloud_core_version`,
+e motivos de trava (`unsupported_*`, `*_unconfirmed`, `*_blocked`) pedem revisão
+da trava, não uma nova tentativa. O resultado das etapas Core e contêineres
+também traz `reason=` com o último código estático da saída (`unclassified`
+quando não há código).
+
 Leituras de arquivo usam somente o final do arquivo, até o limite de bytes da
 política. Textos passam por remoção de credenciais, endereços, e-mails e
 valores opacos antes de qualquer saída. Fonte que falha vira erro de coleta

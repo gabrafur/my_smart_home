@@ -435,6 +435,30 @@ test("each host stage invokes only its own updater", () => {
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
+test("image stage result names the static refusal code that stopped it", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "host-update-stage-reason-test-"));
+  const node = path.join(fixture, "node");
+  const detail = path.join(fixture, "detail");
+  fs.writeFileSync(node, "#!/bin/sh\n" +
+    "case \"$2\" in\n" +
+    "  home-assistant-core) echo 'pulling'; echo 'Error: production update blocked reason=unsupported_icloud_core_version token=secret' >&2; exit 1 ;;\n" +
+    "  containers) echo 'opaque failure' >&2; exit 2 ;;\n" +
+    "esac\n");
+  fs.chmodSync(node, 0o755);
+  const run = (stage) => spawnSync(runScript, [stage], {
+    encoding: "utf8",
+    env: {...process.env, DAILY_UPDATE_NODE_BIN: node, DOCKER_UPDATE_SCRIPT: "fixture", DAILY_UPDATE_DETAIL_FILE: detail},
+  });
+  const core = run("home-assistant-core");
+  assert.equal(core.status, 1);
+  assert.match(core.stdout, /pulling/);
+  assert.equal(fs.readFileSync(detail, "utf8").trim(),
+    "stage=home-assistant-core stage_exit=1 reason=unsupported_icloud_core_version mode=production");
+  assert.equal(run("containers").status, 2);
+  assert.equal(fs.readFileSync(detail, "utf8").trim(), "stage=containers stage_exit=2 reason=unclassified mode=production");
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
 test("Codex CLI updater resolves an exact version and skips an already current install", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "codex-cli-update-test-"));
   const prefix = path.join(fixture, ".local");
