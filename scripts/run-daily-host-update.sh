@@ -11,6 +11,7 @@ dietpi_helper="${DIETPI_UPDATE_HELPER:-/usr/local/sbin/smart-home-dietpi-daily-u
 dietpi_status_file="${DIETPI_UPDATE_STATUS_FILE:-/run/smart-home-dietpi-daily-upgrade.result}"
 detail_file="${DAILY_UPDATE_DETAIL_FILE:-}"
 docker_bin="${DAILY_UPDATE_DOCKER_BIN:-/usr/bin/docker}"
+readiness_script="${DAILY_UPDATE_READINESS_SCRIPT:-$script_dir/service-readiness-report.mjs}"
 meminfo_file="${DAILY_UPDATE_MEMINFO:-/proc/meminfo}"
 minimum_available_mib="${DAILY_UPDATE_MIN_AVAILABLE_MIB:-2048}"
 dry_run=false
@@ -129,7 +130,14 @@ if [ "$stage" = "dietpi" ]; then
   run_dietpi
   starts_after=$(container_starts) || starts_after=unknown
   containers_restarted=$(restarted_count "$starts_before" "$starts_after")
-  write_detail "stage=dietpi stage_exit=$dietpi_status failure_stage=$dietpi_stage containers_restarted=$containers_restarted mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
+  # Report (never act) whether HA, MQTT, Node-RED and Zigbee are ready after the stage.
+  readiness=readiness=not_checked
+  if [ "$dry_run" != true ]; then
+    readiness=$("$node_bin" "$readiness_script" 2>/dev/null | sed -n '1p' | tr -cd 'a-z0-9_=:,') || readiness=""
+    case "$readiness" in readiness=ok|readiness=degraded:*) ;; *) readiness=readiness=unknown ;; esac
+    echo "daily-host-update stage=dietpi $readiness"
+  fi
+  write_detail "stage=dietpi stage_exit=$dietpi_status failure_stage=$dietpi_stage containers_restarted=$containers_restarted $readiness mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
   exit "$dietpi_status"
 fi
 

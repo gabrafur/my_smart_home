@@ -420,6 +420,7 @@ test("each host stage invokes only its own updater", () => {
     DOCKER_UPDATE_SCRIPT: dockerUpdater,
     CODEX_CLI_UPDATE_SCRIPT: codexUpdater,
     OFFSITE_BACKUP_SCRIPT: offsiteBackup,
+    DAILY_UPDATE_READINESS_SCRIPT: path.join(fixture, "readiness-report.mjs"),
   };
   for (const stage of ["offsite-backup", "dietpi", "home-assistant-core", "containers", "codex-cli"]) {
     const result = spawnSync(runScript, [stage], { encoding: "utf8", env });
@@ -428,6 +429,7 @@ test("each host stage invokes only its own updater", () => {
   assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), [
     `${offsiteBackup} daily-cycle`,
     "dietpi",
+    path.join(fixture, "readiness-report.mjs"),
     `${dockerUpdater} home-assistant-core`,
     `${dockerUpdater} containers`,
     "codex-cli",
@@ -472,7 +474,7 @@ test("heavy stages wait for memory and the DietPi stage reports restarted contai
   fs.writeFileSync(sudo, "#!/bin/sh\n[ \"$1\" = \"-n\" ] && shift\n\"$@\"\n");
   // The helper "restarts" one of two containers, as an engine upgrade without live-restore would.
   fs.writeFileSync(helper, `#!/bin/sh\nprintf 'dietpi\\n' >> "${calls}"\nprintf 'a 2026-11-17T01:00:00Z\\nb 2026-11-17T04:04:07Z\\n' > "${starts}"\n`);
-  fs.writeFileSync(node, `#!/bin/sh\nprintf 'node %s\\n' "$2" >> "${calls}"\n`);
+  fs.writeFileSync(node, `#!/bin/sh\ncase "$1" in *readiness*) echo 'readiness=degraded:zigbee2mqtt' ;; *) printf 'node %s\\n' "$2" >> "${calls}" ;; esac\n`);
   fs.writeFileSync(docker, `#!/bin/sh\ncase "$1" in ps) printf 'a\\nb\\n' ;; inspect) cat "${starts}" ;; esac\n`);
   fs.writeFileSync(starts, "a 2026-11-17T01:00:00Z\nb 2026-11-17T01:00:00Z\n");
   for (const file of [sudo, helper, node, docker]) fs.chmodSync(file, 0o755);
@@ -489,7 +491,7 @@ test("heavy stages wait for memory and the DietPi stage reports restarted contai
   fs.writeFileSync(meminfo, "MemTotal: 8000000 kB\nMemAvailable: 4194304 kB\n");
   const ok = spawnSync(runScript, ["dietpi"], {encoding: "utf8", env});
   assert.equal(ok.status, 0, ok.stderr);
-  assert.match(fs.readFileSync(detail, "utf8"), /^stage=dietpi stage_exit=0 failure_stage=unknown containers_restarted=1 mode=production$/m);
+  assert.match(fs.readFileSync(detail, "utf8"), /^stage=dietpi stage_exit=0 failure_stage=unknown containers_restarted=1 readiness=degraded:zigbee2mqtt mode=production$/m);
   assert.equal(spawnSync(runScript, ["containers"], {encoding: "utf8", env}).status, 0);
   assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), ["dietpi", "node containers"]);
   fs.rmSync(fixture, { recursive: true, force: true });
@@ -724,4 +726,19 @@ test("the cron installer migrates direct update schedules to Node-RED bridges", 
   assert.ok(hacsWorkers.every((line) => line.includes("/usr/bin/flock -w 55 ")));
   assert.match(installed, /nice -n 15 .*ionice -c 3/);
   fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("readiness report waits for every core service and names the ones still not ready", async () => {
+  const { readinessReport, CORE_SERVICES } = await import("./service-readiness-report.mjs");
+  assert.deepEqual(CORE_SERVICES, ["homeassistant", "mosquitto", "nodered", "zigbee2mqtt"]);
+  let clock = 0;
+  const probes = [];
+  const ready = new Set(["mosquitto"]);
+  const probe = (service) => { probes.push(service); return ready.has(service); };
+  const sleep = async (ms) => { clock += ms; if (clock >= 20000) { ready.add("homeassistant"); ready.add("nodered"); } };
+  const line = await readinessReport(CORE_SERVICES, { probe, deadlineMs: 60000, intervalMs: 10000, now: () => clock, sleep });
+  assert.equal(line, "readiness=degraded:zigbee2mqtt");
+  // A service already ready is not probed again.
+  assert.equal(probes.filter((service) => service === "mosquitto").length, 1);
+  assert.equal(await readinessReport(["nodered"], { probe: () => true, now: () => 0, sleep }), "readiness=ok");
 });

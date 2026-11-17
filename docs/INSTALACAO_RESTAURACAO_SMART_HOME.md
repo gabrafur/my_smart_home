@@ -407,7 +407,10 @@ Proteções da janela noturna:
   repetido no minuto seguinte) enquanto houver menos de 2 GiB disponíveis, com
   `deferred reason=memory_low` no log.
 - O resultado do DietPi traz `containers_restarted=N`, quantos contêineres a
-  etapa reiniciou; Core e contêineres trazem `reason=` quando falham.
+  etapa reiniciou, e `readiness=ok` ou `readiness=degraded:<serviços>`: até 3 min
+  conferindo Home Assistant (healthcheck), Mosquitto, Node-RED e Zigbee2MQTT com as
+  mesmas sondas do atualizador de imagens (`scripts/service-readiness-report.mjs`;
+  só relata, nunca reinicia); Core e contêineres trazem `reason=` quando falham.
 - O kernel padrão do Raspberry Pi não liga o controlador de memória do cgroup;
   sem `cgroup_enable=memory` no `cmdline.txt` (exige reboot), limites `--memory`
   do Docker são ignorados. Qualquer falha entra em `observabilidade_global` e
