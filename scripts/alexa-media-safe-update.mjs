@@ -247,6 +247,20 @@ function markerPresent(root, marker) {
   return fs.readFileSync(target, "utf8").includes(marker.text);
 }
 
+// The local regression test of the shared Amazon Kids polling runs against the staged
+// candidate. It replaces pinning upstream file hashes in public memory, which blocked
+// every new release even when the reviewed behavior did not change.
+export function runCandidateBehaviorTest(componentRoot, { execute = execFileSync } = {}) {
+  try {
+    execute("python3", ["-E", "-s", "-m", "unittest", "test_alexa_media_amazon_kids"], {
+      cwd: path.join(repoRoot, "homeassistant/tests"), timeout: 120000, stdio: ["ignore", "pipe", "pipe"],
+      env: { PATH: process.env.PATH, ALEXA_MEDIA_COMPONENT_ROOT: componentRoot },
+    });
+  } catch {
+    throw new Error("candidate_amazon_kids_behavior_test_failed");
+  }
+}
+
 function validateMerged(root, metadata, target, expectedLicenseHash) {
   const manifest = readJson(path.join(root, "manifest.json"));
   if (normalizeVersion(manifest.version) !== normalizeVersion(target)) {
@@ -257,9 +271,11 @@ function validateMerged(root, metadata, target, expectedLicenseHash) {
   const actualLicenseHash = sha256(path.join(root, metadata.license_target_name));
   if (actualLicenseHash !== expectedLicenseHash) throw new Error("preserved upstream license hash is invalid");
   command("python3", ["-m", "compileall", "-q", root]);
+  runCandidateBehaviorTest(root);
   return {
     compileall: "passed",
     required_markers: `${metadata.required_markers.length}/${metadata.required_markers.length}`,
+    amazon_kids_behavior: "passed",
     license_sha256: actualLicenseHash,
   };
 }

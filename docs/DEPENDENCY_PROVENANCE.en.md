@@ -18,6 +18,10 @@ only unknown devices and checks that selection again under the lock, without
 creating another timer or polling known states again. Regression tests exercise
 the actual function with a simulated API; counting calls to a mock that replaces
 the entire filter does not establish this contract.
+Before installing a new release, the updater runs that regression against the
+candidate (`ALEXA_MEDIA_COMPONENT_ROOT`); a failure blocks with
+`candidate_amazon_kids_behavior_test_failed`. Public memory cites the test, not the
+upstream files, which change with every release.
 
 The covered paths are `homeassistant/custom_components/<domain>/**`. Each
 directory contains the verified upstream license as `LICENSE.upstream`.

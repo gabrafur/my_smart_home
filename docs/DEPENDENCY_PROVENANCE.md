@@ -18,6 +18,10 @@ plataforma inicializa apenas dispositivos ainda desconhecidos e revalida essa
 seleção sob o lock, sem criar outro timer ou consultar novamente estados já
 conhecidos. A regressão verifica chamadas da API simulada através da função real;
 contar chamadas de um mock que substitui o filtro inteiro não prova esse contrato.
+Antes de instalar uma versão nova, o atualizador roda essa regressão contra o
+candidato (`ALEXA_MEDIA_COMPONENT_ROOT`); falha bloqueia com
+`candidate_amazon_kids_behavior_test_failed`. A memória pública cita o teste, não os
+arquivos do upstream, que mudam a cada versão.
 
 Os caminhos cobertos são, respectivamente,
 `homeassistant/custom_components/<domínio>/**`. Cada diretório contém uma cópia

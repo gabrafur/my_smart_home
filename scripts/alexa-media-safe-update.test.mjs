@@ -17,6 +17,7 @@ import {
   validVersion,
   pollRuntime,
   runtimeEvidence,
+  runCandidateBehaviorTest,
 } from "./alexa-media-safe-update.mjs";
 
 const baseline = { entity_ids: ["sensor.example"], active_entity_ids: ["sensor.example"], recorder_rows: 12 };
@@ -115,7 +116,7 @@ test("Alexa Media status output excludes private failure details", () => {
 });
 
 
-test("candidate memory permits version metadata and refuses changed evidence before installation", () => {
+test("candidate memory permits version metadata and behavior test refuses a broken Kids contract", () => {
   const root = path.resolve(import.meta.dirname, "..");
   const source = path.join(root, "homeassistant/custom_components/alexa_media");
   const metadata = JSON.parse(fs.readFileSync(path.join(root, "scripts/alexa-media-upstream.json")));
@@ -124,13 +125,29 @@ test("candidate memory permits version metadata and refuses changed evidence bef
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "alexa-memory-test-"));
   try {
     fs.cpSync(source, temporary, { recursive: true, filter: (p) => !p.includes("__pycache__") });
-    fs.appendFileSync(path.join(temporary, "amazon_kids.py"), "\n# synthetic changed contract\n");
-    assert.ok(checkCandidateMemory(temporary, next).errors.some(e => e.includes("evidence_changed")));
+    // Upstream files are no longer memory evidence: a release that changes them without
+    // changing the reviewed behavior is admitted...
+    fs.appendFileSync(path.join(temporary, "amazon_kids.py"), "\n# synthetic upstream change\n");
+    assert.deepEqual(checkCandidateMemory(temporary, next).errors, []);
+    runCandidateBehaviorTest(temporary);
+    // ...and a release that breaks the shared Kids polling is refused by the behavior test.
     fs.rmSync(path.join(temporary, "amazon_kids.py"));
-    assert.ok(checkCandidateMemory(temporary, next).errors.some(e => e.includes("evidence_changed")));
+    assert.throws(() => runCandidateBehaviorTest(temporary), /candidate_amazon_kids_behavior_test_failed/);
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
   const code = fs.readFileSync(new URL("./alexa-media-safe-update.mjs", import.meta.url), "utf8");
   const apply = code.slice(code.indexOf("async function apply(target)"));
   assert.ok(apply.indexOf("checkCandidateMemory(") < apply.indexOf("const token = readHaToken()"));
   assert.match(statusLine({ state: "blocked", reason: "public_memory_invalid" }), /reason=public_memory_invalid/);
+});
+
+test("candidate behavior test runs the Kids regression against the staged tree only", () => {
+  const calls = [];
+  runCandidateBehaviorTest("/staged/alexa_media", { execute: (cmd, args, options) => calls.push({ cmd, args, options }) });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].args, ["-E", "-s", "-m", "unittest", "test_alexa_media_amazon_kids"]);
+  assert.equal(calls[0].options.env.ALEXA_MEDIA_COMPONENT_ROOT, "/staged/alexa_media");
+  assert.deepEqual(Object.keys(calls[0].options.env).sort(), ["ALEXA_MEDIA_COMPONENT_ROOT", "PATH"]);
+  assert.match(calls[0].options.cwd, /homeassistant\/tests$/);
+  assert.throws(() => runCandidateBehaviorTest("/staged", { execute: () => { throw new Error("exit 1 with private output"); } }),
+    /^Error: candidate_amazon_kids_behavior_test_failed$/);
 });

@@ -1,4 +1,5 @@
 """Exercise the vendored Amazon Kids lifecycle without Home Assistant or network."""
+import __future__
 import ast
 import asyncio
 from datetime import timedelta
@@ -7,13 +8,20 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, Mock, call
 
-ALEXA_MEDIA_ROOT = Path(__file__).resolve().parents[2] / 'homeassistant/custom_components/alexa_media'
+import os
+# The Alexa Media updater points this at the staged candidate to check its behavior
+# before installing it; by default the installed component is tested.
+ALEXA_MEDIA_ROOT = (Path(os.environ['ALEXA_MEDIA_COMPONENT_ROOT']) if os.environ.get('ALEXA_MEDIA_COMPONENT_ROOT')
+                    else Path(__file__).resolve().parents[2] / 'homeassistant/custom_components/alexa_media')
 
 
 def load_class(file, name, namespace):
     tree = ast.parse((ALEXA_MEDIA_ROOT / file).read_text())
     definition = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == name)
-    exec(compile(ast.Module(body=[definition], type_ignores=[]), file, 'exec'), namespace)
+    # Only the class is extracted, without the module's imports; compile it with postponed
+    # annotations, as the module itself does, so type hints never need those imports.
+    flags = __future__.annotations.compiler_flag
+    exec(compile(ast.Module(body=[definition], type_ignores=[]), file, 'exec', flags=flags, dont_inherit=True), namespace)
     return namespace[name]
 
 
