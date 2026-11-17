@@ -1,0 +1,14 @@
+[Unit]
+Description=Read-only Codex account status for the Raspberry MCP
+
+[Socket]
+ListenStream=/run/raspberry-mcp/codex-account.sock
+SocketUser=root
+SocketGroup=raspberry-mcp
+SocketMode=0660
+Accept=yes
+MaxConnections=4
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

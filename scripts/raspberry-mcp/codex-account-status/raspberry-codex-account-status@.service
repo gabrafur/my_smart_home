@@ -1,0 +1,32 @@
+[Unit]
+Description=One read-only Codex account status request
+CollectMode=inactive-or-failed
+
+[Service]
+Type=exec
+User=gabriel
+Group=gabriel
+ExecStart=/usr/bin/node /usr/local/lib/raspberry-codex-account-status/broker.cjs
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+UMask=0077
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=no
+PrivateDevices=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+ReadOnlyPaths=/usr/local/lib/raspberry-codex-account-status /usr/local/lib/raspberry-ha-notices/vendor/ws
+InaccessiblePaths=-/mnt/data/docker/.local-secrets -/run/docker.sock
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+MemoryMax=96M
+TasksMax=16
+RuntimeMaxSec=20

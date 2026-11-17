@@ -234,3 +234,20 @@ componentes sem as duas folhas que o cliente gerencia (worker e política de rep
 Por isso `scripts/raspberry-mcp/client-reference-continuity/` faz a recomposição de
 referências do cliente manter essas units intactas, em vez de recusá-las. A `guard`
 continua sendo repinada.
+
+## Estado da conta Codex
+
+`codex_account_status` (somente leitura) mostra o estado de uso da conta
+Codex/ChatGPT que atende `codex_task_create` e `codex_task_send`: plano, se o uso
+incluído está liberado, limite atingido, créditos pagos e horário do reset. O
+broker (`scripts/raspberry-mcp/codex-account-status/`) roda por pedido como o
+dono do app-server e só chama `initialize`, `account/read` e
+`account/rateLimits/read`. Não devolve token, e-mail nem identificador da conta.
+
+O `task_control` reduz a recusa da cota (`included_quota_unconfirmed`) ao código
+genérico `task_rpc_unconfirmed`, e ele não foi alterado porque está fixado pela
+política de tarefas e pelo anchor do componente. Por isso a rota do frontend anexa o
+estado da conta a toda falha de `codex_task_create` e `codex_task_send`. Só atribui
+`likely_reason` quando a recusa é a genérica; recusas específicas mantêm o próprio
+código. A observação é posterior à recusa e não prova o motivo do backend.
+
