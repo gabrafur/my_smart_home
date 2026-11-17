@@ -77,11 +77,15 @@ export function installHostObserver(flows) {
     change(`${id}_set`,g.decision,`Marcar ${signal}`,'_host_signal',signal,'str',2370,y,'host_obs_lifecycle');
   }
   fn('lifecycle',g.decision,'Incidente, confirmação e dedupe persistentes','lifecycle',2720,1170,[['host_obs_mobile_delivery_scope']]);
-  sw('mobile_delivery_scope',g.decision,'Somente estes incidentes sem push','payload.incident_key',[
-    {t:'regex',v:'^(native_systemd_procmon|native_systemd_mcp_collection|native_systemd_external_heartbeat|native_docker_ai-bridge|observation_host_report)$',vt:'str',case:false},
+  // Owner decision (17/11/2026): host observations are diagnostics for Eva only. A planned
+  // container restart is not actionable on the phone or in Home Assistant; an incident
+  // still unresolved after the owner escalation deadline reaches the owner through it.
+  sw('mobile_delivery_scope',g.decision,'Incidentes do host: somente Eva','payload.incident_key',[
+    {t:'regex',v:'^(native|resource|observation)_[a-z0-9_-]{1,90}$',vt:'str',case:false},
     {t:'else'}],3000,1170,[['host_obs_suppress_mobile'],['host_obs_alert_out']]);
   change('suppress_mobile',g.decision,'Definir push móvel como false','payload.mobile_notification','false','bool',3280,1080,'host_obs_eva_in_out');
-  nodes.find(n => n.id === 'host_obs_suppress_mobile').rules.push({t:'set',p:'payload.notification_audience',pt:'msg',to:'eva_private',tot:'str'});
+  nodes.find(n => n.id === 'host_obs_suppress_mobile').rules.push({t:'set',p:'payload.notification_audience',pt:'msg',to:'eva_private',tot:'str'},
+    {t:'set',p:'payload.shadow_fallback',pt:'msg',to:'false',tot:'bool'});
   out('alert_out',g.decision,'Decisão → gate global produção / dry-run',['global_observer_alert_to_dispatch_in'],3450,1170);
   const deliveryGroup=group('eva_delivery_group','5. TESTE explícito de entrega privada — sem HA/celular',64,3040,1880,320);
   inject('eva_delivery_create',deliveryGroup,'TESTE REAL: entregar somente à Eva','create',300,3120,'host_obs_eva_delivery_test');

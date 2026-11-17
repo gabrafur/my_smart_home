@@ -56,7 +56,9 @@ msg._observer_persistent_notification_id =
 // Explicit audience from the canonical producer, never inferred from muted mobile.
 if (msg.payload?.notification_audience === 'eva_private') {
     if (msg.payload?.owner_escalation === true) return [msg, msg, null, msg];
-    if(msg._eva_policy?.delivery_mode!=='exclusive')return [null,msg,null,msg];
+    // shadow_fallback=false: the producer's owner decided this incident has no HA copy
+    // even before exclusive delivery (host observations are diagnostics for Eva only).
+    if(msg._eva_policy?.delivery_mode!=='exclusive'&&msg.payload?.shadow_fallback!==false)return [null,msg,null,msg];
     return [null, null, null, msg];
 }
 

@@ -42780,7 +42780,7 @@
     },
     {
         "finalize": "",
-        "func": "// Carry only canonical timing fields; the receipt serializer validates them.\n// Missing source clocks remain unknown, including legacy domain alerts.\nconst timingPayload = msg.payload ?? {};\nmsg._notification_timing = {\n    version: 1,\n    source_observed_at: timingPayload.source_observed_at ?? null,\n    source_time_kind: timingPayload.source_time_kind ?? \"unknown\",\n    first_detected_at: timingPayload.first_detected_at ?? null,\n    policy_decided_at: timingPayload.policy_decided_at ?? null\n};\nconst TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst DELIVERY_TEST = msg._observer_delivery_test === true;\n\nif(msg._eva_private_delivery_test===true){\n if(msg.payload?.incident_key!=='delivery_test'||msg.payload?.notification_delivery_under_test!==true||msg.payload?.notification_audience!=='eva_private'||msg.payload?.owner_escalation===true)throw Error('private_delivery_test_scope');\n return [null,null,null,msg];\n}\n\nif (TEST_MODE && !DELIVERY_TEST) return [null, null, msg];\n\nif (DELIVERY_TEST) {\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: true,\n        notification_delivery_under_test: true\n    };\n    msg.alert = {\n        title: \"TESTE — Monitor global do Node-RED\",\n        message:\n            \"TESTE de entrega: o canal central de falhas dos fluxos \" +\n            \"Node-RED conseguiu solicitar esta notificação ao Home Assistant.\"\n    };\n    return [msg, null, null];\n}\n\nconst kind = String(msg.payload?.observer_kind ?? \"unknown\");\nconst persistentKind = String(\n    msg.payload?.persistent_incident_kind ?? kind\n);\nconst incident = String(\n    msg.payload?.incident_key ??\n    (\n        [msg.payload?.flow_id, msg.payload?.source_id]\n            .filter(Boolean)\n            .join(\"_\") ||\n        \"unknown\"\n    )\n);\nmsg._observer_persistent_notification_id =\n    `nodered_observabilidade_global_${persistentKind}_${incident}`\n        .replace(/[^a-zA-Z0-9_-]+/g, \"_\")\n        .slice(0, 255);\n\n// Explicit audience from the canonical producer, never inferred from muted mobile.\nif (msg.payload?.notification_audience === 'eva_private') {\n    if (msg.payload?.owner_escalation === true) return [msg, msg, null, msg];\n    if(msg._eva_policy?.delivery_mode!=='exclusive')return [null,msg,null,msg];\n    return [null, null, null, msg];\n}\n\nif (msg.payload?.mobile_notification === false) {\n    return [null, msg, null];\n}\n\nreturn [msg, msg, null];",
+        "func": "// Carry only canonical timing fields; the receipt serializer validates them.\n// Missing source clocks remain unknown, including legacy domain alerts.\nconst timingPayload = msg.payload ?? {};\nmsg._notification_timing = {\n    version: 1,\n    source_observed_at: timingPayload.source_observed_at ?? null,\n    source_time_kind: timingPayload.source_time_kind ?? \"unknown\",\n    first_detected_at: timingPayload.first_detected_at ?? null,\n    policy_decided_at: timingPayload.policy_decided_at ?? null\n};\nconst TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst DELIVERY_TEST = msg._observer_delivery_test === true;\n\nif(msg._eva_private_delivery_test===true){\n if(msg.payload?.incident_key!=='delivery_test'||msg.payload?.notification_delivery_under_test!==true||msg.payload?.notification_audience!=='eva_private'||msg.payload?.owner_escalation===true)throw Error('private_delivery_test_scope');\n return [null,null,null,msg];\n}\n\nif (TEST_MODE && !DELIVERY_TEST) return [null, null, msg];\n\nif (DELIVERY_TEST) {\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: true,\n        notification_delivery_under_test: true\n    };\n    msg.alert = {\n        title: \"TESTE — Monitor global do Node-RED\",\n        message:\n            \"TESTE de entrega: o canal central de falhas dos fluxos \" +\n            \"Node-RED conseguiu solicitar esta notificação ao Home Assistant.\"\n    };\n    return [msg, null, null];\n}\n\nconst kind = String(msg.payload?.observer_kind ?? \"unknown\");\nconst persistentKind = String(\n    msg.payload?.persistent_incident_kind ?? kind\n);\nconst incident = String(\n    msg.payload?.incident_key ??\n    (\n        [msg.payload?.flow_id, msg.payload?.source_id]\n            .filter(Boolean)\n            .join(\"_\") ||\n        \"unknown\"\n    )\n);\nmsg._observer_persistent_notification_id =\n    `nodered_observabilidade_global_${persistentKind}_${incident}`\n        .replace(/[^a-zA-Z0-9_-]+/g, \"_\")\n        .slice(0, 255);\n\n// Explicit audience from the canonical producer, never inferred from muted mobile.\nif (msg.payload?.notification_audience === 'eva_private') {\n    if (msg.payload?.owner_escalation === true) return [msg, msg, null, msg];\n    // shadow_fallback=false: the producer's owner decided this incident has no HA copy\n    // even before exclusive delivery (host observations are diagnostics for Eva only).\n    if(msg._eva_policy?.delivery_mode!=='exclusive'&&msg.payload?.shadow_fallback!==false)return [null,msg,null,msg];\n    return [null, null, null, msg];\n}\n\nif (msg.payload?.mobile_notification === false) {\n    return [null, msg, null];\n}\n\nreturn [msg, msg, null];",
         "g": "global_observer_production_group",
         "id": "global_observer_dispatch_guard",
         "initialize": "",
@@ -103220,7 +103220,7 @@
         "checkall": "false",
         "g": "host_obs_decision_group",
         "id": "host_obs_mobile_delivery_scope",
-        "name": "Somente estes incidentes sem push",
+        "name": "Incidentes do host: somente Eva",
         "outputs": 2,
         "property": "payload.incident_key",
         "propertyType": "msg",
@@ -103228,7 +103228,7 @@
         "rules": [
             {
                 "t": "regex",
-                "v": "^(native_systemd_procmon|native_systemd_mcp_collection|native_systemd_external_heartbeat|native_docker_ai-bridge|observation_host_report)$",
+                "v": "^(native|resource|observation)_[a-z0-9_-]{1,90}$",
                 "vt": "str",
                 "case": false
             },
@@ -103271,6 +103271,13 @@
                 "pt": "msg",
                 "to": "eva_private",
                 "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload.shadow_fallback",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
             }
         ],
         "to": "",

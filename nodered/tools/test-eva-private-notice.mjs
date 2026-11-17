@@ -30,6 +30,12 @@ test('transport failure notifies owner once and resets after exact ack',()=>{
  assert.ok(invoke(source,structuredClone(msg),db));
 });
 
+test('host diagnostics opt out of the HA shadow copy, escalation still reaches the owner',()=>{
+ const eva=run({payload:{notification_audience:'eva_private',shadow_fallback:false,incident_key:'native_docker_homeassistant'}});
+ assert.deepEqual([eva[0],eva[1],eva[2]],[null,null,null]);assert.ok(eva[3]);
+ const escalated=run({payload:{notification_audience:'eva_private',shadow_fallback:false,owner_escalation:true}});
+ assert.ok(escalated[0]);assert.ok(escalated[1]);assert.ok(escalated[3]);
+});
 test('shadow preserves previous source until exact alias proof',()=>{const r=run({payload:{notification_audience:'eva_private'}});assert.equal(r[0],null);assert.ok(r[1]);assert.ok(r[3]);});
 const deliveryBody=fs.readFileSync(new URL('functions/host-observer-eva-delivery-test.js',import.meta.url),'utf8');
 test('explicit private delivery remains private in shadow and rejects real role',()=>{
