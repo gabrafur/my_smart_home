@@ -58,6 +58,7 @@ ao executor que registre o acompanhamento com `ack`.
 | `workers.stale_markers` | Pedidos presos em processamento |
 | `nodered_admin.chain_drift` | Status do verificador da cadeia administrativa do Node-RED |
 | `ai.codex_account` | Uso da conta ChatGPT/Codex: liberado, limite atingido e horário de reset |
+| `host.update_protections` | `live-restore` do Docker e controlador de memória do cgroup |
 
 Instâncias por conexão (`Accept=yes`) do executor admin e do leitor de avisos
 privados usam `CollectMode=inactive-or-failed`
@@ -79,6 +80,11 @@ e motivos de trava (`unsupported_*`, `*_unconfirmed`, `*_blocked`) pedem revisã
 da trava, não uma nova tentativa. O resultado das etapas Core e contêineres
 também traz `reason=` com o último código estático da saída (`unclassified`
 quando não há código).
+
+`host.update_protections` abre P1 `host.docker_live_restore_off` quando o Docker
+perde o `live-restore` (um reinício do motor voltaria a derrubar a casa) e P3
+`host.cgroup_memory_disabled` enquanto o kernel ignorar limites de memória; ligar
+o controlador exige reboot e decisão do proprietário.
 
 Leituras de arquivo usam somente o final do arquivo, até o limite de bytes da
 política. Textos passam por remoção de credenciais, endereços, e-mails e

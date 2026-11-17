@@ -339,6 +339,17 @@ export const SOURCES = [
     },
   },
   {
+    id: "host.update_protections",
+    origin: "docker info and the cgroup v2 root controllers",
+    collect(ctx) {
+      // Protections that keep the house up and memory bounded during nightly updates.
+      const live = runCommand(ctx, "docker", ["info", "--format", "{{.LiveRestoreEnabled}}"]).trim();
+      if (live !== "true" && live !== "false") throw new Error("docker_live_restore_unreadable");
+      const controllers = fs.readFileSync(ctx.cgroupControllersPath, "utf8").trim().split(/\s+/);
+      return { docker_live_restore: live === "true", cgroup_memory_controller: controllers.includes("memory") };
+    },
+  },
+  {
     id: "workers.stale_markers",
     origin: "processing markers under the Home Assistant trigger directories",
     collect(ctx) {
@@ -361,9 +372,10 @@ export const SOURCES = [
   },
 ];
 
-export function createContext({ policy, repoRoot = REPO_ROOT, now = Date.now(), run = spawnSync, procRoot = "/proc", home = os.homedir() } = {}) {
+export function createContext({ policy, repoRoot = REPO_ROOT, now = Date.now(), run = spawnSync, procRoot = "/proc", home = os.homedir(),
+  cgroupControllersPath = "/sys/fs/cgroup/cgroup.controllers" } = {}) {
   return {
-    policy, repoRoot, now, run,
+    policy, repoRoot, now, run, cgroupControllersPath,
     procPath: (name) => path.join(procRoot, name),
     resolvePath: (value) => (value.startsWith("~/") ? path.join(home, value.slice(2)) : value),
   };
@@ -585,6 +597,26 @@ export function evaluate(evidence, policy) {
         : "Conferir o login do Codex no host; a cota só é aceita com assinatura ChatGPT pessoal.",
       bucket: [ai.reason, ai.resets_at ?? "unknown"].join(","),
       evidence: ["ai.codex_account"],
+    });
+  }
+
+  const protections = data("host.update_protections");
+  if (protections && protections.docker_live_restore === false) {
+    add({
+      key: "host.docker_live_restore_off", priority: "P1", risk: "baixo",
+      title: "Docker sem live-restore: reinício ou atualização do motor derruba a casa",
+      benefit: "Com live-restore, um upgrade do docker-ce pelo APT ou um reinício do daemon mantém os contêineres rodando (em 17/11 a pilha caiu às 04:03).",
+      proposed_action: "Executar sudo scripts/install-docker-live-restore.sh (reload, sem reiniciar contêineres) e conferir docker info.",
+      evidence: ["host.update_protections"],
+    });
+  }
+  if (protections && protections.cgroup_memory_controller === false) {
+    add({
+      key: "host.cgroup_memory_disabled", priority: "P3", risk: "médio",
+      title: "Limites de memória dos contêineres são ignorados (controlador de memória do cgroup desligado)",
+      benefit: "Com o controlador ativo, testes isolados e contêineres respeitam --memory e uma atualização não consome a RAM do Raspberry.",
+      proposed_action: "Decisão do proprietário: acrescentar cgroup_enable=memory ao cmdline.txt e agendar um reboot autorizado.",
+      evidence: ["host.update_protections"],
     });
   }
 

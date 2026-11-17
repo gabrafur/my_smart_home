@@ -38,6 +38,7 @@ const healthy = () => [
   source("workers.stale_markers", { markers: [] }),
   source("nodered_admin.chain_drift", { state: "aligned", drifted: [], age_hours: 0.5 }),
   source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
+  source("host.update_protections", { docker_live_restore: true, cgroup_memory_controller: true }),
 ];
 
 const replace = (evidence, id, data, error = null) => evidence.map((item) => (item.id === id ? source(id, data, error) : item));
@@ -459,4 +460,23 @@ test("a blocked update names the safety gate instead of a stale backup reason", 
   assert.equal(finding.key, "updates.workers_failed");
   assert.match(finding.title, /core \(unsupported_icloud_core_version\)/);
   assert.match(finding.proposed_action, /trava de segurança/);
+});
+
+test("missing update protections are named with the concrete fix", () => {
+  const findings = evaluate(replace(healthy(), "host.update_protections", { docker_live_restore: false, cgroup_memory_controller: false }), policy());
+  assert.deepEqual(findings.map((f) => [f.key, f.priority]), [["host.docker_live_restore_off", "P1"], ["host.cgroup_memory_disabled", "P3"]]);
+  assert.match(findings[0].proposed_action, /install-docker-live-restore\.sh/);
+  assert.match(findings[1].proposed_action, /reboot autorizado/);
+  assert.deepEqual(evaluate(replace(healthy(), "host.update_protections", null, "docker_live_restore_unreadable"), policy()).map((f) => f.key), ["review.collection_gaps"]);
+});
+
+test("update protections source reads docker info and the cgroup root controllers", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "protections-"));
+  const controllers = path.join(dir, "cgroup.controllers");
+  fs.writeFileSync(controllers, "cpuset cpu io pids\n");
+  const run = (command, args) => ({ status: 0, stdout: command === "docker" && args[0] === "info" ? "true\n" : "", stderr: "" });
+  const source = SOURCES.find((item) => item.id === "host.update_protections");
+  const ctx = createContext({ policy: policy(), run, cgroupControllersPath: controllers });
+  assert.deepEqual(source.collect(ctx), { docker_live_restore: true, cgroup_memory_controller: false });
+  fs.rmSync(dir, { recursive: true, force: true });
 });

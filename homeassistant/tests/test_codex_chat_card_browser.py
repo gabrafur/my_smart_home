@@ -62,7 +62,7 @@ class CodexChatCardBrowserTest(unittest.TestCase):
             headers={"Content-Type": "application/json; charset=utf-8"},
         )
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:
+            with urllib.request.urlopen(request, timeout=90) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", errors="replace")
@@ -186,7 +186,7 @@ window.addEventListener('unhandledrejection',(event)=>pageErrors.push(String(eve
                         "capabilities": {
                             "alwaysMatch": {
                                 "browserName": "chrome",
-                                "timeouts": {"pageLoad": 20000, "script": 10000, "implicit": 0},
+                                "timeouts": {"pageLoad": 60000, "script": 30000, "implicit": 0},
                                 "goog:chromeOptions": {
                                     "binary": self.chromium,
                                     "args": [
@@ -212,7 +212,9 @@ window.addEventListener('unhandledrejection',(event)=>pageErrors.push(String(eve
                     f"/session/{session_id}/url",
                     {"url": page.as_uri()},
                 )
-                deadline = time.monotonic() + 10
+                # Under nightly validation load (load ~5) headless Chromium on the Pi
+                # took more than 20 s per page; bounds stay finite but tolerate that.
+                deadline = time.monotonic() + 30
                 while True:
                     response = self.webdriver_request(
                         base_url,
@@ -314,7 +316,7 @@ class BrowserFixtureCleanupTest(unittest.TestCase):
             self.assertEqual(browser.render_viewport(390, 844), {"fixture": True})
         self.assertIs(launch.call_args.kwargs["start_new_session"], True)
         self.assertEqual(requests[1][2]["capabilities"]["alwaysMatch"]["timeouts"],
-                         {"pageLoad": 20000, "script": 10000, "implicit": 0})
+                         {"pageLoad": 60000, "script": 30000, "implicit": 0})
         driver.wait.assert_called_once_with(timeout=5)
         return signals
 
@@ -334,7 +336,7 @@ class BrowserFixtureCleanupTest(unittest.TestCase):
         context.__exit__ = Mock(return_value=False)
         with patch.object(urllib.request, "urlopen", return_value=context) as request:
             CodexChatCardBrowserTest.webdriver_request("http://127.0.0.1:1", "GET", "/status")
-        self.assertEqual(request.call_args.kwargs["timeout"], 30)
+        self.assertEqual(request.call_args.kwargs["timeout"], 90)
 
 
 if __name__ == "__main__":
