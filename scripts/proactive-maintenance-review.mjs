@@ -235,8 +235,9 @@ export const SOURCES = [
           workers[name] = {
             last_activity_at: iso(mtimeMs),
             age_hours: Number(((ctx.now - mtimeMs) / 3600000).toFixed(2)),
-            last_run_failed: /Error: Command failed|status=failed|git-backup-reason=/.test(text.split("\n").slice(-30).join("\n")),
-            last_reason: text.match(/git-backup-reason=([a-z0-9_]+)(?![\s\S]*git-backup-reason=)/)?.[1] ?? null,
+            last_run_failed: /Error: Command failed|status=failed|git-backup-reason=|update blocked reason=/.test(text.split("\n").slice(-30).join("\n")),
+            // The latest static reason wins: backup push refusal or a safety gate that blocked the update.
+            last_reason: [...text.matchAll(/(?:git-backup-reason|update blocked reason)=([a-z0-9_]+)/g)].pop()?.[1] ?? null,
           };
         } catch (error) {
           workers[name] = { collection_error: error.code ?? error.message };
@@ -494,10 +495,12 @@ export function evaluate(evidence, policy) {
     if (failed.length) {
       add({
         key: "updates.workers_failed", priority: "P2", risk: "médio",
-        title: `Última execução com falha: ${failed.join(", ")}`,
+        title: `Última execução com falha: ${failed.map((name) => workers[name].last_reason ? `${name} (${workers[name].last_reason})` : name).join(", ")}`,
         benefit: "Evita que uma etapa parcialmente aplicada fique sem verificação.",
-        proposed_action: "Ler o recibo da mesma execução e distinguir falha da atualização de falha do backup posterior.",
-        bucket: failed.join(","), evidence: ["updates.workers"],
+        proposed_action: failed.some((name) => /^unsupported_|_unconfirmed$|_blocked$/.test(workers[name].last_reason ?? ""))
+          ? "Uma trava de segurança bloqueou a atualização (veja o motivo no título); resolver a compatibilidade antes de liberar a cadeia, que também segura as etapas seguintes."
+          : "Ler o recibo da mesma execução e distinguir falha da atualização de falha do backup posterior.",
+        bucket: failed.map((name) => `${name}:${workers[name].last_reason ?? "unknown"}`).join(","), evidence: ["updates.workers"],
       });
     }
   }

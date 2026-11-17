@@ -452,3 +452,11 @@ test("exhausted ChatGPT/Codex usage is a clear P1 finding with the reset time", 
   // An unreadable account is a collection gap, never a credits claim.
   assert.deepEqual(evaluate(replace(healthy(), "ai.codex_account", null, "codex_app_server_unreachable"), policy()).map((f) => f.key), ["review.collection_gaps"]);
 });
+
+test("a blocked update names the safety gate instead of a stale backup reason", () => {
+  const evidence = replace(healthy(), "updates.workers", { workers: { core: { age_hours: 1, last_run_failed: true, last_reason: "unsupported_icloud_core_version" } } });
+  const [finding] = evaluate(evidence, policy());
+  assert.equal(finding.key, "updates.workers_failed");
+  assert.match(finding.title, /core \(unsupported_icloud_core_version\)/);
+  assert.match(finding.proposed_action, /trava de segurança/);
+});
