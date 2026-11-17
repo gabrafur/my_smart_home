@@ -31,4 +31,9 @@ assert.equal(d.result.structuredContent.collection_error, 'account_route_unavail
 const scoped = makeAccountRoute(async q => ({jsonrpc: '2.0', id: q.id, result: {content: [{type: 'text', text: 'task_scope_refused'}], isError: true}}), async () => limited);
 const s2 = await scoped({jsonrpc: '2.0', id: 7, method: 'tools/call', params: {name: 'codex_task_create', arguments: {}}});
 assert.equal(JSON.parse(s2.result.content[1].text).likely_reason, null);
-console.log('codex account route: 12 checks passed');
+for (const name of ['codex_thread_send', 'codex_repair_submit']) {
+  const r = await makeAccountRoute(async q => ({jsonrpc: '2.0', id: q.id, result: {content: [{type: 'text', text: 'task_rpc_unconfirmed'}], isError: true}}), async () => limited)(
+    {jsonrpc: '2.0', id: 8, method: 'tools/call', params: {name, arguments: {}}});
+  assert.equal(JSON.parse(r.result.content[1].text).likely_reason, 'codex_usage_limit_reached', name);
+}
+console.log('codex account route: 14 checks passed');

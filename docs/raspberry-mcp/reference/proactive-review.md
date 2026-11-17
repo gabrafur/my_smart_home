@@ -57,6 +57,7 @@ ao executor que registre o acompanhamento com `ack`.
 | `executor.peer_binding` | Vínculo do executor de tarefas com o boot e o processo atuais |
 | `workers.stale_markers` | Pedidos presos em processamento |
 | `nodered_admin.chain_drift` | Status do verificador da cadeia administrativa do Node-RED |
+| `ai.codex_account` | Uso da conta ChatGPT/Codex: liberado, limite atingido e horário de reset |
 
 Instâncias por conexão (`Accept=yes`) do executor admin e do leitor de avisos
 privados usam `CollectMode=inactive-or-failed`
@@ -64,6 +65,12 @@ privados usam `CollectMode=inactive-or-failed`
 propósito, como a prontidão do iCloud com escopo vencido consultada a cada
 leitura de capacidades, continua registrado no journal, mas não deixa uma unidade
 "failed" por pedido, o que inflava `host.failed_units` sem indisponibilidade real.
+
+Quando o uso incluído do ChatGPT/Codex acaba, o achado P1
+`ai.codex_usage_unavailable` diz "Créditos do ChatGPT/Codex esgotados até <data e
+hora de Brasília>" e explica que tarefas Codex, revisões delegadas e reparos do
+componente ficam parados até o reset. Se a conta não puder ser lida, isso aparece
+como lacuna de coleta, e não como afirmação sobre créditos.
 
 Leituras de arquivo usam somente o final do arquivo, até o limite de bytes da
 política. Textos passam por remoção de credenciais, endereços, e-mails e

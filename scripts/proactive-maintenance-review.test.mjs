@@ -37,6 +37,7 @@ const healthy = () => [
   source("executor.peer_binding", { boot_matches: true, peer_process_alive: true, cgroup_matches: true, socket_matches: true }),
   source("workers.stale_markers", { markers: [] }),
   source("nodered_admin.chain_drift", { state: "aligned", drifted: [], age_hours: 0.5 }),
+  source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
 ];
 
 const replace = (evidence, id, data, error = null) => evidence.map((item) => (item.id === id ? source(id, data, error) : item));
@@ -438,4 +439,16 @@ test("node-red administration chain drift is announced before a deploy needs it"
   assert.match(findings[0].title, /ledger:task:drift/);
   findings = evaluate(replace(healthy(), "nodered_admin.chain_drift", { state: "aligned", drifted: [], age_hours: 7 }), policy());
   assert.deepEqual(findings.map((f) => [f.key, f.priority]), [["nodered_admin.chain_drift", "P3"]]);
+});
+
+test("exhausted ChatGPT/Codex usage is a clear P1 finding with the reset time", () => {
+  const evidence = replace(healthy(), "ai.codex_account", { reason: "codex_usage_limit_reached", plan: "prolite", usage_allowed: false,
+    limit_reached_type: "rate_limit_reached", paid_credits_available: false, resets_at: "2026-11-21T12:06:20.000Z" });
+  const [finding] = evaluate(evidence, policy());
+  assert.equal(finding.key, "ai.codex_usage_unavailable");
+  assert.equal(finding.priority, "P1");
+  assert.match(finding.title, /Créditos do ChatGPT\/Codex esgotados até 21\/11\/2026, 09:06/);
+  assert.match(finding.proposed_action, /tarefas Codex/);
+  // An unreadable account is a collection gap, never a credits claim.
+  assert.deepEqual(evaluate(replace(healthy(), "ai.codex_account", null, "codex_app_server_unreachable"), policy()).map((f) => f.key), ["review.collection_gaps"]);
 });

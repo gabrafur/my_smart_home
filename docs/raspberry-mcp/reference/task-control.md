@@ -247,7 +247,8 @@ dono do app-server e só chama `initialize`, `account/read` e
 O `task_control` reduz a recusa da cota (`included_quota_unconfirmed`) ao código
 genérico `task_rpc_unconfirmed`, e ele não foi alterado porque está fixado pela
 política de tarefas e pelo anchor do componente. Por isso a rota do frontend anexa o
-estado da conta a toda falha de `codex_task_create` e `codex_task_send`. Só atribui
+estado da conta a toda falha de `codex_task_create`, `codex_task_send`,
+`codex_thread_send` e `codex_repair_submit`. Só atribui
 `likely_reason` quando a recusa é a genérica; recusas específicas mantêm o próprio
 código. A observação é posterior à recusa e não prova o motivo do backend.
 

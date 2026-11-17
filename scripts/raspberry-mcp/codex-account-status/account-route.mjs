@@ -4,10 +4,11 @@
 import net from 'node:net';
 const SOCKET = '/run/raspberry-mcp/codex-account.sock';
 export const accountDescriptor = {name: 'codex_account_status',
-  description: 'Read the Codex/ChatGPT account usage state used by codex_task_create/send: plan, whether included usage is allowed, limit reached, paid credits and reset time. Read only; no task, turn or account change.',
+  description: 'Read the Codex/ChatGPT account usage state used by codex_task_create/send, codex_thread_send and codex_repair_submit: plan, whether included usage is allowed, limit reached, paid credits and reset time. Read only; no task, turn or account change.',
   inputSchema: {type: 'object', additionalProperties: false, properties: {host: {type: 'string', enum: ['raspberry']}}, required: ['host']},
   annotations: {readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false}};
-const ANNOTATED = new Set(['codex_task_create', 'codex_task_send']);
+// Every tool that starts Codex work on the ChatGPT account; status/read tools keep their own receipts.
+const ANNOTATED = new Set(['codex_task_create', 'codex_task_send', 'codex_thread_send', 'codex_repair_submit']);
 const plain = x => x !== null && typeof x === 'object' && !Array.isArray(x) && Object.getPrototypeOf(x) === Object.prototype;
 export function invokeAccount(socket = SOCKET) {
   return new Promise((resolve, reject) => {

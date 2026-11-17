@@ -324,6 +324,20 @@ export const SOURCES = [
     },
   },
   {
+    id: "ai.codex_account",
+    origin: "read-only Codex/ChatGPT account usage (account/read, account/rateLimits/read) through the fixed broker",
+    collect(ctx) {
+      // Same broker the MCP uses; it reads plan, usage and reset only (no tokens or identity).
+      const broker = path.join(ctx.repoRoot, "scripts/raspberry-mcp/codex-account-status/broker.cjs");
+      const r = spawnSync(process.execPath, [broker], { input: '{"name":"codex_account_status"}\n', encoding: "utf8", timeout: 15000 });
+      if (r.status !== 0) throw new Error("codex_account_probe_failed");
+      const v = JSON.parse(r.stdout);
+      if (v.state !== "observed") throw new Error(v.collection_error || "codex_account_unknown");
+      return { reason: v.reason, plan: v.plan, usage_allowed: v.usage_allowed, limit_reached_type: v.limit_reached_type,
+        paid_credits_available: v.paid_credits_available, resets_at: v.resets_at };
+    },
+  },
+  {
     id: "workers.stale_markers",
     origin: "processing markers under the Home Assistant trigger directories",
     collect(ctx) {
@@ -550,6 +564,24 @@ export function evaluate(evidence, policy) {
         : "Conferir o timer raspberry-nodered-admin-drift e a leitura do Docker e dos ledgers.",
       bucket: [chain.state, ...chain.drifted].join(","),
       evidence: ["nodered_admin.chain_drift"],
+    });
+  }
+
+  const ai = data("ai.codex_account");
+  if (ai && ai.reason && ai.reason !== "codex_usage_available") {
+    const reset = ai.resets_at ? new Date(ai.resets_at) : null;
+    const when = reset && Number.isFinite(reset.getTime())
+      ? `${reset.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })} (horário de Brasília)` : "horário de reset desconhecido";
+    const limit = ai.reason === "codex_usage_limit_reached" || ai.reason === "codex_included_usage_unavailable";
+    add({
+      key: "ai.codex_usage_unavailable", priority: "P1", risk: "baixo",
+      title: limit ? `Créditos do ChatGPT/Codex esgotados até ${when}` : "Conta Codex sem assinatura pessoal aceita",
+      benefit: "Explica por que a Eva não consegue criar tarefas, enviar turnos Codex, revisar ou propor reparos, em vez de um erro genérico.",
+      proposed_action: limit
+        ? `Aguardar o reset (${when}) ou adicionar créditos; até lá tarefas Codex, revisões delegadas e reparos do componente ficam parados.`
+        : "Conferir o login do Codex no host; a cota só é aceita com assinatura ChatGPT pessoal.",
+      bucket: [ai.reason, ai.resets_at ?? "unknown"].join(","),
+      evidence: ["ai.codex_account"],
     });
   }
 

@@ -19,7 +19,7 @@ describing the task. Avoid generic titles; never rename the conversation.
 
 ## Model Routing Policy
 
-Use the cheapest option with a high probability of completing the task correctly, considering deterministic tools and local scripts before model escalation.
+Use the cheapest option with a high probability of completing the task correctly, considering deterministic tools, local scripts and local AI/Ollama before model escalation.
 
 ### GPT-5.6 Luna (`gpt-5.6-luna`)
 
@@ -46,10 +46,6 @@ very difficult work and `max` only exceptionally.
 Do not select a stronger model merely because a task involves code, a long
 prompt, a large repository or many files.
 
-For large but deterministic extraction or transformation, keep the cheapest sufficient option.
-
-Consider deterministic tools, local scripts, and local AI/Ollama when available before Luna, Terra, or Sol.
-
 Do not create, repair, install, restart, or reconfigure Ollama infrastructure as part of model routing.
 
 The pinned `local-ai-rtx` `recover-endpoint.mjs` is the only exception. If
@@ -70,9 +66,13 @@ Do not impose an initial confirmation gate. Treat `continue` as ordinary user in
 
 Siga docs/ESTRATEGIA_DE_TESTES.md.
 
+## Diagnósticos claros
+
+Respostas MCP e notificações citam a causa concreta (ex.: créditos de IA esgotados e reset), com códigos estáticos, sem dados privados.
+
 ## Branch
 
-Em tarefas interativas, trabalhe e publique sempre na `main`.
+Em tarefas interativas, trabalhe e publique direto na `main`, sem pull requests.
 
 Publique via `python3 scripts/git-publication-evidence.py publish`; após push
 concluído, use `observe` sem reenviar.
