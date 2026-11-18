@@ -52,8 +52,13 @@ function configureGitHubSshTransport() {
   if (process.env.GIT_SSH_COMMAND?.trim()) return;
   const remote = git(["remote", "get-url", "origin"]);
   if (!/^git\x40github\.com:|^ssh:\/\/git\x40github\.com\//.test(remote)) return;
+  // Git connects before the pre-push validation (10-20 min at idle priority).
+  // Without keepalives the idle port-443 session was dropped and the push failed
+  // after a passing validation (v4.1.0, 18/11/2026). git-backup.sh uses the same.
   process.env.GIT_SSH_COMMAND = [
     "ssh",
+    "-o ServerAliveInterval=30",
+    "-o ServerAliveCountMax=10",
     "-o BatchMode=yes",
     "-o StrictHostKeyChecking=yes",
     "-o Hostname=ssh.github.com",
