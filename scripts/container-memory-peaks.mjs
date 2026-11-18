@@ -34,16 +34,26 @@ export function readPeak(id, { cgroupRoot = "/sys/fs/cgroup", read = fs.readFile
 }
 
 // Pure merge: per day and container, keep the highest peak; drop days older than 30.
+// `days` holds memory.peak, which is the peak since the container started (a long-running
+// container repeats an old peak). `sampled_days` holds the highest memory.current seen in
+// the samples of that UTC day, a real daily maximum at the sampling resolution.
 export function mergePeaks(ledger, day, samples) {
+  const keep = (source) => {
+    const all = { ...(source ?? {}) };
+    return Object.fromEntries(Object.keys(all).sort().slice(-DAYS).map((key) => [key, all[key]]));
+  };
   const days = { ...(ledger?.days ?? {}) };
+  const sampled = { ...(ledger?.sampled_days ?? {}) };
   const today = { ...(days[day] ?? {}) };
-  for (const { name, peak_mib: peak } of samples) {
-    if (!NAME.test(name) || !Number.isSafeInteger(peak) || peak < 0) continue;
-    today[name] = Math.max(today[name] ?? 0, peak);
+  const sampledToday = { ...(sampled[day] ?? {}) };
+  for (const { name, peak_mib: peak, current_mib: current } of samples) {
+    if (!NAME.test(name)) continue;
+    if (Number.isSafeInteger(peak) && peak >= 0) today[name] = Math.max(today[name] ?? 0, peak);
+    if (Number.isSafeInteger(current) && current >= 0) sampledToday[name] = Math.max(sampledToday[name] ?? 0, current);
   }
   days[day] = today;
-  const kept = Object.keys(days).sort().slice(-DAYS);
-  return { schema_version: 1, unit: "MiB", days: Object.fromEntries(kept.map((key) => [key, days[key]])) };
+  sampled[day] = sampledToday;
+  return { schema_version: 1, unit: "MiB", days: keep(days), sampled_days: keep(sampled) };
 }
 
 export function record({ file = DEFAULT_FILE, now = new Date(), containers = listContainers(), peak = readPeak } = {}) {

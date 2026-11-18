@@ -41,3 +41,17 @@ test("record writes the merged ledger atomically and skips unreadable containers
   assert.deepEqual(fs.readdirSync(dir), ["container-peaks.json"]);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test("sampled daily maximum uses memory.current, not the lifetime peak", () => {
+  // ai-bridge kept a 3760 MiB lifetime peak for days without restarting; the sampled
+  // maximum shows what each day actually used.
+  let ledger = mergePeaks(null, "2026-11-18", [{ name: "ai-bridge", peak_mib: 3760, current_mib: 600 }]);
+  ledger = mergePeaks(ledger, "2026-11-18", [{ name: "ai-bridge", peak_mib: 3760, current_mib: 820 }, { name: "nodered", peak_mib: 700, current_mib: -1 }]);
+  ledger = mergePeaks(ledger, "2026-11-18", [{ name: "ai-bridge", peak_mib: 3760, current_mib: 500 }]);
+  assert.deepEqual(ledger.days["2026-11-18"], { "ai-bridge": 3760, nodered: 700 });
+  assert.deepEqual(ledger.sampled_days["2026-11-18"], { "ai-bridge": 820 });
+  let old = mergePeaks(null, "2026-10-01", [{ name: "x", peak_mib: 1, current_mib: 1 }]);
+  for (let day = 2; day <= 31; day += 1) old = mergePeaks(old, `2026-10-${String(day).padStart(2, "0")}`, [{ name: "x", peak_mib: 1, current_mib: 1 }]);
+  assert.equal(Object.keys(old.sampled_days).length, 30);
+  assert.equal(Object.keys(old.sampled_days)[0], "2026-10-02");
+});
