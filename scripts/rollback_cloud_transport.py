@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 POLICY_PATH = ROOT / '.local-secrets/rollback-cloud-daily.json'
 POLICY = json.loads(POLICY_PATH.read_text())
-HERE = ROOT / '.local-state/rollback-cloud-daily/transport'
+HERE = ROOT / '.local-secrets/rollback-cloud-daily/transport'
 PC_ROOT = POLICY.get('pc_archive_root')
 def desktop_transport():
     transport_path = ROOT / '.local-state/desktop-browser-tool/transport.py'

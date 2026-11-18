@@ -11,7 +11,7 @@ import time
 from rollback_cloud_policy import operation_id, verify_proofs
 
 ROOT = Path(__file__).resolve().parent.parent
-DIRECTORY = ROOT/'.local-state/rollback-cloud-daily/local'
+DIRECTORY = ROOT/'.local-secrets/rollback-cloud-daily/local'
 START_FREE_BYTES = 6 * 1024**3
 FLOOR_FREE_BYTES = 4 * 1024**3
 

@@ -47,7 +47,7 @@ def dry_run(backend):
     images, protected = backend.inventory()
     backend.ensure_policy()
     candidates = select_images(images, protected, __import__('time').time(), maximum_images=2)
-    directory = ROOT/'.local-state/rollback-cloud-daily'
+    directory = ROOT/'.local-secrets/rollback-cloud-daily'
     history = Ledger(directory, create=False).history() if directory.exists() else []
     unresolved = sum(row.get('state') not in ('retired', 'preserved') for row in history)
     return {'state': 'dry_run', 'resources': resources,
@@ -102,7 +102,7 @@ def main(arguments=None, backend_factory=None, policy_loader=None):
     from rollback_cloud_cycle import Ledger, run_cycle
     from rollback_cloud_locks import require_daily_caller, docker_marker
     require_daily_caller(ROOT)
-    ledger = Ledger(ROOT/'.local-state/rollback-cloud-daily')
+    ledger = Ledger(ROOT/'.local-secrets/rollback-cloud-daily')
     fd = os.open(ledger.directory/'lock', os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600)
     try:
         try:
