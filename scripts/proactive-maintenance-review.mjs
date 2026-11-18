@@ -320,6 +320,14 @@ export const SOURCES = [
         ...Object.entries(ledgers).filter(([, v]) => v.state !== "aligned").map(([name, v]) => `ledger:${name}:${v.state}`),
         ...Object.entries(container).filter(([name, v]) => name !== "collection_error" && v !== "aligned").map(([name, v]) => `container:${name}:${v}`),
         ...(status.checks?.guard_pins === "aligned" ? [] : [`guard_pins:${status.checks?.guard_pins ?? "unknown"}`]),
+        // Every other check the drift timer reports (17/11: session_cleanup_pins drifted after
+        // the docker-ce upgrade replaced the container's ancestor binaries) must be named too;
+        // otherwise the recommendation says "drift" with an empty list.
+        ...Object.entries(status.checks ?? {})
+          .filter(([name]) => !["ledger_schemas", "container", "guard_pins"].includes(name))
+          .map(([name, value]) => [name, typeof value === "string" ? value : value?.state ?? "unknown"])
+          .filter(([, state]) => state !== "aligned")
+          .map(([name, state]) => `${name}:${state}`),
       ].sort();
       return { state: status.state, drifted, age_hours: Math.round((Date.now() - tail.mtimeMs) / 36e5 * 10) / 10 };
     },
@@ -347,6 +355,26 @@ export const SOURCES = [
       if (live !== "true" && live !== "false") throw new Error("docker_live_restore_unreadable");
       const controllers = fs.readFileSync(ctx.cgroupControllersPath, "utf8").trim().split(/\s+/);
       return { docker_live_restore: live === "true", cgroup_memory_controller: controllers.includes("memory") };
+    },
+  },
+  {
+    id: "ai.client_execution_policy",
+    origin: "Root-installed client policy of the task terminal observer (read-only, world-readable)",
+    collect(ctx) {
+      // Eva's standing continuation depends on this sealed policy. Report only its state
+      // fields, never the allowed tools, identity recipe or workflows.
+      const stat = fs.statSync(ctx.clientPolicyPath);
+      const value = JSON.parse(fs.readFileSync(ctx.clientPolicyPath, "utf8"));
+      if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("client_policy_unreadable");
+      const expires = value.expires_at;
+      return {
+        enabled: value.enabled === true,
+        revoked: value.revoked !== false,
+        expires_at: typeof expires === "number" ? new Date(expires * 1000).toISOString() : null,
+        expired: typeof expires === "number" && expires * 1000 <= ctx.now,
+        approval_recorded: typeof value.approval_sha256 === "string" && /^[a-f0-9]{64}$/.test(value.approval_sha256),
+        changed_hours_ago: Math.round((ctx.now - stat.mtimeMs) / 360000) / 10,
+      };
     },
   },
   {
@@ -394,9 +422,10 @@ export const SOURCES = [
 ];
 
 export function createContext({ policy, repoRoot = REPO_ROOT, now = Date.now(), run = spawnSync, procRoot = "/proc", home = os.homedir(),
-  cgroupControllersPath = "/sys/fs/cgroup/cgroup.controllers" } = {}) {
+  cgroupControllersPath = "/sys/fs/cgroup/cgroup.controllers",
+  clientPolicyPath = "/usr/local/lib/raspberry-task-terminal-observer/client-policy.json" } = {}) {
   return {
-    policy, repoRoot, now, run, cgroupControllersPath,
+    policy, repoRoot, now, run, cgroupControllersPath, clientPolicyPath,
     procPath: (name) => path.join(procRoot, name),
     resolvePath: (value) => (value.startsWith("~/") ? path.join(home, value.slice(2)) : value),
   };
@@ -592,7 +621,7 @@ export function evaluate(evidence, policy) {
     const drift = chain.state === "drift";
     add({
       key: "nodered_admin.chain_drift", priority: drift ? "P2" : "P3", risk: "baixo",
-      title: drift ? `Cadeia administrativa do Node-RED defasada: ${chain.drifted.join(", ")}`
+      title: drift ? `Cadeia administrativa do Node-RED defasada: ${chain.drifted.join(", ") || "item não identificado"}`
         : "Verificação da cadeia administrativa do Node-RED sem resultado atual",
       benefit: "Evita descobrir a recusa do guarda somente na hora de um deploy Node-RED.",
       proposed_action: drift
@@ -652,6 +681,19 @@ export function evaluate(evidence, policy) {
       benefit: "Com o controlador ativo, testes isolados e contêineres respeitam --memory e uma atualização não consome a RAM do Raspberry.",
       proposed_action: "Decisão do proprietário: acrescentar cgroup_enable=memory ao cmdline.txt e agendar um reboot autorizado.",
       evidence: ["host.update_protections"],
+    });
+  }
+
+  const clientPolicy = data("ai.client_execution_policy");
+  if (clientPolicy && (!clientPolicy.enabled || clientPolicy.revoked || clientPolicy.expired || !clientPolicy.approval_recorded)) {
+    const why = [!clientPolicy.enabled && "desativada", clientPolicy.revoked && "revogada",
+      clientPolicy.expired && "vencida", !clientPolicy.approval_recorded && "sem aprovação registrada"].filter(Boolean).join(", ");
+    add({
+      key: "ai.client_execution_policy_inactive", priority: "P1", risk: "baixo",
+      title: `Política de continuação da Eva ${why}`,
+      benefit: "Sem a política aprovada a Eva não continua tarefas nem incidentes sozinha (em 16/11 o desbloqueio dependeu dela).",
+      proposed_action: "Conferir com maintenance_capabilities (client_execution_policy) e, se a revogação não foi do proprietário, reinstalar a política pelo operador Root revisado.",
+      evidence: ["ai.client_execution_policy"],
     });
   }
 

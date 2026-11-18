@@ -39,6 +39,7 @@ const healthy = () => [
   source("nodered_admin.chain_drift", { state: "aligned", drifted: [], age_hours: 0.5 }),
   source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
   source("host.update_protections", { docker_live_restore: true, cgroup_memory_controller: true }),
+  source("ai.client_execution_policy", { enabled: true, revoked: false, expires_at: null, expired: false, approval_recorded: true, changed_hours_ago: 50 }),
   source("ci.public", { latest_conclusion: "success", latest_commit: "abc1234", consecutive_failures: 0, failing_since_commit: null, failing_since: null }),
 ];
 
@@ -94,7 +95,8 @@ test("every registered source has a unique id and a declared origin", () => {
 test("collection errors are explicit and never look like healthy data", () => {
   const value = policy();
   const ctx = createContext({ policy: value, repoRoot: "/nonexistent-review-root", now: NOW,
-    run: () => ({ status: 1, stdout: "" }), procRoot: "/nonexistent-proc" });
+    run: () => ({ status: 1, stdout: "" }), procRoot: "/nonexistent-proc",
+    clientPolicyPath: "/nonexistent-review-root/client-policy.json" });
   const evidence = collectEvidence(ctx);
   assert.equal(evidence.length, SOURCES.length);
   for (const item of evidence) {
@@ -443,6 +445,23 @@ test("node-red administration chain drift is announced before a deploy needs it"
   assert.deepEqual(findings.map((f) => [f.key, f.priority]), [["nodered_admin.chain_drift", "P3"]]);
 });
 
+test("chain drift source names every drifted check, including session cleanup pins", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "chain-drift-"));
+  const file = path.join(dir, "status.json");
+  fs.writeFileSync(file, JSON.stringify({ state: "drift", checks: {
+    container: { backend_address: "aligned" }, guard_pins: "aligned",
+    ledger_schemas: { task: { state: "aligned" } },
+    session_cleanup_pins: "drift", unrevoked_own_sessions: { count: 0, state: "aligned" } } }));
+  const value = policy();
+  value.paths.nodered_admin_drift_status = file;
+  const source = SOURCES.find((item) => item.id === "nodered_admin.chain_drift");
+  const data = source.collect(createContext({ policy: value }));
+  assert.deepEqual(data.drifted, ["session_cleanup_pins:drift"]);
+  const [finding] = evaluate(replace(healthy(), "nodered_admin.chain_drift", data), value);
+  assert.match(finding.title, /session_cleanup_pins:drift/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test("exhausted ChatGPT/Codex usage is a clear P1 finding with the reset time", () => {
   const evidence = replace(healthy(), "ai.codex_account", { reason: "codex_usage_limit_reached", plan: "prolite", usage_allowed: false,
     limit_reached_type: "rate_limit_reached", paid_credits_available: false, resets_at: "2026-11-21T12:06:20.000Z" });
@@ -479,6 +498,32 @@ test("update protections source reads docker info and the cgroup root controller
   const source = SOURCES.find((item) => item.id === "host.update_protections");
   const ctx = createContext({ policy: policy(), run, cgroupControllersPath: controllers });
   assert.deepEqual(source.collect(ctx), { docker_live_restore: true, cgroup_memory_controller: false });
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("an inactive client execution policy is a P1 that names why", () => {
+  const revoked = evaluate(replace(healthy(), "ai.client_execution_policy",
+    { enabled: true, revoked: true, expires_at: null, expired: false, approval_recorded: true, changed_hours_ago: 1 }), policy());
+  assert.deepEqual(revoked.map((f) => [f.key, f.priority]), [["ai.client_execution_policy_inactive", "P1"]]);
+  assert.match(revoked[0].title, /revogada/);
+  const expired = evaluate(replace(healthy(), "ai.client_execution_policy",
+    { enabled: false, revoked: false, expires_at: "2026-11-01T00:00:00.000Z", expired: true, approval_recorded: false, changed_hours_ago: 1 }), policy());
+  assert.match(expired[0].title, /desativada, vencida, sem aprovação registrada/);
+  assert.deepEqual(evaluate(replace(healthy(), "ai.client_execution_policy", null, "client_policy_unreadable"), policy()).map((f) => f.key), ["review.collection_gaps"]);
+});
+
+test("client policy source keeps only state fields and treats a missing revoked flag as revoked", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "client-policy-"));
+  const file = path.join(dir, "client-policy.json");
+  fs.writeFileSync(file, JSON.stringify({ enabled: true, revoked: false, expires_at: null, approval_sha256: "a".repeat(64),
+    allowed_tools: ["PRIVATE_SENTINEL"], identity_recipe: { private_field: "PRIVATE_SENTINEL" } }));
+  const source = SOURCES.find((item) => item.id === "ai.client_execution_policy");
+  const ctx = createContext({ policy: policy(), clientPolicyPath: file, now: Date.now() });
+  const data = source.collect(ctx);
+  assert.deepEqual({ ...data, changed_hours_ago: 0 }, { enabled: true, revoked: false, expires_at: null, expired: false, approval_recorded: true, changed_hours_ago: 0 });
+  assert.doesNotMatch(JSON.stringify(data), /PRIVATE_SENTINEL/);
+  fs.writeFileSync(file, JSON.stringify({ enabled: true, expires_at: 1, approval_sha256: "x" }));
+  assert.deepEqual([source.collect(ctx).revoked, source.collect(ctx).expired, source.collect(ctx).approval_recorded], [true, true, false]);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

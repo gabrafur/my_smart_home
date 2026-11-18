@@ -59,6 +59,7 @@ ao executor que registre o acompanhamento com `ack`.
 | `nodered_admin.chain_drift` | Status do verificador da cadeia administrativa do Node-RED |
 | `ai.codex_account` | Uso da conta ChatGPT/Codex: liberado, limite atingido e horário de reset |
 | `host.update_protections` | `live-restore` do Docker e controlador de memória do cgroup |
+| `ai.client_execution_policy` | Estado da política de continuação da Eva instalada pelo Root (só `enabled`, `revoked`, validade e aprovação) |
 | `ci.public` | Últimas execuções da validação pública em `main` (GitHub Actions) |
 
 Instâncias por conexão (`Accept=yes`) do executor admin e do leitor de avisos
@@ -86,6 +87,11 @@ quando não há código).
 perde o `live-restore` (um reinício do motor voltaria a derrubar a casa) e P3
 `host.cgroup_memory_disabled` enquanto o kernel ignorar limites de memória; ligar
 o controlador exige reboot e decisão do proprietário.
+
+`ai.client_execution_policy` abre P1 `ai.client_execution_policy_inactive` quando a
+política de continuação da Eva está desativada, revogada (inclusive sem o campo),
+vencida ou sem aprovação registrada. Ferramentas, receita de identidade e fluxos
+da política não são lidos para a revisão.
 
 `ci.public` abre P1 `ci.public_red` quando a última validação pública concluída em
 `main` falhou, com o primeiro commit da sequência vermelha e quantas execuções
