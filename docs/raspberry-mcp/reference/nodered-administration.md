@@ -6,6 +6,29 @@ com `view=policy` para conhecer a concessão real. As fontes e os templates fica
 em `scripts/raspberry-mcp/nodered-admin-candidate/`, nome preservado por
 compatibilidade; o perfil protegido de `observacao_host` permanece separado.
 
+## Como chamar `nodered_admin_read`
+
+Todos os campos são obrigatórios, inclusive os nulos; campo a mais ou a menos é
+recusado com `nodered_admin_parameters_refused`. Só existem quatro `view`:
+`policy`, `runtime`, `plan_diff` e `node_field` (não há `node` nem `summary`).
+
+| `view` | `operation_id` | `node_id` / `field` | `offset` / `expected_sha256` |
+| --- | --- | --- | --- |
+| `policy` | `null` | `null` / `null` | `0` / `null` |
+| `runtime` | `null` | `null` / `null` | página (≤ 9999); 1ª página `0`/`null`, seguintes com `next_offset` e o SHA do snapshot |
+| `plan_diff` | ID exato da operação | `null` / `null` | 1ª página `0`/`null`; seguintes com o SHA do plano |
+| `node_field` | `null` | ID do nó / nome do campo | 1ª página `0`/`null`; seguintes com o SHA do nó |
+
+```json
+{"host":"raspberry","view":"policy","operation_id":null,"node_id":null,"field":null,"offset":0,"expected_sha256":null}
+```
+
+Estado observado em 18/11/2026: `policy` responde normalmente; `runtime` recusa com
+`metadata_closed_response_required`. A recusa vem do cliente de continuidade
+embutido e selado no fechamento 3a (exige resposta fechada do endpoint de
+metadados do Node-RED); corrigir exige um fechamento próprio. Até lá, comparar
+runtime × disco só pela API local do Node-RED, com credencial do proprietário.
+
 ## Capacidade e autoridade
 
 A implementação oferece um contrato administrativo único para os fluxos do mesmo
