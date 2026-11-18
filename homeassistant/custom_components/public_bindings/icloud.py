@@ -15,6 +15,22 @@ def is_interrupted_transport(error: BaseException) -> bool:
     return False
 
 
+def is_service_not_activated(error: BaseException) -> bool:
+    """Recognize pyicloud's missing webservice (for example findme) by exception type.
+
+    The session can be valid but temporarily without the Find My webservice.
+    Report a stable code instead of letting Home Assistant log an unexpected
+    exception with a traceback on every refresh request.
+    """
+    seen: set[int] = set()
+    while error is not None and id(error) not in seen:
+        seen.add(id(error))
+        if type(error).__name__ == "PyiCloudServiceNotActivatedException":
+            return True
+        error = error.__cause__ or error.__context__
+    return False
+
+
 def refresh_devices(api: Any) -> bool:
     """Resolve the lazy Find My manager and refresh it off the event loop."""
     # api.devices is a property that can itself perform an HTTP request.

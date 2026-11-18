@@ -30,6 +30,7 @@ class ICloudRefreshTest(unittest.IsolatedAsyncioTestCase):
         namespace = {"Any": Any, "hass": hass, "HomeAssistantError": RuntimeError,
                      "refresh_devices": MODULE.refresh_devices,
                      "is_interrupted_transport": MODULE.is_interrupted_transport,
+                     "is_service_not_activated": MODULE.is_service_not_activated,
                      "OTPRequired": MODULE.OTPRequired, "RecoveryUnavailable": MODULE.RecoveryUnavailable}
         exec(compile(ast.Module(body=[adapter], type_ignores=[]), "adapter", "exec"), namespace)
         await namespace[adapter.name]("test-account")
@@ -89,6 +90,22 @@ class ICloudRefreshTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(RuntimeError, "^ICLOUD_TRANSPORT_INTERRUPTED$"):
             await self.invoke(Api())
         self.assertEqual(calls, ["request"], "adapter must not retry outside Node-RED")
+
+    async def test_missing_find_my_webservice_has_stable_code(self):
+        class PyiCloudServiceNotActivatedException(Exception):
+            pass
+
+        class Api:
+            @property
+            def devices(self):
+                try:
+                    raise PyiCloudServiceNotActivatedException("Webservice not available: findme")
+                except PyiCloudServiceNotActivatedException as err:
+                    raise RuntimeError("wrapped") from err
+
+        with self.assertRaisesRegex(RuntimeError, "^ICLOUD_SERVICE_NOT_ACTIVATED$"):
+            await self.invoke(Api())
+        self.assertFalse(MODULE.is_service_not_activated(RuntimeError("Webservice not available: findme")))
 
     def test_unknown_authentication_and_cycles_are_not_transient(self):
         for text in ("Request failed to iCloud", "401 authentication required",

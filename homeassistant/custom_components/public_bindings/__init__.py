@@ -34,7 +34,8 @@ from .location import (
     update_location_observation,
 )
 from .service_policy import is_best_effort_notification
-from .icloud import (is_interrupted_transport, refresh_devices, refresh_account_with_recovery,
+from .icloud import (is_interrupted_transport, is_service_not_activated, refresh_devices,
+                     refresh_account_with_recovery,
                      OTPRequired, RecoveryUnavailable)
 
 DOMAIN = "public_bindings"
@@ -242,6 +243,8 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                     raise HomeAssistantError('ICLOUD_SESSION_RECOVERY_UNAVAILABLE') from None
                 if is_interrupted_transport(err):
                     raise HomeAssistantError("ICLOUD_TRANSPORT_INTERRUPTED") from err
+                if is_service_not_activated(err):
+                    raise HomeAssistantError("ICLOUD_SERVICE_NOT_ACTIVATED") from None
                 raise
             break
         raise HomeAssistantError("iCloud location refresh provider is unavailable")
