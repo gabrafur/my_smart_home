@@ -33,7 +33,9 @@ const location = {
     latitude: Number.isFinite(latitude) ? latitude : null,
     longitude: Number.isFinite(longitude) ? longitude : null,
     gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,
-    location_reliable: Number.isFinite(latitude) && Number.isFinite(longitude),
+    // Out-of-range or (0, 0) coordinates are not a position (no GPS fix).
+    location_reliable: Number.isFinite(latitude) && Number.isFinite(longitude) &&
+        Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && !(latitude === 0 && longitude === 0),
     state_valid: validState && fresh(raw, freshMs),
     updated_at: updatedAt,
     stale: !fresh(raw, freshMs),

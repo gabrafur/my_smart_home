@@ -578,6 +578,18 @@ for (const [name, ageMs, elapsed] of [
   assert.equal(selected._canonical_locations.resident_primary.reason, "reliable_coordinates");
 }
 
+// Out-of-range coordinates are not a position: they behave exactly like missing
+// coordinates (distance unknown), never as an absurd distance from home (~10 000 km).
+{
+  const fallback = () => tracker(fallbackId, "unavailable", { ageMs: 5 * 60_000, coordinates: false });
+  const broken = tracker(primaryId, "home", { accuracy: 10 });
+  broken.attributes.latitude = "95";
+  const invalid = select(input(broken, fallback(), "resident_primary"));
+  const missing = select(input(tracker(primaryId, "home", { coordinates: false }), fallback(), "resident_primary"));
+  assert.equal(invalid.payload.trigger_state, missing.payload.trigger_state);
+  assert.doesNotMatch(JSON.stringify(invalid), /"canonical_distance_home_m":\d{6,}/);
+}
+
 // A source can move backward in observation time when the newer GPS becomes
 // unreliable. Keep this visible: accepting the newer raw HOME state here would
 // weaken the physical arrival gate, while consumers reject the older snapshot.

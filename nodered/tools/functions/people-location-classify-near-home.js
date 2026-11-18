@@ -13,6 +13,10 @@ const homeLon = Number(env.get("HOME_LON"));
 const gateLat = Number(env.get("GATE_LAT"));
 const gateLon = Number(env.get("GATE_LON"));
 const known = (lat, lon) => Number.isFinite(lat) && Number.isFinite(lon);
+// Out-of-range or (0, 0) coordinates (a report without a GPS fix) are not a position:
+// they stay unknown, so the tracker state decides instead of "far from home".
+const position = (lat, lon) => known(lat, lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 &&
+    !(lat === 0 && lon === 0);
 const RING = "location_update_ring";
 const KEY = "canonical_near_home_people_v1";
 const previous = flow.get(KEY, "persistent") ?? {};
@@ -34,7 +38,7 @@ function classify(candidate) {
     if (!candidate) return null;
     const rawState = String(candidate.state ?? "unknown");
     const coordinates = candidate.reliable_coordinates === true &&
-        Number.isFinite(candidate.latitude) && Number.isFinite(candidate.longitude);
+        position(candidate.latitude, candidate.longitude);
     const homeDistance = coordinates && known(homeLat, homeLon)
         ? distance(homeLat, homeLon, candidate.latitude, candidate.longitude) : null;
     const gateDistance = coordinates && known(gateLat, gateLon)

@@ -48,7 +48,10 @@ for (const role of ["resident_primary", "resident_secondary"]) {
         current &&
         selected.reliable_coordinates === true &&
         Number.isFinite(selected.latitude) &&
-        Number.isFinite(selected.longitude)
+        Number.isFinite(selected.longitude) &&
+        Math.abs(selected.latitude) <= 90 &&
+        Math.abs(selected.longitude) <= 180 &&
+        !(selected.latitude === 0 && selected.longitude === 0)
     ) {
         payload.latitude = selected.latitude;
         payload.longitude = selected.longitude;
