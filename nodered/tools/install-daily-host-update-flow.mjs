@@ -236,6 +236,10 @@ const stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;
 const requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? "unknown";
 const stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);
 const failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;
+// Static codes written by run-daily-host-update.sh: why a stage stopped and whether
+// the core services were ready afterwards. Anything else is dropped, never copied.
+const reason = text.match(/\\breason=([a-z][a-z0-9_]{0,63})(?= |$)/)?.[1] ?? null;
+const readiness = text.match(/\\breadiness=(ok|unknown|degraded:[a-z0-9_,-]{1,120})(?= |$)/)?.[1] ?? null;
 if (!status || stage !== "${expectedStage}") {
     if (!TEST_MODE) node.error("host_update_stage_result_unrecognized expected=${expectedStage}", msg);
     return [null, null];
@@ -248,6 +252,8 @@ const result = {
     version: 1, signature, stage, request_id: requestId, status,
     stage_exit: Number.isFinite(stageExit) ? stageExit : null,
     failure_stage: failureStage,
+    reason,
+    readiness,
     test_mode: TEST_MODE,
     observed_at: Date.now()
 };
@@ -257,12 +263,14 @@ const failed = ["failed", "unavailable"].includes(status);
 node.status({
     fill: failed ? "red" : status === "success" ? "green" : "yellow",
     shape: failed ? "ring" : "dot",
-    text: status === "success" ? "${label} concluído" : status
+    text: (status === "success" ? "${label} concluído" : status + (reason ? " (" + reason + ")" : "")) +
+        (readiness && readiness !== "ok" ? "; prontidão " + readiness : "")
 });
 msg.payload = result;
 if (TEST_MODE) return [msg, null];
 if (failed) {
-    node.error("host_update_stage_failed stage=${expectedStage} request_id=" + requestId + " failure_stage=" + String(failureStage) + " stage_exit=" + String(result.stage_exit), msg);
+    node.error("host_update_stage_failed stage=${expectedStage} request_id=" + requestId + " failure_stage=" + String(failureStage) + " stage_exit=" + String(result.stage_exit) +
+        " reason=" + String(reason ?? "none") + " readiness=" + String(readiness ?? "none"), msg);
     return [null, null];
 }
 if (status === "success" && ${hasNext ? "true" : "false"}) return [null, msg];

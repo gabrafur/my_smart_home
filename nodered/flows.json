@@ -1001,8 +1001,8 @@
             "daily_update_request_test_out"
         ],
         "style": {
-            "color": "#4d9a6a",
-            "label": true
+            "label": true,
+            "color": "#4d9a6a"
         },
         "type": "group",
         "w": 1212,
@@ -1026,8 +1026,8 @@
             "daily_update_core_request_out"
         ],
         "style": {
-            "color": "#3f7cb5",
-            "label": true
+            "label": true,
+            "color": "#3f7cb5"
         },
         "type": "group",
         "w": 1072,
@@ -1060,8 +1060,8 @@
             "daily_update_dry_run_terminal"
         ],
         "style": {
-            "color": "#7d6ba8",
-            "label": true
+            "label": true,
+            "color": "#7d6ba8"
         },
         "type": "group",
         "w": 1132,
@@ -1106,8 +1106,8 @@
             "daily_update_kia_audit_alert_out"
         ],
         "style": {
-            "color": "#b58b3f",
-            "label": true
+            "label": true,
+            "color": "#b58b3f"
         },
         "type": "group",
         "w": 2044,
@@ -1148,8 +1148,8 @@
             "daily_update_kia_promotion_result_test_out"
         ],
         "style": {
-            "color": "#8f6bb3",
-            "label": true
+            "label": true,
+            "color": "#8f6bb3"
         },
         "type": "group",
         "w": 1157,
@@ -1271,8 +1271,8 @@
             "daily_update_core_pending_test_out"
         ],
         "style": {
-            "color": "#d07a3f",
-            "label": true
+            "label": true,
+            "color": "#d07a3f"
         },
         "type": "group",
         "w": 1364,
@@ -1306,8 +1306,8 @@
             "daily_update_codex_cli_request_out"
         ],
         "style": {
-            "color": "#3f9d93",
-            "label": true
+            "label": true,
+            "color": "#3f9d93"
         },
         "type": "group",
         "w": 1382,
@@ -1363,8 +1363,8 @@
             "daily_update_coordinator_inventory_out"
         ],
         "style": {
-            "color": "#2f78a8",
-            "label": true
+            "label": true,
+            "color": "#2f78a8"
         },
         "type": "group",
         "w": 1814,
@@ -1388,8 +1388,8 @@
             "notification_hub_wire_out_f4bcb9b7815b"
         ],
         "style": {
-            "color": "#b68c3a",
-            "label": true
+            "label": true,
+            "color": "#b68c3a"
         },
         "type": "group",
         "w": 1358,
@@ -1409,8 +1409,8 @@
             "daily_update_unknown_test_out"
         ],
         "style": {
-            "color": "#8a8a8a",
-            "label": true
+            "label": true,
+            "color": "#8a8a8a"
         },
         "type": "group",
         "w": 632,
@@ -1457,8 +1457,8 @@
             "daily_update_coordinator_ordinary_in"
         ],
         "style": {
-            "color": "#c45a50",
-            "label": true
+            "label": true,
+            "color": "#c45a50"
         },
         "type": "group",
         "w": 1932,
@@ -2420,8 +2420,8 @@
             "notification_hub_wire_out_34e7741686b0"
         ],
         "style": {
-            "color": "#6d8f3f",
-            "label": true
+            "label": true,
+            "color": "#6d8f3f"
         },
         "type": "group",
         "w": 2482,
@@ -2444,8 +2444,8 @@
             "daily_update_dependency_test_result_out"
         ],
         "style": {
-            "color": "#7d6ba8",
-            "label": true
+            "label": true,
+            "color": "#7d6ba8"
         },
         "type": "group",
         "w": 1127,
@@ -3046,8 +3046,8 @@
             "daily_update_alexa_media_backup_out"
         ],
         "style": {
-            "color": "#6e78b8",
-            "label": true
+            "label": true,
+            "color": "#6e78b8"
         },
         "type": "group",
         "w": 1962,
@@ -6640,8 +6640,8 @@
             "notification_hub_wire_in_4f37e4d8beb2"
         ],
         "style": {
-            "color": "#5f78a8",
-            "label": true
+            "label": true,
+            "color": "#5f78a8"
         },
         "type": "group",
         "w": 1442,
@@ -26616,7 +26616,7 @@
     },
     {
         "finalize": "",
-        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nif (!status || stage !== \"dietpi\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=dietpi\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_dietpi_last_result_v1__test\" : \"host_update_dietpi_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"DietPi concluído\" : status\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=dietpi request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\n// Static codes written by run-daily-host-update.sh: why a stage stopped and whether\n// the core services were ready afterwards. Anything else is dropped, never copied.\nconst reason = text.match(/\\breason=([a-z][a-z0-9_]{0,63})(?= |$)/)?.[1] ?? null;\nconst readiness = text.match(/\\breadiness=(ok|unknown|degraded:[a-z0-9_,-]{1,120})(?= |$)/)?.[1] ?? null;\nif (!status || stage !== \"dietpi\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=dietpi\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_dietpi_last_result_v1__test\" : \"host_update_dietpi_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    reason,\n    readiness,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: (status === \"success\" ? \"DietPi concluído\" : status + (reason ? \" (\" + reason + \")\" : \"\")) +\n        (readiness && readiness !== \"ok\" ? \"; prontidão \" + readiness : \"\")\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=dietpi request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit) +\n        \" reason=\" + String(reason ?? \"none\") + \" readiness=\" + String(readiness ?? \"none\"), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
         "g": "daily_update_result_group",
         "id": "daily_update_parse_result",
         "initialize": "",
@@ -28281,7 +28281,7 @@
     },
     {
         "finalize": "",
-        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nif (!status || stage !== \"home-assistant-core\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=home-assistant-core\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_home-assistant-core_last_result_v1__test\" : \"host_update_home-assistant-core_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"Core concluído\" : status\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=home-assistant-core request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\n// Static codes written by run-daily-host-update.sh: why a stage stopped and whether\n// the core services were ready afterwards. Anything else is dropped, never copied.\nconst reason = text.match(/\\breason=([a-z][a-z0-9_]{0,63})(?= |$)/)?.[1] ?? null;\nconst readiness = text.match(/\\breadiness=(ok|unknown|degraded:[a-z0-9_,-]{1,120})(?= |$)/)?.[1] ?? null;\nif (!status || stage !== \"home-assistant-core\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=home-assistant-core\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_home-assistant-core_last_result_v1__test\" : \"host_update_home-assistant-core_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    reason,\n    readiness,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: (status === \"success\" ? \"Core concluído\" : status + (reason ? \" (\" + reason + \")\" : \"\")) +\n        (readiness && readiness !== \"ok\" ? \"; prontidão \" + readiness : \"\")\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=home-assistant-core request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit) +\n        \" reason=\" + String(reason ?? \"none\") + \" readiness=\" + String(readiness ?? \"none\"), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
         "g": "daily_update_core_group",
         "id": "daily_update_core_parse_result",
         "initialize": "",
@@ -28651,7 +28651,7 @@
     },
     {
         "finalize": "",
-        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nif (!status || stage !== \"containers\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=containers\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_containers_last_result_v1__test\" : \"host_update_containers_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"Containers concluído\" : status\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=containers request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\n// Static codes written by run-daily-host-update.sh: why a stage stopped and whether\n// the core services were ready afterwards. Anything else is dropped, never copied.\nconst reason = text.match(/\\breason=([a-z][a-z0-9_]{0,63})(?= |$)/)?.[1] ?? null;\nconst readiness = text.match(/\\breadiness=(ok|unknown|degraded:[a-z0-9_,-]{1,120})(?= |$)/)?.[1] ?? null;\nif (!status || stage !== \"containers\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=containers\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_containers_last_result_v1__test\" : \"host_update_containers_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    reason,\n    readiness,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: (status === \"success\" ? \"Containers concluído\" : status + (reason ? \" (\" + reason + \")\" : \"\")) +\n        (readiness && readiness !== \"ok\" ? \"; prontidão \" + readiness : \"\")\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=containers request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit) +\n        \" reason=\" + String(reason ?? \"none\") + \" readiness=\" + String(readiness ?? \"none\"), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
         "g": "daily_update_containers_group",
         "id": "daily_update_containers_parse_result",
         "initialize": "",
@@ -28996,9 +28996,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "update_policy",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"version\":1,\"scan_interval_minutes\":30,\"device_firmware_auto\":true,\"versioned_hacs_auto_apply\":true,\"kia_uvo_auto_apply\":true,\"manual_candidate_max_age_minutes\":40,\"coordinator_facts_max_age_seconds\":300,\"coordinator_inventory_max_age_minutes\":40}",
                 "tot": "json"
             }
@@ -29220,34 +29220,34 @@
         "repair": false,
         "rules": [
             {
-                "case": false,
                 "t": "regex",
                 "v": "kia_uvo|hyundai|bluelink|\\buvo\\b",
-                "vt": "str"
+                "vt": "str",
+                "case": false
             },
             {
-                "case": false,
                 "t": "regex",
                 "v": "firmware|slzb",
-                "vt": "str"
+                "vt": "str",
+                "case": false
             },
             {
-                "case": false,
                 "t": "regex",
                 "v": "home_assistant_core|home assistant core",
-                "vt": "str"
+                "vt": "str",
+                "case": false
             },
             {
-                "case": false,
                 "t": "regex",
                 "v": "alexa_media_player_update|alexa media player update",
-                "vt": "str"
+                "vt": "str",
+                "case": false
             },
             {
-                "case": false,
                 "t": "regex",
                 "v": "\\bhacs\\b|local_tuya|local tuya|moni_mobile|moni mobile|tuya_vacuum_maps|tuya vacuum maps",
-                "vt": "str"
+                "vt": "str",
+                "case": false
             },
             {
                 "t": "else"
@@ -30266,9 +30266,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "delay",
                 "pt": "msg",
-                "t": "set",
                 "to": "$number(update_policy.scan_interval_minutes) * 60000",
                 "tot": "jsonata"
             }
@@ -30436,9 +30436,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "dependency_policy",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"version\":1,\"managed_surface\":\"override\",\"same_major_only\":true,\"auto_apply\":true,\"severities\":[\"low\",\"moderate\",\"high\",\"critical\"]}",
                 "tot": "json"
             }
@@ -30663,10 +30663,10 @@
         "repair": false,
         "rules": [
             {
-                "case": false,
                 "t": "regex",
                 "v": "^(low|moderate|high|critical)$",
-                "vt": "str"
+                "vt": "str",
+                "case": false
             },
             {
                 "t": "else"
@@ -32127,9 +32127,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "kia_update_mode",
                 "pt": "msg",
-                "t": "set",
                 "to": "audit",
                 "tot": "str"
             }
@@ -32155,9 +32155,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "kia_update_mode",
                 "pt": "msg",
-                "t": "set",
                 "to": "install",
                 "tot": "str"
             }
@@ -32631,7 +32631,7 @@
     },
     {
         "finalize": "",
-        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nif (!status || stage !== \"codex-cli\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=codex-cli\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_codex-cli_last_result_v1__test\" : \"host_update_codex-cli_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"Codex CLI concluído\" : status\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=codex-cli request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\n// Static codes written by run-daily-host-update.sh: why a stage stopped and whether\n// the core services were ready afterwards. Anything else is dropped, never copied.\nconst reason = text.match(/\\breason=([a-z][a-z0-9_]{0,63})(?= |$)/)?.[1] ?? null;\nconst readiness = text.match(/\\breadiness=(ok|unknown|degraded:[a-z0-9_,-]{1,120})(?= |$)/)?.[1] ?? null;\nif (!status || stage !== \"codex-cli\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=codex-cli\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_codex-cli_last_result_v1__test\" : \"host_update_codex-cli_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    reason,\n    readiness,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: (status === \"success\" ? \"Codex CLI concluído\" : status + (reason ? \" (\" + reason + \")\" : \"\")) +\n        (readiness && readiness !== \"ok\" ? \"; prontidão \" + readiness : \"\")\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=codex-cli request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit) +\n        \" reason=\" + String(reason ?? \"none\") + \" readiness=\" + String(readiness ?? \"none\"), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
         "g": "daily_update_codex_cli_group",
         "id": "daily_update_codex_cli_parse_result",
         "initialize": "",
@@ -76258,8 +76258,8 @@
             "notification_hub_wire_in_c6752d21a654"
         ],
         "style": {
-            "color": "#7b61a8",
-            "label": true
+            "label": true,
+            "color": "#7b61a8"
         },
         "type": "group",
         "w": 1392,
@@ -84097,8 +84097,8 @@
             "daily_update_kia_promotion_test_completed_out"
         ],
         "style": {
-            "color": "#8f6bb3",
-            "label": true
+            "label": true,
+            "color": "#8f6bb3"
         },
         "type": "group",
         "w": 680,
@@ -99812,10 +99812,10 @@
             "notification_hub_wire_in_e49e63162eb9"
         ],
         "style": {
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.2",
             "label": true,
-            "stroke": "#0f766e"
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.2"
         },
         "type": "group",
         "w": 2840,

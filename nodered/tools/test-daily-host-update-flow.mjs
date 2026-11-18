@@ -309,7 +309,6 @@ const productionFailure = parse(
 assert.deepEqual(productionFailure, [null, null]);
 assert.match(errors.at(-1), /host_update_stage_failed/);
 assert.match(errors.at(-1), /failure_stage=dietpi-update/);
-
 const productionDuplicate = parse(
   { payload: "host-update stage=dietpi status=failed request_id=prod stage_exit=100 failure_stage=dietpi-update" },
   runtimeNode,
@@ -317,6 +316,23 @@ const productionDuplicate = parse(
 );
 assert.deepEqual(productionDuplicate, [null, null]);
 assert.equal(errors.length, 1, "duplicate results must be deduplicated");
+// The stage's static reason and post-stage readiness reach the error; free text never does.
+const reasoned = parse(
+  { payload: "host-update stage=dietpi status=failed request_id=prod-reason stage_exit=1 reason=validation_failed readiness=degraded:zigbee2mqtt detail=PRIVATE_SENTINEL" },
+  runtimeNode,
+  flow,
+);
+assert.deepEqual(reasoned, [null, null]);
+assert.match(errors.at(-1), / reason=validation_failed readiness=degraded:zigbee2mqtt$/);
+assert.doesNotMatch(errors.at(-1), /PRIVATE_SENTINEL/);
+const unsafe = parse(
+  { payload: "host-update stage=dietpi status=failed request_id=prod-unsafe stage_exit=1 reason=Token/abc readiness=bad" },
+  runtimeNode,
+  flow,
+);
+assert.deepEqual(unsafe, [null, null]);
+assert.match(errors.at(-1), / reason=none readiness=none$/);
+
 
 const dietpiSuccess = parse(
   { payload: "host-update stage=dietpi status=success request_id=prod-success stage_exit=0" },
