@@ -6,6 +6,7 @@ import {reconcileGeneratedFlows} from './reconcile-generated-flows.mjs';
 export const TAB = 'host_observer_tab';
 export const POLICY = {max_report_age_ms: 30000, max_resource_age_ms: 45000,
   event_confirm_ms: 5000, resource_confirm_ms: 20000, observation_confirm_ms: 20000,
+  stop_confirm_ms: 300000, crash_loop_stops: 3, crash_loop_window_ms: 900000,
   cpu_busy_percent: 90, memory_available_mib: 512, disk_used_percent: 85,
   inodes_used_percent: 85, temperature_celsius: 80};
 const source = file => withHostTimingSource(fs.readFileSync(new URL(`functions/host-observer-${file}.js`, import.meta.url), 'utf8').trimEnd());
@@ -29,7 +30,7 @@ export function installHostObserver(flows) {
   const sw = (id,group,name,property,rules,x,y,wires) => node(id,'switch',group,name,x,y,{property,propertyType:'msg',rules,checkall:'false',repair:false,outputs:rules.length,wires});
   const out = (id,group,name,targets,x,y) => node(id,'link out',group,name,x,y,{mode:'link',links:targets});
   const input = (id,group,name,origins,target,x,y) => node(id,'link in',group,name,x,y,{links:origins,wires:[[target]]});
-  node('policy_info','comment',g.policy,'Padrões: leitura 2s; relatório 30s; recursos 45s; confirmar evento 5s / recurso 20s / observação 20s',540,90,{info:'Parâmetros JSON editáveis no nó Política. Validade relatório10–60s e recurso20–60s; confirmação evento1–60s,recurso20–120s,observação10–120s; CPU50–100%,memória128–2048MiB,disco/inodes70–95%,temperatura60–90°C. Inválidos não substituem última política. Recursos exigem duas amostras distintas; transient/unknown não prova recuperação. Confirmação é política, não latência medida.'});
+  node('policy_info','comment',g.policy,'Padrões: leitura 2s; relatório 30s; recursos 45s; confirmar evento 5s / parada 5min (3 quedas em 15min: 5s) / recurso 20s / observação 20s',540,90,{info:'Parâmetros JSON editáveis no nó Política. Validade relatório10–60s e recurso20–60s; confirmação evento1–60s,parada(die/destroy sem start)60–900s,recurso20–120s,observação10–120s; loop de quedas 2–10 paradas em 5–60min confirma como evento; CPU50–100%,memória128–2048MiB,disco/inodes70–95%,temperatura60–90°C. Inválidos não substituem última política. Recursos exigem duas amostras distintas; transient/unknown não prova recuperação. Confirmação é política, não latência medida.'});
   inject('policy_tick',g.policy,'Carregar política ao iniciar','',260,180,'host_obs_policy_config',{once:true,onceDelay:'0.2'});
   change('policy_config',g.policy,'POLÍTICA: padrões e limites explícitos','payload',JSON.stringify(POLICY),'json',600,180,'host_obs_policy_store');
   fn('policy_store',g.policy,'Validar sem perder última política','policy',600,280,[],0);

@@ -46,7 +46,7 @@ incidentes, tarefas e histórico mantêm a referência original. Nenhum alias li
 fornecido pelo produtor é aceito. A revisão vincula papel, sequência, antecessor,
 conteúdo exato e horário de entrada da revisão na fila.
 
-Inicialmente `shadow` preserva a fonte HA e produz a cópia privada. Um produtor pode marcar `payload.shadow_fallback=false` para dispensar essa cópia HA: o canvas `observacao_host` faz isso para todos os seus incidentes (containers, serviços, recursos e observação), que por decisão do proprietário são diagnóstico só para a Eva. Reinício planejado de um container não chega ao celular nem ao HA; escalonamento após o prazo continua chegando ao proprietário. O coletor
+Inicialmente `shadow` preserva a fonte HA e produz a cópia privada. Um produtor pode marcar `payload.shadow_fallback=false` para dispensar essa cópia HA: o canvas `observacao_host` faz isso para todos os seus incidentes (containers, serviços, recursos e observação), que por decisão do proprietário são diagnóstico só para a Eva. Reinício planejado de um container não chega ao celular nem ao HA, e nem vira incidente: parada (`die`/`destroy` sem `start` posterior) só é confirmada após `stop_confirm_ms` (5 min), salvo loop de quedas (`crash_loop_stops`=3 em `crash_loop_window_ms`=15 min), que mantém a confirmação curta de evento; escalonamento após o prazo continua chegando ao proprietário. O coletor
 prioriza o conteúdo privado para o mesmo ID canônico e ignora atualizações ou
 remoções concorrentes da fonte HA enquanto o alias estiver sob sua custódia.
 Após comprovar pela sessão do assistente o mesmo `object_id`, revisão/conteúdo

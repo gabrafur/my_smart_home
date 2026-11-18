@@ -36,8 +36,14 @@ for (const event of report.events) {
     if (!services[event.source]?.includes(event.service) || !actions[event.source]?.includes(event.action)) continue;
     const at = Date.parse(event.occurred_at);
     if (!Number.isFinite(at) || at > msg._host_now + 1000) continue;
-    native.states[`${event.source}:${event.service}`] = {kind: "native", name: event.service,
-        source: event.source, action: event.action, occurred_at: event.occurred_at, observed_at: event.observed_at};
+    const stateKey = `${event.source}:${event.service}`;
+    const window = msg._host_policy.crash_loop_window_ms;
+    const stops = (Array.isArray(native.states[stateKey]?.recent_stops) ? native.states[stateKey].recent_stops : [])
+        .filter(time => Number.isFinite(time) && time <= at && (!Number.isFinite(window) || at - time <= window));
+    if (event.action === "die" || event.action === "destroy") stops.push(at);
+    native.states[stateKey] = {kind: "native", name: event.service,
+        source: event.source, action: event.action, occurred_at: event.occurred_at, observed_at: event.observed_at,
+        recent_stops: stops.slice(-10)};
 }
 native.sequence = report.sequence;
 flow.set(key, native, store);

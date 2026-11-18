@@ -114,25 +114,25 @@ function frame(at=1000000,sequence=0,action='started'){
   resources:{observed_at:iso,collection_errors:[],data:Object.fromEntries(METRICS.map(k=>[k,k==='memory_available_bytes'?4096*1048576:k==='memory_total_bytes'?8192*1048576:k==='oom_kill_count'?0:10]))}};
 }
 function replay(h,report,now,extra={}){h.run('host_obs_normalize',{_host_observer_test:true,_host_test_now:now,payload:{schema_version:1,collection_error:null,report},...extra});}
-const strict=harness();replay(strict,frame(),1000000);replay(strict,frame(1001000,1,'die'),1001000);replay(strict,frame(1007000,1,'die'),1007000);assert.equal(strict.dry.length,1);
+const strict=harness();replay(strict,frame(),1000000);replay(strict,frame(1001000,1,'health_status: unhealthy'),1001000);replay(strict,frame(1007000,1,'health_status: unhealthy'),1007000);assert.equal(strict.dry.length,1);
 replay(strict,frame(1008000,2,'start'),1008000);assert.equal(strict.dry.length,1,'container start cannot dismiss application-readiness incident');
 replay(strict,frame(1009000,3,'health_status: healthy'),1009000);assert.equal(strict.dry.length,2);
 const interrupted=harness();replay(interrupted,frame(),1000000);
-replay(interrupted,frame(1001000,1,'die'),1001000);
-let disconnected=frame(1002000,1,'die');disconnected.sources.docker={state:'unknown',collection_error:'stream_unavailable_or_invalid'};
-replay(interrupted,disconnected,1002000);replay(interrupted,frame(1008000,1,'die'),1008000);
+replay(interrupted,frame(1001000,1,'health_status: unhealthy'),1001000);
+let disconnected=frame(1002000,1,'health_status: unhealthy');disconnected.sources.docker={state:'unknown',collection_error:'stream_unavailable_or_invalid'};
+replay(interrupted,disconnected,1002000);replay(interrupted,frame(1008000,1,'health_status: unhealthy'),1008000);
 assert.equal(interrupted.dry.length,0,'reconnect without a new transition cannot confirm an old physical failure');
 // Unknown evidence interrupts confirmation, but cannot replace the start of an
 // incident that has already produced a notification intent.
 const notifiedGap=harness();replay(notifiedGap,frame(),1000000);
-replay(notifiedGap,frame(1001000,1,'die'),1001000);
-replay(notifiedGap,frame(1007000,1,'die'),1007000);
+replay(notifiedGap,frame(1001000,1,'health_status: unhealthy'),1001000);
+replay(notifiedGap,frame(1007000,1,'health_status: unhealthy'),1007000);
 const incidentOf=h=>h.context('host_observer_tab').get('host_observer_incidents_v1__test').incidents.native_docker_nodered;
 const notifiedBefore=structuredClone(incidentOf(notifiedGap));
-const unavailable=frame(1008000,1,'die');unavailable.sources.docker={state:'unknown',collection_error:'stream_unavailable_or_invalid'};
+const unavailable=frame(1008000,1,'health_status: unhealthy');unavailable.sources.docker={state:'unknown',collection_error:'stream_unavailable_or_invalid'};
 replay(notifiedGap,unavailable,1008000);
 assert.equal(incidentOf(notifiedGap).current_evidence,'unknown');
-replay(notifiedGap,frame(1009000,2,'die'),1009000);
+replay(notifiedGap,frame(1009000,2,'health_status: unhealthy'),1009000);
 assert.equal(incidentOf(notifiedGap).first_seen_at,notifiedBefore.first_seen_at,'notified incident keeps its original chronology after unknown');
 assert.equal(incidentOf(notifiedGap).notified_at,notifiedBefore.notified_at,'unknown does not clear notification dedupe');
 assert.equal(incidentOf(notifiedGap).source_first_observed_at,notifiedBefore.source_first_observed_at,'preserve original source evidence');
@@ -143,12 +143,12 @@ assert.equal(notifiedGap.dry.length,2);assert.equal(notifiedGap.dry[1].payload.o
 assert.equal(incidentOf(notifiedGap),undefined,'only observed recovery closes the incident');
 assert.equal(notifiedGap.effects.length,0);
 const unconfirmedGap=harness();replay(unconfirmedGap,frame(),1000000);
-replay(unconfirmedGap,frame(1001000,1,'die'),1001000);
+replay(unconfirmedGap,frame(1001000,1,'health_status: unhealthy'),1001000);
 replay(unconfirmedGap,unavailable,1008000);
-replay(unconfirmedGap,frame(1009000,2,'die'),1009000);
+replay(unconfirmedGap,frame(1009000,2,'health_status: unhealthy'),1009000);
 assert.equal(incidentOf(unconfirmedGap).first_seen_at,1009000,'unnotified incident starts confirmation again');
-replay(unconfirmedGap,frame(1011000,2,'die'),1011000);assert.equal(unconfirmedGap.dry.length,0);
-replay(unconfirmedGap,frame(1015000,2,'die'),1015000);assert.equal(unconfirmedGap.dry.length,1);
+replay(unconfirmedGap,frame(1011000,2,'health_status: unhealthy'),1011000);assert.equal(unconfirmedGap.dry.length,0);
+replay(unconfirmedGap,frame(1015000,2,'health_status: unhealthy'),1015000);assert.equal(unconfirmedGap.dry.length,1);
 // A pre-fix chronology is retained as uncertain history, without a recovery
 // alert or reclassifying its repeated cursor event as a new failure.
 const legacyManual=harness();legacyManual.scenario('reset');legacyManual.scenario('healthy');legacyManual.scenario('legacy');
@@ -164,16 +164,16 @@ const legacyOriginal={kind:'native',first_seen_at:995000,last_seen_at:997000,not
  current_evidence:'failed',source_first_observed_at:new Date(995000).toISOString(),source_time_kind:'producer_occurrence',sample_count:0,last_sample_at:null};
 const legacy=harness();legacy.context('host_observer_tab').set('host_observer_incidents_v1__test',
  {version:1,incidents:{native_docker_nodered:structuredClone(legacyOriginal)}});
-replay(legacy,frame(997000,1,'die'),1000000);
+replay(legacy,frame(997000,1,'health_status: unhealthy'),1000000);
 const legacyState=()=>legacy.context('host_observer_tab').get('host_observer_incidents_v1__test');
 assert.deepEqual(legacyState().legacy_history_v1.records[0].original,legacyOriginal,'original dates and evidence retained exactly');
 assert.equal(legacyState().incidents.native_docker_nodered,undefined);
-replay(legacy,frame(997000,1,'die'),1001000);
+replay(legacy,frame(997000,1,'health_status: unhealthy'),1001000);
 assert.equal(legacy.dry.length,0,'the old cached failure cannot emit again');
 const restartedLegacy=harness();restartedLegacy.context('host_observer_tab').set('host_observer_incidents_v1__test',structuredClone(legacyState()));
-replay(restartedLegacy,frame(997000,1,'die'),1001000);
+replay(restartedLegacy,frame(997000,1,'health_status: unhealthy'),1001000);
 assert.equal(restartedLegacy.dry.length,0);assert.equal(restartedLegacy.context('host_observer_tab').get('host_observer_incidents_v1__test').legacy_history_v1.records.length,1);
-replay(legacy,frame(1002000,2,'die'),1002000);replay(legacy,frame(1008000,2,'die'),1008000);
+replay(legacy,frame(1002000,2,'health_status: unhealthy'),1002000);replay(legacy,frame(1008000,2,'health_status: unhealthy'),1008000);
 assert.equal(legacy.dry.length,1,'a genuinely later failure still confirms and notifies');
 assert.equal(legacy.dry[0].payload.observer_kind,'host_failure');
 assert.equal(legacyState().legacy_history_v1.records.length,1,'new incident does not replace original history');
@@ -189,6 +189,31 @@ for(const [role,row]of [
  assert.deepEqual(ledger.incidents[role],row,'unknown schema, future clock or valid current incident is not quarantined');
  assert.equal(ledger.legacy_history_v1,undefined);assert.equal(rejected.dry.length,0);assert.equal(rejected.effects.length,0);
 }
+// A planned restart (die, then start/healthy within minutes) is not an incident;
+// a stop that lasts past stop_confirm_ms is, and a crash loop confirms quickly.
+// Frames arrive continuously (every 20 s here) so no report gap resets evidence.
+const hold=(h,sequence,action,from,to)=>{for(let t=from;t<=to;t+=20000)replay(h,frame(t,sequence,action),t);};
+const planned=harness();replay(planned,frame(),1000000);hold(planned,1,'die',1001000,1121000);
+assert.equal(planned.dry.length,0,'a two-minute planned stop is not confirmed');
+hold(planned,2,'start',1141000,1161000);replay(planned,frame(1170000,3,'health_status: healthy'),1170000);
+assert.equal(planned.dry.length,0,'restart completed inside the stop window creates no incident or recovery');
+const stopped=harness();replay(stopped,frame(),1000000);hold(stopped,1,'die',1001000,1281000);
+assert.equal(stopped.dry.length,0);hold(stopped,1,'die',1301000,1321000);
+assert.equal(stopped.dry.length,1,'a stop longer than five minutes is confirmed');
+assert.equal(stopped.dry[0].payload.observer_kind,'host_failure');
+const loop=harness();replay(loop,frame(),1000000);
+hold(loop,1,'die',1001000,1001000);hold(loop,2,'start',1021000,1041000);
+hold(loop,3,'die',1061000,1061000);hold(loop,4,'start',1081000,1101000);
+replay(loop,frame(1121000,5,'die'),1121000);assert.equal(loop.dry.length,0);
+replay(loop,frame(1127000,5,'die'),1127000);assert.equal(loop.dry.length,1,'three stops in fifteen minutes keep the short confirmation');
+const spaced=harness();replay(spaced,frame(),1000000);
+hold(spaced,1,'die',1001000,1001000);hold(spaced,2,'start',1021000,1021000);
+hold(spaced,3,'die',2001000,2001000);hold(spaced,4,'start',2021000,2021000);
+hold(spaced,5,'die',3001000,3061000);
+assert.equal(spaced.dry.length,0,'stops spread over hours are separate planned restarts');
+{const policy={...POLICY};for(const key of ['stop_confirm_ms','crash_loop_stops','crash_loop_window_ms'])delete policy[key];
+ const rejected=harness();rejected.run('host_obs_policy_store',{payload:policy});
+ assert.equal(rejected.context('host_observer_tab').get('host_observer_policy_v1','persistent').stop_confirm_ms,POLICY.stop_confirm_ms,'policy without the stop window is rejected and the last one kept');}
 const rc=harness();rc.run('host_obs_read_complete',{payload:{code:0}});assert.equal(rc.dry.length,0);
 const code=new Function('msg',source('read-completion'));assert.equal(code({payload:{code:0}}),null);assert.equal(code({payload:{code:1}}).payload.report,null);assert.equal(code({payload:{signal:'SIGTERM'}}).payload.collection_error,'source_invalid_or_unavailable');
 const malformed=harness();for(const now of [1000000,1021000])replay(malformed,null,now);

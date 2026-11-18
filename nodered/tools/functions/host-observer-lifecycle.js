@@ -118,8 +118,17 @@ if (fact.kind === "resource" && fact.observed_at !== incident.last_sample_at) {
         incident.last_sample_at = fact.observed_at;
     }
 }
+// A stop (die/destroy) is usually a planned restart that a start follows within
+// minutes; confirm it only after stop_confirm_ms. A crash loop (several stops in
+// the window) and unhealthy/failed keep the short event confirmation. A stored
+// policy without the stop fields keeps the previous behavior.
+const stopEvent = fact.kind === "native" && ["die", "destroy"].includes(fact.action);
+const crashLoop = stopEvent && Array.isArray(fact.recent_stops) &&
+    Number.isFinite(msg._host_policy.crash_loop_stops) && fact.recent_stops.length >= msg._host_policy.crash_loop_stops;
+const stopConfirm = Number.isFinite(msg._host_policy.stop_confirm_ms) ? msg._host_policy.stop_confirm_ms : msg._host_policy.event_confirm_ms;
 const confirmation = fact.kind === "resource" ? msg._host_policy.resource_confirm_ms :
-    fact.kind === "observation" ? msg._host_policy.observation_confirm_ms : msg._host_policy.event_confirm_ms;
+    fact.kind === "observation" ? msg._host_policy.observation_confirm_ms :
+    stopEvent && !crashLoop ? stopConfirm : msg._host_policy.event_confirm_ms;
 state.incidents[name] = incident;
 if (!Number.isFinite(confirmation) || confirmation < 1000 || incident.clock_conflict ||
     now - incident.first_seen_at < confirmation || fact.kind === "resource" && incident.sample_count < 2 ||

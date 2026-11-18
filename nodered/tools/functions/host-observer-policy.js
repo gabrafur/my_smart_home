@@ -2,7 +2,8 @@ const value = msg.payload;
 const bounds = {
     max_report_age_ms: [10000, 60000], max_resource_age_ms: [20000, 60000],
     event_confirm_ms: [1000, 60000], resource_confirm_ms: [20000, 120000],
-    observation_confirm_ms: [10000, 120000], cpu_busy_percent: [50, 100],
+    observation_confirm_ms: [10000, 120000], stop_confirm_ms: [60000, 900000],
+    crash_loop_stops: [2, 10], crash_loop_window_ms: [300000, 3600000], cpu_busy_percent: [50, 100],
     memory_available_mib: [128, 2048], disk_used_percent: [70, 95],
     inodes_used_percent: [70, 95], temperature_celsius: [60, 90]
 };
