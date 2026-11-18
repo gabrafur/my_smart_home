@@ -407,7 +407,8 @@ Proteções da janela noturna:
   repetido no minuto seguinte) enquanto houver menos de 2 GiB disponíveis, com
   `deferred reason=memory_low` no log.
 - O resultado do DietPi traz `containers_restarted=N`, quantos contêineres a
-  etapa reiniciou, e `readiness=ok` ou `readiness=degraded:<serviços>`: até 3 min
+  etapa reiniciou. Backup externo, DietPi, Core e contêineres trazem
+  `readiness=ok` ou `readiness=degraded:<serviços>`: até 3 min
   conferindo Home Assistant (healthcheck), Mosquitto, Node-RED e Zigbee2MQTT com as
   mesmas sondas do atualizador de imagens (`scripts/service-readiness-report.mjs`;
   só relata, nunca reinicia); Core e contêineres trazem `reason=` quando falham.

@@ -428,10 +428,13 @@ test("each host stage invokes only its own updater", () => {
   }
   assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), [
     `${offsiteBackup} daily-cycle`,
+    path.join(fixture, "readiness-report.mjs"),
     "dietpi",
     path.join(fixture, "readiness-report.mjs"),
     `${dockerUpdater} home-assistant-core`,
+    path.join(fixture, "readiness-report.mjs"),
     `${dockerUpdater} containers`,
+    path.join(fixture, "readiness-report.mjs"),
     "codex-cli",
   ]);
   fs.rmSync(fixture, { recursive: true, force: true });
@@ -455,9 +458,9 @@ test("image stage result names the static refusal code that stopped it", () => {
   assert.equal(core.status, 1);
   assert.match(core.stdout, /pulling/);
   assert.equal(fs.readFileSync(detail, "utf8").trim(),
-    "stage=home-assistant-core stage_exit=1 reason=unsupported_icloud_core_version mode=production");
+    "stage=home-assistant-core stage_exit=1 reason=unsupported_icloud_core_version readiness=unknown mode=production");
   assert.equal(run("containers").status, 2);
-  assert.equal(fs.readFileSync(detail, "utf8").trim(), "stage=containers stage_exit=2 reason=unclassified mode=production");
+  assert.equal(fs.readFileSync(detail, "utf8").trim(), "stage=containers stage_exit=2 reason=unclassified readiness=unknown mode=production");
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

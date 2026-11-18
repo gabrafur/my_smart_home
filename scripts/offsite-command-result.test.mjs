@@ -65,11 +65,15 @@ process.exitCode = await runDailyCycleCommand({ cycle: async () => {
   throw Object.assign(new Error('private fixture pathname must not leave error boundary'), { code: 'EACCES' });
 } });\n`);
   fs.writeFileSync(path.join(trigger, "offsite-backup-requested"), "synthetic-operation\n");
+  // The stage reports service readiness after the capture; never probe the real host here.
+  const readiness = path.join(root, "readiness.mjs");
+  fs.writeFileSync(readiness, "console.log('readiness=ok');\n");
   const worker = fileURLToPath(new URL("./process-update-stage-request.sh", import.meta.url));
   const options = { encoding: "utf8", timeout: 5000, env: {
     PATH: "/usr/bin:/bin", LC_ALL: "C", DAILY_UPDATE_TRIGGER_DIR: trigger,
     HOST_UPDATE_STAGE_SCRIPT: fileURLToPath(new URL("./run-daily-host-update.sh", import.meta.url)),
     DAILY_UPDATE_NODE_BIN: process.execPath, OFFSITE_BACKUP_SCRIPT: fixture,
+    DAILY_UPDATE_READINESS_SCRIPT: readiness,
   } };
   const result = spawnSync("/bin/sh", [worker, "offsite-backup"], options);
   assert.equal(result.status, 1, result.stderr);

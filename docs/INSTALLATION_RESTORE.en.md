@@ -368,7 +368,8 @@ an APT `docker-ce` upgrade or daemon restart keeps containers running;
 `install-container-shutdown-guard.sh` stops them gracefully (60 s) before Docker
 only when the host shuts down. The
 DietPi, Core and containers stages wait (exit 75, request kept) while less than
-2 GiB is available; DietPi reports `containers_restarted=N` and `readiness=ok` or
+2 GiB is available; DietPi reports `containers_restarted=N`, and the offsite
+backup, DietPi, Core and containers stages report `readiness=ok` or
 `readiness=degraded:<services>` (Home Assistant healthcheck plus the image updater's
 Mosquitto, Node-RED and Zigbee2MQTT probes, up to 3 min, report only); failed image
 stages report `reason=`. The stock Raspberry Pi kernel lacks the cgroup memory

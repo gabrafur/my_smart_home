@@ -105,6 +105,15 @@ run_images() {
   fi
 }
 
+# Report (never act) whether HA, MQTT, Node-RED and Zigbee are ready after a stage
+# that stops or recreates services. Prints one static field for the detail line.
+readiness_field() {
+  local value
+  value=$("$node_bin" "$readiness_script" 2>/dev/null | sed -n '1p' | tr -cd 'a-z0-9_=:,') || value=""
+  case "$value" in readiness=ok|readiness=degraded:*) ;; *) value=readiness=unknown ;; esac
+  printf '%s' "$value"
+}
+
 if [ "$stage" = "offsite-backup" ]; then
   if [ "$dry_run" = true ]; then
     write_detail "stage=offsite-backup stage_exit=0 components=13 capture_verified=false remote_verified=false protected=false action=dry-run mode=dry-run"
@@ -120,7 +129,10 @@ if [ "$stage" = "offsite-backup" ]; then
   offsite_status=$?
   set -e
   offsite_detail=$(printf '%s\n' "$offsite_detail" | sed -n '1p' | tr -cd 'A-Za-z0-9_.:=@ -')
-  write_detail "stage=offsite-backup stage_exit=$offsite_status $offsite_detail mode=production"
+  # The consistent capture stops services with data for about a minute.
+  readiness=$(readiness_field)
+  echo "daily-host-update stage=offsite-backup $readiness"
+  write_detail "stage=offsite-backup stage_exit=$offsite_status $offsite_detail $readiness mode=production"
   exit "$offsite_status"
 fi
 
@@ -133,8 +145,7 @@ if [ "$stage" = "dietpi" ]; then
   # Report (never act) whether HA, MQTT, Node-RED and Zigbee are ready after the stage.
   readiness=readiness=not_checked
   if [ "$dry_run" != true ]; then
-    readiness=$("$node_bin" "$readiness_script" 2>/dev/null | sed -n '1p' | tr -cd 'a-z0-9_=:,') || readiness=""
-    case "$readiness" in readiness=ok|readiness=degraded:*) ;; *) readiness=readiness=unknown ;; esac
+    readiness=$(readiness_field)
     echo "daily-host-update stage=dietpi $readiness"
   fi
   write_detail "stage=dietpi stage_exit=$dietpi_status failure_stage=$dietpi_stage containers_restarted=$containers_restarted $readiness mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
@@ -157,7 +168,14 @@ if [ "$stage" = "home-assistant-core" ] || [ "$stage" = "containers" ]; then
   case "$image_status" in ''|*[!0-9]*) image_status=70 ;; esac
   reason_field=""
   [ "$image_status" -eq 0 ] || reason_field=" reason=${image_reason:-unclassified}"
-  write_detail "stage=$stage stage_exit=$image_status${reason_field} mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
+  # The updater already waits for each recreated service; this reports the core
+  # services as a whole after the stage, including the ones it did not touch.
+  readiness_detail=""
+  if [ "$dry_run" != true ]; then
+    readiness_detail=" $(readiness_field)"
+    echo "daily-host-update stage=$stage${readiness_detail}"
+  fi
+  write_detail "stage=$stage stage_exit=$image_status${reason_field}${readiness_detail} mode=$([ "$dry_run" = true ] && printf dry-run || printf production)"
   exit "$image_status"
 fi
 
