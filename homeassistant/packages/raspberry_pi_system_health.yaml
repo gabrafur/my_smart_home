@@ -969,3 +969,10 @@ automation:
             Ultimo boot do Raspberry Pi: {{ states('sensor.raspberry_pi_last_boot') }}.
             Se esta inicializacao nao foi planejada, verifique energia, temperatura e logs.
           notification_id: raspberry_pi_home_assistant_started
+      # Planned restarts (updates, backups, integration promotions) happen most
+      # nights; an open notice after each one is noise. Keep it visible for an
+      # hour, then close it. Unplanned outages are reported by the host observer.
+      - delay: "01:00:00"
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: raspberry_pi_home_assistant_started
