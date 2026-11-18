@@ -31,6 +31,7 @@ if [ -n "$worktree_status" ] && [ "${GIT_BACKUP_CLEAN_VALIDATION:-}" = "1" ]; th
   git -C "$repository_root" worktree add --quiet --detach "$validation_dir/tree" "$head_oid"
   printf 'pre-push: worktree has in-progress paths; validating %s in a clean temporary worktree\n' "$head_oid"
   env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_COMMON_DIR -u GIT_PREFIX \
+    -u GIT_BACKUP_CLEAN_VALIDATION -u GIT_BACKUP_RECOVERY_JOB \
     make -C "$validation_dir/tree" --no-print-directory validate-public
   exit $?
 fi
@@ -42,6 +43,9 @@ fi
 
 printf 'pre-push: running canonical public validation for %s\n' "$head_oid"
 # Git hooks export repository-scoped variables. Tests create independent Git
-# fixtures, so they must not inherit the hooked worktree's GIT_DIR or index.
+# fixtures, so they must not inherit the hooked worktree's GIT_DIR or index,
+# nor the automated backup's GIT_BACKUP_* switches (16/11 to 18/11 every
+# backup with changes failed because a hook test inherited them).
 exec env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_COMMON_DIR -u GIT_PREFIX \
+    -u GIT_BACKUP_CLEAN_VALIDATION -u GIT_BACKUP_RECOVERY_JOB \
   make -C "$repository_root" --no-print-directory validate-public

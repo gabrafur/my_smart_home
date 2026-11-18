@@ -7,8 +7,19 @@ import { spawnSync } from "node:child_process";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
 
+// The suite itself runs inside the pre-push hook of an automated backup, which
+// exports GIT_BACKUP_* and Git hook variables. Strip them so the fixture sees the
+// same strict environment as an interactive push.
+function isolatedEnv(extra = {}) {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("GIT_BACKUP_") || ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"].includes(key)) delete env[key];
+  }
+  return { ...env, ...extra };
+}
+
 function run(command, args, cwd) {
-  return spawnSync(command, args, { cwd, encoding: "utf8" });
+  return spawnSync(command, args, { cwd, encoding: "utf8", env: isolatedEnv() });
 }
 
 function fixture(t) {
@@ -121,7 +132,7 @@ test("backup pre-push validates the exact HEAD in a clean worktree despite in-pr
   assert.notEqual(strict.status, 0);
   assert.match(strict.stderr, /worktree must be clean/);
 
-  const backup = spawnSync("git", ["push", "origin", "main"], { cwd: root, encoding: "utf8", env: { ...process.env, GIT_BACKUP_CLEAN_VALIDATION: "1" } });
+  const backup = spawnSync("git", ["push", "origin", "main"], { cwd: root, encoding: "utf8", env: isolatedEnv({ GIT_BACKUP_CLEAN_VALIDATION: "1" }) });
   assert.equal(backup.status, 0, backup.stderr);
   assert.match(backup.stdout + backup.stderr, /validated-clean-head/);
   assert.equal(fs.readFileSync(path.join(root, "in-progress.txt"), "utf8"), "author work\n");
