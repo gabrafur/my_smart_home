@@ -348,6 +348,24 @@ const coreSuccess = parseCore(
   flow,
 );
 assert.equal(coreSuccess[1].payload.stage, "home-assistant-core");
+// A compatibility gate refuses the Core image before any change: alert, and still let
+// the other containers update. A real failure keeps holding them.
+const coreGate = parseCore(
+  { payload: "host-update stage=home-assistant-core status=failed request_id=core-gate stage_exit=1 reason=unsupported_icloud_core_version" },
+  runtimeNode,
+  flow,
+);
+assert.equal(coreGate[0], null);
+assert.equal(coreGate[1].payload.stage, "home-assistant-core");
+assert.equal(coreGate[1].payload.released_after_gate, "unsupported_icloud_core_version");
+assert.match(errors.at(-1), /host_update_stage_failed stage=home-assistant-core .* reason=unsupported_icloud_core_version/);
+const coreFailure = parseCore(
+  { payload: "host-update stage=home-assistant-core status=failed request_id=core-failed stage_exit=1 reason=validation_failed" },
+  runtimeNode,
+  flow,
+);
+assert.deepEqual(coreFailure, [null, null]);
+assert.match(errors.at(-1), /reason=validation_failed/);
 const parseCodexCli = new Function("msg", "node", "flow", node("daily_update_codex_cli_parse_result").func);
 const codexCliTestFailure = parseCodexCli(
   { _daily_update_test: true, payload: "host-update stage=codex-cli status=failed request_id=test-codex stage_exit=70 failure_stage=verify" },

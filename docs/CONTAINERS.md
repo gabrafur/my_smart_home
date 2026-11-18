@@ -264,7 +264,12 @@ subfluxos de host serializados e independentes: `DietPi`, `Home Assistant Core`,
 resolve somente `ghcr.io/home-assistant/home-assistant:stable` e recria apenas
 o serviço `homeassistant` quando o digest muda. O terceiro reconcilia Portainer,
 MQTT, Matter, AppDaemon, Node-RED e Zigbee2MQTT e conclui com a manutenção segura
-de storage. Não há reboot automático.
+de storage. Não há reboot automático. Os demais containers seguem o Core concluído
+e também o Core recusado pela trava de compatibilidade (`unsupported_*`,
+`compatibility_unconfirmed`, `compatibility_probe_timeout`), que roda antes de
+qualquer mudança no compose ou nos serviços; o aviso de falha continua. Qualquer
+outra falha do Core segura os containers (de 09/11 a 17/11/2026 uma trava do
+iCloud no Core impediu todas as outras atualizações).
 
 O subfluxo Alexa Media verifica também a memória pública contra os arquivos
 candidatos e os metadados da próxima versão, antes de chamar HACS ou parar o

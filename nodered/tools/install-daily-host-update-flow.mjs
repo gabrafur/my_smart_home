@@ -228,7 +228,7 @@ msg.payload = {
 node.status({ fill: TEST_MODE ? "blue" : "green", shape: "dot", text: TEST_MODE ? "TESTE preparado" : "${stage} solicitado" });
 return msg;`;
 
-const parseHostStageResult = (expectedStage, label, hasNext) => `const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;
+const parseHostStageResult = (expectedStage, label, hasNext, gateRelease = false) => `const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;
 const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
 if (!text) return [null, null];
 const status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];
@@ -271,6 +271,14 @@ if (TEST_MODE) return [msg, null];
 if (failed) {
     node.error("host_update_stage_failed stage=${expectedStage} request_id=" + requestId + " failure_stage=" + String(failureStage) + " stage_exit=" + String(result.stage_exit) +
         " reason=" + String(reason ?? "none") + " readiness=" + String(readiness ?? "none"), msg);
+    // Owner decision (18/11/2026): a compatibility gate refuses the Core image before any
+    // compose or container change, so the other containers can still update. A real
+    // failure keeps the safe order and holds them. The alert above is kept either way.
+    if (${gateRelease ? "true" : "false"} && ${hasNext ? "true" : "false"} && reason &&
+        /^(unsupported_[a-z0-9_]+|compatibility_unconfirmed|compatibility_probe_timeout)$/.test(reason)) {
+        msg.payload = { ...result, released_after_gate: reason };
+        return [null, msg];
+    }
     return [null, null];
 }
 if (status === "success" && ${hasNext ? "true" : "false"}) return [null, msg];
@@ -852,7 +860,7 @@ const nodes = [
     name: "Receber resultado Core TESTE", links: ["daily_update_core_test_result_out"],
     x: 595, y: 900, wires: [["daily_update_core_parse_result"]],
   },
-  functionNode("daily_update_core_parse_result", coreGroup, "Normalizar resultado Core", parseHostStageResult("home-assistant-core", "Core", true), 2, 850, 960, [["daily_update_core_result_test_out"], ["daily_update_containers_request_out"]]),
+  functionNode("daily_update_core_parse_result", coreGroup, "Normalizar resultado Core", parseHostStageResult("home-assistant-core", "Core", true, true), 2, 850, 960, [["daily_update_core_result_test_out"], ["daily_update_containers_request_out"]]),
   {
     id: "daily_update_core_result_test_out", type: "link out", z: TAB, g: coreGroup,
     name: "Resultado Core TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
@@ -860,7 +868,7 @@ const nodes = [
   },
   {
     id: "daily_update_containers_request_out", type: "link out", z: TAB, g: coreGroup,
-    name: "Core concluído → containers", mode: "link", links: ["daily_update_containers_request_in"],
+    name: "Core concluído (ou recusado antes de mudar) → containers", mode: "link", links: ["daily_update_containers_request_in"],
     x: 1155, y: 990, wires: [],
   },
   {
@@ -886,7 +894,7 @@ const nodes = [
   },
   {
     id: "daily_update_containers_request_in", type: "link in", z: TAB, g: containersGroup,
-    name: "Receber sucesso Core", links: ["daily_update_containers_request_out"],
+    name: "Receber Core concluído ou recusado antes de mudar", links: ["daily_update_containers_request_out"],
     x: 85, y: 1220, wires: [["daily_update_containers_prepare"]],
   },
   {

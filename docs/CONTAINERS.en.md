@@ -258,7 +258,11 @@ apt and DietPi.
 The second resolves only the stable Home Assistant image and recreates only
 `homeassistant` when its digest changes. The third reconciles Portainer, MQTT,
 Matter, AppDaemon, Node-RED, and Zigbee2MQTT, then runs safe storage maintenance.
-It never reboots automatically.
+It never reboots automatically. The other containers follow a successful Core and
+also a Core refused by the compatibility gate (`unsupported_*`,
+`compatibility_unconfirmed`, `compatibility_probe_timeout`), which runs before any
+compose or service change; the failure alert is kept. Any other Core failure holds
+them (from 09/11 to 17/11/2026 an iCloud gate on Core blocked every other update).
 
 On the first scheduled execution, on October 14, 2026, the consistent capture
 restarted Home Assistant and Backup Manager was still `blocked` when the worker
