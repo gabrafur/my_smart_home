@@ -32,7 +32,10 @@ conector ChatGPT -> túnel -> frontend raspberry-mcp@ (sem rede)
   instalada exata.
 - O broker roda por pedido como `DynamicUser`, sem capabilities, com acesso IP
   apenas a localhost e `/mnt/data/docker` inacessível. O token do Home Assistant
-  chega só por `LoadCredential`.
+  chega só por `LoadCredential` e pertence a um usuário dedicado, sem administrador e
+  só local (`eva-household-lights`, grupo `system-users`): lê estados e chama
+  `turn_on`/`turn_off`, mas não acessa serviços e APIs administrativos. O token
+  administrativo de longa duração não é mais usado pelo broker.
 - Limites: 30 comandos por hora e intervalo de 3 s. Cada comando é gravado em
   `/var/lib/raspberry-ha-lights/commands.json` antes do envio (histórico de 24 h).
 - `ha_light_set` não é somente leitura, então o conector mantém sua confirmação de
