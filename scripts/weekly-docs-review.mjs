@@ -210,9 +210,18 @@ function runAgent(prompt, worktree, { baseline, expectedBranch, remoteUrl }) {
         WEEKLY_DOCS_REVIEW_BRANCH: expectedBranch,
         WEEKLY_DOCS_REVIEW_RECEIPT: reviewReceiptName,
       },
-      stdio: ["pipe", "inherit", "inherit"],
+      stdio: ["pipe", "pipe", "pipe"],
     });
     activeChild = child;
+    // Keep streaming the agent output to the scheduler log, but retain a short
+    // tail so a provider usage limit is reported as such, not as process_failed.
+    let outputTail = "";
+    const keep = (target) => (chunk) => {
+      target.write(chunk);
+      outputTail = (outputTail + chunk.toString("utf8")).slice(-16 * 1024);
+    };
+    child.stdout.on("data", keep(process.stdout));
+    child.stderr.on("data", keep(process.stderr));
     child.stdin.on("error", (error) => log(`weekly review prompt stream closed early: ${error.message}`));
     child.stdin.end(prompt);
     const timeout = setTimeout(() => {
@@ -232,9 +241,18 @@ function runAgent(prompt, worktree, { baseline, expectedBranch, remoteUrl }) {
       settled = true;
       clearTimeout(timeout);
       activeChild = undefined;
-      resolve({ ok: code === 0, reason: timedOut ? "timeout" : "process_failed", code, signal });
+      resolve({ ok: code === 0, reason: timedOut ? "timeout" : classifyAgentOutput(outputTail), code, signal });
     });
   });
+}
+
+// Static reason for a failed agent run. A provider usage/credit limit is not a
+// local defect: the review is skipped until the provider allows it again.
+export function classifyAgentOutput(text = "") {
+  if (/hit your usage limit|usage limit reached|purchase more credits|insufficient[_ ]quota|rate_limit_exceeded/i.test(text)) {
+    return "provider_usage_limit";
+  }
+  return "process_failed";
 }
 
 function consumeReviewReceipt(worktree) {
@@ -332,6 +350,17 @@ async function runLockedReview() {
     gitOutput(["worktree", "add", "--detach", worktree, initial.baseline]);
     worktreeCreated = true;
     const agent = await runAgent(prompt, worktree, initial);
+    if (!agent.ok && agent.reason === "provider_usage_limit") {
+      log("weekly review skipped: the AI provider usage limit is exhausted");
+      updateStatus({
+        state: "skipped",
+        last_finished: new Date().toISOString(),
+        last_result: "skipped",
+        last_reason: "provider_usage_limit",
+        skipped_count: Number(status.skipped_count || 0) + 1,
+      });
+      return false;
+    }
     if (!agent.ok) return failReview(agent.reason, agent.error);
     let receiptStatus;
     try {

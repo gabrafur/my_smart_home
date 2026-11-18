@@ -89,6 +89,8 @@ function fixture(t, { branch = "main" } = {}) {
     "    printf '%s\\n' '# Reviewed' > docs/review.md",
     "    ;;",
     "  no_receipt) exit 0 ;;",
+    "  usage_limit) echo \"ERROR: You've hit your usage limit. Visit the provider usage page to purchase more credits.\" >&2; exit 1 ;;",
+    "  agent_crash) echo 'synthetic agent crash' >&2; exit 1 ;;",
     "  blocker) printf '%s\\n' '{\"status\":\"implementation_change_required\"}' > \"$WEEKLY_DOCS_REVIEW_RECEIPT\"; exit 0 ;;",
     "  unsafe_receipt) printf '%s\\n' '{\"status\":\"arbitrary runtime text\"}' > \"$WEEKLY_DOCS_REVIEW_RECEIPT\"; exit 0 ;;",
     "esac",
@@ -355,4 +357,18 @@ test("Node-RED review request survives maintenance contention and executes after
     holder.stdin.end(); await holderDone;
     worker.kill("SIGTERM"); await workerDone;
   }
+});
+
+test("a provider usage limit is a skipped review, not a local failure", (t) => {
+  const item = fixture(t);
+  const result = item.run("usage_limit");
+  assert.equal(result.status, 1);
+  assert.match(`${result.stdout}\n${result.stderr}`, /usage limit is exhausted/);
+  const status = JSON.parse(fs.readFileSync(path.join(path.dirname(item.argsPath), "status.json"), "utf8"));
+  assert.equal(status.state, "skipped");
+  assert.equal(status.last_reason, "provider_usage_limit");
+  assert.equal(Number(status.failure_count || 0), 0);
+  assert.equal(item.remoteCount(), 1);
+  const crash = fixture(t).run("agent_crash");
+  assert.match(`${crash.stdout}\n${crash.stderr}`, /weekly review failed \(process_failed\)/);
 });
