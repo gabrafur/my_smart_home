@@ -30,7 +30,7 @@
     "test_policy_diagnostic_classification.py": "d977b19ecd83044e137e989a98d455acbc112ed895ed78a0aebc25106cba51d9",
     "test_process_discovery.py": "447d5b0611cb58244c4766e053c2b764811bb04d74a69b775136da6dedbcb95d",
     "test_public_source_validator.py": "279968fa6fe83f0666a179530f8e7a381676d2d35b0a3dfb03240d2e85bee5a6",
-    "test_session_cleanup.py": "b23c6005eb46a9aa13f0ff2db181850b602930487c0b0ad5a9151a36a0a9fc90",
+    "test_session_cleanup.py": "9a7564cfe0054f065406aef75e605087fec6cbcabb02b39605c2f0f6a59241b5",
     "test_builtins.py": "19b75689ba0e902ec4e0122032f70d768a1a5692db7e5b08f5eb864f419ac1af"
   },
   "proposed_root_modules": [

@@ -320,9 +320,9 @@ class PartialAndConcurrency(Base):
         self.assertEqual(ev['operation_error'], {'reason': 'configuration_unconfirmed', 'exception_kind': 'ValueError'})
 
     def test_unsafe_messages_are_not_persisted(self):
-        _, _, _, ev, _ = self.run_once(fail='Token abc/def leaked: /run/x')
+        _, _, _, ev, _ = self.run_once(fail='Token PRIVATE_SENTINEL/def leaked: /run/x')
         self.assertEqual(ev['operation_error']['reason'], 'nodered_admin_operation_unconfirmed')
-        self.assertNotIn('abc', json.dumps(ev))
+        self.assertNotIn('PRIVATE_SENTINEL', json.dumps(ev))  # never a hex substring
 
     def test_evidence_failure_never_blocks_receipt(self):
         self.patch(G, 'write_cleanup_evidence', lambda *a: (_ for _ in ()).throw(OSError('disk')))
