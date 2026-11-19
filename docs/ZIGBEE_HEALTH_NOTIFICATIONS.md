@@ -344,7 +344,7 @@ queda e recuperação confirmadas.
 
 - `default`/`memoryOnly`: memória volátil para o estado derivado comum, locks de
   execução e observações brutas recebidas novamente por MQTT retained;
-- `persistent`: `localfilesystem`, com flush a cada 30 segundos. Os monitores
+- `persistent`: `localfilesystem`, com flush a cada 120 segundos. Os monitores
   optam explicitamente por esse store para incidentes, horários, contadores e
   deduplicação.
 

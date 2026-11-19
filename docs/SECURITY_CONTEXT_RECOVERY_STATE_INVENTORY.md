@@ -14,7 +14,7 @@ horário operacional de refresh (07h–22h, timezone do container).
 No ambiente Docker, `settings.js` está em `/data/settings.js` e configura
 explicitamente `dir: __dirname` + `base: "context"`: o store fica em
 `/data/context`, dentro do bind mount persistente `./nodered:/data`. O cache em
-memória usa flush de 30 s. O diretório é criado pelo Node-RED com o usuário do
+memória usa flush de 120 s. O diretório é criado pelo Node-RED com o usuário do
 container; `/data` foi verificado como gravável. Recriar o container não remove
 o store, mas uma queda abrupta ainda pode perder a janela não descarregada.
 
@@ -120,7 +120,7 @@ completo. Só altere o produtor após reproduzir essa ordem em teste isolado.
   pela integração. Isso ainda não prova presença física sem erro do provedor.
 - Um refletor ligado por outra automação é indistinguível de acionamento manual;
   ambos são conservadoramente preservados quando não há lifecycle válido.
-- `localfilesystem` faz flush periódico configurado em 30 s. Uma
+- `localfilesystem` faz flush periódico configurado em 120 s. Uma
   perda abrupta de energia imediatamente após uma transição ainda pode perder a
   última gravação; a reconciliação física evita transformar isso em ação crítica.
 - O sensor de viagens diário continua sendo a fonte externa de histórico final;

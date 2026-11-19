@@ -193,7 +193,7 @@ confirmed outage and recovery times.
 
 `nodered/settings.js` keeps `default`/`memoryOnly` volatile. Infrastructure
 monitors explicitly select the named `persistent` `localfilesystem` store, with
-a 30-second flush, for incidents, timestamps, counters, and deduplication.
+a 120-second flush, for incidents, timestamps, counters, and deduplication.
 Execution locks and raw observations recreated by retained MQTT remain in
 memory. `nodered/status` has retained birth, clean-close, and last-will values,
 making the HA entities unavailable when Node-RED leaves MQTT.
@@ -210,7 +210,7 @@ before publishing fresh health data, so a missing flow-context file cannot
 silently replace known timestamps with null values. When no incident has ever
 been confirmed, Home Assistant displays an explicit no-event message instead
 of `Unknown`.
-The residual risk is an abrupt crash within the 30-second context flush window,
+The residual risk is an abrupt crash within the 120-second context flush window,
 which can lose the latest transition and, in the narrow notification-before-
 flush case, repeat an alert.
 

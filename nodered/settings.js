@@ -469,7 +469,8 @@ module.exports = {
                 dir: __dirname,
                 base: "context",
                 cache: true,
-                flushInterval: 30
+                // 120 s cuts SD writes about 4x (19/11: ~0.8 GB/day at 30 s); a crash loses at most 2 min of persisted context.
+                flushInterval: 120
             }
         }
     },

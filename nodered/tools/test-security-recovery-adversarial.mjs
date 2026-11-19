@@ -447,7 +447,7 @@ scenario("17 store nomeado nao muda o default global", () => {
   assert.match(settings, /persistent:\s*\{[\s\S]*module:\s*"localfilesystem"/);
   assert.match(settings, /dir:\s*__dirname/);
   assert.match(settings, /base:\s*"context"/);
-  assert.match(settings, /flushInterval:\s*30/);
+  assert.match(settings, /flushInterval:\s*120/);
 });
 
 scenario("18 readiness parcial bloqueia efeitos condicionais, nunca o backstop", () => {

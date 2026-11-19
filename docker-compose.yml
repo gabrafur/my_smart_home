@@ -10,6 +10,7 @@ services:
     logging: *default-logging
     image: portainer/portainer-ce@sha256:3609c307943bca8e5c492f69ddd6965df177208b50678a4cff28391c8dd4e96e
     container_name: portainer
+    mem_limit: 512m
     restart: always
     ports:
       - "${HOST_LAN_IP:-127.0.0.1}:9000:9000"
@@ -21,6 +22,7 @@ services:
     logging: *default-logging
     image: eclipse-mosquitto@sha256:75d6662dee52c947dc9dd9c29f1d8d7ffef78ddaf38001caa09755681e8bbc98
     container_name: mosquitto
+    mem_limit: 256m
     restart: always
     ports:
       - "${HOST_LAN_IP:-127.0.0.1}:1883:1883"
@@ -33,6 +35,7 @@ services:
     logging: *default-logging
     image: ghcr.io/home-assistant/home-assistant@sha256:493a07e8f6530fc640223f4a0a5248f20a61ca2f718bb1d31efbf08a2c5ea28f
     container_name: homeassistant
+    mem_limit: 3072m
     restart: always
     network_mode: host
     # Keep cloud-backed integrations working even when the host resolver is
@@ -77,6 +80,7 @@ services:
     # because the upstream `stable` tag is mutable; see docs/CONTAINERS.md.
     image: ghcr.io/home-assistant-libs/python-matter-server@sha256:170aa093ce91c76cde4cc390918307590f0f5558fcec93f913af3cb019e6562a
     container_name: matter_server
+    mem_limit: 512m
     restart: always
     network_mode: host
     security_opt:
@@ -106,6 +110,7 @@ services:
     logging: *default-logging
     image: acockburn/appdaemon@sha256:cabcb3a4e739db2572ecb8dc3cee685300ab27274efda83a6d8ce4d3988dc647
     container_name: appdaemon
+    mem_limit: 512m
     restart: always
     network_mode: host
     volumes:
@@ -128,6 +133,7 @@ services:
     logging: *default-logging
     image: nodered/node-red@sha256:2ccd38b4066648bd5e17430c50a2f8102c566a82fd4f2fc5c342e61664d6896f
     container_name: nodered
+    mem_limit: 1536m
     restart: always
     command: ["/bin/sh", "/data/tools/start-node-red.sh"]
     depends_on:
@@ -188,6 +194,7 @@ services:
     logging: *default-logging
     image: koenkk/zigbee2mqtt@sha256:fb4a6b0f6868ad1cd6a9996479802b2420e599c3463b62bbff8c8cd9a908f43a
     container_name: zigbee2mqtt
+    mem_limit: 512m
     restart: always
     depends_on:
       - mosquitto

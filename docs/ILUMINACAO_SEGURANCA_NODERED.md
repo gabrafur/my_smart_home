@@ -811,7 +811,7 @@ optam por ele; entidades atuais do HA continuam sendo a verdade física. O
 inventário completo está em
 [`SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md`](SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md).
 No container, o caminho é explicitamente `/data/context`, coberto pelo volume
-`./nodered:/data`; cache e flush de 30 s são declarados no próprio settings.
+`./nodered:/data`; cache e flush de 120 s são declarados no próprio settings.
 
 ```mermaid
 flowchart TD
