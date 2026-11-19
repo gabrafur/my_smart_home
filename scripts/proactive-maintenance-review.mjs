@@ -309,6 +309,20 @@ export const SOURCES = [
     },
   },
   {
+    id: "ha.unavailable_entities",
+    origin: "latest state of every entity in the Home Assistant recorder database, opened read-only",
+    collect(ctx) {
+      // 19/11/2026: 95 of 737 entities were unavailable and nothing reported how long. Only
+      // entity ids and ages leave this source. Age = time since the last usable state
+      // (a restart rewrites the unavailable state, so its own timestamp would hide it).
+      const out = runCommand(ctx, "sqlite3", ["-readonly", path.join(ctx.repoRoot, "homeassistant", "home-assistant_v2.db"),
+        "select m.entity_id||'|'||coalesce((select max(last_updated_ts) from states where metadata_id=m.metadata_id and state not in ('unavailable','unknown')),(select min(last_updated_ts) from states where metadata_id=m.metadata_id)) from states_meta m join states s on s.state_id=(select state_id from states where metadata_id=m.metadata_id order by last_updated_ts desc limit 1) where s.state = 'unavailable';"]);
+      const rows = out.split("\n").map((line) => line.match(/^([a-z_]+\.[a-z0-9_]+)\|([0-9.]+)$/)).filter(Boolean)
+        .map((match) => ({ entity_id: match[1], days: Math.floor((ctx.now - Number(match[2]) * 1000) / 86400000) }));
+      return { total: rows.length, stale_over_7_days: rows.filter((row) => row.days >= 7).sort((a, b) => b.days - a.days).slice(0, 40) };
+    },
+  },
+  {
     id: "zigbee.devices_offline",
     origin: "Zigbee2MQTT device database (last contact per device) and friendly names, read-only",
     collect(ctx) {
@@ -701,6 +715,24 @@ export function evaluate(evidence, policy) {
       benefit: "Com o controlador ativo, testes isolados e contêineres respeitam --memory e uma atualização não consome a RAM do Raspberry.",
       proposed_action: "Decisão do proprietário: acrescentar cgroup_enable=memory ao cmdline.txt e agendar um reboot autorizado.",
       evidence: ["host.update_protections"],
+    });
+  }
+
+  const unavailable = data("ha.unavailable_entities");
+  if (unavailable?.stale_over_7_days.length) {
+    const stale = unavailable.stale_over_7_days;
+    const groups = new Map();
+    for (const row of stale) {
+      const name = row.entity_id.split(".")[1].split("_").slice(0, 2).join("_");
+      groups.set(name, (groups.get(name) ?? 0) + 1);
+    }
+    const top = [...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, count]) => `${name} (${count})`).join(", ");
+    add({
+      key: "ha.unavailable_entities_stale", priority: "P3", risk: "baixo",
+      title: `${stale.length} entidade(s) indisponível(is) há 7 dias ou mais: ${top}`,
+      benefit: "Entidades mortas poluem painéis, mascaram falhas reais (medidor de energia, bateria) e custam estado no recorder.",
+      proposed_action: "Separar o que é equipamento fora do ar (religar) do que é órfão (remover do registro de entidades). Mais antiga: " + `${stale[0].entity_id} (${stale[0].days} dias).`,
+      evidence: ["ha.unavailable_entities"], detail: { total_unavailable: unavailable.total, sample: stale.slice(0, 12) },
     });
   }
 

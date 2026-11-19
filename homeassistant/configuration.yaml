@@ -52,6 +52,12 @@ lovelace:
       icon: mdi:raspberry-pi
       show_in_sidebar: true
       filename: dashboards/raspberry_pi_health.yaml
+    house-status:
+      mode: yaml
+      title: Placar da casa
+      icon: mdi:home-heart
+      show_in_sidebar: true
+      filename: dashboards/house_status.yaml
 
 automation: !include automations.yaml
 script: !include scripts.yaml

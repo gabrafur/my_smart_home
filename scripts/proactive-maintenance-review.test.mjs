@@ -40,6 +40,7 @@ const healthy = () => [
   source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
   source("host.update_protections", { docker_live_restore: true, cgroup_memory_controller: true }),
   source("ai.client_execution_policy", { enabled: true, revoked: false, expires_at: null, expired: false, approval_recorded: true, changed_hours_ago: 50 }),
+  source("ha.unavailable_entities", { total: 3, stale_over_7_days: [] }),
   source("zigbee.devices_offline", { devices: [{ name: "lampada_varanda", mains: true, silent_minutes: 3 }, { name: "controlador_ir", mains: false, silent_minutes: 120 }] }),
   source("ci.public", { latest_conclusion: "success", latest_commit: "abc1234", consecutive_failures: 0, failing_since_commit: null, failing_since: null }),
 ];
@@ -536,6 +537,26 @@ test("silent Zigbee devices are named: mains routers P1, battery devices only af
   assert.match(silent[0].title, /lampada_varanda \(rede elétrica, 1\.5 h sem contato\); controlador_ir \(bateria, 47\.8 h sem contato\)/);
   const battery = evaluate(replace(healthy(), "zigbee.devices_offline", { devices: [{ name: "controlador_ir", mains: false, silent_minutes: 2868 }] }), policy());
   assert.deepEqual(battery.map((f) => f.priority), ["P2"]);
+});
+
+test("long-unavailable entities are grouped into one P3", () => {
+  const found = evaluate(replace(healthy(), "ha.unavailable_entities", { total: 5, stale_over_7_days: [
+    { entity_id: "sensor.kws_306wf_t1_total_power", days: 18 }, { entity_id: "sensor.kws_306wf_t1_total_energy", days: 18 },
+    { entity_id: "sensor.iphone_de_valeria_steps", days: 9 }] }), policy());
+  assert.deepEqual(found.map((f) => [f.key, f.priority]), [["ha.unavailable_entities_stale", "P3"]]);
+  assert.match(found[0].title, /3 entidade\(s\).*kws_306wf \(2\)/);
+  assert.match(found[0].proposed_action, /kws_306wf_t1_total_power \(18 dias\)/);
+});
+
+test("unavailable entities source reads only ids and ages from the database", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unavail-"));
+  const calls = [];
+  const run = (command, args) => { calls.push([command, args[0]]); return { status: 0, stdout: "sensor.a_b|1000\nbad line\nlight.x|86401000\n" }; };
+  const source = SOURCES.find((item) => item.id === "ha.unavailable_entities");
+  const data = source.collect(createContext({ policy: policy(), repoRoot: dir, now: 10 * 86400000 + 1000, run }));
+  assert.deepEqual(calls, [["sqlite3", "-readonly"]]);
+  assert.deepEqual(data, { total: 2, stale_over_7_days: [{ entity_id: "sensor.a_b", days: 9 }] });
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 test("zigbee source reads names and ages only", () => {
