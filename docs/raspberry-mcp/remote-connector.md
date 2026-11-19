@@ -111,6 +111,30 @@ Perdeu a chave ou a senha: rode `set-owner` de novo (apaga os tokens e reinicia 
 No Claude: Configurações → Conectores → Adicionar conector personalizado →
 `https://NOME.TAILNET.ts.net/mcp`. Entre com a senha e o código do autenticador quando a página abrir.
 
+## Acesso web do Home Assistant para a Eva (tailnet, HTTPS)
+
+O Home Assistant só serve HTTP puro na porta 8123, então um endereço HTTPS dava erro de certificado. Desde
+19/11/2026 há um endereço HTTPS **só da tailnet**, em `https://<nome do nó>.<tailnet>.ts.net:8443/` (o nome fica
+fora do Git; `tailscale status --json`, campo `Self.DNSName`). Funciona em qualquer dispositivo da tailnet; a
+internet pública não alcança a 8443 (o Funnel segue só na porta 443, para o conector do Claude).
+
+- **Como é publicado:** `tailscale serve --bg --tls-terminated-tcp=8443 tcp://127.0.0.1:8123`. O Tailscale termina o
+  TLS com o certificado do nó e repassa TCP puro ao Home Assistant, sem cabeçalhos HTTP. A variante `serve https`
+  (proxy HTTP) devolveu 400: o Home Assistant 2026.11.2 continuou tratando o `X-Forwarded-For` como proxy não
+  configurado mesmo com `http.use_x_forwarded_for` e `trusted_proxies` válidos no `check_config`, então a
+  configuração foi revertida. Com TCP puro o Home Assistant vê o cliente como `127.0.0.1`.
+- **Usuário:** `eva-web`, **sem administração**, grupo `system-users`, `local_only` desligado (endereços da tailnet
+  não contam como rede local). A senha foi gerada na máquina e está em `.local-secrets/eva-ha-web-password.txt`
+  (modo 600, fora do Git); o proprietário a entrega à Eva por um canal seu, nunca por chat ou Git.
+- **Limite importante:** o Home Assistant não restringe um usuário por entidade. Quem entra consegue acionar
+  entidades da interface, incluindo as sensíveis (portão, fechaduras, alarme). O acesso da Eva é para **ler
+  painéis**; acionar equipamentos continua dependendo das autorizações específicas do proprietário, e o portão
+  nunca é acionado.
+- **Do próprio Raspberry** o nome público resolve para o Funnel e a 8443 é recusada; teste por um dispositivo da
+  tailnet, ou com `curl --resolve <nome>:8443:$(tailscale ip -4) https://<nome>:8443/`.
+- **Desligar:** `sudo tailscale serve --tls-terminated-tcp=8443 off` e, se quiser, remover o usuário `eva-web` em
+  Configurações → Pessoas.
+
 ## Atualizar uma instalação existente
 
 O `install.py` recusa arquivos diferentes dos instalados, de propósito. Para publicar uma versão nova do
