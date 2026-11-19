@@ -309,6 +309,26 @@ export const SOURCES = [
     },
   },
   {
+    id: "zigbee.devices_offline",
+    origin: "Zigbee2MQTT device database (last contact per device) and friendly names, read-only",
+    collect(ctx) {
+      // 19/11/2026: two mains-powered routers and a battery IR controller went silent and
+      // nothing noticed; coordinator recovery only covers the coordinator. Report names,
+      // kinds and ages only, never keys or addresses.
+      const base = path.join(ctx.repoRoot, "zigbee2mqtt");
+      const rows = fs.readFileSync(path.join(base, "database.db"), "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+      const names = new Map();
+      const config = fs.readFileSync(path.join(base, "configuration.yaml"), "utf8");
+      for (const match of config.matchAll(/^\s*'?(0x[0-9a-f]{16})'?:\s*\n\s*friendly_name:\s*(\S+)/gim)) names.set(match[1].toLowerCase(), match[2]);
+      const devices = rows.filter((row) => row.type !== "Coordinator").map((row) => ({
+        name: names.get(String(row.ieeeAddr).toLowerCase()) ?? "dispositivo sem nome",
+        mains: /mains/i.test(String(row.powerSource ?? "")),
+        silent_minutes: Number.isFinite(row.lastSeen) ? Math.round((ctx.now - row.lastSeen) / 60000) : null,
+      }));
+      return { devices };
+    },
+  },
+  {
     id: "nodered_admin.chain_drift",
     origin: "status of the read-only Node-RED administration chain drift check",
     collect(ctx) {
@@ -682,6 +702,24 @@ export function evaluate(evidence, policy) {
       proposed_action: "Decisão do proprietário: acrescentar cgroup_enable=memory ao cmdline.txt e agendar um reboot autorizado.",
       evidence: ["host.update_protections"],
     });
+  }
+
+  const zigbee = data("zigbee.devices_offline");
+  if (zigbee) {
+    // Router on mains: it answers within minutes, so 45 silent minutes is a real loss.
+    // Battery device: reports sporadically, so only 36 h of silence counts.
+    const lost = zigbee.devices.filter((item) => item.silent_minutes === null || item.silent_minutes > (item.mains ? 45 : 36 * 60));
+    const routers = lost.filter((item) => item.mains);
+    if (lost.length) {
+      const label = (item) => `${item.name} (${item.mains ? "rede elétrica" : "bateria"}, ${item.silent_minutes === null ? "sem contato registrado" : `${Math.round(item.silent_minutes / 6) / 10} h sem contato`})`;
+      add({
+        key: "zigbee.devices_offline", priority: routers.length ? "P1" : "P2", risk: "baixo",
+        title: `Módulo(s) Zigbee sem resposta: ${lost.map(label).join("; ")}`,
+        benefit: "A recuperação existente só cobre o coordenador; sem este alerta um módulo perdido passa despercebido até alguém tentar usá-lo.",
+        proposed_action: "Conferir energia/bateria e religar o módulo; se continuar sem resposta, revisar interferência no canal e a rota. Não acionar equipamentos sensíveis (portão) sem autorização específica.",
+        evidence: ["zigbee.devices_offline"],
+      });
+    }
   }
 
   const clientPolicy = data("ai.client_execution_policy");

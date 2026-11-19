@@ -40,6 +40,7 @@ const healthy = () => [
   source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
   source("host.update_protections", { docker_live_restore: true, cgroup_memory_controller: true }),
   source("ai.client_execution_policy", { enabled: true, revoked: false, expires_at: null, expired: false, approval_recorded: true, changed_hours_ago: 50 }),
+  source("zigbee.devices_offline", { devices: [{ name: "lampada_varanda", mains: true, silent_minutes: 3 }, { name: "controlador_ir", mains: false, silent_minutes: 120 }] }),
   source("ci.public", { latest_conclusion: "success", latest_commit: "abc1234", consecutive_failures: 0, failing_since_commit: null, failing_since: null }),
 ];
 
@@ -524,6 +525,31 @@ test("client policy source keeps only state fields and treats a missing revoked 
   assert.doesNotMatch(JSON.stringify(data), /PRIVATE_SENTINEL/);
   fs.writeFileSync(file, JSON.stringify({ enabled: true, expires_at: 1, approval_sha256: "x" }));
   assert.deepEqual([source.collect(ctx).revoked, source.collect(ctx).expired, source.collect(ctx).approval_recorded], [true, true, false]);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("silent Zigbee devices are named: mains routers P1, battery devices only after 36 h", () => {
+  const silent = evaluate(replace(healthy(), "zigbee.devices_offline", { devices: [
+    { name: "lampada_varanda", mains: true, silent_minutes: 90 },
+    { name: "controlador_ir", mains: false, silent_minutes: 2868 }] }), policy());
+  assert.deepEqual(silent.map((f) => [f.key, f.priority]), [["zigbee.devices_offline", "P1"]]);
+  assert.match(silent[0].title, /lampada_varanda \(rede elétrica, 1\.5 h sem contato\); controlador_ir \(bateria, 47\.8 h sem contato\)/);
+  const battery = evaluate(replace(healthy(), "zigbee.devices_offline", { devices: [{ name: "controlador_ir", mains: false, silent_minutes: 2868 }] }), policy());
+  assert.deepEqual(battery.map((f) => f.priority), ["P2"]);
+});
+
+test("zigbee source reads names and ages only", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zigbee-"));
+  fs.mkdirSync(path.join(dir, "zigbee2mqtt"));
+  fs.writeFileSync(path.join(dir, "zigbee2mqtt/database.db"), [
+    { type: "Coordinator", ieeeAddr: "0x1" },
+    { type: "Router", ieeeAddr: "0xa4c1389faad9e004", powerSource: "Mains (single phase)", lastSeen: 1000000 - 120000 },
+  ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+  fs.writeFileSync(path.join(dir, "zigbee2mqtt/configuration.yaml"), "network_key: PRIVATE_SENTINEL\ndevices:\n  '0xa4c1389faad9e004':\n    friendly_name: refletores_jardim\n");
+  const source = SOURCES.find((item) => item.id === "zigbee.devices_offline");
+  const data = source.collect(createContext({ policy: policy(), repoRoot: dir, now: 1000000 }));
+  assert.deepEqual(data, { devices: [{ name: "refletores_jardim", mains: true, silent_minutes: 2 }] });
+  assert.doesNotMatch(JSON.stringify(data), /PRIVATE_SENTINEL|0xa4c1/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

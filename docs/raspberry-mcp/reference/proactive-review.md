@@ -60,6 +60,7 @@ ao executor que registre o acompanhamento com `ack`.
 | `ai.codex_account` | Uso da conta ChatGPT/Codex: liberado, limite atingido e horário de reset |
 | `host.update_protections` | `live-restore` do Docker e controlador de memória do cgroup |
 | `ai.client_execution_policy` | Estado da política de continuação da Eva instalada pelo Root (só `enabled`, `revoked`, validade e aprovação) |
+| `zigbee.devices_offline` | Tempo sem contato de cada módulo Zigbee (nomes e idades; nunca chaves ou endereços) |
 | `ci.public` | Últimas execuções da validação pública em `main` (GitHub Actions) |
 
 Instâncias por conexão (`Accept=yes`) do executor admin e do leitor de avisos
@@ -92,6 +93,10 @@ o controlador exige reboot e decisão do proprietário.
 política de continuação da Eva está desativada, revogada (inclusive sem o campo),
 vencida ou sem aprovação registrada. Ferramentas, receita de identidade e fluxos
 da política não são lidos para a revisão.
+
+`zigbee.devices_offline` abre `zigbee.devices_offline`: P1 se um roteador na rede
+elétrica ficou mais de 45 minutos sem contato, P2 se só dispositivos a bateria passaram
+de 36 horas. A recuperação do coordenador não cobre módulos individuais.
 
 `ci.public` abre P1 `ci.public_red` quando a última validação pública concluída em
 `main` falhou, com o primeiro commit da sequência vermelha e quantas execuções
