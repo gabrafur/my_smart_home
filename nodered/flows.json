@@ -82505,7 +82505,7 @@
             "notification_hub_wire_in_45608f6df4c2"
         ],
         "mode": "link",
-        "name": "Encurtar: Segunda 20:00 (23:00 UTC)",
+        "name": "Encurtar: Segunda 05:30 (08:30 UTC)",
         "type": "link out",
         "wires": [],
         "x": 500,
