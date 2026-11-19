@@ -21,6 +21,8 @@ import time
 UNIT = 'raspberry-nodered-diagnostics.service'
 FRAGMENT = '/etc/systemd/system/' + UNIT
 DROPIN = '/run/systemd/system.control/' + UNIT + '.d/50-IPAddressAllow.conf'
+STARTUP_DROPIN = '/etc/systemd/system/' + UNIT + '.d/zz-maintenance-startup.conf'
+STARTUP_DROPIN_SHA256 = '142d5963f9a126683f96d008d03341a64f04f44f522d16fe5568d91a8b7ecf53'
 SIDECAR = '/usr/local/lib/raspberry-nodered-diagnostics/sidecar.cjs'
 SNAPSHOT = '/usr/local/lib/raspberry-nodered-diagnostics/root_snapshot.py'
 SYSTEMCTL = '/usr/bin/systemctl'
@@ -31,7 +33,7 @@ DOCKER_REQUEST = b'GET /containers/nodered/json HTTP/1.0\r\nHost: localhost\r\nC
 COMPOSE_LABELS = {'com.docker.compose.project': 'docker',
     'com.docker.compose.service': 'nodered',
     'com.docker.compose.project.working_dir': '/mnt/data/docker',
-    'com.docker.compose.project.config_files': '/mnt/data/docker/docker-compose.yml'}
+    'com.docker.compose.project.config_files': '/mnt/data/docker/docker-compose.yml,/mnt/data/docker/docker-compose.override.yml'}
 PROPERTIES = ('FragmentPath', 'DropInPaths', 'ActiveState', 'MainPID',
               'IPAddressAllow', 'IPAddressDeny', 'LoadState', 'Transient')
 
@@ -331,12 +333,15 @@ class Manager:
         props = property_values(self.runner.run([SYSTEMCTL, '--no-pager', 'show', UNIT,
                                                 *['--property=' + p for p in PROPERTIES]]))
         need(props['FragmentPath'] == FRAGMENT and props['LoadState'] == 'loaded' and
-             props['Transient'] == 'no' and props['IPAddressDeny'].split() == ['0.0.0.0/0', '::/0'],
+             props['Transient'] == 'no' and sorted(props['IPAddressDeny'].split()) == ['0.0.0.0/0', '::/0'],
              'fixed_reader_effective_unit_changed')
         allowed = canonical(props['IPAddressAllow'].split())
         dropins = props['DropInPaths'].split()
-        need(dropins in ([], [DROPIN]), 'foreign_unit_dropin_refused')
-        if dropins:
+        need(len(dropins) == len(set(dropins)) and set(dropins) <= {DROPIN, STARTUP_DROPIN},
+             'foreign_unit_dropin_refused')
+        if STARTUP_DROPIN in dropins:
+            need(self.reader(STARTUP_DROPIN)[0] == STARTUP_DROPIN_SHA256, 'startup_dropin_changed')
+        if DROPIN in dropins:
             validate_dropin(self.reader(DROPIN, maximum=4096)[1], allowed)
         if props['ActiveState'] == 'inactive':
             need(props['MainPID'] == '0', 'reader_inactive_state_unconfirmed')

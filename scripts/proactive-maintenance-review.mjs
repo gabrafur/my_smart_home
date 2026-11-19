@@ -335,7 +335,13 @@ export const SOURCES = [
       if (!pinnedContainer || !pinnedDocker) throw new Error("reader_pins_not_found");
       const live = runCommand(ctx, "docker", ["inspect", "--format", "{{.Id}}", "nodered"]).trim();
       const binary = crypto.createHash("sha256").update(fs.readFileSync(ctx.dockerBinaryPath)).digest("hex");
-      return { container_matches: live === pinnedContainer, docker_binary_matches: binary === pinnedDocker };
+      // The legacy diagnostics reader only reaches Node-RED from one allowed return peer (19/11/2026:
+      // the allowed address was stale for days and project_files kept reporting the runtime unavailable).
+      const allow = runCommand(ctx, "systemctl", ["show", "raspberry-nodered-diagnostics.service", "--property=IPAddressAllow", "--value"]);
+      const address = runCommand(ctx, "docker", ["inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", "nodered"]).trim();
+      const peers = allow.trim().split(/\s+/).filter((entry) => /^[0-9.]+\/32$/.test(entry) && !entry.startsWith("127."));
+      return { container_matches: live === pinnedContainer, docker_binary_matches: binary === pinnedDocker,
+        reader_peer_matches: Boolean(address) && peers.some((entry) => entry === `${address}/32`) };
     },
   },
   {
@@ -753,6 +759,15 @@ export function evaluate(evidence, policy) {
   }
 
   const pins = data("nodered.admin_chain_pins");
+  if (pins && pins.reader_peer_matches === false) {
+    add({
+      key: "nodered.reader_peer_drift", priority: "P2", risk: "baixo",
+      title: "O leitor de diagnóstico do Node-RED não está autorizado a alcançar o endereço atual do contêiner",
+      benefit: "Sem isso project_files devolve runtime_observation com runtime_collection_unavailable e a Eva não vê o runtime pelo leitor legado.",
+      proposed_action: "Refazer o vínculo pelo catálogo fechado (nodered_plan_reader_binding e nodered_apply_reader_binding, com confirmação); não editar a unidade à mão.",
+      evidence: ["nodered.admin_chain_pins"],
+    });
+  }
   if (pins && (!pins.container_matches || !pins.docker_binary_matches)) {
     const what = [!pins.container_matches && "o contêiner do Node-RED foi recriado", !pins.docker_binary_matches && "o binário do Docker mudou"].filter(Boolean).join(" e ");
     add({

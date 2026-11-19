@@ -1184,10 +1184,10 @@
     },
     "nodered-reader-binding/native_manager.py": {
       "source": "/usr/local/lib/raspberry-nodered-binding/native_manager.py",
-      "source_sha256": "4c7f777dc49afba90a93d8c46f8f5271a87cf2b7056fe76fadb6e40eb44da3c8",
-      "export_sha256": "4c7f777dc49afba90a93d8c46f8f5271a87cf2b7056fe76fadb6e40eb44da3c8",
+      "source_sha256": "47adf59117424677605cb08be474af3b52cb569f17a00dd344420f2df036f0bd",
+      "export_sha256": "47adf59117424677605cb08be474af3b52cb569f17a00dd344420f2df036f0bd",
       "normalizations": [],
-      "source_observed_at": "2026-11-02T00:27:45Z",
+      "source_observed_at": "2026-11-19T21:20:00Z",
       "native_owner_uid": 0,
       "native_mode": "0644"
     },

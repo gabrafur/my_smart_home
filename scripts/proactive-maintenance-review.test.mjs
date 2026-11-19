@@ -41,7 +41,7 @@ const healthy = () => [
   source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
   source("host.update_protections", { docker_live_restore: true, cgroup_memory_controller: true }),
   source("ai.client_execution_policy", { enabled: true, revoked: false, expires_at: null, expired: false, approval_recorded: true, changed_hours_ago: 50 }),
-  source("nodered.admin_chain_pins", { container_matches: true, docker_binary_matches: true }),
+  source("nodered.admin_chain_pins", { container_matches: true, docker_binary_matches: true, reader_peer_matches: true }),
   source("zigbee.batteries", { levels: [{ name: "botao", percent: 100 }, { name: "controle", percent: null }] }),
   source("ha.unavailable_entities", { total: 3, stale_over_7_days: [] }),
   source("zigbee.devices_offline", { devices: [{ name: "lampada_varanda", mains: true, silent_minutes: 3 }, { name: "controlador_ir", mains: false, silent_minutes: 120 }] }),
@@ -572,6 +572,11 @@ test("drifted Node-RED administration pins are a P1 that names what changed", ()
   assert.doesNotMatch(docker[0].title, /recriado/);
 });
 
+test("a stale reader return peer is a P2 of its own", () => {
+  const found = evaluate(replace(healthy(), "nodered.admin_chain_pins", { container_matches: true, docker_binary_matches: true, reader_peer_matches: false }), policy());
+  assert.deepEqual(found.map((f) => [f.key, f.priority]), [["nodered.reader_peer_drift", "P2"]]);
+});
+
 test("admin chain pin source compares digests and exports only booleans", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pins-"));
   const id = "a".repeat(64);
@@ -582,9 +587,10 @@ test("admin chain pin source compares digests and exports only booleans", () => 
   fs.writeFileSync(reader, `CONTAINER_ID='${id}'\nDOCKER_SHA='${digest}'\n`);
   const source = SOURCES.find((item) => item.id === "nodered.admin_chain_pins");
   const ctx = (live) => createContext({ policy: policy(), now: 1, metadataReaderPath: reader, dockerBinaryPath: binary,
-    run: () => ({ status: 0, stdout: `${live}\n` }) });
-  assert.deepEqual(source.collect(ctx(id)), { container_matches: true, docker_binary_matches: true });
-  assert.deepEqual(source.collect(ctx("b".repeat(64))), { container_matches: false, docker_binary_matches: true });
+    run: (command, args) => ({ status: 0, stdout: command === "systemctl" ? "127.0.0.0/8 192.0.2.9/32 ::1/128\n"
+      : args[2].includes("IPAddress") ? "192.0.2.9\n" : `${live}\n` }) });
+  assert.deepEqual(source.collect(ctx(id)), { container_matches: true, docker_binary_matches: true, reader_peer_matches: true });
+  assert.deepEqual(source.collect(ctx("b".repeat(64))), { container_matches: false, docker_binary_matches: true, reader_peer_matches: true });
   fs.writeFileSync(reader, "nothing here\n");
   assert.throws(() => source.collect(ctx(id)), /reader_pins_not_found/);
   fs.rmSync(dir, { recursive: true, force: true });

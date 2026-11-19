@@ -164,11 +164,27 @@ com `nodered_admin_read` na visão `runtime` (`collection_error` nulo). Cada pas
 revisado, com estado próprio e prova de que o `settings.js` do contêiner é o do disco.
 
 O leitor de diagnóstico legado (`project_files` → `runtime_observation`) tem vínculo próprio, com política,
-rede e rótulo fixados em `/usr/local/lib/raspberry-nodered-binding`. Depois da sobreposição de composição
-(rede recriada em 15/11, rótulo `config_files` com dois arquivos) o plano do vínculo é recusado com a razão
-genérica `binding_operation_unconfirmed_inspect_existing_receipt`. A causa provável é a identidade de rede e o
-rótulo fixados na aprovação de 08/11 (`network_id`, `COMPOSE_LABELS` em `native_manager.py`); ela ainda não foi
-confirmada no recibo e exige uma nova aprovação revisada. Não há derivação pura para isso ainda.
+rede, rótulo e peer de retorno fixados em `/usr/local/lib/raspberry-nodered-binding`. Em 19/11/2026 ele estava
+quebrado por causas encadeadas, e o plano do vínculo só devolvia a razão genérica
+`binding_operation_unconfirmed_inspect_existing_receipt`. Para ver a razão real, rode o gerenciador como
+root num namespace de montagem com o alias do socket do Docker e chame `Manager.inspect()` (somente leitura).
+As causas e as correções, todas por operadores Root revisados e sem reiniciar serviço:
+
+| Causa | Correção |
+| --- | --- |
+| Rede `docker_default` recriada pela sobreposição em 15/11 (ID diferente do aprovado) e rótulo `config_files` com dois arquivos | `network_id` na aprovação e `COMPOSE_LABELS` em `native_manager.py` |
+| systemd 257 imprime `IPAddressDeny` como `::/0 0.0.0.0/0` | comparar o conjunto, não a ordem |
+| Drop-in `zz-maintenance-startup.conf` da unidade do leitor, recusado como estranho | aceito só com o SHA-256 fixado em `STARTUP_DROPIN_SHA256` |
+| Peer de retorno desatualizado (`IPAddressAllow` com o endereço antigo do contêiner) | refeito pelo próprio catálogo (`nodered_plan_reader_binding` e `nodered_apply_reader_binding`) |
+
+O hash de `approval.json` também é fixado como dependência na política do guardião de componentes
+(`raspberry-component-repair/policy.json`, cujo hash está em `raspberry-component-guard@.service`). Trocar a
+aprovação sem refixar esse hash faz o guardião falhar fechado com `component_scope_reserved_or_unconfirmed`
+para qualquer efeito de componente; a causa aparece como `root_dependency_changed` ao chamar o `load()` do
+`root_bootstrap.py` em modo de observação. Depois de mudar `approval.json`, refaça esses dois arquivos.
+Depois do `apply`, uma leitura nova de `project_files` na categoria `nodered` deve trazer
+`runtime_observation` sem erro. O plano vale 900 s e o executor exige carga abaixo do número de núcleos e
+2 GiB livres; um plano vencido sem efeito recebe nova prévia com chave nova.
 
 ### Histórico de resultados do guardião de memória
 

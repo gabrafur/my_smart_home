@@ -166,6 +166,28 @@ class NativeManager(unittest.TestCase):
                 self.manager.inspect()
         self.assertEqual(self.runner.writes, [])
 
+    def test_deny_all_is_accepted_in_either_order_but_not_when_partial(self):
+        # systemd 257 prints "::/0 0.0.0.0/0"; the set, not the order, is what matters.
+        self.runner.alter = lambda props: {**props, 'IPAddressDeny': '::/0 0.0.0.0/0'}
+        self.assertTrue(self.manager.inspect()['deny_all'])
+        self.runner.alter = lambda props: {**props, 'IPAddressDeny': '0.0.0.0/0'}
+        with self.assertRaises(n.Refused):
+            self.manager.inspect()
+
+    def test_maintenance_startup_dropin_is_accepted_only_with_its_pinned_digest(self):
+        self.runner.dropin = n.STARTUP_DROPIN
+        self.read_override[n.STARTUP_DROPIN] = (n.STARTUP_DROPIN_SHA256, b'[Service]\n', ())
+        self.assertEqual(self.manager.inspect()['allowed'], self.runner.allowed)
+        self.read_override[n.STARTUP_DROPIN] = ('9' * 64, b'[Service]\n', ())
+        with self.assertRaisesRegex(n.Refused, 'startup_dropin_changed'):
+            self.manager.inspect()
+        self.runner.dropin = n.STARTUP_DROPIN + ' /etc/systemd/system/foreign.conf'
+        with self.assertRaisesRegex(n.Refused, 'foreign_unit_dropin_refused'):
+            self.manager.inspect()
+        self.runner.dropin = n.STARTUP_DROPIN + ' ' + n.STARTUP_DROPIN
+        with self.assertRaisesRegex(n.Refused, 'foreign_unit_dropin_refused'):
+            self.manager.inspect()
+
     def test_extra_network_or_inactive_nonzero_pid_refused(self):
         self.runner.extra_network = True
         with self.assertRaisesRegex(n.Refused, 'network_changed'):
