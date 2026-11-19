@@ -100,3 +100,25 @@ limite seguro, o commit local permanece pendente e o worker retoma a mesma
 solicitação nos minutos seguintes. Uma execução sem novas mudanças também
 publica commits locais ainda à frente do remoto; isso evita perder um push
 adiado e depois bloquear o backup quando `origin/main` avançar.
+
+## Três resultados no placar da casa
+
+O painel `house-status` (seção "Cópias e restauração") mostra três resultados
+separados, cada um com estado, frescor, última tentativa (com a idade relativa)
+e última confirmação: cópia no Git, cópia externa e restauração testada. O
+produtor somente leitura é `homeassistant/tools/backup_results_status.py`
+(sensores `sensor.backup_result_git`, `sensor.backup_result_offsite` e
+`sensor.backup_result_restore`, pacote `homeassistant/packages/backup_results.yaml`).
+
+- Lê apenas o último resultado de cada produtor (`.git-backup-trigger/result`
+  e `.daily-update-trigger/offsite-backup-result`); não executa nem solicita
+  backup e não expõe identificadores de requisição.
+- `confirmed` exige `status=success`; na cópia externa exige também
+  `remote_verified=true`. Sucesso sem essa prova aparece como `unconfirmed`.
+- O frescor (`fresh` até 26 horas, senão `stale`) é classificado pelo produtor;
+  o painel só formata.
+- Nenhum produtor registra ainda uma restauração testada, então esse resultado
+  fica `unknown` (`no_restore_evidence`). Sucesso de backup nunca é apresentado
+  como restauração comprovada.
+- Idade e instante da leitura ficam fora dos atributos para o recorder gravar
+  só transições.

@@ -67,6 +67,64 @@ views:
       - type: grid
         cards:
           - type: heading
+            heading: Cópias e restauração
+            icon: mdi:database-check
+          # Three separate results: a Git or offsite success never implies a tested restore.
+          # Freshness comes classified from backup_results_status.py; nothing is computed here.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.backup_result_git
+                name: Cópia no Git
+              - type: attribute
+                entity: sensor.backup_result_git
+                attribute: freshness
+                name: Cópia no Git — frescor do dado
+              - type: attribute
+                entity: sensor.backup_result_git
+                attribute: last_attempt_at
+                name: Cópia no Git — última tentativa (idade)
+                format: relative
+              - type: attribute
+                entity: sensor.backup_result_git
+                attribute: last_confirmed_at
+                name: Cópia no Git — última confirmação
+                format: relative
+              - entity: sensor.backup_result_offsite
+                name: Cópia externa
+              - type: attribute
+                entity: sensor.backup_result_offsite
+                attribute: freshness
+                name: Cópia externa — frescor do dado
+              - type: attribute
+                entity: sensor.backup_result_offsite
+                attribute: last_attempt_at
+                name: Cópia externa — última tentativa (idade)
+                format: relative
+              - type: attribute
+                entity: sensor.backup_result_offsite
+                attribute: last_confirmed_at
+                name: Cópia externa — última confirmação
+                format: relative
+              - entity: sensor.backup_result_restore
+                name: Restauração testada
+              - type: attribute
+                entity: sensor.backup_result_restore
+                attribute: freshness
+                name: Restauração testada — frescor do dado
+              - type: attribute
+                entity: sensor.backup_result_restore
+                attribute: last_attempt_at
+                name: Restauração testada — última tentativa (idade)
+                format: relative
+              - type: attribute
+                entity: sensor.backup_result_restore
+                attribute: last_confirmed_at
+                name: Restauração testada — última confirmação
+                format: relative
+      - type: grid
+        cards:
+          - type: heading
             heading: Segurança
             icon: mdi:shield-home
           - type: entities

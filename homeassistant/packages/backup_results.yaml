@@ -1,0 +1,42 @@
+# Git, offsite copy and tested restoration as three separate results for the
+# house-status dashboard. The producer classifies freshness; the dashboard only
+# formats (the age is shown relative to last_attempt_at). Attributes that change
+# every poll (age, check time) stay out so the recorder writes only transitions.
+# Read-only: nothing here runs or requests a backup.
+command_line:
+  - sensor:
+      name: Backup Result Git
+      unique_id: backup_result_git
+      command: "python3 /config/tools/backup_results_status.py git"
+      command_timeout: 10
+      scan_interval: 300
+      value_template: "{{ value_json.state }}"
+      json_attributes:
+        - reason
+        - last_attempt_at
+        - last_confirmed_at
+        - freshness
+  - sensor:
+      name: Backup Result Offsite
+      unique_id: backup_result_offsite
+      command: "python3 /config/tools/backup_results_status.py offsite"
+      command_timeout: 10
+      scan_interval: 300
+      value_template: "{{ value_json.state }}"
+      json_attributes:
+        - reason
+        - last_attempt_at
+        - last_confirmed_at
+        - freshness
+  - sensor:
+      name: Backup Result Restore
+      unique_id: backup_result_restore
+      command: "python3 /config/tools/backup_results_status.py restore"
+      command_timeout: 10
+      scan_interval: 300
+      value_template: "{{ value_json.state }}"
+      json_attributes:
+        - reason
+        - last_attempt_at
+        - last_confirmed_at
+        - freshness
