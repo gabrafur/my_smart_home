@@ -152,6 +152,16 @@ com a leitura do runtime pela própria administração; `collection_error` nulo
 Atualizações de imagem do Node-RED recriam o contêiner e exigem esse mesmo
 passo antes de a administração voltar a responder. Isso inclui a etapa noturna de contêineres.
 
+Imagem nova do Node-RED é um caso à parte: a ativação fixa o digest da imagem e a versão do núcleo, e a revisão
+isolada do núcleo vale para os arquivos de `@node-red/runtime` daquela versão. Em 19/11/2026 a 5.0.10 mudou
+arquivos desse pacote (por exemplo `nodes/context/localfilesystem.js`, `Flow.js` e `Subflow.js`), então não basta
+trocar os pins: é preciso refazer a revisão isolada para a imagem nova. Até lá o Node-RED fica retido em
+`scripts/docker-update-holds.json` (o atualizador ignora os serviços listados ali, em todos os modos). Para liberar,
+remova a entrada depois de refazer a revisão e refixar a cadeia; `derive_image()` em
+`scripts/raspberry-mcp/nodered-container-identity/derive.py` move os pins de imagem e versão e a cadeia de hashes,
+mas não julga se a revisão continua válida (o operador deve provar que o pacote do runtime é idêntico ou ter
+evidência nova).
+
 Para um `docker-ce-cli` novo, confirme antes que o pacote está íntegro (`dpkg -V docker-ce-cli` sem saída) e
 use a mesma derivação com o par de digests do Docker (`derive(..., old_docker, new_docker)`): ela troca o
 digest no leitor e na guarda e refaz a mesma cadeia de hashes, sem mexer em identidade nem em rótulo.

@@ -23,13 +23,25 @@ const imageChannels = [
   { service: "zigbee2mqtt", repo: "koenkk/zigbee2mqtt", tag: "latest" },
 ];
 
-export function imageChannelsForMode(selectedMode) {
-  if (selectedMode === "daily") return [...imageChannels];
+// Services listed in scripts/docker-update-holds.json keep their pinned image until the hold is removed
+// (the file records why). Used when an update would break something sealed that cannot follow it yet.
+export function heldServices(file = path.join(path.dirname(fileURLToPath(import.meta.url)), "docker-update-holds.json")) {
+  try {
+    const value = JSON.parse(fs.readFileSync(file, "utf8"));
+    return new Set((value.holds ?? []).map((hold) => hold.service));
+  } catch {
+    return new Set();
+  }
+}
+
+export function imageChannelsForMode(selectedMode, held = heldServices()) {
+  const channels = imageChannels.filter((channel) => !held.has(channel.service));
+  if (selectedMode === "daily") return [...channels];
   if (selectedMode === "home-assistant-core") {
-    return imageChannels.filter((channel) => channel.service === "homeassistant");
+    return channels.filter((channel) => channel.service === "homeassistant");
   }
   if (selectedMode === "containers") {
-    return imageChannels.filter((channel) => channel.service !== "homeassistant");
+    return channels.filter((channel) => channel.service !== "homeassistant");
   }
   return null;
 }

@@ -1,0 +1,10 @@
+{
+  "holds": [
+    {
+      "service": "nodered",
+      "since": "2026-11-19",
+      "reason": "Node-RED 5.0.10 changes runtime files (context localfilesystem, flows Flow/Subflow) that the sealed administration chain reviewed on 5.0.9. Updating the image breaks nodered_admin_read until the isolated core review is redone for the new version.",
+      "release_when": "the isolated core context review is redone for the new image and the administration chain is re-pinned"
+    }
+  ]
+}

@@ -72,5 +72,61 @@ class Derive(unittest.TestCase):
                 derive.derive(*args)
 
 
+IMG1, IMG2 = '1' * 64, '2' * 64
+
+
+def chain9(identity=OLD, image=IMG1, version='5.0.9', label=OLAB):
+    evidence = json.dumps({'schema_version': 1, 'core_version': version, 'passed': True},
+                          separators=(',', ':')).encode()
+    review = json.dumps({'schema_version': 1, 'core_version': version, 'isolated_evidence_sha256': derive.sha(evidence)},
+                        indent=2).encode()
+    activation = json.dumps({'schema_version': 1, 'core_version': version, 'image_digest': 'sha256:' + image},
+                            indent=2).encode()
+    reader = ("CONTAINER_ID='%s'\nIMAGE='sha256:%s'\nLABELS={'com.docker.compose.project.config_files':'%s'}\n"
+              % (identity, image, label)).encode()
+    guard = ("SOURCE = b'LABELS={\\'com.docker.compose.project.config_files\\':\\'%s\\'}\\nCONTAINER_ID=\\'%s\\'\\n'\n"
+             "CONTAINER_ID = '%s'\nLABELS = {'com.docker.compose.project.config_files': '%s'}\n"
+             "need(activation['core_version'] == '%s')\nneed(evidence.get('core_version') == '%s')\n"
+             % (label, identity, identity, label, version, version)).encode()
+    reader_policy = json.dumps({'container_id': identity, 'enabled': True, 'image': 'sha256:' + image,
+                                'source_sha256': derive.sha(reader)}, separators=(',', ':')).encode()
+    reader_unit = b'ExecStart=python reader.py ' + derive.sha(reader_policy).encode() + b'\n'
+    admin_policy = json.dumps({'backend': {'host': 'h'}, 'sources': {'native_guard.py': derive.sha(guard), 'engine.py': 'e' * 64},
+                               'native_guard_producer': {'source_sha256': derive.sha(guard),
+                                   'runtime_activation_sha256': derive.sha(activation),
+                                   'isolated_review_sha256': derive.sha(review),
+                                   'continuity_metadata_reader': {
+                                   'python_sha256': 'f' * 64, 'reader_policy_sha256': derive.sha(reader_policy),
+                                   'reader_source_sha256': derive.sha(reader), 'service_unit_sha256': derive.sha(reader_unit)}}},
+                              separators=(',', ':')).encode()
+    admin_unit = b'ExecStart=python bootstrap.py ' + derive.sha(admin_policy).encode() + b'\n'
+    return dict(reader=reader, reader_policy=reader_policy, reader_unit=reader_unit, guard=guard,
+                admin_policy=admin_policy, admin_unit=admin_unit, activation=activation, review=review, evidence=evidence)
+
+
+class DeriveImage(unittest.TestCase):
+    def test_result_equals_a_chain_built_for_the_new_image(self):
+        self.assertEqual(derive.derive_image(chain9(), OLD, NEW, IMG1, IMG2, '5.0.9', '5.0.10', OLAB),
+                         chain9(NEW, IMG2, '5.0.10'))
+
+    def test_refusals(self):
+        good = chain9()
+        def broken(name, old, new):
+            value = dict(good); value[name] = value[name].replace(old, new); return value
+        cases = [
+            (good, OLD, OLD, IMG1, IMG2, '5.0.9', '5.0.10'), (good, OLD, NEW, IMG1, IMG1, '5.0.9', '5.0.10'),
+            (good, OLD, NEW, IMG1, IMG2, '5.0.9', '5.0.9'), (good, OLD, NEW, IMG1, IMG2, '5.0.9', 'x.y'),
+            (good, 'd' * 64, NEW, IMG1, IMG2, '5.0.9', '5.0.10'), (good, OLD, NEW, 'd' * 64, IMG2, '5.0.9', '5.0.10'),
+            (good, OLD, NEW, IMG1, IMG2, '5.0.8', '5.0.10'),
+            (broken('review', b'"core_version": "5.0.9"', b'"core_version": "5.0.8"'), OLD, NEW, IMG1, IMG2, '5.0.9', '5.0.10'),
+            (broken('activation', b'sha256:' + IMG1.encode(), b'sha256:' + b'd' * 64), OLD, NEW, IMG1, IMG2, '5.0.9', '5.0.10'),
+            (broken('guard', b"evidence.get('core_version') == '5.0.9'", b"evidence.get('core_version') == '0'"), OLD, NEW, IMG1, IMG2, '5.0.9', '5.0.10'),
+            ({k: v for k, v in good.items() if k != 'evidence'}, OLD, NEW, IMG1, IMG2, '5.0.9', '5.0.10'),
+        ]
+        for args in cases:
+            with self.assertRaises((ValueError, KeyError, TypeError)):
+                derive.derive_image(*args, OLAB)
+
+
 if __name__ == '__main__':
     unittest.main()

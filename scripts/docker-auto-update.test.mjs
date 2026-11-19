@@ -9,6 +9,7 @@ import { EventEmitter } from "node:events";
 import { spawnSync } from "node:child_process";
 
 import {
+  heldServices,
   imageChannelsForMode,
   replaceServiceImage,
   waitForHealthyService,
@@ -113,11 +114,25 @@ test("does not cross into the next service", () => {
   );
 });
 
+test("a held service is never selected, in any mode", () => {
+  for (const mode of ["daily", "containers"]) {
+    const services = imageChannelsForMode(mode, new Set(["nodered"])).map((channel) => channel.service);
+    assert.ok(!services.includes("nodered"), mode);
+    assert.ok(services.includes("mosquitto"), mode);
+  }
+  assert.ok(imageChannelsForMode("containers", new Set()).some((channel) => channel.service === "nodered"));
+});
+
+test("the committed hold file keeps Node-RED on its sealed image", () => {
+  assert.ok(heldServices().has("nodered"));
+  assert.ok(!heldServices("/nonexistent-holds.json").has("nodered"));
+});
+
 test("keeps Home Assistant Core separate from all other container images", () => {
   assert.deepEqual(imageChannelsForMode("home-assistant-core").map((item) => item.service), ["homeassistant"]);
-  const containers = imageChannelsForMode("containers").map((item) => item.service);
+  const containers = imageChannelsForMode("containers", new Set()).map((item) => item.service);
   assert.equal(containers.includes("homeassistant"), false);
-  assert.deepEqual([...imageChannelsForMode("daily").map((item) => item.service)].sort(), [
+  assert.deepEqual([...imageChannelsForMode("daily", new Set()).map((item) => item.service)].sort(), [
     "appdaemon", "homeassistant", "matter_server", "mosquitto", "nodered", "portainer", "zigbee2mqtt",
   ]);
   assert.equal(imageChannelsForMode("ha-updates"), null);
