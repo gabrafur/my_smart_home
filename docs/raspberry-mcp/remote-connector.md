@@ -7,7 +7,7 @@ Raspberry abre uma conexão de saída e não há URL pública. Por isso o transp
 `127.0.0.1` e usa uma chave fixa, não serve ao Claude sozinho.
 
 Este pacote opcional, [`remote-edge`](../../scripts/raspberry-mcp/remote-edge/edge.py), acrescenta
-a camada que falta. Não foi ativado; o estado versionado é "preparado, não ativado".
+a camada que falta. Foi ativado em 2026-11-19 (ver [Resultado da ativação](#resultado-da-ativação)); o pacote versionado continua sendo instalado por `install.py` em modo "preparado, não ativado".
 
 ```
 Claude (Anthropic) ──HTTPS──> Tailscale Funnel ──> edge 127.0.0.1:8766 ──> gateway 127.0.0.1:8765 ──> socket MCP
@@ -51,7 +51,7 @@ Claude (Anthropic) ──HTTPS──> Tailscale Funnel ──> edge 127.0.0.1:87
   simultâneas se alternam e, depois de uma pausa de 60 s, o cliente reinicializa sozinho). Se um cliente
   local já ocupa a sessão, o Claude recebe 503. As chamadas são serializadas, com até 15 s por chamada.
 - Sem Funnel (`tailscale funnel reset`) ou sem o serviço, o conector para na hora.
-- Não testado contra o Claude real antes da ativação; declarar suporte só depois de uma conexão bem-sucedida.
+- Testado contra o Claude real em 2026-11-19 (ver abaixo).
 
 ## Preparar e ativar
 
@@ -106,3 +106,22 @@ ativo. A chave restrita se rotaciona como a do gateway ([installation.md](instal
 ./scripts/run-resource-safe.sh python3 -B -m unittest discover -s scripts/raspberry-mcp/remote-edge -p 'test_*.py'
 python3 scripts/raspberry-mcp/remote-edge/build_release.py   # após qualquer mudança, antes de preparar
 ```
+
+## Resultado da ativação
+
+Ativado em 2026-11-19 no nó do Raspberry, seguindo este roteiro.
+
+Testado e funcionando:
+
+- Testes do pacote (24) e `build_release.py` sem alterar `release.json`.
+- Gateway `portable-http` instalado e ativo só em `127.0.0.1:8765`; edge ativo só em `127.0.0.1:8766`.
+- Tailscale: HTTPS/certificados e atributo `funnel` presentes no nó; `tailscale funnel --bg 8766` expõe somente a porta 8766.
+- `.well-known/oauth-authorization-server` devolveu 200 pela rota local e pela URL pública; `/mcp` sem token devolveu 401 nas duas.
+- Conector adicionado no Claude, login com senha e código do autenticador concluído e uma chamada de `service_health` bem-sucedida (serviços homeassistant e nodered saudáveis).
+- A lista de ferramentas exposta ao Claude tem só as 11 somente leitura; `change_apply` e as demais de escrita não aparecem.
+
+Não testado:
+
+- Chamada direta de uma ferramenta de escrita pelo conector para ver a recusa (elas nem aparecem na lista; a recusa é coberta apenas pelos testes unitários).
+- Expiração e renovação do token de acesso (1 h), a revogação com `revoke-all` e o bloqueio de 15 minutos por erro de código.
+- Duas conversas simultâneas e o comportamento do limite de sessão do gateway.
