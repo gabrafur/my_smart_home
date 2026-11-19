@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "files": {
-    "gateway.py": "91a94c05f96991693df60eda52bffd2cfb8d45b0188b24f4b15e6de459f36f55",
-    "raspberry-mcp-http.service": "e6b52ce395696fe48eba9487b12ffb8e9e940d6892fbd3d759970cb83667ad5d"
+    "gateway.py": "4a1a5712ee48ffc3a212feddbcbf2d54632cca587c77f3e6165d23751d94f850",
+    "raspberry-mcp-http.service": "983be9b55eff25ae9cc35412fa3598b7ce30c8d0e08415c024b637ff2001863b"
   },
   "loopback_only": true,
   "automatic_activation": false,

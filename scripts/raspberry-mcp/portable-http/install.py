@@ -13,6 +13,8 @@ import sys
 STAGE = Path('/run/raspberry-mcp-http-review')
 CODE = Path('/usr/local/lib/raspberry-mcp-http')
 STATE = Path('/var/lib/raspberry-mcp-http')
+EDGE_GROUP = 'raspberry-mcp-edgekey'
+EDGE_STATE = Path('/var/lib/raspberry-mcp-edgekey')
 UNIT = Path('/etc/systemd/system/raspberry-mcp-http.service')
 ACCOUNT = 'raspberry-mcp-http'
 
@@ -96,7 +98,20 @@ def prepare():
     need(account.pw_uid != 0 and account.pw_gid == gid and account.pw_shell == '/usr/sbin/nologin'
          and account.pw_dir == '/nonexistent' and
          set(os.getgrouplist(ACCOUNT, gid)) <= {gid, mcp_gid})
+    try:
+        edge_gid = grp.getgrnam(EDGE_GROUP).gr_gid
+    except KeyError:
+        subprocess.run(['/usr/sbin/groupadd', '--system', EDGE_GROUP], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin'})
+        edge_gid = grp.getgrnam(EDGE_GROUP).gr_gid
     ensure_directory(CODE, 0, 0o755)
+    ensure_directory(EDGE_STATE, edge_gid, 0o750)
+    edge_token = EDGE_STATE / 'token'  # Restricted key: read-only tools only, for the public edge.
+    if not os.path.lexists(edge_token):
+        write_new(edge_token, (secrets.token_hex(32) + '\n').encode(), edge_gid, 0o440)
+    else:
+        need(len(read_root(edge_token, 0o440, 65)) == 65 and edge_token.stat().st_gid == edge_gid)
     ensure_directory(STATE, gid, 0o750)
     token = STATE / 'token'
     if not os.path.lexists(token):

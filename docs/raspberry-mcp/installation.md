@@ -143,7 +143,8 @@ das restrições de custo do executor do Raspberry.
 Este pacote estende o transporte de uma instalação MCP existente. Não instala
 Docker,Codex,túnel,dependências NPM,assinatura ou uma concessão administrativa.
 Usa somente a biblioteca padrão Python. Seu próprio processo não recebe sudo
-ou acesso Docker. O endereço é fixo `127.0.0.1:8765/mcp` e é somente local;
+ou acesso Docker. Também cria a chave restrita `/var/lib/raspberry-mcp-edgekey/token`, que só o
+[conector remoto](remote-connector.md) usa e que só alcança ferramentas somente leitura. O endereço é fixo `127.0.0.1:8765/mcp` e é somente local;
 não é uma URL que outro fornecedor hospedado consiga acessar pela internet.
 
 Arquivos versionados:

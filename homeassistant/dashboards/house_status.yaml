@@ -72,10 +72,17 @@ views:
           - type: entities
             show_header_toggle: false
             entities:
-              - entity: alarm_control_panel.security_panel
+              # Status only: no row may expose arm/disarm or lock/unlock, even by an accidental tap.
+              - type: simple-entity
+                entity: alarm_control_panel.security_panel
                 name: Alarme
-              - entity: lock.vehicle_primary_door_lock
+                tap_action:
+                  action: none
+              - type: simple-entity
+                entity: lock.vehicle_primary_door_lock
                 name: Trava do carro
+                tap_action:
+                  action: none
       - type: grid
         cards:
           - type: heading

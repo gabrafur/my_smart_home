@@ -29,7 +29,8 @@ CONFIG_FILE = STATE_DIR / 'config.json'
 OWNER_FILE = STATE_DIR / 'owner.json'
 STORE_FILE = STATE_DIR / 'state' / 'store.json'
 GATEWAY = ('127.0.0.1', 8765)
-GATEWAY_TOKEN_FILE = Path('/var/lib/raspberry-mcp-http/token')
+# A key that only lets the gateway serve the read-only allowlist (the full key is never readable here).
+GATEWAY_TOKEN_FILE = Path('/var/lib/raspberry-mcp-edgekey/token')
 PORT = 8766
 PROTOCOL = '2025-06-18'
 REDIRECTS = {'https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback'}
@@ -45,9 +46,13 @@ MAX_BODY = 16384
 ACCESS_TTL = 3600
 REFRESH_TTL = 30 * 86400
 CODE_TTL = 300
-MAX_CLIENTS = 20
+MAX_CLIENTS = 100
+UNUSED_CLIENT_TTL = 3600
+MAX_CONCURRENT = 16
+CONNECTION_TIMEOUT = 5
+AUTHORIZE_PER_MINUTE = 10
 MAX_TOKENS = 50
-LOCKOUT_FAILURES = 5
+LOCKOUT_FAILURES = 5  # Second-factor failures after a correct passphrase only.
 LOCKOUT_WINDOW = 900
 
 
@@ -71,8 +76,13 @@ class Limiter:
 
     def __init__(self, limit, window, clock):
         self.limit, self.window, self.clock, self.hits = limit, window, clock, {}
+        self.lock = threading.Lock()
 
     def allow(self, key):
+        with self.lock:
+            return self._allow(key)
+
+    def _allow(self, key):
         now = self.clock()
         start, count = self.hits.get(key, (now, 0))
         if now - start >= self.window:
@@ -88,7 +98,7 @@ class Store:
 
     def __init__(self, path, clock=time.time):
         self.path, self.clock, self.lock = path, clock, threading.Lock()
-        self.data = {'clients': {}, 'codes': {}, 'access': {}, 'refresh': {}}
+        self.data = {'clients': {}, 'codes': {}, 'access': {}, 'refresh': {}, 'consumed': {}, 'meta': {}}
         try:
             loaded = json.loads(path.read_text()) if path else None
             if isinstance(loaded, dict):
@@ -105,14 +115,40 @@ class Store:
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
         with os.fdopen(fd, 'w') as out:
             json.dump(self.data, out)
+            out.flush()
+            os.fsync(out.fileno())
         os.replace(tmp, self.path)
+        directory = os.open(self.path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
 
     def prune(self):
         now = self.clock()
-        for key in ('codes', 'access', 'refresh'):
+        for key in ('codes', 'access', 'refresh', 'consumed'):
             for name, item in list(self.data[key].items()):
                 if item['exp'] <= now:
                     del self.data[key][name]
+        used = {item['client'] for key in ('access', 'refresh') for item in self.data[key].values()}
+        for client_id, client in list(self.data['clients'].items()):
+            if client_id not in used and now - client.get('created', 0) > UNUSED_CLIENT_TTL:
+                del self.data['clients'][client_id]
+
+    def revoke_client(self, client_id):
+        for key in ('access', 'refresh', 'codes'):
+            for name, item in list(self.data[key].items()):
+                if item['client'] == client_id:
+                    del self.data[key][name]
+
+    def evict_unused_client(self):
+        """Make room for a registration by dropping the oldest client that never got a token."""
+        used = {item['client'] for key in ('access', 'refresh') for item in self.data[key].values()}
+        idle = sorted((c.get('created', 0), cid) for cid, c in self.data['clients'].items() if cid not in used)
+        if not idle:
+            return False
+        del self.data['clients'][idle[0][1]]
+        return True
 
     def issue(self, client_id):
         access, refresh = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
@@ -144,7 +180,10 @@ class Edge(ThreadingHTTPServer):
             raise ValueError('loopback_and_public_https_required')
         self.base_url, self.owner, self.gateway_token = base_url, owner, gateway_token
         self.store, self.clock, self.gateway = store, clock, gateway
-        self.failures, self.last_step = [], 0
+        self.failures = []
+        self.slots = threading.BoundedSemaphore(MAX_CONCURRENT)
+        self.authorize_limit = Limiter(AUTHORIZE_PER_MINUTE, 60, clock)
+        self.hash_slots = threading.BoundedSemaphore(2)  # scrypt needs 16 MiB each; keep within MemoryMax.
         self.forward_lock = threading.Lock()
         self.gateway_session = None
         self.register_limit = Limiter(10, 60, clock)
@@ -155,26 +194,57 @@ class Edge(ThreadingHTTPServer):
     def handle_error(self, *_args):
         pass
 
+    def process_request(self, request, client_address):
+        # Bounded concurrency: a flood of slow peers gets a fast 503, never memory exhaustion.
+        if not self.slots.acquire(blocking=False):
+            try:
+                request.sendall(b'HTTP/1.0 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n')
+            except OSError:
+                pass
+            self.shutdown_request(request)
+            return
+        super().process_request(request, client_address)
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
+
     def locked_out(self):
         now = self.clock()
         self.failures = [t for t in self.failures if now - t < LOCKOUT_WINDOW]
         return len(self.failures) >= LOCKOUT_FAILURES
 
     def check_owner(self, passphrase, code):
-        """Constant-shape check of both factors; counts every failure toward the lockout."""
+        """Passphrase first (scrypt, outside every lock), then the TOTP code.
+
+        Only second-factor failures after a correct passphrase lock the login, so an
+        anonymous caller cannot lock the owner out; the per-minute limit bounds the cost
+        of passphrase guessing. Returns "ok", "locked" or "denied".
+        """
         owner = self.owner
-        good = hmac.compare_digest(scrypt_hash(passphrase, bytes.fromhex(owner['salt'])),
-                                   bytes.fromhex(owner['hash']))
-        step = int(self.clock() // 30)
-        matched = 0
-        for candidate in (step - 1, step, step + 1):
-            if hmac.compare_digest(totp(owner['totp'], candidate), code):
-                matched = candidate
-        if good and matched and matched > self.last_step:
-            self.last_step = matched  # A code is usable once.
-            return True
-        self.failures.append(self.clock())
-        return False
+        if (len(passphrase) > 256 or not isinstance(code, str) or re.fullmatch('[0-9]{6}', code) is None):
+            return 'denied'
+        with self.hash_slots:
+            good = hmac.compare_digest(scrypt_hash(passphrase, bytes.fromhex(owner['salt'])),
+                                       bytes.fromhex(owner['hash']))
+        if not good:
+            return 'denied'
+        with self.store.lock:
+            if self.locked_out():
+                return 'locked'
+            step = int(self.clock() // 30)
+            last = self.store.data['meta'].get('last_step', 0)
+            matched = 0
+            for candidate in (step - 1, step, step + 1):
+                if hmac.compare_digest(totp(owner['totp'], candidate), code):
+                    matched = candidate
+            if matched and matched > last:
+                self.store.data['meta']['last_step'] = matched  # A code is usable once, even after a restart.
+                return 'ok'
+            self.failures.append(self.clock())
+            return 'denied'
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -184,7 +254,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def setup(self):
         super().setup()
-        self.connection.settimeout(20)
+        self.connection.settimeout(CONNECTION_TIMEOUT)
 
     def log_message(self, *_args):
         pass  # Never log URLs, codes, tokens or bodies.
@@ -197,6 +267,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', ctype)
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Strict-Transport-Security', 'max-age=31536000')
+        self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://claude.ai https://claude.com; frame-ancestors 'none'")
         self.send_header('Content-Length', str(len(body)))
         for key, value in (headers or {}).items():
@@ -276,10 +348,11 @@ class Handler(BaseHTTPRequestHandler):
         if not ok:
             return self.send(400, {'error': 'invalid_redirect_uri'})
         with server.store.lock:
-            if len(server.store.data['clients']) >= MAX_CLIENTS:
+            server.store.prune()
+            if len(server.store.data['clients']) >= MAX_CLIENTS and not server.store.evict_unused_client():
                 return self.send(400, {'error': 'client_limit'})
             client_id = secrets.token_urlsafe(24)
-            server.store.data['clients'][client_id] = {'redirect_uris': uris}
+            server.store.data['clients'][client_id] = {'redirect_uris': uris, 'created': server.clock()}
             server.store.save()
         self.send(201, {'client_id': client_id, 'redirect_uris': uris,
                         'token_endpoint_auth_method': 'none',
@@ -293,11 +366,18 @@ class Handler(BaseHTTPRequestHandler):
                     params.get('response_type') == 'code' and
                     params.get('code_challenge_method') == 'S256' and
                     re.fullmatch('[A-Za-z0-9_-]{43,128}', params.get('code_challenge', '')) and
-                    len(params.get('state', '')) <= 512)
+                    len(params.get('state', '')) <= 512 and
+                    params.get('resource', self.server.base_url + '/mcp') == self.server.base_url + '/mcp')
 
     def authorize_page(self, params, error=''):
         if not self.valid_request(params):
             return self.send(400, b'Pedido de autorizacao invalido.', 'text/plain; charset=utf-8')
+        created = self.server.store.data['clients'][params['client_id']].get('created', 0)
+        used = any(item['client'] == params['client_id'] for key in ('access', 'refresh')
+                   for item in self.server.store.data[key].values())
+        age = max(0, int((self.server.clock() - created) // 60))
+        notice = 'Cliente registrado ha %d min; %s.' % (
+            age, 'ja autorizado antes' if used else 'NUNCA autorizado antes: so continue se voce acabou de adicionar o conector')
         hidden = ''.join('<input type="hidden" name="%s" value="%s">' % (k, html.escape(params.get(k, ''), quote=True))
                          for k in ('client_id', 'redirect_uri', 'response_type', 'code_challenge',
                                    'code_challenge_method', 'state'))
@@ -305,10 +385,10 @@ class Handler(BaseHTTPRequestHandler):
                 '<title>Autorizar MCP</title><style>body{font:16px system-ui;max-width:26rem;margin:3rem auto;padding:0 1rem}'
                 'input,button{font:inherit;width:100%%;padding:.6rem;margin:.4rem 0}.e{color:#b00020}</style>'
                 '<h1>Autorizar acesso ao Raspberry</h1><p>Somente leitura de diagnosticos. Confirme que e voce.</p>'
-                '<p class="e">%s</p><form method="post" action="/authorize">%s'
+                '<p>%s</p><p class="e">%s</p><form method="post" action="/authorize">%s'
                 '<input type="password" name="passphrase" placeholder="Senha" autocomplete="current-password" required>'
                 '<input name="code" placeholder="Codigo do autenticador" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" required>'
-                '<button type="submit">Autorizar</button></form>') % (html.escape(error), hidden)
+                '<button type="submit">Autorizar</button></form>') % (html.escape(notice), html.escape(error), hidden)
         self.send(200, page.encode(), 'text/html; charset=utf-8')
 
     def authorize_submit(self):
@@ -316,13 +396,15 @@ class Handler(BaseHTTPRequestHandler):
         params = self.form()
         if params is None or not self.valid_request(params):
             return self.send(400, b'Pedido de autorizacao invalido.', 'text/plain; charset=utf-8')
+        if not server.authorize_limit.allow('a'):
+            return self.send(429, b'Muitas tentativas. Aguarde um minuto.', 'text/plain; charset=utf-8')
+        verdict = server.check_owner(params.get('passphrase', ''), params.get('code', ''))
+        if verdict == 'locked':
+            return self.send(429, b'Muitas tentativas. Aguarde 15 minutos.', 'text/plain; charset=utf-8')
+        if verdict != 'ok':
+            return self.authorize_page(params, 'Senha ou codigo incorretos.')
+        code = secrets.token_urlsafe(32)
         with server.store.lock:
-            if server.locked_out():
-                return self.send(429, b'Muitas tentativas. Aguarde 15 minutos.', 'text/plain; charset=utf-8')
-            ok = server.check_owner(params.get('passphrase', ''), params.get('code', ''))
-            if not ok:
-                return self.authorize_page(params, 'Senha ou codigo incorretos.')
-            code = secrets.token_urlsafe(32)
             server.store.prune()
             server.store.data['codes'][sha(code)] = {
                 'client': params['client_id'], 'redirect_uri': params['redirect_uri'],
@@ -344,6 +426,8 @@ class Handler(BaseHTTPRequestHandler):
         with store.lock:
             store.prune()
             grant = params.get('grant_type')
+            if params.get('resource', server.base_url + '/mcp') != server.base_url + '/mcp':
+                return self.send(400, {'error': 'invalid_target'})
             if grant == 'authorization_code':
                 item = store.data['codes'].pop(sha(params.get('code', '')), None)  # One use.
                 verifier = params.get('code_verifier', '')
@@ -354,9 +438,14 @@ class Handler(BaseHTTPRequestHandler):
                         hmac.compare_digest(item['challenge'], challenge)):
                     return self.send(200, store.issue(item['client']))
             elif grant == 'refresh_token':
-                item = store.data['refresh'].pop(sha(params.get('refresh_token', '')), None)  # Rotated.
+                digest = sha(params.get('refresh_token', ''))
+                item = store.data['refresh'].pop(digest, None)  # Rotated.
                 if item and item['client'] == params.get('client_id'):
+                    store.data['consumed'][digest] = {'client': item['client'], 'exp': item['exp']}
                     return self.send(200, store.issue(item['client']))
+                replay = store.data['consumed'].get(digest)
+                if replay and replay['client'] == params.get('client_id'):
+                    store.revoke_client(replay['client'])  # A used refresh token came back: revoke the family.
             else:
                 return self.send(400, {'error': 'unsupported_grant_type'})
             store.save()
@@ -381,7 +470,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             q = json.loads(raw or b'')
             ok = (isinstance(q, dict) and q.get('jsonrpc') == '2.0' and isinstance(q.get('method'), str)
-                  and ('id' not in q or type(q['id']) in (str, int)))
+                  and (('id' not in q and q['method'].startswith('notifications/')) or type(q.get('id')) in (str, int)))
         except ValueError:
             ok = False
         if not ok:
@@ -451,6 +540,7 @@ def main():
     if sys.argv[1:] or os.geteuid() == 0:
         raise ValueError('fixed_unprivileged_entrypoint_required')
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    threading.stack_size(256 * 1024)  # Many small threads, not 8 MB of stack each.
     config = read_private_json(CONFIG_FILE)
     owner = read_private_json(OWNER_FILE)
     token = GATEWAY_TOKEN_FILE.read_text().strip()

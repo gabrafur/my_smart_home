@@ -57,8 +57,8 @@ class EdgeTests(unittest.TestCase):
             self.backends.append(Backend())
             return self.backends[-1]
 
-        self.gateway = g.Gateway(('127.0.0.1', 0), 'b' * 64, factory)
-        self.edge = e.Edge(('127.0.0.1', 0), BASE, OWNER, 'b' * 64, e.Store(None, lambda: self.now),
+        self.gateway = g.Gateway(('127.0.0.1', 0), 'b' * 64, factory, edge_token='c' * 64)
+        self.edge = e.Edge(('127.0.0.1', 0), BASE, OWNER, 'c' * 64, e.Store(None, lambda: self.now),
                            lambda: self.now, self.gateway.server_address)
         self.threads = [threading.Thread(target=s.serve_forever, kwargs={'poll_interval': 0.01}, daemon=True)
                         for s in (self.gateway, self.edge)]
@@ -157,14 +157,114 @@ class EdgeTests(unittest.TestCase):
         form['code_verifier'] = 'v' * 50
         self.assertEqual(self.call('POST', '/token', form=form)[0], 400)  # Already consumed.
 
-    def test_wrong_factors_are_refused_and_lock_out(self):
+    def test_wrong_passphrase_never_locks_but_wrong_code_after_it_does(self):
         client = self.register()
+        for _ in range(e.AUTHORIZE_PER_MINUTE - 1):
+            self.assertEqual(self.authorize(client, passphrase='wrong')[0], 200)
+        self.now += 61
+        self.assertEqual(self.authorize(client)[0], 302)  # An anonymous flood cannot lock the owner out.
+        self.now += 61
         for _ in range(e.LOCKOUT_FAILURES):
-            status, _, _ = self.authorize(client, passphrase='wrong')
-            self.assertEqual(status, 200)
-        self.assertEqual(self.authorize(client)[0], 429)  # Even the right factors wait.
+            self.assertEqual(self.authorize(client, code='000000')[0], 200)
+            self.now += 7
+        self.assertEqual(self.authorize(client)[0], 429)
         self.now += e.LOCKOUT_WINDOW + 1
         self.assertEqual(self.authorize(client)[0], 302)
+
+    def test_non_numeric_code_is_refused_before_the_expensive_hash(self):
+        client = self.register()
+        self.assertEqual(self.authorize(client, code='\u00e9')[0], 200)
+        self.assertEqual(self.authorize(client, code='12345')[0], 200)
+        self.assertEqual(self.authorize(client)[0], 302)
+
+    def test_authorize_attempts_are_rate_limited(self):
+        client = self.register()
+        for _ in range(e.AUTHORIZE_PER_MINUTE):
+            self.authorize(client, passphrase='wrong')
+        self.assertEqual(self.authorize(client)[0], 429)
+
+    def test_unused_clients_are_evicted_but_used_ones_survive(self):
+        client, _ = self.tokens()
+        for _ in range(e.MAX_CLIENTS + 5):
+            self.now += 1
+            self.edge.register_limit.hits.clear()
+            self.call('POST', '/register', {'redirect_uris': [REDIRECT]})
+        self.assertLessEqual(len(self.edge.store.data['clients']), e.MAX_CLIENTS)
+        self.assertIn(client, self.edge.store.data['clients'])
+        self.assertEqual(self.call('POST', '/register', {'redirect_uris': [REDIRECT]})[0], 201)
+        self.now += e.UNUSED_CLIENT_TTL + 1
+        self.edge.store.prune()
+        self.assertEqual(list(self.edge.store.data['clients']), [client])
+
+    def test_reused_refresh_token_revokes_the_family(self):
+        client, tokens = self.tokens()
+        first = self.call('POST', '/token', form={'grant_type': 'refresh_token', 'client_id': client,
+                                                  'refresh_token': tokens['refresh_token']})
+        fresh = json.loads(first[2])
+        self.assertEqual(self.rpc(fresh['access_token'], {'jsonrpc': '2.0', 'id': 1, 'method': 'ping'})[0], 404)
+        self.call('POST', '/token', form={'grant_type': 'refresh_token', 'client_id': client,
+                                          'refresh_token': tokens['refresh_token']})  # Replay.
+        self.assertEqual(self.rpc(fresh['access_token'], {'jsonrpc': '2.0', 'id': 1, 'method': 'ping'})[0], 401)
+        self.assertEqual(self.call('POST', '/token', form={'grant_type': 'refresh_token', 'client_id': client,
+                                                           'refresh_token': fresh['refresh_token']})[0], 400)
+
+    def test_resource_must_name_this_server(self):
+        client = self.register()
+        challenge = 'c' * 43
+        query = {'response_type': 'code', 'code_challenge': challenge, 'code_challenge_method': 'S256',
+                 'client_id': client, 'redirect_uri': REDIRECT}
+        self.assertEqual(self.call('GET', '/authorize?' + urlencode(dict(query, resource='https://other.invalid/mcp')))[0], 400)
+        self.assertEqual(self.call('GET', '/authorize?' + urlencode(dict(query, resource=BASE + '/mcp')))[0], 200)
+
+    def test_authorize_page_warns_about_a_never_used_client(self):
+        client = self.register()
+        query = {'response_type': 'code', 'code_challenge': 'c' * 43, 'code_challenge_method': 'S256',
+                 'client_id': client, 'redirect_uri': REDIRECT}
+        self.assertIn(b'NUNCA autorizado', self.call('GET', '/authorize?' + urlencode(query))[2])
+
+    def test_a_call_without_id_is_not_forwarded(self):
+        _, tokens = self.tokens()
+        access = tokens['access_token']
+        sid = self.init(access)
+        status, _, _ = self.rpc(access, {'jsonrpc': '2.0', 'method': 'tools/call',
+                                         'params': {'name': 'service_health'}}, sid)
+        self.assertEqual(status, 400)
+        self.assertEqual(self.rpc(access, {'jsonrpc': '2.0', 'method': 'notifications/initialized'}, sid)[0], 202)
+
+    def test_busy_edge_answers_503_instead_of_starving(self):
+        for _ in range(e.MAX_CONCURRENT):
+            self.assertTrue(self.edge.slots.acquire(blocking=False))
+        c = http.client.HTTPConnection(*self.edge.server_address, timeout=5)
+        c.request('GET', '/.well-known/oauth-authorization-server')
+        self.assertEqual(c.getresponse().status, 503)
+        for _ in range(e.MAX_CONCURRENT):
+            self.edge.slots.release()
+        self.assertEqual(self.call('GET', '/.well-known/oauth-authorization-server')[0], 200)
+
+    def test_the_edge_key_cannot_reach_write_tools_even_directly(self):
+        def direct(key, q, sid=None):
+            c = http.client.HTTPConnection(*self.gateway.server_address, timeout=5)
+            headers = {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
+                       'Accept': 'application/json, text/event-stream'}
+            if sid:
+                headers.update({'Mcp-Session-Id': sid, 'MCP-Protocol-Version': g.PROTOCOL})
+            c.request('POST', '/mcp', json.dumps(q), headers)
+            r = c.getresponse()
+            raw = r.read()
+            return r.status, dict(r.getheaders()), json.loads(raw) if raw else None
+        status, headers, _ = direct('c' * 64, {'jsonrpc': '2.0', 'id': 1, 'method': 'initialize',
+                                               'params': {'protocolVersion': g.PROTOCOL}})
+        self.assertEqual(status, 200)
+        sid = headers['Mcp-Session-Id']
+        for name in ['change_apply', 'codex_task_create', 'project_read']:
+            self.assertEqual(direct('c' * 64, {'jsonrpc': '2.0', 'id': 2, 'method': 'tools/call',
+                                               'params': {'name': name}}, sid)[0], 403)
+        self.assertEqual(direct('c' * 64, {'jsonrpc': '2.0', 'id': 3, 'method': 'resources/read'}, sid)[0], 403)
+        self.assertEqual(direct('b' * 64, {'jsonrpc': '2.0', 'id': 4, 'method': 'tools/list'}, sid)[0], 404)
+        _, _, listing = direct('c' * 64, {'jsonrpc': '2.0', 'id': 5, 'method': 'tools/list'}, sid)
+        self.assertEqual({t['name'] for t in listing['result']['tools']}, g.EDGE_TOOLS)
+        self.assertEqual(g.EDGE_TOOLS, e.ALLOWED_TOOLS)
+        self.assertEqual([m['method'] for m in self.backends[0].messages], ['initialize', 'tools/list'])
 
     def test_totp_code_is_single_use(self):
         client = self.register()
@@ -238,9 +338,9 @@ class EdgeTests(unittest.TestCase):
 
     def test_public_bind_and_http_base_are_refused(self):
         with self.assertRaises(ValueError):
-            e.Edge(('0.0.0.0', 0), BASE, OWNER, 'b' * 64, e.Store(None))
+            e.Edge(('0.0.0.0', 0), BASE, OWNER, 'c' * 64, e.Store(None))
         with self.assertRaises(ValueError):
-            e.Edge(('127.0.0.1', 0), 'http://example.invalid', OWNER, 'b' * 64, e.Store(None))
+            e.Edge(('127.0.0.1', 0), 'http://example.invalid', OWNER, 'c' * 64, e.Store(None))
 
     def test_store_persists_only_hashes(self):
         import tempfile

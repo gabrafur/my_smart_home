@@ -18,6 +18,14 @@ import time
 
 UNIX_SOCKET = '/run/raspberry-mcp/mcp.sock'
 TOKEN_FILE = Path('/var/lib/raspberry-mcp-http/token')
+# Optional second key for the public OAuth edge: it can only list and call read-only tools.
+EDGE_TOKEN_FILE = Path('/var/lib/raspberry-mcp-edgekey/token')
+EDGE_TOOLS = frozenset({
+    'service_health', 'service_versions', 'disk_space', 'backup_results', 'log_summary',
+    'maintenance_capabilities', 'host_diagnostics', 'service_diagnostics',
+    'operation_status', 'events_status', 'admin_action_status',
+})
+EDGE_METHODS = frozenset({'initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'})
 PROTOCOL = '2025-06-18'
 MAX_REQUEST = 16384
 MAX_RESPONSE = 262144
@@ -95,10 +103,14 @@ class UnixSession:
 class Gateway(HTTPServer):
     allow_reuse_address = False
 
-    def __init__(self, address, token, session_factory=UnixSession, clock=time.monotonic):
-        if address[0] != '127.0.0.1' or re.fullmatch('[a-f0-9]{64}', token) is None:
+    def __init__(self, address, token, session_factory=UnixSession, clock=time.monotonic,
+                 edge_token=None):
+        if (address[0] != '127.0.0.1' or re.fullmatch('[a-f0-9]{64}', token) is None or
+                (edge_token is not None and (re.fullmatch('[a-f0-9]{64}', edge_token) is None or
+                                              edge_token == token))):
             raise TransportError('local_authenticated_transport_required')
         self.token = token
+        self.edge_token = edge_token
         self.sessions = {}
         self.session_factory = session_factory
         self.clock = clock
@@ -106,7 +118,7 @@ class Gateway(HTTPServer):
 
     def prune(self):
         now = self.clock()
-        for sid, (session, touched) in list(self.sessions.items()):
+        for sid, (session, touched, _scope) in list(self.sessions.items()):
             if now - touched > SESSION_TTL:
                 self.drop(sid)
 
@@ -170,10 +182,14 @@ class Handler(BaseHTTPRequestHandler):
             self.error(403, 'browser_origin_not_enabled')
             return False
         values = self.headers.get_all('Authorization', [])
-        expected = 'Bearer ' + self.server.token
-        if len(values) != 1 or not hmac.compare_digest(values[0].encode(), expected.encode()):
+        given = values[0].encode() if len(values) == 1 else b''
+        full = hmac.compare_digest(given, ('Bearer ' + self.server.token).encode())
+        edge = (self.server.edge_token is not None and
+                hmac.compare_digest(given, ('Bearer ' + self.server.edge_token).encode()))
+        if not (full or edge):
             self.error(401, 'authentication_required')
             return False
+        self.scope = 'full' if full else 'edge'
         self.server.prune()
         return True
 
@@ -183,7 +199,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def existing(self):
         sid = self.session_id()
-        if not isinstance(sid, str) or re.fullmatch('[a-f0-9]{64}', sid) is None or sid not in self.server.sessions:
+        if (not isinstance(sid, str) or re.fullmatch('[a-f0-9]{64}', sid) is None or
+                sid not in self.server.sessions or self.server.sessions[sid][2] != self.scope):
             self.error(404, 'session_not_found')
             return None
         if self.headers.get('MCP-Protocol-Version') != PROTOCOL:
@@ -234,6 +251,16 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, OSError, UnicodeError):
             self.error(400, 'invalid_json_rpc')
             return
+        if self.scope == 'edge':
+            # The edge key can never reach anything but the read-only allowlist.
+            params = q.get('params')
+            name = params.get('name') if isinstance(params, dict) else None
+            if q['method'] not in EDGE_METHODS or ('id' not in q and not q['method'].startswith('notifications/')):
+                self.error(403, 'method_not_enabled_for_this_key')
+                return
+            if q['method'] == 'tools/call' and name not in EDGE_TOOLS:
+                self.error(403, 'tool_not_enabled_for_this_key')
+                return
         created = q['method'] == 'initialize'
         if created:
             params = q.get('params')
@@ -250,7 +277,7 @@ class Handler(BaseHTTPRequestHandler):
             except (OSError, ValueError, TransportError):
                 self.error(503, 'backend_unavailable')
                 return
-            self.server.sessions[sid] = (session, self.server.clock())
+            self.server.sessions[sid] = (session, self.server.clock(), self.scope)
         else:
             sid = self.existing()
             if not sid:
@@ -262,7 +289,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.drop(sid)
                 self.reply(400, result)
                 return
-            self.server.sessions[sid] = (session, self.server.clock())
+            if self.scope == 'edge' and q['method'] == 'tools/list' and isinstance(result.get('result'), dict):
+                tools = result['result'].get('tools')
+                if isinstance(tools, list):
+                    result['result']['tools'] = [t for t in tools if isinstance(t, dict) and t.get('name') in EDGE_TOOLS]
+            self.server.sessions[sid] = (session, self.server.clock(), self.scope)
         except (OSError, ValueError, TransportError):
             self.server.drop(sid)
             self.error(504, 'backend_response_unconfirmed_reconcile_original_operation')
@@ -279,7 +310,11 @@ def main():
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
     resource.setrlimit(resource.RLIMIT_AS, (64 * 1048576, 64 * 1048576))
-    with Gateway(('127.0.0.1', 8765), read_token()) as server:
+    try:
+        edge_token = read_token(EDGE_TOKEN_FILE)
+    except FileNotFoundError:
+        edge_token = None  # The public edge is optional.
+    with Gateway(('127.0.0.1', 8765), read_token(), edge_token=edge_token) as server:
         server.serve_forever(poll_interval=1)
 
 

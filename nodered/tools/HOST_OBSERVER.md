@@ -97,7 +97,7 @@ O estado `host_observer_timing_v1` fica no store `persistent`, com até 25 ânco
 horárias cumulativas. A janela só vira `candidate` depois de abranger pelo
 menos 86.400s monotônicos; seus deltas precisam corresponder às âncoras. Isso
 não é aprovação de 24h: verificar contagens, perdas, desconhecidos, excessos,
-falhas de fonte e lacunas. O contexto tem flush de 30s e não é arquivo bruto de
+falhas de fonte e lacunas. O contexto tem flush de 120s e não é arquivo bruto de
 eventos nem journal transacional.
 
 `invalid_reason_history` preserva contagens por motivo fechado e as últimas 16

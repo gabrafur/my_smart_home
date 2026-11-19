@@ -18,11 +18,19 @@ Claude (Anthropic) ──HTTPS──> Tailscale Funnel ──> edge 127.0.0.1:87
 
 - Publica os metadados OAuth, o registro dinâmico de clientes, `/authorize`, `/token` e `/mcp`.
 - Aceita registro somente com os retornos do Claude (`https://claude.ai/api/mcp/auth_callback` e
-  `https://claude.com/api/mcp/auth_callback`), até 20 clientes.
-- Exige PKCE `S256`. O proprietário se identifica com **senha e código TOTP** (autenticador).
-  O código vale uma vez; cinco falhas bloqueiam a autorização por 15 minutos, sem afetar tokens já emitidos.
-- Emite acesso de 1 h e renovação de 30 dias, com rotação. Guarda só hashes em
-  `/var/lib/raspberry-mcp-edge/state/store.json`.
+  `https://claude.com/api/mcp/auth_callback`), até 100 clientes. Cliente que nunca recebeu token expira
+  em 1 h e é o primeiro a ser removido quando o teto enche; clientes com token nunca são removidos por isso.
+- Exige PKCE `S256` e, se vier, `resource` igual à URL do próprio `/mcp`. O proprietário se identifica com
+  **senha e código TOTP** (autenticador). O código vale uma vez, mesmo após reinício. Senha errada nunca
+  bloqueia ninguém (só há limite de 10 tentativas por minuto, para qualquer chamador); cinco erros de código
+  **depois de a senha estar certa** bloqueiam a autorização por 15 minutos. Assim um anônimo não consegue
+  trancar o dono para fora. A página de autorização mostra há quanto tempo o cliente foi registrado e avisa
+  quando ele nunca foi autorizado.
+- Emite acesso de 1 h e renovação de 30 dias, com rotação. Reapresentar um refresh já usado revoga todos os
+  tokens do cliente. Guarda só hashes em `/var/lib/raspberry-mcp-edge/state/store.json`.
+- Não guarda a chave completa do gateway. Usa uma **chave restrita** (`/var/lib/raspberry-mcp-edgekey/token`,
+  criada pelo instalador do gateway) que o próprio gateway limita às mesmas 11 ferramentas somente leitura.
+  Se o edge for comprometido, o atacante continua sem alcançar escrita, reinício ou tarefas Codex.
 - Encaminha ao gateway local apenas `initialize`, `tools/list`, `tools/call`, `ping` e a notificação
   `initialized`, e só estas ferramentas **somente leitura**: `service_health`, `service_versions`,
   `disk_space`, `backup_results`, `log_summary`, `maintenance_capabilities`, `host_diagnostics`,
@@ -30,19 +38,25 @@ Claude (Anthropic) ──HTTPS──> Tailscale Funnel ──> edge 127.0.0.1:87
   Edição, reinício, aplicação de mudança, tarefas Codex, ações administrativas e leitura de arquivos
   são recusados antes de chegar ao gateway. Para ampliar a lista, altere `ALLOWED_TOOLS` e revise
   de novo (o teste confere que cada ferramenta liberada é somente leitura no catálogo).
+- No máximo 16 conexões simultâneas (as demais recebem 503 na hora), 5 s de ociosidade por conexão e
+  `MemoryMax=96M`; o hash da senha roda no máximo 2 por vez. Um atacante ainda pode ocupar as conexões com
+  clientes lentos e atrasar o login; nesse caso feche o Funnel.
 - Nunca repete uma chamada. Resposta incerta devolve 504 e exige consultar a operação original.
 - Não registra URLs, códigos, tokens nem corpos. Roda sem root, sem Docker e sem acesso a `/mnt/data/docker`.
 
 ## Limites
 
 - A segurança depende da senha, do autenticador e de manter o Funnel só para a porta 8766.
-- O gateway tem uma sessão por vez. Um novo `initialize` do Claude fecha a anterior.
+- O gateway tem uma sessão por vez. Um novo `initialize` do Claude fecha a anterior (duas conversas
+  simultâneas se alternam e, depois de uma pausa de 60 s, o cliente reinicializa sozinho). Se um cliente
+  local já ocupa a sessão, o Claude recebe 503. As chamadas são serializadas, com até 15 s por chamada.
 - Sem Funnel (`tailscale funnel reset`) ou sem o serviço, o conector para na hora.
 - Não testado contra o Claude real antes da ativação; declarar suporte só depois de uma conexão bem-sucedida.
 
 ## Preparar e ativar
 
-Pré-requisitos: o gateway `portable-http` instalado e ativo
+Pré-requisitos: o gateway `portable-http` (esta versão, que cria a chave restrita e o grupo
+`raspberry-mcp-edgekey`) instalado e ativo
 ([instalação](installation.md#preparar-o-transporte-http-opcional)), Funnel e certificados HTTPS
 habilitados no painel de administração do Tailscale (atributo `funnel` na política da tailnet).
 
@@ -79,11 +93,12 @@ No Claude: Configurações → Conectores → Adicionar conector personalizado �
 ```sh
 sudo tailscale funnel reset                                         # tira da internet
 sudo /usr/bin/systemctl disable --now raspberry-mcp-edge.service    # para o edge
-sudo /usr/bin/python3 -I -S -B /usr/local/lib/raspberry-mcp-edge/edge_admin.py revoke-all   # esquece clientes e tokens
+sudo /usr/bin/python3 -I -S -B /usr/local/lib/raspberry-mcp-edge/edge_admin.py revoke-all   # para, apaga clientes e tokens e só religa se estava ativo
 ```
 
-Trocar a senha ou o autenticador: `set-owner` de novo e reiniciar o serviço. Rotacionar a chave do
-gateway segue [installation.md](installation.md); reinicie o edge depois.
+Trocar a senha ou o autenticador: `set-owner` de novo; ele apaga os tokens e reinicia o edge se estiver
+ativo. A chave restrita se rotaciona como a do gateway ([installation.md](installation.md)), em
+`/var/lib/raspberry-mcp-edgekey/token`; reinicie o gateway e o edge depois.
 
 ## Validar
 

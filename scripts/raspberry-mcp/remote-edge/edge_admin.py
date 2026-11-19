@@ -1,7 +1,8 @@
 """Owner administration for the OAuth edge. Run as root from the installed copy.
 
   configure <https-url>   store the public Funnel URL (no trailing slash)
-  set-owner               choose the passphrase; prints the authenticator secret once
+  set-owner               choose the passphrase; prints the authenticator secret once, revokes
+                          every token and restarts the edge if it is running
   revoke-all              forget every client and token, then restart the edge
 
 Secrets are read from a TTY or generated here and shown only on this terminal. They are
@@ -52,17 +53,27 @@ def set_owner():
     secret = base64.b32encode(secrets.token_bytes(20)).decode()
     digest = hashlib.scrypt(passphrase.encode(), salt=salt, n=2 ** 14, r=8, p=1, dklen=32)
     write(STATE / 'owner.json', {'salt': salt.hex(), 'hash': digest.hex(), 'totp': secret})
+    store = STATE / 'state' / 'store.json'
+    if store.exists():
+        store.unlink()  # A new secret must not keep tokens issued under the old one.
+    subprocess.run(['/usr/bin/systemctl', 'try-restart', 'raspberry-mcp-edge.service'], check=True)
     print('Add this to your authenticator app (shown once):')
     print('otpauth://totp/Raspberry%20MCP?secret=' + secret + '&issuer=' + quote('Raspberry MCP'))
     print('Manual key:', secret)
 
 
 def revoke_all():
+    # Stop, delete, then start only if it was running: revoking must never switch the edge on,
+    # and a live process must not rewrite the store behind the deletion.
+    systemctl = '/usr/bin/systemctl'
+    was_active = subprocess.run([systemctl, 'is-active', '--quiet', 'raspberry-mcp-edge.service']).returncode == 0
+    subprocess.run([systemctl, 'stop', 'raspberry-mcp-edge.service'], check=True)
     store = STATE / 'state' / 'store.json'
     if store.exists():
         store.unlink()
-    subprocess.run(['/usr/bin/systemctl', 'restart', 'raspberry-mcp-edge.service'], check=True)
-    print('revoked')
+    if was_active:
+        subprocess.run([systemctl, 'start', 'raspberry-mcp-edge.service'], check=True)
+    print('revoked' + ('' if was_active else ' (edge was stopped and stays stopped)'))
 
 
 if __name__ == '__main__':

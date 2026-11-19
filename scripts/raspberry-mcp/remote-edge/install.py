@@ -40,6 +40,7 @@ def read_root(path, limit=65536):
 def ensure_directory(path, uid, gid, mode):
     if not os.path.lexists(path):
         path.mkdir(mode=mode)
+    need(not path.is_symlink())
     os.chown(path, uid, gid)
     os.chmod(path, mode)
     info = path.lstat()
@@ -65,8 +66,10 @@ def prepare():
     payload = {name: read_root(STAGE / name) for name in FILES}
     need(all(hashlib.sha256(payload[n]).hexdigest() == manifest['files'][n] for n in FILES))
     compile(payload['edge.py'], 'edge.py', 'exec')
-    need(Path('/etc/systemd/system/raspberry-mcp-http.service').is_file() and
-         Path('/var/lib/raspberry-mcp-http/token').is_file())
+    key = Path('/var/lib/raspberry-mcp-edgekey/token')  # Restricted key made by the gateway installer.
+    need(Path('/etc/systemd/system/raspberry-mcp-http.service').is_file() and key.is_file() and
+         key.stat().st_uid == 0 and key.stat().st_gid == grp.getgrnam('raspberry-mcp-edgekey').gr_gid and
+         stat.S_IMODE(key.stat().st_mode) == 0o440)
     for name, target in FILES.items():
         if os.path.lexists(target):
             need(read_root(target) == payload[name])
