@@ -60,6 +60,7 @@ ao executor que registre o acompanhamento com `ack`.
 | `ai.codex_account` | Uso da conta ChatGPT/Codex: liberado, limite atingido e horário de reset |
 | `host.update_protections` | `live-restore` do Docker e controlador de memória do cgroup |
 | `ai.client_execution_policy` | Estado da política de continuação da Eva instalada pelo Root (só `enabled`, `revoked`, validade e aprovação) |
+| `zigbee.batteries` | Último nível de bateria dos módulos Zigbee2MQTT (nomes e percentuais) |
 | `ha.unavailable_entities` | Estado mais recente de cada entidade no recorder (somente leitura): id e há quantos dias está indisponível |
 | `zigbee.devices_offline` | Tempo sem contato de cada módulo Zigbee (nomes e idades; nunca chaves ou endereços) |
 | `ci.public` | Últimas execuções da validação pública em `main` (GitHub Actions) |
@@ -94,6 +95,8 @@ o controlador exige reboot e decisão do proprietário.
 política de continuação da Eva está desativada, revogada (inclusive sem o campo),
 vencida ou sem aprovação registrada. Ferramentas, receita de identidade e fluxos
 da política não são lidos para a revisão.
+
+`zigbee.batteries` abre P2 `zigbee.batteries_low` quando algum módulo está com 20% ou menos.
 
 `ha.unavailable_entities` abre P3 `ha.unavailable_entities_stale` quando há entidades
 indisponíveis ou desconhecidas há 7 dias ou mais, agrupadas pelo prefixo do nome.

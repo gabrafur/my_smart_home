@@ -323,6 +323,22 @@ export const SOURCES = [
     },
   },
   {
+    id: "zigbee.batteries",
+    origin: "latest recorded battery level of each Zigbee2MQTT device (names from its configuration, levels from the recorder, read-only)",
+    collect(ctx) {
+      // The IR controller died on 18/11 without any warning. Only device names and levels leave here.
+      const config = fs.readFileSync(path.join(ctx.repoRoot, "zigbee2mqtt", "configuration.yaml"), "utf8");
+      const names = [...config.matchAll(/^\s*friendly_name:\s*([a-z0-9_]+)\s*$/gim)].map((match) => match[1]);
+      if (!names.length) return { levels: [] };
+      const list = names.map((name) => `'sensor.${name}_battery'`).join(",");
+      const out = runCommand(ctx, "sqlite3", ["-readonly", path.join(ctx.repoRoot, "homeassistant", "home-assistant_v2.db"),
+        `select m.entity_id||'|'||s.state from states_meta m join states s on s.state_id=(select state_id from states where metadata_id=m.metadata_id order by last_updated_ts desc limit 1) where m.entity_id in (${list});`]);
+      const levels = out.split("\n").map((line) => line.match(/^sensor\.([a-z0-9_]+)_battery\|(.*)$/)).filter(Boolean)
+        .map((match) => ({ name: match[1], percent: /^[0-9]+(\.[0-9]+)?$/.test(match[2]) ? Number(match[2]) : null }));
+      return { levels };
+    },
+  },
+  {
     id: "zigbee.devices_offline",
     origin: "Zigbee2MQTT device database (last contact per device) and friendly names, read-only",
     collect(ctx) {
@@ -715,6 +731,18 @@ export function evaluate(evidence, policy) {
       benefit: "Com o controlador ativo, testes isolados e contêineres respeitam --memory e uma atualização não consome a RAM do Raspberry.",
       proposed_action: "Decisão do proprietário: acrescentar cgroup_enable=memory ao cmdline.txt e agendar um reboot autorizado.",
       evidence: ["host.update_protections"],
+    });
+  }
+
+  const batteries = data("zigbee.batteries");
+  const low = (batteries?.levels ?? []).filter((item) => item.percent !== null && item.percent <= 20);
+  if (low.length) {
+    add({
+      key: "zigbee.batteries_low", priority: "P2", risk: "baixo",
+      title: `Bateria baixa em módulo(s) Zigbee: ${low.map((item) => `${item.name} (${item.percent}%)`).join(", ")}`,
+      benefit: "Trocar antes de morrer evita perder o botão do portão ou o controlador IR sem aviso (o IR caiu em 18/11 sem alerta).",
+      proposed_action: "Trocar a bateria do dispositivo indicado; o nível volta a subir no próximo relato do módulo.",
+      evidence: ["zigbee.batteries"],
     });
   }
 

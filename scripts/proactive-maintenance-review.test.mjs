@@ -40,6 +40,7 @@ const healthy = () => [
   source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
   source("host.update_protections", { docker_live_restore: true, cgroup_memory_controller: true }),
   source("ai.client_execution_policy", { enabled: true, revoked: false, expires_at: null, expired: false, approval_recorded: true, changed_hours_ago: 50 }),
+  source("zigbee.batteries", { levels: [{ name: "botao", percent: 100 }, { name: "controle", percent: null }] }),
   source("ha.unavailable_entities", { total: 3, stale_over_7_days: [] }),
   source("zigbee.devices_offline", { devices: [{ name: "lampada_varanda", mains: true, silent_minutes: 3 }, { name: "controlador_ir", mains: false, silent_minutes: 120 }] }),
   source("ci.public", { latest_conclusion: "success", latest_commit: "abc1234", consecutive_failures: 0, failing_since_commit: null, failing_since: null }),
@@ -537,6 +538,27 @@ test("silent Zigbee devices are named: mains routers P1, battery devices only af
   assert.match(silent[0].title, /lampada_varanda \(rede elétrica, 1\.5 h sem contato\); controlador_ir \(bateria, 47\.8 h sem contato\)/);
   const battery = evaluate(replace(healthy(), "zigbee.devices_offline", { devices: [{ name: "controlador_ir", mains: false, silent_minutes: 2868 }] }), policy());
   assert.deepEqual(battery.map((f) => f.priority), ["P2"]);
+});
+
+test("a low Zigbee battery is a P2 naming device and level", () => {
+  const found = evaluate(replace(healthy(), "zigbee.batteries", { levels: [{ name: "botao_portao", percent: 15 }, { name: "ir", percent: 80 }, { name: "x", percent: null }] }), policy());
+  assert.deepEqual(found.map((f) => [f.key, f.priority]), [["zigbee.batteries_low", "P2"]]);
+  assert.match(found[0].title, /botao_portao \(15%\)/);
+  assert.doesNotMatch(found[0].title, /ir \(/);
+});
+
+test("battery source reads only device names and levels", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "batt-"));
+  fs.mkdirSync(path.join(dir, "zigbee2mqtt"));
+  fs.writeFileSync(path.join(dir, "zigbee2mqtt/configuration.yaml"), "network_key: PRIVATE_SENTINEL\ndevices:\n  '0x1':\n    friendly_name: botao_x\n");
+  const seen = [];
+  const run = (command, args) => { seen.push(args[2]); return { status: 0, stdout: "sensor.botao_x_battery|17\nsensor.botao_x_battery|bad\n" }; };
+  const source = SOURCES.find((item) => item.id === "zigbee.batteries");
+  const data = source.collect(createContext({ policy: policy(), repoRoot: dir, now: 1, run }));
+  assert.deepEqual(data, { levels: [{ name: "botao_x", percent: 17 }, { name: "botao_x", percent: null }] });
+  assert.match(seen[0], /'sensor\.botao_x_battery'/);
+  assert.doesNotMatch(JSON.stringify([data, seen]), /PRIVATE_SENTINEL/);
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 test("long-unavailable entities are grouped into one P3", () => {
