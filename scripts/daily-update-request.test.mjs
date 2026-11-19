@@ -447,7 +447,7 @@ test("image stage result names the static refusal code that stopped it", () => {
   fs.writeFileSync(node, "#!/bin/sh\n" +
     "case \"$2\" in\n" +
     "  home-assistant-core) echo 'pulling'; echo 'Error: production update blocked reason=unsupported_icloud_core_version token=secret' >&2; exit 1 ;;\n" +
-    "  containers) echo 'opaque failure' >&2; exit 2 ;;\n" +
+    "  containers) if [ -n \"$FIXTURE_COVERAGE\" ]; then echo 'Error: Service appdaemon has no readiness probe or healthcheck; update blocked before recreation' >&2; exit 1; fi; echo 'opaque failure' >&2; exit 2 ;;\n" +
     "esac\n");
   fs.chmodSync(node, 0o755);
   const run = (stage) => spawnSync(runScript, [stage], {
@@ -461,6 +461,12 @@ test("image stage result names the static refusal code that stopped it", () => {
     "stage=home-assistant-core stage_exit=1 reason=unsupported_icloud_core_version readiness=unknown mode=production");
   assert.equal(run("containers").status, 2);
   assert.equal(fs.readFileSync(detail, "utf8").trim(), "stage=containers stage_exit=2 reason=unclassified readiness=unknown mode=production");
+  const coverage = spawnSync(runScript, ["containers"], {
+    encoding: "utf8",
+    env: {...process.env, DAILY_UPDATE_NODE_BIN: node, DOCKER_UPDATE_SCRIPT: "fixture", DAILY_UPDATE_DETAIL_FILE: detail, FIXTURE_COVERAGE: "1"},
+  });
+  assert.equal(coverage.status, 1);
+  assert.equal(fs.readFileSync(detail, "utf8").trim(), "stage=containers stage_exit=1 reason=readiness_coverage_missing readiness=unknown mode=production");
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

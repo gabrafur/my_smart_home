@@ -164,6 +164,11 @@ if [ "$stage" = "home-assistant-core" ] || [ "$stage" = "containers" ]; then
   image_status=$(cat "$image_status_file")
   set -e
   image_reason=$(grep -aoE '(update blocked reason|git-backup-reason)=[a-z0-9_]{1,64}' "$image_output" | tail -n 1 | sed 's/.*=//')
+  # 19/11: the stage stopped before recreating anything because a service had no healthcheck
+  # and was reported only as "unclassified".
+  if [ -z "$image_reason" ] && grep -aqE 'Service [A-Za-z0-9_.-]+ has no readiness probe or healthcheck' "$image_output"; then
+    image_reason=readiness_coverage_missing
+  fi
   rm -f -- "$image_output" "$image_status_file"
   case "$image_status" in ''|*[!0-9]*) image_status=70 ;; esac
   reason_field=""
