@@ -105,6 +105,16 @@ recorder:
       - sensor.codex_ultima_atualizacao_do_limite
       - sensor.codex_ritmo_do_limite
       - sensor.codex_local_ai_status
+      # Heartbeats e diagnósticos de monitoramento (19/11/2026: ~2.000 gravações/hora,
+      # sem nenhum histórico consumido). O estado atual segue disponível; o fluxo
+      # recorder_retention continua removendo o legado.
+      - sensor.vehicle_primary_refresh_coordinator
+      - sensor.zigbee_network_state
+      - binary_sensor.zigbee_network
+      - sensor.internet_connection_state
+      - binary_sensor.internet_connection
+      - sensor.tuya_devices_state
+      - binary_sensor.tuya_devices
 
 template:
   - binary_sensor:
