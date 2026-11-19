@@ -93,6 +93,14 @@ services:
       - /run/dbus:/run/dbus:ro
     environment:
       - TZ=${TZ:-America/Sao_Paulo}
+    # Required by the containers update stage (no probe, no recreation). The local
+    # websocket server answers /info once the controller is up.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5580/info >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   appdaemon:
     logging: *default-logging
@@ -106,6 +114,15 @@ services:
       - ./.local-secrets/appdaemon-secrets.yaml:/conf/secrets.yaml:ro
     environment:
       - TZ=${TZ:-America/Sao_Paulo}
+    # The image has no probe of its own, which blocked the containers update stage on
+    # 19/11 ("no readiness probe or healthcheck"). The local admin UI answers once
+    # AppDaemon has loaded its apps.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5050/aui/index.html >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   nodered:
     logging: *default-logging
