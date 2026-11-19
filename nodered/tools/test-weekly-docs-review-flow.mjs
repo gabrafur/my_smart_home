@@ -19,7 +19,7 @@ const node = (id) => {
 };
 
 assert.equal(node("weekly_docs_review_tab").label, "revisao_documental_semanal");
-assert.equal(node("weekly_docs_review_schedule").crontab, "00 20 * * 1");
+assert.equal(node("weekly_docs_review_schedule").crontab, "30 05 * * 1");
 assert.equal(node("daily_update_inventory_apply_schedule").crontab, "00 03 * * *", "integration maintenance retains its separate overnight window");
 assert.equal(node("git_backup_schedule").crontab, "0 1 * * *");
 // Schedule regeneration must leave startup gates and generated link routes intact.

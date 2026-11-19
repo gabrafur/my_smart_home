@@ -6,9 +6,9 @@ import path from "node:path";
 const sourcePath = path.resolve(process.argv[2] ?? new URL("../flows.json", import.meta.url).pathname);
 const outputPath = path.resolve(process.argv[3] ?? `${sourcePath}.new`);
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
-const scheduleLabel = "Segunda 20:00 (23:00 UTC)";
-const scheduleCron = "00 20 * * 1";
-const architectureLabel = "Segunda 20:00 America/Sao_Paulo (23:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado";
+const scheduleLabel = "Segunda 05:30 (08:30 UTC)";
+const scheduleCron = "30 05 * * 1";
+const architectureLabel = "Segunda 05:30 America/Sao_Paulo (08:30 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado";
 // A schedule edit must preserve topology installed by the startup/observer layers.
 if (process.argv.includes("--schedule-only")) {
   const schedule = flows.find(node => node.id === "weekly_docs_review_schedule");

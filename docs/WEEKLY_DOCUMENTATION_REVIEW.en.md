@@ -4,7 +4,7 @@
 
 The Node-RED `revisao_documental_semanal` tab is the single owner of the deep
 repository review schedule and manual trigger. Its cron runs every Monday at
-**20:00 in `America/Sao_Paulo`** (23:00 UTC in the canonical configuration).
+**05:30 in `America/Sao_Paulo`** (08:30 UTC in the canonical configuration).
 The `docs-review-scheduler` Compose worker has no timer of its own: it maintains
 the heartbeat/status, consumes Node-RED requests, and runs isolated Codex with
 Git credentials kept outside the automation container.
@@ -18,7 +18,7 @@ validation, commit, and push remain under worker authority.
 
 The review is separated from residential maintenance: Git backup at 01:00,
 followed by the host update chain after success; eligible integrations at 03:00;
-and documentation review on Mondays at 20:00 (all in `America/Sao_Paulo`). The
+and documentation review on Mondays at 05:30, after the backup and the 03:00 updates and with the Git tree normally clean (all in `America/Sao_Paulo`). The
 agent normally has a three-hour limit, leaving room before the next 01:00 backup.
 Scheduling reduces overlap; mutual exclusion comes from `.daily-maintenance.lock`,
 shared with updates and Bluelink promotion. Git backup and review retain this
@@ -156,7 +156,7 @@ docker compose --profile automation logs --tail=50 docs-review-scheduler
 
 The log should contain `schedule managed by Node-RED` followed by the expected
 next request as an ISO timestamp. Also confirm the tab contains cron
-`00 20 * * 1`. Check the checkout, branch, and Git authentication without
+`30 05 * * 1`. Check the checkout, branch, and Git authentication without
 running a review:
 
 ```bash

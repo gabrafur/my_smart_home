@@ -4,7 +4,7 @@
 
 A aba `revisao_documental_semanal` do Node-RED é a fonte única do agendamento
 e do acionamento manual da revisão profunda do repositório. O cron roda toda
-segunda-feira às **20:00 em `America/Sao_Paulo`** (23:00 UTC na configuração
+segunda-feira às **05:30 em `America/Sao_Paulo`** (08:30 UTC na configuração
 canônica). O worker Compose `docs-review-scheduler` não possui timer próprio:
 ele mantém o heartbeat/status, consome solicitações do Node-RED e executa o
 Codex isolado com as credenciais Git fora do container de automação.
@@ -24,7 +24,7 @@ status do worker.
 
 A revisão foi separada da janela residencial: backup Git às 01:00, com a cadeia
 de updates do host após seu sucesso; integrações elegíveis às 03:00; revisão
-documental na segunda às 20:00 (todos em `America/Sao_Paulo`). O limite normal
+documental na segunda às 05:30, depois do backup e das atualizações das 03:00 e com a árvore Git normalmente limpa (todos em `America/Sao_Paulo`). O limite normal
 do agente é de três horas, deixando margem antes do próximo backup da 01:00.
 Horários reduzem sobreposição, mas a exclusão mútua é garantida pelo lock
 `.daily-maintenance.lock`, compartilhado com updates e promoção Bluelink.
@@ -166,7 +166,7 @@ docker compose --profile automation logs --tail=50 docs-review-scheduler
 ```
 
 O log deve mostrar `schedule managed by Node-RED` e a próxima solicitação
-esperada em ISO. Confirme também que a aba contém o cron `00 20 * * 1`. Teste o
+esperada em ISO. Confirme também que a aba contém o cron `30 05 * * 1`. Teste o
 checkout, a branch e a autenticação Git sem executar uma revisão:
 
 ```bash

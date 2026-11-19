@@ -23,8 +23,8 @@ const triggerPath = process.env.WEEKLY_DOCS_REVIEW_TRIGGER_PATH || "";
 const maxRuntimeMs = integerEnv("WEEKLY_DOCS_REVIEW_TIMEOUT_MS", 3 * 60 * 60 * 1000, 60_000, 24 * 60 * 60 * 1000);
 const schedule = {
   day: integerEnv("WEEKLY_DOCS_REVIEW_DAY_UTC", 1, 0, 6),
-  hour: integerEnv("WEEKLY_DOCS_REVIEW_HOUR_UTC", 23, 0, 23),
-  minute: integerEnv("WEEKLY_DOCS_REVIEW_MINUTE_UTC", 0, 0, 59),
+  hour: integerEnv("WEEKLY_DOCS_REVIEW_HOUR_UTC", 8, 0, 23),
+  minute: integerEnv("WEEKLY_DOCS_REVIEW_MINUTE_UTC", 30, 0, 59),
 };
 const scheduleOwner = process.env.WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER || "internal";
 if (!new Set(["internal", "node-red"]).has(scheduleOwner)) {
@@ -537,15 +537,15 @@ function startHeartbeat() {
 function selfTest() {
   assert.equal(
     nextWeeklyRun(new Date("2026-08-10T05:59:00Z"), schedule).toISOString(),
-    "2026-08-10T23:00:00.000Z",
+    "2026-08-10T08:30:00.000Z",
   );
   assert.equal(
-    nextWeeklyRun(new Date("2026-08-10T23:00:00Z"), schedule).toISOString(),
-    "2026-08-17T23:00:00.000Z",
+    nextWeeklyRun(new Date("2026-08-10T08:30:00Z"), schedule).toISOString(),
+    "2026-08-17T08:30:00.000Z",
   );
   assert.equal(
     nextWeeklyRun(new Date("2026-08-12T12:00:00Z"), schedule).toISOString(),
-    "2026-08-17T23:00:00.000Z",
+    "2026-08-17T08:30:00.000Z",
   );
   assert.ok(fs.readFileSync(promptPath, "utf8").includes("Português do Brasil"));
   assert.equal(isAllowedReviewPath("README.md"), true);

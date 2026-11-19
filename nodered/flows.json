@@ -8739,7 +8739,7 @@
         "g": "weekly_docs_review_production_group",
         "id": "weekly_docs_review_architecture",
         "info": "O container Node-RED recebe apenas o diretório de gatilho e um helper allowlisted. Checkout, autenticação Codex, chave SSH e socket Docker não são expostos.",
-        "name": "Segunda 20:00 America/Sao_Paulo (23:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado",
+        "name": "Segunda 05:30 America/Sao_Paulo (08:30 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado",
         "type": "comment",
         "wires": [],
         "x": 780,
@@ -8747,10 +8747,10 @@
         "z": "weekly_docs_review_tab"
     },
     {
-        "crontab": "00 20 * * 1",
+        "crontab": "30 05 * * 1",
         "g": "weekly_docs_review_production_group",
         "id": "weekly_docs_review_schedule",
-        "name": "Segunda 20:00 (23:00 UTC)",
+        "name": "Segunda 05:30 (08:30 UTC)",
         "once": false,
         "onceDelay": "0.1",
         "payload": "",
