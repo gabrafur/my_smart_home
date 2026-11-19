@@ -115,6 +115,9 @@ recorder:
       - binary_sensor.internet_connection
       - sensor.tuya_devices_state
       - binary_sensor.tuya_devices
+      - sensor.vpn_primary_connection_state
+      - binary_sensor.vpn_primary_connection
+      - sensor.revisao_semanal_da_documentacao
 
 template:
   - binary_sensor:
