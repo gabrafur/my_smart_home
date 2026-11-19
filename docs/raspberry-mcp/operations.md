@@ -124,6 +124,14 @@ dos arquivos de composição. Dois eventos quebram essas ligações:
 | --- | --- |
 | Reinício sem endereço estático | `backend_ip_not_local_in_pinned_namespace` |
 | Contêiner recriado (imagem nova, rede ou composição alteradas) | `metadata_closed_response_required` |
+| Pacote `docker-ce-cli` atualizado (o leitor fixa o SHA-256 de `/usr/bin/docker`) | `metadata_closed_response_required` |
+| `nodered/settings.js` alterado (a ativação e a revisão do núcleo fixam o SHA-256) | `runtime_core_or_settings_drift`, depois `isolated_core_context_review_incomplete` |
+
+A mesma mensagem `metadata_closed_response_required` aparece nos dois primeiros casos; diferencie por
+`python3 scripts/proactive-maintenance-review.mjs` (fonte `nodered.admin_chain_pins`, só booleanos) ou
+comparando o ID do contêiner e o hash do binário com os fixados em `reader.py`. Em 19/11/2026 as duas
+causas estavam presentes ao mesmo tempo (o Docker foi atualizado em 16/11 e o contêiner recriado em 19/11),
+e a leitura só voltou depois de corrigir ambas e de refixar o hash do `settings.js`.
 
 O endereço fica estável com uma sobreposição privada da composição,
 `docker-compose.override.yml`, fora do Git: ela define a sub-rede da rede
@@ -142,7 +150,25 @@ com a leitura do runtime pela própria administração; `collection_error` nulo
 é o critério.
 
 Atualizações de imagem do Node-RED recriam o contêiner e exigem esse mesmo
-passo antes de a administração voltar a responder.
+passo antes de a administração voltar a responder. Isso inclui a etapa noturna de contêineres.
+
+Para um `docker-ce-cli` novo, confirme antes que o pacote está íntegro (`dpkg -V docker-ce-cli` sem saída) e
+use a mesma derivação com o par de digests do Docker (`derive(..., old_docker, new_docker)`): ela troca o
+digest no leitor e na guarda e refaz a mesma cadeia de hashes, sem mexer em identidade nem em rótulo.
+
+Para um `settings.js` novo e autorizado pelo proprietário, a ativação
+(`native-runtime-activation.json`) e a revisão do núcleo (`core-preservation-review.json`) guardam seu
+SHA-256, a política da administração guarda o hash de cada uma e a unidade guarda o hash da política. A troca
+é de três arquivos por vez (arquivo, política e unidade), sem reiniciar nada: só `daemon-reload`. Conferir
+com `nodered_admin_read` na visão `runtime` (`collection_error` nulo). Cada passo usa um operador Root
+revisado, com estado próprio e prova de que o `settings.js` do contêiner é o do disco.
+
+O leitor de diagnóstico legado (`project_files` → `runtime_observation`) tem vínculo próprio, com política,
+rede e rótulo fixados em `/usr/local/lib/raspberry-nodered-binding`. Depois da sobreposição de composição
+(rede recriada em 15/11, rótulo `config_files` com dois arquivos) o plano do vínculo é recusado com a razão
+genérica `binding_operation_unconfirmed_inspect_existing_receipt`. A causa provável é a identidade de rede e o
+rótulo fixados na aprovação de 08/11 (`network_id`, `COMPOSE_LABELS` em `native_manager.py`); ela ainda não foi
+confirmada no recibo e exige uma nova aprovação revisada. Não há derivação pura para isso ainda.
 
 ### Histórico de resultados do guardião de memória
 

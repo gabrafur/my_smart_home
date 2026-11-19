@@ -46,16 +46,29 @@ def swap_label(body, old, new, count):
     return after
 
 
-def derive(before, old_id, new_id, old_label, new_label):
+def derive(before, old_id, new_id, old_label, new_label, old_docker=None, new_docker=None):
+    """Re-bind to a recreated container and/or to an updated Docker CLI binary.
+
+    old_docker/new_docker (both or neither) move the pinned SHA-256 of /usr/bin/docker that the
+    reader and the guard verify before every inspection; the caller proves the new binary
+    (package integrity) before passing it. With only the Docker pair, identity and label stay.
+    """
     need(type(before) is dict and set(before) == set(NAMES)
          and all(type(v) is bytes and 0 < len(v) <= 1048576 for v in before.values()), 'six_fixed_inputs_required')
-    need(all(type(v) is str and ID.match(v) for v in (old_id, new_id)) and old_id != new_id, 'container_identity_shape')
+    need((old_docker is None) == (new_docker is None), 'docker_pair_required')
+    if old_docker is not None:
+        need(all(type(v) is str and ID.match(v) for v in (old_docker, new_docker)) and old_docker != new_docker,
+             'docker_digest_shape')
+    need(all(type(v) is str and ID.match(v) for v in (old_id, new_id)) and
+         (old_id != new_id or old_docker is not None), 'container_identity_shape')
     need(all(type(v) is str and LABEL.match(v) for v in (old_label, new_label)), 'label_shape')
     oid, nid, olab, nlab = (v.encode() for v in (old_id, new_id, old_label, new_label))
     h = {name: sha(body).encode() for name, body in before.items()}
     after = {}
 
     after['reader'] = swap_label(swap(before['reader'], oid, nid, 1, 'reader_identity_anchor'), olab, nlab, 1)
+    if old_docker is not None:
+        after['reader'] = swap(after['reader'], old_docker.encode(), new_docker.encode(), 1, 'reader_docker_anchor')
     policy = json.loads(before['reader_policy'])
     need(policy.get('container_id') == old_id and policy.get('source_sha256') == h['reader'].decode()
          and policy.get('enabled') is True, 'reader_policy_baseline')
@@ -67,6 +80,8 @@ def derive(before, old_id, new_id, old_label, new_label):
                                 'reader_unit_policy_anchor')
 
     after['guard'] = swap_label(swap(before['guard'], oid, nid, 2, 'guard_identity_anchor'), olab, nlab, 2)
+    if old_docker is not None:
+        after['guard'] = swap(after['guard'], old_docker.encode(), new_docker.encode(), 1, 'guard_docker_anchor')
     admin = json.loads(before['admin_policy'])
     producer = admin['native_guard_producer']['continuity_metadata_reader']
     need(admin['sources']['native_guard.py'] == h['guard'].decode()

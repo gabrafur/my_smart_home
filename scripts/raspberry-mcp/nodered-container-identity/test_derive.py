@@ -8,12 +8,15 @@ OLD, NEW = 'a' * 64, 'b' * 64
 OLAB, NLAB = '/srv/app/docker-compose.yml', '/srv/app/docker-compose.yml,/srv/app/docker-compose.override.yml'
 
 
-def chain(identity=OLD, label=OLAB):
-    reader = ("CONTAINER_ID='%s'\nIMAGE='sha256:%s'\nLABELS={'com.docker.compose.project.config_files':'%s'}\n"
-              % (identity, 'c' * 64, label)).encode()
+DOCK, NDOCK = 'd' * 64, 'e' * 64
+
+
+def chain(identity=OLD, label=OLAB, docker=DOCK):
+    reader = ("CONTAINER_ID='%s'\nIMAGE='sha256:%s'\nLABELS={'com.docker.compose.project.config_files':'%s'}\nDOCKER_SHA='%s'\n"
+              % (identity, 'c' * 64, label, docker)).encode()
     guard = ("SOURCE = b'LABELS={\\'com.docker.compose.project.config_files\\':\\'%s\\'}\\nCONTAINER_ID=\\'%s\\'\\n'\n"
-             "CONTAINER_ID = '%s'\nLABELS = {'com.docker.compose.project.config_files': '%s'}\nOTHER='%s'\n"
-             % (label, identity, identity, label, '/srv/app/docker-compose.yml')).encode()
+             "CONTAINER_ID = '%s'\nLABELS = {'com.docker.compose.project.config_files': '%s'}\nOTHER='%s'\nDOCKER='%s'\n"
+             % (label, identity, identity, label, '/srv/app/docker-compose.yml', docker)).encode()
     reader_policy = json.dumps({'container_id': identity, 'enabled': True, 'image': 'sha256:' + 'c' * 64,
                                 'source_sha256': derive.sha(reader)}, separators=(',', ':')).encode()
     reader_unit = b'ExecStart=python reader.py ' + derive.sha(reader_policy).encode() + b'\n'
@@ -33,6 +36,19 @@ class Derive(unittest.TestCase):
 
     def test_identity_only_change_keeps_the_label(self):
         self.assertEqual(derive.derive(chain(), OLD, NEW, OLAB, OLAB), chain(NEW, OLAB))
+
+    def test_docker_binary_update_alone_matches_a_chain_built_for_the_new_digest(self):
+        self.assertEqual(derive.derive(chain(), OLD, OLD, OLAB, OLAB, DOCK, NDOCK), chain(OLD, OLAB, NDOCK))
+
+    def test_docker_update_can_combine_with_a_recreated_container(self):
+        self.assertEqual(derive.derive(chain(), OLD, NEW, OLAB, NLAB, DOCK, NDOCK), chain(NEW, NLAB, NDOCK))
+
+    def test_docker_refusals(self):
+        good = chain()
+        for args in [(good, OLD, OLD, OLAB, OLAB, DOCK, DOCK), (good, OLD, OLD, OLAB, OLAB, 'f' * 64, NDOCK),
+                     (good, OLD, OLD, OLAB, OLAB, DOCK, None), (good, OLD, OLD, OLAB, OLAB, DOCK, 'X' * 64)]:
+            with self.assertRaises(ValueError):
+                derive.derive(*args)
 
     def test_unrelated_text_equal_to_the_label_is_untouched(self):
         self.assertIn(b"OTHER='/srv/app/docker-compose.yml'", derive.derive(chain(), OLD, NEW, OLAB, NLAB)['guard'])

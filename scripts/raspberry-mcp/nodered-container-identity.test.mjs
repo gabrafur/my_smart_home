@@ -8,5 +8,5 @@ test("Node-RED container identity derivation passes its synthetic suite", () => 
   const cwd = fileURLToPath(new URL("./nodered-container-identity/", import.meta.url));
   const result = spawnSync("python3", ["-B", "-m", "unittest", "test_derive"], { cwd, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Ran 4 tests/);
+  assert.match(result.stderr, /Ran 7 tests/);
 });

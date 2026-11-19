@@ -323,6 +323,22 @@ export const SOURCES = [
     },
   },
   {
+    id: "nodered.admin_chain_pins",
+    origin: "identity and Docker CLI digest pinned by the sealed Node-RED metadata reader versus the live container and binary (read-only)",
+    collect(ctx) {
+      // 19/11/2026: recreating the container and a Docker CLI package update each broke
+      // nodered_admin_read for days (metadata_closed_response_required) with nothing alerting.
+      // Only booleans leave here, never the digests themselves.
+      const source = fs.readFileSync(ctx.metadataReaderPath, "utf8");
+      const pinnedContainer = source.match(/^CONTAINER_ID='([a-f0-9]{64})'/m)?.[1];
+      const pinnedDocker = source.match(/^DOCKER_SHA='([a-f0-9]{64})'/m)?.[1];
+      if (!pinnedContainer || !pinnedDocker) throw new Error("reader_pins_not_found");
+      const live = runCommand(ctx, "docker", ["inspect", "--format", "{{.Id}}", "nodered"]).trim();
+      const binary = crypto.createHash("sha256").update(fs.readFileSync(ctx.dockerBinaryPath)).digest("hex");
+      return { container_matches: live === pinnedContainer, docker_binary_matches: binary === pinnedDocker };
+    },
+  },
+  {
     id: "zigbee.batteries",
     origin: "latest recorded battery level of each Zigbee2MQTT device (names from its configuration, levels from the recorder, read-only)",
     collect(ctx) {
@@ -473,9 +489,11 @@ export const SOURCES = [
 
 export function createContext({ policy, repoRoot = REPO_ROOT, now = Date.now(), run = spawnSync, procRoot = "/proc", home = os.homedir(),
   cgroupControllersPath = "/sys/fs/cgroup/cgroup.controllers",
-  clientPolicyPath = "/usr/local/lib/raspberry-task-terminal-observer/client-policy.json" } = {}) {
+  clientPolicyPath = "/usr/local/lib/raspberry-task-terminal-observer/client-policy.json",
+  metadataReaderPath = "/usr/local/lib/raspberry-nodered-runtime-metadata/reader.py",
+  dockerBinaryPath = "/usr/bin/docker" } = {}) {
   return {
-    policy, repoRoot, now, run, cgroupControllersPath, clientPolicyPath,
+    policy, repoRoot, now, run, cgroupControllersPath, clientPolicyPath, metadataReaderPath, dockerBinaryPath,
     procPath: (name) => path.join(procRoot, name),
     resolvePath: (value) => (value.startsWith("~/") ? path.join(home, value.slice(2)) : value),
   };
@@ -731,6 +749,18 @@ export function evaluate(evidence, policy) {
       benefit: "Com o controlador ativo, testes isolados e contêineres respeitam --memory e uma atualização não consome a RAM do Raspberry.",
       proposed_action: "Decisão do proprietário: acrescentar cgroup_enable=memory ao cmdline.txt e agendar um reboot autorizado.",
       evidence: ["host.update_protections"],
+    });
+  }
+
+  const pins = data("nodered.admin_chain_pins");
+  if (pins && (!pins.container_matches || !pins.docker_binary_matches)) {
+    const what = [!pins.container_matches && "o contêiner do Node-RED foi recriado", !pins.docker_binary_matches && "o binário do Docker mudou"].filter(Boolean).join(" e ");
+    add({
+      key: "nodered.admin_chain_pins_drift", priority: "P1", risk: "baixo",
+      title: `A leitura do Node-RED pela Eva vai falhar: ${what} desde o vínculo selado`,
+      benefit: "A cadeia selada de leitura fixa a identidade do contêiner e o digest do Docker; sem refazer o vínculo, nodered_admin_read responde metadata_closed_response_required.",
+      proposed_action: "Refazer o vínculo pelo operador Root revisado (docs/raspberry-mcp/operations.md, seção do vínculo do contêiner e do binário do Docker); não editar a política à mão.",
+      evidence: ["nodered.admin_chain_pins"],
     });
   }
 

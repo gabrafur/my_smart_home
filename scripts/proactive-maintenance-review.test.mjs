@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -40,6 +41,7 @@ const healthy = () => [
   source("ai.codex_account", { reason: "codex_usage_available", plan: "pro", usage_allowed: true, limit_reached_type: null, paid_credits_available: false, resets_at: null }),
   source("host.update_protections", { docker_live_restore: true, cgroup_memory_controller: true }),
   source("ai.client_execution_policy", { enabled: true, revoked: false, expires_at: null, expired: false, approval_recorded: true, changed_hours_ago: 50 }),
+  source("nodered.admin_chain_pins", { container_matches: true, docker_binary_matches: true }),
   source("zigbee.batteries", { levels: [{ name: "botao", percent: 100 }, { name: "controle", percent: null }] }),
   source("ha.unavailable_entities", { total: 3, stale_over_7_days: [] }),
   source("zigbee.devices_offline", { devices: [{ name: "lampada_varanda", mains: true, silent_minutes: 3 }, { name: "controlador_ir", mains: false, silent_minutes: 120 }] }),
@@ -99,7 +101,7 @@ test("collection errors are explicit and never look like healthy data", () => {
   const value = policy();
   const ctx = createContext({ policy: value, repoRoot: "/nonexistent-review-root", now: NOW,
     run: () => ({ status: 1, stdout: "" }), procRoot: "/nonexistent-proc",
-    clientPolicyPath: "/nonexistent-review-root/client-policy.json" });
+    clientPolicyPath: "/nonexistent-review-root/client-policy.json", metadataReaderPath: "/nonexistent-review-root/reader.py" });
   const evidence = collectEvidence(ctx);
   assert.equal(evidence.length, SOURCES.length);
   for (const item of evidence) {
@@ -558,6 +560,33 @@ test("battery source reads only device names and levels", () => {
   assert.deepEqual(data, { levels: [{ name: "botao_x", percent: 17 }, { name: "botao_x", percent: null }] });
   assert.match(seen[0], /'sensor\.botao_x_battery'/);
   assert.doesNotMatch(JSON.stringify([data, seen]), /PRIVATE_SENTINEL/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("drifted Node-RED administration pins are a P1 that names what changed", () => {
+  const both = evaluate(replace(healthy(), "nodered.admin_chain_pins", { container_matches: false, docker_binary_matches: false }), policy());
+  assert.deepEqual(both.map((f) => [f.key, f.priority]), [["nodered.admin_chain_pins_drift", "P1"]]);
+  assert.match(both[0].title, /recriado e o binário do Docker mudou/);
+  const docker = evaluate(replace(healthy(), "nodered.admin_chain_pins", { container_matches: true, docker_binary_matches: false }), policy());
+  assert.match(docker[0].title, /binário do Docker mudou/);
+  assert.doesNotMatch(docker[0].title, /recriado/);
+});
+
+test("admin chain pin source compares digests and exports only booleans", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pins-"));
+  const id = "a".repeat(64);
+  const binary = path.join(dir, "docker");
+  fs.writeFileSync(binary, "PRIVATE_SENTINEL-binary");
+  const digest = crypto.createHash("sha256").update("PRIVATE_SENTINEL-binary").digest("hex");
+  const reader = path.join(dir, "reader.py");
+  fs.writeFileSync(reader, `CONTAINER_ID='${id}'\nDOCKER_SHA='${digest}'\n`);
+  const source = SOURCES.find((item) => item.id === "nodered.admin_chain_pins");
+  const ctx = (live) => createContext({ policy: policy(), now: 1, metadataReaderPath: reader, dockerBinaryPath: binary,
+    run: () => ({ status: 0, stdout: `${live}\n` }) });
+  assert.deepEqual(source.collect(ctx(id)), { container_matches: true, docker_binary_matches: true });
+  assert.deepEqual(source.collect(ctx("b".repeat(64))), { container_matches: false, docker_binary_matches: true });
+  fs.writeFileSync(reader, "nothing here\n");
+  assert.throws(() => source.collect(ctx(id)), /reader_pins_not_found/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
