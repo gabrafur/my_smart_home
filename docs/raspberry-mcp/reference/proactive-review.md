@@ -109,7 +109,10 @@ indisponíveis ou desconhecidas há 7 dias ou mais, agrupadas pelo prefixo do no
 
 `zigbee.devices_offline` abre `zigbee.devices_offline`: P1 se um roteador na rede
 elétrica ficou mais de 45 minutos sem contato, P2 se só dispositivos a bateria passaram
-de 36 horas. A recuperação do coordenador não cobre módulos individuais.
+de 36 horas. Esses limites ficam acima da recuperação automática por módulo do Node-RED
+(aba `monitoramento_zigbee`: offline confirmado → mapa de rotas e reconfiguração limitada,
+três tentativas a cada 15 minutos, aviso no esgotamento) e do teste ativo do Zigbee2MQTT
+(10 minutos): quando o alerta aparece, o caminho automático já se esgotou e a ação é física.
 
 `ci.public` abre P1 `ci.public_red` quando a última validação pública concluída em
 `main` falhou, com o primeiro commit da sequência vermelha e quantas execuções

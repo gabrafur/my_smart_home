@@ -540,6 +540,9 @@ test("silent Zigbee devices are named: mains routers P1, battery devices only af
   assert.match(silent[0].title, /lampada_varanda \(rede elétrica, 1\.5 h sem contato\); controlador_ir \(bateria, 47\.8 h sem contato\)/);
   const battery = evaluate(replace(healthy(), "zigbee.devices_offline", { devices: [{ name: "controlador_ir", mains: false, silent_minutes: 2868 }] }), policy());
   assert.deepEqual(battery.map((f) => f.priority), ["P2"]);
+  // The Node-RED per-device recovery exists; the finding must not claim otherwise.
+  assert.match(silent[0].benefit, /Node-RED já tenta recuperar cada módulo/);
+  assert.doesNotMatch(`${silent[0].benefit} ${silent[0].proposed_action}`, /só cobre o coordenador/);
 });
 
 test("a low Zigbee battery is a P2 naming device and level", () => {

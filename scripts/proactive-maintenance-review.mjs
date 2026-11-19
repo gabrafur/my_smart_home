@@ -820,8 +820,12 @@ export function evaluate(evidence, policy) {
       add({
         key: "zigbee.devices_offline", priority: routers.length ? "P1" : "P2", risk: "baixo",
         title: `Módulo(s) Zigbee sem resposta: ${lost.map(label).join("; ")}`,
-        benefit: "A recuperação existente só cobre o coordenador; sem este alerta um módulo perdido passa despercebido até alguém tentar usá-lo.",
-        proposed_action: "Conferir energia/bateria e religar o módulo; se continuar sem resposta, revisar interferência no canal e a rota. Não acionar equipamentos sensíveis (portão) sem autorização específica.",
+        // 19/11/2026: the Node-RED tab monitoramento_zigbee already recovers individual
+        // devices (confirmed offline -> route map + bounded configure, 3 attempts / 15 min,
+        // alert on exhaustion) and Zigbee2MQTT pings routers every 10 min. Past these
+        // thresholds that automatic path has run out, so the action left is physical.
+        benefit: "O Node-RED já tenta recuperar cada módulo sozinho (mapa de rotas e reconfiguração, 3 tentativas a cada 15 min) e o Zigbee2MQTT testa os roteadores a cada 10 min; este alerta mostra o que continua sem contato depois disso.",
+        proposed_action: "A recuperação automática por módulo já foi tentada: conferir energia (interruptor de parede, tomada) ou bateria e religar o módulo; se continuar sem resposta, revisar a malha e a rota. Não acionar equipamentos sensíveis (portão) sem autorização específica.",
         evidence: ["zigbee.devices_offline"],
       });
     }
