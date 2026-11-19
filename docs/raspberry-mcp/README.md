@@ -9,7 +9,7 @@ renova concessões nem certifica a execução de um cliente recém-conectado.
 | --- | --- |
 | Entender fronteiras, dependências e portabilidade real | [Arquitetura e autoridade](architecture.md) |
 | Instalar a base ou conectar outro cliente, sem expor credenciais | [Instalação e conexão](installation.md) |
-| Conectar o Claude (app/web) por URL pública com OAuth | [Conector remoto do Claude](remote-connector.md) |
+| Conectar o Claude (app/web) por URL pública com OAuth | [Conector remoto do Claude](remote-connector.md) e [prompt de instalação](prompts/instalar-conector-remoto.md) |
 | Descobrir ferramentas e validar argumentos | [Ferramentas e esquemas](tools.md) |
 | Detectar, diagnosticar, corrigir, reverter e verificar | [Operação e recuperação](operations.md) |
 | Entender mudanças de caminhos e preservação das evidências | [Migração documental](migration.md) |

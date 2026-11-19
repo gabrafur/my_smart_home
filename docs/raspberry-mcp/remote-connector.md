@@ -55,6 +55,9 @@ Claude (Anthropic) ──HTTPS──> Tailscale Funnel ──> edge 127.0.0.1:87
 
 ## Preparar e ativar
 
+Para repetir a instalação com uma sessão do Claude Code, use o prompt salvo em
+[prompts/instalar-conector-remoto.md](prompts/instalar-conector-remoto.md). Os passos abaixo são a base dele.
+
 Pré-requisitos: o gateway `portable-http` (esta versão, que cria a chave restrita e o grupo
 `raspberry-mcp-edgekey`) instalado e ativo
 ([instalação](installation.md#preparar-o-transporte-http-opcional)), Funnel e certificados HTTPS
@@ -85,8 +88,36 @@ sudo tailscale funnel --bg 8766
 curl -fsS https://NOME.TAILNET.ts.net/.well-known/oauth-authorization-server
 ```
 
+### Tailscale (Funnel e HTTPS)
+
+Confira antes de pedir qualquer ação: `tailscale status --json` deve ter `Self.CertDomains` e, em
+`Self.Capabilities`, `https` e `funnel`. Se faltar:
+
+- painel de administração (login.tailscale.com/admin) → **DNS**: ligar MagicDNS e **Enable HTTPS**;
+- **Access controls**: um bloco `nodeAttrs` com `"attr": ["funnel"]`. Prefira o próprio nó (ou uma tag)
+  a `autogroup:member`. A política vale para a tailnet inteira: revise o trecho antes de salvar.
+
+Em 19/11/2026 a política já tinha o atributo para `autogroup:member` e o HTTPS já estava ligado, então
+nada precisou ser salvo. O login no painel é sempre do proprietário.
+
+### Senha e autenticador
+
+`set-owner` roda no terminal do proprietário e mostra uma **Manual key** (e um `otpauth://`). Ela **não é
+um código**: cadastre-a num app autenticador (adicionar conta → inserir chave de configuração → baseado em
+tempo). O app passa a mostrar o código de 6 dígitos que a página de autorização pede, e ele muda a cada
+30 s e vale uma vez. Se o código for recusado com a senha certa, confira a hora automática do celular.
+Perdeu a chave ou a senha: rode `set-owner` de novo (apaga os tokens e reinicia o edge se ativo).
+
 No Claude: Configurações → Conectores → Adicionar conector personalizado →
 `https://NOME.TAILNET.ts.net/mcp`. Entre com a senha e o código do autenticador quando a página abrir.
+
+## Atualizar uma instalação existente
+
+O `install.py` recusa arquivos diferentes dos instalados, de propósito. Para publicar uma versão nova do
+edge ou do gateway: rode `build_release.py` e os testes, revise o diff, copie o pacote para o staging em `/run`
+como na instalação, **pare o serviço**, substitua os arquivos em `/usr/local/lib/raspberry-mcp-edge/` (ou
+`-http/`) e a unidade em `/etc/systemd/system/` conferindo os hashes de `release.json`, rode `daemon-reload`
+e inicie de novo. Mudanças de código do edge não alteram credenciais nem tokens (o `store.json` é mantido).
 
 ## Desligar e revogar
 
@@ -125,3 +156,6 @@ Não testado:
 - Chamada direta de uma ferramenta de escrita pelo conector para ver a recusa (elas nem aparecem na lista; a recusa é coberta apenas pelos testes unitários).
 - Expiração e renovação do token de acesso (1 h), a revogação com `revoke-all` e o bloqueio de 15 minutos por erro de código.
 - Duas conversas simultâneas e o comportamento do limite de sessão do gateway.
+- Reconexão do Claude depois de 60 s de ociosidade (o gateway encerra a sessão).
+
+A URL pública contém o nome da tailnet e fica fora do Git.
