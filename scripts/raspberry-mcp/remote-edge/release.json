@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "files": {
+    "edge.py": "31b58d616c03fcfe92c30e5148ed6a1939d05dea444610b812e7910e962c1847",
+    "edge_admin.py": "9906651f8115646f9c75c45ecc5dfad381135b8aeb70960de029c7486e9e3379",
+    "raspberry-mcp-edge.service": "208de3ec0528d6f71a2343f3196370e7d600d55ca94281e29b0a37a1d92c7e20"
+  },
+  "loopback_only": true,
+  "automatic_activation": false,
+  "changes_backend_authority": false
+}
