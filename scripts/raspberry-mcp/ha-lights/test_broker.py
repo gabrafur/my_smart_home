@@ -203,5 +203,66 @@ class ActionTests(unittest.TestCase):
         self.assertTrue(all(x['available'] for x in read['actions']))
 
 
+class HouseHA(FakeHA):
+    def all_states(self):
+        return [{'entity_id': e, 'state': st, 'attributes': {'friendly_name': e.split('.')[1].replace('_', ' ')}} for e, st in self.states.items()]
+
+    def call(self, domain, service, entity, data=None):
+        self.calls.append((domain, service, entity, data))
+        if self.follow and domain in ('light', 'switch', 'fan'):
+            self.states[entity] = 'on' if service == 'turn_on' else 'off'
+
+
+def hreq(domain, service, entity, data=None, **extra):
+    args = {'host': 'raspberry', 'domain': domain, 'service': service, 'entity_id': entity}
+    if data is not None:
+        args['data'] = data
+    return {'name': 'ha_service_call', 'arguments': dict(args, **extra)}
+
+
+class HouseTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.ledger = b.Ledger(self.dir.name)
+        self.clock = Clock()
+        self.ha = HouseHA({'media_player.gabriel_s_fire_tv': 'idle', 'light.sala': 'off', 'lock.porta': 'locked',
+                           'switch.rele_acionador_portao': 'off', 'script.raspberry_desligar': 'off',
+                           'button.zigbee2mqtt_bridge_restart': 'unknown', 'sensor.temp': '20'})
+
+    def run_req(self, req, policy=POLICY):
+        return b.handle(req, policy, self.ha, self.ledger, self.clock, self.clock.sleep)
+
+    def test_tv_service_call_with_data_and_readback_for_lights(self):
+        r = self.run_req(hreq('media_player', 'volume_set', 'media_player.gabriel_s_fire_tv', {'volume_level': 0.2}))
+        self.assertEqual((r['state'], r['command_sent']), ('accepted', True))
+        self.assertEqual(self.ha.calls[0], ('media_player', 'volume_set', 'media_player.gabriel_s_fire_tv', {'volume_level': 0.2}))
+        self.clock.t += 2
+        self.assertEqual(self.run_req(hreq('light', 'turn_on', 'light.sala'))['state'], 'confirmed')
+
+    def test_denied_entities_unknown_services_domains_and_data_refused(self):
+        for req in (hreq('switch', 'turn_on', 'switch.rele_acionador_portao'), hreq('script', 'turn_on', 'script.raspberry_desligar'),
+                    hreq('button', 'press', 'button.zigbee2mqtt_bridge_restart'), hreq('light', 'reload', 'light.sala'),
+                    hreq('sensor', 'turn_on', 'sensor.temp'), hreq('light', 'turn_on', 'switch.x'),
+                    hreq('light', 'turn_on', 'light.sala', {'entity_id': 'x'}), hreq('light', 'turn_on', 'light.sala', {'brightness': {'a': 1}}),
+                    hreq('light', 'turn_on', 'light.sala', extra=1)):
+            self.assertEqual(self.run_req(req)['state'], 'refused', req)
+        self.assertEqual(self.ha.calls, [])
+
+    def test_lock_has_a_stricter_limit_and_spacing_and_unknown_entity_refused(self):
+        self.assertEqual(self.run_req(hreq('lock', 'unlock', 'lock.porta'))['state'], 'unconfirmed')
+        self.clock.t += 3
+        self.assertEqual(self.run_req(hreq('lock', 'lock', 'lock.porta'))['reason'], 'minimum_spacing')
+        self.assertEqual(self.run_req(hreq('light', 'turn_on', 'light.nao_existe'))['reason'], 'entity_not_found')
+
+    def test_entities_read_filters_and_hides_denied(self):
+        r = self.run_req({'name': 'ha_entities_read', 'arguments': {'host': 'raspberry', 'search': 'tv'}})
+        self.assertEqual([x['entity_id'] for x in r['entities']], ['media_player.gabriel_s_fire_tv'])
+        every = self.run_req({'name': 'ha_entities_read', 'arguments': {'host': 'raspberry'}})
+        ids = [x['entity_id'] for x in every['entities']]
+        self.assertNotIn('switch.rele_acionador_portao', ids)
+        self.assertNotIn('sensor.temp', ids)
+        self.assertNotIn('button.zigbee2mqtt_bridge_restart', ids)
+
+
 if __name__ == '__main__':
     unittest.main()

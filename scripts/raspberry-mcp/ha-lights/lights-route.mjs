@@ -20,10 +20,21 @@ export const actionDescriptors=[
   inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},target:{type:'string',enum:Object.keys(ACTIONS)},action:{type:'string',enum:['on','off','poweroff','pulse']}},required:['host','target','action']},
   annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:true}},
 ];
-const names=new Set([...lightDescriptors,...actionDescriptors].map(d=>d.name));
+const DOMAINS=['light','switch','fan','climate','media_player','cover','vacuum','remote','button','scene','script','input_boolean','input_button','number','select','lock','alarm_control_panel'];
+export const houseDescriptors=[
+ {name:'ha_entities_read',description:'List the household entities Eva may control (lights, switches, fans, air conditioners, TVs and other media players, covers, vacuum, remotes, buttons, scenes, scripts, locks, alarm panels) with their current state and the services each accepts. Filter by domain and/or a search text on the id or name (max 100 rows). Read only. Use it to find the entity_id before ha_service_call.',
+  inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},domain:{anyOf:[{type:'string',enum:DOMAINS},{type:'null'}]},search:{anyOf:[{type:'string',minLength:1,maxLength:64},{type:'null'}]}},required:['host']},
+  annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false}},
+ {name:'ha_service_call',description:'Call one Home Assistant service on one household entity found with ha_entities_read, for example light.turn_on, climate.set_temperature, media_player.turn_off or media_player.volume_set, cover.open_cover, lock.lock. Optional data holds only plain service fields (brightness_pct, temperature, hvac_mode, volume_level, source, ...). Never resent automatically: after uncertain/unconfirmed, observe with ha_entities_read. The garage gate is opened only through ha_action_run (portao_garagem); the Raspberry power controls and the gate relay are denied.',
+  inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},domain:{type:'string',enum:DOMAINS},service:{type:'string',pattern:'^[a-z_]{1,48}$'},entity_id:{type:'string',pattern:'^[a-z_]{1,32}\\.[a-z0-9_]{1,96}$'},data:{type:'object',additionalProperties:{anyOf:[{type:'string',maxLength:512},{type:'number'},{type:'boolean'},{type:'array',maxItems:4,items:{type:'number'}}]},maxProperties:8}},required:['host','domain','service','entity_id']},
+  annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:true}},
+];
+const names=new Set([...lightDescriptors,...actionDescriptors,...houseDescriptors].map(d=>d.name));
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x)&&Object.getPrototypeOf(x)===Object.prototype;
 export function validLightArgs(name,a){
  if(!plain(a)||a.host!=='raspberry')return false;
+ if(name==='ha_entities_read')return Object.keys(a).every(k=>['host','domain','search'].includes(k))&&(a.domain==null||DOMAINS.includes(a.domain))&&(a.search==null||(typeof a.search==='string'&&a.search.length>0&&a.search.length<=64));
+ if(name==='ha_service_call')return Object.keys(a).every(k=>['host','domain','service','entity_id','data'].includes(k))&&DOMAINS.includes(a.domain)&&typeof a.service==='string'&&/^[a-z_]{1,48}$/.test(a.service)&&typeof a.entity_id==='string'&&/^[a-z_]{1,32}\.[a-z0-9_]{1,96}$/.test(a.entity_id)&&a.entity_id.split('.')[0]===a.domain&&(a.data===undefined||(plain(a.data)&&Object.keys(a.data).length<=8&&Object.values(a.data).every(v=>['string','number','boolean'].includes(typeof v)||(Array.isArray(v)&&v.length<=4&&v.every(x=>typeof x==='number')))));
  if(name==='ha_actions_read')return Object.keys(a).every(k=>['host','target'].includes(k))&&(a.target===undefined||a.target===null||Object.hasOwn(ACTIONS,a.target));
  if(name==='ha_action_run')return Object.keys(a).length===3&&Object.hasOwn(ACTIONS,a.target)&&ACTIONS[a.target].includes(a.action);
  if(name==='ha_lights_read')return Object.keys(a).every(k=>['host','target'].includes(k))&&(a.target===undefined||a.target===null||TARGETS.includes(a.target));
@@ -39,9 +50,9 @@ export function invokeLights(request,socket=SOCKET){return new Promise((resolve,
 });}
 // The sealed diagnostics broker lists "no_actuators" for its own diagnostic scope.
 // Add, never rewrite, an explicit statement of the separate lighting tools.
-export const householdLights={tools:['ha_lights_read','ha_light_set','ha_actions_read','ha_action_run'],targets:TARGETS,
- actions:ACTIONS,scope:'registered_household_lights_and_actions',not_reachable:['alarm','locks','other_devices'],
- note:'no_actuators refers to the diagnostic and maintenance tools; registered lights use ha_light_set and the registered air conditioner, PC shutdown and garage gate pulse use ha_action_run, each limited by the broker.'};
+export const householdLights={tools:['ha_lights_read','ha_light_set','ha_actions_read','ha_action_run','ha_entities_read','ha_service_call'],targets:TARGETS,
+ actions:ACTIONS,scope:'whole_household_devices',not_reachable:['raspberry_power','gate_relay','system_administration'],
+ note:'no_actuators refers to the diagnostic and maintenance tools; household devices are found with ha_entities_read and driven with ha_service_call, the gate pulse, PC shutdown and air conditioner also by ha_action_run, each limited by the broker.'};
 export function annotateCapabilities(response){
  const r=response?.result;
  if(!r||!plain(r.structuredContent))return response;
@@ -57,7 +68,9 @@ export function makeLightsRoute(prior,invoke=invokeLights,audit=()=>{}){
    if(!validLightArgs(name,a))return{jsonrpc:'2.0',id:q.id??null,error:{code:-32602,message:'registered_light_parameters_refused'}};
    let value;
    try{
-    const args=name==='ha_lights_read'||name==='ha_actions_read'?{host:'raspberry',...(a.target?{target:a.target}:{})}
+    const args=name==='ha_entities_read'?{host:'raspberry',...(a.domain?{domain:a.domain}:{}),...(a.search?{search:a.search}:{})}
+     :name==='ha_service_call'?{host:'raspberry',domain:a.domain,service:a.service,entity_id:a.entity_id,...(a.data?{data:a.data}:{})}
+     :name==='ha_lights_read'||name==='ha_actions_read'?{host:'raspberry',...(a.target?{target:a.target}:{})}
      :name==='ha_action_run'?{host:'raspberry',target:a.target,action:a.action}:{host:'raspberry',target:a.target,state:a.state};
     value=await invoke({name,arguments:args});
     if(!plain(value))throw Error();
@@ -68,7 +81,7 @@ export function makeLightsRoute(prior,invoke=invokeLights,audit=()=>{}){
   }
   const response=await prior(q,...rest);
   if(q?.method==='tools/list'&&Array.isArray(response?.result?.tools))
-   for(const d of [...lightDescriptors,...actionDescriptors])if(!response.result.tools.some(t=>t.name===d.name))response.result.tools.push(structuredClone(d));
+   for(const d of [...lightDescriptors,...actionDescriptors,...houseDescriptors])if(!response.result.tools.some(t=>t.name===d.name))response.result.tools.push(structuredClone(d));
   if(q?.method==='tools/call'&&q.params?.name==='maintenance_capabilities')annotateCapabilities(response);
   return response;
  };

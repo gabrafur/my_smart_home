@@ -45,5 +45,110 @@
    "label": "Portão da garagem (um pulso)",
    "kind": "pulse"
   }
+ },
+ "generic": {
+  "per_hour": 120,
+  "spacing_seconds": 1,
+  "domains": {
+   "light": [
+    "turn_on",
+    "turn_off",
+    "toggle"
+   ],
+   "switch": [
+    "turn_on",
+    "turn_off",
+    "toggle"
+   ],
+   "fan": [
+    "turn_on",
+    "turn_off",
+    "toggle",
+    "set_percentage",
+    "oscillate",
+    "set_preset_mode"
+   ],
+   "climate": [
+    "turn_on",
+    "turn_off",
+    "set_temperature",
+    "set_hvac_mode",
+    "set_fan_mode",
+    "set_preset_mode",
+    "set_swing_mode"
+   ],
+   "media_player": [
+    "turn_on",
+    "turn_off",
+    "toggle",
+    "volume_set",
+    "volume_up",
+    "volume_down",
+    "volume_mute",
+    "media_play",
+    "media_pause",
+    "media_stop",
+    "media_play_pause",
+    "media_next_track",
+    "media_previous_track",
+    "select_source",
+    "play_media"
+   ],
+   "cover": [
+    "open_cover",
+    "close_cover",
+    "stop_cover",
+    "set_cover_position",
+    "toggle"
+   ],
+   "vacuum": [
+    "start",
+    "pause",
+    "stop",
+    "return_to_base",
+    "locate",
+    "clean_spot",
+    "set_fan_speed"
+   ],
+   "remote": [
+    "turn_on",
+    "turn_off",
+    "send_command"
+   ],
+   "button": [
+    "press"
+   ],
+   "scene": [
+    "turn_on"
+   ],
+   "script": [
+    "turn_on"
+   ],
+   "input_boolean": [
+    "turn_on",
+    "turn_off",
+    "toggle"
+   ],
+   "input_button": [
+    "press"
+   ],
+   "number": [
+    "set_value"
+   ],
+   "select": [
+    "select_option"
+   ],
+   "lock": [
+    "lock",
+    "unlock",
+    "open"
+   ],
+   "alarm_control_panel": [
+    "alarm_arm_away",
+    "alarm_arm_home",
+    "alarm_arm_night",
+    "alarm_disarm"
+   ]
+  }
  }
 }

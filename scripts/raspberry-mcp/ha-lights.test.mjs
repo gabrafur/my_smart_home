@@ -9,7 +9,7 @@ const cwd = fileURLToPath(new URL("./ha-lights/", import.meta.url));
 test("household lighting broker passes its synthetic suite", () => {
   const result = spawnSync("python3", ["-B", "-m", "unittest", "test_broker"], { cwd, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Ran 16 tests/);
+  assert.match(result.stderr, /Ran 20 tests/);
 });
 
 test("household lighting route refuses unregistered targets", () => {

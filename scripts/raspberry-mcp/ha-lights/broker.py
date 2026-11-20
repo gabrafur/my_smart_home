@@ -21,7 +21,7 @@ HA_URL = 'http://127.0.0.1:8123'
 MAX_REQUEST = 4096
 LEDGER_KEEP_SECONDS = 86400
 LEDGER_MAX_ROWS = 512
-TOOLS = ('ha_lights_read', 'ha_light_set', 'ha_actions_read', 'ha_action_run')
+TOOLS = ('ha_lights_read', 'ha_light_set', 'ha_actions_read', 'ha_action_run', 'ha_entities_read', 'ha_service_call')
 ENTITY = re.compile(r'(switch|light)\.[a-z0-9_]{1,64}')
 # Household actions beyond lights. The kind fixes the Home Assistant service and the allowed
 # verbs; nothing about the service comes from the caller or from the policy file.
@@ -31,6 +31,25 @@ ACTION_KINDS = {
     'pulse': {'domain': 'button', 'verbs': ('pulse',), 'per_hour': 6, 'spacing': 20},
 }
 TARGET = re.compile(r'[a-z0-9_]{1,64}')
+
+
+# Whole-house control (v4). The owner asked for Eva to reach every household device. The domain and
+# service allowlist lives in the Root-owned policy; the denials below are code: the Raspberry's own
+# power/restart controls, and the gate relay, which only the Node-RED pulse logic may drive.
+DENIED_ENTITIES = frozenset({'script.raspberry_desligar', 'script.raspberry_reiniciar', 'switch.rele_acionador_portao',
+                             'script.portao_garagem_acionar', 'script.portao_garagem_pulso'})
+DENIED_SUFFIX = ('_restart', '_reboot', '_core_restart')
+DATA_KEYS = frozenset({'brightness', 'brightness_pct', 'color_temp_kelvin', 'rgb_color', 'color_name', 'transition', 'effect',
+                       'temperature', 'target_temp_high', 'target_temp_low', 'hvac_mode', 'fan_mode', 'preset_mode',
+                       'swing_mode', 'volume_level', 'is_volume_muted', 'source', 'media_content_id', 'media_content_type',
+                       'position', 'percentage', 'oscillating', 'command', 'device', 'num_repeats', 'delay_secs',
+                       'fan_speed', 'value', 'option', 'humidity'})
+STRICT_DOMAINS = {'lock': (10, 10), 'alarm_control_panel': (10, 10)}  # (per hour, spacing seconds)
+GENERIC_EXPECT = {('light', 'turn_on'): 'on', ('light', 'turn_off'): 'off', ('switch', 'turn_on'): 'on',
+                  ('switch', 'turn_off'): 'off', ('fan', 'turn_on'): 'on', ('fan', 'turn_off'): 'off',
+                  ('lock', 'lock'): 'locked', ('lock', 'unlock'): 'unlocked'}
+ENTITY_ANY = re.compile(r'[a-z_]{1,32}\.[a-z0-9_]{1,96}')
+SERVICE = re.compile(r'[a-z_]{1,48}')
 
 
 class Refused(Exception):
@@ -60,6 +79,14 @@ def load_policy(path=POLICY):
         need(row['kind'] in ACTION_KINDS, 'policy_action_kind')
         need(type(row['entity_id']) is str and re.fullmatch(ACTION_KINDS[row['kind']]['domain'] + r'\.[a-z0-9_]{1,64}', row['entity_id']), 'policy_action_entity')
         need(type(row['label']) is str and 0 < len(row['label']) <= 64, 'policy_action_label')
+    generic = policy.get('generic')
+    if generic is not None:
+        need(type(generic) is dict and set(generic) == {'domains', 'per_hour', 'spacing_seconds'}, 'policy_generic')
+        need(type(generic['domains']) is dict and 0 < len(generic['domains']) <= 64, 'policy_generic_domains')
+        for domain, services in generic['domains'].items():
+            need(SERVICE.fullmatch(domain) and type(services) is list and 0 < len(services) <= 64
+                 and all(type(x) is str and SERVICE.fullmatch(x) for x in services), 'policy_generic_services')
+        need(all(type(generic[k]) is int and 0 < generic[k] <= 3600 for k in ('per_hour', 'spacing_seconds')), 'policy_generic_limits')
     limits = policy.get('limits')
     need(type(limits) is dict and set(limits) == {'commands_per_hour', 'minimum_spacing_seconds', 'readback_seconds'}, 'policy_limits')
     need(all(type(v) is int and 0 < v <= 3600 for v in limits.values()), 'policy_limit_values')
@@ -100,8 +127,11 @@ class HomeAssistant:
         self._request('POST', '/api/services/%s/%s' % (domain, 'turn_on' if on else 'turn_off'),
                       {'entity_id': entity_id})
 
-    def call(self, domain, service, entity_id):
-        self._request('POST', '/api/services/%s/%s' % (domain, service), {'entity_id': entity_id})
+    def call(self, domain, service, entity_id, data=None):
+        self._request('POST', '/api/services/%s/%s' % (domain, service), dict(data or {}, entity_id=entity_id))
+
+    def all_states(self):
+        return self._request('GET', '/api/states')
 
 
 class Ledger:
@@ -147,8 +177,33 @@ def describe(policy, key, ha):
             'collection_error': error}
 
 
+def check_data(data):
+    need(type(data) is dict and len(data) <= 8 and set(data) <= DATA_KEYS, 'data_refused')
+    for value in data.values():
+        scalar = type(value) in (str, int, float, bool) and (type(value) is not str or len(value) <= 512)
+        listed = type(value) is list and len(value) <= 4 and all(type(x) in (int, float) for x in value)
+        need(scalar or listed, 'data_refused')
+
+
+def check_generic(name, args, policy):
+    generic = policy.get('generic')
+    need(generic is not None, 'generic_control_not_installed')
+    if name == 'ha_entities_read':
+        need(set(args) <= {'host', 'domain', 'search'}, 'parameters_refused')
+        need(args.get('domain') is None or args['domain'] in generic['domains'], 'domain_not_registered')
+        need(args.get('search') is None or (type(args['search']) is str and 0 < len(args['search']) <= 64), 'parameters_refused')
+        return
+    need(set(args) <= {'host', 'domain', 'service', 'entity_id', 'data'} and {'host', 'domain', 'service', 'entity_id'} <= set(args), 'parameters_refused')
+    need(args['domain'] in generic['domains'] and args['service'] in generic['domains'][args['domain']], 'service_not_registered')
+    need(type(args['entity_id']) is str and ENTITY_ANY.fullmatch(args['entity_id']) and args['entity_id'].split('.')[0] == args['domain'], 'entity_refused')
+    need(args['entity_id'] not in DENIED_ENTITIES and not args['entity_id'].endswith(DENIED_SUFFIX), 'entity_denied')
+    check_data(args.get('data', {}))
+
+
 def check_args(name, args, policy):
     need(name in TOOLS and type(args) is dict and args.get('host') == 'raspberry', 'parameters_refused')
+    if name in ('ha_entities_read', 'ha_service_call'):
+        return check_generic(name, args, policy)
     actions = policy.get('actions', {})
     if name == 'ha_actions_read':
         need(set(args) <= {'host', 'target'}, 'parameters_refused')
@@ -182,6 +237,84 @@ def describe_action(policy, key, ha):
     return {'target': key, 'label': row['label'], 'kind': kind, 'verbs': list(ACTION_KINDS[kind]['verbs']),
             'state': observed['state'] if kind == 'power' else ('ready' if usable else observed['state']),
             'last_changed': observed['last_changed'], 'available': usable, 'collection_error': error}
+
+
+def entities_read(args, policy, ha, base):
+    generic = policy['generic']
+    try:
+        rows = ha.all_states()
+    except Exception:
+        return dict(base, state='unknown', collection_error='home_assistant_unreachable')
+    needle = (args.get('search') or '').lower()
+    out = []
+    for row in rows:
+        entity = row.get('entity_id', '')
+        domain = entity.split('.', 1)[0]
+        name = (row.get('attributes') or {}).get('friendly_name') or ''
+        if domain not in generic['domains'] or entity in DENIED_ENTITIES or entity.endswith(DENIED_SUFFIX):
+            continue
+        if args.get('domain') and domain != args['domain']:
+            continue
+        if needle and needle not in entity.lower() and needle not in str(name).lower():
+            continue
+        out.append({'entity_id': entity, 'name': str(name)[:64], 'state': str(row.get('state'))[:32],
+                    'services': generic['domains'][domain]})
+    out.sort(key=lambda r: r['entity_id'])
+    return dict(base, state='observed', entities=out[:100], total=len(out), truncated=len(out) > 100,
+                control_enabled=policy['enabled'] and not policy['revoked'], collection_error=None)
+
+
+def service_call(args, policy, ha, ledger, clock, sleep, base):
+    generic = policy['generic']
+    domain, service, entity, data = args['domain'], args['service'], args['entity_id'], args.get('data', {})
+    if not policy['enabled'] or policy['revoked']:
+        return dict(base, state='refused', reason='control_disabled', entity_id=entity, command_sent=False, collection_error=None)
+    now = clock()
+    try:
+        before = ha.state(entity)
+    except Exception:
+        return dict(base, state='refused', reason='home_assistant_unreachable', entity_id=entity, command_sent=False, collection_error=None)
+    if before['state'] in ('missing', 'unavailable'):
+        return dict(base, state='refused', reason='device_unavailable' if before['state'] == 'unavailable' else 'entity_not_found',
+                    entity_id=entity, command_sent=False, collection_error=None)
+    per_hour, spacing = STRICT_DOMAINS.get(domain, (generic['per_hour'], generic['spacing_seconds']))
+    with ledger as book:
+        recent = [r for r in book.rows if r.get('scope') == 'generic' and r.get('strict') == (domain in STRICT_DOMAINS)
+                  and now - r['at'] < 3600]
+        if len(recent) >= per_hour:
+            return dict(base, state='refused', reason='hourly_command_limit', entity_id=entity, command_sent=False, collection_error=None)
+        if recent and now - max(r['at'] for r in recent) < spacing:
+            return dict(base, state='refused', reason='minimum_spacing', entity_id=entity, command_sent=False, collection_error=None)
+        entry = {'at': now, 'scope': 'generic', 'strict': domain in STRICT_DOMAINS, 'entity_id': entity,
+                 'service': domain + '.' + service, 'before': before['state'], 'outcome': 'intent_recorded'}
+        book.rows.append(entry)
+        book.save(now)
+        try:
+            ha.call(domain, service, entity, data)
+            sent = 'accepted'
+        except Exception:
+            sent = 'uncertain'
+        expect = GENERIC_EXPECT.get((domain, service))
+        deadline = clock() + (policy['limits']['readback_seconds'] if expect else 2)
+        observed = before
+        while True:
+            try:
+                observed = ha.state(entity)
+            except Exception:
+                observed = {'state': 'unknown', 'last_changed': None}
+            done = observed['state'] == expect if expect else clock() >= deadline
+            if done or clock() >= deadline:
+                break
+            sleep(0.5)
+        if expect:
+            outcome = 'confirmed' if observed['state'] == expect else ('uncertain' if sent == 'uncertain' else 'unconfirmed')
+        else:
+            outcome = 'accepted' if sent == 'accepted' else 'uncertain'
+        entry['outcome'], entry['observed'], entry['service_call'] = outcome, observed['state'], sent
+        book.save(clock())
+    return dict(base, state=outcome, entity_id=entity, service=domain + '.' + service, before_state=before['state'],
+                observed_state=observed['state'], command_sent=True, service_call=sent, collection_error=None,
+                note=None if outcome in ('confirmed', 'accepted') else 'observe with ha_entities_read; the command is never resent automatically')
 
 
 def run_action(request, policy, ha, ledger, clock, sleep, base):
@@ -262,6 +395,10 @@ def handle(request, policy, ha, ledger, clock=time.time, sleep=time.sleep):
     except Refused as error:
         return dict(base, state='refused', reason=str(error), collection_error=None)
     args = request['arguments']
+    if request['name'] == 'ha_entities_read':
+        return entities_read(args, policy, ha, base)
+    if request['name'] == 'ha_service_call':
+        return service_call(args, policy, ha, ledger, clock, sleep, base)
     if request['name'] == 'ha_actions_read':
         keys = [args['target']] if args.get('target') else sorted(policy.get('actions', {}))
         rows = [describe_action(policy, key, ha) for key in keys]

@@ -13,8 +13,8 @@ A Eva lê e aciona um conjunto fixo de luzes da casa por duas ferramentas MCP:
 Alvos registrados (política `/usr/local/lib/raspberry-ha-lights/policy.json`):
 `lampadas_garagem`, `lampada_varanda`, `abajour_sala_de_estar`,
 `refletores_jardim` e `refletor_portao_carros`. Só entidades `switch`/`light`
-podem ser registradas. Alarme, fechaduras e controles do veículo não estão
-registrados e são inalcançáveis: o chamador envia apenas a chave registrada e o verbo.
+podem ser registradas. As ferramentas acima são a v1/v2. A seção "Controle de toda a casa (v4)" abaixo
+amplia o alcance: a Eva agora pode comandar qualquer dispositivo da casa.
 
 ## Ações da casa (v3, 20/11/2026)
 
@@ -97,3 +97,34 @@ A v3 foi instalada pelo operador Root `closure-claude-1720/ha-lights-r3/deploy.p
 `lights-route.mjs`; imagens anteriores em `BEFORE-V2`; `rollback` volta à v2). O broker
 roda por conexão, então não reinicia serviço; o frontend carrega a rota nova na
 conexão seguinte (reiniciar `raspberry-mcp-tunnel.service`).
+
+## Controle de toda a casa (v4, 20/11/2026)
+
+O proprietário pediu que a Eva controle tudo que a casa tem (dispositivos, TV e o resto),
+porque só ele e quem mora na casa têm acesso a ela. Duas ferramentas, no mesmo broker:
+
+- `ha_entities_read` lista as entidades controláveis (filtro por `domain` e por `search`,
+  até 100 linhas) com estado e os serviços aceitos.
+- `ha_service_call` (`destructiveHint: true`) chama um serviço em uma entidade:
+  `domain`, `service`, `entity_id` e `data` opcional.
+
+Alcance (política `generic`, Root): `light`, `switch`, `fan`, `climate`, `media_player`
+(inclui a TV Samsung e os Fire TV), `cover`, `vacuum`, `remote`, `button`, `scene`,
+`script`, `input_boolean`, `input_button`, `number`, `select`, `lock` e
+`alarm_control_panel`, cada um com a lista fechada de serviços. `data` aceita só
+campos simples e conhecidos (`brightness_pct`, `temperature`, `hvac_mode`,
+`volume_level`, `source`...), sem objetos aninhados.
+
+Negado no código, não na política: `script.raspberry_desligar`,
+`script.raspberry_reiniciar`, qualquer entidade terminada em `_restart`/`_reboot`
+(a Eva não derruba o próprio Raspberry), e o relé do portão
+(`switch.rele_acionador_portao`) e seus scripts, que só o Node-RED aciona. O portão abre
+somente por `ha_action_run` (`portao_garagem`), com limite próprio. Administração do HA,
+`homeassistant.*`, `shell_command` e automações não estão no alcance.
+
+Limites: 120 comandos por hora e 1 s entre eles; `lock` e `alarm_control_panel` têm 10
+por hora e 10 s. Cada comando é gravado antes do envio e nunca é reenviado. Luzes,
+`switch`, `fan` e `lock` são lidos de volta (`confirmed`/`unconfirmed`); os demais
+retornam `accepted` quando o Home Assistant aceitou o serviço. Para desfazer o alcance
+amplo, remova `generic` da política (as ferramentas respondem `generic_control_not_installed`)
+ou volte à v3 com `ha-lights-r4/deploy.py rollback`.

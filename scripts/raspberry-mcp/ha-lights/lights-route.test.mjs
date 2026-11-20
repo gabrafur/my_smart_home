@@ -7,7 +7,7 @@ const sent=[];
 const route=makeLightsRoute(prior,async r=>{sent.push(r);return {state:'confirmed',collection_error:null};});
 
 const list=await route({jsonrpc:'2.0',id:1,method:'tools/list'});
-assert.deepEqual(list.result.tools.map(t=>t.name),['x','ha_lights_read','ha_light_set','ha_actions_read','ha_action_run']);
+assert.deepEqual(list.result.tools.map(t=>t.name),['x','ha_lights_read','ha_light_set','ha_actions_read','ha_action_run','ha_entities_read','ha_service_call']);
 assert.equal(lightDescriptors[1].annotations.readOnlyHint,false);
 
 const ok=await route({jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'ha_light_set',arguments:{host:'raspberry',target:'lampadas_garagem',state:'on'}}});
@@ -41,8 +41,8 @@ await caps({jsonrpc:'2.0',id:7,method:'tools/call',params:{name:'ha_light_set',a
 assert.deepEqual(rows,[{tool:'ha_light_set',id:7,success:true,state:'confirmed'}]);
 const c=await caps({jsonrpc:'2.0',id:8,method:'tools/call',params:{name:'maintenance_capabilities',arguments:{host:'raspberry'}}});
 assert.deepEqual(c.result.structuredContent.limits,['no_actuators']);
-assert.deepEqual(c.result.structuredContent.household_lights.tools,['ha_lights_read','ha_light_set','ha_actions_read','ha_action_run']);
-assert.equal(JSON.parse(c.result.content[0].text).household_lights.scope,'registered_household_lights_and_actions');
+assert.deepEqual(c.result.structuredContent.household_lights.tools,['ha_lights_read','ha_light_set','ha_actions_read','ha_action_run','ha_entities_read','ha_service_call']);
+assert.equal(JSON.parse(c.result.content[0].text).household_lights.scope,'whole_household_devices');
 console.log('lights route: audit and capability annotation passed');
 
 // Household actions: air conditioner, PC shutdown and gate pulse travel as target + verb only.
@@ -64,3 +64,19 @@ assert.equal(actionDescriptors.find(d=>d.name==='ha_actions_read').annotations.r
 await actRoute({jsonrpc:'2.0',id:11,method:'tools/call',params:{name:'ha_actions_read',arguments:{host:'raspberry',target:null}}});
 assert.deepEqual(acts.at(-1),{name:'ha_actions_read',arguments:{host:'raspberry'}});
 console.log('lights route: household actions passed');
+
+// Whole-house control: find an entity, then one service call with plain data.
+const house=[];
+const hr=makeLightsRoute(prior,async r=>{house.push(r);return {state:'accepted',collection_error:null};});
+await hr({jsonrpc:'2.0',id:12,method:'tools/call',params:{name:'ha_entities_read',arguments:{host:'raspberry',domain:'media_player',search:'tv'}}});
+assert.deepEqual(house.at(-1),{name:'ha_entities_read',arguments:{host:'raspberry',domain:'media_player',search:'tv'}});
+await hr({jsonrpc:'2.0',id:13,method:'tools/call',params:{name:'ha_service_call',arguments:{host:'raspberry',domain:'media_player',service:'turn_off',entity_id:'media_player.gabriel_s_fire_tv',data:{volume_level:0.2}}}});
+assert.deepEqual(house.at(-1).arguments,{host:'raspberry',domain:'media_player',service:'turn_off',entity_id:'media_player.gabriel_s_fire_tv',data:{volume_level:0.2}});
+for(const a of [{domain:'media_player',service:'turn_off',entity_id:'light.x'},{domain:'shell_command',service:'x',entity_id:'shell_command.x'},
+  {domain:'light',service:'Turn On',entity_id:'light.x'},{domain:'light',service:'turn_on',entity_id:'light.x',data:{a:{b:1}}},
+  {domain:'light',service:'turn_on',entity_id:'light.x',extra:1}]){
+ const r=await hr({jsonrpc:'2.0',id:14,method:'tools/call',params:{name:'ha_service_call',arguments:{host:'raspberry',...a}}});
+ assert.equal(r.error.message,'registered_light_parameters_refused');
+}
+assert.equal(house.length,2);
+console.log('lights route: whole-house control passed');
