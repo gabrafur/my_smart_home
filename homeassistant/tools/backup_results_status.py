@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Report Git, offsite copy and tested restoration as three separate results.
 
-Read-only producer for the house-status dashboard. Each result carries the
+Read-only producer for the Sistema dashboard (Saúde view). Each result carries the
 last attempt, the last confirmation and the age of the data, and the producer
 (not the dashboard) classifies freshness. Only fixed fields leave this script:
 never paths, request ids, remote names or private manifests.

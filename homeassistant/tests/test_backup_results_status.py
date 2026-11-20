@@ -77,7 +77,7 @@ class BackupResultsStatusTest(unittest.TestCase):
         # Per-poll values would write a recorder row every 5 min.
         self.assertNotIn("age_seconds", attributes)
         self.assertNotIn("checked_at", attributes)
-        dashboard = (ROOT / "dashboards" / "house_status.yaml").read_text()
+        dashboard = (ROOT / "dashboards" / "sistema.yaml").read_text()
         for entity in ("sensor.backup_result_git", "sensor.backup_result_offsite", "sensor.backup_result_restore"):
             self.assertIn(entity, dashboard)
         self.assertNotIn("93600", dashboard)

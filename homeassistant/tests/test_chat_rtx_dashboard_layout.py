@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 
-DASHBOARD = Path(__file__).resolve().parents[1] / "dashboards" / "chat.yaml"
+DASHBOARD = Path(__file__).resolve().parents[1] / "dashboards" / "sistema.yaml"
 CODEX_PACKAGE = Path(__file__).resolve().parents[1] / "packages" / "codex_usage.yaml"
 
 
@@ -15,8 +15,8 @@ def rtx_view() -> str:
     """Return only the RTX view so other dashboard layouts do not affect the test."""
     content = DASHBOARD.read_text(encoding="utf-8")
     start = content.index("  - title: RTX 4070\n")
-    end = content.index("  - title: Assistentes\n", start)
-    return content[start:end]
+    match = re.compile(r"^  - title: ", re.M).search(content, start + 1)
+    return content[start : match.start() if match else len(content)]
 
 
 class RtxDashboardLayoutTest(unittest.TestCase):

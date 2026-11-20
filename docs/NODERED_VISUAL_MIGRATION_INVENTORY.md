@@ -60,7 +60,7 @@ quando uma etapa for concluída.
 | `homeassistant/packages/codex_usage.yaml` | Produção/derivação de telemetria e helpers | Também calcula nível normal/atenção/crítico | Manter dados brutos; publicar nível canônico pelo Node-RED e fazer sensores/painéis apenas consumirem. |
 | `homeassistant/dashboards/vehicle_primary.yaml` | Apresentação | Reclassifica idade de telemetria/cache com limites próprios | Substituir limites Jinja por status/razões canônicos publicados pelo Node-RED. |
 | `homeassistant/dashboards/location.yaml` | Mapa e diagnóstico | Usa atributos canônicos de raio/seleção | Manter como consumidor; remover somente fallback decisório duplicado encontrado pelos testes de auditoria. |
-| `homeassistant/dashboards/raspberry_pi_health.yaml` | Apresentação e comandos explícitos | Exibe sensores binários classificados no HA | Passar a exibir estados/atributos canônicos do Node-RED; comandos continuam ações explícitas do usuário. |
+| `homeassistant/dashboards/sistema.yaml` (antigo `raspberry_pi_health.yaml`) | Apresentação e comandos explícitos | Exibe sensores binários classificados no HA | Passar a exibir estados/atributos canônicos do Node-RED; comandos continuam ações explícitas do usuário. |
 
 ## Auditoria dos painéis e produtores
 
@@ -74,10 +74,10 @@ selecionar tracker, autorizar serviço, aplicar cooldown ou acionar efeito.
 
 | Painel | Fonte consumida | Lógica local permitida | Decisão operacional |
 | --- | --- | --- | --- |
-| `chat.yaml` | Sensores canônicos de uso Codex/RTX e resultados sanitizados | Formatação, percentuais, tabelas e gráficos textuais | Nenhuma |
-| `codex.yaml` | Integração de conversa e scripts explícitos | Interface do chat | Nenhuma |
+| `casa.yaml` | Entidades da casa, trackers de papel e helper de rascunho da Alexa | Nomes, ícones e visibilidade | Nenhuma; portão, alarme e carro usam ações explícitas ou o diálogo nativo |
+| `chat.yaml` | Integração de conversa | Interface do chat | Nenhuma |
 | `location.yaml` | Trackers, fonte escolhida, frescor e raios publicados pelo Node-RED | Rótulos, datas e formatação | Nenhuma; não recalcula distância nem escolhe fonte |
-| `raspberry_pi_health.yaml` | Sensores e estados canônicos de infraestrutura | Cards nativos e botões explícitos | Nenhuma |
+| `sistema.yaml` | Sensores canônicos de infraestrutura, backups e uso Codex/RTX | Cards nativos, formatação, visibilidade e botões explícitos | Nenhuma |
 | `vehicle_primary.yaml` | Estado, localização, refresh, comandos e viagens já classificados | Idades e rótulos de apresentação | Nenhuma; wake, backoff, cooldown e efeitos pertencem ao Node-RED |
 
 Os arquivos `homeassistant/www/codex-chat-card*.js` são componentes de interface:

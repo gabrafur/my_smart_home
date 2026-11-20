@@ -174,7 +174,7 @@ class DashboardNumberFormattingTest(unittest.TestCase):
                     )
 
     def test_codex_local_activity_is_rendered_in_portuguese_without_frontend_locale(self):
-        dashboard = (DASHBOARDS / "chat.yaml").read_text(encoding="utf-8")
+        dashboard = (DASHBOARDS / "sistema.yaml").read_text(encoding="utf-8")
 
         self.assertIn("## Última atividade local", dashboard)
         self.assertIn("agora mesmo.", dashboard)
@@ -187,7 +187,7 @@ class DashboardNumberFormattingTest(unittest.TestCase):
         )
 
     def test_rtx_activity_uses_explicit_local_dates_and_ptbr_numbers(self):
-        dashboard = (DASHBOARDS / "chat.yaml").read_text(encoding="utf-8")
+        dashboard = (DASHBOARDS / "sistema.yaml").read_text(encoding="utf-8")
         self.assertIn("heading: Execuções recentes", dashboard)
         self.assertIn("timestamp_custom('%d/%m %H:%M', true)", dashboard)
         self.assertIn("format_number_ptbr(job.get('duration'), 1)", dashboard)
@@ -206,13 +206,13 @@ class DashboardNumberFormattingTest(unittest.TestCase):
                 self.assertIn("state_class:", block)
 
     def test_storage_health_confirmation_documents_bounded_cache(self):
-        dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")
+        dashboard = (DASHBOARDS / "sistema.yaml").read_text(encoding="utf-8")
 
         self.assertIn("preserva 2 GB de cache recente", dashboard)
         self.assertIn("entity_id: input_button.storage_health_manual_run", dashboard)
 
     def test_storage_health_last_run_is_visible_in_storage_section(self):
-        dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")
+        dashboard = (DASHBOARDS / "sistema.yaml").read_text(encoding="utf-8")
 
         heading = dashboard.index("heading: Armazenamento e infraestrutura")
         next_heading = dashboard.index("heading:", heading + 1)
@@ -231,7 +231,7 @@ class DashboardNumberFormattingTest(unittest.TestCase):
         self.assertNotIn("name: Imagens Docker descartáveis", section)
 
     def test_manual_action_buttons_expose_running_state(self):
-        dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")
+        dashboard = (DASHBOARDS / "sistema.yaml").read_text(encoding="utf-8")
 
         self.assertIn("entity: binary_sensor.raspberry_pi_storage_manual_running", dashboard)
         self.assertIn("entity: binary_sensor.revisao_documental_em_execucao", dashboard)

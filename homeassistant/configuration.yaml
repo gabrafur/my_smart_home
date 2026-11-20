@@ -46,18 +46,21 @@ lovelace:
       icon: mdi:car
       show_in_sidebar: true
       filename: dashboards/vehicle_primary.yaml
-    raspberry-pi-system-health:
+    painel-casa:
       mode: yaml
-      title: Raspberry Pi - System Health
-      icon: mdi:raspberry-pi
+      title: Casa
+      icon: mdi:home-variant-outline
       show_in_sidebar: true
-      filename: dashboards/raspberry_pi_health.yaml
-    house-status:
+      filename: dashboards/casa.yaml
+    # Manutenção: Placar da casa, System Health e uso do Codex/RTX num só
+    # painel, invisível para quem não é administrador.
+    painel-sistema:
       mode: yaml
-      title: Placar da casa
-      icon: mdi:home-heart
+      title: Sistema
+      icon: mdi:server-network
       show_in_sidebar: true
-      filename: dashboards/house_status.yaml
+      require_admin: true
+      filename: dashboards/sistema.yaml
 
 automation: !include automations.yaml
 script: !include scripts.yaml

@@ -81,7 +81,7 @@ preserva exatamente `public_bindings` com papel `mobile_primary` e ação
 `notify`. Não há fallback para todas as Alexas. Um target ausente ou
 desconhecido é rejeitado sem anúncio.
 
-O painel `/chat-assistants/alexa` publica o evento
+A seção **Falar na Alexa** do painel Casa (`/painel-casa/inicio`) publica o evento
 `alexa_text_announcement_requested` com o texto digitado. O adaptador visual no
 próprio hub remove espaços das extremidades, limita o contrato a 255 caracteres
 e fixa `source=chat_dashboard`, `mode=announce` e o único target permitido,

@@ -1,0 +1,573 @@
+# Painel diário da casa, padrão para todos os moradores.
+#
+# Regras de desenho (docs/DASHBOARDS.md):
+# - um heading por seção; os cartões abaixo dele não repetem título;
+# - nomes curtos definidos no cartão, sem renomear entidades;
+# - toda ação física (portão, alimentar, alarme) confirma ou abre o diálogo
+#   nativo; manutenção do servidor fica no painel Sistema (só administrador);
+# - o carro usa somente as entidades de papel vehicle_primary.
+title: Casa
+views:
+  - title: Início
+    path: inicio
+    type: sections
+    max_columns: 3
+    dense_section_placement: true
+    header:
+      layout: start
+      badges_position: bottom
+      card:
+        type: markdown
+        text_only: true
+        content: >-
+          ## {% set h = now().hour %}{{ 'Bom dia' if h < 12 else
+          ('Boa tarde' if h < 18 else 'Boa noite') }}, {{ user }}
+    badges:
+      - type: entity
+        entity: device_tracker.resident_primary_location
+        show_name: true
+        show_state: true
+        tap_action:
+          action: navigate
+          navigation_path: /map
+      - type: entity
+        entity: device_tracker.resident_secondary_location
+        show_name: true
+        show_state: true
+        tap_action:
+          action: navigate
+          navigation_path: /map
+      - type: entity
+        entity: alarm_control_panel.alarme_moni_mobile
+        name: Alarme
+        show_name: true
+        show_state: true
+      - type: entity
+        entity: weather.forecast_home
+        show_name: false
+        show_state: true
+      - type: entity
+        entity: lock.vehicle_primary_door_lock
+        name: Creta
+        show_name: true
+        show_state: true
+        tap_action:
+          action: navigate
+          navigation_path: /creta-viagens
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Acesso rápido
+            icon: mdi:gesture-tap-button
+          - type: tile
+            entity: button.acionar_portao_da_garagem
+            name: Portão
+            icon: mdi:gate
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.acionar_portao_da_garagem
+              confirmation:
+                text: Acionar o portão da garagem?
+            hold_action:
+              action: more-info
+          - type: tile
+            entity: alarm_control_panel.alarme_moni_mobile
+            name: Alarme
+            # O diálogo nativo exige o código para armar ou desarmar.
+            tap_action:
+              action: more-info
+          - type: tile
+            entity: climate.ar_condicionado_escritorio
+            name: Ar do escritório
+            grid_options:
+              columns: 12
+            features_position: inline
+            features:
+              - type: target-temperature
+          - type: tile
+            entity: vacuum.lds_robot
+            name: Aspirador
+            grid_options:
+              columns: 12
+            features_position: inline
+            features:
+              - type: vacuum-commands
+                commands:
+                  - start_pause
+                  - return_home
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Luzes
+            icon: mdi:lightbulb-group-outline
+          - type: tile
+            entity: switch.lampadas_garagem
+            name: Garagem
+            icon: mdi:garage-variant
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: switch.refletor_portao_carros
+            name: Refletor portão
+            icon: mdi:spotlight-beam
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: switch.lampada_varanda
+            name: Varanda
+            icon: mdi:outdoor-lamp
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: switch.refletores_jardim
+            name: Jardim
+            icon: mdi:spotlight-beam
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: switch.abajour_sala_de_estar
+            name: Abajur da sala
+            icon: mdi:floor-lamp
+            tap_action:
+              action: toggle
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Falar na Alexa
+            icon: mdi:account-voice
+          # O campo guarda só o rascunho; o botão publica a intenção e o
+          # Node-RED escolhe a Alexa e entrega. O campo é limpo após o envio.
+          - type: entities
+            show_header_toggle: false
+            grid_options:
+              columns: 12
+            entities:
+              - entity: input_text.alexa_mensagem
+                name: O que a Alexa deve dizer
+                icon: mdi:message-text-outline
+          - type: tile
+            entity: button.ler_mensagem_na_alexa
+            name: Falar agora
+            icon: mdi:send
+            hide_state: true
+            grid_options:
+              columns: 12
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.ler_mensagem_na_alexa
+          - type: tile
+            entity: input_text.alexa_mensagem
+            name: O jantar está pronto
+            icon: mdi:silverware-fork-knife
+            hide_state: true
+            vertical: true
+            grid_options:
+              columns: 4
+            tap_action:
+              action: perform-action
+              perform_action: input_text.set_value
+              target:
+                entity_id: input_text.alexa_mensagem
+              data:
+                value: O jantar está pronto!
+          - type: tile
+            entity: input_text.alexa_mensagem
+            name: Estou chegando
+            icon: mdi:car-arrow-right
+            hide_state: true
+            vertical: true
+            grid_options:
+              columns: 4
+            tap_action:
+              action: perform-action
+              perform_action: input_text.set_value
+              target:
+                entity_id: input_text.alexa_mensagem
+              data:
+                value: Estou chegando em casa.
+          - type: tile
+            entity: input_text.alexa_mensagem
+            name: Desce aqui
+            icon: mdi:stairs-down
+            hide_state: true
+            vertical: true
+            grid_options:
+              columns: 4
+            tap_action:
+              action: perform-action
+              perform_action: input_text.set_value
+              target:
+                entity_id: input_text.alexa_mensagem
+              data:
+                value: Pode descer aqui, por favor?
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Creta
+            icon: mdi:car-hatchback
+            tap_action:
+              action: navigate
+              navigation_path: /creta-viagens
+          - type: tile
+            entity: device_tracker.vehicle_primary_location_nodered
+            name: Onde está
+            icon: mdi:car-hatchback
+            tap_action:
+              action: navigate
+              navigation_path: /creta-viagens
+          - type: tile
+            entity: lock.vehicle_primary_door_lock
+            name: Portas
+            # Travar e destravar passam pelo coordenador no painel Creta.
+            tap_action:
+              action: navigate
+              navigation_path: /creta-viagens
+          - type: tile
+            entity: sensor.vehicle_primary_fuel_level
+            name: Combustível
+            icon: mdi:gas-station
+          - type: tile
+            entity: sensor.garagem_vehicle_primary_total_driving_range
+            name: Autonomia
+            icon: mdi:map-marker-distance
+
+  - title: Ambientes
+    path: ambientes
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Garagem
+            icon: mdi:garage
+            heading_style: title
+          - type: tile
+            entity: switch.lampadas_garagem
+            name: Lâmpadas
+            icon: mdi:lightbulb-outline
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: switch.refletor_portao_carros
+            name: Refletor do portão
+            icon: mdi:spotlight-beam
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: button.acionar_portao_da_garagem
+            name: Portão
+            icon: mdi:gate
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.acionar_portao_da_garagem
+              confirmation:
+                text: Acionar o portão da garagem?
+            hold_action:
+              action: more-info
+          - type: tile
+            entity: device_tracker.vehicle_primary_location_nodered
+            name: Creta
+            icon: mdi:car-hatchback
+            tap_action:
+              action: navigate
+              navigation_path: /creta-viagens
+          - type: heading
+            heading: Escritório
+            icon: mdi:desk
+            heading_style: subtitle
+          - type: tile
+            entity: climate.ar_condicionado_escritorio
+            name: Ar-condicionado
+            grid_options:
+              columns: 12
+            features:
+              - type: climate-hvac-modes
+                hvac_modes:
+                  - "off"
+                  - cool
+                  - dry
+                  - fan_only
+              - type: target-temperature
+          - type: heading
+            heading: Jardim
+            icon: mdi:flower
+            heading_style: subtitle
+          - type: tile
+            entity: switch.refletores_jardim
+            name: Refletores
+            icon: mdi:spotlight-beam
+            tap_action:
+              action: toggle
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Andar térreo
+            icon: mdi:home-floor-g
+            heading_style: title
+          - type: heading
+            heading: Sala de estar
+            icon: mdi:sofa-outline
+            heading_style: subtitle
+          - type: tile
+            entity: switch.abajour_sala_de_estar
+            name: Abajur
+            icon: mdi:floor-lamp
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: vacuum.lds_robot
+            name: Aspirador
+          - type: heading
+            heading: Sala de TV
+            icon: mdi:television
+            heading_style: subtitle
+          - type: tile
+            entity: media_player.samsung_qn90ba_50_qn50qn90bagxzd
+            name: TV da sala
+          - type: heading
+            heading: Varanda
+            icon: mdi:flower-outline
+            heading_style: subtitle
+          - type: tile
+            entity: switch.lampada_varanda
+            name: Lâmpada
+            icon: mdi:outdoor-lamp
+            tap_action:
+              action: toggle
+          - type: area
+            area: cozinha
+            display_type: compact
+            grid_options:
+              columns: 12
+            navigation_path: /home/areas-cozinha
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Andar superior
+            icon: mdi:home-floor-1
+            heading_style: title
+          - type: heading
+            heading: Quarto principal
+            icon: mdi:bed-king-outline
+            heading_style: subtitle
+          # Os aparelhos do quarto têm nomes pessoais; o cartão de área os
+          # mostra sem citar entity_ids no repositório público.
+          - type: area
+            area: bedroom
+            display_type: compact
+            grid_options:
+              columns: 12
+            navigation_path: /home/areas-bedroom
+          - type: heading
+            heading: Toda a casa
+            icon: mdi:speaker-multiple
+            heading_style: subtitle
+          - type: tile
+            entity: media_player.todo_lugar
+            name: Alexa em todo lugar
+            icon: mdi:speaker-multiple
+
+  - title: Segurança
+    path: seguranca
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Alarme
+            icon: mdi:shield-home-outline
+          - type: tile
+            entity: alarm_control_panel.alarme_moni_mobile
+            name: Alarme da casa
+            grid_options:
+              columns: 12
+            # Cada modo abre o teclado nativo e exige o código.
+            features:
+              - type: alarm-modes
+                modes:
+                  - armed_away
+                  - disarmed
+          - type: heading
+            heading: Presença
+            icon: mdi:account-group-outline
+            heading_style: subtitle
+          - type: tile
+            entity: device_tracker.resident_primary_location
+            tap_action:
+              action: navigate
+              navigation_path: /map
+          - type: tile
+            entity: device_tracker.resident_secondary_location
+            tap_action:
+              action: navigate
+              navigation_path: /map
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Portão da garagem
+            icon: mdi:gate
+          - type: tile
+            entity: button.acionar_portao_da_garagem
+            name: Acionar portão
+            icon: mdi:gate
+            grid_options:
+              columns: 12
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.acionar_portao_da_garagem
+              confirmation:
+                text: Acionar o portão da garagem?
+            hold_action:
+              action: more-info
+          # Estado somente: o relé é pulsado pelo fluxo do portão, nunca à mão.
+          - type: tile
+            entity: switch.rele_acionador_portao
+            name: Relé
+            icon: mdi:electric-switch
+            tap_action:
+              action: none
+            icon_tap_action:
+              action: none
+          - type: tile
+            entity: sensor.botao_portao_garagem_battery
+            name: Botão físico
+          - type: heading
+            heading: Creta
+            icon: mdi:car-hatchback
+            heading_style: subtitle
+          - type: tile
+            entity: lock.vehicle_primary_door_lock
+            name: Portas do Creta
+            grid_options:
+              columns: 12
+            tap_action:
+              action: navigate
+              navigation_path: /creta-viagens
+            icon_tap_action:
+              action: navigate
+              navigation_path: /creta-viagens
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Iluminação externa
+            icon: mdi:outdoor-lamp
+          - type: tile
+            entity: switch.refletor_portao_carros
+            name: Refletor do portão
+            icon: mdi:spotlight-beam
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: switch.lampadas_garagem
+            name: Garagem
+            icon: mdi:garage-variant
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: switch.lampada_varanda
+            name: Varanda
+            icon: mdi:outdoor-lamp
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: switch.refletores_jardim
+            name: Jardim
+            icon: mdi:spotlight-beam
+            tap_action:
+              action: toggle
+          - type: tile
+            entity: sensor.security_light_last_decision
+            name: Última decisão automática
+            grid_options:
+              columns: 12
+
+  - title: Rotina
+    path: rotina
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Aspirador
+            icon: mdi:robot-vacuum
+          - type: tile
+            entity: vacuum.lds_robot
+            name: Robô aspirador
+            grid_options:
+              columns: 12
+            features:
+              - type: vacuum-commands
+                commands:
+                  - start_pause
+                  - stop
+                  - return_home
+                  - locate
+          - type: tile
+            entity: sensor.lds_robot_battery
+            name: Bateria
+          - type: tile
+            entity: select.lds_robot_mode
+            name: Modo
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Comedouro dos cachorros
+            icon: mdi:paw
+          - type: tile
+            entity: binary_sensor.paf_a07_feeding
+            name: Servindo agora
+            icon: mdi:timer-sand
+          - type: tile
+            entity: sensor.paf_a07_last_amount
+            name: Última porção
+            icon: mdi:counter
+          # Escolher a quantidade no diálogo serve a ração imediatamente.
+          - type: tile
+            entity: number.paf_a07_feed
+            name: Servir ração
+            icon: mdi:paw
+            grid_options:
+              columns: 12
+            tap_action:
+              action: more-info
+          - type: markdown
+            text_only: true
+            grid_options:
+              columns: 12
+            content: >-
+              Toque em **Servir ração** e escolha a quantidade de porções.
+              O comedouro serve assim que você solta o controle, sem outra
+              confirmação.
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Listas e agenda
+            icon: mdi:clipboard-list-outline
+          - type: todo-list
+            entity: todo.shopping_list
+            title: Compras
+          - type: calendar
+            initial_view: listWeek
+            entities:
+              - calendar.casa

@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = (ROOT / "packages" / "codex_usage.yaml").read_text(encoding="utf-8")
-DASHBOARD = (ROOT / "dashboards" / "chat.yaml").read_text(encoding="utf-8")
+DASHBOARD = (ROOT / "dashboards" / "sistema.yaml").read_text(encoding="utf-8")
 
 
 class CodexRtxRealtimeConfigTest(unittest.TestCase):

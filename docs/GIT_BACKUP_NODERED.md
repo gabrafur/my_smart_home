@@ -101,9 +101,9 @@ solicitação nos minutos seguintes. Uma execução sem novas mudanças também
 publica commits locais ainda à frente do remoto; isso evita perder um push
 adiado e depois bloquear o backup quando `origin/main` avançar.
 
-## Três resultados no placar da casa
+## Três resultados no painel Sistema
 
-O painel `house-status` (seção "Cópias e restauração") mostra três resultados
+O painel `painel-sistema`, aba **Saúde** (seção "Cópias e restauração"), mostra três resultados
 separados, cada um com estado, frescor, última tentativa (com a idade relativa)
 e última confirmação: cópia no Git, cópia externa e restauração testada. O
 produtor somente leitura é `homeassistant/tools/backup_results_status.py`

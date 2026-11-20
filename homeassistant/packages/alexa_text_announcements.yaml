@@ -1,7 +1,9 @@
-# Mensagens digitadas no painel Chat para leitura na Alexa principal.
+# Mensagens digitadas no painel Casa para leitura na Alexa principal.
 #
 # O helper guarda somente o rascunho da interface. O botão publica uma intenção
 # explícita; validação, seleção do destino e entrega pertencem ao Node-RED.
+# Depois de publicar, o campo é limpo: o texto já viajou no evento, e o campo
+# vazio confirma o envio e evita repetir a mensagem anterior por engano.
 
 input_text:
   alexa_mensagem:
@@ -23,3 +25,8 @@ template:
             event_data:
               message: "{{ mensagem }}"
               origin: chat_dashboard
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.alexa_mensagem
+            data:
+              value: ""

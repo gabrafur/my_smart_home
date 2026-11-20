@@ -14,8 +14,8 @@ entidade ausente) e `collection_error`. Sem `entity_id` lista todas; com um
 ## O que pode ser lido
 
 A política do root (`/usr/local/lib/raspberry-ha-states/policy.json`, fonte em
-`scripts/raspberry-mcp/ha-states/policy.json`) lista as entidades do placar
-`house-status`: saúde, carga, memória, disco, temperatura e uptime do
+`scripts/raspberry-mcp/ha-states/policy.json`) lista as entidades da aba
+**Saúde** do painel Sistema: saúde, carga, memória, disco, temperatura e uptime do
 Raspberry; internet, VPN, Zigbee e Tuya; incidente do Node-RED; os três
 resultados de cópia (Git, externa, restauração testada) e os backups do HA;
 atualizações pendentes; baterias.

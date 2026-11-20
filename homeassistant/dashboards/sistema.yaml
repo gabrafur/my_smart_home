@@ -1,0 +1,1368 @@
+# Painel de manutenção, só para administradores (require_admin).
+#
+# Reúne o antigo "Placar da casa", o "Raspberry Pi - System Health" e as
+# métricas de uso do Codex e da RTX que ficavam no painel Chat. Pendências
+# técnicas ficam aqui, não na tela da casa. Ver docs/DASHBOARDS.md.
+title: Sistema
+views:
+  - title: Saúde
+    path: saude
+    type: sections
+    max_columns: 3
+    dense_section_placement: true
+    badges:
+      - type: entity
+        entity: sensor.raspberry_pi_health
+        name: Servidor
+        show_name: true
+        show_state: true
+      - type: entity
+        entity: binary_sensor.internet_connection
+        name: Internet
+        show_name: true
+        show_state: true
+      - type: entity
+        entity: binary_sensor.vpn_primary_connection
+        name: VPN
+        show_name: true
+        show_state: true
+      - type: entity
+        entity: binary_sensor.zigbee_network
+        name: Zigbee
+        show_name: true
+        show_state: true
+      - type: entity
+        entity: binary_sensor.tuya_devices
+        name: Tuya
+        show_name: true
+        show_state: true
+    sections:
+      # Pendências técnicas: cada linha só aparece quando a condição é real.
+      - type: grid
+        cards:
+          - type: heading
+            heading: Pede atenção
+            icon: mdi:alert-circle-outline
+          - type: markdown
+            text_only: true
+            grid_options:
+              columns: 12
+            content: Nada pendente agora.
+            visibility:
+              - condition: state
+                entity: sensor.raspberry_pi_health
+                state: ok
+              - condition: state
+                entity: binary_sensor.internet_connection
+                state: "on"
+              - condition: state
+                entity: binary_sensor.zigbee_network
+                state: "on"
+              - condition: state
+                entity: binary_sensor.tuya_devices
+                state: "on"
+              - condition: state
+                entity: input_boolean.nodered_runtime_incident
+                state: "off"
+              - condition: state_not
+                entity: alarm_control_panel.alarme_moni_mobile
+                state:
+                  - unknown
+                  - unavailable
+          - type: tile
+            entity: sensor.raspberry_pi_health
+            name: Servidor fora do normal
+            grid_options:
+              columns: 12
+            tap_action:
+              action: navigate
+              navigation_path: /painel-sistema/servidor
+            visibility:
+              - condition: state_not
+                entity: sensor.raspberry_pi_health
+                state: ok
+          - type: tile
+            entity: binary_sensor.internet_connection
+            name: Internet fora do ar
+            grid_options:
+              columns: 12
+            visibility:
+              - condition: state
+                entity: binary_sensor.internet_connection
+                state: "off"
+          - type: tile
+            entity: binary_sensor.zigbee_network
+            name: Rede Zigbee fora do ar
+            grid_options:
+              columns: 12
+            visibility:
+              - condition: state
+                entity: binary_sensor.zigbee_network
+                state: "off"
+          - type: tile
+            entity: binary_sensor.tuya_devices
+            name: Dispositivos Tuya desconectados
+            icon: mdi:lan-disconnect
+            grid_options:
+              columns: 12
+            visibility:
+              - condition: state
+                entity: binary_sensor.tuya_devices
+                state: "off"
+          - type: tile
+            entity: input_boolean.nodered_runtime_incident
+            name: Incidente no Node-RED
+            grid_options:
+              columns: 12
+            tap_action:
+              action: more-info
+            visibility:
+              - condition: state
+                entity: input_boolean.nodered_runtime_incident
+                state: "on"
+          - type: tile
+            entity: alarm_control_panel.alarme_moni_mobile
+            name: Alarme sem estado conhecido
+            grid_options:
+              columns: 12
+            visibility:
+              - condition: state
+                entity: alarm_control_panel.alarme_moni_mobile
+                state:
+                  - unknown
+                  - unavailable
+          - type: tile
+            entity: switch.refletores_jardim
+            name: Refletores do jardim indisponíveis
+            grid_options:
+              columns: 12
+            tap_action:
+              action: more-info
+            visibility:
+              - condition: state
+                entity: switch.refletores_jardim
+                state: unavailable
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Servidor
+            icon: mdi:raspberry-pi
+            tap_action:
+              action: navigate
+              navigation_path: /painel-sistema/servidor
+          - type: tile
+            entity: sensor.raspberry_pi_cpu_temperature
+            name: Temperatura
+          - type: tile
+            entity: sensor.raspberry_pi_load_5m
+            name: Carga (5 min)
+          - type: tile
+            entity: sensor.raspberry_pi_memory_usage
+            name: Memória
+          - type: tile
+            entity: sensor.raspberry_pi_storage_usage
+            name: Disco
+          - type: tile
+            entity: sensor.raspberry_pi_uptime
+            name: Ligado há
+            grid_options:
+              columns: 12
+          - type: heading
+            heading: Comandos
+            icon: mdi:power-settings
+            heading_style: subtitle
+          - type: tile
+            entity: script.raspberry_reiniciar
+            name: Reiniciar Raspberry
+            icon: mdi:restart
+            tap_action:
+              action: perform-action
+              perform_action: script.raspberry_reiniciar
+              confirmation:
+                text: Reiniciar o Raspberry Pi? A casa fica sem automações por alguns minutos.
+            icon_tap_action:
+              action: none
+          - type: tile
+            entity: script.raspberry_desligar
+            name: Desligar Raspberry
+            icon: mdi:power
+            tap_action:
+              action: perform-action
+              perform_action: script.raspberry_desligar
+              confirmation:
+                text: Desligar o Raspberry Pi? Ele só volta religando na tomada.
+            icon_tap_action:
+              action: none
+          - type: tile
+            entity: script.pc_reiniciar
+            name: Reiniciar PC
+            icon: mdi:restart
+            tap_action:
+              action: perform-action
+              perform_action: script.pc_reiniciar
+              confirmation:
+                text: Reiniciar o PC do escritório?
+            icon_tap_action:
+              action: none
+          - type: tile
+            entity: script.pc_desligar
+            name: Desligar PC
+            icon: mdi:power
+            tap_action:
+              action: perform-action
+              perform_action: script.pc_desligar
+              confirmation:
+                text: Desligar o PC do escritório?
+            icon_tap_action:
+              action: none
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Backup e atualizações
+            icon: mdi:backup-restore
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.backup_last_successful_automatic_backup
+                name: Último backup do HA
+              - entity: sensor.backup_next_scheduled_automatic_backup
+                name: Próximo backup do HA
+              - entity: update.alexa_media_player_update
+                name: Alexa Media
+              - entity: update.kia_uvo_hyundai_bluelink_update
+                name: Kia / Bluelink
+              - entity: update.moni_mobile_alarm_update
+                name: Alarme Moni
+              - entity: update.slzb_mrw10u_zigbee_firmware
+                name: Firmware Zigbee
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Cópias e restauração
+            icon: mdi:database-check
+          # Three separate results: a Git or offsite success never implies a tested restore.
+          # Freshness comes classified from backup_results_status.py; nothing is computed here.
+          - type: tile
+            entity: sensor.backup_result_git
+            name: Cópia no Git
+            grid_options:
+              columns: 12
+          - type: tile
+            entity: sensor.backup_result_offsite
+            name: Cópia externa
+            grid_options:
+              columns: 12
+          - type: tile
+            entity: sensor.backup_result_restore
+            name: Restauração testada
+            grid_options:
+              columns: 12
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - type: attribute
+                entity: sensor.backup_result_git
+                attribute: freshness
+                name: Git — frescor do dado
+              - type: attribute
+                entity: sensor.backup_result_git
+                attribute: last_attempt_at
+                name: Git — última tentativa
+                format: relative
+              - type: attribute
+                entity: sensor.backup_result_git
+                attribute: last_confirmed_at
+                name: Git — última confirmação
+                format: relative
+              - type: attribute
+                entity: sensor.backup_result_offsite
+                attribute: freshness
+                name: Externa — frescor do dado
+              - type: attribute
+                entity: sensor.backup_result_offsite
+                attribute: last_attempt_at
+                name: Externa — última tentativa
+                format: relative
+              - type: attribute
+                entity: sensor.backup_result_offsite
+                attribute: last_confirmed_at
+                name: Externa — última confirmação
+                format: relative
+              - type: attribute
+                entity: sensor.backup_result_restore
+                attribute: freshness
+                name: Restauração — frescor do dado
+              - type: attribute
+                entity: sensor.backup_result_restore
+                attribute: last_attempt_at
+                name: Restauração — última tentativa
+                format: relative
+              - type: attribute
+                entity: sensor.backup_result_restore
+                attribute: last_confirmed_at
+                name: Restauração — última confirmação
+                format: relative
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Rede e baterias
+            icon: mdi:lan-connect
+          - type: tile
+            entity: binary_sensor.internet_connection
+            name: Internet
+          - type: tile
+            entity: binary_sensor.vpn_primary_connection
+            name: VPN
+          - type: tile
+            entity: binary_sensor.zigbee_network
+            name: Rede Zigbee
+          - type: tile
+            entity: binary_sensor.tuya_devices
+            name: Dispositivos Tuya
+          - type: tile
+            entity: input_boolean.nodered_runtime_incident
+            name: Incidente no Node-RED
+            tap_action:
+              action: more-info
+            icon_tap_action:
+              action: more-info
+          - type: tile
+            entity: sensor.botao_portao_garagem_battery
+            name: Botão do portão
+          - type: tile
+            entity: sensor.controlador_ir_battery
+            name: Controlador IR
+          - type: tile
+            entity: sensor.lds_robot_battery
+            name: Aspirador
+
+  - title: Servidor
+    path: servidor
+    type: sections
+    max_columns: 3
+    dense_section_placement: true
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Visão geral
+            icon: mdi:raspberry-pi
+          - type: entities
+            title: Status geral
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_health
+                name: Saúde geral
+              - entity: sensor.raspberry_pi_uptime
+                name: Uptime
+              - entity: sensor.raspberry_pi_last_boot
+                name: Última inicialização
+              - entity: binary_sensor.raspberry_pi_network_link
+                name: Conectividade
+              - entity: sensor.raspberry_pi_ip_address
+                name: IP atual
+              - entity: sensor.raspberry_pi_metrics_raw
+                name: Coleta bruta
+          - type: grid
+            title: Indicadores principais
+            columns: 3
+            square: false
+            cards:
+              - type: gauge
+                entity: sensor.raspberry_pi_cpu_temperature
+                name: Temperatura
+                min: 30
+                max: 90
+                severity: { green: 0, yellow: 75, red: 82 }
+              - type: gauge
+                entity: sensor.raspberry_pi_cpu_usage
+                name: CPU
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 85, red: 95 }
+              - type: gauge
+                entity: sensor.raspberry_pi_memory_usage
+                name: Memória
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 80, red: 90 }
+              - type: gauge
+                entity: sensor.raspberry_pi_swap_usage
+                name: Swap
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 25, red: 50 }
+              - type: gauge
+                entity: sensor.raspberry_pi_storage_usage
+                name: Armazenamento
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 80, red: 90 }
+              - type: gauge
+                entity: sensor.raspberry_pi_load_5m
+                name: Load 5m
+                min: 0
+                max: 16
+                severity: { green: 0, yellow: 4.8, red: 8 }
+          - type: grid
+            title: Ações manuais
+            columns: 2
+            square: false
+            cards:
+              - type: button
+                entity: binary_sensor.raspberry_pi_storage_manual_running
+                name: Executar Storage Health
+                icon: mdi:harddisk
+                show_state: true
+                state_color: true
+                tap_action:
+                  action: perform-action
+                  perform_action: input_button.press
+                  target:
+                    entity_id: input_button.storage_health_manual_run
+                  confirmation:
+                    text: A manutenção remove caches Docker sem uso, preserva 2 GB de cache recente e limpa backups de flows e logs npm expirados. Deseja continuar?
+              - type: button
+                entity: binary_sensor.revisao_documental_em_execucao
+                name: Rodar revisão documental
+                icon: mdi:file-document-refresh-outline
+                show_state: true
+                state_color: true
+                tap_action:
+                  action: perform-action
+                  perform_action: input_button.press
+                  target:
+                    entity_id: input_button.weekly_documentation_review_run
+                  confirmation:
+                    text: A revisão pode editar, criar commit e enviar alterações. Deseja continuar?
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Armazenamento e infraestrutura
+            icon: mdi:server
+          - type: entities
+            title: Armazenamento
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_storage_usage
+                name: Uso
+              - entity: sensor.raspberry_pi_storage_used
+                name: Usado
+              - entity: sensor.raspberry_pi_storage_free
+                name: Livre
+              - entity: sensor.raspberry_pi_recorder_storage_usage
+                name: Recorder no armazenamento
+              - entity: sensor.raspberry_pi_storage_inodes_usage
+                name: Inodes usados
+              - entity: sensor.raspberry_pi_raspberry_storage_status
+                name: Status Node-RED
+              - entity: sensor.raspberry_pi_storage_health_last_run
+                name: Última verificação do Storage Health
+              - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
+                name: Crescimento em 24 h
+              - entity: sensor.raspberry_pi_raspberry_storage_growth_7d
+                name: Crescimento em 7 dias
+              - entity: sensor.raspberry_pi_storage_history_coverage
+                name: Histórico disponível para tendências
+              - entity: sensor.raspberry_pi_raspberry_storage_last_maintenance
+                name: Última limpeza segura
+              - entity: sensor.raspberry_pi_raspberry_storage_last_reclaimed
+                name: Recuperado na última manutenção
+              - entity: binary_sensor.raspberry_pi_storage_warning
+                name: Armazenamento em atenção
+              - entity: binary_sensor.raspberry_pi_storage_critical
+                name: Armazenamento crítico
+          - type: entities
+            title: Diagnóstico e limpeza automática
+            show_header_toggle: false
+            entities:
+              - type: section
+                label: Docker — total agregado, não somar com os subconjuntos
+              - entity: sensor.raspberry_pi_storage_maintenance_docker
+                name: Total lógico do Docker
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_build_cache
+                name: Cache de build lógico
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_build_cache_reclaimable
+                name: Cache marcado como recuperável pelo Docker
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_reclaimable_untagged
+                name: Imagens sem tag elegíveis para limpeza
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_protected_untagged
+                name: Imagens sem tag protegidas pelo repositório
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_recent_untagged
+                name: Imagens sem tag recentes, em carência
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_unused_tagged
+                name: Imagens com tag sem container — revisão
+              - type: section
+                label: Host e Home Assistant — itens independentes
+              - entity: sensor.raspberry_pi_storage_maintenance_vs_code_server
+                name: VS Code Server
+              - entity: sensor.raspberry_pi_storage_maintenance_recorder
+                name: Recorder alocado
+              - entity: sensor.raspberry_pi_storage_maintenance_recorder_reclaimable
+                name: Recorder recuperável após repack
+              - type: section
+                label: Backups — os dois itens abaixo formam o total
+              - entity: sensor.raspberry_pi_storage_maintenance_backup_archives
+                name: Backups operacionais TAR
+              - entity: sensor.raspberry_pi_storage_maintenance_manual_snapshots
+                name: Snapshots manuais de rollback
+              - entity: sensor.raspberry_pi_storage_maintenance_expired_manual_snapshots
+                name: Snapshots fora da retenção de 14 dias
+              - type: section
+                label: Última execução da limpeza
+              - entity: sensor.raspberry_pi_storage_maintenance_result
+                name: Resultado da manutenção
+          - type: entities
+            title: Disponibilidade da infraestrutura
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.internet_connection
+                name: Internet
+              - entity: sensor.internet_connection_state
+                name: Estado detalhado da internet
+              - type: attribute
+                entity: sensor.internet_connection_state
+                attribute: last_outage
+                name: Última queda da internet
+              - type: attribute
+                entity: sensor.internet_connection_state
+                attribute: last_recovery
+                name: Última recuperação da internet
+              - entity: binary_sensor.zigbee_network
+                name: Rede Zigbee
+              - entity: sensor.zigbee_network_state
+                name: Estado detalhado do Zigbee
+              - type: attribute
+                entity: sensor.zigbee_network_state
+                attribute: last_outage
+                name: Última queda do Zigbee
+              - type: attribute
+                entity: sensor.zigbee_network_state
+                attribute: last_recovery
+                name: Última recuperação do Zigbee
+          - type: entities
+            title: Revisão documental semanal
+            show_header_toggle: false
+            entities:
+              - entity: sensor.revisao_semanal_da_documentacao
+                name: Estado atual
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: next_run
+                name: Próxima execução (UTC)
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: last_result
+                name: Último resultado
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: last_finished
+                name: Última conclusão (UTC)
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: last_reason
+                name: Motivo
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: last_commit
+                name: Commit final
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Processamento
+            icon: mdi:memory
+          - type: entities
+            title: CPU
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_cpu_usage
+                name: Uso atual
+              - entity: sensor.raspberry_pi_cpu_temperature
+                name: Temperatura
+              - entity: sensor.raspberry_pi_load_1m
+                name: Load 1m
+              - entity: sensor.raspberry_pi_load_5m
+                name: Load 5m
+              - entity: sensor.raspberry_pi_load_15m
+                name: Load 15m
+              - entity: sensor.raspberry_pi_cpu_frequency
+                name: Frequência
+              - entity: binary_sensor.raspberry_pi_cpu_warning
+                name: CPU alta persistente
+              - entity: binary_sensor.raspberry_pi_cpu_critical
+                name: CPU crítica persistente
+          - type: entities
+            title: Memória
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_memory_usage
+                name: Uso
+              - entity: sensor.raspberry_pi_memory_used
+                name: Usada
+              - entity: sensor.raspberry_pi_memory_available
+                name: Disponivel
+              - entity: sensor.raspberry_pi_swap_usage
+                name: Swap
+              - entity: sensor.raspberry_pi_swap_used
+                name: Swap usada
+              - entity: binary_sensor.raspberry_pi_memory_warning
+                name: Memória em atenção
+              - entity: binary_sensor.raspberry_pi_memory_critical
+                name: Memória crítica
+              - entity: binary_sensor.raspberry_pi_swap_warning
+                name: Swap em atenção
+              - entity: binary_sensor.raspberry_pi_swap_critical
+                name: Swap crítica
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Hardware e rede
+            icon: mdi:lan
+          - type: entities
+            title: Hardware Raspberry Pi
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.raspberry_pi_hardware_warning
+                name: Throttling/energia desde o boot
+              - entity: binary_sensor.raspberry_pi_hardware_critical
+                name: Throttling/energia ativo
+              - entity: sensor.raspberry_pi_throttled_hex
+                name: vcgencmd get_throttled
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: vcgencmd_available
+                name: vcgencmd disponível
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: vcgencmd_error
+                name: Erro vcgencmd
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: under_voltage_now
+                name: Undervoltage agora
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: throttled_now
+                name: Throttling agora
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: soft_temperature_limit_now
+                name: Limite térmico agora
+          - type: entities
+            title: Rede
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.raspberry_pi_network_link
+                name: Link
+              - entity: sensor.raspberry_pi_ip_address
+                name: IP
+              - entity: sensor.raspberry_pi_network_rx
+                name: Download
+              - entity: sensor.raspberry_pi_network_tx
+                name: Upload
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: network_interface
+                name: Interface
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: network_operstate
+                name: Estado
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Histórico de desempenho
+            icon: mdi:chart-line
+          - type: history-graph
+            title: CPU e temperatura · 24 h
+            hours_to_show: 24
+            entities:
+              - entity: sensor.raspberry_pi_cpu_usage
+                name: CPU
+              - entity: sensor.raspberry_pi_cpu_temperature
+                name: Temperatura
+              - entity: sensor.raspberry_pi_load_5m
+                name: Load 5m
+          - type: history-graph
+            title: Memória e swap · 7 dias
+            hours_to_show: 168
+            entities:
+              - entity: sensor.raspberry_pi_memory_usage
+                name: Memória
+              - entity: sensor.raspberry_pi_swap_usage
+                name: Swap
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Histórico de armazenamento e rede
+            icon: mdi:chart-timeline-variant
+          - type: history-graph
+            title: Armazenamento · 24 horas
+            hours_to_show: 24
+            entities:
+              - entity: sensor.raspberry_pi_storage_usage
+                name: Uso
+              - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
+                name: Crescimento 24 h
+          - type: history-graph
+            title: Armazenamento (%) · 30 dias
+            hours_to_show: 720
+            entities:
+              - entity: sensor.raspberry_pi_storage_usage
+                name: Uso
+              - entity: sensor.raspberry_pi_recorder_storage_usage
+                name: Recorder (%)
+          - type: history-graph
+            title: Espaço livre · 30 dias
+            hours_to_show: 720
+            entities:
+              - entity: sensor.raspberry_pi_storage_free
+                name: Livre
+          - type: history-graph
+            title: Rede · 24 h
+            hours_to_show: 24
+            entities:
+              - entity: sensor.raspberry_pi_network_rx
+                name: Download
+              - entity: sensor.raspberry_pi_network_tx
+                name: Upload
+
+  - title: Codex
+    path: uso-codex
+    type: sections
+    max_columns: 3
+    dense_section_placement: false
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Limite oficial do plano
+            icon: mdi:chart-donut
+          - type: markdown
+            content: |
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set totals = state_attr('sensor.codex_usage_raw', 'totals') or {} %}
+              {% set limite = state_attr('sensor.codex_usage_raw', 'rate_limit') or {} %}
+              {% set consulta = state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {} %}
+              {% set reset_em = limite.get('resets_at') %}
+              {% set janela = limite.get('window_type', 'desconhecida') %}
+              {% if states('sensor.codex_usage_raw') == 'ok' %}
+              {% if states('sensor.codex_dados_de_limite') == 'atual' and is_number(states('sensor.codex_limite_disponivel')) %}
+              # {{ format_number_ptbr(states('sensor.codex_limite_disponivel')) }}% disponível
+
+              **{{ format_number_ptbr(states('sensor.codex_limite_usado')) }}% usado** na janela
+              {{ 'semanal' if janela == 'weekly' else janela }} do plano
+              {% if states('sensor.codex_plano') not in ['unknown', 'unavailable', 'desconhecido'] %}
+              {{ states('sensor.codex_plano') | title }}.
+              {% endif %}
+              {% elif limite.get('remaining_percent') is number %}
+              # Leitura desatualizada
+
+              Último valor conhecido: **{{ format_number_ptbr(limite.get('remaining_percent')) }}% disponível**.
+              Confira Codex → Settings → Usage & billing para o saldo atual.
+              {% else %}
+              # Aguardando dados
+
+              Ainda não há uma leitura do limite do plano.
+              {% endif %}
+
+              {% if reset_em %}
+              **Reset:** {{ as_timestamp(reset_em) | timestamp_custom('%d/%m às %H:%M', true) }}
+              {% endif %}
+              {% if is_number(states('sensor.codex_atualizacao_do_limite_em')) %}
+              **Próxima consulta:** em {{ format_number_ptbr(states('sensor.codex_atualizacao_do_limite_em')) }} segundos.
+              {% endif %}
+              {% if consulta.get('last_error') %}
+
+              _A consulta automática ao Codex está temporariamente indisponível; estes são os últimos dados recebidos._
+              {% endif %}
+              {% else %}
+              # Coleta indisponível
+
+              Aguardando a primeira métrica do Codex CLI.
+              {% endif %}
+          - type: grid
+            title: Indicadores principais
+            columns: 2
+            square: false
+            cards:
+              - type: gauge
+                entity: sensor.codex_limite_usado
+                name: Usado · última leitura
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 70, red: 90 }
+              - type: gauge
+                entity: sensor.codex_limite_disponivel
+                name: Disponível · última leitura
+                min: 0
+                max: 100
+                severity: { red: 0, yellow: 10, green: 30 }
+              - type: gauge
+                entity: sensor.codex_eficiencia_de_cache
+                name: Eficiência de cache · local
+                min: 0
+                max: 100
+                severity: { red: 0, yellow: 30, green: 60 }
+              - type: conditional
+                conditions:
+                  - condition: numeric_state
+                    entity: sensor.codex_uso_projetado_no_reset
+                    above: -1
+                card:
+                  type: gauge
+                  entity: sensor.codex_uso_projetado_no_reset
+                  name: Uso projetado no reset
+                  min: 0
+                  max: 100
+                  severity: { green: 0, yellow: 90, red: 100 }
+              - type: conditional
+                conditions:
+                  - condition: state
+                    entity: sensor.codex_uso_projetado_no_reset
+                    state: unavailable
+                card:
+                  type: gauge
+                  entity: sensor.codex_progresso_da_janela_semanal
+                  name: Tempo decorrido na janela
+                  min: 0
+                  max: 100
+                  severity: { green: 0, yellow: 70, red: 90 }
+          - type: entities
+            title: Plano e atualização
+            show_header_toggle: false
+            entities:
+              - entity: sensor.codex_dados_de_limite
+                name: Estado da leitura
+              - entity: sensor.codex_plano
+                name: Plano
+              - entity: sensor.codex_creditos_extras
+                name: Créditos extras
+              - entity: sensor.codex_proximo_reset
+                name: Reset semanal
+              - entity: sensor.codex_ultima_atualizacao_do_limite
+                name: Leitura recebida em
+              - entity: sensor.codex_atualizacao_do_limite_em
+                name: Próxima consulta em
+              - entity: sensor.codex_proxima_atualizacao_do_limite
+                name: Próxima consulta às
+              - entity: script.codex_atualizar_uso_agora
+                name: Atualizar agora
+                icon: mdi:refresh
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Análise e métricas locais
+            icon: mdi:chart-timeline-variant
+          - type: markdown
+            content: >-
+              Estes números descrevem somente as sessões preservadas neste host.
+              Eles ajudam a entender o trabalho local, mas **não representam o limite
+              oficial do plano**.
+          - type: conditional
+            conditions:
+              - condition: numeric_state
+                entity: sensor.codex_uso_projetado_no_reset
+                above: -1
+            card:
+              type: entities
+              title: Tendência da janela semanal
+              show_header_toggle: false
+              entities:
+                - entity: sensor.codex_previsao_ate_o_reset
+                  name: Aguenta até o reset?
+                - entity: sensor.codex_ritmo_do_limite
+                  name: Ritmo observado
+                - entity: sensor.codex_uso_projetado_no_reset
+                  name: Uso projetado no reset
+                - entity: sensor.codex_folga_projetada_no_reset
+                  name: Folga projetada
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.codex_uso_projetado_no_reset
+                state: unavailable
+            card:
+              type: markdown
+              content: >-
+                **Tendência da janela semanal**
+
+                ⏳ Projeção aguardando pelo menos uma hora de observações comparáveis
+                na mesma janela. Até lá, o quarto gauge mostra somente o tempo decorrido.
+          - type: grid
+            title: Consumo registrado
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.codex_sessoes_monitoradas
+                name: Sessões
+              - type: tile
+                entity: sensor.codex_tokens_totais
+                name: Tokens totais
+              - type: tile
+                entity: sensor.codex_tokens_em_cache
+                name: Tokens em cache
+              - type: tile
+                entity: sensor.codex_tokens_de_saida
+                name: Tokens de saída
+              - type: tile
+                entity: sensor.codex_velocidade_7_dias
+                name: Média por hora · 7 dias
+          - type: markdown
+            content: >-
+              ## Histórico deste computador
+
+              Estes dados vêm apenas das sessões registradas **nesta máquina**.
+              Eles servem para analisar o uso local e **não são o saldo semanal do
+              seu plano**. O limite oficial fica no topo do painel e é consultado
+              automaticamente a cada 30 segundos.
+          - type: markdown
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              ## Última atividade local
+
+              {% set registrada_em = state_attr('sensor.codex_usage_raw', 'source_updated_at') %}
+              {% set instante = as_timestamp(registrada_em, 0) | float(0) %}
+              {% set idade_segundos = [0, (as_timestamp(now()) - instante) | int(0)] | max if instante > 0 else none %}
+              **Última conversa registrada nesta máquina:**
+              {% if idade_segundos is none %}
+              ainda não há conversa registrada.
+              {% elif idade_segundos < 60 %}
+              agora mesmo.
+              {% elif idade_segundos < 3600 %}
+              {% set idade_minutos = (idade_segundos / 60) | int %}
+              há {{ format_number_ptbr(idade_minutos) }} minuto{{ '' if idade_minutos == 1 else 's' }}.
+              {% elif idade_segundos < 86400 %}
+              {% set idade_horas = (idade_segundos / 3600) | int %}
+              há {{ format_number_ptbr(idade_horas) }} hora{{ '' if idade_horas == 1 else 's' }}.
+              {% else %}
+              em {{ instante | timestamp_custom('%d/%m/%Y às %H:%M', true) }}.
+              {% endif %}
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Alertas e ajuda
+            icon: mdi:bell-outline
+          - type: entities
+            title: Alertas
+            show_header_toggle: false
+            entities:
+              - entity: sensor.codex_nivel_de_alerta
+                name: Situação atual
+              - entity: input_boolean.codex_alertas_iphone
+              - entity: input_boolean.codex_resumo_diario_iphone
+              - entity: input_text.codex_ultimo_alerta_iphone
+              - entity: input_datetime.codex_ultimo_alerta_iphone_em
+          - type: markdown
+            content: >-
+              **Como interpretar**
+
+              O limite do plano é semanal e não zera ao fim do dia. Leituras com
+              mais de quinze minutos ficam marcadas como desatualizadas e deixam de
+              alimentar alertas. Os gauges de uso preservam a última leitura conhecida,
+              identificada explicitamente como tal.
+
+              O quarto gráfico mostra uma projeção somente depois de observar pelo menos
+              uma hora da mesma janela. Antes disso, ele mostra apenas o tempo decorrido
+              na semana, que não depende de extrapolação.
+
+              A eficiência de cache mede reaproveitamento de tokens de entrada; não
+              é saldo, cobrança nem qualidade das respostas. Usos feitos em outros
+              computadores podem não aparecer nas métricas locais.
+
+              O valor oficial continua disponível em **Codex → Settings → Usage & billing**.
+
+  - title: RTX 4070
+    path: uso-rtx
+    type: sections
+    max_columns: 3
+    dense_section_placement: false
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Agora
+            heading_style: title
+            icon: mdi:expansion-card
+          - type: tile
+            entity: sensor.rtx_painel
+            name: Serviço local
+            grid_options:
+              columns: full
+            color: cyan
+          - type: markdown
+            content: |-
+              {% set h = state_attr('sensor.rtx_painel', 'health') or {} %}
+              **{{ h.get('reason', 'Aguardando o produtor de métricas') }}**
+
+              Modelo: **{{ h.get('model') or '—' }}**
+              {% if h.get('task') %}
+              Tarefa atual: **{{ h.get('task') }}**
+              {% endif %}
+
+              {{ h.get('sample_reason', 'Sem amostra recente') }}.
+          - type: markdown
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set m = state_attr('sensor.rtx_painel', 'metrics') or {} %}
+              {% macro number(v, d=0) %}{{ format_number_ptbr(v, d) if v is number else '—' }}{% endmacro %}
+              | GPU | VRAM | Potência |
+              |:--:|:--:|:--:|
+              | **{{ number(m.get('gpu')) }} %** | **{{ number(m.get('vram')) }} MiB** | **{{ number(m.get('power'), 1) }} W** |
+          - type: heading
+            heading: Evolução do contexto
+            heading_style: title
+            icon: mdi:chart-timeline-variant
+          - type: tile
+            entity: sensor.rtx_contexto_evitado_total
+            name: Saldo confirmado · total preservado
+            grid_options:
+              columns: full
+            color: green
+          - type: markdown
+            title: Períodos · UTC
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set periods = state_attr('sensor.rtx_painel', 'periods') or {} %}
+              {% macro number(v) %}{{ format_number_ptbr(v) if v is number else '—' }}{% endmacro %}
+              | Período | Tentativas | Usados | Saldo · tokens |
+              |:--|--:|--:|--:|
+              {% for key, label in [('today', 'Hoje'), ('week', 'Semana'), ('month', 'Mês'), ('total', 'Total')] -%}
+              {% set p = periods.get(key, {}) -%}
+              | {{ label }} | {{ number(p.get('calls')) }} | {{ number(p.get('used')) }} | {{ number(p.get('net')) }} |
+              {% endfor %}
+          - type: markdown
+            title: Últimos 7 dias
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set rows = state_attr('sensor.rtx_painel', 'daily') or [] %}
+              {% macro number(v) %}{{ format_number_ptbr(v) if v is number else '—' }}{% endmacro %}
+              | Dia · UTC | Tentativas | Usados | Saldo · tokens |
+              |:--|--:|--:|--:|
+              {% for row in rows -%}
+              | {{ as_timestamp(row.get('day')) | timestamp_custom('%d/%m', false) }} | {{ number(row.get('calls')) }} | {{ number(row.get('used')) }} | {{ number(row.get('net')) }} |
+              {% endfor %}
+              {% if not rows %}Sem série diária disponível.{% endif %}
+      - type: grid
+        cards:
+          - type: heading
+            heading: Resultado de hoje · UTC
+            heading_style: title
+            icon: mdi:chart-box-outline
+          - type: grid
+            title: Waterfall — hoje · UTC
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.rtx_waterfall_today_calls
+                name: Tentativas
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_completed
+                name: Sem falha técnica
+                color: cyan
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_failed
+                name: Falhas técnicas
+                color: red
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_without_gate
+                name: Sem classificação
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_gated
+                name: Avaliados pelo gate
+                color: purple
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_rejected
+                name: Rejeitados pelo gate
+                color: red
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_accepted
+                name: Fidelidade aprovada
+                color: cyan
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_no_gain
+                name: Fiéis sem ganho
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_without_cost
+                name: Custo não mensurado
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_measured
+                name: Custo mensurado
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_unconfirmed
+                name: Uso não confirmado
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_used
+                name: Usados pelo chat
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_codex_tokens
+                name: Tokens totais
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_attempted
+                name: Contexto tentado
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_gross
+                name: Contexto evitado
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_gate
+                name: Custo da validação
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_net
+                name: Saldo líquido
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_today_overall_reduction
+                name: Redução no total
+                color: green
+                vertical: true
+          - type: markdown
+            content: |-
+              As etapas mostram tentativas, qualidade, custo mensurado e uso confirmado. Depois, os valores passam a representar tokens estimados.
+
+              **Contexto evitado − custo da validação = saldo líquido equivalente.** A redução no total compara esse saldo com tokens Codex mais saldo; a redução do contexto tentado usa outra base.
+
+              O saldo é um índice de contexto, **não uma medição da cobrança OpenAI**. Uso não confirmado, descartes e diagnósticos não contam economia. Valores desconhecidos indicam ausência de dados ou de base para a taxa.
+          - type: markdown
+            title: Atenção de roteamento · hoje
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set r = state_attr('sensor.rtx_painel', 'routing') or {} %}
+              {% macro number(v, d=0) %}{{ format_number_ptbr(v, d) if v is number else '—' }}{% endmacro %}
+              | Ocorrência | Quantidade |
+              |:--|--:|
+              | Oportunidades elegíveis perdidas | {{ number(r.get('missed_opportunities')) }} |
+              | Serviço indisponível em tarefa elegível | {{ number(r.get('confirmed_unavailable_tasks')) }} |
+              | Disponibilidade desconhecida | {{ number(r.get('availability_unknown_tasks')) }} |
+              | Falhas após delegação | {{ number(r.get('failed_tasks')) }} |
+
+              Elegíveis: **{{ number(r.get('eligible_tasks')) }}** · disponíveis: **{{ number(r.get('eligible_and_available_tasks')) }}** · disponibilidade: **{{ number(r.get('availability_percent'), 1) }} %**.
+          - type: heading
+            heading: Execuções recentes
+            heading_style: title
+            icon: mdi:history
+          - type: markdown
+            title: Últimas 48 horas
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set jobs = state_attr('sensor.rtx_painel', 'jobs') or [] %}
+              {{ state_attr('sensor.rtx_painel', 'history_reason') or 'Aguardando histórico' }}.
+
+              {% for job in jobs %}
+              **{{ job.get('task') }} · {{ job.get('result') }}**
+
+              {% if job.get('at') %}{{ as_timestamp(job.get('at')) | timestamp_custom('%d/%m %H:%M', true) }} · {% endif %}{{ format_number_ptbr(job.get('duration'), 1) if job.get('duration') is number else '—' }} s · saldo **{{ format_number_ptbr(job.get('net')) if job.get('net') is number else '—' }} tokens**
+
+              Modelo: {{ job.get('model') }} · processador: {{ job.get('processor') }}
+
+              ---
+              {% endfor %}
+      - type: grid
+        cards:
+          - type: heading
+            heading: Total acumulado
+            heading_style: title
+            icon: mdi:shield-check-outline
+          - type: grid
+            title: Waterfall — total preservado
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.rtx_waterfall_total_calls
+                name: Tentativas
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_completed
+                name: Sem falha técnica
+                color: cyan
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_failed
+                name: Falhas técnicas
+                color: red
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_without_gate
+                name: Sem classificação
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_gated
+                name: Avaliados pelo gate
+                color: purple
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_rejected
+                name: Rejeitados pelo gate
+                color: red
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_accepted
+                name: Fidelidade aprovada
+                color: cyan
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_no_gain
+                name: Fiéis sem ganho
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_without_cost
+                name: Custo não mensurado
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_measured
+                name: Custo mensurado
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_unconfirmed
+                name: Uso não confirmado
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_used
+                name: Usados pelo chat
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_codex_tokens
+                name: Tokens totais
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_attempted
+                name: Contexto tentado
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_gross
+                name: Contexto evitado
+                color: blue
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_gate
+                name: Custo da validação
+                color: amber
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_net
+                name: Saldo líquido
+                color: green
+                vertical: true
+              - type: tile
+                entity: sensor.rtx_waterfall_total_overall_reduction
+                name: Redução no total
+                color: green
+                vertical: true
+          - type: markdown
+            content: |-
+              As etapas mostram tentativas, qualidade, custo mensurado e uso confirmado. Depois, os valores passam a representar tokens estimados.
+
+              **Contexto evitado − custo da validação = saldo líquido equivalente.** A redução no total compara esse saldo com tokens Codex mais saldo; a redução do contexto tentado usa outra base.
+
+              O saldo é um índice de contexto, **não uma medição da cobrança OpenAI**. Uso não confirmado, descartes e diagnósticos não contam economia. Valores desconhecidos indicam ausência de dados ou de base para a taxa.
+          - type: markdown
+            title: Fora da contagem operacional
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set p = (state_attr('sensor.rtx_painel', 'periods') or {}).get('today', {}) %}
+              Diagnósticos e benchmarks: **{{ format_number_ptbr(p.get('diagnostics')) if p.get('diagnostics') is number else '—' }}**.
+
+              Chamadas sem classificação de origem: **{{ format_number_ptbr(p.get('unclassified')) if p.get('unclassified') is number else '—' }}**.
+
+              Testes de inferência comprovam funcionamento. A economia exige resultado aprovado, custo mensurado e recibo de entrega ao modelo principal.
+          - type: heading
+            heading: Amostras da GPU
+            heading_style: title
+            icon: mdi:chart-line
+          - type: statistics-graph
+            title: GPU · picos em 48 horas
+            chart_type: line
+            period: 5minute
+            days_to_show: 2
+            stat_types: [max]
+            entities:
+              - entity: sensor.rtx_metricas_gpu
+                name: GPU
+          - type: statistics-graph
+            title: VRAM · picos em 48 horas
+            chart_type: line
+            period: 5minute
+            days_to_show: 2
+            stat_types: [max]
+            entities:
+              - entity: sensor.rtx_metricas_vram
+                name: VRAM
+          - type: statistics-graph
+            title: Potência · picos em 48 horas
+            chart_type: line
+            period: 5minute
+            days_to_show: 2
+            stat_types: [max]
+            entities:
+              - entity: sensor.rtx_metricas_potencia
+                name: Potência
+          - type: heading
+            heading: Entenda os dados
+            heading_style: title
+            icon: mdi:information-outline
+          - type: markdown
+            title: Como este chat usa a RTX
+            content: |-
+              **Disponível** indica que a RTX está pronta para tarefas locais elegíveis. O chat principal continua no modelo escolhido no Codex.
+
+              Os contadores de **Local AI** incluem também trabalho na CPU; não comprovam uso exclusivo da GPU.
+          - type: markdown
+            title: Integridade dos dados
+            content: |-
+              {% set data = state_attr('sensor.rtx_painel', 'data_reason') %}
+              {{ data or 'Aguardando métricas do Node-RED' }}.
+
+              {% set at = state_attr('sensor.rtx_painel', 'source_at') %}
+              {% if at %}Leitura da fonte: **{{ as_timestamp(at) | timestamp_custom('%d/%m %H:%M:%S', true) }}**.{% endif %}
+
+              Cálculos e classificações: **Node-RED**. Períodos de contagem: **UTC**; horários de leitura e execução: hora local.

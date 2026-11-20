@@ -152,7 +152,7 @@ assert.match(compose, /WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER=node-red/);
 const packageYaml = fs.readFileSync(path.join(repoRoot, "homeassistant", "packages", "weekly_documentation_review.yaml"), "utf8");
 assert.match(packageYaml, /weekly_documentation_review_run:/);
 assert.doesNotMatch(packageYaml, /solicitar_revisao_documental_manual/);
-const dashboard = fs.readFileSync(path.join(repoRoot, "homeassistant", "dashboards", "raspberry_pi_health.yaml"), "utf8");
+const dashboard = fs.readFileSync(path.join(repoRoot, "homeassistant", "dashboards", "sistema.yaml"), "utf8");
 assert.match(dashboard, /perform_action: input_button\.press/);
 assert.match(dashboard, /entity_id: input_button\.weekly_documentation_review_run/);
 const dockerfile = fs.readFileSync(path.join(repoRoot, "ia-bridge", "Dockerfile"), "utf8");

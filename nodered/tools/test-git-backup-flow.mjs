@@ -171,7 +171,7 @@ for (const [id, file] of [
 ]) assert.equal(node(id).func, source(file).trimEnd(), `${id} deve vir da fonte canônica`);
 
 const packageYaml = fs.readFileSync(path.join(root, "homeassistant", "packages", "weekly_documentation_review.yaml"), "utf8");
-const dashboard = fs.readFileSync(path.join(root, "homeassistant", "dashboards", "raspberry_pi_health.yaml"), "utf8");
+const dashboard = fs.readFileSync(path.join(root, "homeassistant", "dashboards", "sistema.yaml"), "utf8");
 assert.match(packageYaml, /unique_id: weekly_documentation_review\b/);
 assert.match(packageYaml, /unique_id: weekly_documentation_review_running\b/);
 assert.match(dashboard, /entity: sensor\.revisao_semanal_da_documentacao\b/);

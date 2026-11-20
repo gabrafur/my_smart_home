@@ -15,7 +15,7 @@
 
 - Coletor: `homeassistant/tools/raspberry_pi_health.py`
 - Pacote Home Assistant: `homeassistant/packages/raspberry_pi_system_health.yaml`
-- Dashboard: `homeassistant/dashboards/raspberry_pi_health.yaml`
+- Dashboard: aba **Servidor** de `homeassistant/dashboards/sistema.yaml` (painel `painel-sistema`, só administradores); resumo na aba **Saúde**
 - Registro do dashboard: `homeassistant/configuration.yaml`
 - Mounts de host no container: `docker-compose.yml`
 - Resfriamento de emergencia: aba `resfriamento_raspberry_pi` em `nodered/flows.json`

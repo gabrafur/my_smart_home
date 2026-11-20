@@ -834,11 +834,11 @@ com a telemetria global. Isso evita que uma montagem sem escrita congele o
 último status até ele expirar após dois minutos, que fazia o painel mostrar RTX
 indisponível mesmo com Ollama e GPU saudáveis.
 
-No dashboard **Chat** há duas abas separadas:
+No dashboard **Sistema** (só administradores) há duas abas separadas:
 
-- **Uso do Codex** (`/chat-assistants/uso-codex`): limite, créditos, cache e
+- **Codex** (`/painel-sistema/uso-codex`): limite, créditos, cache e
   tokens do Codex, sem cards RTX.
-- **RTX 4070** (`/chat-assistants/uso-rtx`): estado em tempo real, GPU, VRAM,
+- **RTX 4070** (`/painel-sistema/uso-rtx`): estado em tempo real, GPU, VRAM,
   potência, modelo/tarefa, tokens OpenAI economizados por compactação e chats
   que usam a RTX.
 
