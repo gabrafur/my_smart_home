@@ -21,6 +21,7 @@ physical identifiers must appear only as placeholders.
 | [Public-repository security audit](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publishing, rotation, and Git history | Portuguese detailed record |
 | [Bluetooth and Matter](BLUETOOTH_MATTER.md) | D-Bus, host networking, and commissioning | summarized in [Containers](CONTAINERS.en.md) |
 | [Raspberry Pi health](RASPBERRY_PI_SYSTEM_HEALTH.md) | Host metrics, storage read retries, per-occurrence notices, and 30-day Logbook history | Portuguese detailed guide |
+| [Home Assistant dashboards](DASHBOARDS.md) | Casa (default, everyone), admin-only Sistema, Creta, Map and Chat: audience, views and design rules | Portuguese detailed guide |
 | [Host memory guardian](HOST_MEMORY_GUARDIAN.md) | Bounded memory relief for allowlisted abandoned temporary artifacts and disconnected remote-development sessions | Portuguese detailed guide |
 | [Storage audit — phase 2](operations/storage-audit-phase-2.md) | Developer tools, cache, PM2, Docker cleanup, and recorder analysis | Portuguese detailed record |
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee, Tuya, and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |

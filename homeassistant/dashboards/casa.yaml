@@ -206,7 +206,7 @@ views:
               target:
                 entity_id: input_text.alexa_mensagem
               data:
-                value: Pode descer aqui, por favor?
+                value: Desce aqui, por favor.
 
       - type: grid
         cards:
