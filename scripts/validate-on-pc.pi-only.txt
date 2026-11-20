@@ -1,0 +1,9 @@
+# Tests that cannot pass on the owner's PC (WSL uid 1000, no sudo): they hard-code uid/gid 1001
+# (the Pi user and the GitHub runner) and file identities. They still run on the Pi and in the
+# public CI. One substring per line; `scripts/validate-on-pc.sh` ignores a failing TAP test only
+# when its title contains one of these. Anything else failing on the PC is a real failure.
+isolated Python regressions: /home/ubuntu/ci-parity/work/scripts/raspberry-mcp/runtime-source/native-events
+native event grouping keeps protocol and uncertain intents in synthetic SQLite
+offline backup verification test_verify.py
+offline backup verification test_key_reader.py
+storage metadata and recoverable cache tests use only synthetic fixtures
