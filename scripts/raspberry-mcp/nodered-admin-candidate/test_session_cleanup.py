@@ -269,8 +269,10 @@ class PreDispatchRefusal(Base):
     def test_process_deadline_caps_cleanup_wait(self):
         C.PROCESS_STARTED = time.monotonic() - C.CLEANUP_LOCK_DEADLINE_SECONDS
         start = time.monotonic()
-        _, _, receipt, ev, _ = self.run_once(after=self.hold_after_fetch(3.0))
-        self.assertLess(time.monotonic() - start, 2.5)
+        # The holder outlives any plausible wait (it is killed at teardown), so the bound only
+        # proves the deadline cap and stays valid on a loaded Raspberry (8 s seen in CI parity).
+        _, _, receipt, ev, _ = self.run_once(after=self.hold_after_fetch(60.0))
+        self.assertLess(time.monotonic() - start, 30)
         self.assertEqual(ev['revoke']['stage'], 'refused_before_dispatch')
         self.assertFalse(receipt['security_cleanup_confirmed'])
 
