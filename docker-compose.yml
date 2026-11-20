@@ -8,7 +8,7 @@ services:
 
   portainer:
     logging: *default-logging
-    image: portainer/portainer-ce@sha256:3609c307943bca8e5c492f69ddd6965df177208b50678a4cff28391c8dd4e96e
+    image: portainer/portainer-ce@sha256:18616fff2998f8ca0e8ebe7f028658ae1682859cf43f212f81a849c1093ad639
     container_name: portainer
     mem_limit: 512m
     restart: always
@@ -20,7 +20,7 @@ services:
 
   mosquitto:
     logging: *default-logging
-    image: eclipse-mosquitto@sha256:75d6662dee52c947dc9dd9c29f1d8d7ffef78ddaf38001caa09755681e8bbc98
+    image: eclipse-mosquitto@sha256:fa12172a051310efe5bcb7a6a11b77bd5faacb82cbacd7742aa758bf024fd8e4
     container_name: mosquitto
     mem_limit: 256m
     restart: always
