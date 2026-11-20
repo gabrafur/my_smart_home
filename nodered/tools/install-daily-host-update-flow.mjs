@@ -269,6 +269,17 @@ node.status({
 msg.payload = result;
 if (TEST_MODE) return [msg, null];
 if (failed) {
+    // Plain-language phone alert; the node.error text below stays the diagnostics contract.
+    const readinessText = readiness === null ? "não informada" : readiness === "ok" ? "ok" :
+        readiness === "unknown" ? "não confirmada" : "degradada (" + readiness.slice("degraded:".length) + ")";
+    msg.observer_alert = {
+        title: "Atualização noturna: etapa ${label} falhou",
+        message: "A etapa ${label} da atualização noturna " + (status === "unavailable" ? "não pôde ser executada" : "terminou com falha") +
+            (failureStage ? " em “" + failureStage + "”" : "") + ". Motivo informado: " + (reason ?? "não informado") +
+            ". Prontidão dos serviços principais: " + readinessText +
+            ". O que fazer: abra a aba atualizacoes_diarias do Node-RED e confira o resultado." +
+            ("${expectedStage}" === "containers" ? " Uma falha nesta etapa pode deixar um registro de recuperação do Docker que impede a próxima de rodar até ser resolvido." : "")
+    };
     node.error("host_update_stage_failed stage=${expectedStage} request_id=" + requestId + " failure_stage=" + String(failureStage) + " stage_exit=" + String(result.stage_exit) +
         " reason=" + String(reason ?? "none") + " readiness=" + String(readiness ?? "none"), msg);
     // Owner decision (18/11/2026): a compatibility gate refuses the Core image before any

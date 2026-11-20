@@ -40,12 +40,18 @@ msg.payload = {
     source_id: sourceId, first_detected_at: new Date(now).toISOString(),
     policy_decided_at: new Date(now).toISOString()
 };
+const KNOWN = {
+    eva_export_contract: "O envio do aviso privado à Eva recusou um incidente de um tipo que não está na lista aceita. " +
+        "Só esse espelho privado foi afetado; a correção é da manutenção selada da Eva.",
+    eva_delivery_test_contract: "O teste de entrega do aviso privado à Eva chegou fora do formato esperado."
+};
+const known = Object.entries(KNOWN).find(([code]) => errorMessage.includes(code))?.[1];
 msg.alert = {
     title: "Falha no monitor global do Node-RED",
-    message:
-        `O próprio monitor de observabilidade falhou no nó “${sourceName}”: ` +
-        `${errorMessage}. Incidentes idênticos serão silenciados por ` +
-        `${policy.reminder_hours} horas.`
+    message: known
+        ? `${known} Passo: “${sourceName}”. Detalhe técnico: ${errorMessage}. O mesmo erro só será avisado de novo daqui a ${policy.reminder_hours} horas.`
+        : `O monitor que vigia os fluxos teve um erro interno no passo “${sourceName}”, então a vigilância desse passo pode ter ficado incompleta. ` +
+          `Detalhe técnico: ${errorMessage}. O mesmo erro só será avisado de novo daqui a ${policy.reminder_hours} horas.`
 };
 // This recursion-safe error route intentionally bypasses the ordinary guard.
 msg._notification_timing = { version: 1, source_observed_at: null,

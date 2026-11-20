@@ -7,7 +7,8 @@ const title = String(tailored.title ?? "").replace(/[\r\n]+/g, " ").slice(0, 140
 const message = String(tailored.message ?? "").replace(/[\r\n]+/g, " ").slice(0, 600);
 msg.alert = title && message ? { title: data.test_mode ? `TESTE — ${title}` : title, message } : {
     title: data.test_mode ? "TESTE — Falha em fluxo Node-RED" : "Falha em fluxo Node-RED",
-    message: `O fluxo “${data.flow_label}” registrou ${data.classification} no nó “${data.source_name}”. ` +
-        `O mesmo erro será silenciado por ${data.policy.reminder_hours} horas para evitar notificações repetidas.`
+    message: `Um passo do fluxo “${data.flow_label}” terminou com ${data.classification}: o nó “${data.source_name}” não concluiu o que devia. ` +
+        `Onde olhar: aba “${data.flow_label}” do Node-RED, nesse nó. ` +
+        `O mesmo erro só será avisado de novo daqui a ${data.policy.reminder_hours} horas.`
 };
 return msg;
