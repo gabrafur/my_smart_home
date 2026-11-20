@@ -118,6 +118,13 @@ recorder:
       - sensor.vpn_primary_connection_state
       - binary_sensor.vpn_primary_connection
       - sensor.revisao_semanal_da_documentacao
+      # A5 (20/11/2026): contadores de tokens duplicados (rtx_waterfall_total/today repetem
+      # codex_tokens_totais/_hoje, ~39 mil gravações cada) e a "última métrica", só exibição
+      # (~39 mil). Nenhum painel do repositório usa o histórico; o estado atual continua no
+      # painel e as estatísticas de longo prazo já gravadas permanecem.
+      - sensor.rtx_waterfall_total_codex_tokens
+      - sensor.rtx_waterfall_today_codex_tokens
+      - sensor.codex_ultima_metrica
 
 template:
   - binary_sensor:
