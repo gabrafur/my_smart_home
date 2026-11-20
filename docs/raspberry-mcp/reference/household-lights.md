@@ -1,4 +1,4 @@
-# Luzes da casa pelo MCP
+# Luzes e ações da casa pelo MCP
 
 A Eva lê e aciona um conjunto fixo de luzes da casa por duas ferramentas MCP:
 
@@ -13,9 +13,35 @@ A Eva lê e aciona um conjunto fixo de luzes da casa por duas ferramentas MCP:
 Alvos registrados (política `/usr/local/lib/raspberry-ha-lights/policy.json`):
 `lampadas_garagem`, `lampada_varanda`, `abajour_sala_de_estar`,
 `refletores_jardim` e `refletor_portao_carros`. Só entidades `switch`/`light`
-podem ser registradas. Relé do portão, alarme, fechaduras, climatização e
-controles do veículo não estão registrados e são inalcançáveis: o chamador envia
-apenas a chave registrada e on/off.
+podem ser registradas. Alarme, fechaduras e controles do veículo não estão
+registrados e são inalcançáveis: o chamador envia apenas a chave registrada e o verbo.
+
+## Ações da casa (v3, 20/11/2026)
+
+Depois que a Eva não conseguiu desligar o ar-condicionado nem o PC e o proprietário
+pediu que ela tivesse também o portão, duas ferramentas passaram a existir, no mesmo
+broker, rota e socket:
+
+- `ha_actions_read` lista as ações registradas e se cada uma pode rodar agora.
+- `ha_action_run` (`destructiveHint: true`, então o conector pede confirmação) executa
+  uma ação: `target` + `action`, nada mais.
+
+| Alvo | Ação | O que o Home Assistant executa | Confirmação |
+| --- | --- | --- | --- |
+| `ar_condicionado_escritorio` | `on` / `off` | `switch.turn_on/off` em `switch.ar_condicionado_escritorio_power` | estado lido de volta |
+| `pc_gabriel` | `poweroff` | `script.turn_on` em `script.pc_desligar` | só que o script rodou; o PC não é lido |
+| `portao_garagem` | `pulse` | `button.press` em `button.acionar_portao_da_garagem` | só que o botão registrou o pulso |
+
+O serviço fica fixo pelo tipo da ação (`power`, `poweroff`, `pulse`); a política só
+nomeia a entidade e o rótulo. Cada tipo tem limite próprio, separado do das luzes:
+`power` 20/h e 5 s, `poweroff` 3/h e 30 s, `pulse` 6/h e 20 s. Nenhum é reenviado
+automaticamente: `unconfirmed` e `uncertain` pedem observação, não repetição.
+
+O portão não tem sensor de posição. Um pulso executa o próximo passo do ciclo da
+central (abrir, parar ou fechar), e o resultado traz `position_unknown`. O botão só
+publica o evento; o Node-RED continua dono do pulso físico (OFF → ON → OFF) e das suas
+travas, descritas em [PORTAO_GARAGEM_BOTAO_PULSO](../../PORTAO_GARAGEM_BOTAO_PULSO.md).
+Ligar o PC não existe (seria Wake-on-LAN, fora do escopo pedido).
 
 ## Caminho
 
@@ -36,7 +62,7 @@ conector ChatGPT -> túnel -> frontend raspberry-mcp@ (sem rede)
   só local (`eva-household-lights`, grupo `system-users`): lê estados e chama
   `turn_on`/`turn_off`, mas não acessa serviços e APIs administrativos. O token
   administrativo de longa duração não é mais usado pelo broker.
-- Limites: 30 comandos por hora e intervalo de 3 s. Cada comando é gravado em
+- Limites das luzes: 30 comandos por hora e intervalo de 3 s. Cada comando é gravado em
   `/var/lib/raspberry-ha-lights/commands.json` antes do envio (histórico de 24 h).
 - `ha_light_set` não é somente leitura, então o conector mantém sua confirmação de
   interface.
@@ -65,3 +91,9 @@ e, se a lista estiver em cache, atualize as ferramentas do conector no ChatGPT.
 Para desativar o controle mantendo a leitura, defina `enabled` como false na
 política. Qualquer mudança futura em `private-content-route.mjs` precisa manter o
 envoltório de iluminação.
+
+A v3 foi instalada pelo operador Root `closure-claude-1720/ha-lights-r3/deploy.py`
+(compare-and-swap nos bytes exatos da v2 de `broker.py`, `policy.json` e
+`lights-route.mjs`; imagens anteriores em `BEFORE-V2`; `rollback` volta à v2). O broker
+roda por conexão, então não reinicia serviço; o frontend carrega a rota nova na
+conexão seguinte (reiniciar `raspberry-mcp-tunnel.service`).

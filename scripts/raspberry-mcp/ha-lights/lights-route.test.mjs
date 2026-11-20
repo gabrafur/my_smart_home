@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {makeLightsRoute, lightDescriptors} from './lights-route.mjs';
+import {makeLightsRoute, lightDescriptors, actionDescriptors} from './lights-route.mjs';
 
 const priorCalls=[];
 const prior=async(q)=>{priorCalls.push(q);return q.method==='tools/list'?{jsonrpc:'2.0',id:q.id,result:{tools:[{name:'x'}]}}:{jsonrpc:'2.0',id:q.id,result:{ok:true}};};
@@ -7,7 +7,7 @@ const sent=[];
 const route=makeLightsRoute(prior,async r=>{sent.push(r);return {state:'confirmed',collection_error:null};});
 
 const list=await route({jsonrpc:'2.0',id:1,method:'tools/list'});
-assert.deepEqual(list.result.tools.map(t=>t.name),['x','ha_lights_read','ha_light_set']);
+assert.deepEqual(list.result.tools.map(t=>t.name),['x','ha_lights_read','ha_light_set','ha_actions_read','ha_action_run']);
 assert.equal(lightDescriptors[1].annotations.readOnlyHint,false);
 
 const ok=await route({jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'ha_light_set',arguments:{host:'raspberry',target:'lampadas_garagem',state:'on'}}});
@@ -41,6 +41,26 @@ await caps({jsonrpc:'2.0',id:7,method:'tools/call',params:{name:'ha_light_set',a
 assert.deepEqual(rows,[{tool:'ha_light_set',id:7,success:true,state:'confirmed'}]);
 const c=await caps({jsonrpc:'2.0',id:8,method:'tools/call',params:{name:'maintenance_capabilities',arguments:{host:'raspberry'}}});
 assert.deepEqual(c.result.structuredContent.limits,['no_actuators']);
-assert.deepEqual(c.result.structuredContent.household_lights.tools,['ha_lights_read','ha_light_set']);
-assert.equal(JSON.parse(c.result.content[0].text).household_lights.scope,'registered_household_lights_only');
+assert.deepEqual(c.result.structuredContent.household_lights.tools,['ha_lights_read','ha_light_set','ha_actions_read','ha_action_run']);
+assert.equal(JSON.parse(c.result.content[0].text).household_lights.scope,'registered_household_lights_and_actions');
 console.log('lights route: audit and capability annotation passed');
+
+// Household actions: air conditioner, PC shutdown and gate pulse travel as target + verb only.
+const acts=[];
+const actRoute=makeLightsRoute(prior,async r=>{acts.push(r);return {state:'confirmed',collection_error:null};});
+for(const [target,action] of [['ar_condicionado_escritorio','off'],['pc_gabriel','poweroff'],['portao_garagem','pulse']]){
+ const r=await actRoute({jsonrpc:'2.0',id:9,method:'tools/call',params:{name:'ha_action_run',arguments:{host:'raspberry',target,action}}});
+ assert.equal(r.result.structuredContent.state,'confirmed');
+ assert.deepEqual(acts.at(-1),{name:'ha_action_run',arguments:{host:'raspberry',target,action}});
+}
+for(const a of [{target:'portao_garagem',action:'on'},{target:'portao_garagem',action:'open'},{target:'pc_gabriel',action:'reboot'},
+  {target:'rele_acionador_portao',action:'pulse'},{target:'ar_condicionado_escritorio',action:'pulse'},{target:'portao_garagem',action:'pulse',entity_id:'switch.x'}]){
+ const r=await actRoute({jsonrpc:'2.0',id:10,method:'tools/call',params:{name:'ha_action_run',arguments:{host:'raspberry',...a}}});
+ assert.equal(r.error.message,'registered_light_parameters_refused');
+}
+assert.equal(acts.length,3);
+assert.equal(actionDescriptors.find(d=>d.name==='ha_action_run').annotations.destructiveHint,true);
+assert.equal(actionDescriptors.find(d=>d.name==='ha_actions_read').annotations.readOnlyHint,true);
+await actRoute({jsonrpc:'2.0',id:11,method:'tools/call',params:{name:'ha_actions_read',arguments:{host:'raspberry',target:null}}});
+assert.deepEqual(acts.at(-1),{name:'ha_actions_read',arguments:{host:'raspberry'}});
+console.log('lights route: household actions passed');

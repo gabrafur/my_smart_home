@@ -1,13 +1,49 @@
 {
-  "schema": "ha_lights_policy_v1",
-  "enabled": true,
-  "revoked": false,
-  "targets": {
-    "lampadas_garagem": {"entity_id": "switch.lampadas_garagem", "label": "Lâmpadas da garagem"},
-    "lampada_varanda": {"entity_id": "switch.lampada_varanda", "label": "Lâmpada da varanda"},
-    "abajour_sala_de_estar": {"entity_id": "switch.abajour_sala_de_estar", "label": "Abajur da sala de estar"},
-    "refletores_jardim": {"entity_id": "switch.refletores_jardim", "label": "Refletores do jardim"},
-    "refletor_portao_carros": {"entity_id": "switch.refletor_portao_carros", "label": "Refletor do portão dos carros"}
+ "schema": "ha_lights_policy_v1",
+ "enabled": true,
+ "revoked": false,
+ "targets": {
+  "lampadas_garagem": {
+   "entity_id": "switch.lampadas_garagem",
+   "label": "Lâmpadas da garagem"
   },
-  "limits": {"commands_per_hour": 30, "minimum_spacing_seconds": 3, "readback_seconds": 6}
+  "lampada_varanda": {
+   "entity_id": "switch.lampada_varanda",
+   "label": "Lâmpada da varanda"
+  },
+  "abajour_sala_de_estar": {
+   "entity_id": "switch.abajour_sala_de_estar",
+   "label": "Abajur da sala de estar"
+  },
+  "refletores_jardim": {
+   "entity_id": "switch.refletores_jardim",
+   "label": "Refletores do jardim"
+  },
+  "refletor_portao_carros": {
+   "entity_id": "switch.refletor_portao_carros",
+   "label": "Refletor do portão dos carros"
+  }
+ },
+ "limits": {
+  "commands_per_hour": 30,
+  "minimum_spacing_seconds": 3,
+  "readback_seconds": 6
+ },
+ "actions": {
+  "ar_condicionado_escritorio": {
+   "entity_id": "switch.ar_condicionado_escritorio_power",
+   "label": "Ar-condicionado do escritório",
+   "kind": "power"
+  },
+  "pc_gabriel": {
+   "entity_id": "script.pc_desligar",
+   "label": "PC do Gabriel (desligar)",
+   "kind": "poweroff"
+  },
+  "portao_garagem": {
+   "entity_id": "button.acionar_portao_da_garagem",
+   "label": "Portão da garagem (um pulso)",
+   "kind": "pulse"
+  }
+ }
 }
