@@ -5,6 +5,12 @@
       "since": "2026-11-19",
       "reason": "Node-RED 5.0.10 changes runtime files (context localfilesystem, flows Flow/Subflow) that the sealed administration chain reviewed on 5.0.9. Updating the image breaks nodered_admin_read until the isolated core review is redone for the new version.",
       "release_when": "the isolated core context review is redone for the new image and the administration chain is re-pinned"
+    },
+    {
+      "service": "appdaemon",
+      "since": "2026-11-20",
+      "reason": "acockburn/appdaemon@sha256:e221331ca98c19558b9e7838e2187e63d5c900eebfd0804a6cba4b1596782420 bundles a jemalloc built for 4 KiB pages; on this Raspberry Pi 5 kernel (16 KiB pages) it aborts at start ('Unsupported system page size') and the container crash-looped. Rolled back to the previous digest.",
+      "release_when": "a newer appdaemon image starts on a 16 KiB page kernel (check: docker run --rm <image> python3 -c 'print(1)' prints 1)"
     }
   ]
 }
