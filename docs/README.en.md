@@ -151,6 +151,11 @@ The [household lights tools](raspberry-mcp/reference/household-lights.md)
 Root policy and confirm the real Home Assistant state by readback; the gate,
 alarm and locks are not reachable.
 
+The [Home Assistant state tool](raspberry-mcp/reference/home-assistant-states.md)
+(`ha_states_read`) reads, live and read-only, a fixed Root-policy list of status
+entities with value, measurement time, age and availability; alarm, locks, gate
+and location are not reachable.
+
 The [general Node-RED administration contract](raspberry-mcp/reference/nodered-administration.md)
 has a default-closed implementation with structured graph edits, opaque
 revision CAS, durable intents, native guards and own-operation rollback.

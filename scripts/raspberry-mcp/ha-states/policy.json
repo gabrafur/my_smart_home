@@ -1,0 +1,126 @@
+{
+ "schema": "ha_states_policy_v1",
+ "enabled": true,
+ "revoked": false,
+ "entities": {
+  "sensor.raspberry_pi_health": {
+   "label": "Saúde geral do Raspberry",
+   "attributes": []
+  },
+  "sensor.raspberry_pi_load_5m": {
+   "label": "Carga do Raspberry (5 min)",
+   "attributes": []
+  },
+  "sensor.raspberry_pi_memory_usage": {
+   "label": "Memória usada do Raspberry",
+   "attributes": []
+  },
+  "sensor.raspberry_pi_storage_usage": {
+   "label": "Disco usado do Raspberry",
+   "attributes": []
+  },
+  "sensor.raspberry_pi_cpu_temperature": {
+   "label": "Temperatura da CPU do Raspberry",
+   "attributes": []
+  },
+  "sensor.raspberry_pi_uptime": {
+   "label": "Uptime do Raspberry",
+   "attributes": []
+  },
+  "binary_sensor.internet_connection": {
+   "label": "Internet",
+   "attributes": []
+  },
+  "binary_sensor.vpn_primary_connection": {
+   "label": "VPN",
+   "attributes": []
+  },
+  "binary_sensor.zigbee_network": {
+   "label": "Rede Zigbee",
+   "attributes": []
+  },
+  "binary_sensor.tuya_devices": {
+   "label": "Dispositivos Tuya",
+   "attributes": []
+  },
+  "input_boolean.nodered_runtime_incident": {
+   "label": "Incidente no Node-RED",
+   "attributes": []
+  },
+  "sensor.backup_result_git": {
+   "label": "Cópia no Git",
+   "attributes": [
+    "reason",
+    "freshness",
+    "last_attempt_at",
+    "last_confirmed_at"
+   ]
+  },
+  "sensor.backup_result_offsite": {
+   "label": "Cópia externa",
+   "attributes": [
+    "reason",
+    "freshness",
+    "last_attempt_at",
+    "last_confirmed_at"
+   ]
+  },
+  "sensor.backup_result_restore": {
+   "label": "Restauração testada",
+   "attributes": [
+    "reason",
+    "freshness",
+    "last_attempt_at",
+    "last_confirmed_at"
+   ]
+  },
+  "sensor.backup_last_successful_automatic_backup": {
+   "label": "Último backup automático do HA",
+   "attributes": []
+  },
+  "sensor.backup_next_scheduled_automatic_backup": {
+   "label": "Próximo backup automático do HA",
+   "attributes": []
+  },
+  "update.alexa_media_player_update": {
+   "label": "Atualização Alexa Media",
+   "attributes": [
+    "installed_version",
+    "latest_version"
+   ]
+  },
+  "update.kia_uvo_hyundai_bluelink_update": {
+   "label": "Atualização Kia/Bluelink",
+   "attributes": [
+    "installed_version",
+    "latest_version"
+   ]
+  },
+  "update.moni_mobile_alarm_update": {
+   "label": "Atualização Alarme Moni",
+   "attributes": [
+    "installed_version",
+    "latest_version"
+   ]
+  },
+  "update.slzb_mrw10u_zigbee_firmware": {
+   "label": "Firmware do coordenador Zigbee",
+   "attributes": [
+    "installed_version",
+    "latest_version"
+   ]
+  },
+  "sensor.botao_portao_garagem_battery": {
+   "label": "Bateria do botão do portão",
+   "attributes": []
+  },
+  "sensor.controlador_ir_battery": {
+   "label": "Bateria do controlador IR",
+   "attributes": []
+  },
+  "sensor.lds_robot_battery": {
+   "label": "Bateria do aspirador",
+   "attributes": []
+  }
+ }
+}

@@ -36,6 +36,11 @@ As [luzes da casa](reference/household-lights.md) registradas na política do br
 `ha_lights_read` e `ha_light_set`, com leitura do estado real depois do comando;
 portão, alarme e fechaduras ficam fora.
 
+O [estado do Home Assistant](reference/home-assistant-states.md) de um conjunto fixo de
+entidades de status (saúde do Raspberry, rede, Zigbee, cópias, atualizações, baterias) é
+lido ao vivo por `ha_states_read`, somente leitura, com valor, horário da medição, idade e
+disponibilidade; alarme, fechaduras, portão e localização ficam fora.
+
 A [proposta de administração geral do Node-RED](reference/nodered-administration.md)
 separa o grafo, a revisão de efeitos e a admissão de deploy. O código candidato
 permanece fechado e não instalado até confirmação específica; não amplia o

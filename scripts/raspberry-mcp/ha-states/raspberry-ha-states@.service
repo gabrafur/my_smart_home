@@ -1,0 +1,34 @@
+[Unit]
+Description=One read-only Home Assistant state request
+
+[Service]
+Type=exec
+DynamicUser=yes
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-ha-states/broker.py
+LoadCredential=ha-token:/mnt/data/docker/.local-secrets/ha-lights-token.txt
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+UMask=0077
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressDeny=any
+IPAddressAllow=localhost
+ReadOnlyPaths=/usr/local/lib/raspberry-ha-states
+InaccessiblePaths=/run/docker.sock /var/run/docker.sock /mnt/data/docker
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+SystemCallFilter=@system-service
+MemoryMax=64M
+TasksMax=8
+RuntimeMaxSec=20

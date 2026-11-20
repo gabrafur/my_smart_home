@@ -113,6 +113,12 @@ No Claude: Configurações → Conectores → Adicionar conector personalizado �
 
 ## Acesso web do Home Assistant para a Eva (tailnet, HTTPS)
 
+**Desativado em 20/11/2026** a pedido do proprietário: a Eva lê o estado ao vivo pelo MCP
+([`ha_states_read`](reference/home-assistant-states.md)), sem navegador, sem senha e sem depender de
+um computador ligado. O usuário `eva-web` ficou inativo (não removido), a porta 8443 saiu do
+`tailscale serve` e a senha guardada foi apagada. O texto abaixo é histórico, para reativar se
+necessário (exige nova senha).
+
 O Home Assistant só serve HTTP puro na porta 8123, então um endereço HTTPS dava erro de certificado. Desde
 19/11/2026 há um endereço HTTPS **só da tailnet**, em `https://<nome do nó>.<tailnet>.ts.net:8443/` (o nome fica
 fora do Git; `tailscale status --json`, campo `Self.DNSName`). Funciona em qualquer dispositivo da tailnet; a
