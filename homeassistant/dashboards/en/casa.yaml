@@ -414,14 +414,6 @@ views:
             hold_action:
               action: more-info
           - type: tile
-            entity: switch.rele_acionador_portao
-            name: Relay
-            icon: mdi:electric-switch
-            tap_action:
-              action: none
-            icon_tap_action:
-              action: none
-          - type: tile
             entity: sensor.botao_portao_garagem_battery
             name: Physical button
           - type: heading

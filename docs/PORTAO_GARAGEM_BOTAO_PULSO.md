@@ -9,6 +9,8 @@ a entidade do botão no dashboard e uma proteção independente para relé preso
 `switch.rele_acionador_portao` é um contato seco na entrada de botoeira da
 central. Cada `ON` é uma ação física real — abrir, fechar, parar ou inverter.
 Não existe sensor de posição; o estado do relé representa somente o contato.
+Por isso o relé não aparece em painel nenhum, fica oculto no registro e não é
+exposto ao Assist ([`DASHBOARDS.md`](DASHBOARDS.md)); só o fluxo o pulsa.
 
 Regras:
 

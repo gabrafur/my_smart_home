@@ -259,8 +259,8 @@ controle de dispositivos.
 
 ### 6. Testar de ponta a ponta pelo chat do HA
 
-No app/navegador, abra o Assist (ícone de balão de fala ou o card "Claude
-Code (Full Access)" na aba **Chat**), troque o pipeline no seletor do topo do
+No app/navegador, abra o Assist (ícone de balão de fala no topo de qualquer
+painel), troque o pipeline no seletor do topo do
 popup para **"Claude Code (Full Access)"**, e mande algo que só é possível
 com acesso real, ex.:
 
@@ -269,12 +269,16 @@ com acesso real, ex.:
 A resposta deve bater com a realidade do host (mesma lista de `docker ps`).
 
 Para o Codex, abra **Chat → Codex**, envie a mesma pergunta e confirme que o
-historico reaparece depois de recarregar a pagina. A aba **Assistentes** mantem
-somente Claude padrao, Home Assistant e Claude Code (Full Access).
+historico reaparece depois de recarregar a pagina. O painel **Chat** tem
+somente a aba **Codex**; a antiga aba **Assistentes** saiu em 20/11/2026, e os
+pipelines continuam no seletor do Assist. O cartão segue o idioma do perfil de
+quem o abre (português para `pt*`, inglês para os demais), com os textos em
+`STRINGS` de `homeassistant/www/codex-chat-card-v2.js`.
 
 ### Painel de uso do Codex
 
-A aba **Chat → Uso do Codex** acompanha as métricas emitidas pelo Codex CLI autenticado
+A aba **System → Codex** (`/painel-sistema/uso-codex`, só administradores)
+acompanha as métricas emitidas pelo Codex CLI autenticado
 no volume `codex-bridge-auth`. O endpoint local `GET /usage` do bridge devolve
 somente o resumo sanitizado de limite, créditos e tokens; prompts e respostas
 não fazem parte da resposta. O sensor `Codex Usage Raw`, definido em

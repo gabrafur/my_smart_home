@@ -55,11 +55,19 @@ Lovelace, então cada painel tem uma fonte em português e uma cópia em inglês
   automações continuam vendo os nomes originais.
 - **Ação física confirma ou abre o diálogo nativo.** O portão confirma em todos
   os lugares; o alarme abre o teclado que exige código; a trava do Creta leva ao
-  painel do carro, onde os comandos passam pelo coordenador; o relé do portão é
-  só leitura. Reiniciar ou desligar o Raspberry e o PC fica no Sistema, com
+  painel do carro, onde os comandos passam pelo coordenador. Reiniciar ou desligar o Raspberry e o PC fica no Sistema, com
   confirmação.
 - **Pendências técnicas ficam no Sistema** (seção “Pede atenção”, só visível
   quando há algo errado). O painel Casa mostra estado da casa, não do servidor.
+- **O relé do portão não aparece para ninguém.** `switch.rele_acionador_portao`
+  só é pulsado pelo fluxo `garagem` do Node-RED. Ele não entra em nenhum painel
+  (teste `test_gate_relay_is_never_shown_on_a_dashboard`), está oculto no
+  registro de entidades (`hidden_by: user`, some das páginas automáticas de
+  área) e não é exposto ao Assist, então nem a conversa nem a voz o acionam. O
+  broker da Eva também o recusa. Quem quer abrir o portão usa
+  `button.acionar_portao_da_garagem`, que confirma e passa pelas guardas do
+  fluxo. Para reverter: Configurações › Entidades › relé › Visível, e
+  Configurações › Assistentes de voz › Expor.
 - **Papéis públicos**: pessoas aparecem pelos trackers de papel
   `device_tracker.resident_*_location`; aparelhos com nome pessoal entram por
   cartão de área, sem citar o `entity_id` no repositório.
@@ -67,24 +75,50 @@ Lovelace, então cada painel tem uma fonte em português e uma cópia em inglês
 ## Falar na Alexa
 
 A seção da aba Início tem o campo de texto, o botão **Falar agora** e frases
-rápidas. Uma frase rápida só preenche o campo; quem fala é sempre o botão. O
+rápidas ("O jantar está pronto!", "Estou chegando em casa." e "Desce aqui, por
+favor."). As frases são afirmações curtas: em 20/11/2026 a Alexa leu a forma
+interrogativa "Pode descer aqui, por favor?" como outra frase, embora o hub
+tenha registrado o texto exato. Uma frase rápida só preenche o campo; quem fala é sempre o botão. O
 botão (`button.ler_mensagem_na_alexa`, pacote `alexa_text_announcements.yaml`)
 publica `alexa_text_announcement_requested` e depois limpa o campo, o que
 confirma o envio e evita repetir a mensagem anterior. Destino e entrega
-continuam no hub `hub_notificacoes_alexa` do Node-RED.
+continuam no hub `hub_notificacoes_alexa` do Node-RED, que registra cada texto
+aceito no histórico de notificações do canal `alexa` (ver
+[`NODERED_NOTIFICATION_HUBS.md`](NODERED_NOTIFICATION_HUBS.md)) — é o lugar para conferir o
+que foi enviado quando a Alexa disser outra coisa. As frases são as mesmas na
+cópia em inglês, porque são o que a Alexa fala em casa.
 
 ## Comedouro
 
 Na aba Rotina, **Servir ração** abre o diálogo nativo da entidade
-`number.paf_a07_feed`: escolher a quantidade serve a ração na hora, sem outra
-confirmação. Os tiles ao lado mostram se está servindo e a última porção.
+`number.paf_a07_feed` (1 a 40 porções): escolher a quantidade serve a ração na
+hora, sem outra confirmação, como em qualquer controle numérico do HA. Os tiles
+ao lado mostram se está servindo e a última porção.
+
+## Contas e preferências
+
+- **Padrão do sistema:** painel Casa (`frontend.system_data` ›
+  `core.default_panel = painel-casa`), valendo para quem não escolheu outro.
+- **Administrador (perfil em inglês):** padrão pessoal `casa-en`; barra lateral
+  com Home, Creta, Map, Chat, System, Energy, Calendar, To-do, History,
+  Logbook e Media, e Overview, Casa e Creta em português ocultos.
+- **Moradores (perfil em português):** Casa, Creta, Mapa, Chat e os painéis
+  nativos. Painéis com `require_admin` não aparecem para eles.
+- **Tema:** `casa` como padrão do servidor, claro e escuro seguindo o aparelho.
+- A conta proprietária criada na instalação não tem senha nem tokens e não pode
+  ser excluída pelo Home Assistant; fica como está.
+
+Ordem da barra lateral e painel padrão pessoal são preferências de cada
+usuário (Perfil); o administrador não altera as dos outros.
 
 ## Testes
 
 `homeassistant/tests/test_casa_dashboard.py` garante que os controles da casa
 continuam no painel Casa, que o portão sempre confirma, que alarme e trava não
-agem por toque, que comandos do servidor só existem no Sistema e que o Sistema
-exige administrador. Os testes de backup, formatação, RTX e Alexa leem
+agem por toque, que o relé do portão não aparece em nenhum painel, que
+comandos do servidor só existem no Sistema e que Sistema e cópias em inglês
+exigem administrador. `node scripts/dashboard-i18n.mjs --check` (em
+`make validate-homeassistant`) garante que as cópias em inglês estão em dia. Os testes de backup, formatação, RTX e Alexa leem
 `sistema.yaml` e `casa.yaml`.
 
 ## Rollback

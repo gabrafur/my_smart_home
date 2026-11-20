@@ -83,6 +83,11 @@ HA porém **não são mais usados** pelo Node-RED.
 > `button.acionar_portao_da_garagem`, as guardas contra pulso duplicado e o
 > procedimento de rollback.
 
+> **Atualização 2026-11-20:** o relé não aparece em nenhum painel, está oculto
+> no registro de entidades e não é exposto ao Assist. Nenhum usuário o aciona
+> diretamente; o caminho é `button.acionar_portao_da_garagem`. Ver
+> [`DASHBOARDS.md`](DASHBOARDS.md).
+
 ## Deploy e teste
 
 Valide primeiro com o replay offline descrito em

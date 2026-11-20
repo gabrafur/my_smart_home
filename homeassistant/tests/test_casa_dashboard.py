@@ -90,8 +90,12 @@ class CasaDashboardTest(unittest.TestCase):
         for block in tile_blocks(casa, "lock.vehicle_primary_door_lock"):
             self.assertNotIn("perform_action", block)
             self.assertIn("navigation_path: /creta-viagens", block)
-        for block in tile_blocks(casa, "switch.rele_acionador_portao"):
-            self.assertIn("action: none", block)
+
+    def test_gate_relay_is_never_shown_on_a_dashboard(self) -> None:
+        # Only the Node-RED gate flow pulses the relay; no user may toggle it.
+        for path in sorted(DASHBOARDS.rglob("*.yaml")):
+            with self.subTest(dashboard=path.name):
+                self.assertNotIn("entity: switch.rele_acionador_portao", path.read_text(encoding="utf-8"))
 
     def test_technical_alerts_stay_out_of_the_household_dashboard(self) -> None:
         casa = CASA.read_text(encoding="utf-8")

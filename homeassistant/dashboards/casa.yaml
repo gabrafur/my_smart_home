@@ -436,15 +436,8 @@ views:
                 text: Acionar o portão da garagem?
             hold_action:
               action: more-info
-          # Estado somente: o relé é pulsado pelo fluxo do portão, nunca à mão.
-          - type: tile
-            entity: switch.rele_acionador_portao
-            name: Relé
-            icon: mdi:electric-switch
-            tap_action:
-              action: none
-            icon_tap_action:
-              action: none
+          # O relé (switch.rele_acionador_portao) não aparece em nenhum painel:
+          # só o fluxo do portão no Node-RED o pulsa. Ver docs/DASHBOARDS.md.
           - type: tile
             entity: sensor.botao_portao_garagem_battery
             name: Botão físico
