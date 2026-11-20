@@ -180,7 +180,17 @@ assert.equal(result.summary.tuya_phase, "checking");
 assert.equal(validateSnapshot({ tuya_states: [] }, flow, nodeMock, globalMock).tuya_snapshot_valid, false);
 const failure = queryFailure({ monitor_now: now, error: { message: "Home Assistant disconnected" } }, flow, nodeMock, globalMock);
 assert.equal(failure.tuya_phase, "checking");
-assert.equal(expand(failure, flow, nodeMock, globalMock).length, 3);
+// Function nodes read a returned array as one message per output: all three must
+// leave through the single output, wrapped in an inner array.
+const expanded = expand(failure, flow, nodeMock, globalMock);
+assert.equal(byId.get("tuya_publications_expand").outputs, 1);
+assert.equal(expanded.length, 1, "uma saída");
+assert.deepEqual(expanded[0].map((item) => item.topic.split("/").at(-1)), ["connection", "attributes", "state"]);
+const summaryExpanded = expand(result.summary, flow, nodeMock, globalMock);
+assert.equal(summaryExpanded.length, 1);
+assert.equal(summaryExpanded[0].length, 3);
+for (const id of ["tuya_publications_expand", "tuya_query_publications_expand"])
+  assert.equal(byId.get(id).func.trim(), fs.readFileSync(new URL("functions/tuya-publications-expand.js", import.meta.url), "utf8").trim());
 
 const testFlow = context({ persistent: { tuya_monitor_policy_v1: { version: 1, ...defaults } } });
 result = cycle(testFlow, snapshot(now, "unavailable", "on", true));

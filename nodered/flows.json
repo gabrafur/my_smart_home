@@ -40769,7 +40769,7 @@
     },
     {
         "finalize": "",
-        "func": "return Array.isArray(msg.tuya_publications)\n    ? msg.tuya_publications.map((publication) => ({ ...msg, ...publication }))\n    : null;",
+        "func": "// One output: Node-RED reads a returned array as one message per output, so the\n// publications go wrapped in an inner array to all leave through output 1.\n// (Without the wrapper only the first publication left; state and attributes\n// stayed frozen on the broker from 12/09 to 20/11/2026.)\nreturn Array.isArray(msg.tuya_publications)\n    ? [msg.tuya_publications.map((publication) => ({ ...msg, ...publication }))]\n    : null;",
         "g": "grp_tuya_notify",
         "id": "tuya_publications_expand",
         "initialize": "",
@@ -40905,7 +40905,7 @@
     },
     {
         "finalize": "",
-        "func": "return Array.isArray(msg.tuya_publications)\n    ? msg.tuya_publications.map((publication) => ({ ...msg, ...publication }))\n    : null;",
+        "func": "// One output: Node-RED reads a returned array as one message per output, so the\n// publications go wrapped in an inner array to all leave through output 1.\n// (Without the wrapper only the first publication left; state and attributes\n// stayed frozen on the broker from 12/09 to 20/11/2026.)\nreturn Array.isArray(msg.tuya_publications)\n    ? [msg.tuya_publications.map((publication) => ({ ...msg, ...publication }))]\n    : null;",
         "g": "grp_tuya_notify",
         "id": "tuya_query_publications_expand",
         "initialize": "",
