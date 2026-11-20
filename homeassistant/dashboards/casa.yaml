@@ -132,6 +132,8 @@ views:
             entity: switch.abajour_sala_de_estar
             name: Abajur da sala
             icon: mdi:floor-lamp
+            grid_options:
+              columns: 12
             tap_action:
               action: toggle
 
@@ -307,6 +309,8 @@ views:
             entity: switch.refletores_jardim
             name: Refletores
             icon: mdi:spotlight-beam
+            grid_options:
+              columns: 12
             tap_action:
               action: toggle
 
@@ -336,6 +340,8 @@ views:
           - type: tile
             entity: media_player.samsung_qn90ba_50_qn50qn90bagxzd
             name: TV da sala
+            grid_options:
+              columns: 12
           - type: heading
             heading: Varanda
             icon: mdi:flower-outline
@@ -344,6 +350,8 @@ views:
             entity: switch.lampada_varanda
             name: Lâmpada
             icon: mdi:outdoor-lamp
+            grid_options:
+              columns: 12
             tap_action:
               action: toggle
           - type: area
@@ -425,8 +433,6 @@ views:
             entity: button.acionar_portao_da_garagem
             name: Acionar portão
             icon: mdi:gate
-            grid_options:
-              columns: 12
             tap_action:
               action: perform-action
               perform_action: button.press

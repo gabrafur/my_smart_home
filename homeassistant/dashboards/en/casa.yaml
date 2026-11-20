@@ -122,6 +122,8 @@ views:
             entity: switch.abajour_sala_de_estar
             name: Living room lamp
             icon: mdi:floor-lamp
+            grid_options:
+              columns: 12
             tap_action:
               action: toggle
       - type: grid
@@ -291,6 +293,8 @@ views:
             entity: switch.refletores_jardim
             name: Floodlights
             icon: mdi:spotlight-beam
+            grid_options:
+              columns: 12
             tap_action:
               action: toggle
       - type: grid
@@ -319,6 +323,8 @@ views:
           - type: tile
             entity: media_player.samsung_qn90ba_50_qn50qn90bagxzd
             name: Living room TV
+            grid_options:
+              columns: 12
           - type: heading
             heading: Porch
             icon: mdi:flower-outline
@@ -327,6 +333,8 @@ views:
             entity: switch.lampada_varanda
             name: Light
             icon: mdi:outdoor-lamp
+            grid_options:
+              columns: 12
             tap_action:
               action: toggle
           - type: area
@@ -402,8 +410,6 @@ views:
             entity: button.acionar_portao_da_garagem
             name: Operate gate
             icon: mdi:gate
-            grid_options:
-              columns: 12
             tap_action:
               action: perform-action
               perform_action: button.press
