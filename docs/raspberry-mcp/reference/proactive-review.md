@@ -64,6 +64,7 @@ ao executor que registre o acompanhamento com `ack`.
 | `zigbee.batteries` | Último nível de bateria dos módulos Zigbee2MQTT (nomes e percentuais) |
 | `ha.unavailable_entities` | Estado mais recente de cada entidade no recorder (somente leitura): id e há quantos dias está indisponível |
 | `zigbee.devices_offline` | Tempo sem contato de cada módulo Zigbee (nomes e idades; nunca chaves ou endereços) |
+| `docker.update_recovery` | Existência e estado do registro privado de recuperação do Docker (nunca o conteúdo) |
 | `ci.public` | Últimas execuções da validação pública em `main` (GitHub Actions) |
 
 Instâncias por conexão (`Accept=yes`) do executor admin e do leitor de avisos
@@ -113,6 +114,10 @@ de 36 horas. Esses limites ficam acima da recuperação automática por módulo 
 (aba `monitoramento_zigbee`: offline confirmado → mapa de rotas e reconfiguração limitada,
 três tentativas a cada 15 minutos, aviso no esgotamento) e do teste ativo do Zigbee2MQTT
 (10 minutos): quando o alerta aparece, o caminho automático já se esgotou e a ação é física.
+
+`docker.update_recovery` abre P2 `docker.update_recovery_pending` enquanto o registro de
+recuperação de uma etapa de contêineres que falhou continuar pendente: a etapa seguinte
+aborta e segura todas as atualizações de imagem até ele ser arquivado e limpo.
 
 `ci.public` abre P1 `ci.public_red` quando a última validação pública concluída em
 `main` falhou, com o primeiro commit da sequência vermelha e quantas execuções

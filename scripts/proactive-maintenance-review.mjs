@@ -450,6 +450,23 @@ export const SOURCES = [
     },
   },
   {
+    id: "docker.update_recovery",
+    origin: "presence and state of the private Docker update recovery record (never its contents)",
+    collect(ctx) {
+      // 20/11/2026: a failed containers stage left this record pending; after the manual revert
+      // the next stage would have aborted ("Unresolved Docker update recovery record") and held
+      // every container update with nothing alerting. Only state fields leave this source.
+      const dir = path.join(ctx.repoRoot, ".local-secrets");
+      fs.accessSync(dir, fs.constants.R_OK | fs.constants.X_OK); // an unreadable folder is a collection gap, not "no record"
+      const file = path.join(dir, "docker-update-recovery.json");
+      if (!fs.existsSync(file)) return { pending: false };
+      const value = JSON.parse(fs.readFileSync(file, "utf8"));
+      const service = typeof value.failed_service === "string" && /^[a-z0-9_-]{1,64}$/.test(value.failed_service) ? value.failed_service : null;
+      return { pending: true, status: value.status === "failed" ? "failed" : "other", failed_service: service,
+        age_hours: Math.round((ctx.now - fs.statSync(file).mtimeMs) / 360000) / 10 };
+    },
+  },
+  {
     id: "ci.public",
     origin: "gh run list on main (GitHub Actions, read-only)",
     collect(ctx) {
@@ -841,6 +858,17 @@ export function evaluate(evidence, policy) {
       benefit: "Sem a política aprovada a Eva não continua tarefas nem incidentes sozinha (em 16/11 o desbloqueio dependeu dela).",
       proposed_action: "Conferir com maintenance_capabilities (client_execution_policy) e, se a revogação não foi do proprietário, reinstalar a política pelo operador Root revisado.",
       evidence: ["ai.client_execution_policy"],
+    });
+  }
+
+  const recovery = data("docker.update_recovery");
+  if (recovery?.pending) {
+    add({
+      key: "docker.update_recovery_pending", priority: "P2", risk: "baixo",
+      title: `Registro de recuperação do Docker pendente${recovery.failed_service ? " (" + recovery.failed_service + ")" : ""} há ${recovery.age_hours} h`,
+      benefit: "Enquanto existir, a próxima etapa de contêineres aborta e segura todas as atualizações de imagem.",
+      proposed_action: "Conferir se as imagens em execução batem com o compose e se tudo está saudável; então arquivar o registro e limpá-lo pelo módulo docker-update-recovery (passo a passo no BACKLOG-GUIA).",
+      evidence: ["docker.update_recovery"],
     });
   }
 

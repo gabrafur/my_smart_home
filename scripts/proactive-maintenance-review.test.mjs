@@ -45,6 +45,7 @@ const healthy = () => [
   source("zigbee.batteries", { levels: [{ name: "botao", percent: 100 }, { name: "controle", percent: null }] }),
   source("ha.unavailable_entities", { total: 3, stale_over_7_days: [] }),
   source("zigbee.devices_offline", { devices: [{ name: "lampada_varanda", mains: true, silent_minutes: 3 }, { name: "controlador_ir", mains: false, silent_minutes: 120 }] }),
+  source("docker.update_recovery", { pending: false }),
   source("ci.public", { latest_conclusion: "success", latest_commit: "abc1234", consecutive_failures: 0, failing_since_commit: null, failing_since: null }),
 ];
 
@@ -631,6 +632,28 @@ test("zigbee source reads names and ages only", () => {
   const data = source.collect(createContext({ policy: policy(), repoRoot: dir, now: 1000000 }));
   assert.deepEqual(data, { devices: [{ name: "refletores_jardim", mains: true, silent_minutes: 2 }] });
   assert.doesNotMatch(JSON.stringify(data), /PRIVATE_SENTINEL|0xa4c1/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("a pending Docker update recovery record is a P2 that names the service", () => {
+  const pending = evaluate(replace(healthy(), "docker.update_recovery",
+    { pending: true, status: "failed", failed_service: "appdaemon", age_hours: 6.5 }), policy());
+  assert.deepEqual(pending.map((f) => [f.key, f.priority]), [["docker.update_recovery_pending", "P2"]]);
+  assert.match(pending[0].title, /appdaemon.*6\.5 h/);
+});
+
+test("recovery source reports only state and ignores a missing file", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "recovery-"));
+  const source = SOURCES.find((item) => item.id === "docker.update_recovery");
+  const ctx = createContext({ policy: policy(), repoRoot: dir, now: Date.now() });
+  assert.throws(() => source.collect(ctx));
+  fs.mkdirSync(path.join(dir, ".local-secrets"));
+  assert.deepEqual(source.collect(ctx), { pending: false });
+  fs.writeFileSync(path.join(dir, ".local-secrets", "docker-update-recovery.json"),
+    JSON.stringify({ status: "failed", failed_service: "appdaemon", previous_compose: "PRIVATE_SENTINEL" }));
+  const data = source.collect(ctx);
+  assert.deepEqual({ ...data, age_hours: 0 }, { pending: true, status: "failed", failed_service: "appdaemon", age_hours: 0 });
+  assert.doesNotMatch(JSON.stringify(data), /PRIVATE_SENTINEL/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
