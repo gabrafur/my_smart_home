@@ -133,6 +133,16 @@ comparando o ID do contêiner e o hash do binário com os fixados em `reader.py`
 causas estavam presentes ao mesmo tempo (o Docker foi atualizado em 16/11 e o contêiner recriado em 19/11),
 e a leitura só voltou depois de corrigir ambas e de refixar o hash do `settings.js`.
 
+Com os hashes todos corretos, a leitura ainda pode falhar com
+`metadata_dependencies_changed_after_peer_start`. O guardião estima a hora de partida do leitor
+por `btime` (`/proc/stat`) mais o tempo de vida do processo, e o `btime` de um Raspberry sem relógio
+de hardware fica atrasado em dezenas de segundos depois do ajuste de hora. Se os arquivos do leitor
+foram instalados poucos segundos antes de ele iniciar (como no refixar de 19/11, 21:34:18 contra
+21:34:21), a partida estimada (21:33:37) fica antes da alteração dos arquivos e a leitura é recusada.
+Nada precisa ser refixado: `sudo systemctl restart raspberry-nodered-runtime-metadata.service` e
+repetir a leitura. Foi o que resolveu em 20/11/2026, e o `nodered_admin_read` voltou a responder.
+Depois de qualquer refixar do leitor, reinicie-o uma vez mais, tarde o bastante para a diferença não importar.
+
 O endereço fica estável com uma sobreposição privada da composição,
 `docker-compose.override.yml`, fora do Git: ela define a sub-rede da rede
 padrão, um intervalo separado para endereços dinâmicos e o endereço fixo do
