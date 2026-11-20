@@ -241,6 +241,7 @@ benchmark-local-ai-restricted-pivot:
 
 validate-homeassistant:
 	python3 -m unittest discover -s homeassistant/tests -p 'test_*.py'
+	node scripts/dashboard-i18n.mjs --check
 
 validate-scripts:
 	node scripts/test-all.mjs

@@ -43,12 +43,20 @@ def tile_blocks(text: str, entity: str) -> list[str]:
 class CasaDashboardTest(unittest.TestCase):
     def test_dashboards_are_registered_with_the_right_audience(self) -> None:
         configuration = CONFIGURATION.read_text(encoding="utf-8")
-        casa = configuration[configuration.index("    painel-casa:"):]
-        sistema = configuration[configuration.index("    painel-sistema:"):]
-        self.assertIn("filename: dashboards/casa.yaml", casa.split("\n    painel-sistema:")[0])
-        self.assertNotIn("require_admin", casa.split("\n    painel-sistema:")[0])
-        self.assertIn("require_admin: true", sistema)
-        self.assertIn("filename: dashboards/sistema.yaml", sistema)
+
+        def block(key: str) -> str:
+            start = configuration.index(f"\n    {key}:\n")
+            match = re.compile(r"\n    [a-z-]+:\n").search(configuration, start + 1)
+            end = configuration.index("\n\n", start) if match is None else match.start()
+            lines = configuration[start:end].splitlines()
+            return "\n".join(line for line in lines if not line.lstrip().startswith("#"))
+
+        self.assertIn("filename: dashboards/casa.yaml", block("painel-casa"))
+        self.assertNotIn("require_admin", block("painel-casa"))
+        self.assertIn("filename: dashboards/en/sistema.yaml", block("painel-sistema"))
+        for key in ("painel-sistema", "casa-en", "creta-en"):
+            with self.subTest(dashboard=key):
+                self.assertIn("require_admin: true", block(key))
         for retired in ("house-status:", "raspberry-pi-system-health:"):
             self.assertNotIn(retired, configuration)
 

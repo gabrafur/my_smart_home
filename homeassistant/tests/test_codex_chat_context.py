@@ -80,7 +80,11 @@ class CodexChatContextTest(unittest.TestCase):
 
         self.assertIn("this._hass?.user?.name", card)
         self.assertIn("Escopo: somente este servidor", card)
-        self.assertIn("Usuário: ${userName}", card)
+        self.assertIn("user: 'Usuário'", card)
+        self.assertIn("user: 'User'", card)
+        self.assertIn("${this.t('user')}: ${userName}", card)
+        # Interface text follows the viewer's profile language.
+        self.assertIn("startsWith('pt') ? 'pt' : 'en'", card)
 
     def test_clear_button_requires_confirmation_and_clears_server_context(self):
         component = COMPONENT.read_text(encoding="utf-8")

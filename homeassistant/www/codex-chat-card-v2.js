@@ -6,6 +6,33 @@ const MODELS = {
 };
 
 const REASONING_LABELS = { low: 'Baixo', medium: 'Médio', high: 'Alto', xhigh: 'Extra alto', max: 'Máximo', ultra: 'Ultra' };
+const REASONING_LABELS_EN = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra high', max: 'Maximum', ultra: 'Ultra' };
+// Interface text follows the viewer's Home Assistant profile language:
+// Portuguese for pt*, English for every other language.
+const STRINGS = {
+  pt: {
+    historyError: 'Não foi possível carregar o histórico', sendError: 'Erro ao enviar', clearConfirm: 'Apagar o histórico, o rascunho e as escolhas desta conversa? Esta ação não pode ser desfeita.',
+    clearError: 'Não foi possível limpar a conversa', starting: 'Iniciando o Codex…', analyzing: 'Codex está analisando o pedido…',
+    stillWorking: 'Ainda trabalhando; tarefas complexas podem levar alguns minutos…', loadingHistory: 'Carregando histórico…',
+    empty: 'Conversa vazia. A próxima mensagem iniciará um novo contexto.', anonymous: 'usuário autenticado', user: 'Usuário',
+    clearTitle: 'Apagar histórico, rascunho e escolhas desta conversa', clear: 'Limpar conversa', clearing: 'Limpando…',
+    scope: 'Escopo: somente este servidor e o que está instalado nele', preserved: 'Histórico preservado', model: 'Modelo',
+    modelLabel: 'Modelo Codex', reasoningLabel: 'Nível de reasoning',
+    note: 'Luna com reasoning baixo é o padrão. As escolhas e o rascunho permanecem nesta conversa até a limpeza explícita.',
+    feed: 'Mensagens da conversa', composer: 'Mensagem para o Codex', placeholder: 'Digite sua mensagem…', send: 'Enviar mensagem',
+  },
+  en: {
+    historyError: 'Could not load the history', sendError: 'Could not send', clearConfirm: 'Delete the history, draft and choices of this conversation? This cannot be undone.',
+    clearError: 'Could not clear the conversation', starting: 'Starting Codex…', analyzing: 'Codex is analyzing the request…',
+    stillWorking: 'Still working; complex tasks can take a few minutes…', loadingHistory: 'Loading history…',
+    empty: 'Empty conversation. The next message starts a new context.', anonymous: 'signed-in user', user: 'User',
+    clearTitle: 'Delete history, draft and choices of this conversation', clear: 'Clear conversation', clearing: 'Clearing…',
+    scope: 'Scope: this server and what is installed on it only', preserved: 'History preserved', model: 'Model',
+    modelLabel: 'Codex model', reasoningLabel: 'Reasoning level',
+    note: 'Luna with low reasoning is the default. Choices and the draft stay in this conversation until you clear it.',
+    feed: 'Conversation messages', composer: 'Message to Codex', placeholder: 'Type your message…', send: 'Send message',
+  },
+};
 const STORAGE_VERSION = 1;
 const STORAGE_PREFIX = `codex-chat-card-state:v${STORAGE_VERSION}`;
 const DRAFT_DEBOUNCE_MS = 300;
@@ -240,7 +267,7 @@ class CodexChatCard extends HTMLElement {
           { role: 'assistant', text: turn.reply },
         ]);
       } catch (error) {
-        state.messages = [{ role: 'error', text: `Não foi possível carregar o histórico: ${error.message || error}` }];
+        state.messages = [{ role: 'error', text: `${this.t('historyError')}: ${error.message || error}` }];
       } finally {
         state.historyLoaded = true;
         state.historyPromise = null;
@@ -274,7 +301,7 @@ class CodexChatCard extends HTMLElement {
       if (state.draft === sentDraft) state.draft = '';
       this.persistState();
     } catch (error) {
-      state.messages.push({ role: 'error', text: `Erro ao enviar: ${error.message || error}` });
+      state.messages.push({ role: 'error', text: `${this.t('sendError')}: ${error.message || error}` });
       this.persistState();
     } finally {
       state.requestPromise = null;
@@ -283,6 +310,13 @@ class CodexChatCard extends HTMLElement {
       this.notifyState({ focusComposer: true });
     }
   }
+
+  lang() {
+    const language = this._hass?.locale?.language || this._hass?.language || 'pt-BR';
+    return String(language).toLowerCase().startsWith('pt') ? 'pt' : 'en';
+  }
+
+  t(key) { return STRINGS[this.lang()][key]; }
 
   hasConversationState() {
     const settings = normalizeSettings(this.state.settings);
@@ -293,7 +327,7 @@ class CodexChatCard extends HTMLElement {
   async clearChat() {
     const state = this.state;
     if (state.loading || state.clearing || !this.hasConversationState()) return;
-    const confirmed = window.confirm('Apagar o histórico, o rascunho e as escolhas desta conversa? Esta ação não pode ser desfeita.');
+    const confirmed = window.confirm(this.t('clearConfirm'));
     if (!confirmed) return;
     state.clearing = true;
     this.notifyState();
@@ -305,7 +339,7 @@ class CodexChatCard extends HTMLElement {
       state.historyLoaded = true;
       this.removePersistentState();
     } catch (error) {
-      state.messages.push({ role: 'error', text: `Não foi possível limpar a conversa: ${error.message || error}` });
+      state.messages.push({ role: 'error', text: `${this.t('clearError')}: ${error.message || error}` });
     } finally {
       state.clearing = false;
       this.notifyState({ focusComposer: true, forceScrollEnd: true });
@@ -315,9 +349,9 @@ class CodexChatCard extends HTMLElement {
   loadingMessage() {
     const elapsed = Math.max(0, Math.floor((Date.now() - this.state.loadingStartedAt) / 1000));
     const duration = elapsed < 60 ? `${elapsed} s` : `${Math.floor(elapsed / 60)} min ${elapsed % 60} s`;
-    if (elapsed < 10) return `Iniciando o Codex… ${duration}`;
-    if (elapsed < 30) return `Codex está analisando o pedido… ${duration}`;
-    return `Ainda trabalhando; tarefas complexas podem levar alguns minutos… ${duration}`;
+    if (elapsed < 10) return `${this.t('starting')} ${duration}`;
+    if (elapsed < 30) return `${this.t('analyzing')} ${duration}`;
+    return `${this.t('stillWorking')} ${duration}`;
   }
 
   updateLoadingFeedback() {
@@ -399,7 +433,7 @@ class CodexChatCard extends HTMLElement {
   }
 
   reasoningOptions() {
-    return this.allowedReasoning().map((effort) => this.option(effort, REASONING_LABELS[effort], this.state.settings.reasoning === effort)).join('');
+    return this.allowedReasoning().map((effort) => this.option(effort, (this.lang() === 'pt' ? REASONING_LABELS : REASONING_LABELS_EN)[effort], this.state.settings.reasoning === effort)).join('');
   }
 
   bindEvents() {
@@ -450,9 +484,9 @@ class CodexChatCard extends HTMLElement {
     const disabled = this.state.loading || this.state.clearing;
     const sendDisabled = disabled || !this.state.historyLoaded || !this.state.draft.trim();
     const rows = this.state.messages.map((item) => `<div class="row ${item.role}"><div class="bubble">${this.escape(item.text)}</div></div>`).join('');
-    const emptyText = this.state.historyPromise ? 'Carregando histórico…' : 'Conversa vazia. A próxima mensagem iniciará um novo contexto.';
-    const userName = this._hass?.user?.name || 'usuário autenticado';
-    const userLabel = `Usuário: ${userName}`;
+    const emptyText = this.state.historyPromise ? this.t('loadingHistory') : this.t('empty');
+    const userName = this._hass?.user?.name || this.t('anonymous');
+    const userLabel = `${this.t('user')}: ${userName}`;
     this.shadowRoot.innerHTML = `<style>
 :host{display:block;height:100%;min-height:0;max-height:100vh;max-height:min(100dvh,var(--codex-available-height,100dvh));overflow:hidden;box-sizing:border-box}
 ha-card{display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;height:100%;min-height:0;overflow:hidden;box-sizing:border-box}
@@ -466,7 +500,7 @@ ha-card{display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;height:100%
 textarea{flex:1;min-width:0;height:44px;min-height:44px;max-height:min(140px,25dvh);resize:none;overflow-y:hidden;box-sizing:border-box;border:1px solid var(--divider-color);border-radius:14px;padding:11px 13px;color:var(--primary-text-color);background:var(--card-background-color);font:inherit;line-height:1.35}
 button{min-width:44px;min-height:44px;border:0;border-radius:50%;cursor:pointer;color:white;background:var(--primary-color);font:inherit}.send{width:46px;height:46px;font-size:21px;flex:0 0 auto}.clear-history{width:auto;min-width:44px;height:44px;padding:0 12px;border-radius:10px;background:var(--error-color);font-size:13px;flex:0 0 auto}
 button:disabled,select:disabled,textarea:disabled{opacity:.45;cursor:default}@media(max-width:600px){.header-row{padding-inline:12px}.sub,.settings,.feed{padding-inline:12px}.bubble{max-width:88%}}@media(max-height:500px){.header-row{padding-block:4px}.sub,.note{display:none}.settings{padding-bottom:5px}.typing{padding-block:3px}.composer{padding-top:6px}.clear-history{height:40px;min-height:40px}}
-</style><ha-card aria-busy="${this.state.loading ? 'true' : 'false'}"><div class="top"><div class="header-row"><div class="header">${this.escape(this.config?.title || 'Codex')}</div><button type="button" class="clear-history" title="Apagar histórico, rascunho e escolhas desta conversa" aria-label="Limpar conversa" ${disabled || !this.hasConversationState() ? 'disabled' : ''}>${this.state.clearing ? 'Limpando…' : 'Limpar conversa'}</button></div><div class="sub">Escopo: somente este servidor e o que está instalado nele · ${this.escape(userLabel)} · Histórico preservado</div><div class="settings"><label class="setting">Modelo<select data-setting="model" aria-label="Modelo Codex" ${disabled ? 'disabled' : ''}>${this.modelOptions()}</select></label><label class="setting">Reasoning<select data-setting="reasoning" aria-label="Nível de reasoning" ${disabled ? 'disabled' : ''}>${this.reasoningOptions()}</select></label><p class="note">Luna com reasoning baixo é o padrão. As escolhas e o rascunho permanecem nesta conversa até a limpeza explícita.</p></div></div><div class="feed" role="log" aria-label="Mensagens da conversa" aria-live="polite">${rows || `<div class="sub">${emptyText}</div>`}</div>${this.state.loading ? `<div class="typing" role="status">${this.escape(this.loadingMessage())}</div>` : ''}<div class="composer"><textarea aria-label="Mensagem para o Codex" placeholder="Digite sua mensagem…" ${disabled ? 'disabled' : ''}>${this.escape(this.state.draft)}</textarea><button type="button" class="send" title="Enviar mensagem" aria-label="Enviar mensagem" ${sendDisabled ? 'disabled' : ''}>➤</button></div></ha-card>`;
+</style><ha-card aria-busy="${this.state.loading ? 'true' : 'false'}"><div class="top"><div class="header-row"><div class="header">${this.escape(this.config?.title || 'Codex')}</div><button type="button" class="clear-history" title="${this.t('clearTitle')}" aria-label="${this.t('clear')}" ${disabled || !this.hasConversationState() ? 'disabled' : ''}>${this.state.clearing ? this.t('clearing') : this.t('clear')}</button></div><div class="sub">${this.t('scope')} · ${this.escape(userLabel)} · ${this.t('preserved')}</div><div class="settings"><label class="setting">${this.t('model')}<select data-setting="model" aria-label="${this.t('modelLabel')}" ${disabled ? 'disabled' : ''}>${this.modelOptions()}</select></label><label class="setting">Reasoning<select data-setting="reasoning" aria-label="${this.t('reasoningLabel')}" ${disabled ? 'disabled' : ''}>${this.reasoningOptions()}</select></label><p class="note">${this.t('note')}</p></div></div><div class="feed" role="log" aria-label="${this.t('feed')}" aria-live="polite">${rows || `<div class="sub">${emptyText}</div>`}</div>${this.state.loading ? `<div class="typing" role="status">${this.escape(this.loadingMessage())}</div>` : ''}<div class="composer"><textarea aria-label="${this.t('composer')}" placeholder="${this.t('placeholder')}" ${disabled ? 'disabled' : ''}>${this.escape(this.state.draft)}</textarea><button type="button" class="send" title="${this.t('send')}" aria-label="${this.t('send')}" ${sendDisabled ? 'disabled' : ''}>➤</button></div></ha-card>`;
     this.bindEvents();
     const input = this.shadowRoot.querySelector('textarea');
     this.autoSizeTextarea(input);

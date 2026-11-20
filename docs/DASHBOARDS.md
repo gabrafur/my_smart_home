@@ -7,14 +7,39 @@ Todos ficam em YAML em `homeassistant/dashboards/` e são registrados em
 | Painel | Rota | Quem vê | Abas | Arquivo |
 | --- | --- | --- | --- | --- |
 | Casa | `/painel-casa` (padrão do sistema) | Todos | Início, Ambientes, Segurança, Rotina | `casa.yaml` |
+| Home | `/casa-en` | Só administradores | Home, Rooms, Security, Routine | `en/casa.yaml` (gerado) |
 | Creta | `/creta-viagens` | Todos | Visão geral, Detalhes | `vehicle_primary.yaml` |
+| Creta (inglês) | `/creta-en` | Só administradores | Overview, Details | `en/vehicle_primary.yaml` (gerado) |
 | Mapa | `/map` (nativo) | Todos | Mapa | `location.yaml`, aplicado por `consolidated_map` |
 | Chat | `/chat-assistants` | Todos | Codex | `chat.yaml` |
-| Sistema | `/painel-sistema` | Só administradores (`require_admin`) | Saúde, Servidor, Codex, RTX 4070 | `sistema.yaml` |
+| System | `/painel-sistema` | Só administradores (`require_admin`) | Health, Server, Codex, RTX 4070 | `en/sistema.yaml` (gerado de `sistema.yaml`) |
 
-O painel Casa é o padrão para todos os usuários (dado de sistema
-`frontend` › `core.default_panel = painel-casa`, definido em Configurações ›
-Painéis). Energia, Calendário, Listas, Histórico e Atividade continuam nativos.
+O painel Casa é o padrão do sistema (dado de sistema `frontend` ›
+`core.default_panel = painel-casa`). A conta do administrador usa o perfil em
+inglês, com padrão pessoal `casa-en` e os painéis em português ocultos na sua
+barra lateral; os moradores usam o perfil em português e não veem as cópias em
+inglês. Energia, Calendário, Listas, Histórico e Atividade continuam nativos.
+
+## Idiomas
+
+Textos nativos do Home Assistant (estados, menus, diálogos) seguem o idioma do
+perfil de cada pessoa. Os textos escritos nos painéis não mudam por usuário no
+Lovelace, então cada painel tem uma fonte em português e uma cópia em inglês:
+
+- **Fonte**: `homeassistant/dashboards/*.yaml`, em português. Toda mudança é
+  feita aqui.
+- **Catálogo**: `homeassistant/dashboards/i18n/en.json` — `exact` para títulos,
+  nomes e confirmações; `keep` para o que é igual nos dois idiomas; `phrases`
+  para trechos de Markdown/Jinja; `navigation` para apontar links às cópias.
+- **Gerador**: `node scripts/dashboard-i18n.mjs` escreve
+  `homeassistant/dashboards/en/*.yaml`. `--check` (parte de
+  `make validate-homeassistant`) falha se a cópia estiver desatualizada, se
+  sobrar texto em português ou se a tradução alterar entidades, ações,
+  condições ou a lógica dos templates.
+- O cartão de chat do Codex escolhe português ou inglês pelo idioma do perfil.
+- Ficam como estão: textos produzidos por sensores e pelo Node-RED, nomes de
+  entidades, o painel Mapa (inglês por decisão de projeto) e as frases que a
+  Alexa fala.
 
 ## Regras de desenho
 

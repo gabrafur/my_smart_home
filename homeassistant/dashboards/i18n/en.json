@@ -1,0 +1,876 @@
+{
+  "_comment": "English copy of the Portuguese dashboards. Source of truth is the Portuguese YAML; scripts/dashboard-i18n.mjs applies this catalog. 'exact' covers short text fields, 'keep' lists text that reads the same in both languages, 'phrases' are replaced inside Markdown/Jinja content in order.",
+  "outputs": {
+    "casa.yaml": "en/casa.yaml",
+    "vehicle_primary.yaml": "en/vehicle_primary.yaml",
+    "sistema.yaml": "en/sistema.yaml"
+  },
+  "navigation": {
+    "/creta-viagens": "/creta-en",
+    "/painel-casa": "/casa-en"
+  },
+  "exact": {
+    "A manutenção remove caches Docker sem uso, preserva 2 GB de cache recente e limpa backups de flows e logs npm expirados. Deseja continuar?": "Maintenance removes unused Docker caches, keeps 2 GB of recent cache and deletes expired flow backups and npm logs. Continue?",
+    "A revisão pode editar, criar commit e enviar alterações. Deseja continuar?": "The review may edit, commit and push changes. Continue?",
+    "Abajur": "Lamp",
+    "Abajur da sala": "Living room lamp",
+    "Acesso rápido": "Quick access",
+    "Acionar a buzina e as luzes do Creta por aproximadamente 30 segundos?": "Sound the Creta horn and flash its lights for about 30 seconds?",
+    "Acionar o portão da garagem?": "Operate the garage gate?",
+    "Acionar portão": "Operate gate",
+    "Agora": "Now",
+    "Aguenta até o reset?": "Will it last until the reset?",
+    "Alarme": "Alarm",
+    "Alarme Moni": "Moni alarm",
+    "Alarme da casa": "House alarm",
+    "Alarme sem estado conhecido": "Alarm state unknown",
+    "Alerta de pneus": "Tire warning",
+    "Alertas": "Alerts",
+    "Alertas e ajuda": "Alerts and help",
+    "Alexa em todo lugar": "Alexa everywhere",
+    "Alterar o bypass do motor? Ele só será usado durante uma falha real de comunicação ou revalidação do Bluelink.": "Change the engine bypass? It is only used during a real communication failure or Bluelink revalidation.",
+    "Alterar o bypass do motor? Um estado conhecido e confiável de motor = OFF continuará bloqueando o refletor.": "Change the engine bypass? A known, reliable engine = OFF state will keep blocking the floodlight.",
+    "Ambientes": "Rooms",
+    "Amostras da GPU": "GPU samples",
+    "Andar superior": "Upper floor",
+    "Andar térreo": "Ground floor",
+    "Análise e métricas locais": "Local analysis and metrics",
+    "Ar do escritório": "Office AC",
+    "Ar-condicionado": "Air conditioner",
+    "Armazenamento": "Storage",
+    "Armazenamento (%) · 30 dias": "Storage (%) · 30 days",
+    "Armazenamento crítico": "Storage critical",
+    "Armazenamento e infraestrutura": "Storage and infrastructure",
+    "Armazenamento em atenção": "Storage warning",
+    "Armazenamento · 24 horas": "Storage · 24 hours",
+    "Aspirador": "Vacuum",
+    "Atenção de roteamento · hoje": "Routing attention · today",
+    "Atualizar agora": "Refresh now",
+    "Autonomia": "Range",
+    "Avaliados pelo gate": "Evaluated by the gate",
+    "Ações e alertas": "Actions and alerts",
+    "Ações manuais": "Manual actions",
+    "Backup e atualizações": "Backups and updates",
+    "Backups operacionais TAR": "Operational TAR backups",
+    "Backups — os dois itens abaixo formam o total": "Backups — the two items below make up the total",
+    "Base de consumo": "Consumption baseline",
+    "Bateria": "Battery",
+    "Bateria 12 V": "12 V battery",
+    "Botão do portão": "Gate button",
+    "Botão físico": "Physical button",
+    "Bypass do motor na chegada": "Engine bypass on arrival",
+    "CPU alta persistente": "Sustained high CPU",
+    "CPU crítica persistente": "Sustained critical CPU",
+    "CPU e temperatura · 24 h": "CPU and temperature · 24 h",
+    "Cache consultado em": "Cache checked at",
+    "Cache de build lógico": "Logical build cache",
+    "Cache marcado como recuperável pelo Docker": "Cache Docker marks as reclaimable",
+    "Carga (5 min)": "Load (5 min)",
+    "Casa": "Home",
+    "Coleta bruta": "Raw collection",
+    "Comandos": "Commands",
+    "Combustível": "Fuel",
+    "Comedouro dos cachorros": "Dog feeder",
+    "Commit final": "Final commit",
+    "Como este chat usa a RTX": "How this chat uses the RTX",
+    "Compras": "Shopping",
+    "Conectividade": "Connectivity",
+    "Consumo estimado · 7 dias": "Estimated consumption · 7 days",
+    "Consumo registrado": "Recorded usage",
+    "Contexto evitado": "Context avoided",
+    "Contexto tentado": "Context attempted",
+    "Controlador IR": "IR controller",
+    "Coordenador de refresh": "Refresh coordinator",
+    "Crescimento 24 h": "Growth 24 h",
+    "Crescimento em 24 h": "Growth in 24 h",
+    "Crescimento em 7 dias": "Growth in 7 days",
+    "Créditos extras": "Extra credits",
+    "Custo da validação": "Validation cost",
+    "Custo mensurado": "Measured cost",
+    "Custo não mensurado": "Unmeasured cost",
+    "Cópia externa": "Offsite copy",
+    "Cópia no Git": "Git copy",
+    "Cópias e restauração": "Copies and restore",
+    "Desce aqui": "Come down",
+    "Desligar PC": "Shut down PC",
+    "Desligar Raspberry": "Shut down Raspberry",
+    "Desligar carro + ar": "Turn off car + AC",
+    "Desligar o PC do escritório?": "Shut down the office PC?",
+    "Desligar o Raspberry Pi? Ele só volta religando na tomada.": "Shut down the Raspberry Pi? It only comes back by unplugging and replugging it.",
+    "Desligar o motor e o ar-condicionado remotamente?": "Turn off the engine and air conditioning remotely?",
+    "Destravar as portas do Creta remotamente?": "Unlock the Creta doors remotely?",
+    "Destravar portas": "Unlock doors",
+    "Detalhes": "Details",
+    "Diagnóstico": "Diagnostics",
+    "Diagnóstico e limpeza automática": "Diagnostics and automatic cleanup",
+    "Disco": "Disk",
+    "Disponibilidade da infraestrutura": "Infrastructure availability",
+    "Disponivel": "Available",
+    "Disponível · última leitura": "Available · last reading",
+    "Dispositivos Tuya": "Tuya devices",
+    "Dispositivos Tuya desconectados": "Tuya devices disconnected",
+    "Docker — total agregado, não somar com os subconjuntos": "Docker — aggregate total, do not add to the subsets",
+    "Eficiência de cache · local": "Cache efficiency · local",
+    "Entenda os dados": "Understanding the data",
+    "Erro vcgencmd": "vcgencmd error",
+    "Escritório": "Office",
+    "Espaço livre · 30 dias": "Free space · 30 days",
+    "Estado": "Status",
+    "Estado atual": "Current state",
+    "Estado confirmado em": "State confirmed at",
+    "Estado da leitura": "Reading status",
+    "Estado detalhado da internet": "Detailed internet state",
+    "Estado detalhado do Zigbee": "Detailed Zigbee state",
+    "Estou chegando": "On my way",
+    "Evolução do contexto": "Context trend",
+    "Executar Storage Health": "Run Storage Health",
+    "Execuções recentes": "Recent runs",
+    "Externa — frescor do dado": "Offsite — data freshness",
+    "Externa — última confirmação": "Offsite — last confirmation",
+    "Externa — última tentativa": "Offsite — last attempt",
+    "Falar agora": "Speak now",
+    "Falar na Alexa": "Speak on Alexa",
+    "Falhas técnicas": "Technical failures",
+    "Fidelidade aprovada": "Fidelity approved",
+    "Fiéis sem ganho": "Faithful, no gain",
+    "Folga projetada": "Projected headroom",
+    "Fora da contagem operacional": "Outside the operational count",
+    "Frequência": "Frequency",
+    "GPU · picos em 48 horas": "GPU · peaks over 48 hours",
+    "Garagem": "Garage",
+    "Git — frescor do dado": "Git — data freshness",
+    "Git — última confirmação": "Git — last confirmation",
+    "Git — última tentativa": "Git — last attempt",
+    "Hardware e rede": "Hardware and network",
+    "Histórico": "History",
+    "Histórico de armazenamento e rede": "Storage and network history",
+    "Histórico de desempenho": "Performance history",
+    "Histórico disponível para tendências": "History available for trends",
+    "Host e Home Assistant — itens independentes": "Host and Home Assistant — independent items",
+    "IP atual": "Current IP",
+    "Iluminação externa": "Outdoor lighting",
+    "Imagens com tag sem container — revisão": "Tagged images without a container — review",
+    "Imagens sem tag elegíveis para limpeza": "Untagged images eligible for cleanup",
+    "Imagens sem tag protegidas pelo repositório": "Untagged images protected by the repository",
+    "Imagens sem tag recentes, em carência": "Recent untagged images, in grace period",
+    "Incidente no Node-RED": "Node-RED incident",
+    "Indicadores principais": "Key indicators",
+    "Inodes usados": "Inodes used",
+    "Integridade dos dados": "Data integrity",
+    "Internet fora do ar": "Internet down",
+    "Início": "Home",
+    "Jardim": "Garden",
+    "Leitura recebida em": "Reading received at",
+    "Ligado há": "Up for",
+    "Ligar carro + ar": "Start car + AC",
+    "Limite oficial do plano": "Official plan limit",
+    "Limite térmico agora": "Thermal limit now",
+    "Listas e agenda": "Lists and calendar",
+    "Livre": "Free",
+    "Localizar (segure)": "Locate (hold)",
+    "Luzes": "Lights",
+    "Lâmpada": "Light",
+    "Lâmpadas": "Lights",
+    "Manutenção da integração": "Integration maintenance",
+    "Memória": "Memory",
+    "Memória crítica": "Memory critical",
+    "Memória e swap · 7 dias": "Memory and swap · 7 days",
+    "Memória em atenção": "Memory warning",
+    "Modo": "Mode",
+    "Motivo": "Reason",
+    "Motor": "Engine",
+    "Motor e combustível · 48 horas": "Engine and fuel · 48 hours",
+    "Média por hora · 7 dias": "Hourly average · 7 days",
+    "Nesta localização desde": "At this location since",
+    "O jantar está pronto": "Dinner is ready",
+    "O que a Alexa deve dizer": "What Alexa should say",
+    "O veículo está em P, com portas e porta-malas fechados e travados? Ligar o motor e o ar-condicionado remotamente?": "Is the car in P with doors and trunk closed and locked? Start the engine and air conditioning remotely?",
+    "Onde está": "Location",
+    "Pede atenção": "Needs attention",
+    "Períodos · UTC": "Periods · UTC",
+    "Plano": "Plan",
+    "Plano e atualização": "Plan and refresh",
+    "Porta dianteira direita": "Front right door",
+    "Porta dianteira esquerda": "Front left door",
+    "Porta traseira direita": "Rear right door",
+    "Porta traseira esquerda": "Rear left door",
+    "Porta-malas": "Trunk",
+    "Portas": "Doors",
+    "Portas do Creta": "Creta doors",
+    "Portão": "Gate",
+    "Portão da garagem": "Garage gate",
+    "Potência": "Power",
+    "Potência · picos em 48 horas": "Power · peaks over 48 hours",
+    "Presença": "Presence",
+    "Processamento": "Processing",
+    "Próxima consulta em": "Next check in",
+    "Próxima consulta às": "Next check at",
+    "Próxima execução (UTC)": "Next run (UTC)",
+    "Próximo backup do HA": "Next HA backup",
+    "Quarto principal": "Main bedroom",
+    "Recorder alocado": "Recorder allocated",
+    "Recorder no armazenamento": "Recorder share of storage",
+    "Recorder recuperável após repack": "Recorder reclaimable after repack",
+    "Recuperado na última manutenção": "Reclaimed in the last maintenance",
+    "Rede": "Network",
+    "Rede Zigbee": "Zigbee network",
+    "Rede Zigbee fora do ar": "Zigbee network down",
+    "Rede e baterias": "Network and batteries",
+    "Rede · 24 h": "Network · 24 h",
+    "Redução no total": "Reduction of the total",
+    "Refletor do portão": "Gate floodlight",
+    "Refletor portão": "Gate floodlight",
+    "Refletores": "Floodlights",
+    "Refletores do jardim indisponíveis": "Garden floodlights unavailable",
+    "Reiniciar PC": "Restart PC",
+    "Reiniciar Raspberry": "Restart Raspberry",
+    "Reiniciar o PC do escritório?": "Restart the office PC?",
+    "Reiniciar o Raspberry Pi? A casa fica sem automações por alguns minutos.": "Restart the Raspberry Pi? The house runs without automations for a few minutes.",
+    "Rejeitados pelo gate": "Rejected by the gate",
+    "Relé": "Relay",
+    "Reserva": "Low fuel",
+    "Reset semanal": "Weekly reset",
+    "Restauração testada": "Tested restore",
+    "Restauração — frescor do dado": "Restore — data freshness",
+    "Restauração — última confirmação": "Restore — last confirmation",
+    "Restauração — última tentativa": "Restore — last attempt",
+    "Resultado da manutenção": "Maintenance result",
+    "Resultado de hoje · UTC": "Today's result · UTC",
+    "Revisão documental semanal": "Weekly documentation review",
+    "Ritmo observado": "Observed pace",
+    "Robô aspirador": "Robot vacuum",
+    "Rodar revisão documental": "Run documentation review",
+    "Rotina": "Routine",
+    "Sala de TV": "TV room",
+    "Sala de estar": "Living room",
+    "Saldo confirmado · total preservado": "Confirmed balance · preserved total",
+    "Saldo líquido": "Net balance",
+    "Saúde": "Health",
+    "Saúde geral": "Overall health",
+    "Segurança": "Security",
+    "Sem classificação": "Unclassified",
+    "Sem falha técnica": "No technical failure",
+    "Servidor": "Server",
+    "Servidor fora do normal": "Server out of normal",
+    "Servindo agora": "Dispensing now",
+    "Servir ração": "Dispense food",
+    "Serviço local": "Local service",
+    "Sessões": "Sessions",
+    "Sistema": "System",
+    "Situação atual": "Current status",
+    "Snapshots fora da retenção de 14 dias": "Snapshots outside the 14-day retention",
+    "Snapshots manuais de rollback": "Manual rollback snapshots",
+    "Status geral": "Overall status",
+    "Swap crítica": "Swap critical",
+    "Swap em atenção": "Swap warning",
+    "Swap usada": "Swap used",
+    "TV da sala": "Living room TV",
+    "Temperatura": "Temperature",
+    "Tempo decorrido na janela": "Time elapsed in the window",
+    "Tendência da janela semanal": "Weekly window trend",
+    "Tentativas": "Attempts",
+    "Throttling agora": "Throttling now",
+    "Throttling/energia ativo": "Throttling/power active",
+    "Throttling/energia desde o boot": "Throttling/power since boot",
+    "Toda a casa": "Whole house",
+    "Tokens de saída": "Output tokens",
+    "Tokens em cache": "Cached tokens",
+    "Tokens totais": "Total tokens",
+    "Total acumulado": "Running total",
+    "Total lógico do Docker": "Docker logical total",
+    "Travar as portas do Creta remotamente?": "Lock the Creta doors remotely?",
+    "Travar portas": "Lock doors",
+    "Undervoltage agora": "Undervoltage now",
+    "Usada": "Used",
+    "Usado": "Used",
+    "Usado · última leitura": "Used · last reading",
+    "Usados pelo chat": "Used by the chat",
+    "Uso": "Usage",
+    "Uso atual": "Current usage",
+    "Uso não confirmado": "Unconfirmed usage",
+    "Uso projetado no reset": "Projected usage at reset",
+    "VRAM · picos em 48 horas": "VRAM · peaks over 48 hours",
+    "Varanda": "Porch",
+    "Viagens carregadas": "Trips loaded",
+    "Viagens e consumo": "Trips and consumption",
+    "Visão geral": "Overview",
+    "Waterfall — hoje · UTC": "Waterfall — today · UTC",
+    "Waterfall — total preservado": "Waterfall — preserved total",
+    "km/L estimados": "Estimated km/L",
+    "vcgencmd disponível": "vcgencmd available",
+    "Última conclusão (UTC)": "Last completion (UTC)",
+    "Última decisão automática": "Last automatic decision",
+    "Última execução da limpeza": "Last cleanup run",
+    "Última inicialização": "Last boot",
+    "Última limpeza segura": "Last safe cleanup",
+    "Última porção": "Last portion",
+    "Última queda da internet": "Last internet outage",
+    "Última queda do Zigbee": "Last Zigbee outage",
+    "Última recuperação da internet": "Last internet recovery",
+    "Última recuperação do Zigbee": "Last Zigbee recovery",
+    "Última verificação do Storage Health": "Last Storage Health check",
+    "Últimas 48 horas": "Last 48 hours",
+    "Último backup do HA": "Last HA backup",
+    "Último comando remoto": "Last remote command",
+    "Último estacionamento e viagens": "Last parking and trips",
+    "Último resultado": "Last result",
+    "Últimos 7 dias": "Last 7 days"
+  },
+  "keep": [
+    "Alexa Media",
+    "CPU",
+    "Chat",
+    "Codex",
+    "Creta",
+    "Download",
+    "Firmware Zigbee",
+    "GPU",
+    "Hardware Raspberry Pi",
+    "IP",
+    "Interface",
+    "Internet",
+    "Kia / Bluelink",
+    "Link",
+    "Load 15m",
+    "Load 1m",
+    "Load 5m",
+    "RTX 4070",
+    "Recorder (%)",
+    "Status Node-RED",
+    "Swap",
+    "Tuya",
+    "Upload",
+    "Uptime",
+    "VPN",
+    "VRAM",
+    "VS Code Server",
+    "Zigbee",
+    "vcgencmd get_throttled"
+  ],
+  "phrases": [
+    [
+      "{{ 'Bom dia' if h < 12 else ('Boa tarde' if h < 18 else 'Boa noite') }}",
+      "{{ 'Good morning' if h < 12 else ('Good afternoon' if h < 18 else 'Good evening') }}"
+    ],
+    [
+      "Toque em **Servir ração** e escolha a quantidade de porções. O comedouro serve assim que você solta o controle, sem outra confirmação.",
+      "Tap **Dispense food** and choose the number of portions. The feeder dispenses as soon as you release the control, with no further confirmation."
+    ],
+    [
+      "{{ 'Em uso' if engine else 'Estacionado' }}",
+      "{{ 'In use' if engine else 'Parked' }}"
+    ],
+    [
+      "**Pausa noturna programada** · ambos em casa; o próximo wake pode ocorrer a partir das {{ format_number_ptbr(quiet_end_hour) }}h{% if age_min is not none %}. Último dado do carro há {{ format_number_ptbr(age_min) }} min{% endif %}.",
+      "**Planned overnight pause** · both at home; the next wake may happen from {{ format_number_ptbr(quiet_end_hour) }}h{% if age_min is not none %}. Last car data {{ format_number_ptbr(age_min) }} min ago{% endif %}."
+    ],
+    [
+      "**Horário inválido recebido do carro** · a leitura está no futuro e não é considerada atual.",
+      "**Invalid time received from the car** · the reading is in the future and is not treated as current."
+    ],
+    [
+      "**Sem telemetria válida** · o Bluelink ainda não forneceu uma leitura utilizável.",
+      "**No valid telemetry** · Bluelink has not provided a usable reading yet."
+    ],
+    [
+      "**Dados atualizados** · leitura confirmada há {{ format_number_ptbr(age_min) }} min.",
+      "**Data up to date** · reading confirmed {{ format_number_ptbr(age_min) }} min ago."
+    ],
+    [
+      "**Leitura ficando antiga** · última confirmação há {{ format_number_ptbr(age_min) }} min.",
+      "**Reading getting old** · last confirmed {{ format_number_ptbr(age_min) }} min ago."
+    ],
+    [
+      "**Telemetria desatualizada** · última confirmação há {{ format_number_ptbr(age_min) }} min.",
+      "**Telemetry out of date** · last confirmed {{ format_number_ptbr(age_min) }} min ago."
+    ],
+    [
+      "**Classificação de telemetria indisponível** · o Node-RED ainda não publicou o estado canônico.",
+      "**Telemetry classification unavailable** · Node-RED has not published the canonical state yet."
+    ],
+    [
+      "**Odômetro**",
+      "**Odometer**"
+    ],
+    [
+      "~ ' km' if is_number(odometer) else 'Indisponível' }}",
+      "~ ' km' if is_number(odometer) else 'Unavailable' }}"
+    ],
+    [
+      "**Consumo estimado**",
+      "**Estimated consumption**"
+    ],
+    [
+      "km/L {{ format_number_ptbr(samples) }} amostras confiáveis · até {{ format_number_ptbr(window_days) }} dias",
+      "km/L {{ format_number_ptbr(samples) }} reliable samples · up to {{ format_number_ptbr(window_days) }} days"
+    ],
+    [
+      "## Dados insuficientes Janela pesquisada: até {{ format_number_ptbr(window_days) }} dias",
+      "## Not enough data Window searched: up to {{ format_number_ptbr(window_days) }} days"
+    ],
+    [
+      "timestamp_custom('%d/%m às %H:%M', true) if location_since_ts",
+      "timestamp_custom('%d/%m at %H:%M', true) if location_since_ts"
+    ],
+    [
+      "**Veículo em uso** · o mapa mostra o último estacionamento confirmado{% if location_since_text %}, nesta localização desde {{ location_since_text }}{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.",
+      "**Car in use** · the map shows the last confirmed parking spot{% if location_since_text %}, at this location since {{ location_since_text }}{% endif %}. Bluelink Brazil does not report the position while the car is moving."
+    ],
+    [
+      "**Estacionamento ainda não confirmado** · a posição será exibida quando o Bluelink confirmar o veículo estacionado.",
+      "**Parking not confirmed yet** · the position appears once Bluelink confirms the car is parked."
+    ],
+    [
+      "**Estacionamento confirmado** · nesta localização desde {{ location_since_text }}.",
+      "**Parking confirmed** · at this location since {{ location_since_text }}."
+    ],
+    [
+      "viagem(ns) recentes**",
+      "recent trip(s)**"
+    ],
+    [
+      "km/L · referência de {{ format_number_ptbr(efficiency.samples_used) }} amostras",
+      "km/L · baseline of {{ format_number_ptbr(efficiency.samples_used) }} samples"
+    ],
+    [
+      "*Mais viagens em Detalhes.*",
+      "*More trips in Details.*"
+    ],
+    [
+      "**Nenhuma viagem recente.**",
+      "**No recent trips.**"
+    ],
+    [
+      "**Bypass do motor para a iluminação de chegada**",
+      "**Engine bypass for arrival lighting**"
+    ],
+    [
+      "**Ligado** · o fluxo só pode ignorar a exigência `motor = ON` durante uma falha real de comunicação ou revalidação do Bluelink. Um estado conhecido e confiável de `motor = OFF` continua bloqueando o refletor.",
+      "**On** · the flow may only skip the `engine = ON` requirement during a real communication failure or Bluelink revalidation. A known, reliable `engine = OFF` state keeps blocking the floodlight."
+    ],
+    [
+      "**Chave indisponível** · o Node-RED ainda não publicou o controle no Home Assistant.",
+      "**Switch unavailable** · Node-RED has not published the control to Home Assistant yet."
+    ],
+    [
+      "**Desligado** · a iluminação exige um estado conhecido e confiável de `motor = ON`; a idade da leitura é apenas informativa enquanto o Bluelink estiver saudável.",
+      "**Off** · the lighting requires a known, reliable `engine = ON` state; the reading age is informational only while Bluelink is healthy."
+    ],
+    [
+      "'unlock': 'destravar as portas'",
+      "'unlock': 'unlock the doors'"
+    ],
+    [
+      "'lock': 'travar as portas'",
+      "'lock': 'lock the doors'"
+    ],
+    [
+      "'climate_on': 'ligar o carro e o ar'",
+      "'climate_on': 'start the car and AC'"
+    ],
+    [
+      "'climate_off': 'desligar o carro e o ar'",
+      "'climate_off': 'turn off the car and AC'"
+    ],
+    [
+      "'hazard_lights_and_horn': 'acionar luzes e buzina'",
+      "'hazard_lights_and_horn': 'flash lights and sound the horn'"
+    ],
+    [
+      "labels.get(action, 'executar o comando remoto')",
+      "labels.get(action, 'run the remote command')"
+    ],
+    [
+      "**Último comando remoto**",
+      "**Last remote command**"
+    ],
+    [
+      "**Comando em andamento** · aguardando a confirmação final para {{ label }}.",
+      "**Command in progress** · waiting for final confirmation to {{ label }}."
+    ],
+    [
+      "**Comando confirmado** · o veículo concluiu a solicitação para {{ label }}.",
+      "**Command confirmed** · the car completed the request to {{ label }}."
+    ],
+    [
+      "**Comando em espera** · aguarde o cooldown antes de tentar novamente.",
+      "**Command on hold** · wait for the cooldown before trying again."
+    ],
+    [
+      "**Falha no último comando** · o veículo não confirmou a solicitação para {{ label }}",
+      "**Last command failed** · the car did not confirm the request to {{ label }}"
+    ],
+    [
+      "Os comandos aguardam a confirmação final do Bluelink; falhas geram aviso no celular e no Home Assistant.",
+      "Commands wait for Bluelink's final confirmation; failures notify the phone and Home Assistant."
+    ],
+    [
+      "authentication='falha de autenticação', timeout='tempo limite excedido', concurrent_request_coalesced='requisição já em andamento', api_error='erro da API', cache_probe_lease_expired='a releitura do cache expirou', in_flight_lease_expired='a tentativa de wake expirou'",
+      "authentication='authentication failure', timeout='timed out', concurrent_request_coalesced='request already in progress', api_error='API error', cache_probe_lease_expired='the cache re-read expired', in_flight_lease_expired='the wake attempt expired'"
+    ],
+    [
+      "**Atualização dos dados**",
+      "**Data refresh**"
+    ],
+    [
+      "**Servidor consultado há {{ format_number_ptbr(cache_age_min) }} min** · esta consulta não acorda o carro.",
+      "**Server checked {{ format_number_ptbr(cache_age_min) }} min ago** · this check does not wake the car."
+    ],
+    [
+      "**Servidor sem consulta há {{ format_number_ptbr(cache_age_min) }} min** · o ciclo esperado de 15 min está atrasado.",
+      "**Server not checked for {{ format_number_ptbr(cache_age_min) }} min** · the expected 15-min cycle is late."
+    ],
+    [
+      "**Horário da consulta ao servidor inválido** · o registro está no futuro.",
+      "**Invalid server check time** · the record is in the future."
+    ],
+    [
+      "**Consulta ao servidor indisponível**.",
+      "**Server check unavailable**."
+    ],
+    [
+      "**Servidor sem consulta há {{ format_number_ptbr(cache_age_min) }} min** · o atraso excedeu duas janelas de consulta.",
+      "**Server not checked for {{ format_number_ptbr(cache_age_min) }} min** · the delay exceeded two check windows."
+    ],
+    [
+      "**Classificação da consulta indisponível** · o Node-RED ainda não publicou o estado canônico.",
+      "**Check classification unavailable** · Node-RED has not published the canonical state yet."
+    ],
+    [
+      "**Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min** · pausa noturna planejada.",
+      "**Car data received {{ format_number_ptbr(data_age_min) }} min ago** · planned overnight pause."
+    ],
+    [
+      "**Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min** · a atualização está atrasada, mas o estado continua acompanhado.",
+      "**Car data received {{ format_number_ptbr(data_age_min) }} min ago** · the refresh is late, but the state is still tracked."
+    ],
+    [
+      "**Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min** · a leitura ultrapassou o prazo canônico.",
+      "**Car data received {{ format_number_ptbr(data_age_min) }} min ago** · the reading passed the canonical deadline."
+    ],
+    [
+      "**Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min**.",
+      "**Car data received {{ format_number_ptbr(data_age_min) }} min ago**."
+    ],
+    [
+      "**Horário dos dados do carro inválido** · o Bluelink informou uma data futura; ela não confirma atualização nem wake.",
+      "**Invalid car data time** · Bluelink reported a future date; it confirms neither a refresh nor a wake."
+    ],
+    [
+      "**Sem dados confirmados do carro**.",
+      "**No confirmed car data**."
+    ],
+    [
+      "**Classificação dos dados indisponível** · o Node-RED ainda não publicou o estado canônico.",
+      "**Data classification unavailable** · Node-RED has not published the canonical state yet."
+    ],
+    [
+      "**Wake em andamento** · aguardando a conclusão da chamada ao Bluelink ou da releitura do cache{% if remaining_min > 0 %} · próxima etapa em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.",
+      "**Wake in progress** · waiting for the Bluelink call or the cache re-read to finish{% if remaining_min > 0 %} · next step in about {{ format_number_ptbr(remaining_min) }} min{% endif %}."
+    ],
+    [
+      "**Coordenador de wake indisponível**.",
+      "**Wake coordinator unavailable**."
+    ],
+    [
+      "**Integração Bluelink ainda indisponível**",
+      "**Bluelink integration still unavailable**"
+    ],
+    [
+      " · nova tentativa automática em cerca de {{ format_number_ptbr(remaining_min) }} min",
+      " · automatic retry in about {{ format_number_ptbr(remaining_min) }} min"
+    ],
+    [
+      " · a leitura específica do motor continua não confiável para a iluminação; o bypass automático permanece ativo",
+      " · the engine reading is still unreliable for the lighting; the automatic bypass stays active"
+    ],
+    [
+      "**A última atualização do veículo falhou** · {{ refresh_failure_label }}{% if refresh_failure_endpoint %} no endpoint",
+      "**The last car refresh failed** · {{ refresh_failure_label }}{% if refresh_failure_endpoint %} at endpoint"
+    ],
+    [
+      " · nova verificação em cerca de {{ format_number_ptbr(remaining_min) }} min",
+      " · next check in about {{ format_number_ptbr(remaining_min) }} min"
+    ],
+    [
+      "**Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.",
+      "**Wake waiting for a valid location** · the policy is re-evaluated once the residents' context is available."
+    ],
+    [
+      "**Atualização do veículo ainda não concluída**",
+      "**Car refresh not finished yet**"
+    ],
+    [
+      "**Wake periódico pausado até {{ format_number_ptbr(quiet_end_hour) }}h** · ambos estão em casa.",
+      "**Periodic wake paused until {{ format_number_ptbr(quiet_end_hour) }}h** · both are at home."
+    ],
+    [
+      "**Último wake aceito pelo Bluelink**{% if request_age_min is not none %} · solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %} · próxima avaliação em cerca de {{ format_number_ptbr(remaining_min) }} min.",
+      "**Last wake accepted by Bluelink**{% if request_age_min is not none %} · requested about {{ format_number_ptbr(request_age_min) }} min ago{% endif %} · next evaluation in about {{ format_number_ptbr(remaining_min) }} min."
+    ],
+    [
+      "**Wake pronto** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.",
+      "**Wake ready** · current cycle {{ format_number_ptbr(interval_min) }} min."
+    ],
+    [
+      "**Classificação de wake indisponível** · o Node-RED ainda não publicou o estado canônico.",
+      "**Wake classification unavailable** · Node-RED has not published the canonical state yet."
+    ],
+    [
+      "km/L estimados",
+      "estimated km/L"
+    ],
+    [
+      "Janela efetiva:",
+      "Effective window:"
+    ],
+    [
+      "if efficiency.sample_window_start else 'indisponível' }}",
+      "if efficiency.sample_window_start else 'unavailable' }}"
+    ],
+    [
+      "if efficiency.sample_window_end else 'indisponível' }}",
+      "if efficiency.sample_window_end else 'unavailable' }}"
+    ],
+    [
+      "amostras de autonomia/combustível · faixa observada de",
+      "range/fuel samples · observed span of"
+    ],
+    [
+      "Esta é a mediana estimada pelo alcance informado pelo veículo entre 20% e 80% do tanque.",
+      "This is the median estimated from the range the car reports between 20% and 80% of the tank."
+    ],
+    [
+      "O Bluelink não fornece litros consumidos por viagem. Os valores abaixo são estimativas modeladas pela média da janela, distância e proporção de marcha lenta de cada trajeto.",
+      "Bluelink does not report liters used per trip. The values below are estimates modeled from the window average, distance and idle share of each trip."
+    ],
+    [
+      "## Dados insuficientes",
+      "## Not enough data"
+    ],
+    [
+      "Janela pesquisada: até {{ format_number_ptbr(efficiency.search_window_days | default(0)) }} dias, conforme a retenção disponível do Recorder. A estimativa requer ao menos 5 leituras pareadas e uma variação de 10% na faixa confiável do tanque.",
+      "Window searched: up to {{ format_number_ptbr(efficiency.search_window_days | default(0)) }} days, per the available Recorder retention. The estimate needs at least 5 paired readings and a 10% change within the reliable tank range."
+    ],
+    [
+      "min · média {{ format_number_ptbr(trip.avg_speed, 1) }} km/h",
+      "min · average {{ format_number_ptbr(trip.avg_speed, 1) }} km/h"
+    ],
+    [
+      "L modelados",
+      "L modeled"
+    ],
+    [
+      "⛽ Estimativa individual indisponível",
+      "⛽ Per-trip estimate unavailable"
+    ],
+    [
+      "**Nenhuma viagem disponível para hoje e ontem.**",
+      "**No trips available for today and yesterday.**"
+    ],
+    [
+      "**Atualização automática orientada a eventos**",
+      "**Event-driven automatic refresh**"
+    ],
+    [
+      "O cache do servidor Bluelink é consultado a cada **15 minutos** sem acordar o carro. Se o provedor limitar as chamadas, o polling entra em backoff progressivo de até **6 horas** sem criar novas rajadas. Separadamente, o wake real usa **{{ format_number_ptbr(approaching_interval) }} minutos** quando alguém está near_home, **{{ format_number_ptbr(away_interval) }} minutos** quando alguém está fora e **{{ format_number_ptbr(home_interval) }} minutos** no ciclo saudável quando ambos estão em casa. A chegada mantém sua prioridade mesmo com dados pendentes; fora dela, a recuperação usa o intervalo configurado para fora. Um bloqueio explícito do provedor ainda pode impor backoff maior. Antes de repetir um wake sem evidência, o fluxo relê o cache e só acorda o carro se os dados continuarem antigos. Com os dois em casa, wakes automáticos ficam pausados entre **{{ format_number_ptbr(quiet_start) }}h e {{ format_number_ptbr(quiet_end) }}h**. Esses cinco valores vêm diretamente dos blocos configuráveis no canvas `contexto_vehicle_primary`. O botão **Atualizar agora** força um wake e pode antecipar qualquer prazo quando não há backoff do provedor.",
+      "The Bluelink server cache is checked every **15 minutes** without waking the car. If the provider rate-limits calls, polling backs off progressively up to **6 hours** without new bursts. Separately, a real wake uses **{{ format_number_ptbr(approaching_interval) }} minutes** when someone is near_home, **{{ format_number_ptbr(away_interval) }} minutes** when someone is away and **{{ format_number_ptbr(home_interval) }} minutes** in the healthy cycle when both are at home. Arrival keeps its priority even with pending data; otherwise recovery uses the away interval. An explicit provider block can still impose a longer backoff. Before repeating a wake without evidence, the flow re-reads the cache and only wakes the car if the data is still old. With both at home, automatic wakes pause between **{{ format_number_ptbr(quiet_start) }}h and {{ format_number_ptbr(quiet_end) }}h**. These five values come straight from the configurable blocks on the `contexto_vehicle_primary` canvas. The **Refresh now** button forces a wake and can move any deadline forward when there is no provider backoff."
+    ],
+    [
+      "A consulta ao cache pode republicar entidades sem acordar o carro; o refresh só é concluído quando o timestamp do próprio Bluelink (`Última atualização`) realmente avança.",
+      "A cache check may republish entities without waking the car; the refresh only completes when Bluelink's own timestamp (`Última atualização`, last update) actually moves forward."
+    ],
+    [
+      "Nada pendente agora.",
+      "Nothing pending right now."
+    ],
+    [
+      "limite.get('window_type', 'desconhecida')",
+      "limite.get('window_type', 'unknown')"
+    ],
+    [
+      "% disponível\n",
+      "% available\n"
+    ],
+    [
+      "% usado** na janela\n{{ 'semanal' if janela == 'weekly' else janela }} do plano",
+      "% used** in the plan's\n{{ 'weekly' if janela == 'weekly' else janela }} window"
+    ],
+    [
+      "# Leitura desatualizada",
+      "# Reading out of date"
+    ],
+    [
+      "Último valor conhecido: **{{ format_number_ptbr(limite.get('remaining_percent')) }}% disponível**.\nConfira Codex → Settings → Usage & billing para o saldo atual.",
+      "Last known value: **{{ format_number_ptbr(limite.get('remaining_percent')) }}% available**.\nCheck Codex → Settings → Usage & billing for the current balance."
+    ],
+    [
+      "# Aguardando dados\n\nAinda não há uma leitura do limite do plano.",
+      "# Waiting for data\n\nThere is no plan limit reading yet."
+    ],
+    [
+      "timestamp_custom('%d/%m às %H:%M', true) }}",
+      "timestamp_custom('%d/%m at %H:%M', true) }}"
+    ],
+    [
+      "**Próxima consulta:** em {{ format_number_ptbr(states('sensor.codex_atualizacao_do_limite_em')) }} segundos.",
+      "**Next check:** in {{ format_number_ptbr(states('sensor.codex_atualizacao_do_limite_em')) }} seconds."
+    ],
+    [
+      "_A consulta automática ao Codex está temporariamente indisponível; estes são os últimos dados recebidos._",
+      "_The automatic Codex check is temporarily unavailable; these are the last data received._"
+    ],
+    [
+      "# Coleta indisponível\n\nAguardando a primeira métrica do Codex CLI.",
+      "# Collection unavailable\n\nWaiting for the first Codex CLI metric."
+    ],
+    [
+      "Estes números descrevem somente as sessões preservadas neste host. Eles ajudam a entender o trabalho local, mas **não representam o limite oficial do plano**.",
+      "These numbers describe only the sessions kept on this host. They help understand local work, but **do not represent the official plan limit**."
+    ],
+    [
+      "**Tendência da janela semanal**\n⏳ Projeção aguardando pelo menos uma hora de observações comparáveis na mesma janela. Até lá, o quarto gauge mostra somente o tempo decorrido.",
+      "**Weekly window trend**\n⏳ The projection is waiting for at least one hour of comparable observations in the same window. Until then, the fourth gauge shows only the elapsed time."
+    ],
+    [
+      "## Histórico deste computador\nEstes dados vêm apenas das sessões registradas **nesta máquina**. Eles servem para analisar o uso local e **não são o saldo semanal do seu plano**. O limite oficial fica no topo do painel e é consultado automaticamente a cada 30 segundos.",
+      "## This computer's history\nThis data comes only from sessions recorded **on this machine**. It is for analyzing local usage and **is not your plan's weekly balance**. The official limit is at the top of the dashboard and is checked automatically every 30 seconds."
+    ],
+    [
+      "## Última atividade local",
+      "## Latest local activity"
+    ],
+    [
+      "**Última conversa registrada nesta máquina:**",
+      "**Last conversation recorded on this machine:**"
+    ],
+    [
+      "ainda não há conversa registrada.",
+      "no conversation recorded yet."
+    ],
+    [
+      "agora mesmo.",
+      "just now."
+    ],
+    [
+      "há {{ format_number_ptbr(idade_minutos) }} minuto{{ '' if idade_minutos == 1 else 's' }}.",
+      "{{ format_number_ptbr(idade_minutos) }} minute{{ '' if idade_minutos == 1 else 's' }} ago."
+    ],
+    [
+      "há {{ format_number_ptbr(idade_horas) }} hora{{ '' if idade_horas == 1 else 's' }}.",
+      "{{ format_number_ptbr(idade_horas) }} hour{{ '' if idade_horas == 1 else 's' }} ago."
+    ],
+    [
+      "em {{ instante | timestamp_custom('%d/%m/%Y às %H:%M', true) }}.",
+      "on {{ instante | timestamp_custom('%d/%m/%Y at %H:%M', true) }}."
+    ],
+    [
+      "**Como interpretar**\nO limite do plano é semanal e não zera ao fim do dia. Leituras com mais de quinze minutos ficam marcadas como desatualizadas e deixam de alimentar alertas. Os gauges de uso preservam a última leitura conhecida, identificada explicitamente como tal.\nO quarto gráfico mostra uma projeção somente depois de observar pelo menos uma hora da mesma janela. Antes disso, ele mostra apenas o tempo decorrido na semana, que não depende de extrapolação.\nA eficiência de cache mede reaproveitamento de tokens de entrada; não é saldo, cobrança nem qualidade das respostas. Usos feitos em outros computadores podem não aparecer nas métricas locais.\nO valor oficial continua disponível em **Codex → Settings → Usage & billing**.",
+      "**How to read this**\nThe plan limit is weekly and does not reset at the end of the day. Readings older than fifteen minutes are marked out of date and stop feeding alerts. The usage gauges keep the last known reading, explicitly labeled as such.\nThe fourth chart shows a projection only after observing at least one hour of the same window. Before that, it shows only the time elapsed in the week, which needs no extrapolation.\nCache efficiency measures reuse of input tokens; it is not balance, billing or answer quality. Usage on other computers may not appear in the local metrics.\nThe official value is still at **Codex → Settings → Usage & billing**."
+    ],
+    [
+      "h.get('reason', 'Aguardando o produtor de métricas')",
+      "h.get('reason', 'Waiting for the metrics producer')"
+    ],
+    [
+      "Modelo: **{{ h.get('model') or '—' }}**",
+      "Model: **{{ h.get('model') or '—' }}**"
+    ],
+    [
+      "Tarefa atual: **{{ h.get('task') }}**",
+      "Current task: **{{ h.get('task') }}**"
+    ],
+    [
+      "h.get('sample_reason', 'Sem amostra recente')",
+      "h.get('sample_reason', 'No recent sample')"
+    ],
+    [
+      "| GPU | VRAM | Potência |",
+      "| GPU | VRAM | Power |"
+    ],
+    [
+      "| Período | Tentativas | Usados | Saldo · tokens |",
+      "| Period | Attempts | Used | Balance · tokens |"
+    ],
+    [
+      "[('today', 'Hoje'), ('week', 'Semana'), ('month', 'Mês'), ('total', 'Total')]",
+      "[('today', 'Today'), ('week', 'Week'), ('month', 'Month'), ('total', 'Total')]"
+    ],
+    [
+      "| Dia · UTC | Tentativas | Usados | Saldo · tokens |",
+      "| Day · UTC | Attempts | Used | Balance · tokens |"
+    ],
+    [
+      "Sem série diária disponível.",
+      "No daily series available."
+    ],
+    [
+      "As etapas mostram tentativas, qualidade, custo mensurado e uso confirmado. Depois, os valores passam a representar tokens estimados.\n\n**Contexto evitado − custo da validação = saldo líquido equivalente.** A redução no total compara esse saldo com tokens Codex mais saldo; a redução do contexto tentado usa outra base.\n\nO saldo é um índice de contexto, **não uma medição da cobrança OpenAI**. Uso não confirmado, descartes e diagnósticos não contam economia. Valores desconhecidos indicam ausência de dados ou de base para a taxa.",
+      "The stages show attempts, quality, measured cost and confirmed usage. After that, the values represent estimated tokens.\n\n**Context avoided − validation cost = equivalent net balance.** The reduction of the total compares that balance with Codex tokens plus balance; the reduction of attempted context uses a different base.\n\nThe balance is a context index, **not a measurement of OpenAI billing**. Unconfirmed usage, discards and diagnostics count no savings. Unknown values mean missing data or no base for the rate."
+    ],
+    [
+      "| Ocorrência | Quantidade |",
+      "| Occurrence | Count |"
+    ],
+    [
+      "| Oportunidades elegíveis perdidas |",
+      "| Eligible opportunities missed |"
+    ],
+    [
+      "| Serviço indisponível em tarefa elegível |",
+      "| Service unavailable on an eligible task |"
+    ],
+    [
+      "| Disponibilidade desconhecida |",
+      "| Availability unknown |"
+    ],
+    [
+      "| Falhas após delegação |",
+      "| Failures after delegation |"
+    ],
+    [
+      "Elegíveis: **{{ number(r.get('eligible_tasks')) }}** · disponíveis: **{{ number(r.get('eligible_and_available_tasks')) }}** · disponibilidade: **",
+      "Eligible: **{{ number(r.get('eligible_tasks')) }}** · available: **{{ number(r.get('eligible_and_available_tasks')) }}** · availability: **"
+    ],
+    [
+      "state_attr('sensor.rtx_painel', 'history_reason') or 'Aguardando histórico'",
+      "state_attr('sensor.rtx_painel', 'history_reason') or 'Waiting for history'"
+    ],
+    [
+      " s · saldo **",
+      " s · balance **"
+    ],
+    [
+      "Modelo: {{ job.get('model') }} · processador: {{ job.get('processor') }}",
+      "Model: {{ job.get('model') }} · processor: {{ job.get('processor') }}"
+    ],
+    [
+      "Diagnósticos e benchmarks: **",
+      "Diagnostics and benchmarks: **"
+    ],
+    [
+      "Chamadas sem classificação de origem: **",
+      "Calls without an origin classification: **"
+    ],
+    [
+      "Testes de inferência comprovam funcionamento. A economia exige resultado aprovado, custo mensurado e recibo de entrega ao modelo principal.",
+      "Inference tests prove it works. Savings require an approved result, measured cost and a delivery receipt to the main model."
+    ],
+    [
+      "**Disponível** indica que a RTX está pronta para tarefas locais elegíveis. O chat principal continua no modelo escolhido no Codex.\n\nOs contadores de **Local AI** incluem também trabalho na CPU; não comprovam uso exclusivo da GPU.",
+      "**Available** means the RTX is ready for eligible local tasks. The main chat stays on the model chosen in Codex.\n\nThe **Local AI** counters also include CPU work; they do not prove exclusive GPU use."
+    ],
+    [
+      "{{ data or 'Aguardando métricas do Node-RED' }}",
+      "{{ data or 'Waiting for Node-RED metrics' }}"
+    ],
+    [
+      "Leitura da fonte: **",
+      "Source reading: **"
+    ],
+    [
+      "Cálculos e classificações: **Node-RED**. Períodos de contagem: **UTC**; horários de leitura e execução: hora local.",
+      "Calculations and classifications: **Node-RED**. Counting periods: **UTC**; reading and run times: local time."
+    ]
+  ]
+}
