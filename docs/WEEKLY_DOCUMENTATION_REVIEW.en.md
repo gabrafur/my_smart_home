@@ -13,7 +13,8 @@ The Home Assistant **Run documentation review** button presses
 `input_button.weekly_documentation_review_run`. Node-RED validates the source
 and invokes the read-only `scripts/request-weekly-docs-review.sh` helper. That
 helper only creates the shared trigger; execution, locking, allowlisting,
-validation, commit, and push remain under worker authority.
+validation and commit remain under worker authority; the push belongs to the
+host Git backup (see "Host publication").
 
 
 The review is separated from residential maintenance: Git backup at 01:00,
@@ -69,15 +70,30 @@ agent to:
 - avoid stack restarts, endpoint calls, notifications, and physical-device
   actions.
 
-It never creates an empty commit. A validation failure prevents the push.
+It never creates an empty commit. A validation failure prevents any merge or publication.
 The agent deliberately runs at a detached `HEAD`, pinned to the baseline the
 scheduler already compared with `origin/main`; it must not require this
 temporary worktree to be checked out on `main`. On completion, the agent writes
 a transient JSON receipt. A zero exit without the receipt, or a receipt that
 reports a blocker, is a failure rather than `no_changes`. Even with a completed
-receipt, the scheduler runs `make validate-public` again before accepting either
+receipt, the scheduler runs `make validate-docs-review` again before accepting either
 `no_changes` or a documentation diff; this independent validation overrides the
 agent's report.
+
+### Host publication
+
+The worker is capped at one low-priority CPU so it never competes with the house.
+Within that cap the full suite (`make validate-public`) times out: on 21/11/2026,
+12 of 873 tests, none about documentation, failed on timeouts. The worker
+therefore runs only the documentation subset `make validate-docs-review` (docs,
+JSON, YAML, security scanner, privacy, and public memories), fast-forwards the
+commit into `main`, and asks the host for a Git backup
+(`homeassistant/.git-backup-trigger/requested`, the same request as the Node-RED
+button). The host backup publishes it, and its pre-push runs the full
+`make validate-public` with the host CPU; on failure nothing reaches the remote
+and the backup records the reason. The status keeps `last_publication`
+(`requested`, `already_queued`, or `nightly_backup` when the request could not be
+written and the nightly backup publishes instead).
 
 ## Security boundaries
 
@@ -102,8 +118,9 @@ Additional boundaries include:
   synthetic repositories created by validation;
 - a mandatory completion receipt removed before diff calculation, preventing
   false success when the agent exits before reviewing the baseline;
-- an independent scheduler rerun of `make validate-public` before accepting
-  even a no-change review;
+- an independent scheduler rerun of `make validate-docs-review` before accepting
+  even a no-change review, and the full `make validate-public` in the host
+  pre-push before publication;
 - a default three-hour limit that terminates the whole process group.
 
 The SSH key needs push permission, but should be repository-specific and have
@@ -199,8 +216,9 @@ git status --short
 ```
 
 If the log reports `make: command not found`, the worker image is stale. The
-`make validate-public` target is mandatory and must not be replaced by partial
-checks. Rebuild only `docs-review-scheduler`; the versioned image installs GNU
+full `make validate-public` remains mandatory before publication (in the host
+pre-push); inside the worker use only the `make validate-docs-review` target,
+never ad-hoc partial lists. Rebuild only `docs-review-scheduler`; the versioned image installs GNU
 Make together with Git, SSH, Python, Node, and Docker Compose.
 
 A dirty tree, unexpected branch, or authentication failure skips that week's

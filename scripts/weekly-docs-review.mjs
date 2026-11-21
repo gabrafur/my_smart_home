@@ -20,6 +20,8 @@ const reviewReceiptStatuses = new Set([
 ]);
 const statusPath = process.env.WEEKLY_DOCS_REVIEW_STATUS_PATH || "";
 const triggerPath = process.env.WEEKLY_DOCS_REVIEW_TRIGGER_PATH || "";
+const publicationTriggerDir = process.env.WEEKLY_DOCS_REVIEW_PUBLICATION_TRIGGER_DIR ||
+  path.join(repoRoot, "homeassistant", ".git-backup-trigger");
 const maxRuntimeMs = integerEnv("WEEKLY_DOCS_REVIEW_TIMEOUT_MS", 3 * 60 * 60 * 1000, 60_000, 24 * 60 * 60 * 1000);
 const schedule = {
   day: integerEnv("WEEKLY_DOCS_REVIEW_DAY_UTC", 1, 0, 6),
@@ -40,6 +42,25 @@ let status = readStatus();
 
 function log(message) {
   process.stdout.write(`[${new Date().toISOString()}] ${message}\n`);
+}
+
+// Hands the merged commit to the host Git backup, whose pre-push runs the full
+// validate-public with the host's CPU. Same request format as Node-RED's backup button;
+// an already queued or running request covers this commit too.
+function requestHostPublication(directory = publicationTriggerDir) {
+  try {
+    if (fs.existsSync(path.join(directory, "requested")) || fs.existsSync(path.join(directory, "processing"))) {
+      return "already_queued";
+    }
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    const temporary = path.join(directory, `requested.tmp.${process.pid}`);
+    fs.writeFileSync(temporary, `${stamp}-${process.pid}\n`, { mode: 0o660 });
+    fs.renameSync(temporary, path.join(directory, "requested"));
+    return "requested";
+  } catch (error) {
+    log(`cannot request host publication (nightly backup will publish): ${error.message}`);
+    return "nightly_backup";
+  }
 }
 
 function integerEnv(name, fallback, minimum, maximum) {
@@ -388,7 +409,11 @@ async function runLockedReview() {
     }
 
     if (changed.length > 0) gitOutput(["add", "--", ...changed], worktree);
-    runChecked("make", ["validate-public"], worktree);
+    // The worker is capped at one low-priority CPU to protect the house, where the full
+    // suite times out (21/11/2026: 12 of 873 tests, none about docs). It runs the
+    // documentation subset here; the full validate-public runs on the host in the
+    // Git backup's pre-push before anything reaches the remote.
+    runChecked("make", ["validate-docs-review"], worktree);
     if (changed.length === 0) {
       log("weekly documentation review completed with no changes");
       updateStatus({
@@ -412,11 +437,11 @@ async function runLockedReview() {
       return failReview("main_changed_during_review", new Error("main worktree no longer matches baseline"));
     }
     gitOutput(["merge", "--ff-only", reviewCommit]);
-    gitOutput(["push", initial.remote, `HEAD:${initial.expectedBranch}`]);
-    log("weekly documentation review committed and pushed successfully");
+    const publication = requestHostPublication();
+    log(`weekly documentation review committed; host Git backup publication ${publication}`);
     updateStatus({
       state: "success", last_finished: new Date().toISOString(), last_result: "success",
-      last_reason: null, last_commit: reviewCommit.slice(0, 12),
+      last_reason: null, last_commit: reviewCommit.slice(0, 12), last_publication: publication,
       success_count: Number(status.success_count || 0) + 1,
     });
     return true;

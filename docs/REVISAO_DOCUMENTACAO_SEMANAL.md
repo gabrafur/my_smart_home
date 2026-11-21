@@ -13,7 +13,8 @@ O botão **Rodar revisão documental** pressiona
 `input_button.weekly_documentation_review_run`. O Node-RED valida a origem e
 chama `scripts/request-weekly-docs-review.sh`, montado como somente leitura.
 Esse helper cria somente o gatilho compartilhado; execução, lock, allowlist,
-validação, commit e push continuam sob autoridade do worker.
+validação e commit continuam sob autoridade do worker; o push é do backup Git
+do host (ver "Publicação pelo host").
 
 No canvas, a origem manual/agendada, o gate de `test_mode`, a classificação da
 resposta como solicitada/agrupada/inválida, o tratamento de falha e o código de
@@ -79,14 +80,29 @@ O prompt versionado em `scripts/weekly-docs-review.prompt.md` exige:
 - não reiniciar a stack residencial, não chamar endpoints, não enviar
   notificações e não acionar dispositivos físicos.
 
-Não há commit vazio. Se uma validação falhar, o push não ocorre.
+Não há commit vazio. Se uma validação falhar, nada é integrado nem publicado.
 O agente trabalha deliberadamente em `detached HEAD`, preso ao baseline que o
 scheduler já comparou com `origin/main`; ele não deve exigir que esse worktree
 temporário esteja na branch `main`. Ao terminar, o agente grava um recibo JSON
 transitório. Saída zero sem recibo ou recibo com bloqueio é falha, nunca
 `no_changes`. Mesmo com recibo concluído, o scheduler executa novamente
-`make validate-public` antes de aceitar tanto `no_changes` quanto um diff
+`make validate-docs-review` antes de aceitar tanto `no_changes` quanto um diff
 documental; a validação independente prevalece sobre o relato do agente.
+
+### Publicação pelo host
+
+O worker é limitado a uma CPU de baixa prioridade para não disputar recursos com
+a casa. Nesse limite a suíte completa (`make validate-public`) estoura o tempo:
+em 21/11/2026, 12 de 873 testes, nenhum de documentação, falharam por timeout.
+Por isso o worker roda só o subconjunto documental `make validate-docs-review`
+(docs, JSON, YAML, scanner de segurança, privacidade e memórias públicas),
+integra o commit na `main` por fast-forward e pede um backup Git ao host
+(`homeassistant/.git-backup-trigger/requested`, o mesmo pedido do botão do
+Node-RED). O backup do host publica, e o pre-push dele roda o
+`make validate-public` completo com a CPU do host; se falhar, nada chega ao
+remoto e o backup registra o motivo. O status guarda `last_publication`
+(`requested`, `already_queued` ou `nightly_backup` quando o pedido não pôde ser
+gravado e a publicação fica para o backup noturno).
 
 ## Barreiras de segurança
 
@@ -112,8 +128,9 @@ As barreiras adicionais são:
   repositórios sintéticos criados pela validação;
 - recibo de conclusão obrigatório e removido antes do cálculo do diff, para
   impedir falso sucesso quando o agente encerra antes de revisar o baseline;
-- repetição independente de `make validate-public` pelo scheduler antes de
-  aceitar inclusive uma revisão sem alterações;
+- repetição independente de `make validate-docs-review` pelo scheduler antes de
+  aceitar inclusive uma revisão sem alterações, e `make validate-public`
+  completo no pre-push do host antes de publicar;
 - tempo máximo padrão de três horas; o grupo inteiro de processos é encerrado
   quando o limite é excedido.
 
@@ -208,8 +225,9 @@ git status --short
 ```
 
 Se o log registrar `make: command not found`, a imagem do worker está antiga.
-O alvo `make validate-public` é obrigatório e não deve ser substituído por
-checks parciais. Recompile somente `docs-review-scheduler`; a imagem versionada
+O `make validate-public` completo continua obrigatório antes de publicar (no
+pre-push do host); no worker, use só o alvo `make validate-docs-review`, sem
+listas parciais avulsas. Recompile somente `docs-review-scheduler`; a imagem versionada
 instala GNU Make junto de Git, SSH, Python, Node e Docker Compose.
 
 Uma árvore suja, branch diferente ou falha de autenticação faz a semana ser

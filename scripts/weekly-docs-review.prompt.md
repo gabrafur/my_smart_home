@@ -55,7 +55,7 @@ migrações, alterações de runtime ou correções executáveis diretamente em
    arquivos não relacionados ou falha de autenticação, pare sem editar,
    commitar ou fazer push.
 
-6. Se `make validate-public` ou os contratos estruturais esperados não
+6. Se `make validate-docs-review` ou os contratos estruturais esperados não
    existirem, registre `baseline_not_installed` e pare. Não volte para uma lista
    parcial e obsoleta de validações.
 
@@ -258,11 +258,14 @@ Não atualize versões ou procedimentos apenas com base em memória do modelo.
 Execute:
 
 ```bash
-make validate-public
+make validate-docs-review
 ```
 
-O scheduler repetirá `make validate-public` fora do agente, inclusive quando
-não houver alterações. Se houver diff documental, ele fará o stage e executará
+Este contêiner tem uma CPU de baixa prioridade; não rode `make validate-public`
+aqui (a suíte completa estoura o tempo). O scheduler repetirá
+`make validate-docs-review` fora do agente, inclusive quando não houver
+alterações, e o backup Git do host roda o `make validate-public` completo no
+pre-push antes de publicar. Se houver diff documental, ele fará o stage e executará
 também o alvo canônico para o índice:
 
 ```bash
@@ -307,7 +310,7 @@ implementation_change_required
 
 Se nada precisar ser alterado, registre `no_changes`.
 
-Depois de concluir de fato toda a revisão e o `make validate-public`, grave o
+Depois de concluir de fato toda a revisão e o `make validate-docs-review`, grave o
 recibo transitório exigido pelo scheduler no caminho relativo contido em
 `WEEKLY_DOCS_REVIEW_RECEIPT`, com o conteúdo JSON exato:
 
@@ -332,7 +335,7 @@ Registre somente metadados seguros:
 - assets verificados;
 - estado do contrato de restauração;
 - resultado dos scanners;
-- resultado do `make validate-public`;
+- resultado do `make validate-docs-review`;
 - arquivos documentais alterados;
 - commit criado, quando houver;
 - resultado final;

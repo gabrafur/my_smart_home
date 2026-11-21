@@ -43,8 +43,9 @@ function fixture(t, { branch = "main" } = {}) {
   write(path.join(repo, "scripts", "runtime.js"), "export const safe = true;\n");
   write(path.join(repo, "scripts", "weekly-docs-review.mjs"), schedulerSource);
   write(path.join(repo, "scripts", "weekly-docs-review.prompt.md"), "Português do Brasil\n");
-  write(path.join(repo, "Makefile"), "validate-public:\n\t@true\nvalidate-staged:\n\t@true\n");
-  write(path.join(repo, ".gitignore"), ".daily-maintenance.lock\n");
+  write(path.join(repo, "Makefile"), "validate-docs-review:\n\t@true\nvalidate-staged:\n\t@true\n");
+  write(path.join(repo, ".gitignore"), ".daily-maintenance.lock\nhomeassistant/.git-backup-trigger/\n");
+  fs.mkdirSync(path.join(repo, "homeassistant", ".git-backup-trigger"), { recursive: true });
   git(repo, ["add", "."]);
   git(repo, ["commit", "-qm", "synthetic baseline"]);
   const baseline = git(repo, ["rev-parse", "HEAD"]);
@@ -103,7 +104,7 @@ function fixture(t, { branch = "main" } = {}) {
     '/usr/bin/flock -n "$SCHEDULER_MAIN_REPO/.daily-maintenance.lock" true && exit 90',
     "target=${1:-}",
     "case \"${SCHEDULER_SCENARIO:-}\" in",
-    "  validation_failure|no_change_validation_failure) [ \"$target\" = validate-public ] && echo synthetic-validation-failure >&2 && exit 1 ;;",
+    "  validation_failure|no_change_validation_failure) [ \"$target\" = validate-docs-review ] && echo synthetic-validation-failure >&2 && exit 1 ;;",
     "  privacy_failure) [ \"$target\" = validate-staged ] && echo synthetic-privacy-failure >&2 && exit 1 ;;",
     "  security_failure) [ \"$target\" = validate-staged ] && echo synthetic-security-failure >&2 && exit 1 ;;",
     "esac",
@@ -149,13 +150,30 @@ test("uses automatic approval without a conflicting sandbox option", (t) => {
   assert.equal(args.includes("--sandbox"), false);
 });
 
-test("allows a documentation-only diff, validates it and publishes one commit", (t) => {
+test("allows a documentation-only diff, validates it and hands one commit to the host backup", (t) => {
   const item = fixture(t);
   const before = item.remoteCount();
   const result = item.run("allowed");
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(item.remoteCount(), before + 1);
+  // The worker never pushes: the host Git backup's pre-push runs the full validation.
+  assert.equal(item.remoteCount(), before);
   assert.equal(git(item.repo, ["log", "-1", "--format=%s"]), "docs: weekly public-repository review");
+  const request = fs.readFileSync(path.join(item.repo, "homeassistant", ".git-backup-trigger", "requested"), "utf8");
+  assert.match(request, /^\d{8}T\d{6}Z-\d+\n$/);
+  const status = JSON.parse(fs.readFileSync(path.join(item.temporaryRoot, "status.json"), "utf8"));
+  assert.equal(status.last_result, "success");
+  assert.equal(status.last_publication, "requested");
+});
+
+test("does not queue a second host backup while one is pending", (t) => {
+  const item = fixture(t);
+  const trigger = path.join(item.repo, "homeassistant", ".git-backup-trigger");
+  fs.writeFileSync(path.join(trigger, "processing"), "20261121T000000Z-1\n");
+  const result = item.run("allowed");
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.existsSync(path.join(trigger, "requested")), false);
+  const status = JSON.parse(fs.readFileSync(path.join(item.temporaryRoot, "status.json"), "utf8"));
+  assert.equal(status.last_publication, "already_queued");
 });
 
 for (const scenario of ["forbidden", "mixed"]) {

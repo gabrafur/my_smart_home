@@ -1,4 +1,4 @@
-.PHONY: validate-public validate-dependencies validate-compose validate-json validate-yaml \
+.PHONY: validate-public validate-docs-review validate-dependencies validate-compose validate-json validate-yaml \
 	validate-shell validate-docs validate-assets validate-security validate-privacy \
 	validate-memory validate-node-red validate-bridge validate-local-ai validate-homeassistant validate-scripts \
 	validate-scheduler validate-auto-update validate-modules validate-restore \
@@ -67,6 +67,11 @@ validate-shell:
 
 validate-docs:
 	node scripts/docs-check.mjs
+
+# Fast subset for the weekly documentation worker, capped at one low-priority CPU to
+# protect the house. It never pushes: the host Git backup publishes the commit and its
+# pre-push runs the full validate-public there.
+validate-docs-review: validate-docs validate-json validate-yaml validate-security validate-privacy validate-memory
 
 validate-assets:
 	node scripts/assets-check.mjs
