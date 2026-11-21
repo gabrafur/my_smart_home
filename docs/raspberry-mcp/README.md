@@ -15,7 +15,7 @@ renova concessões nem certifica a execução de um cliente recém-conectado.
 | Entender mudanças de caminhos e preservação das evidências | [Migração documental](migration.md) |
 
 As referências são organizadas por função: [base de leitura](reference/read-only-base.md),
-[tarefas](reference/task-control.md), [observação da coordenadora](reference/task-observation.md),
+[tarefas](reference/task-control.md) (com a [reinscrição do Codex após atualização](reference/codex-peer-reenrollment.md)), [observação da coordenadora](reference/task-observation.md),
 [Git e workers](reference/git-and-workers.md), [observação do host](reference/events-and-host-observation.md),
 [protocolo Events](reference/events-protocol.md), [notificações](reference/notifications.md),
 [reparo por componente](reference/component-repair.md),

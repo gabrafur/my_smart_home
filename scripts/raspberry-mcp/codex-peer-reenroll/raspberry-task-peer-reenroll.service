@@ -1,0 +1,33 @@
+[Unit]
+Description=Re-enroll the Codex app-server executable after a registry-verified Codex update
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/home/gabriel/.codex/app-server-control/app-server-control.sock
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I -S -B /usr/local/lib/raspberry-task-peer-reenroll/reenroll.py run
+Nice=15
+IOSchedulingClass=idle
+StateDirectory=raspberry-task-peer-reenroll
+StateDirectoryMode=0700
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+# The daemon socket lives under /tmp: no PrivateTmp, it must stay reachable (read-only).
+ReadWritePaths=/etc/raspberry-task-control /run/raspberry-task-peer-attest.lock
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_SYS_PTRACE CAP_DAC_OVERRIDE CAP_CHOWN
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+MemoryMax=96M
+CPUQuota=50%
+TasksMax=8
+TimeoutStartSec=15min
+UMask=0077

@@ -157,6 +157,12 @@ The [Home Assistant state tool](raspberry-mcp/reference/home-assistant-states.md
 entities with value, measurement time, age and availability; alarm, locks, gate
 and location are not reachable.
 
+The [Codex peer re-enrollment](raspberry-mcp/reference/codex-peer-reenrollment.md)
+service lets task control survive Codex CLI updates: every five minutes it updates
+only the pinned executable hash and size, and only for the process really serving the
+control socket whose binary is byte-identical to the npm registry build; the attestor
+then re-attests by CAS.
+
 The [general Node-RED administration contract](raspberry-mcp/reference/nodered-administration.md)
 has a default-closed implementation with structured graph edits, opaque
 revision CAS, durable intents, native guards and own-operation rollback.

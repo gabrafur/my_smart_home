@@ -1,0 +1,13 @@
+[Unit]
+Description=Check every five minutes whether a Codex update needs re-enrollment
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=5min
+AccuracySec=30s
+RandomizedDelaySec=20s
+Persistent=false
+Unit=raspberry-task-peer-reenroll.service
+
+[Install]
+WantedBy=timers.target
