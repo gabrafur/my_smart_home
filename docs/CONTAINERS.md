@@ -30,6 +30,14 @@ O frontend do Zigbee2MQTT pode não ter autenticação própria, dependendo do
 1880, 1883, 8080 e 9000 restritas à LAN/VPN confiável. AppDaemon, o WebSocket
 do Matter e o bridge permanecem em loopback.
 
+O `ai-bridge` tem limite de 2 GiB (`mem_limit`), reserva de 256 MiB e
+`oom_score_adj: 500`: sob falta de memória o kernel encerra o bridge antes do
+Home Assistant, do Node-RED ou do MQTT. Sem limite, ele chegou a 3,7 GiB num
+host de 8 GiB sem swap. O bridge lê os limites de uso do Codex por um único
+`codex app-server` persistente, reciclado a cada 6 horas com encerramento limpo.
+Iniciar um processo a cada 30 segundos relia cerca de 160 MiB de WAL do SQLite
+a cada leitura e pressionava o cartão SD.
+
 ## Imagens e versões
 
 Todas as imagens externas, inclusive a base do bridge, usam digest. Tags como

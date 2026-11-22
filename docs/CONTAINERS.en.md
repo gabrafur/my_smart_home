@@ -30,6 +30,14 @@ private `configuration.yaml`. A LAN bind is not a firewall: restrict ports
 1880, 1883, 8080, and 9000 to a trusted LAN/VPN. AppDaemon, the Matter
 WebSocket, and the bridge remain loopback-only.
 
+`ai-bridge` has a 2 GiB limit (`mem_limit`), a 256 MiB reservation and
+`oom_score_adj: 500`, so under memory pressure the kernel kills the bridge before
+Home Assistant, Node-RED or MQTT. Without a limit it reached 3.7 GiB on an 8 GiB
+host without swap. The bridge reads Codex usage limits through one persistent
+`codex app-server`, recycled every 6 hours with a clean shutdown. Starting a
+process every 30 seconds replayed about 160 MiB of SQLite WAL on each read and
+kept the SD card busy.
+
 ## Images and versions
 
 All external images, including the bridge base image, are pinned by digest.

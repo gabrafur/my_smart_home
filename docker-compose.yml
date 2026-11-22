@@ -214,6 +214,13 @@ services:
         BRIDGE_GID: ${REPO_GID:-1000}
     container_name: ai-bridge
     restart: always
+    # Unlimited, it reached a 3.7 GiB cgroup peak on an 8 GiB host without swap.
+    # 2 GiB covers the bridge, its persistent Codex app-server and one agent
+    # turn; page cache is reclaimed first. Under host pressure the kernel kills
+    # the bridge before Home Assistant, Node-RED or MQTT.
+    mem_limit: 2048m
+    mem_reservation: 256m
+    oom_score_adj: 500
     # Docker's embedded resolver keeps service discovery on 127.0.0.11 and
     # forwards public lookups to these explicit upstream resolvers.
     dns:

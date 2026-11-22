@@ -647,6 +647,18 @@ codexRateLimits.start();
 refreshLocalAiHealth();
 setInterval(refreshLocalAiHealth, LOCAL_AI_HEALTH_REFRESH_MS).unref();
 
+// Docker stops the bridge with SIGTERM. Close the persistent Codex app-server
+// cleanly (it checkpoints its SQLite databases) before exiting.
+let shuttingDown = false;
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    server.close();
+    codexRateLimits.stop().finally(() => process.exit(0));
+  });
+}
+
 server.listen(PORT, () => {
   console.log(
     `agent bridge listening on :${PORT}, workdir=${WORKDIR}, history=${HISTORY_DIR}`,

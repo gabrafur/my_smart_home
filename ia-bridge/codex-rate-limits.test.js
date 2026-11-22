@@ -46,3 +46,74 @@ test('poller exposes the last refresh error even before a successful snapshot', 
   assert.equal(event.refreshMetadata.mode, 'codex_app_server');
   assert.equal(event.refreshMetadata.last_error, 'backend unavailable');
 });
+
+const { EventEmitter } = require('node:events');
+const { CodexAppServerClient } = require('./codex-rate-limits');
+
+function fakeAppServer({ answer = true } = {}) {
+  const spawned = [];
+  const spawnFn = () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.signals = [];
+    child.requests = [];
+    const exit = (code) => setImmediate(() => child.emit('close', code));
+    child.kill = (signal) => { child.signals.push(signal); exit(null); };
+    child.stdin = new EventEmitter();
+    child.stdin.end = () => exit(0);
+    child.stdin.write = (line) => {
+      const message = JSON.parse(line);
+      child.requests.push(message.method);
+      if (!answer || message.id === undefined) return;
+      const result = message.method === 'initialize' ? {} : {
+        rateLimits: { limitId: 'codex', primary: { usedPercent: 7 } },
+      };
+      setImmediate(() => child.stdout.emit('data', `${JSON.stringify({ id: message.id, result })}\n`));
+    };
+    spawned.push(child);
+    return child;
+  };
+  return { spawned, spawnFn };
+}
+
+test('poller reuses one app-server for successive reads', async () => {
+  const fake = fakeAppServer();
+  const poller = new CodexRateLimitsPoller({
+    clientFactory: (options) => new CodexAppServerClient({ ...options, spawnFn: fake.spawnFn }),
+  });
+  await poller.refresh();
+  await poller.refresh();
+  assert.equal(fake.spawned.length, 1);
+  assert.deepEqual(fake.spawned[0].requests,
+    ['initialize', 'initialized', 'account/rateLimits/read', 'account/rateLimits/read']);
+  assert.equal(poller.readEvent().rateLimits.primary.used_percent, 7);
+  await poller.stop();
+  assert.deepEqual(fake.spawned[0].signals, [], 'stop closes stdin instead of killing');
+});
+
+test('poller replaces an app-server that exited or exceeded its lifetime', async () => {
+  const fake = fakeAppServer();
+  const poller = new CodexRateLimitsPoller({
+    maxLifetimeMs: 60_000,
+    clientFactory: (options) => new CodexAppServerClient({ ...options, spawnFn: fake.spawnFn }),
+  });
+  await poller.refresh();
+  fake.spawned[0].emit('close', 1);
+  await poller.refresh();
+  assert.equal(fake.spawned.length, 2);
+  poller.client.startedAt -= 61_000;
+  await poller.refresh();
+  assert.equal(fake.spawned.length, 3);
+  assert.deepEqual(fake.spawned[1].signals, [], 'lifetime recycle is a clean close');
+  await poller.stop();
+});
+
+test('an unresponsive app-server times out, is killed and is replaced', async () => {
+  const silent = fakeAppServer({ answer: false });
+  const client = new CodexAppServerClient({ spawnFn: silent.spawnFn, timeoutMs: 20 });
+  await assert.rejects(client.request('account/rateLimits/read'), /timed out/);
+  assert.deepEqual(silent.spawned[0].signals, ['SIGTERM']);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(client.alive, false);
+});
