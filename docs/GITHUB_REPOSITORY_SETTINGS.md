@@ -45,7 +45,9 @@ Confirme novamente na interface antes de aplicar recomendações.
    nunca para GitHub Apps genéricos ou todos os administradores.
 
 O bypass é uma decisão operacional explícita, não uma alegação de que a branch
-está integralmente protegida. O CI continua rodando em todo push.
+está integralmente protegida. O CI roda em todo push na `main` e em todo pull
+request (sobre o resultado do merge); um branch sem PR só é validado pelo
+`pre-push` local ou por execução manual (`workflow_dispatch`).
 
 ## Template versus fork
 

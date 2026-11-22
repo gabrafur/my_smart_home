@@ -45,7 +45,9 @@ it in the UI before applying recommendations.
    GitHub Apps or all administrators.
 
 The bypass is an explicit operational decision; it is not a claim of complete
-branch protection. CI still runs on every push.
+branch protection. CI runs on every push to `main` and on every pull request
+(against its merge result); a branch without a PR is validated only by the
+local `pre-push` hook or a manual run (`workflow_dispatch`).
 
 ## Template versus fork
 
