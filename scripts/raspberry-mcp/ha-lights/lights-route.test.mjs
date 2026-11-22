@@ -48,12 +48,12 @@ console.log('lights route: audit and capability annotation passed');
 // Household actions: air conditioner, PC shutdown and gate pulse travel as target + verb only.
 const acts=[];
 const actRoute=makeLightsRoute(prior,async r=>{acts.push(r);return {state:'confirmed',collection_error:null};});
-for(const [target,action] of [['ar_condicionado_escritorio','off'],['pc_gabriel','poweroff'],['portao_garagem','pulse']]){
+for(const [target,action] of [['ar_condicionado_escritorio','off'],['workstation_primary','poweroff'],['portao_garagem','pulse']]){
  const r=await actRoute({jsonrpc:'2.0',id:9,method:'tools/call',params:{name:'ha_action_run',arguments:{host:'raspberry',target,action}}});
  assert.equal(r.result.structuredContent.state,'confirmed');
  assert.deepEqual(acts.at(-1),{name:'ha_action_run',arguments:{host:'raspberry',target,action}});
 }
-for(const a of [{target:'portao_garagem',action:'on'},{target:'portao_garagem',action:'open'},{target:'pc_gabriel',action:'reboot'},
+for(const a of [{target:'portao_garagem',action:'on'},{target:'portao_garagem',action:'open'},{target:'workstation_primary',action:'reboot'},
   {target:'rele_acionador_portao',action:'pulse'},{target:'ar_condicionado_escritorio',action:'pulse'},{target:'portao_garagem',action:'pulse',entity_id:'switch.x'}]){
  const r=await actRoute({jsonrpc:'2.0',id:10,method:'tools/call',params:{name:'ha_action_run',arguments:{host:'raspberry',...a}}});
  assert.equal(r.error.message,'registered_light_parameters_refused');
@@ -70,8 +70,8 @@ const house=[];
 const hr=makeLightsRoute(prior,async r=>{house.push(r);return {state:'accepted',collection_error:null};});
 await hr({jsonrpc:'2.0',id:12,method:'tools/call',params:{name:'ha_entities_read',arguments:{host:'raspberry',domain:'media_player',search:'tv'}}});
 assert.deepEqual(house.at(-1),{name:'ha_entities_read',arguments:{host:'raspberry',domain:'media_player',search:'tv'}});
-await hr({jsonrpc:'2.0',id:13,method:'tools/call',params:{name:'ha_service_call',arguments:{host:'raspberry',domain:'media_player',service:'turn_off',entity_id:'media_player.gabriel_s_fire_tv',data:{volume_level:0.2}}}});
-assert.deepEqual(house.at(-1).arguments,{host:'raspberry',domain:'media_player',service:'turn_off',entity_id:'media_player.gabriel_s_fire_tv',data:{volume_level:0.2}});
+await hr({jsonrpc:'2.0',id:13,method:'tools/call',params:{name:'ha_service_call',arguments:{host:'raspberry',domain:'media_player',service:'turn_off',entity_id:'media_player.example_living_room_tv',data:{volume_level:0.2}}}});
+assert.deepEqual(house.at(-1).arguments,{host:'raspberry',domain:'media_player',service:'turn_off',entity_id:'media_player.example_living_room_tv',data:{volume_level:0.2}});
 for(const a of [{domain:'media_player',service:'turn_off',entity_id:'light.x'},{domain:'shell_command',service:'x',entity_id:'shell_command.x'},
   {domain:'light',service:'Turn On',entity_id:'light.x'},{domain:'light',service:'turn_on',entity_id:'light.x',data:{a:{b:1}}},
   {domain:'light',service:'turn_on',entity_id:'light.x',extra:1}]){
@@ -80,3 +80,36 @@ for(const a of [{domain:'media_player',service:'turn_off',entity_id:'light.x'},{
 }
 assert.equal(house.length,2);
 console.log('lights route: whole-house control passed');
+
+// Installer-rendered deprecated alias: listed and accepted, but the broker only ever sees the
+// canonical workstation_primary key. The tracked source has no alias at all.
+{
+ const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');
+ const source=fs.readFileSync(new URL('./lights-route.mjs',import.meta.url),'utf8');
+ const line='const LEGACY_ACTION_ALIASES=Object.freeze({});';
+ assert.equal(source.split(line).length,2);
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'lights-alias-'));
+ const file=path.join(dir,'lights-route.mjs');
+ fs.writeFileSync(file,source.replace(line,'const LEGACY_ACTION_ALIASES=Object.freeze({"example_legacy_pc":"workstation_primary","example_dangling":"not_registered"});'));
+ try{
+  const m=await import(file);
+  const run=m.actionDescriptors.find(d=>d.name==='ha_action_run');
+  assert.deepEqual(run.inputSchema.properties.target.enum,['ar_condicionado_escritorio','workstation_primary','portao_garagem','example_legacy_pc']);
+  const seen=[];
+  const r=m.makeLightsRoute(prior,async q=>{seen.push(q);return {state:'confirmed',collection_error:null};});
+  await r({jsonrpc:'2.0',id:20,method:'tools/call',params:{name:'ha_action_run',arguments:{host:'raspberry',target:'example_legacy_pc',action:'poweroff'}}});
+  assert.deepEqual(seen.at(-1),{name:'ha_action_run',arguments:{host:'raspberry',target:'workstation_primary',action:'poweroff'}});
+  await r({jsonrpc:'2.0',id:21,method:'tools/call',params:{name:'ha_actions_read',arguments:{host:'raspberry',target:'example_legacy_pc'}}});
+  assert.deepEqual(seen.at(-1),{name:'ha_actions_read',arguments:{host:'raspberry',target:'workstation_primary'}});
+  for(const a of [{target:'example_legacy_pc',action:'reboot'},{target:'example_dangling',action:'poweroff'}]){
+   const x=await r({jsonrpc:'2.0',id:22,method:'tools/call',params:{name:'ha_action_run',arguments:{host:'raspberry',...a}}});
+   assert.equal(x.error.message,'registered_light_parameters_refused');
+  }
+  assert.equal(seen.length,2);
+  assert.deepEqual(m.householdLights.deprecated_action_aliases,{example_legacy_pc:'workstation_primary'});
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+ const {householdLights}=await import('./lights-route.mjs');
+ assert.equal('deprecated_action_aliases' in householdLights,false);
+ assert.deepEqual(Object.keys(householdLights.actions),['ar_condicionado_escritorio','workstation_primary','portao_garagem']);
+ console.log('lights route: deprecated alias passed');
+}

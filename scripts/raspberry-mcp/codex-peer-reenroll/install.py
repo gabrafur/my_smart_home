@@ -5,6 +5,9 @@ the currently enrolled binary), rollback. Sources are pinned by sha256 below, so
 reviewed operator hash covers what gets installed. Nothing is restarted: the timer only
 adds a periodic check; the enrollment changes only through reenroll.py's own guards.
 One invocation per verb; no automatic retry.
+
+The service unit is a template pinned before rendering: its ConditionPathExists is rendered
+for the host_operator home (RASPBERRY_HOST_OPERATOR or SUDO_USER, see ../host_operator.py).
 """
 import hashlib, json, os, subprocess, sys, time
 from pathlib import Path
@@ -14,9 +17,9 @@ LIB = Path('/usr/local/lib/raspberry-task-peer-reenroll')
 UNITS = Path('/etc/systemd/system')
 STATUS = Path('/var/lib/raspberry-task-peer-reenroll/status.json')
 FILES = {
-    LIB / 'reenroll.py': ('reenroll.py', '322ce512a3c84e4ad5bdfd9dbe0a65bf7bc884376435cf448eb964ef40f4f8c8'),
+    LIB / 'reenroll.py': ('reenroll.py', '06acbb2e4575f7c6534296f99eb854e2b0f6d5b9b64f1eacca2f6685149eb022'),
     UNITS / 'raspberry-task-peer-reenroll.service':
-        ('raspberry-task-peer-reenroll.service', '29ece5d42e427f25bf49608802338e8642a9e87f16aa94355098ec3e9c8331a7'),
+        ('raspberry-task-peer-reenroll.service', '051d7a4dc1052d4cfca1fed55f2eb0d5927a07117530e7d10c7b7f1b18044672'),
     UNITS / 'raspberry-task-peer-reenroll.timer':
         ('raspberry-task-peer-reenroll.timer', '6dcb741ee2b97d7b9c35559d04e83f29ae7a2db80abaaddcc037c8e12b6a7018'),
 }
@@ -34,7 +37,14 @@ def need(ok, reason):
 def source(name, expected):
     body = (SRC / name).read_bytes()
     need(sha(body) == expected, 'source_pin_mismatch:' + name)
-    return body
+    if not name.endswith('.service'):
+        return body
+    sys.path.insert(0, str(SRC.parent))
+    import host_operator
+    try:
+        return host_operator.render(body, host_operator.resolve())
+    except host_operator.OperatorUnresolved as error:
+        need(False, str(error))
 
 
 def write(path, body, mode=0o644):
@@ -70,7 +80,7 @@ def apply():
 
 def verify():
     need(os.geteuid() == 0 and LIB.exists(), 'nothing_applied')
-    files = {str(p): p.exists() and sha(p.read_bytes()) == s for p, (_, s) in FILES.items()}
+    files = {str(p): p.exists() and p.read_bytes() == source(n, s) for p, (n, s) in FILES.items()}
     timer = systemctl('is-active', 'raspberry-task-peer-reenroll.timer').stdout.strip()
     run = systemctl('start', 'raspberry-task-peer-reenroll.service', timeout=120)
     time.sleep(1)

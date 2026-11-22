@@ -9,5 +9,5 @@ const cwd = fileURLToPath(new URL("./codex-peer-reenroll/", import.meta.url));
 test("Codex peer re-enrollment trusts only registry-verified binaries", () => {
   const result = spawnSync("python3", ["-B", "-m", "unittest", "test_reenroll"], { cwd, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Ran 17 tests/);
+  assert.match(result.stderr, /Ran 20 tests/);
 });

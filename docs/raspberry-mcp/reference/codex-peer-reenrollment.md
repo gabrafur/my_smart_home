@@ -52,3 +52,9 @@ binário inscrito é o publicado (`provenance_confirmed`). `rollback` desativa o
 timer e remove só os arquivos instalados, preservando estado e enrollments
 anteriores. Ao alterar `reenroll.py` ou as unidades, atualize os pinos de
 `install.py` e reinstale por um novo operador.
+
+O socket e o `package.json` do Codex são resolvidos na home do `host_operator`,
+obtida do `executable_uid` do próprio enrollment selado; nenhuma conta é
+rastreada. A unit é um template: `ConditionPathExists` é renderizado na
+instalação (`RASPBERRY_HOST_OPERATOR` ou `SUDO_USER`). Uma instalação anterior
+migra com o operador de [papéis lógicos do host](host-identity-roles.md).

@@ -35,9 +35,9 @@
    "label": "Ar-condicionado do escritório",
    "kind": "power"
   },
-  "pc_gabriel": {
+  "workstation_primary": {
    "entity_id": "script.pc_desligar",
-   "label": "PC do Gabriel (desligar)",
+   "label": "PC principal (desligar)",
    "kind": "poweroff"
   },
   "portao_garagem": {

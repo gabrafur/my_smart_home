@@ -3,6 +3,13 @@
 - A lógica pública usa os papéis `resident_primary`, `resident_secondary`,
   `mobile_primary`, `mobile_secondary`, `vehicle_primary`, `garage_gate`,
   `exterior_light` e `security_panel`; papel lógico não é `entity_id`.
+- Fontes executáveis usam `host_operator` (conta Linux do Codex/checkout no
+  Raspberry, resolvida por `HOME`, `RASPBERRY_HOST_OPERATOR`/`SUDO_USER` ou uid
+  do enrollment selado) e `workstation_primary` (PC principal) no lugar de
+  nomes pessoais; units são templates renderizados na instalação. Detalhes em
+  `docs/raspberry-mcp/reference/host-identity-roles.md`. A regra
+  `retired-personal-identifier` do privacy-check bloqueia o nome aposentado
+  por hash.
 - O contrato vigente está em `bindings/public-bindings.schema.json` e o exemplo
   sintético em `bindings/private-bindings.example.json`.
 - Valores reais pertencem exclusivamente a `bindings/private/`, ignorado pelo

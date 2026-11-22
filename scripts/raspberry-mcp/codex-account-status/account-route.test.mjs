@@ -12,7 +12,22 @@ const loaded = {exports: {}};
 // Same realm as the route, so plain objects keep their prototypes.
 vm.runInThisContext('(function (module, exports, require) {' +
   fs.readFileSync(new URL('./broker.cjs', import.meta.url), 'utf8') + '\n})')(loaded, loaded.exports, stubRequire);
-const {classify, METHODS} = loaded.exports;
+const {classify, METHODS, APP} = loaded.exports;
+// The control socket follows the host_operator HOME set by systemd (User= is rendered at install).
+const loadWith = env => {
+  const saved = {...process.env}; Object.assign(process.env, env);
+  if (!('CODEX_APP_SERVER_CONTROL_SOCKET' in env)) delete process.env.CODEX_APP_SERVER_CONTROL_SOCKET;
+  try {
+    const m = {exports: {}};
+    vm.runInThisContext('(function (module, exports, require) {' +
+      fs.readFileSync(new URL('./broker.cjs', import.meta.url), 'utf8') + '\n})')(m, m.exports, stubRequire);
+    return m.exports.APP;
+  } finally { for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k]; Object.assign(process.env, saved); }
+};
+assert.equal(typeof APP, 'string');
+assert.equal(loadWith({HOME: '/home/example_operator'}), '/home/example_operator/.codex/app-server-control/app-server-control.sock');
+assert.equal(loadWith({HOME: '/home/example_operator', CODEX_APP_SERVER_CONTROL_SOCKET: '/run/example.sock'}), '/run/example.sock');
+assert.ok(!fs.readFileSync(new URL('./raspberry-codex-account-status@.service', import.meta.url), 'utf8').match(/^(User|Group)=(?!@HOST_OPERATOR_)/m));
 const limited = classify({account: {type: 'chatgpt', planType: 'prolite'}},
   {ordinaryUsageAllowed: false, rateLimits: {rateLimitReachedType: 'rate_limit_reached', credits: {hasCredits: false, unlimited: false}, primary: {usedPercent: 100, resetsAt: 1795262780}}});
 assert.equal(limited.reason, 'codex_usage_limit_reached');

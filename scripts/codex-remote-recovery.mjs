@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { readActivity } from "./codex-remote-activity.mjs";
+import { assertOperatorContext, defaultCodexBin, defaultControlSocket, readActivity } from "./codex-remote-activity.mjs";
 
 const sleep = (milliseconds) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 
@@ -71,8 +71,8 @@ function startCodexRemote({ codexBin, controlSocket, run, launch, wait }) {
 }
 
 export function recoverCodexRemote({
-  codexBin = process.env.CODEX_REMOTE_CODEX_BIN || "/home/gabriel/.local/bin/codex",
-  controlSocket = process.env.CODEX_REMOTE_CONTROL_SOCKET || "/home/gabriel/.codex/app-server-control/app-server-control.sock",
+  codexBin = defaultCodexBin(),
+  controlSocket = defaultControlSocket(),
   run = spawnSync,
   launch = spawn,
   wait = sleep,
@@ -89,8 +89,8 @@ export function recoverCodexRemote({
 }
 
 export function restartCodexRemote({
-  codexBin = process.env.CODEX_REMOTE_CODEX_BIN || "/home/gabriel/.local/bin/codex",
-  controlSocket = process.env.CODEX_REMOTE_CONTROL_SOCKET || "/home/gabriel/.codex/app-server-control/app-server-control.sock",
+  codexBin = defaultCodexBin(),
+  controlSocket = defaultControlSocket(),
   run = spawnSync,
   launch = spawn,
   wait = sleep,
@@ -131,7 +131,7 @@ export function restartCodexRemote({
 }
 
 export function preflightCodexRestart({
-  controlSocket = process.env.CODEX_REMOTE_CONTROL_SOCKET || "/home/gabriel/.codex/app-server-control/app-server-control.sock",
+  controlSocket = defaultControlSocket(),
   activity = readActivity,
 } = {}) {
   let state;
@@ -143,6 +143,7 @@ export function preflightCodexRestart({
 }
 
 export function main(argv = process.argv.slice(2)) {
+  assertOperatorContext();
   if (argv.length !== 1 || !new Set(["--recover", "--restart", "--preflight-restart"]).has(argv[0])) {
     throw new Error("Use --recover, --restart ou --preflight-restart");
   }

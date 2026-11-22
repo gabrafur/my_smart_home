@@ -27,6 +27,33 @@ const rules = [
   ["private-name-field", "identity", /\b(?:owner_name|resident_name|first_name|last_name|surname|family_name)\s*[:=]\s*["']?(?!example\b|synthetic\b|resident_(?:primary|secondary)\b|<)[^\n,"'}]{2,}/gi],
   ["private-account-id", "identity", /\b(?:account_id|user_id)\s*[:=]\s*["']?(?!example\b|synthetic\b|resident_(?:primary|secondary)\b|<)[a-z0-9][a-z0-9_-]{7,}/gi],
 ];
+// Former personal identifiers that tracked files must never contain again. Only the length and
+// the SHA-256 of the lowercase word are published, so this rule does not re-publish the value.
+// Text is split into letter-only words (also at camelCase boundaries): `pc_x`, `/home/x`,
+// `x_s_tv` and `pcX` all match the word `x`. A hash cannot hide a dictionary word from a
+// determined reader; it only keeps the scanner from being a plain-text copy.
+export const retiredIdentifierHashes = [
+  { length: 7, sha256: "ff06535ac1029cca2fc2b86ac7355a7b4e0b8d839fc76b51d30833f4e1347ddc" },
+];
+
+export function retiredIdentifierLines(text, hashes = retiredIdentifierHashes) {
+  const lengths = new Set(hashes.map((item) => item.length));
+  const wanted = new Set(hashes.map((item) => item.sha256));
+  const lines = [];
+  text.split("\n").forEach((line, index) => {
+    for (const run of line.split(/[^\p{L}]+/u)) {
+      for (const word of run.split(/(?<=\p{Ll})(?=\p{Lu})/u)) {
+        if (!lengths.has(word.length)) continue;
+        if (wanted.has(createHash("sha256").update(word.toLocaleLowerCase("pt-BR")).digest("hex"))) {
+          lines.push(index + 1);
+          return;
+        }
+      }
+    }
+  });
+  return lines;
+}
+
 const ignoredText = [
   /^homeassistant\/custom_components\/(?:alexa_media|hacs|kia_uvo|localtuya|tuya_vacuum_maps)\//,
   /^nodered\/package-lock\.json$/,
@@ -87,7 +114,7 @@ function hasImageMetadata(buffer, extension) {
   return false;
 }
 
-export function scanEntries(entries, { denylist = [] } = {}) {
+export function scanEntries(entries, { denylist = [], retiredIdentifiers = retiredIdentifierHashes } = {}) {
   const findings = [];
   const report = (rule, file, line, category) => findings.push({ rule, file, line, category });
   for (const { file, buffer } of entries) {
@@ -138,6 +165,9 @@ export function scanEntries(entries, { denylist = [] } = {}) {
             /(?:\b(?:example|synthetic)|\b(?:resident_(?:primary|secondary)|mobile_(?:primary|secondary)|vehicle_primary|garage_gate|exterior_light|security_panel)\b)/i.test(text.slice(Math.max(0, (match.index ?? 0) - 32), (match.index ?? 0) + 160))) continue;
         report(rule, file, lineNumber(text, match.index ?? 0), category);
       }
+    }
+    for (const line of retiredIdentifierLines(text, retiredIdentifiers)) {
+      report("retired-personal-identifier", file, line, "identity");
     }
     for (const term of denylist) {
       if (!term) continue;

@@ -3,6 +3,9 @@
 private-content-route.mjs moves from the lighting v2 overlay to v3, which also wraps the
 account route. Compare-and-swap on the exact v2 bytes; original before-image comes from the
 first lighting install. Nothing pinned by any policy changes.
+
+The service unit is a template: User=/Group= are rendered for the host_operator account
+(RASPBERRY_HOST_OPERATOR or SUDO_USER, see host_operator.py); no account name is tracked.
 """
 import hashlib, json, os, subprocess, sys, tempfile, time
 from pathlib import Path
@@ -22,6 +25,16 @@ TAIL_V3 = ("export function makePrivateContentRoute(...args){return makeAccountR
            "undefined,args[3]),undefined,args[3]);}\n")
 IMPORT = "import {makeAccountRoute} from './account-route.mjs';\n"
 def sha(b): return hashlib.sha256(b).hexdigest()
+def operator_module():
+    for folder in (SRC, HERE.parent):
+        if (folder / 'host_operator.py').exists(): sys.path.insert(0, str(folder)); break
+    import host_operator as h; return h
+def body(name):
+    raw = (SRC / name).read_bytes()
+    if not name.endswith('.service'): return raw
+    h = operator_module()
+    try: return h.render(raw, h.resolve())
+    except h.OperatorUnresolved as e: need(False, str(e))
 def need(ok, reason):
     if not ok: raise SystemExit(json.dumps({'state': 'refused', 'reason': reason}))
 def overlay():
@@ -39,18 +52,19 @@ def prepare():
     need(sha(original) == o.BASELINE, 'original_before_image')
     need(ROUTE.read_bytes() == o.derive(original), 'installed_route_not_lighting_v2')
     need(not any(p.exists() for p in NEW) and not os.path.exists(SOCK), 'targets_already_present_inspect')
+    body('raspberry-codex-account-status@.service')  # resolve host_operator before any write
     return o, original
 def apply():
     o, original = prepare()
     SAVED.mkdir(mode=0o700, exist_ok=True); (SAVED / 'private-content-route.mjs').write_bytes(ROUTE.read_bytes())
     LIB.mkdir(mode=0o755, exist_ok=True); os.chown(LIB, 0, 0); os.chmod(LIB, 0o755)
-    for path, name in NEW.items(): write(path, (SRC / name).read_bytes())
+    for path, name in NEW.items(): write(path, body(name))
     write(ROUTE, v3(o, original))
     r1 = systemctl('daemon-reload'); r2 = systemctl('enable', '--now', 'raspberry-codex-account-status.socket'); time.sleep(1)
     return dict(verify(), reload=r1.returncode, enable=r2.returncode)
 def verify():
     o = overlay()
-    files = {str(p): sha(p.read_bytes()) == sha((SRC / n).read_bytes()) for p, n in NEW.items()}
+    files = {str(p): sha(p.read_bytes()) == sha(body(n)) for p, n in NEW.items()}
     route = ROUTE.read_bytes() == v3(o, ORIGINAL.read_bytes())
     active = systemctl('is-active', 'raspberry-codex-account-status.socket').stdout.strip()
     return {'state': 'verified' if all(files.values()) and route and active == 'active' else 'not_verified', 'files': files, 'route_v3': route, 'socket': active}

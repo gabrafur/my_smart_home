@@ -186,6 +186,25 @@ test("dry-run inventories without changing candidates or status files", () => {
   removeFixture(item);
 });
 
+test("user home defaults to the caller HOME without a tracked account name", { skip: process.getuid?.() === 0 }, () => {
+  const item = fixture();
+  const env = { ...item.env, HOME: item.userHome };
+  delete env.STORAGE_MAINTENANCE_USER_HOME;
+  const ok = spawnSync(script, ["--dry-run", "--category", "report"], { encoding: "utf8", env });
+  assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+  assert.match(ok.stdout, /status=success mode=dry-run/);
+  const missing = spawnSync(script, ["--dry-run", "--category", "report"], { encoding: "utf8", env: { ...env, HOME: "" } });
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stdout + missing.stderr, /user-home/);
+  removeFixture(item);
+});
+
+test("tracked storage maintenance has no account-specific home default", () => {
+  const source = fs.readFileSync(script, "utf8");
+  assert.doesNotMatch(source, /STORAGE_MAINTENANCE_USER_HOME-\//);
+  assert.match(source, /USER_HOME=\$\(resolve_user_home\)/);
+});
+
 test("apply enforces bounded cache and image policy without broad prune", () => {
   const item = fixture();
   const result = spawnSync(script, [

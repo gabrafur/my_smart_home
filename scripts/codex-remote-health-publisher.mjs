@@ -2,6 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { assertOperatorContext, defaultCodexBin, defaultControlSocket } from "./codex-remote-activity.mjs";
 import { listenerObservation } from "./codex-remote-recovery.mjs";
 
 export const CODEX_REMOTE_HEALTH_TOPIC = "nodered/infrastructure/remote-access/host-health";
@@ -9,8 +10,8 @@ export const CODEX_REMOTE_HEALTH_TOPIC = "nodered/infrastructure/remote-access/h
 export function collectCodexRemoteHealth({
   now = new Date(),
   run = spawnSync,
-  codexBin = process.env.CODEX_REMOTE_CODEX_BIN || "/home/gabriel/.local/bin/codex",
-  controlSocket = process.env.CODEX_REMOTE_CONTROL_SOCKET || "/home/gabriel/.codex/app-server-control/app-server-control.sock",
+  codexBin = defaultCodexBin(),
+  controlSocket = defaultControlSocket(),
 } = {}) {
   const checkedAt = now.toISOString();
   const service = run("systemctl", ["is-active", "dropbear.service"], { encoding: "utf8", timeout: 5000 });
@@ -77,6 +78,7 @@ export function publishCodexRemoteHealth(report, { run = spawnSync } = {}) {
 }
 
 export function main(argv = process.argv.slice(2)) {
+  assertOperatorContext();
   if (argv.length !== 1 || !new Set(["--dry-run", "--publish"]).has(argv[0])) {
     throw new Error("Use --dry-run ou --publish");
   }

@@ -79,7 +79,7 @@ test('unloaded fixed thread without an enrolled resume profile is refused before
  assert.equal(calls.some(m=>['turn/start','thread/start'].includes(m)),false);
 });
 test('resume to active or failed resume never sends and observation does not resume',async()=>{
- const id=rpc.THREADS[0],base={id,status:{type:'notLoaded'},ephemeral:false,cwd:'/home/gabriel',canAcceptDirectInput:false};
+ const id=rpc.THREADS[0],base={id,status:{type:'notLoaded'},ephemeral:false,cwd:'/home/fixture',canAcceptDirectInput:false};
  for(const fail of [true,false]){
   const calls=[];
   await assert.rejects(rpc.run({mode:'preflight',thread_id:id},async(method)=>{

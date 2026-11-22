@@ -65,8 +65,10 @@
     "repair-control/repair_control.py": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_control.py",
       "source_sha256": "e506cae469c7dcc69d6ade8f458cd94e21227bd321d20fcda6b0ae4ca43fe0a5",
-      "export_sha256": "e506cae469c7dcc69d6ade8f458cd94e21227bd321d20fcda6b0ae4ca43fe0a5",
-      "normalizations": [],
+      "export_sha256": "bc133837cd46078b5b627ea77173b874f0fcc9b5300bb4128c622a09de23b9fc",
+      "normalizations": [
+        "host_operator_home_replaced_with_binding_marker"
+      ],
       "source_observed_at": "2026-11-16T00:43:22Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
@@ -89,9 +91,10 @@
     "repair-control/repair_rpc.cjs": {
       "source": "/usr/local/lib/raspberry-repair-control/repair_rpc.cjs",
       "source_sha256": "9954c94287ff8fe15add1a98434cd511e1b85dc7ae97c4b0f4bdab81a418a643",
-      "export_sha256": "0537196d55ab0f6732e28ef53ee57cabbe35dd15860731252ab69591f9d63796",
+      "export_sha256": "0f5329a15a4527f7758ce917ddab5b012c4968ac5dc123331047d1f4b2fea0b6",
       "normalizations": [
-        "thread_identifiers_replaced_with_binding_markers"
+        "thread_identifiers_replaced_with_binding_markers",
+        "host_operator_home_replaced_with_binding_marker"
       ],
       "source_observed_at": "2026-11-16T00:22:04Z",
       "source_observation_coverage": [
@@ -312,10 +315,11 @@
     "repair-control/test_events.mjs": {
       "source": "/usr/local/lib/raspberry-repair-control/test_events.mjs",
       "source_sha256": "084a4399238f118b19e9f13e53d59e3173ac8e900f67b9db3aeef8e35da7adb6",
-      "export_sha256": "424f309e362270b5aff842a2b339108eb56a3e933c064dc7f4172732b71a4813",
+      "export_sha256": "51580b655b3eb37d5a3714922ceb4fa5e6e349e988236f82b9a0663d3be7d1f9",
       "normalizations": [
         "out_of_scope_private_test_thread_identifier_replaced_with_binding_marker",
-        "relative_frontend_test_import_points_to_public_snapshot"
+        "relative_frontend_test_import_points_to_public_snapshot",
+        "host_operator_home_fixture_replaced_with_synthetic_path"
       ],
       "source_observed_at": "2026-11-16T14:38:51Z"
     },
@@ -349,9 +353,10 @@
     "legacy-control/codex_control_rpc.cjs": {
       "source": "/usr/local/lib/raspberry-mcp/codex_control_rpc.cjs",
       "source_sha256": "f1f3f8428b49e31169e42bdccb83618d199abcddfd276064ae4b78a47f5ab897",
-      "export_sha256": "ed32924e8d7324e948cd7dcb3414941f0d4a3549d5e0060ab2e8e88b6b59e48f",
+      "export_sha256": "a2ad1b76357fded1b6033e3e86777cf81ac1516c69ebf9b6710992fda0b23dac",
       "normalizations": [
-        "thread_identifiers_replaced_with_binding_markers"
+        "thread_identifiers_replaced_with_binding_markers",
+        "host_operator_home_replaced_with_binding_marker"
       ]
     },
     "frontend/codex-control-server.mjs": {

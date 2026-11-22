@@ -66,3 +66,15 @@ test("activity child errors and malformed output remain closed and never export 
     assert.equal(out.state, "unknown"); assert.equal(JSON.stringify(out).includes("withheld"), false);
   }
 });
+
+test("Codex paths follow the host_operator HOME or explicit overrides, never a tracked account", async () => {
+  const { defaultCodexBin, defaultControlSocket, assertOperatorContext } = await import("./codex-remote-activity.mjs");
+  assert.equal(defaultControlSocket({}, "/home/example_operator"), "/home/example_operator/.codex/app-server-control/app-server-control.sock");
+  assert.equal(defaultCodexBin({}, "/home/example_operator"), "/home/example_operator/.local/bin/codex");
+  const env = { CODEX_REMOTE_CONTROL_SOCKET: "/run/example.sock", CODEX_REMOTE_CODEX_BIN: "/opt/example/codex" };
+  assert.equal(defaultControlSocket(env, "/home/example_operator"), "/run/example.sock");
+  assert.equal(defaultCodexBin(env, "/home/example_operator"), "/opt/example/codex");
+  assert.doesNotThrow(() => assertOperatorContext({}, 1001));
+  assert.doesNotThrow(() => assertOperatorContext(env, 0));
+  assert.throws(() => assertOperatorContext({ CODEX_REMOTE_CONTROL_SOCKET: "/run/example.sock" }, 0), /codex_operator_paths_unresolved/);
+});

@@ -26,7 +26,7 @@ function quota(account,usage){
  const buckets=[usage.rateLimits,...Object.values(usage.rateLimitsByLimitId||{})];
  for(const b of buckets)requireOk(b&&b.credits?.hasCredits===false&&b.credits?.unlimited===false&&[null,undefined,'0','0.0','0.00'].includes(b.credits?.balance)&&b.rateLimitReachedType==null&&b.spendControlReached!==true,'extra_credit_or_quota_refused');
 }
-function metadata(t,id){requireOk(t?.id===id&&STATES.has(t.status?.type),'thread_metadata_unconfirmed');return {thread_id:id,status:t.status.type,ephemeral:t.ephemeral===true,cwd_is_project:t.cwd==='/mnt/data/docker',cwd:'/home/gabriel'===t.cwd?'/home/gabriel':t.cwd==='/mnt/data/docker'?'/mnt/data/docker':'other',can_accept_direct_input:t.canAcceptDirectInput===true};}
+function metadata(t,id){requireOk(t?.id===id&&STATES.has(t.status?.type),'thread_metadata_unconfirmed');return {thread_id:id,status:t.status.type,ephemeral:t.ephemeral===true,cwd_is_project:t.cwd==='/mnt/data/docker',cwd:'/home/<HOST_OPERATOR>'===t.cwd?'/home/<HOST_OPERATOR>':t.cwd==='/mnt/data/docker'?'/mnt/data/docker':'other',can_accept_direct_input:t.canAcceptDirectInput===true};}
 async function run(q,rpc){
  validate(q);const t=metadata((await rpc('thread/read',{threadId:q.thread_id,includeTurns:false})).thread,q.thread_id);
  if(q.mode==='metadata')return t;
