@@ -44,10 +44,13 @@ make demo-test
 ```
 
 `make install-git-hooks` ativa as proteções locais de mensagem de commit e
-validação obrigatória antes de push. `make bootstrap` cria somente templates
+validação obrigatória antes de push (e avisa se o SSH do remoto não tiver
+keepalive: o pre-push demora e, sem ele, o push cai com SIGPIPE). `make bootstrap` cria somente templates
 privados ausentes; revise o plano antes de usá-lo numa instalação. `make demo`
 é sintético, em memória e sem I/O real. `make install-git-hooks` enables the
-local commit-message and required pre-push validation protections. `make
+local commit-message and required pre-push validation protections (and warns
+when the remote's SSH has no keepalive: pre-push is slow and, without it, the
+push drops with SIGPIPE). `make
 bootstrap` creates missing private templates only; review its plan before using
 it for an installation. `make demo` is synthetic, in-memory, and performs no
 real I/O.

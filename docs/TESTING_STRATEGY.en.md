@@ -52,6 +52,15 @@ clean worktree and runs that same canonical target before allowing `HEAD` to be
 pushed. The locally validated state therefore matches the commit being sent,
 and any failure blocks the push before it reaches GitHub Actions.
 
+Git opens the SSH connection before the hook runs, and the full validation
+takes several minutes on the Raspberry. Without SSH keepalive the remote drops
+the idle session and the push ends with exit 141 (SIGPIPE) even though
+validation passed. The host backup and `scripts/git-publication-evidence.py`
+already pass `ServerAliveInterval=30`; for manual pushes over SSH, set it in
+`~/.ssh/config` or with
+`git config core.sshCommand 'ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=10'`.
+`make install-git-hooks` warns when the SSH remote has no keepalive.
+
 On the Raspberry the local tree sees installed components that GitHub lacks; on
 17/11 that left CI red for eight runs while pre-push stayed green.
 `scripts/ci-parity-run.sh` runs the same target (or another command) with

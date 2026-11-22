@@ -52,6 +52,31 @@ test("installer enables the versioned hooks idempotently", (t) => {
   assert.equal(configured.stdout.trim(), ".githooks");
 });
 
+test("installer warns when an SSH remote has no keepalive and stays silent otherwise", (t) => {
+  const root = fixture(t);
+  const emptySshConfig = path.join(root, "empty-ssh-config");
+  fs.writeFileSync(emptySshConfig, "");
+  const install = (extra = {}) => spawnSync("./scripts/install-git-hooks.sh", [], {
+    cwd: root, encoding: "utf8",
+    env: isolatedEnv({ INSTALL_GIT_HOOKS_SSH_CONFIG: emptySshConfig, GIT_SSH_COMMAND: "", GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_COUNT: "0", ...extra }),
+  });
+  assert.equal(run("git", ["remote", "add", "origin", "git@example.com:owner/repo.git"], root).status, 0);
+  const missing = install();
+  assert.equal(missing.status, 0, missing.stderr);
+  assert.match(missing.stderr, /SSH to example\.com has no keepalive/);
+  assert.equal(run("git", ["config", "core.sshCommand", "ssh -o ServerAliveInterval=30"], root).status, 0);
+  assert.doesNotMatch(install().stderr, /keepalive/);
+  assert.equal(run("git", ["config", "--unset", "core.sshCommand"], root).status, 0);
+  // Keepalive from ~/.ssh/config is read through `ssh -G`, so it needs an SSH client.
+  if (!spawnSync("ssh", ["-V"]).error) {
+    fs.writeFileSync(emptySshConfig, "Host example.com\n  ServerAliveInterval 30\n");
+    assert.doesNotMatch(install().stderr, /keepalive/);
+  }
+  assert.equal(run("git", ["remote", "set-url", "origin", "https://github.com/owner/repo.git"], root).status, 0);
+  fs.writeFileSync(emptySshConfig, "");
+  assert.doesNotMatch(install().stderr, /keepalive/);
+});
+
 test("Git invokes commit-msg and blocks an invalid manual commit", (t) => {
   const root = fixture(t);
   assert.equal(run("./scripts/install-git-hooks.sh", [], root).status, 0);

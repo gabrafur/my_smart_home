@@ -53,6 +53,15 @@ O hook versionado `pre-push`, ativado por `make install-git-hooks`, exige uma
 o envio do `HEAD`. Assim, o estado validado localmente corresponde ao commit
 enviado, e uma falha bloqueia o push antes de chegar ao GitHub Actions.
 
+O Git abre a conexão SSH antes de rodar o hook, e a validação completa leva
+vários minutos no Raspberry. Sem keepalive, o remoto derruba a sessão ociosa e
+o push termina com saída 141 (SIGPIPE) mesmo com a validação aprovada. O backup
+do host e o `scripts/git-publication-evidence.py` já usam
+`ServerAliveInterval=30`; para pushes manuais por SSH, configure-o no
+`~/.ssh/config` ou com
+`git config core.sshCommand 'ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=10'`.
+O `make install-git-hooks` avisa quando o remoto SSH não tem keepalive.
+
 No Raspberry, a árvore local enxerga componentes instalados que o GitHub não tem.
 Em 17/11 isso deixou o CI vermelho por oito execuções com o pre-push verde.
 `scripts/ci-parity-run.sh` roda o mesmo alvo (ou outro comando) com
