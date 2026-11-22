@@ -135,6 +135,18 @@ msg.notification = {
 }
 ```
 
+### Resolvido não fica no Home Assistant
+
+Regra do proprietário (22/11/2026): quando a condição que gerou uma notificação
+persistente se resolve, a notificação é removida do Home Assistant. A resolução
+faz `dismiss` do alerta original e **não** cria um aviso persistente de
+"recuperado"; quando o aviso de retorno for útil, ele vai somente aos celulares
+(e à Alexa, se habilitada). Nos monitores de infraestrutura (`monitoramento_vpn`,
+`monitoramento_internet`, `monitoramento_zigbee`, `monitoramento_tuya`), o
+contrato com `dismiss_id` é a resolução: o gate `Resolução? remove o alerta;
+senão cria` envia ao hub somente o `dismiss`. `test-infrastructure-monitoring-flows.mjs`
+falha se algum desses monitores voltar a criar persistente numa resolução.
+
 ## Retorno, falha e confirmação móvel
 
 O hub retorna ao link call com `msg.notification_delivery.status` igual a
@@ -197,7 +209,7 @@ identifica a chamada ao hub.
 | `iluminacao_externa` | `ext_send_recovery_mobile` | somente móvel primário, actionable | adaptador → hub móvel somente `resident_primary`; tag e actions `confirm_action`/`cancel_action` iguais |
 | `alarme_casa` | `alarm_notify_alexa` | Alexa no target atual | adaptador → hub Alexa; `notify_text` igual |
 | `resfriamento_raspberry_pi` | início: `349bc...`, `rpi_emergency_cooling_push_primary`, `rpi_emergency_cooling_alexa_primary` | HA persistente immediate + somente móvel primário + Alexa | celular primário + hub HA; anúncio Alexa desativado na configuração atual |
-| `resfriamento_raspberry_pi` | normalização `a240a...` | HA persistente immediate | hub HA `create/immediate`; snapshot/fallback e ID iguais |
+| `resfriamento_raspberry_pi` | normalização `a240a...` | HA persistente immediate | somente móvel primário (o alerta de emergência é removido por `5dd0...`); snapshot/fallback iguais |
 | `resfriamento_raspberry_pi` | falha `ab4f...` | HA persistente immediate | hub HA `create/immediate`; tentativas, razão, temperatura e ID iguais |
 | `resfriamento_raspberry_pi` | `5dd0...`, `36968...`, `4b48...` | três dismiss immediate | hub HA `dismiss/immediate`; os três IDs permanecem iguais |
 | `storage_health` | `storage_notify`, `storage_notify_secondary`, `storage_notify_persistent` | ambos os celulares + HA persistente queued | celular primário + hub HA; celular secundário desativado na configuração atual |
@@ -216,11 +228,11 @@ identifica a chamada ao hub.
 | `notificacoes_chegadas_residentes` | `resident_secondary` se aproxima | somente móvel primário, actionable e time-sensitive | hub móvel somente `resident_primary`; tag, som, interruption level, dedupe e mensagem iguais |
 | `notificacoes_chegadas_residentes` | `resident_primary` se aproxima | somente móvel secundário, actionable e time-sensitive | hub móvel somente `resident_secondary`; tag, som, interruption level, dedupe e mensagem iguais |
 | `notificacoes_chegadas_residentes` | smoke test solicitado | somente móvel secundário | hub móvel somente `resident_secondary`, com `delivery_under_test` e conteúdo `TESTE`; nunca inclui o primário |
-| `monitoramento_vpn` | queda/retorno confirmados | ambos + Alexa + HA persistente; dismiss na recuperação | celular primário + HA persistente e dismiss opcional; secundário e Alexa desativados |
+| `monitoramento_vpn` | queda/retorno confirmados | ambos + Alexa + HA persistente; dismiss na recuperação | celular primário; HA persistente na queda e somente dismiss na recuperação; secundário e Alexa desativados |
 | `monitoramento_internet` | queda confirmada | ambos + Alexa + HA persistente | ambos os celulares + HA persistente; Alexa desativada |
-| `monitoramento_internet` | recuperação confirmada | ambos + Alexa + HA persistente + dismiss anterior | ambos os celulares + HA persistente e dismiss opcional; Alexa desativada |
-| `monitoramento_zigbee` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | celular primário + HA persistente e dismiss opcional; secundário e Alexa desativados |
-| `monitoramento_tuya` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | celular primário + HA persistente e dismiss opcional; secundário e Alexa desativados |
+| `monitoramento_internet` | recuperação confirmada | ambos + Alexa + HA persistente + dismiss anterior | ambos os celulares + somente dismiss do alerta de queda; Alexa desativada |
+| `monitoramento_zigbee` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | celular primário; HA persistente na queda/lembrete e somente dismiss no retorno; secundário e Alexa desativados |
+| `monitoramento_tuya` | queda/retorno/lembrete | ambos + Alexa + HA persistente; dismiss quando informado | celular primário; HA persistente na queda/lembrete e somente dismiss no retorno; secundário e Alexa desativados |
 | `observabilidade_global` | incidente confirmado | somente móvel primário + HA persistente queued | hubs móvel/HA; smoke test, ack, fila e supressão de recursão preservados |
 
 ## Histórico privado de notificações — 7 dias

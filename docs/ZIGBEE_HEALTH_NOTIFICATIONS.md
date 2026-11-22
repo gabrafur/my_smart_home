@@ -33,12 +33,14 @@ Cada monitor separa visualmente a mesma decisão em chamadas independentes aos
 três [hubs canônicos de notificação](NODERED_NOTIFICATION_HUBS.md). Para cada
 evento ele:
 
-1. cria ou atualiza uma notificação persistente no Home Assistant;
+1. em queda ou lembrete, cria ou atualiza uma notificação persistente no Home
+   Assistant;
 2. faz duas chamadas independentes ao hub móvel, uma para
    `resident_primary` e outra para `resident_secondary`, sem fallback;
 3. anuncia o título e a mensagem na Echo Dot pelo binding lógico
    `mobile_primary/notify`, já usado pelos avisos Alexa do repositório;
-4. em uma recuperação, remove o alerta persistente da falha anterior.
+4. em uma recuperação, somente remove o alerta persistente da falha anterior:
+   resolvido não deixa aviso no Home Assistant (o retorno chega pelo celular).
 
 Nenhum entity ID da Echo é gravado no flow. O destino real continua na
 configuração privada de bindings.
@@ -500,7 +502,8 @@ minutos para restauração manual.
 5. **Home Assistant:** observe `binary_sensor.zigbee_network` e
    `sensor.zigbee_network_state` sem falso retorno no startup.
 6. **Notificação:** nenhuma para restart curto; para restart longo, exatamente
-   uma queda e uma recuperação por iPhone, além do alerta persistente.
+   uma queda e uma recuperação por iPhone; o alerta persistente da queda é
+   removido na recuperação.
 7. **Restauração:** inicie o serviço pelo compose; se não ficar saudável em cinco
    minutos, reverta ao comando/configuração anterior e preserve o coordenador.
 8. **Aprovação:** birth/LWT e retained recompõem o estado sem falso incidente ou

@@ -16495,28 +16495,28 @@
         "from": "",
         "g": "f79ed8df25162bcf",
         "id": "a240a1bb42481943",
-        "name": "Preparar HA persistente para o hub",
+        "name": "Preparar mobile para o hub",
         "property": "",
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "_notification_hub_context",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"payload\":payload,\"notification\":notification,\"had_notification\":$exists(notification)}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "notification",
                 "pt": "msg",
-                "t": "set",
-                "to": "{\"source\":\"resfriamento_raspberry_pi\",\"operation\":\"create\",\"delivery\":\"immediate\",\"notification_id\":\"raspberry_pi_emergency_cooling_recovered\",\"title\":\"Raspberry Pi - temperatura normalizada\"}",
+                "to": "{\"source\":\"resfriamento_raspberry_pi\",\"recipients\":[\"resident_primary\"],\"profile\":\"simple\",\"title\":\"Raspberry Pi - temperatura normalizada\"}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "t": "set",
                 "to": "\"A CPU permaneceu abaixo de 70 °C por 10 minutos e esta em \" & $string(trigger_temperature) & \" °C. \" & (restore.state = \"off\" ? \"O ar-condicionado foi desligado, como estava antes da emergência.\" : \"O estado anterior do ar-condicionado foi restaurado (modo \" & restore.state & \", \" & $string(restore.temperature) & \" °C, ventilação \" & $string(restore.fan_mode) & \").\") & (restore_fallback ? \" O snapshot estava indisponível; foi aplicado o fallback seguro de desligamento.\" : \"\") & \" Origem: \" & stop_source & \".\"",
                 "tot": "jsonata"
             }
@@ -16537,10 +16537,10 @@
         "id": "a240a1bb42481943__hub_call",
         "linkType": "static",
         "links": [
-            "notification_hub_persistent_in"
+            "notification_hub_mobile_in"
         ],
-        "name": "Hub HA → create",
-        "timeout": "30",
+        "name": "Hub móvel → resident_primary",
+        "timeout": "180",
         "type": "link call",
         "wires": [
             []
@@ -33762,7 +33762,6 @@
         "wires": [
             [
                 "vpn_monitor_notify_dispatch__mobile_prepare",
-                "vpn_monitor_notify_dispatch__persistent_prepare",
                 "vpn_monitor_notify_dispatch__dismiss_gate"
             ],
             [
@@ -33912,7 +33911,7 @@
         "checkall": "true",
         "g": "vpn_monitor_notify_group",
         "id": "vpn_monitor_notify_dispatch__dismiss_gate",
-        "name": "Há alerta anterior para remover?",
+        "name": "Resolução? remove o alerta; senão cria",
         "outputs": 2,
         "property": "_notification_hub_shared.dismiss_id",
         "propertyType": "msg",
@@ -33930,7 +33929,9 @@
             [
                 "vpn_monitor_notify_dispatch__dismiss_prepare"
             ],
-            []
+            [
+                "vpn_monitor_notify_dispatch__persistent_prepare"
+            ]
         ],
         "x": 1384,
         "y": 1328,
@@ -33985,7 +33986,7 @@
         "links": [
             "notification_hub_persistent_in"
         ],
-        "name": "Hub HA → remover anterior",
+        "name": "Hub HA → remover alerta resolvido",
         "timeout": "30",
         "type": "link call",
         "wires": [
@@ -41120,7 +41121,6 @@
         "wires": [
             [
                 "tuya_notify_effect__mobile_prepare",
-                "tuya_notify_effect__persistent_prepare",
                 "tuya_notify_effect__dismiss_gate"
             ],
             [
@@ -41270,7 +41270,7 @@
         "checkall": "true",
         "g": "grp_tuya_notify",
         "id": "tuya_notify_effect__dismiss_gate",
-        "name": "Há alerta anterior para remover?",
+        "name": "Resolução? remove o alerta; senão cria",
         "outputs": 2,
         "property": "_notification_hub_shared.dismiss_id",
         "propertyType": "msg",
@@ -41288,7 +41288,9 @@
             [
                 "tuya_notify_effect__dismiss_prepare"
             ],
-            []
+            [
+                "tuya_notify_effect__persistent_prepare"
+            ]
         ],
         "x": 2080,
         "y": 1920,
@@ -41343,7 +41345,7 @@
         "links": [
             "notification_hub_persistent_in"
         ],
-        "name": "Hub HA → remover anterior",
+        "name": "Hub HA → remover alerta resolvido",
         "timeout": "30",
         "type": "link call",
         "wires": [
@@ -58330,7 +58332,6 @@
             [
                 "internet_notify_down__mobile_prepare",
                 "internet_notify_down__mobile_secondary_prepare",
-                "internet_notify_down__persistent_prepare",
                 "internet_notify_down__dismiss_gate"
             ],
             [
@@ -58539,7 +58540,7 @@
         "checkall": "true",
         "g": "grp_internet_publish",
         "id": "internet_notify_down__dismiss_gate",
-        "name": "Há alerta anterior para remover?",
+        "name": "Resolução? remove o alerta; senão cria",
         "outputs": 2,
         "property": "_notification_hub_shared.dismiss_id",
         "propertyType": "msg",
@@ -58557,7 +58558,9 @@
             [
                 "internet_notify_down__dismiss_prepare"
             ],
-            []
+            [
+                "internet_notify_down__persistent_prepare"
+            ]
         ],
         "x": 2330,
         "y": 2440,
@@ -58612,7 +58615,7 @@
         "links": [
             "notification_hub_persistent_in"
         ],
-        "name": "Hub HA → remover anterior",
+        "name": "Hub HA → remover alerta resolvido",
         "timeout": "30",
         "type": "link call",
         "wires": [
@@ -58672,7 +58675,6 @@
             [
                 "internet_notify_recovery__mobile_prepare",
                 "internet_notify_recovery__mobile_secondary_prepare",
-                "internet_notify_recovery__persistent_prepare",
                 "internet_notify_recovery__dismiss_gate"
             ],
             [
@@ -58881,7 +58883,7 @@
         "checkall": "true",
         "g": "grp_internet_publish",
         "id": "internet_notify_recovery__dismiss_gate",
-        "name": "Há alerta anterior para remover?",
+        "name": "Resolução? remove o alerta; senão cria",
         "outputs": 2,
         "property": "_notification_hub_shared.dismiss_id",
         "propertyType": "msg",
@@ -58899,7 +58901,9 @@
             [
                 "internet_notify_recovery__dismiss_prepare"
             ],
-            []
+            [
+                "internet_notify_recovery__persistent_prepare"
+            ]
         ],
         "x": 2330,
         "y": 2690,
@@ -58954,7 +58958,7 @@
         "links": [
             "notification_hub_persistent_in"
         ],
-        "name": "Hub HA → remover anterior",
+        "name": "Hub HA → remover alerta resolvido",
         "timeout": "30",
         "type": "link call",
         "wires": [
@@ -64070,7 +64074,6 @@
         "wires": [
             [
                 "zigbee_notify_effect__mobile_prepare",
-                "zigbee_notify_effect__persistent_prepare",
                 "zigbee_notify_effect__dismiss_gate"
             ],
             [
@@ -64220,7 +64223,7 @@
         "checkall": "true",
         "g": "grp_zigbee_notify",
         "id": "zigbee_notify_effect__dismiss_gate",
-        "name": "Há alerta anterior para remover?",
+        "name": "Resolução? remove o alerta; senão cria",
         "outputs": 2,
         "property": "_notification_hub_shared.dismiss_id",
         "propertyType": "msg",
@@ -64238,7 +64241,9 @@
             [
                 "zigbee_notify_effect__dismiss_prepare"
             ],
-            []
+            [
+                "zigbee_notify_effect__persistent_prepare"
+            ]
         ],
         "x": 2150,
         "y": 2860,
@@ -64293,7 +64298,7 @@
         "links": [
             "notification_hub_persistent_in"
         ],
-        "name": "Hub HA → remover anterior",
+        "name": "Hub HA → remover alerta resolvido",
         "timeout": "30",
         "type": "link call",
         "wires": [

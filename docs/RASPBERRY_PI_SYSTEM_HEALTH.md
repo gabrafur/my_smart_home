@@ -385,6 +385,7 @@ Os limites foram ajustados para Raspberry Pi 5:
 - Hardware: warning se houve evento de undervoltage/throttling desde o boot; critical se a condicao estiver ativa
 
 Os alertas disparam em transicao para problema e as recuperacoes disparam quando voltam ao normal. Isso evita spam enquanto a condicao permanece ativa.
+Na recuperacao, o Home Assistant remove a notificacao persistente do alerta e nao cria outra: o aviso de "recuperado" vai somente aos celulares (regra do proprietario: resolvido nao fica no HA).
 
 ## Resfriamento de emergencia
 
@@ -421,7 +422,9 @@ persistente de ID estavel; nao ha loop de retry sem limite.
 Se uma instalacao atualizar enquanto o helper antigo ja estiver ligado, mas o
 novo snapshot ainda nao existir, o encerramento usa `climate.turn_off` como
 fallback compativel com o comportamento anterior e registra essa condicao na
-notificacao de recuperacao.
+notificacao de recuperacao. Essa notificacao vai por push ao celular principal;
+o alerta persistente de emergencia e removido e nenhum aviso de normalizacao fica
+no Home Assistant.
 
 ## Limitacoes conhecidas
 

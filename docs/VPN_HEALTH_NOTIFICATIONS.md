@@ -42,7 +42,8 @@ estado ou adapta os três tópicos MQTT.
 
 Queda e recuperação usam três hubs independentes: notificação persistente no
 Home Assistant, duas chamadas móveis com um destinatário explícito em cada uma
-e anúncio no target lógico Alexa. O estado também é publicado via MQTT Discovery como
+e anúncio no target lógico Alexa. Na recuperação, o hub persistente apenas
+remove o alerta da queda; nenhum aviso de "recuperada" fica no Home Assistant. O estado também é publicado via MQTT Discovery como
 `binary_sensor.vpn_primary_connection` e
 `sensor.vpn_primary_connection_state`.
 

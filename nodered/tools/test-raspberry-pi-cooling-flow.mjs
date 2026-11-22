@@ -571,7 +571,10 @@ assert.deepEqual(get("adb240fe59ad2ae7", "link in").wires[0], [
   "rpi_emergency_cooling_push_primary",
 ]);
 assert.match(notificationRules("ab4f85af1ed94f86"), /raspberry_pi_emergency_cooling_failure/);
-assert.match(notificationRules("a240a1bb42481943"), /raspberry_pi_emergency_cooling_recovered/);
+// A resolved emergency leaves no persistent notification: the recovery is a push.
+assert.match(notificationRules("a240a1bb42481943"), /"recipients":\["resident_primary"\]/);
+assert.doesNotMatch(notificationRules("a240a1bb42481943"), /"operation":"create"/);
+assert.deepEqual(get("a240a1bb42481943__hub_call", "link call").links, ["notification_hub_mobile_in"]);
 assert.match(notificationRules("4b48bc3c0c58d87c"), /raspberry_pi_emergency_cooling_recovered/);
 assert.deepEqual(get("bed05acc4339b69c").wires[2], ["048e2325e2e65944"]);
 assert.deepEqual(get("0cca7636547bd45c").wires, [

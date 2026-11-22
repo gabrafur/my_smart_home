@@ -25,6 +25,16 @@ const broker = byId.get("721c47f31046b8bc");
 assert.equal(broker.birthTopic, "nodered/status");
 assert.equal(broker.willPayload, "offline");
 assert.equal(byId.has("infra_notify_all_mobiles"), false, "subflow monolítico legado ainda existe");
+// A resolved condition leaves nothing in Home Assistant: a recovery (dismiss_id)
+// removes the earlier alert and never creates a "recovered" persistent notice.
+for (const id of ["internet_notify_down", "internet_notify_recovery", "zigbee_notify_effect", "tuya_notify_effect", "vpn_monitor_notify_dispatch"]) {
+  const contractGate = byId.get(`${id}__contract_gate`);
+  assert.equal(contractGate.wires[0].includes(`${id}__persistent_prepare`), false, `${id}: persistente criado mesmo na resolução`);
+  assert.ok(contractGate.wires[0].includes(`${id}__dismiss_gate`), `${id}: sem decisão de resolução`);
+  assert.deepEqual(byId.get(`${id}__dismiss_gate`).wires, [[`${id}__dismiss_prepare`], [`${id}__persistent_prepare`]],
+    `${id}: resolução deve só remover; falha deve criar`);
+  assert.equal(byId.get(`${id}__dismiss_gate`).property, "_notification_hub_shared.dismiss_id");
+}
 for (const [id, hubInput] of [
   ["internet_notify_down", "notification_hub_mobile_in"],
   ["internet_notify_recovery", "notification_hub_mobile_in"],

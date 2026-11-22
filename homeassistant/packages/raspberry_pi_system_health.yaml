@@ -929,13 +929,13 @@ automation:
             Valor atual: {{ current_value }}.
             Severidade: normal.
             Horario: {{ now().strftime('%Y-%m-%d %H:%M:%S') }}.
+      # A resolved condition leaves nothing in Home Assistant: remove the alert
+      # (and any recovery notice left by older versions); the phones still get it.
       - action: persistent_notification.dismiss
         data:
           notification_id: "raspberry_pi_health_{{ trigger.entity_id | replace('.', '_') }}"
-      - action: persistent_notification.create
+      - action: persistent_notification.dismiss
         data:
-          title: "Raspberry Pi - recuperado"
-          message: "{{ message }}"
           notification_id: "raspberry_pi_health_recovered_{{ trigger.entity_id | replace('.', '_') }}"
       - action: public_bindings.call
         continue_on_error: true

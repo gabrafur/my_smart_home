@@ -25,8 +25,9 @@ fans out visibly to the independent
 [canonical notification hubs](NODERED_NOTIFICATION_HUBS.md): mobile through
 two independent calls with one explicit logical recipient each, Alexa with its logical target, and Home
 Assistant persistent notification. No private phone or Echo entity ID is
-stored in the business flow. Recovery also dismisses the prior failure alert
-through the persistent hub. Home Assistant calls use the connector's
+stored in the business flow. Recovery only dismisses the prior failure alert
+through the persistent hub: a resolved condition leaves nothing in Home
+Assistant, and the recovery notice reaches the phones only. Home Assistant calls use the connector's
 `all` queue during short HA restarts. That connector queue does not retain a
 mobile push merely because the WAN is down.
 
