@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Smart home platform overview</title>
+  <desc id="desc">Inputs flow into a Home Assistant, MQTT and Node-RED core; Node-RED decides and drives dashboards, alerts and a nightly backup and update chain. Private state stays outside Git and is restored from an encrypted bundle. AI clients reach Home Assistant only through a scoped MCP server.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#9fb3c8"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; fill: #e6edf3; }
+      .h1 { font-size: 26px; font-weight: 700; }
+      .sub { font-size: 14px; fill: #9fb3c8; }
+      .band { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; fill: #9fb3c8; }
+      .t { font-size: 16px; font-weight: 700; }
+      .s { font-size: 12.5px; fill: #c9d6e3; }
+      .lbl { font-size: 12px; fill: #9fb3c8; }
+      .edge { stroke: #9fb3c8; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .edge2 { stroke: #9fb3c8; stroke-width: 2; fill: none; marker-start: url(#arrow); marker-end: url(#arrow); }
+      .dash { stroke-dasharray: 6 5; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="720" rx="24" fill="#0b1622"/>
+  <text x="40" y="52" class="h1">Self-hosted smart home — how it fits together</text>
+  <text x="40" y="76" class="sub">Facts come in · Node-RED decides · dashboards and alerts show the result · private state never enters Git</text>
+
+  <!-- PRIVATE column -->
+  <rect x="32" y="104" width="232" height="484" rx="16" fill="#2a1c0c" stroke="#ffc76b" stroke-width="1.5"/>
+  <text x="52" y="132" class="band">PRIVATE · NEVER IN GIT</text>
+  <rect x="48" y="148" width="200" height="74" rx="10" fill="#5b3a18"/>
+  <text x="62" y="174" class="t">Bindings</text>
+  <text x="62" y="194" class="s">logical roles → your real</text>
+  <text x="62" y="211" class="s">entities, services, topics</text>
+  <rect x="48" y="234" width="200" height="74" rx="10" fill="#5b3a18"/>
+  <text x="62" y="260" class="t">Secrets</text>
+  <text x="62" y="280" class="s">.env · secrets.yaml ·</text>
+  <text x="62" y="297" class="s">MQTT and Node-RED credentials</text>
+  <rect x="48" y="320" width="200" height="74" rx="10" fill="#5b3a18"/>
+  <text x="62" y="346" class="t">Runtime state</text>
+  <text x="62" y="366" class="s">device registries ·</text>
+  <text x="62" y="383" class="s">databases · history</text>
+  <text x="52" y="428" class="s">Mounted read-only into</text>
+  <text x="52" y="446" class="s">Home Assistant and Node-RED.</text>
+  <text x="52" y="472" class="s">Public code only knows roles</text>
+  <text x="52" y="490" class="s">such as garage_gate or</text>
+  <text x="52" y="508" class="s">security_panel; a missing role</text>
+  <text x="52" y="526" class="s">fails closed.</text>
+
+  <!-- INPUTS row -->
+  <text x="296" y="122" class="band">INPUTS</text>
+  <rect x="296" y="134" width="196" height="72" rx="12" fill="#102b46" stroke="#7bb8ef" stroke-width="1.5"/>
+  <text x="312" y="162" class="t">Devices and sensors</text>
+  <text x="312" y="184" class="s">Zigbee · Wi-Fi · Matter</text>
+  <rect x="510" y="134" width="196" height="72" rx="12" fill="#4b304f" stroke="#e9a8f0" stroke-width="1.5"/>
+  <text x="526" y="162" class="t">Cloud (optional)</text>
+  <text x="526" y="184" class="s">vehicle · voice · alarm</text>
+  <rect x="724" y="134" width="248" height="72" rx="12" fill="#4b304f" stroke="#e9a8f0" stroke-width="1.5"/>
+  <text x="740" y="162" class="t">AI clients (optional)</text>
+  <text x="740" y="184" class="s">Claude · ChatGPT · Codex</text>
+
+  <!-- CORE band -->
+  <rect x="284" y="244" width="700" height="196" rx="16" fill="#0c1f33" stroke="#5ee7f2" stroke-width="1.5"/>
+  <text x="300" y="434" class="band">CORE PLATFORM · PUBLIC, VERSIONED, TESTED</text>
+  <rect x="300" y="284" width="140" height="64" rx="10" fill="#3d356b" stroke="#b9a7ff" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="316" y="311" class="t">Zigbee2MQTT</text>
+  <text x="316" y="331" class="s">optional radio</text>
+  <rect x="470" y="284" width="140" height="64" rx="10" fill="#0b5f73" stroke="#5ee7f2" stroke-width="1.5"/>
+  <text x="486" y="311" class="t">Mosquitto</text>
+  <text x="486" y="331" class="s">MQTT broker</text>
+  <rect x="640" y="284" width="150" height="64" rx="10" fill="#0b5f73" stroke="#5ee7f2" stroke-width="1.5"/>
+  <text x="656" y="311" class="t">Home Assistant</text>
+  <text x="656" y="331" class="s">state · UI · integrations</text>
+  <rect x="820" y="284" width="148" height="64" rx="10" fill="#0b5f73" stroke="#5ee7f2" stroke-width="1.5"/>
+  <text x="836" y="311" class="t">Node-RED</text>
+  <text x="836" y="331" class="s">decisions · gates</text>
+  <rect x="640" y="378" width="150" height="48" rx="10" fill="#3d356b" stroke="#b9a7ff" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="656" y="398" class="t">AppDaemon</text>
+  <text x="656" y="416" class="s">optional Python apps</text>
+  <text x="300" y="384" class="s">Every Node-RED tab can run a</text>
+  <text x="300" y="400" class="s">synthetic test_mode that stops</text>
+  <text x="300" y="416" class="s">at a dry-run, never a device.</text>
+  <text x="820" y="388" class="s">Failures of any tab reach</text>
+  <text x="820" y="406" class="s">one global observer.</text>
+
+  <!-- core edges -->
+  <path class="edge" d="M440 316 H466"/>
+  <path class="edge2" d="M614 316 H636"/>
+  <path class="edge2" d="M794 316 H816"/>
+  <path class="edge2" d="M715 352 V374"/>
+  <path class="edge2" d="M556 352 V362 H884 V352"/>
+  <!-- inputs to core -->
+  <path class="edge" d="M370 206 V280"/>
+  <path class="edge" d="M440 206 C440 240 690 236 690 280"/>
+  <path class="edge dash" d="M608 206 C608 244 700 240 700 280"/>
+
+  <!-- MCP boundary -->
+  <rect x="1000" y="134" width="248" height="168" rx="12" fill="#161d33" stroke="#9db7ff" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="1016" y="160" class="band">AGENT BOUNDARY</text>
+  <text x="1016" y="186" class="t">Raspberry MCP server</text>
+  <text x="1016" y="207" class="s">OAuth edge · allow-listed tools</text>
+  <text x="1016" y="225" class="s">confirmation · rate limits</text>
+  <text x="1016" y="243" class="s">readback, no retry</text>
+  <text x="1016" y="268" class="s">Denied in code: host reboot,</text>
+  <text x="1016" y="286" class="s">HA admin, raw gate relay</text>
+  <path class="edge" d="M972 170 H996"/>
+  <path class="edge dash" d="M1000 284 C930 250 800 250 762 280"/>
+  <text x="872" y="234" class="lbl">scoped calls</text>
+
+  <!-- OUTPUTS row -->
+  <text x="296" y="478" class="band">WHAT YOU GET</text>
+  <rect x="296" y="490" width="216" height="98" rx="12" fill="#102b46" stroke="#7bb8ef" stroke-width="1.5"/>
+  <text x="312" y="518" class="t">Dashboards</text>
+  <text x="312" y="540" class="s">Casa for everyone, Sistema</text>
+  <text x="312" y="557" class="s">for admins, each in the</text>
+  <text x="312" y="574" class="s">viewer's profile language</text>
+  <rect x="528" y="490" width="216" height="98" rx="12" fill="#102b46" stroke="#7bb8ef" stroke-width="1.5"/>
+  <text x="544" y="518" class="t">Alerts</text>
+  <text x="544" y="540" class="s">deduplicated incidents to</text>
+  <text x="544" y="557" class="s">phones, Alexa and HA via</text>
+  <text x="544" y="574" class="s">notification hubs</text>
+  <rect x="760" y="490" width="224" height="98" rx="12" fill="#174f3b" stroke="#68e0a8" stroke-width="1.5"/>
+  <text x="776" y="518" class="t">Nightly chain</text>
+  <text x="776" y="540" class="s">Git backup → verified off-site</text>
+  <text x="776" y="557" class="s">backup → updates; a failure</text>
+  <text x="776" y="574" class="s">holds every later stage</text>
+  <path class="edge" d="M700 440 C700 466 470 462 470 486"/>
+  <path class="edge" d="M870 440 C870 466 636 462 636 486"/>
+  <path class="edge" d="M894 440 V486"/>
+
+  <!-- RECOVERY column -->
+  <rect x="1000" y="372" width="248" height="216" rx="16" fill="#0e2a20" stroke="#68e0a8" stroke-width="1.5"/>
+  <text x="1016" y="398" class="band">BACKUP AND RESTORE</text>
+  <rect x="1016" y="412" width="216" height="56" rx="10" fill="#174f3b"/>
+  <text x="1032" y="436" class="t">Encrypted bundle</text>
+  <text x="1032" y="455" class="s">private state, off-site</text>
+  <rect x="1016" y="482" width="216" height="90" rx="10" fill="#174f3b"/>
+  <text x="1032" y="506" class="t">plan → verify → apply</text>
+  <text x="1032" y="526" class="s">plan and verify are read-only;</text>
+  <text x="1032" y="543" class="s">apply needs human approval</text>
+  <text x="1032" y="560" class="s">and prepares a rollback</text>
+  <path class="edge" d="M1124 468 V478"/>
+  <path class="edge" d="M984 520 C994 520 994 440 1012 440"/>
+
+  <!-- restore back to private -->
+  <path class="edge dash" d="M1124 588 V630 H148 V592"/>
+  <text x="560" y="622" class="lbl">restores private state after a failure or a host migration</text>
+
+  <!-- legend -->
+  <g transform="translate(40 662)">
+    <rect width="16" height="16" rx="4" fill="#0b5f73" stroke="#5ee7f2"/><text x="24" y="13" class="s">core</text>
+    <rect x="80" width="16" height="16" rx="4" fill="#3d356b" stroke="#b9a7ff" stroke-dasharray="3 2"/><text x="104" y="13" class="s">optional module</text>
+    <rect x="232" width="16" height="16" rx="4" fill="#4b304f" stroke="#e9a8f0"/><text x="256" y="13" class="s">external, optional</text>
+    <rect x="392" width="16" height="16" rx="4" fill="#5b3a18" stroke="#ffc76b"/><text x="416" y="13" class="s">private</text>
+    <rect x="484" width="16" height="16" rx="4" fill="#174f3b" stroke="#68e0a8"/><text x="508" y="13" class="s">backup and recovery</text>
+    <rect x="652" width="16" height="16" rx="4" fill="#161d33" stroke="#9db7ff" stroke-dasharray="3 2"/><text x="676" y="13" class="s">AI boundary</text>
+    <path d="M790 8 H826" stroke="#9fb3c8" stroke-width="2" stroke-dasharray="6 5"/><text x="834" y="13" class="s">optional or scoped flow</text>
+  </g>
+</svg>

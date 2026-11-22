@@ -91,8 +91,9 @@ The scheduler allowlist (`isAllowedReviewPath` in
 `scripts/weekly-docs-review.mjs`) accepts only those paths. Code,
 configuration, flows, tests, workflows, agent instructions (`AGENTS.md`,
 `.codex/instructions/`), prompts, frozen benchmarks, vendored components, and
-the architecture diagram source/SVG (which needs the pinned Mermaid CLI, not
-available in the worker) stay out. When a fix depends on those files, or a
+the detailed architecture diagram source/SVG (which needs the pinned Mermaid
+CLI, not available in the worker) stay out; the hand-authored overview
+`docs/assets/smart-home-overview.svg` may be updated. When a fix depends on those files, or a
 personal identifier also exists in code, the routine completes the
 documentation part and logs the masked pending item.
 

@@ -14,7 +14,7 @@ o core; módulos opcionais adicionam Zigbee, AppDaemon, Matter,
 observabilidade, um servidor para assistentes de IA (MCP) e manutenção
 assistida por agentes — sem misturar código público com estado da residência.
 
-![Arquitetura pública, privada e de recovery](docs/assets/smart-home-architecture.svg)
+![Como a plataforma se encaixa: entradas, core, saídas, estado privado, recuperação e fronteira de IA](docs/assets/smart-home-overview.svg)
 
 [O que faz](#o-que-faz) · [Como funciona](#como-funciona) ·
 [Teste em 5 minutos](#teste-em-5-minutos) ·
@@ -57,9 +57,11 @@ guia próprio e degrada com segurança quando o módulo ou o hardware não exist
 ### Arquitetura
 
 O core público é Home Assistant ↔ MQTT ↔ Node-RED. Zigbee2MQTT, AppDaemon,
-integrações cloud, o bridge de agentes e o servidor MCP são opcionais. O
-diagrama acima mantém dispositivos físicos, runtime privado, backup/restore e a
-fronteira de agentes/Local AI separados. Bindings e estado físico nunca entram
+integrações cloud, o bridge de agentes e o servidor MCP são opcionais. A
+visão geral acima mantém dispositivos físicos, runtime privado, backup/restore
+e a fronteira de agentes separados; o
+[diagrama detalhado de arquitetura](docs/assets/smart-home-architecture.svg)
+mostra cada dependência. Bindings e estado físico nunca entram
 no Git; um bundle privado criptografado só é aplicado depois de `plan`,
 `verify` e confirmação humana. Veja a
 [fonte Mermaid e reprodução](docs/assets/README.md).

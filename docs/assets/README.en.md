@@ -5,6 +5,15 @@
 Every asset is synthetic and contains no household screenshot, map, or data.
 Editable sources are versioned beside their renders.
 
+## Overview
+
+- source and render: `smart-home-overview.svg`, hand-authored (no generator);
+- main image of the root READMEs: inputs, core, outputs, private state,
+  backup/restore, and the AI boundary in layers, on its own background so it
+  stays legible in light and dark themes;
+- edit the SVG directly, keeping coordinates from overlapping, and check the
+  result in a browser; the weekly documentation review may also update it.
+
 ## Architecture
 
 - source: `smart-home-architecture.mmd`;

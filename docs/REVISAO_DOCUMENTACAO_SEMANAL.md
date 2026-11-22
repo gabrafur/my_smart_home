@@ -101,8 +101,9 @@ A allowlist do scheduler (`isAllowedReviewPath` em
 `scripts/weekly-docs-review.mjs`) aceita somente esses caminhos. Ficam fora:
 código, configuração, flows, testes, workflows, instruções de agente
 (`AGENTS.md`, `.codex/instructions/`), prompts, benchmarks congelados,
-componentes vendorizados e a fonte/SVG do diagrama de arquitetura, que exige o
-Mermaid CLI fixado e não roda no worker. Quando a correção depende desses
+componentes vendorizados e a fonte/SVG do diagrama detalhado de arquitetura,
+que exige o Mermaid CLI fixado e não roda no worker; a visão geral
+`docs/assets/smart-home-overview.svg`, escrita à mão, pode ser atualizada. Quando a correção depende desses
 arquivos, ou quando um identificador pessoal também existe em código, a rotina
 conclui a parte documental e registra a pendência mascarada no log.
 

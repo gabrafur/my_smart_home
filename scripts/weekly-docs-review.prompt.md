@@ -152,11 +152,15 @@ regras sempre que encontrar o problema, mesmo que ele seja anterior à semana:
 7. **Comandos e mensagens.** Comandos, alvos `make`, scripts npm e caminhos
    citados precisam existir. Se um erro de ferramenta não diz como resolver,
    registre a pendência de implementação; não altere a ferramenta.
-8. **Diagrama de arquitetura.** A fonte `docs/assets/smart-home-architecture.mmd`
-   e o SVG exigem o Mermaid CLI fixado, que não roda neste worker, e ficam
-   fora da allowlist. Se a arquitetura mudou, atualize o texto e os diagramas
-   Mermaid inline dos READMEs e registre `architecture_diagram_regeneration`
-   como pendência no log; isso não bloqueia o commit.
+8. **Diagramas.** A imagem principal `docs/assets/smart-home-overview.svg` é
+   escrita à mão: se a arquitetura mudou, atualize-a diretamente, sem
+   sobrepor caixas, textos e setas, e mantenha os rótulos verificados por
+   `scripts/assets-check.mjs`. O diagrama detalhado
+   (`docs/assets/smart-home-architecture.mmd` e o SVG gerado) exige o Mermaid
+   CLI fixado, que não roda neste worker, e fica fora da allowlist: atualize o
+   texto e os diagramas Mermaid inline dos READMEs e registre
+   `architecture_diagram_regeneration` como pendência no log; isso não bloqueia
+   o commit.
 9. **Identificadores pessoais em documentação.** Nomes de moradores, contas de
    usuário e caminhos pessoais (por exemplo `/home/<conta>`) em documentação
    devem virar papéis lógicos ou placeholders (`/home/<usuario>`). Se o mesmo

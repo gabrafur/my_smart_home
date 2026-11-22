@@ -33,6 +33,7 @@ function fixture(t, pngData = png()) {
   const files = {
     "docs/assets/smart-home-architecture.mmd": "PUBLIC REPOSITORY\nPRIVATE RUNTIME STATE\nPHYSICAL DEVICES\nOPTIONAL CLOUD SERVICES\nBACKUP / RESTORE\nAGENT / LOCAL-AI BOUNDARY\nHome Assistant\nNode-RED\n",
     "docs/assets/smart-home-architecture.svg": "<svg>PUBLIC REPOSITORY PRIVATE RUNTIME STATE PHYSICAL DEVICES OPTIONAL CLOUD SERVICES BACKUP / RESTORE AGENT / LOCAL-AI BOUNDARY Home Assistant Node-RED Optional agent bridge Private bindings and secrets Encrypted private restore bundle</svg>",
+    "docs/assets/smart-home-overview.svg": "<svg><title>Overview</title>PRIVATE INPUTS CORE PLATFORM WHAT YOU GET BACKUP AND RESTORE AGENT BOUNDARY Home Assistant Node-RED Mosquitto</svg>",
     "docs/assets/github-social-preview.svg": "<svg width=\"1280\" height=\"640\">Self-hosted Smart Home Platform Security · Observability · Recovery · Local AI</svg>",
   };
   for (const [file, content] of Object.entries(files)) {
@@ -47,6 +48,17 @@ function fixture(t, pngData = png()) {
 
 test("accepts reproducible architecture and a metadata-free RGB social preview", (t) => {
   assert.deepEqual(checkAssets(fixture(t)).errors, []);
+});
+
+test("requires the hand-authored overview with a title and its layer labels", (t) => {
+  const input = fixture(t);
+  fs.writeFileSync(path.join(input.repoRoot, "docs/assets/smart-home-overview.svg"), "<svg>Home Assistant</svg>");
+  const errors = checkAssets(input).errors;
+  assert.ok(errors.some((error) => error.includes("accessible <title>")));
+  assert.ok(errors.some((error) => error.includes("missing overview label: AGENT BOUNDARY")));
+  const missing = fixture(t);
+  missing.trackedFiles = missing.trackedFiles.filter((file) => !file.endsWith("smart-home-overview.svg"));
+  assert.ok(checkAssets(missing).errors.some((error) => error.includes("smart-home-overview.svg: required asset")));
 });
 
 test("rejects social-preview dimensions, alpha, and metadata", (t) => {

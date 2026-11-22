@@ -14,7 +14,7 @@ modules add Zigbee, AppDaemon, Matter, observability, an AI-assistant server
 (MCP), and agent-assisted maintenance — without mixing public code with
 household state.
 
-![Public, private, and recovery architecture](docs/assets/smart-home-architecture.svg)
+![How the platform fits together: inputs, core, outputs, private state, recovery, and the AI boundary](docs/assets/smart-home-overview.svg)
 
 [What it does](#what-it-does) · [How it works](#how-it-works) ·
 [Try it in five minutes](#try-it-in-five-minutes) ·
@@ -58,8 +58,10 @@ own guide, and degrades safely when its module or hardware is absent.
 
 The public core is Home Assistant ↔ MQTT ↔ Node-RED. Zigbee2MQTT, AppDaemon,
 cloud-backed integrations, the agent bridge, and the MCP server are optional.
-The diagram above keeps physical devices, private runtime, backup/restore, and
-the agent/Local-AI boundary distinct. Bindings and physical state never enter
+The overview above keeps physical devices, private runtime, backup/restore, and
+the agent boundary distinct; the
+[detailed architecture diagram](docs/assets/smart-home-architecture.svg) shows
+every dependency arrow. Bindings and physical state never enter
 Git; an encrypted private bundle is applied only after plan, verify, and human
 confirmation. See the [Mermaid source and reproduction](docs/assets/README.en.md).
 

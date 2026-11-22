@@ -5,6 +5,16 @@
 Todos os ativos são sintéticos e não usam screenshots, mapas ou dados da
 residência. As fontes editáveis são versionadas ao lado dos renders.
 
+## Visão geral
+
+- fonte e render: `smart-home-overview.svg`, escrito à mão (sem gerador);
+- imagem principal dos READMEs da raiz: entradas, core, saídas, estado
+  privado, backup/restore e fronteira de IA em camadas, com fundo próprio para
+  ficar legível nos temas claro e escuro;
+- edite o SVG diretamente, mantendo coordenadas que não se sobreponham, e
+  confira o resultado num navegador; a revisão semanal da documentação também
+  pode atualizá-lo.
+
 ## Arquitetura
 
 - fonte: `smart-home-architecture.mmd`;

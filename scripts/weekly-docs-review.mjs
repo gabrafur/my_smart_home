@@ -165,6 +165,7 @@ export function isAllowedReviewPath(file) {
   if (/^\.codex\/memories\/.+\.md$/.test(file)) return true;
   if (/^docs\/.+\.md$/.test(file)) return true;
   if (file === "docs/i18n-manifest.json") return true;
+  if (file === "docs/assets/smart-home-overview.svg") return true;
   if (/^\.github\/(?:PULL_REQUEST_TEMPLATE\.md|ISSUE_TEMPLATE\/[^/]+\.md)$/.test(file)) return true;
   if (/\.md$/.test(file) && !/\.prompt\.md$/.test(file)
       && !file.startsWith("local-ai-research/benchmarks/")

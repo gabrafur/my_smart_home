@@ -88,10 +88,12 @@ function fixture(t, { branch = "main" } = {}) {
     "    mkdir -p scripts/tool .github && printf '%s\\n' '# Tool' > scripts/tool/README.md",
     "    printf '%s\\n' '## Context' > .github/PULL_REQUEST_TEMPLATE.md",
     "    printf '%s\\n' '{}' > docs/i18n-manifest.json",
+    "    mkdir -p docs/assets && printf '%s\\n' '<svg/>' > docs/assets/smart-home-overview.svg",
     "    ;;",
     "  agent_instructions) printf '%s\\n' '# Instructions' > AGENTS.md ;;",
     "  prompt_doc) printf '%s\\n' 'Changed prompt' > scripts/weekly-docs-review.prompt.md ;;",
     "  frozen_benchmark) mkdir -p local-ai-research/benchmarks/x && printf '%s\\n' '# Frozen' > local-ai-research/benchmarks/x/README.md ;;",
+    "  architecture_source) mkdir -p docs/assets && printf '%s\\n' 'flowchart TB' > docs/assets/smart-home-architecture.mmd ;;",
     "  vendored_doc) mkdir -p homeassistant/custom_components/x && printf '%s\\n' '# Upstream' > homeassistant/custom_components/x/README.md ;;",
     "  mixed) printf '%s\\n' '# Reviewed' > docs/review.md; printf '%s\\n' 'export const changed = true;' >> scripts/runtime.js ;;",
     "  remote_advanced)",
@@ -193,11 +195,12 @@ test("allows general human documentation beside code and in the repository root"
   assert.equal(git(item.repo, ["log", "-1", "--format=%s"]), "docs: weekly public-repository review");
   const changed = git(item.repo, ["show", "--name-only", "--format=", "HEAD"]).split("\n").sort();
   assert.deepEqual(changed, [
-    ".github/PULL_REQUEST_TEMPLATE.md", "CONTRIBUTING.md", "docs/i18n-manifest.json", "scripts/tool/README.md",
+    ".github/PULL_REQUEST_TEMPLATE.md", "CONTRIBUTING.md", "docs/assets/smart-home-overview.svg",
+    "docs/i18n-manifest.json", "scripts/tool/README.md",
   ]);
 });
 
-for (const scenario of ["forbidden", "mixed", "agent_instructions", "prompt_doc", "frozen_benchmark", "vendored_doc"]) {
+for (const scenario of ["forbidden", "mixed", "agent_instructions", "prompt_doc", "frozen_benchmark", "vendored_doc", "architecture_source"]) {
   test(`rejects ${scenario} diffs without publishing`, (t) => {
     const item = fixture(t);
     const before = item.remoteCount();
