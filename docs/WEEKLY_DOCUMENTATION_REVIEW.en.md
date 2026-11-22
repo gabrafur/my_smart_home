@@ -70,6 +70,32 @@ agent to:
 - avoid stack restarts, endpoint calls, notifications, and physical-device
   actions.
 
+The routine maintains documentation in general, not only `docs/`:
+
+- the root README (feature table, fork guide, execution boundaries, and inline
+  Mermaid diagrams), `CONTRIBUTING`, `SECURITY`, the Code of Conduct, and
+  third-party notices;
+- the `docs/` indexes, `docs/i18n-manifest.json`, and the
+  [changelog](CHANGELOG.md), appending the month's `feat`/`perf` entries and
+  `fix` count;
+- READMEs and Markdown guides beside code (`scripts/`, `nodered/tools/`,
+  `restore/`, `reports/`, `local-ai-integration/`, `local-ai-research/`),
+  PR/issue templates, and public memories;
+- separation between current behavior and dated incident history, with the
+  same facts in the Portuguese and English versions;
+- English summaries of Portuguese-only guides;
+- personal identifiers in documentation, replaced by logical roles or
+  placeholders.
+
+The scheduler allowlist (`isAllowedReviewPath` in
+`scripts/weekly-docs-review.mjs`) accepts only those paths. Code,
+configuration, flows, tests, workflows, agent instructions (`AGENTS.md`,
+`.codex/instructions/`), prompts, frozen benchmarks, vendored components, and
+the architecture diagram source/SVG (which needs the pinned Mermaid CLI, not
+available in the worker) stay out. When a fix depends on those files, or a
+personal identifier also exists in code, the routine completes the
+documentation part and logs the masked pending item.
+
 It never creates an empty commit. A validation failure prevents any merge or publication.
 The agent deliberately runs at a detached `HEAD`, pinned to the baseline the
 scheduler already compared with `origin/main`; it must not require this
