@@ -135,10 +135,12 @@ regras sempre que encontrar o problema, mesmo que ele seja anterior à semana:
    o guia "Faça um fork para a sua casa" / "Fork it for your home", os limites
    de execução, o mapa do repositório e os diagramas Mermaid inline. Toda
    funcionalidade nova relevante da semana entra na tabela com link para o guia.
-4. **Changelog.** Em `docs/CHANGELOG.md`, acrescente as entradas `feat` e
-   `perf` (e `!`/`BREAKING CHANGE` em "Mudanças incompatíveis") desde a última
-   revisão, no mês do commit, e atualize a contagem de `fix`. O mês corrente é
-   "não lançado / unreleased". Use os assuntos dos commits, sem inventar texto.
+4. **Changelog.** Em `docs/CHANGELOG.md`, acrescente à seção
+   "Não lançado / Unreleased" as entradas `feat` e `perf` (e `!`/`BREAKING
+   CHANGE` em "Mudanças incompatíveis") desde a última revisão e atualize a
+   contagem de `fix`. Use os assuntos dos commits, sem inventar texto. Não
+   crie tags nem seções de versão: a versão (`vAAAA.MM.N`) é decisão humana, e
+   quem cria a tag move as entradas de "Não lançado" para a seção dela.
 5. **Índices completos.** Todo documento humano deve estar no
    `docs/i18n-manifest.json`, ser alcançável a partir do README e aparecer no
    índice adequado de `docs/README.md` e `docs/README.en.md` (registros

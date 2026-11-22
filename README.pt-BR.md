@@ -180,7 +180,11 @@ e tudo que identifica uma casa fica em arquivos ignorados pelo Git.
    docker compose -f docker-compose.yml -f compose.modules.yml --profile zigbee up -d
    ```
 
-7. **Confira antes de cada push**: `make privacy-check-staged` e
+7. **Acompanhe as versões, não a `main`.** A `main` recebe commits
+   automáticos todos os dias; as versões com tag (`vAAAA.MM.N`) são publicadas
+   como Releases no GitHub com notas do [changelog](docs/CHANGELOG.md).
+   Atualize seu fork a partir de uma tag de versão.
+8. **Confira antes de cada push**: `make privacy-check-staged` e
    `scripts/security-scan.sh --staged`. O hook de pre-push roda a validação
    completa.
 

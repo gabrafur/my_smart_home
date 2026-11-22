@@ -43,13 +43,13 @@ own guide, and degrades safely when its module or hardware is absent.
 
 | Area | Capabilities | Guides |
 | --- | --- | --- |
-| Security and access | house alarm, alarm disarm on arrival, garage gate as a single bounded pulse (position never inferred), arrival-context security lighting | [alarm](docs/ALARME_CASA_NODERED.md), [arrival disarm](docs/ALARME_DESARME_CHEGADA_NODERED.md), [gate](docs/PORTAO_GARAGEM_BOTAO_PULSO.md), [security lighting](docs/ILUMINACAO_SEGURANCA_NODERED.md) |
+| Security and access | house alarm, alarm disarm on arrival, garage gate as a single bounded pulse (position never inferred), arrival-context security lighting | [alarm](docs/ALARME_CASA_NODERED.en.md), [arrival disarm](docs/ALARME_DESARME_CHEGADA_NODERED.md), [gate](docs/PORTAO_GARAGEM_BOTAO_PULSO.en.md), [security lighting](docs/ILUMINACAO_SEGURANCA_NODERED.md) |
 | Presence and vehicle | person location, arrival context, resident notifications, Hyundai/Kia vehicle integration with a staged update pipeline | [vehicle](docs/VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md), [vehicle updates](docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md), [iCloud re-auth](docs/ICLOUD_MANUAL_AUTH.en.md) |
 | Lighting and energy | exterior lighting, power controls, TV Wake-on-LAN, Raspberry Pi cooling | [exterior lighting](docs/ILUMINACAO_EXTERNA_NODERED.md), [power](docs/CONTROLE_ENERGIA_HOME_ASSISTANT.md), [Wake-on-LAN](docs/WAKE_ON_LAN_TV_SALA.md) |
 | Dashboards | **Casa** (default, everyone) and admin-only **Sistema**, vehicle, map, and chat; each dashboard follows the viewer's profile language (Portuguese source, generated English copy) | [dashboards](docs/DASHBOARDS.md) |
-| Observability | global Node-RED failure observer, mobile/Alexa/persistent notification hubs, Zigbee/Tuya/Internet/VPN monitors, Zigbee coordinator recovery, storage and host health, memory guardian, controlled resume after a power loss | [infrastructure](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md), [global failures](docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md), [hubs](docs/NODERED_NOTIFICATION_HUBS.md), [VPN](docs/VPN_HEALTH_NOTIFICATIONS.md), [host](docs/RASPBERRY_PI_SYSTEM_HEALTH.md), [startup](docs/NODERED_STARTUP_RECOVERY.md) |
+| Observability | global Node-RED failure observer, mobile/Alexa/persistent notification hubs, Zigbee/Tuya/Internet/VPN monitors, Zigbee coordinator recovery, storage and host health, memory guardian, controlled resume after a power loss | [infrastructure](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md), [global failures](docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.en.md), [hubs](docs/NODERED_NOTIFICATION_HUBS.md), [VPN](docs/VPN_HEALTH_NOTIFICATIONS.md), [host](docs/RASPBERRY_PI_SYSTEM_HEALTH.md), [startup](docs/NODERED_STARTUP_RECOVERY.md) |
 | Operations | nightly chain: Git backup → verified off-site backup → updates (host, Home Assistant Core, containers, vendored integrations, firmware); recorder retention; weekly agent documentation review | [Git backup](docs/GIT_BACKUP_NODERED.md), [containers and updates](docs/CONTAINERS.en.md#updates-and-rollback), [recorder](docs/RECORDER_RETENTION_NODERED.md), [weekly review](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md) |
-| AI assistants (optional) | Home Assistant agent chat (Claude Code/Codex); a Raspberry **MCP server** reachable by Claude through an OAuth edge, with read-only health tools and allow-listed household actions that confirm by readback; optional Local AI on an RTX GPU | [agent bridge](docs/CHAT_CLAUDE_CODE_HA.md), [MCP](docs/raspberry-mcp/README.md), [remote connector](docs/raspberry-mcp/remote-connector.md), [Local AI](docs/LOCAL_AI_RTX_4070.md) |
+| AI assistants (optional) | Home Assistant agent chat (Claude Code/Codex); a Raspberry **MCP server** reachable by Claude through an OAuth edge, with read-only health tools and allow-listed household actions that confirm by readback; optional Local AI on an RTX GPU | [agent bridge](docs/CHAT_CLAUDE_CODE_HA.md), [MCP](docs/raspberry-mcp/README.en.md), [remote connector](docs/raspberry-mcp/remote-connector.md), [Local AI](docs/LOCAL_AI_RTX_4070.md) |
 | Recovery | manifest-driven backup/restore: read-only plan/verify, human-approved apply with rollback | [restore contract](docs/RESTORE_CONTRACT.en.md) |
 
 ## How it works
@@ -177,7 +177,11 @@ roles, and everything that identifies a house lives in Git-ignored files.
    docker compose -f docker-compose.yml -f compose.modules.yml --profile zigbee up -d
    ```
 
-7. **Check before every push**: `make privacy-check-staged` and
+7. **Follow releases, not `main`.** `main` receives automated commits every
+   day; tagged versions (`vYYYY.MM.N`) are published as GitHub Releases with
+   notes from the [changelog](docs/CHANGELOG.md). Rebase or merge your fork
+   onto a release tag.
+8. **Check before every push**: `make privacy-check-staged` and
    `scripts/security-scan.sh --staged`. The pre-push hook runs the full
    validation.
 
@@ -194,8 +198,8 @@ What stays private in your fork: `.env`, `.local-secrets/`,
 | Modular core | [`modules/features.json`](modules/features.json), [`compose.modules.yml`](compose.modules.yml), [check](scripts/modules-check.mjs) | a clone starts with three services and expands without implicit dependencies |
 | Recoverable flows | [`flows.json`](nodered/flows.json), [canvas style guide](docs/node-red/CANVAS_STYLE_GUIDE.md), [visual migration inventory](docs/NODERED_VISUAL_MIGRATION_INVENTORY.md), [replays](nodered/tools/test-security-recovery-flow.mjs), [adversarial cases](nodered/tools/test-security-recovery-adversarial.mjs) | restarts, event order, and invalid state fail safely |
 | Testable flows | [manual-test policy](nodered/tools/manual-test-policy.json), [global observer replay](nodered/tools/test-global-flow-observer.mjs) | every tab declares how it is tested without a real occurrence or physical effect |
-| Observability | [monitoring](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md), [VPN health](docs/VPN_HEALTH_NOTIFICATIONS.md), [global Node-RED failures](docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md), [Codex alerts](docs/CODEX_ALERTAS_NODERED.md), [host health](docs/RASPBERRY_PI_SYSTEM_HEALTH.md), [runtime tests](nodered/tools/test-infrastructure-monitoring-runtime.mjs) | outage, recovery, and deduplication are testable states, not only logs |
-| Bounded AI tools | [MCP architecture](docs/raspberry-mcp/architecture.md), [household actions](docs/raspberry-mcp/reference/household-lights.md), [live state](docs/raspberry-mcp/reference/home-assistant-states.md) | assistants act through allow-lists, rate limits, confirmation, and readback, never raw admin access |
+| Observability | [monitoring](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md), [VPN health](docs/VPN_HEALTH_NOTIFICATIONS.md), [global Node-RED failures](docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.en.md), [Codex alerts](docs/CODEX_ALERTAS_NODERED.md), [host health](docs/RASPBERRY_PI_SYSTEM_HEALTH.md), [runtime tests](nodered/tools/test-infrastructure-monitoring-runtime.mjs) | outage, recovery, and deduplication are testable states, not only logs |
+| Bounded AI tools | [MCP architecture](docs/raspberry-mcp/architecture.md), [household actions](docs/raspberry-mcp/reference/household-lights.en.md), [live state](docs/raspberry-mcp/reference/home-assistant-states.md) | assistants act through allow-lists, rate limits, confirmation, and readback, never raw admin access |
 | Operational policies | [recorder retention](docs/RECORDER_RETENTION_NODERED.md), [weekly review](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md), [restore contract](docs/RESTORE_CONTRACT.en.md) | schedules, thresholds, and recovery ownership stay versioned and reviewable |
 | Public/private boundary | [schema](bindings/public-bindings.schema.json), [model](docs/PRIVACY_MODEL.en.md), [scanner](scripts/privacy-check.mjs) | logic remains reviewable without exposing topology or physical identities |
 | Disaster recovery | [manifest](restore/private-state-manifest.yaml), [implementation](scripts/restore.mjs), [tests](scripts/restore.test.mjs) | verify is read-only; apply validates its destination and prepares rollback |

@@ -27,7 +27,7 @@ Confirme novamente na interface antes de aplicar recomendações.
 | Description | preenchida e coerente | manter | descreve stack e caráter event-driven |
 | Homepage | vazia | opcional: documentação publicada, se existir | não inventar site inexistente |
 | Social preview | não verificado via API | enviar `docs/assets/github-social-preview.png` | identidade visual sintética e legível |
-| Releases | sem política documentada | usar somente para snapshots restauráveis ou mudanças relevantes | não criar cadência artificial |
+| Releases | tags CalVer `vAAAA.MM.N`; `.github/workflows/release.yml` publica cada tag com a seção do [changelog](CHANGELOG.md) | criar a tag num commit da `main` quando um conjunto relevante estiver validado; forks acompanham as Releases | dá aos forks um ponto estável sem cadência artificial |
 | Wiki | habilitada | desabilitar | documentação versionada em `docs/` é a fonte de verdade |
 | Projects | habilitado | desabilitar enquanto não houver uso público | reduz superfícies vazias |
 | Discussions | desabilitado | manter até existir comunidade/rotina de moderação | evita canal sem manutenção |

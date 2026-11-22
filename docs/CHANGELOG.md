@@ -2,25 +2,36 @@
 
 ## Como ler / How to read
 
-Mudanças relevantes para quem usa ou faz fork do projeto, por mês, a partir dos
-tipos de [Conventional Commits](CONVENCAO_COMMITS.md). Novidades (`feat`) e
-desempenho (`perf`) são listados; correções (`fix`) aparecem só como contagem e
-ficam detalhadas no histórico do Git. O mês corrente é *não lançado*. A revisão
-semanal da documentação acrescenta as entradas novas. Os assuntos dos commits
-são em inglês.
+Mudanças relevantes para quem usa ou faz fork do projeto, a partir dos tipos de
+[Conventional Commits](CONVENCAO_COMMITS.md). Novidades (`feat`) e desempenho
+(`perf`) são listados; correções (`fix`) aparecem só como contagem e ficam
+detalhadas no histórico do Git. As versões seguem CalVer `vAAAA.MM.N`: cada
+tag publica uma Release no GitHub com a seção correspondente deste arquivo.
+Para um fork, acompanhe as Releases em vez da `main`, que recebe commits
+automáticos todos os dias. A revisão semanal da documentação acrescenta as
+entradas novas em *Não lançado*. Os assuntos dos commits são em inglês.
 
-Notable changes for users and forks, per month, from
+Notable changes for users and forks, from
 [Conventional Commit](COMMIT_CONVENTION.en.md) types. Features (`feat`) and
 performance (`perf`) changes are listed; fixes (`fix`) appear only as a count
-and stay detailed in Git history. The current month is *unreleased*. The
-weekly documentation review appends new entries. Commit subjects are in
-English. Months before the commit convention (2026-06 and 2026-07) have few
-typed entries.
+and stay detailed in Git history. Versions follow CalVer `vYYYY.MM.N`: each tag
+publishes a GitHub Release with the matching section of this file. A fork
+should follow Releases rather than `main`, which receives automated commits
+every day. The weekly documentation review appends new entries under
+*Unreleased*. Commit subjects are in English. Months before the first release
+are listed by month; 2026-06 and 2026-07 predate the commit convention.
 
-## 2026-11 — não lançado / unreleased
+## Não lançado / Unreleased
+
+Sem mudanças desde `v2026.11.0`. / No changes since `v2026.11.0`.
+
+## v2026.11.0 — 2026-11-22
 
 ### Novidades / Added
 
+- **release**: publish CalVer releases from the changelog
+- **docs-review**: maintain documentation in general every week
+- **docs**: flag broken inline Mermaid blocks in docs-check
 - **mcp**: re-enroll registry-verified Codex binaries after updates
 - **ha**: show dashboards in each resident's profile language
 - **mcp**: let eva control every household device
@@ -74,7 +85,7 @@ typed entries.
 - **recorder**: also skip VPN and weekly-review state churn
 - **recorder**: stop recording monitoring heartbeats nobody reads
 
-Correções / Fixes: 112.
+Correções / Fixes: 113.
 
 ## 2026-10
 

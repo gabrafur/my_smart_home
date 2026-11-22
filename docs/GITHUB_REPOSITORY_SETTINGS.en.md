@@ -27,7 +27,7 @@ it in the UI before applying recommendations.
 | Description | present and accurate | keep | accurately identifies the stack and event-driven design |
 | Homepage | empty | optional: a real published documentation site | do not invent a site |
 | Social preview | not exposed by the checked API | upload `docs/assets/github-social-preview.png` | synthetic, legible identity |
-| Releases | no documented policy | reserve for restorable snapshots or meaningful changes | avoids artificial cadence |
+| Releases | CalVer tags `vYYYY.MM.N`; `.github/workflows/release.yml` publishes each tag with its [changelog](CHANGELOG.md) section | tag a commit on `main` when a meaningful set of changes is validated; forks follow releases | gives forks a stable point without an artificial cadence |
 | Wiki | on | turn off | versioned `docs/` is authoritative |
 | Projects | on | turn off while unused publicly | removes an empty surface |
 | Discussions | off | keep off until a moderated community exists | avoids an unattended channel |
