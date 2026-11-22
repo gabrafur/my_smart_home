@@ -21,6 +21,18 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" \
 O diagrama separa repositório público, runtime privado, dispositivos físicos,
 serviços cloud opcionais, backup/restore e a fronteira de agentes/Local AI.
 Core e módulos opcionais continuam visualmente distintos nessas fronteiras.
+Também mostra os painéis, o observador global com os hubs de notificação, a
+cadeia noturna (backup Git → backup externo → updates) e o servidor MCP com
+edge OAuth usado por clientes de IA.
+
+A fonte usa o layout `elk` (incluído no Mermaid CLI 11.12.0) e cor de linha
+neutra para que o SVG transparente fique legível nos temas claro e escuro do
+GitHub. Sem Docker, o mesmo pacote pode ser instalado com
+`npm i @mermaid-js/mermaid-cli@11.12.0` e apontado para um Chromium local por
+`-p` (arquivo de configuração do Puppeteer com `executablePath`).
+
+Os diagramas de decisão e da cadeia noturna no `README` da raiz são blocos
+Mermaid inline, renderizados pelo próprio GitHub; não há SVG gerado para eles.
 
 ## Social preview
 

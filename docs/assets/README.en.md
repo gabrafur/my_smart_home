@@ -21,7 +21,18 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" \
 The diagram separates the public repository, private runtime state, physical
 devices, optional cloud services, backup/restore, and the agent/Local-AI
 boundary. Core and optional modules remain visually distinct inside those
-boundaries.
+boundaries. It also shows the dashboards, the global observer with its
+notification hubs, the nightly chain (Git backup → off-site backup → updates),
+and the MCP server with the OAuth edge used by AI clients.
+
+The source uses the `elk` layout (bundled with Mermaid CLI 11.12.0) and a
+neutral line colour so the transparent SVG stays legible in GitHub's light and
+dark themes. Without Docker, install the same package with
+`npm i @mermaid-js/mermaid-cli@11.12.0` and point it at a local Chromium through
+`-p` (a Puppeteer configuration file with `executablePath`).
+
+The decision and nightly-chain diagrams in the root `README` are inline Mermaid
+blocks rendered by GitHub itself; no SVG is generated for them.
 
 ## Social preview
 

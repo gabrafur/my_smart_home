@@ -10,7 +10,8 @@ residência é necessário.
 
 - **Arquitetura:** Home Assistant, Node-RED e MQTT formam o núcleo. Módulos
   opcionais adicionam Zigbee, Matter, AppDaemon, integrações cloud e ferramentas
-  de agentes. O [diagrama de arquitetura](assets/smart-home-architecture.svg)
+  de agentes, inclusive um servidor MCP cujas ferramentas residenciais usam
+  allowlist, limite de taxa e leitura de volta. O [diagrama de arquitetura](assets/smart-home-architecture.svg)
   separa código público, runtime privado, dispositivos físicos, serviços cloud
   opcionais, backup/restore e a fronteira de agentes/Local AI.
 - **Stack:** Docker Compose, Home Assistant, Node-RED, Mosquitto, Zigbee2MQTT,

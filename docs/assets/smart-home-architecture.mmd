@@ -1,68 +1,81 @@
+---
+config:
+  layout: elk
+  elk:
+    mergeEdges: false
+    nodePlacementStrategy: BRANDES_KOEPF
+  themeVariables:
+    lineColor: "#8b949e"
+    fontFamily: "trebuchet ms, verdana, arial, sans-serif"
+---
 flowchart TB
   subgraph PHYSICAL[PHYSICAL DEVICES / RESIDENCE]
-    direction LR
+    direction TB
     DEV[Local devices and sensors]
+    PHONE[Residents' phones · Alexa]
   end
 
   subgraph CLOUD[OPTIONAL CLOUD SERVICES]
-    direction LR
+    direction TB
     CLOUDAPI[Vehicle · voice · alarm APIs]
+    AICLIENT[AI clients · Claude · ChatGPT · Codex]
   end
 
   subgraph PUBLIC[PUBLIC REPOSITORY / REVIEWABLE PLATFORM]
-    direction TB
-    FIXTURES[Synthetic fixtures]
+    direction LR
     Z2M[Zigbee2MQTT]
     MQTT[Mosquitto / MQTT]
     HA[Home Assistant]
     NR[Node-RED]
     AD[AppDaemon]
-    OBS[Observability and recovery]
-    CODE[Compose · config · tests · docs]
-  end
-
-  subgraph PRIVATE[PRIVATE RUNTIME STATE / NEVER COMMITTED]
-    direction LR
-    BIND[Private bindings and secrets]
-    STATE[Device registries and runtime state]
-  end
-
-  subgraph RECOVERY[BACKUP / RESTORE]
-    direction LR
-    BUNDLE[Encrypted private restore bundle]
-    VERIFY[plan → verify → human-approved apply]
+    DASH[Dashboards · Casa · Sistema · pt-BR/en]
+    OBS[Global observer and notification hubs]
+    OPS[Daily chain · Git backup → off-site → updates]
+    CODE[Compose · config · flows · tests · docs · synthetic fixtures]
   end
 
   subgraph AGENT[AGENT / LOCAL-AI BOUNDARY]
-    direction LR
+    direction TB
+    MCP[Raspberry MCP · scoped tools · OAuth edge]
     BRIDGE[Optional agent bridge]
     RTX[Optional Local AI / RTX]
     POLICY[Bounded public context · no secrets · no final authority]
   end
 
+  subgraph PRIVATE[PRIVATE RUNTIME STATE / NEVER COMMITTED]
+    direction TB
+    BIND[Private bindings and secrets]
+    STATE[Device registries and runtime state]
+  end
+
+  subgraph RECOVERY[BACKUP / RESTORE]
+    direction TB
+    BUNDLE[Encrypted private restore bundle]
+    VERIFY[plan → verify → human-approved apply]
+  end
+
   DEV --> Z2M
   DEV --> HA
   CLOUDAPI -. optional input .-> HA
-  FIXTURES --> HA
-  FIXTURES --> NR
   Z2M --> MQTT
   MQTT <--> HA
+  MQTT <--> NR
   HA <--> NR
   HA <--> AD
+  HA --> DASH
+  NR --> OBS
+  NR --> OPS
+  OBS -. deduplicated alerts .-> PHONE
+  AICLIENT -. OAuth / tunnel .-> MCP
+  MCP -. allow-listed calls with readback .-> HA
   HA <--> BRIDGE
   BRIDGE <--> RTX
-  POLICY --> BRIDGE
-  POLICY --> RTX
-  NR --> OBS
-  HA --> OBS
-  CODE -. defines .-> Z2M
-  CODE -. defines .-> MQTT
-  CODE -. defines .-> HA
-  CODE -. defines .-> NR
-  CODE -. defines .-> BRIDGE
+  POLICY --- MCP
+  POLICY --- BRIDGE
   BIND -. read-only .-> HA
   BIND -. read-only .-> NR
   STATE -. runtime .-> HA
+  OPS -. verified off-site copy .-> BUNDLE
   BUNDLE --> VERIFY
   VERIFY -. restores private state .-> PRIVATE
 
@@ -77,7 +90,14 @@ flowchart TB
   class MQTT,HA,NR core;
   class Z2M,AD optional;
   class BIND,STATE private;
-  class BUNDLE,VERIFY recovery;
-  class CLOUDAPI external;
-  class BRIDGE,RTX,POLICY boundary;
-  class DEV,FIXTURES,OBS,CODE public;
+  class BUNDLE,VERIFY,OPS recovery;
+  class CLOUDAPI,AICLIENT external;
+  class BRIDGE,MCP,RTX,POLICY boundary;
+  class DEV,PHONE,OBS,DASH,CODE public;
+
+  style PHYSICAL fill:#0f1b2b,stroke:#7bb8ef,color:#e6edf3
+  style CLOUD fill:#24182a,stroke:#e9a8f0,color:#e6edf3
+  style PUBLIC fill:#0c1f33,stroke:#5ee7f2,color:#e6edf3
+  style AGENT fill:#161d33,stroke:#9db7ff,color:#e6edf3,stroke-dasharray:6 4
+  style PRIVATE fill:#2a1c0c,stroke:#ffc76b,color:#e6edf3
+  style RECOVERY fill:#0e2a20,stroke:#68e0a8,color:#e6edf3

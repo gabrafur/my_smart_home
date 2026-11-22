@@ -47,6 +47,18 @@ physical identifiers must appear only as placeholders.
 | [Commit convention](COMMIT_CONVENTION.en.md) | Format, types, scopes, breaking changes, and validation | [Português](CONVENCAO_COMMITS.md) |
 | [Documentation assets](assets/README.en.md) | Mermaid source, SVG, social preview, and reproduction | [Português](assets/README.md) |
 
+## Node-RED operations
+
+These guides are maintained in Brazilian Portuguese:
+
+- [Daily Git backup](GIT_BACKUP_NODERED.md) — first stage of the nightly chain
+- [Recorder retention](RECORDER_RETENTION_NODERED.md) — selective history compaction and purge
+- [Resume after a power loss](NODERED_STARTUP_RECOVERY.md) — canonical authorization to resume external tasks
+- [Canonical Codex alerts](CODEX_ALERTAS_NODERED.md) — level and delivery of Codex usage alerts
+- [Zigbee coordinator recovery](ZIGBEE_COORDINATOR_RECOVERY.md) — validated backup, bounded reconnection, last-good copy
+- [Canvas style guide](node-red/CANVAS_STYLE_GUIDE.md) and [visual migration inventory](NODERED_VISUAL_MIGRATION_INVENTORY.md)
+- [Manual iCloud re-authentication](ICLOUD_MANUAL_AUTH.en.md) (English) · [Português](ICLOUD_MANUAL_AUTH.md)
+
 ## Feature guides
 
 The following detailed operational guides are maintained in Brazilian
@@ -75,6 +87,11 @@ controlled actions and local metrics.
 
 - [Public repository audit](AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Git history cleanup handoff](HANDOFF_LIMPEZA_HISTORICO_GIT.md)
+- [Storage audit — phase 1](operations/storage-audit.md)
+- Local AI benchmarks: [2026-08-16](LOCAL_AI_BENCHMARK_2026-08-16.md),
+  [high potential](LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md),
+  [quality bake-off](LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md), and
+  [restricted pivot](LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md)
 
 These records are sanitized technical cases. They retain the problem, cause,
 T0/T+ investigation, fix, validation, and lessons without household chronology,
@@ -147,10 +164,16 @@ and uncertain-delivery blocking remain in force. A bounded sanitized reply must
 be proven later than delivery; exact acknowledgement, turn completion and
 household recovery remain separate evidence.
 
-The [household lights tools](raspberry-mcp/reference/household-lights.md)
-(`ha_lights_read`, `ha_light_set`) switch only the lights registered in a
-Root policy and confirm the real Home Assistant state by readback; the gate,
-alarm and locks are not reachable.
+The [household lights and actions tools](raspberry-mcp/reference/household-lights.md)
+start with `ha_lights_read`/`ha_light_set` for the lights registered in a Root
+policy, confirmed by readback. `ha_actions_read`/`ha_action_run` add a few
+registered actions (air conditioner, PC shutdown, and a rate-limited garage-gate
+pulse whose position stays unknown). `ha_entities_read`/`ha_service_call` reach
+other household domains through a closed list of services per domain, with
+connector confirmation, per-domain rate limits, and no automatic retry. Host
+shutdown/reboot scripts, Home Assistant administration, and the raw gate relay
+are denied in code; removing `generic` from the policy restores the narrower
+scope.
 
 The [Home Assistant state tool](raspberry-mcp/reference/home-assistant-states.md)
 (`ha_states_read`) reads, live and read-only, a fixed Root-policy list of status

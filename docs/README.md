@@ -49,6 +49,15 @@ placeholders.
 | [Convenção de commits](CONVENCAO_COMMITS.md) | Formato, tipos, escopos, breaking changes e validação | [English](COMMIT_CONVENTION.en.md) |
 | [Ativos de documentação](assets/README.md) | Fonte Mermaid, SVG, social preview e reprodução | [English](assets/README.en.md) |
 
+## Operação do Node-RED
+
+- [Backup Git diário](GIT_BACKUP_NODERED.md) — primeira etapa da cadeia noturna
+- [Retenção do Recorder](RECORDER_RETENTION_NODERED.md) — compactação e purga seletiva do histórico
+- [Retomada após falta de energia](NODERED_STARTUP_RECOVERY.md) — autorização canônica para retomar tarefas externas
+- [Alertas Codex canônicos](CODEX_ALERTAS_NODERED.md) — nível e entrega dos alertas de uso do Codex
+- [Guia visual dos canvases](node-red/CANVAS_STYLE_GUIDE.md) e [inventário da migração visual](NODERED_VISUAL_MIGRATION_INVENTORY.md)
+- [Reautenticação manual do iCloud](ICLOUD_MANUAL_AUTH.md) · [English](ICLOUD_MANUAL_AUTH.en.md)
+
 ## Funcionalidades
 
 - [Iluminação externa no Node-RED](ILUMINACAO_EXTERNA_NODERED.md)
@@ -68,6 +77,11 @@ placeholders.
 
 - [Auditoria do repositório público](AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Handoff da limpeza do histórico](HANDOFF_LIMPEZA_HISTORICO_GIT.md)
+- [Auditoria de armazenamento — fase 1](operations/storage-audit.md)
+- Benchmarks de Local AI: [2026-08-16](LOCAL_AI_BENCHMARK_2026-08-16.md),
+  [alto potencial](LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md),
+  [bake-off de qualidade](LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md) e
+  [pivô restrito](LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md)
 
 Esses arquivos foram reescritos como cases técnicos sanitizados. Preservam
 problema, causa, investigação T0/T+, correção, validação e lições, sem
