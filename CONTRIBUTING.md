@@ -19,6 +19,10 @@ are welcome when they preserve that boundary.
   licenses, notices, and authorship. Fork this repository, create a focused
   branch, and open a pull request to contribute back. This is the contribution
   workflow, not a license requirement.
+- Para adaptar o projeto à sua própria casa (sem contribuir de volta), siga
+  [Faça um fork para a sua casa](README.pt-BR.md#faça-um-fork-para-a-sua-casa).
+  To adapt the project to your own home without contributing back, follow
+  [Fork it for your home](README.md#fork-it-for-your-home).
 - Nunca envie credenciais, IPs privados, coordenadas, MACs, nomes de moradores,
   identificadores físicos, logs ou estado real de dispositivos. / Never submit
   credentials, private addresses, coordinates, MACs, resident names, physical

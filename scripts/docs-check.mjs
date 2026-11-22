@@ -83,6 +83,34 @@ function githubSlugs(content) {
   return slugs;
 }
 
+const mermaidDiagramTypes = /^(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|pie|journey|gitGraph|mindmap|timeline|quadrantChart|requirementDiagram|C4\w+|[a-z]+-beta)\b/;
+
+// Mechanical Mermaid sanity: a known diagram type and balanced flowchart subgraphs.
+// It does not replace rendering, but catches the breakages GitHub shows as an error box.
+export function mermaidBlockIssues(content) {
+  const issues = [];
+  for (const match of content.matchAll(/^```mermaid[ \t]*\n([\s\S]*?)^```[ \t]*$/gm)) {
+    const line = lineNumber(content, match.index ?? 0);
+    let body = match[1];
+    if (/^---\s*\n/.test(body)) body = body.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, "");
+    const lines = body.split("\n").map((value) => value.trim()).filter((value) => value && !value.startsWith("%%"));
+    if (!lines.length) {
+      issues.push({ line, message: "empty Mermaid block" });
+      continue;
+    }
+    if (!mermaidDiagramTypes.test(lines[0])) {
+      issues.push({ line, message: "Mermaid block does not start with a known diagram type" });
+      continue;
+    }
+    if (/^(?:flowchart|graph)\b/.test(lines[0])) {
+      const opened = lines.filter((value) => /^subgraph\b/.test(value)).length;
+      const closed = lines.filter((value) => value === "end").length;
+      if (opened !== closed) issues.push({ line, message: `Mermaid flowchart has ${opened} subgraph(s) and ${closed} end(s)` });
+    }
+  }
+  return issues;
+}
+
 function makeTargets(content) {
   const targets = new Set();
   for (const match of content.matchAll(/^([A-Za-z0-9_.-]+(?:\s+[A-Za-z0-9_.-]+)*):(?:\s|$)/gm)) {
@@ -264,6 +292,7 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
       }
     }
 
+    for (const issue of mermaidBlockIssues(content)) errors.push(`${file}:${issue.line}: ${issue.message}`);
     for (const match of proseContent.matchAll(/\b(?:TODO|TBD|FIXME|XXX)\b/g)) {
       errors.push(`${file}:${lineNumber(content, match.index ?? 0)}: unresolved documentation placeholder`);
     }

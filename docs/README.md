@@ -13,6 +13,7 @@ placeholders.
 | Documento | Quando usar | Inglês |
 | --- | --- | --- |
 | [Tour técnico de portfólio](ENGINEERING_TOUR.pt-BR.md) | Caminhos de evidência para 30 segundos, 5 minutos e 15 minutos | [English](ENGINEERING_TOUR.md) |
+| [Changelog](CHANGELOG.md) | Novidades e desempenho por mês, a partir dos commits | bilíngue no mesmo arquivo |
 | [Instalação e restauração](INSTALACAO_RESTAURACAO_SMART_HOME.md) | Clone novo, recuperação ou migração de host | [English](INSTALLATION_RESTORE.en.md) |
 | [Contrato determinístico de restore](RESTORE_CONTRACT.md) | Manifesto, bundle, plan/verify/apply e contexto da IA | [English](RESTORE_CONTRACT.en.md) |
 | [Bootstrap, módulos e demo](BOOTSTRAP_DEMO.md) | Clone mínimo, features opcionais e cenário sintético | [English](BOOTSTRAP_DEMO.en.md) |
@@ -49,6 +50,15 @@ placeholders.
 | [Convenção de commits](CONVENCAO_COMMITS.md) | Formato, tipos, escopos, breaking changes e validação | [English](COMMIT_CONVENTION.en.md) |
 | [Ativos de documentação](assets/README.md) | Fonte Mermaid, SVG, social preview e reprodução | [English](assets/README.en.md) |
 
+## Operação do Node-RED
+
+- [Backup Git diário](GIT_BACKUP_NODERED.md) — primeira etapa da cadeia noturna
+- [Retenção do Recorder](RECORDER_RETENTION_NODERED.md) — compactação e purga seletiva do histórico
+- [Retomada após falta de energia](NODERED_STARTUP_RECOVERY.md) — autorização canônica para retomar tarefas externas
+- [Alertas Codex canônicos](CODEX_ALERTAS_NODERED.md) — nível e entrega dos alertas de uso do Codex
+- [Guia visual dos canvases](node-red/CANVAS_STYLE_GUIDE.md) e [inventário da migração visual](NODERED_VISUAL_MIGRATION_INVENTORY.md)
+- [Reautenticação manual do iCloud](ICLOUD_MANUAL_AUTH.md) · [English](ICLOUD_MANUAL_AUTH.en.md)
+
 ## Funcionalidades
 
 - [Iluminação externa no Node-RED](ILUMINACAO_EXTERNA_NODERED.md)
@@ -68,6 +78,11 @@ placeholders.
 
 - [Auditoria do repositório público](AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Handoff da limpeza do histórico](HANDOFF_LIMPEZA_HISTORICO_GIT.md)
+- [Auditoria de armazenamento — fase 1](operations/storage-audit.md)
+- Benchmarks de Local AI: [2026-08-16](LOCAL_AI_BENCHMARK_2026-08-16.md),
+  [alto potencial](LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md),
+  [bake-off de qualidade](LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md) e
+  [pivô restrito](LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md)
 
 Esses arquivos foram reescritos como cases técnicos sanitizados. Preservam
 problema, causa, investigação T0/T+, correção, validação e lições, sem
@@ -108,7 +123,7 @@ cronologia residencial, nomes, rotas ou identificadores privados.
 
 Diagnósticos, evidências e limites das operações:
 
-- [RASPBERRY_MCP_EVIDENCE_STAGE2](raspberry-mcp/maintenance/evidence-stage2.md)
-- [RASPBERRY_MCP_MAINTENANCE_MATRIX](raspberry-mcp/maintenance/matrix.md)
-- [RASPBERRY_MCP_MAINTENANCE_STAGE1](raspberry-mcp/maintenance/stage1.md)
-- [RASPBERRY_MCP_OPERATIONS_PROPOSAL](raspberry-mcp/maintenance/proposals.md)
+- [Evidências da etapa 2](raspberry-mcp/maintenance/evidence-stage2.md)
+- [Matriz de manutenção](raspberry-mcp/maintenance/matrix.md)
+- [Etapa 1 da manutenção](raspberry-mcp/maintenance/stage1.md)
+- [Propostas de operação](raspberry-mcp/maintenance/proposals.md)

@@ -6,9 +6,11 @@ Esta é uma execução agendada, pré-autorizada e não interativa. Execute esta
 rotina imediatamente, sem sugerir título, reescrever o prompt, recomendar modelo
 ou solicitar `continue`. Siga todos os limites de segurança e requisitos abaixo.
 
-Revise a documentação, a apresentação pública, o contrato de restauração e as
-garantias de privacidade do repositório, mantendo tudo coerente com as mudanças
-da última semana.
+Revise e ajuste a documentação do repositório em geral — README, guias,
+índices, changelog, READMEs ao lado do código, templates, memórias públicas —,
+a apresentação pública, o contrato de restauração e as garantias de
+privacidade, mantendo tudo coerente com as mudanças da última semana e útil
+para quem quer entender o projeto ou fazer um fork.
 
 Esta rotina é de manutenção conservadora. Ela não deve realizar refatorações,
 migrações, alterações de runtime ou correções executáveis diretamente em
@@ -101,6 +103,76 @@ Verifique se as mudanças da semana alteraram:
 - afirmações de portfólio;
 - fronteira público/privado.
 
+# Documentação em geral
+
+A revisão cobre toda a documentação humana versionada, não só `docs/`:
+
+- `README.md`, `README.pt-BR.md`, `CONTRIBUTING.md`, `SECURITY.md`,
+  `CODE_OF_CONDUCT.md`, `THIRD_PARTY_NOTICES.md` e
+  `THIRD_PARTY_NOTICES.pt-BR.md`;
+- `docs/**/*.md`, `docs/i18n-manifest.json` e `docs/CHANGELOG.md`;
+- READMEs e guias Markdown ao lado do código em `scripts/`, `nodered/tools/`,
+  `restore/`, `reports/`, `local-ai-integration/` e `local-ai-research/`
+  (exceto `local-ai-research/benchmarks/**` e `*.prompt.md`);
+- `.github/PULL_REQUEST_TEMPLATE.md` e `.github/ISSUE_TEMPLATE/*.md`;
+- `MEMORY.md` e `.codex/memories/**`.
+
+# Manutenção contínua da documentação
+
+Toda semana, além de corrigir o que os commits tornaram falso, aplique estas
+regras sempre que encontrar o problema, mesmo que ele seja anterior à semana:
+
+1. **Estado atual separado do histórico.** Cada guia descreve primeiro como o
+   sistema funciona hoje. Incidentes datados, primeiras execuções e
+   explicações de "por que mudou" vão para uma subseção de histórico no fim do
+   tópico (por exemplo, `### Histórico de incidentes ...`), em lista curta com
+   data, efeito e a regra atual que originaram. Não apague o histórico útil;
+   apenas tire-o do meio das instruções.
+2. **Mesmos fatos em português e inglês.** Em pares `full pair`, compare
+   números, horários, estados e conclusões entre as duas versões; se divergirem,
+   alinhe ambas à fonte atual (código, testes, documentação operacional).
+3. **README da raiz.** Mantenha atuais a tabela "O que faz" / "What it does",
+   o guia "Faça um fork para a sua casa" / "Fork it for your home", os limites
+   de execução, o mapa do repositório e os diagramas Mermaid inline. Toda
+   funcionalidade nova relevante da semana entra na tabela com link para o guia.
+4. **Changelog.** Em `docs/CHANGELOG.md`, acrescente as entradas `feat` e
+   `perf` (e `!`/`BREAKING CHANGE` em "Mudanças incompatíveis") desde a última
+   revisão, no mês do commit, e atualize a contagem de `fix`. O mês corrente é
+   "não lançado / unreleased". Use os assuntos dos commits, sem inventar texto.
+5. **Índices completos.** Todo documento humano deve estar no
+   `docs/i18n-manifest.json`, ser alcançável a partir do README e aparecer no
+   índice adequado de `docs/README.md` e `docs/README.en.md` (registros
+   históricos na seção de histórico). Arquivos que só redirecionam para outro
+   caminho e não têm mais referências fora da tabela de migração podem ser
+   removidos, atualizando a tabela e o manifesto.
+6. **Resumos em inglês.** Quando um guia que existe só em português mudar de
+   forma relevante, atualize o resumo em inglês correspondente
+   (`docs/README.en.md`, seção de resumos, ou o `README.en.md` da pasta, como
+   `docs/raspberry-mcp/README.en.md`).
+7. **Comandos e mensagens.** Comandos, alvos `make`, scripts npm e caminhos
+   citados precisam existir. Se um erro de ferramenta não diz como resolver,
+   registre a pendência de implementação; não altere a ferramenta.
+8. **Diagramas.** A imagem principal `docs/assets/smart-home-overview.svg` é
+   escrita à mão: se a arquitetura mudou, atualize-a diretamente, sem
+   sobrepor caixas, textos e setas, e mantenha os rótulos verificados por
+   `scripts/assets-check.mjs`. O diagrama detalhado
+   (`docs/assets/smart-home-architecture.mmd` e o SVG gerado) exige o Mermaid
+   CLI fixado, que não roda neste worker, e fica fora da allowlist: atualize o
+   texto e os diagramas Mermaid inline dos READMEs e registre
+   `architecture_diagram_regeneration` como pendência no log; isso não bloqueia
+   o commit.
+9. **Identificadores pessoais em documentação.** Nomes de moradores, contas de
+   usuário e caminhos pessoais (por exemplo `/home/<conta>`) em documentação
+   devem virar papéis lógicos ou placeholders (`/home/<usuario>`). Se o mesmo
+   identificador existir em código, configuração ou testes, não os altere:
+   ajuste somente a documentação que não precisa citar o valor real e
+   registre a pendência mascarada (categoria e caminho, sem o valor).
+
+Pendências de implementação, regeneração de diagrama e identificadores em
+código **não** impedem concluir a parte documental: grave o recibo
+`completed` e liste-as no log. Use `implementation_change_required` somente
+quando a documentação não puder ficar verdadeira sem a mudança executável.
+
 # Documentação humana
 
 Português do Brasil permanece como idioma principal.
@@ -189,7 +261,12 @@ Procure na árvore rastreada e nas mudanças da semana:
 
 Não imprima valores encontrados.
 
-Se houver qualquer achado de privacidade ou segurança:
+Identificadores pessoais de baixa sensibilidade em documentação (nomes,
+contas e caminhos pessoais) seguem a regra 9 de "Manutenção contínua da
+documentação": sanitize e continue. Para qualquer outro achado de privacidade
+ou segurança (segredos, tokens, coordenadas, endereços, MACs, IPs privados,
+hostnames privados, IDs físicos, logs ou payloads reais, screenshots não
+sintéticos, rotinas e trajetos):
 
 1. não faça commit;
 2. não faça push;
@@ -200,16 +277,22 @@ Não reescreva histórico e não use force-push.
 
 # Limites de alteração
 
-Esta rotina pode alterar automaticamente somente:
+Esta rotina pode alterar automaticamente somente os caminhos aceitos por
+`isAllowedReviewPath` em `scripts/weekly-docs-review.mjs`:
 
-- Markdown;
-- índices documentais;
-- manifests exclusivamente documentais;
-- diagramas e imagens gerados;
-- material de portfólio;
-- links;
-- exemplos não executáveis;
-- metadados públicos do projeto armazenados no repositório.
+- os documentos da raiz listados em "Documentação em geral";
+- `docs/**/*.md`, incluindo índices, changelog e material de portfólio;
+- `docs/i18n-manifest.json`;
+- imagens geradas em `docs/assets/generated/`;
+- READMEs e guias Markdown ao lado do código listados em "Documentação em
+  geral";
+- templates Markdown de PR e issue em `.github/`;
+- `MEMORY.md` e `.codex/memories/**/*.md`.
+
+`AGENTS.md`, `.codex/instructions/**`, prompts (`prompts/**`, `*.prompt.md`),
+`.agents/**`, benchmarks congelados, componentes vendorizados e a fonte/SVG do
+diagrama de arquitetura ficam fora; o scheduler rejeita o diff inteiro se um
+deles mudar.
 
 Ela não pode alterar automaticamente em `main`:
 
@@ -337,6 +420,9 @@ Registre somente metadados seguros:
 - resultado dos scanners;
 - resultado do `make validate-docs-review`;
 - arquivos documentais alterados;
+- entradas acrescentadas ao changelog;
+- pendências de implementação, de forma mascarada (categoria e caminho);
+- diagrama de arquitetura: `current` ou `architecture_diagram_regeneration`;
 - commit criado, quando houver;
 - resultado final;
 - motivo padronizado em caso de bloqueio.

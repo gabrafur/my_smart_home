@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { checkDocumentation } from "./docs-check.mjs";
+import { checkDocumentation, mermaidBlockIssues } from "./docs-check.mjs";
 
 function fixture(t) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docs-check-"));
@@ -112,4 +112,22 @@ test("allows historical source paths only in documents declared archived", (t) =
   manifest.documents.at(-1).summary = "docs/README.md";
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
   assert.ok(checkDocumentation(input).errors.some((error) => error.includes("referenced path is missing")));
+});
+
+test("flags Mermaid blocks GitHub cannot render", () => {
+  const valid = "# Doc\n\n```mermaid\n---\nconfig:\n  layout: elk\n---\nflowchart LR\n  subgraph A[Box]\n    x --> y\n  end\n```\n";
+  assert.deepEqual(mermaidBlockIssues(valid), []);
+  const unknown = "```mermaid\nflowchar LR\n  a --> b\n```\n";
+  assert.match(mermaidBlockIssues(unknown)[0].message, /known diagram type/);
+  const unbalanced = "```mermaid\nflowchart TB\n  subgraph A\n  a --> b\n```\n";
+  assert.match(mermaidBlockIssues(unbalanced)[0].message, /1 subgraph\(s\) and 0 end/);
+  const extraEnd = "```mermaid\nflowchart TB\n  a --> b\n  end\n```\n";
+  assert.equal(mermaidBlockIssues(extraEnd).length, 1);
+});
+
+test("reports a broken Mermaid block with its document and line", (t) => {
+  const input = fixture(t);
+  fs.appendFileSync(path.join(input.repoRoot, "docs/GUIDE.md"), "\n```mermaid\nflowchart LR\n  subgraph A\n```\n");
+  const result = checkDocumentation(input);
+  assert.ok(result.errors.some((error) => /^docs\/GUIDE\.md:\d+: Mermaid flowchart has 1 subgraph/.test(error)));
 });

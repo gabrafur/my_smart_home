@@ -64,7 +64,7 @@ Inventário anterior à remoção:
 | Symlinks internos | 2 |
 | Modificação mais recente | 2026-08-03 09:25:25 UTC |
 
-O alvo resolveu exatamente para `/home/gabriel/.cursor-server`, pertencia ao
+O alvo resolveu exatamente para `/home/<usuario>/.cursor-server`, pertencia ao
 usuário operacional, estava no filesystem raiz, não era symlink nem mount
 point. Não havia executável, diretório de trabalho, descritor aberto, processo,
 serviço systemd, cron ou processo PM2 associado. A árvore ancestral da sessão

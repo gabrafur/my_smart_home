@@ -150,10 +150,26 @@ function gitOutput(args, cwd = repoRoot) {
   return result.stdout.trim();
 }
 
+const reviewRootDocuments = new Set([
+  "README.md", "README.pt-BR.md", "MEMORY.md", "CONTRIBUTING.md", "SECURITY.md",
+  "CODE_OF_CONDUCT.md", "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.pt-BR.md",
+]);
+// Human documentation that lives beside code. Agent instructions (AGENTS.md,
+// .codex/instructions), prompts, frozen benchmarks and vendored components stay out.
+const reviewCodeSideDocumentPrefixes = [
+  "local-ai-integration/", "local-ai-research/", "nodered/tools/", "reports/", "restore/", "scripts/",
+];
+
 export function isAllowedReviewPath(file) {
-  if (["README.md", "README.pt-BR.md", "MEMORY.md"].includes(file)) return true;
+  if (reviewRootDocuments.has(file)) return true;
   if (/^\.codex\/memories\/.+\.md$/.test(file)) return true;
   if (/^docs\/.+\.md$/.test(file)) return true;
+  if (file === "docs/i18n-manifest.json") return true;
+  if (file === "docs/assets/smart-home-overview.svg") return true;
+  if (/^\.github\/(?:PULL_REQUEST_TEMPLATE\.md|ISSUE_TEMPLATE\/[^/]+\.md)$/.test(file)) return true;
+  if (/\.md$/.test(file) && !/\.prompt\.md$/.test(file)
+      && !file.startsWith("local-ai-research/benchmarks/")
+      && reviewCodeSideDocumentPrefixes.some((prefix) => file.startsWith(prefix))) return true;
   return /^docs\/assets\/generated\/.+\.(?:jpe?g|png|svg|webp)$/i.test(file);
 }
 

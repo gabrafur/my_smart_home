@@ -268,8 +268,7 @@ de storage. Não há reboot automático. Os demais containers seguem o Core conc
 e também o Core recusado pela trava de compatibilidade (`unsupported_*`,
 `compatibility_unconfirmed`, `compatibility_probe_timeout`), que roda antes de
 qualquer mudança no compose ou nos serviços; o aviso de falha continua. Qualquer
-outra falha do Core segura os containers (de 09/11 a 17/11/2026 uma trava do
-iCloud no Core impediu todas as outras atualizações).
+outra falha do Core segura os containers.
 
 O subfluxo Alexa Media verifica também a memória pública contra os arquivos
 candidatos e os metadados da próxima versão, antes de chamar HACS ou parar o
@@ -282,25 +281,19 @@ cada atualização. Após sucesso de instalação, o fluxo solicita o backup Git
 a publicação continua sujeita à validação canônica do backup.
 
 
-Na primeira execução agendada, em 14 de outubro de 2026, a captura consistente
-reiniciou o Home Assistant e o Backup Manager ainda estava `blocked` quando o
-worker pediu a geração 15 segundos depois. Nenhuma cópia Compose nova foi
-criada, nenhuma retenção ocorreu e nenhum update foi liberado. O worker agora
-consulta `backup/info`, aguarda `idle` por até 180 segundos e só então envia um
-único `backup/generate`; inicialização persistente, outro backup ativo, falha de
-consulta ou erro de agente encerram o estágio com diagnóstico específico e
-mantêm os updates bloqueados.
+Antes de gerar a cópia, o worker consulta `backup/info`, aguarda `idle` por até
+180 segundos e só então envia um único `backup/generate`; inicialização
+persistente, outro backup ativo, falha de consulta ou erro de agente encerram o
+estágio com diagnóstico específico e mantêm os updates bloqueados.
 
-Captura consistente exige parar sete serviços; a execução observada levou cerca
-de 28 segundos até os containers voltarem e aproximadamente 53 segundos até a
-última sonda de prontidão. A configuração versionada move toda a cadeia para
-01:00 no `TZ` do Node-RED (BRT nesta instalação), antes das rotinas das 03:00,
-da janela automática do HA de
-aproximadamente 04:45 a 05:45 e a manutenção de storage das 06:23. O limite de
-10 minutos e a prioridade para religar os serviços após falha permanecem. O
-fluxo das 01:00 no `TZ` do Node-RED foi carregado em 14/10/2026. O primeiro
-ciclo automático nessa janela ainda não foi observado; nenhum ciclo manual foi
-disparado para validar a correção.
+Captura consistente exige parar sete serviços (cerca de 28 segundos até os
+containers voltarem e 53 segundos até a última sonda de prontidão na execução
+observada). A cadeia roda às 01:00 no `TZ` do Node-RED, antes das rotinas das
+03:00, da janela automática de backup do HA (aproximadamente 04:45 a 05:45) e
+da manutenção de storage das 06:23. O limite de 10 minutos e a prioridade para
+religar os serviços após falha permanecem. O registro de retenção fica em
+`.local-secrets`, privado e gravável, com leitura de compatibilidade de um
+registro legado existente.
 A retenção aprovada limita somente a série Compose criada pela rotina a 90
 cópias ou 90 dias. A poda ocorre exclusivamente após uma nova cópia externa
 verificada, preserva a mais nova e exige correspondência exata com o registro
@@ -382,6 +375,24 @@ no arquivo não comprova que o container foi atualizado. As instalações npm da
 validação e do atualizador usam `umask 022` apenas para pacotes públicos, para
 permitir leitura pelos usuários distintos do host e do container; a máscara
 privada do chamador é preservada fora dessa instalação.
+
+### Histórico de incidentes da cadeia diária
+
+Registros datados que explicam o comportamento atual descrito acima:
+
+- 14/10/2026, primeira execução agendada: a captura consistente reiniciou o
+  Home Assistant e o Backup Manager ainda estava `blocked` quando o worker pediu
+  a geração 15 segundos depois. Nenhuma cópia foi criada, a retenção não rodou e
+  os updates ficaram bloqueados. Origem da espera por `idle`.
+- 14/10/2026: a cadeia passou para 01:00 no `TZ` do Node-RED.
+- 15/10/2026, primeiro ciclo automático: o Git concluiu sem mudanças, mas a
+  etapa externa falhou na gravação final do registro de retenção porque
+  `.local-state` pertence ao root. A cópia remota tinha passado nas checagens;
+  não houve recibo final, poda nem updates. Origem do registro em
+  `.local-secrets`.
+- 09/11 a 17/11/2026: uma trava do iCloud no Core impediu todas as outras
+  atualizações. Origem da regra que deixa os demais containers seguirem quando
+  a trava de compatibilidade recusa o Core.
 
 ### Prontidão e recuperação após recriação
 

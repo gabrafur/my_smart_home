@@ -8,12 +8,12 @@ compatibilidade, sem duplicar o manual.
 | Caminho anterior em `docs/` | Destino em `docs/raspberry-mcp/` |
 | --- | --- |
 | [RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md](../RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) | `README.md`, `architecture.md`, `installation.md`, `tools.md`, `operations.md` e referências temáticas |
-| [RASPBERRY_READONLY_MCP.md](../RASPBERRY_READONLY_MCP.md) | `reference/read-only-base.md` |
-| [RASPBERRY_CODEX_TASKS.md](../RASPBERRY_CODEX_TASKS.md) | `reference/task-control.md` |
-| [RASPBERRY_MCP_MAINTENANCE_MATRIX.md](../RASPBERRY_MCP_MAINTENANCE_MATRIX.md) | `maintenance/matrix.md` |
-| [RASPBERRY_MCP_MAINTENANCE_STAGE1.md](../RASPBERRY_MCP_MAINTENANCE_STAGE1.md) | `maintenance/stage1.md` |
-| [RASPBERRY_MCP_EVIDENCE_STAGE2.md](../RASPBERRY_MCP_EVIDENCE_STAGE2.md) | `maintenance/evidence-stage2.md` |
-| [RASPBERRY_MCP_OPERATIONS_PROPOSAL.md](../RASPBERRY_MCP_OPERATIONS_PROPOSAL.md) | `maintenance/proposals.md` |
+| `RASPBERRY_READONLY_MCP.md` (removido) | `reference/read-only-base.md` |
+| `RASPBERRY_CODEX_TASKS.md` (removido) | `reference/task-control.md` |
+| `RASPBERRY_MCP_MAINTENANCE_MATRIX.md` (removido) | `maintenance/matrix.md` |
+| `RASPBERRY_MCP_MAINTENANCE_STAGE1.md` (removido) | `maintenance/stage1.md` |
+| `RASPBERRY_MCP_EVIDENCE_STAGE2.md` (removido) | `maintenance/evidence-stage2.md` |
+| `RASPBERRY_MCP_OPERATIONS_PROPOSAL.md` (removido) | `maintenance/proposals.md` |
 
 O manual antes monolítico foi dividido por headings, preservando os contratos e
 links de evidência por tema. A história Git conserva o conteúdo anterior. Os

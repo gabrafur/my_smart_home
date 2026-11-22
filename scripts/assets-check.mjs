@@ -10,6 +10,7 @@ const extensions = new Set([".gif", ".jpeg", ".jpg", ".md", ".mmd", ".png", ".sv
 const requiredAssets = [
   "docs/assets/smart-home-architecture.mmd",
   "docs/assets/smart-home-architecture.svg",
+  "docs/assets/smart-home-overview.svg",
   "docs/assets/github-social-preview.svg",
   "docs/assets/github-social-preview.png",
 ];
@@ -94,6 +95,15 @@ export function checkAssets({ repoRoot = defaultRepoRoot, trackedFiles } = {}) {
           "Private bindings and secrets", "Encrypted private restore bundle",
         ]) {
           if (!content.includes(label)) errors.push(`${file}: missing architecture label: ${label}`);
+        }
+      }
+      if (file === "docs/assets/smart-home-overview.svg") {
+        if (!/<title\b/.test(content)) errors.push(`${file}: overview needs an accessible <title>`);
+        for (const label of [
+          "PRIVATE", "INPUTS", "CORE PLATFORM", "WHAT YOU GET", "BACKUP AND RESTORE", "AGENT BOUNDARY",
+          "Home Assistant", "Node-RED", "Mosquitto",
+        ]) {
+          if (!content.includes(label)) errors.push(`${file}: missing overview label: ${label}`);
         }
       }
       if (file === "docs/assets/github-social-preview.svg") {

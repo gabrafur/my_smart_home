@@ -1,5 +1,7 @@
 # MCP Raspberry
 
+[Português (principal)](README.md) · [English summary](README.en.md)
+
 O MCP expõe observações e operações delimitadas do servidor residencial. O
 cliente de IA pode mudar; a autoridade continua na política local, com os mesmos
 alvos, cotas, identidades, validade e registros duráveis. Esta documentação não
@@ -31,10 +33,15 @@ A [comunicação com threads existentes](reference/workspace-communication.md)
 ou mudar o perfil da destinatária. Sua validade e disponibilidade são informadas
 por `codex_task_list`; um catálogo atualizado não concede essa autorização.
 
-As [luzes da casa](reference/household-lights.md) registradas na política do broker
-(garagem, varanda, abajur da sala e refletores) são lidas e acionadas por
-`ha_lights_read` e `ha_light_set`, com leitura do estado real depois do comando;
-portão, alarme e fechaduras ficam fora.
+As [luzes e ações da casa](reference/household-lights.md) usam o mesmo broker:
+`ha_lights_read`/`ha_light_set` leem e acionam as luzes registradas na política,
+com leitura do estado real depois do comando; `ha_actions_read`/`ha_action_run`
+executam ações registradas (ar-condicionado, desligamento do PC e pulso do
+portão com limite próprio e posição desconhecida); `ha_entities_read`/
+`ha_service_call` alcançam os demais domínios da casa por lista fechada de
+serviços, com confirmação no conector, limites por domínio e sem reenvio
+automático. Scripts que desligam ou reiniciam o Raspberry, administração do
+Home Assistant e o relé bruto do portão são negados no código.
 
 O [estado do Home Assistant](reference/home-assistant-states.md) de um conjunto fixo de
 entidades de status (saúde do Raspberry, rede, Zigbee, cópias, atualizações, baterias) é

@@ -5,6 +5,16 @@
 Todos os ativos são sintéticos e não usam screenshots, mapas ou dados da
 residência. As fontes editáveis são versionadas ao lado dos renders.
 
+## Visão geral
+
+- fonte e render: `smart-home-overview.svg`, escrito à mão (sem gerador);
+- imagem principal dos READMEs da raiz: entradas, core, saídas, estado
+  privado, backup/restore e fronteira de IA em camadas, com fundo próprio para
+  ficar legível nos temas claro e escuro;
+- edite o SVG diretamente, mantendo coordenadas que não se sobreponham, e
+  confira o resultado num navegador; a revisão semanal da documentação também
+  pode atualizá-lo.
+
 ## Arquitetura
 
 - fonte: `smart-home-architecture.mmd`;
@@ -21,6 +31,18 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" \
 O diagrama separa repositório público, runtime privado, dispositivos físicos,
 serviços cloud opcionais, backup/restore e a fronteira de agentes/Local AI.
 Core e módulos opcionais continuam visualmente distintos nessas fronteiras.
+Também mostra os painéis, o observador global com os hubs de notificação, a
+cadeia noturna (backup Git → backup externo → updates) e o servidor MCP com
+edge OAuth usado por clientes de IA.
+
+A fonte usa o layout `elk` (incluído no Mermaid CLI 11.12.0) e cor de linha
+neutra para que o SVG transparente fique legível nos temas claro e escuro do
+GitHub. Sem Docker, o mesmo pacote pode ser instalado com
+`npm i @mermaid-js/mermaid-cli@11.12.0` e apontado para um Chromium local por
+`-p` (arquivo de configuração do Puppeteer com `executablePath`).
+
+Os diagramas de decisão e da cadeia noturna no `README` da raiz são blocos
+Mermaid inline, renderizados pelo próprio GitHub; não há SVG gerado para eles.
 
 ## Social preview
 

@@ -80,6 +80,33 @@ O prompt versionado em `scripts/weekly-docs-review.prompt.md` exige:
 - não reiniciar a stack residencial, não chamar endpoints, não enviar
   notificações e não acionar dispositivos físicos.
 
+A rotina mantém a documentação em geral, não só `docs/`:
+
+- README da raiz (tabela de funcionalidades, guia de fork, limites de execução
+  e diagramas Mermaid inline), `CONTRIBUTING`, `SECURITY`, Código de Conduta e
+  avisos de terceiros;
+- índices de `docs/`, o `docs/i18n-manifest.json` e o
+  [changelog](CHANGELOG.md), acrescentando as entradas `feat`/`perf` e a
+  contagem de `fix` do mês;
+- READMEs e guias em Markdown ao lado do código (`scripts/`, `nodered/tools/`,
+  `restore/`, `reports/`, `local-ai-integration/`, `local-ai-research/`),
+  templates de PR/issue e memórias públicas;
+- separação entre comportamento atual e histórico datado de incidentes, e a
+  mesma informação factual nas versões em português e em inglês;
+- resumos em inglês dos guias que existem só em português;
+- identificadores pessoais em documentação, trocados por papéis lógicos ou
+  placeholders.
+
+A allowlist do scheduler (`isAllowedReviewPath` em
+`scripts/weekly-docs-review.mjs`) aceita somente esses caminhos. Ficam fora:
+código, configuração, flows, testes, workflows, instruções de agente
+(`AGENTS.md`, `.codex/instructions/`), prompts, benchmarks congelados,
+componentes vendorizados e a fonte/SVG do diagrama detalhado de arquitetura,
+que exige o Mermaid CLI fixado e não roda no worker; a visão geral
+`docs/assets/smart-home-overview.svg`, escrita à mão, pode ser atualizada. Quando a correção depende desses
+arquivos, ou quando um identificador pessoal também existe em código, a rotina
+conclui a parte documental e registra a pendência mascarada no log.
+
 Não há commit vazio. Se uma validação falhar, nada é integrado nem publicado.
 O agente trabalha deliberadamente em `detached HEAD`, preso ao baseline que o
 scheduler já comparou com `origin/main`; ele não deve exigir que esse worktree

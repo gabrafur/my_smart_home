@@ -10,7 +10,8 @@ needed.
 
 - **Architecture:** Home Assistant, Node-RED, and MQTT form the core. Optional
   modules add Zigbee, Matter, AppDaemon, cloud-backed integrations, and agent
-  tooling. The [architecture diagram](assets/smart-home-architecture.svg)
+  tooling, including an MCP server whose household tools are allow-listed,
+  rate-limited, and confirmed by readback. The [architecture diagram](assets/smart-home-architecture.svg)
   separates public code, private runtime, physical devices, optional cloud
   services, backup/restore, and the agent/Local-AI boundary.
 - **Stack:** Docker Compose, Home Assistant, Node-RED, Mosquitto, Zigbee2MQTT,
