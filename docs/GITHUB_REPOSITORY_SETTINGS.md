@@ -23,14 +23,14 @@ Confirme novamente na interface antes de aplicar recomendações.
 | Permissão padrão do workflow | `contents: read`; workflow não aprova PR | manter | aplica menor privilégio |
 | Dependabot alerts/security updates | habilitados | manter; avaliar version updates semanais | identifica vulnerabilidades nos locks |
 | Secret scanning/push protection | ambos habilitados | manter; avaliar padrões não-provider e validity checks se úteis | complementa os scanners locais |
-| Topics | 9 topics coerentes | manter; considerar `self-hosted`, `observability`, `disaster-recovery` | melhora descoberta sem claims falsos |
+| Topics | 9 topics coerentes | manter; considerar `self-hosted`, `observability`, `disaster-recovery`, `mcp`, `home-automation` | melhora descoberta sem claims falsos |
 | Description | preenchida e coerente | manter | descreve stack e caráter event-driven |
 | Homepage | vazia | opcional: documentação publicada, se existir | não inventar site inexistente |
 | Social preview | não verificado via API | enviar `docs/assets/github-social-preview.png` | identidade visual sintética e legível |
 | Releases | tags CalVer `vAAAA.MM.N`; `.github/workflows/release.yml` publica cada tag com a seção do [changelog](CHANGELOG.md) | criar a tag num commit da `main` quando um conjunto relevante estiver validado; forks acompanham as Releases | dá aos forks um ponto estável sem cadência artificial |
 | Wiki | habilitada | desabilitar | documentação versionada em `docs/` é a fonte de verdade |
 | Projects | habilitado | desabilitar enquanto não houver uso público | reduz superfícies vazias |
-| Discussions | desabilitado | manter até existir comunidade/rotina de moderação | evita canal sem manutenção |
+| Discussions | desabilitado | ativar com categoria Q&A quando o proprietário se comprometer a responder dúvidas de forks; até lá, manter desligado | dá aos forks onde perguntar sem abrir issue, mas canal sem resposta atrapalha mais que ajuda |
 | Issues | habilitado | manter | templates sanitizados orientam reports |
 
 ## Ruleset sugerido para `main`
@@ -82,7 +82,8 @@ ausentes e nunca torna o clone uma réplica da residência original.
 - [ ] Settings → Actions → General → restringir actions e manter permissões de
   workflow somente leitura.
 - [ ] About → enviar o social preview, revisar topics, descrição e homepage.
-- [ ] Desabilitar Wiki/Projects se continuarem sem uso; manter Discussions off.
+- [ ] Desabilitar Wiki/Projects se continuarem sem uso; decidir sobre Discussions (acima).
+- [ ] Manter algumas issues abertas com o rótulo `good first issue`, cada uma com escopo, arquivos e como validar.
 
 Não habilite um required check antes de ele aparecer num pull request, pois um
 nome incorreto pode bloquear todos os merges.

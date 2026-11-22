@@ -80,6 +80,8 @@
     { "id": "global-failure-observer", "area": "operations", "strategy": "full pair", "pt": "docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md", "en": "docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.en.md" },
     { "id": "mcp-household-tools", "area": "operations", "strategy": "full pair", "pt": "docs/raspberry-mcp/reference/household-lights.md", "en": "docs/raspberry-mcp/reference/household-lights.en.md" },
     { "id": "reusable-components", "area": "contributing", "strategy": "full pair", "pt": "docs/REUSABLE_COMPONENTS.md", "en": "docs/REUSABLE_COMPONENTS.en.md" },
+    { "path": "docs/archive/node-red-layout-audit-2026-09.md", "area": "historical-case-studies", "strategy": "archived" },
+    { "path": "docs/archive/node-red-layout-validation-blockers-2026-09.md", "area": "historical-case-studies", "strategy": "archived" },
     { "id": "docs-index", "area": "overview", "strategy": "full pair", "pt": "docs/README.md", "en": "docs/README.en.md" },
     { "id": "engineering-tour", "area": "portfolio", "strategy": "full pair", "pt": "docs/ENGINEERING_TOUR.pt-BR.md", "en": "docs/ENGINEERING_TOUR.md" },
     { "id": "containers", "area": "architecture", "strategy": "full pair", "pt": "docs/CONTAINERS.md", "en": "docs/CONTAINERS.en.md" },

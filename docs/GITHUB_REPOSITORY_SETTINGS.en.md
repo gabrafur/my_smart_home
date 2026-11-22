@@ -23,14 +23,14 @@ it in the UI before applying recommendations.
 | Default workflow permission | read; workflows cannot approve PRs | keep | least privilege |
 | Dependabot alerts/security updates | enabled | keep; consider weekly version updates | finds vulnerabilities in lockfiles |
 | Secret scanning/push protection | both enabled | keep; consider non-provider patterns/validity checks if useful | complements local scanners |
-| Topics | 9 relevant topics | keep; consider `self-hosted`, `observability`, `disaster-recovery` | improves discovery without fabricated claims |
+| Topics | 9 relevant topics | keep; consider `self-hosted`, `observability`, `disaster-recovery`, `mcp`, `home-automation` | improves discovery without fabricated claims |
 | Description | present and accurate | keep | accurately identifies the stack and event-driven design |
 | Homepage | empty | optional: a real published documentation site | do not invent a site |
 | Social preview | not exposed by the checked API | upload `docs/assets/github-social-preview.png` | synthetic, legible identity |
 | Releases | CalVer tags `vYYYY.MM.N`; `.github/workflows/release.yml` publishes each tag with its [changelog](CHANGELOG.md) section | tag a commit on `main` when a meaningful set of changes is validated; forks follow releases | gives forks a stable point without an artificial cadence |
 | Wiki | on | turn off | versioned `docs/` is authoritative |
 | Projects | on | turn off while unused publicly | removes an empty surface |
-| Discussions | off | keep off until a moderated community exists | avoids an unattended channel |
+| Discussions | off | turn on with a Q&A category once the owner commits to answering fork questions; until then keep off | gives forks a place to ask without opening issues, but an unattended channel hurts more than it helps |
 | Issues | on | keep | sanitized forms guide reports |
 
 ## Suggested `main` ruleset
@@ -82,7 +82,8 @@ templates only and cannot reproduce the original household.
 - [ ] Settings → Actions → General → restrict actions and keep workflow default
   permissions read-only.
 - [ ] About → upload the social preview; review topics, description, homepage.
-- [ ] Turn Wiki/Projects off if they remain unused; keep Discussions off.
+- [ ] Turn Wiki/Projects off if they remain unused; decide on Discussions (above).
+- [ ] Keep a few open issues labelled `good first issue`, each with scope, files, and how to validate.
 
 Do not require a check until it has appeared on a pull request. A mistyped
 context can block every merge.

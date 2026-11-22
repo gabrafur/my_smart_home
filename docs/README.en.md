@@ -124,6 +124,7 @@ power and host-health features expose only controlled actions and local metrics.
 - [Public repository audit](AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Git history cleanup handoff](HANDOFF_LIMPEZA_HISTORICO_GIT.md)
 - [Storage audit — phase 1](operations/storage-audit.md)
+- Node-RED layout before standardisation (2026-09, Portuguese): [audit](archive/node-red-layout-audit-2026-09.md) and [pre-existing blockers](archive/node-red-layout-validation-blockers-2026-09.md)
 - Local AI benchmarks: [2026-08-16](LOCAL_AI_BENCHMARK_2026-08-16.md),
   [high potential](LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md),
   [quality bake-off](LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md), and

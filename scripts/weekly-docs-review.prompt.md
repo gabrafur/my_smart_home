@@ -112,7 +112,7 @@ A revisão cobre toda a documentação humana versionada, não só `docs/`:
   `THIRD_PARTY_NOTICES.pt-BR.md`;
 - `docs/**/*.md`, `docs/i18n-manifest.json` e `docs/CHANGELOG.md`;
 - READMEs e guias Markdown ao lado do código em `scripts/`, `nodered/tools/`,
-  `restore/`, `reports/`, `local-ai-integration/` e `local-ai-research/`
+  `restore/`, `local-ai-integration/` e `local-ai-research/`
   (exceto `local-ai-research/benchmarks/**` e `*.prompt.md`);
 - `.github/PULL_REQUEST_TEMPLATE.md` e `.github/ISSUE_TEMPLATE/*.md`;
 - `MEMORY.md` e `.codex/memories/**`.

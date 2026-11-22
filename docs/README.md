@@ -80,6 +80,7 @@ placeholders.
 - [Auditoria do repositório público](AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Handoff da limpeza do histórico](HANDOFF_LIMPEZA_HISTORICO_GIT.md)
 - [Auditoria de armazenamento — fase 1](operations/storage-audit.md)
+- Layout do Node-RED antes da padronização (2026-09): [auditoria](archive/node-red-layout-audit-2026-09.md) e [bloqueios preexistentes](archive/node-red-layout-validation-blockers-2026-09.md)
 - Benchmarks de Local AI: [2026-08-16](LOCAL_AI_BENCHMARK_2026-08-16.md),
   [alto potencial](LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md),
   [bake-off de qualidade](LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md) e

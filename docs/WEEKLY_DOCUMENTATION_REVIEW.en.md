@@ -79,7 +79,7 @@ The routine maintains documentation in general, not only `docs/`:
   [changelog](CHANGELOG.md), appending the month's `feat`/`perf` entries and
   `fix` count;
 - READMEs and Markdown guides beside code (`scripts/`, `nodered/tools/`,
-  `restore/`, `reports/`, `local-ai-integration/`, `local-ai-research/`),
+  `restore/`, `local-ai-integration/`, `local-ai-research/`),
   PR/issue templates, and public memories;
 - separation between current behavior and dated incident history, with the
   same facts in the Portuguese and English versions;

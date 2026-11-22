@@ -157,7 +157,7 @@ const reviewRootDocuments = new Set([
 // Human documentation that lives beside code. Agent instructions (AGENTS.md,
 // .codex/instructions), prompts, frozen benchmarks and vendored components stay out.
 const reviewCodeSideDocumentPrefixes = [
-  "local-ai-integration/", "local-ai-research/", "nodered/tools/", "reports/", "restore/", "scripts/",
+  "local-ai-integration/", "local-ai-research/", "nodered/tools/", "restore/", "scripts/",
 ];
 
 export function isAllowedReviewPath(file) {
