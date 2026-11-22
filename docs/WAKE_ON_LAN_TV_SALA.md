@@ -1,5 +1,7 @@
 # Wake-On-LAN explícito — TV Sala (Samsung QN90BA)
 
+[Português (principal)](WAKE_ON_LAN_TV_SALA.md) · [English](WAKE_ON_LAN_TV_SALA.en.md)
+
 ## Contexto
 
 A integração `samsungtv` do Home Assistant enviava magic packets de

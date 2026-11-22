@@ -76,6 +76,7 @@
     { "id": "root-readme", "area": "overview", "strategy": "full pair", "pt": "README.pt-BR.md", "en": "README.md" },
     { "id": "changelog", "area": "overview", "strategy": "full pair", "format": "bilingual-single-file", "path": "docs/CHANGELOG.md", "languages": ["pt-BR", "en"] },
     { "id": "alarm-house", "area": "features", "strategy": "full pair", "pt": "docs/ALARME_CASA_NODERED.md", "en": "docs/ALARME_CASA_NODERED.en.md" },
+    { "id": "tv-wake-on-lan", "area": "features", "strategy": "full pair", "pt": "docs/WAKE_ON_LAN_TV_SALA.md", "en": "docs/WAKE_ON_LAN_TV_SALA.en.md" },
     { "id": "garage-gate-pulse", "area": "features", "strategy": "full pair", "pt": "docs/PORTAO_GARAGEM_BOTAO_PULSO.md", "en": "docs/PORTAO_GARAGEM_BOTAO_PULSO.en.md" },
     { "id": "global-failure-observer", "area": "operations", "strategy": "full pair", "pt": "docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md", "en": "docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.en.md" },
     { "id": "mcp-household-tools", "area": "operations", "strategy": "full pair", "pt": "docs/raspberry-mcp/reference/household-lights.md", "en": "docs/raspberry-mcp/reference/household-lights.en.md" },
@@ -143,7 +144,6 @@
     { "path": "docs/VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/VPN_HEALTH_NOTIFICATIONS.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
-    { "path": "docs/WAKE_ON_LAN_TV_SALA.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
 
     { "path": "docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
     { "path": "docs/HANDOFF_LIMPEZA_HISTORICO_GIT.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
