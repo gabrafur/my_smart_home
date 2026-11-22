@@ -1,5 +1,7 @@
 # Alarme da casa (Node-RED)
 
+[Português (principal)](ALARME_CASA_NODERED.md) · [English](ALARME_CASA_NODERED.en.md)
+
 Flow `alarme_casa` (`nodered/flows.json`, tab `alarm_house_tab`). Ele é a fonte
 canônica para decidir, registrar e executar armamento/desarmamento pelo binding
 lógico `security_panel`. A política, as decisões, os retries, os gates de teste

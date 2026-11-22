@@ -1,5 +1,7 @@
 # Luzes e ações da casa pelo MCP
 
+[Português (principal)](household-lights.md) · [English](household-lights.en.md)
+
 A Eva lê e aciona um conjunto fixo de luzes da casa por duas ferramentas MCP:
 
 - `ha_lights_read` lista as luzes registradas com o estado atual no Home Assistant
@@ -71,9 +73,6 @@ conector ChatGPT -> túnel -> frontend raspberry-mcp@ (sem rede)
 - `maintenance_capabilities` ganha um bloco `household_lights` com as ferramentas
   e os alvos. O `no_actuators` do broker selado de diagnóstico continua valendo
   para as ferramentas de diagnóstico e manutenção e não é reescrito.
-- O token é o long-lived existente, com direitos de administrador no Home
-  Assistant; o broker o limita aos switches registrados. Um usuário dedicado de
-  menor privilégio no Home Assistant é um endurecimento possível.
 
 ## Operação
 

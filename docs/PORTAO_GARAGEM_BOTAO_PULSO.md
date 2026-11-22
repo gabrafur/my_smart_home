@@ -1,5 +1,7 @@
 # Portão da garagem — pulso único no Node-RED
 
+[Português (principal)](PORTAO_GARAGEM_BOTAO_PULSO.md) · [English](PORTAO_GARAGEM_BOTAO_PULSO.en.md)
+
 Complemento de [`PORTAO_GARAGEM_RELE_LOCAL.md`](PORTAO_GARAGEM_RELE_LOCAL.md).
 O Node-RED é o único controlador do pulso físico; o Home Assistant mantém apenas
 a entidade do botão no dashboard e uma proteção independente para relé preso.

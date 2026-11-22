@@ -44,7 +44,7 @@ and uncertain-delivery blocking remain in force. A bounded sanitized reply must
 be proven later than delivery; exact acknowledgement, turn completion and
 household recovery remain separate evidence.
 
-The [household lights and actions tools](reference/household-lights.md)
+The [household lights and actions tools](reference/household-lights.en.md)
 start with `ha_lights_read`/`ha_light_set` for the lights registered in a Root
 policy, confirmed by readback. `ha_actions_read`/`ha_action_run` add a few
 registered actions (air conditioner, PC shutdown, and a rate-limited garage-gate

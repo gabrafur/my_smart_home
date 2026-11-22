@@ -1,5 +1,7 @@
 # Notificações globais de falha do Node-RED
 
+[Português (principal)](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) · [English](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.en.md)
+
 O tab `observabilidade_global` centraliza falhas de todas as abas funcionais do
 Node-RED. Cada incidente de produção chama o hub móvel somente para
 `resident_primary` e o hub persistente com um ID estável. Os detalhes de
