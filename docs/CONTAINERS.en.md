@@ -262,31 +262,20 @@ It never reboots automatically. The other containers follow a successful Core an
 also a Core refused by the compatibility gate (`unsupported_*`,
 `compatibility_unconfirmed`, `compatibility_probe_timeout`), which runs before any
 compose or service change; the failure alert is kept. Any other Core failure holds
-them (from 09/11 to 17/11/2026 an iCloud gate on Core blocked every other update).
+them.
 
-On the first scheduled execution, on October 14, 2026, the consistent capture
-restarted Home Assistant and Backup Manager was still `blocked` when the worker
-requested generation 15 seconds later. No new Compose copy was created,
-retention did not run, and updates remained blocked. The worker now queries
-`backup/info`, waits up to 180 seconds for `idle`, and only then sends exactly
-one `backup/generate`; persistent startup, another active backup, a query
-failure, or an agent error ends the stage with a specific diagnosis and keeps
-updates blocked.
+Before generating the copy, the worker queries `backup/info`, waits up to 180
+seconds for `idle`, and only then sends exactly one `backup/generate`;
+persistent startup, another active backup, a query failure, or an agent error
+ends the stage with a specific diagnosis and keeps updates blocked.
 
-A consistent capture still requires stopping seven services; the observed run
-took about 28 seconds for containers to return and about 53 seconds for the last
-readiness probe. The versioned configuration moves the whole chain to 01:00 in
-Node-RED's `TZ` (BRT in this installation),
-before the 03:00 jobs, HA's roughly 04:45-05:45 automatic-backup window, and
-storage maintenance at 06:23. The ten-minute limit and restoration priority
-remain unchanged. The 01:00 schedule in Node-RED's `TZ` was loaded on October
-14, 2026. The first automatic cycle ran on October 15: Git succeeded with no
-changes, but the off-site stage failed at its final retention-registry write
-because `.local-state` is root-owned. The remote backup had passed the worker's
-checks; no final receipt, pruning, or following update stage completed. The
-registry path now uses private, writable `.local-secrets`, with a safe read
-fallback for an existing legacy registry. The next scheduled cycle remains to
-be observed; no manual cycle was dispatched.
+A consistent capture stops seven services (about 28 seconds for containers to
+return and 53 seconds for the last readiness probe in the observed run). The
+chain runs at 01:00 in Node-RED's `TZ`, before the 03:00 jobs, Home Assistant's
+automatic-backup window (roughly 04:45-05:45), and storage maintenance at 06:23.
+The ten-minute limit and restoration priority remain. The retention registry
+lives in private, writable `.local-secrets`, with a compatibility read of an
+existing legacy registry.
 The approved retention applies only to the Compose series created by this
 routine and caps it at 90 copies or 90 days. Pruning runs only after a newly
 verified external copy, preserves the newest one, and requires an exact match
@@ -361,6 +350,23 @@ actual image IDs: a digest already present in the file does not prove that the
 container was updated. Validation and updater npm installations use `umask 022`
 only for public packages so the different host and container users can read
 them; the caller's private mask is preserved outside that installation.
+
+### Daily chain incident history
+
+Dated records that explain the current behavior described above:
+
+- 2026-10-14, first scheduled run: the consistent capture restarted Home
+  Assistant and Backup Manager was still `blocked` when the worker requested
+  generation 15 seconds later. No copy was created, retention did not run, and
+  updates stayed blocked. Origin of the wait for `idle`.
+- 2026-10-14: the chain moved to 01:00 in Node-RED's `TZ`.
+- 2026-10-15, first automatic cycle: Git succeeded with no changes, but the
+  off-site stage failed at its final retention-registry write because
+  `.local-state` is root-owned. The remote copy had passed its checks; no final
+  receipt, pruning, or updates followed. Origin of the `.local-secrets` registry.
+- 2026-11-09 to 2026-11-17: an iCloud gate on Core blocked every other update.
+  Origin of the rule that lets the other containers proceed when the
+  compatibility gate refuses Core.
 
 ### Readiness and recovery after recreation
 

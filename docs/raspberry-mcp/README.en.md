@@ -7,6 +7,7 @@ server to AI clients. Authority stays in the local Root policy (fixed targets,
 quotas, identities, expiry and durable receipts) whichever client connects.
 The canonical, detailed documentation is in Portuguese; this page summarizes it.
 
+## Capabilities and limits
 
 The [closed Node-RED reader binding catalogue](reference/nodered-reader-binding.md)
 can preview and replace one derived container return peer for the diagnostics

@@ -20,7 +20,8 @@ household state.
 [Try it in five minutes](#try-it-in-five-minutes) ·
 [Fork it for your home](#fork-it-for-your-home) ·
 [Documentation](docs/README.en.md) ·
-[Engineering tour](docs/ENGINEERING_TOUR.md)
+[Engineering tour](docs/ENGINEERING_TOUR.md) ·
+[Changelog](docs/CHANGELOG.md)
 
 ## Why this project exists
 

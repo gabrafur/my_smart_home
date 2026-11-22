@@ -20,7 +20,8 @@ assistida por agentes — sem misturar código público com estado da residênci
 [Teste em 5 minutos](#teste-em-5-minutos) ·
 [Faça um fork para a sua casa](#faça-um-fork-para-a-sua-casa) ·
 [Documentação](docs/README.md) ·
-[Tour técnico](docs/ENGINEERING_TOUR.pt-BR.md)
+[Tour técnico](docs/ENGINEERING_TOUR.pt-BR.md) ·
+[Changelog](docs/CHANGELOG.md)
 
 ## Por que este projeto existe
 

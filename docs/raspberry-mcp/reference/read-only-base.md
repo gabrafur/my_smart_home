@@ -349,7 +349,7 @@ Não confundir esses testes com execução de mutações na residência. A suít
 pública completa e CI não foram executadas nesta etapa; não houve commit/push.
 
 O contrato da extensão de tarefas Codex, reconciliação de criação e listagem
-restrita de threads está em [RASPBERRY_CODEX_TASKS.md](task-control.md).
+restrita de threads está em [controle de tarefas](task-control.md).
 
 ## Guias públicos revisados
 

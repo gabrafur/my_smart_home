@@ -13,6 +13,7 @@ placeholders.
 | Documento | Quando usar | Inglês |
 | --- | --- | --- |
 | [Tour técnico de portfólio](ENGINEERING_TOUR.pt-BR.md) | Caminhos de evidência para 30 segundos, 5 minutos e 15 minutos | [English](ENGINEERING_TOUR.md) |
+| [Changelog](CHANGELOG.md) | Novidades e desempenho por mês, a partir dos commits | bilíngue no mesmo arquivo |
 | [Instalação e restauração](INSTALACAO_RESTAURACAO_SMART_HOME.md) | Clone novo, recuperação ou migração de host | [English](INSTALLATION_RESTORE.en.md) |
 | [Contrato determinístico de restore](RESTORE_CONTRACT.md) | Manifesto, bundle, plan/verify/apply e contexto da IA | [English](RESTORE_CONTRACT.en.md) |
 | [Bootstrap, módulos e demo](BOOTSTRAP_DEMO.md) | Clone mínimo, features opcionais e cenário sintético | [English](BOOTSTRAP_DEMO.en.md) |
@@ -122,7 +123,7 @@ cronologia residencial, nomes, rotas ou identificadores privados.
 
 Diagnósticos, evidências e limites das operações:
 
-- [RASPBERRY_MCP_EVIDENCE_STAGE2](raspberry-mcp/maintenance/evidence-stage2.md)
-- [RASPBERRY_MCP_MAINTENANCE_MATRIX](raspberry-mcp/maintenance/matrix.md)
-- [RASPBERRY_MCP_MAINTENANCE_STAGE1](raspberry-mcp/maintenance/stage1.md)
-- [RASPBERRY_MCP_OPERATIONS_PROPOSAL](raspberry-mcp/maintenance/proposals.md)
+- [Evidências da etapa 2](raspberry-mcp/maintenance/evidence-stage2.md)
+- [Matriz de manutenção](raspberry-mcp/maintenance/matrix.md)
+- [Etapa 1 da manutenção](raspberry-mcp/maintenance/stage1.md)
+- [Propostas de operação](raspberry-mcp/maintenance/proposals.md)

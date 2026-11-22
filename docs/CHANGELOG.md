@@ -1,7 +1,5 @@
 # Changelog
 
-[Português](#como-ler--how-to-read) · [English](#como-ler--how-to-read)
-
 ## Como ler / How to read
 
 Mudanças relevantes para quem usa ou faz fork do projeto, por mês, a partir dos

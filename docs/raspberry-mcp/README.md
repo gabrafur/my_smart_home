@@ -1,5 +1,7 @@
 # MCP Raspberry
 
+[Português (principal)](README.md) · [English summary](README.en.md)
+
 O MCP expõe observações e operações delimitadas do servidor residencial. O
 cliente de IA pode mudar; a autoridade continua na política local, com os mesmos
 alvos, cotas, identidades, validade e registros duráveis. Esta documentação não
