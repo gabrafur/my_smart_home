@@ -63,6 +63,15 @@ The original public metadata of these exact bytes is preserved.
 Synthetic values and logical roles have explicit
 negative fixtures instead of implicit exceptions.
 
+The `retired-personal-identifier` rule rejects personal identifiers that were
+already removed (for example names in `/home/<account>` paths, action targets
+or SSH hosts). The scanner stores only the length and SHA-256 of the word,
+splits text into letter-only words (including camelCase boundaries) and
+compares hashes. Those values were replaced by the `host_operator` and
+`workstation_primary` roles described in
+[host identity roles](raspberry-mcp/reference/host-identity-roles.md)
+(Portuguese runbook).
+
 An optional private denylist may be supplied through `PRIVACY_DENYLIST_FILE`.
 It is Git-ignored and its values are never printed. Privacy and security scanner
 findings contain only rule, file, line, and category.

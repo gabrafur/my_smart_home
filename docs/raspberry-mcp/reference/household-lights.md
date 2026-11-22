@@ -29,7 +29,7 @@ broker, rota e socket:
 | Alvo | Ação | O que o Home Assistant executa | Confirmação |
 | --- | --- | --- | --- |
 | `ar_condicionado_escritorio` | `on` / `off` | `switch.turn_on/off` em `switch.ar_condicionado_escritorio_power` | estado lido de volta |
-| `pc_gabriel` | `poweroff` | `script.turn_on` em `script.pc_desligar` | só que o script rodou; o PC não é lido |
+| `workstation_primary` | `poweroff` | `script.turn_on` em `script.pc_desligar` | só que o script rodou; o PC não é lido |
 | `portao_garagem` | `pulse` | `button.press` em `button.acionar_portao_da_garagem` | só que o botão registrou o pulso |
 
 O serviço fica fixo pelo tipo da ação (`power`, `poweroff`, `pulse`); a política só
@@ -97,6 +97,15 @@ A v3 foi instalada pelo operador Root `closure-claude-1720/ha-lights-r3/deploy.p
 `lights-route.mjs`; imagens anteriores em `BEFORE-V2`; `rollback` volta à v2). O broker
 roda por conexão, então não reinicia serviço; o frontend carrega a rota nova na
 conexão seguinte (reiniciar `raspberry-mcp-tunnel.service`).
+
+## Papel `workstation_primary` (22/11/2026)
+
+O alvo de desligar o PC passou a ser o papel lógico `workstation_primary`; o nome
+pessoal anterior saiu da política e da rota rastreadas. Um alias temporário,
+privado e opcional pode ser renderizado na instalação para prompts que ainda usem
+o nome antigo: a rota o aceita, converte para `workstation_primary` antes do
+broker e o lista em `deprecated_action_aliases`. Redeploy, verificação e
+remoção do alias estão em [papéis lógicos do host](host-identity-roles.md).
 
 ## Controle de toda a casa (v4, 20/11/2026)
 

@@ -24,6 +24,7 @@ import fcntl
 import hashlib
 import json
 import os
+import pwd
 import re
 import socket
 import stat
@@ -35,8 +36,10 @@ import urllib.request
 from pathlib import Path
 
 ENROLLMENT = Path('/etc/raspberry-task-control/peer-attestor-enrollment.json')
-SOCKET = Path('/home/gabriel/.codex/app-server-control/app-server-control.sock')
-PACKAGE = Path('/home/gabriel/.local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/package.json')
+# Relative to the host_operator home, which comes from the Root-sealed enrollment (the uid that
+# owns the daemon executable); no account name or home path is tracked here.
+CONTROL_SOCKET = Path('.codex/app-server-control/app-server-control.sock')
+PACKAGE_JSON = Path('.local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/package.json')
 LOCK = Path('/run/raspberry-task-peer-attest.lock')
 STATE = Path('/var/lib/raspberry-task-peer-reenroll')
 REGISTRY = 'https://registry.npmjs.org/@openai%2fcodex/'
@@ -141,8 +144,22 @@ def sealed_enrollment():
     return ENROLLMENT.read_bytes()
 
 
+def operator_home(identity, getpwuid=pwd.getpwuid):
+    """host_operator home of the enrolled daemon owner (uid from the sealed enrollment)."""
+    uid = identity.get('executable_uid') if type(identity) is dict else None
+    need(type(uid) is int and not isinstance(uid, bool) and uid > 0, 'enrollment_operator_uid_invalid')
+    try:
+        home = getpwuid(uid).pw_dir.rstrip('/')
+    except KeyError:
+        raise Refused('enrollment_operator_unknown') from None
+    need(home.startswith('/') and len(home) > 1 and '/../' not in home + '/' and '\0' not in home,
+         'enrollment_operator_home_invalid')
+    return Path(home)
+
+
 def observe(identity, cgroup_expected, cache=None):
     """Live peer behind the enrolled socket; mirrors the attestor's checks except the hash pin."""
+    SOCKET = operator_home(identity) / CONTROL_SOCKET
     link = SOCKET.lstat()
     need(stat.S_ISLNK(link.st_mode) and link.st_uid == identity['executable_uid'], 'socket_link_changed')
     target = os.readlink(SOCKET)
@@ -188,8 +205,8 @@ def observe(identity, cgroup_expected, cache=None):
     return {'pid': pid, 'sha256': digest, 'size': st.st_size, 'stat': key, 'socket': [t.st_dev, t.st_ino]}
 
 
-def installed_version():
-    fd = os.open(PACKAGE, os.O_RDONLY | os.O_NOFOLLOW)
+def installed_version(identity):
+    fd = os.open(operator_home(identity) / PACKAGE_JSON, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(fd, 'rb') as h:
         meta = json.loads(h.read(65537))
     version = meta.get('version') if type(meta) is dict else None
@@ -282,7 +299,7 @@ def run(clock=time.time):
         return dict(result, state='current')
     if backoff_active(last.get('last_attempt'), peer['sha256'], clock):
         return dict(result, state='backoff', last_attempt=last.get('last_attempt'))
-    version = installed_version()
+    version = installed_version(ident)
     attempt = {'live_sha256': peer['sha256'], 'version': version, 'at': result['at'], 'at_epoch': result['at_epoch']}
     try:
         published = registry_identity(version, STATE)
@@ -330,7 +347,7 @@ def check_provenance():
     cfg = json.loads(raw)
     ident = cfg['daemon_identity']
     peer = observe(ident, cfg['daemon_cgroup'], read_status().get('hash_cache'))
-    version = installed_version()
+    version = installed_version(ident)
     published = registry_identity(version, STATE)
     return {'state': 'provenance_confirmed' if published == (peer['sha256'], peer['size']) ==
             (ident['executable_sha256'], ident['executable_size']) else 'provenance_mismatch',

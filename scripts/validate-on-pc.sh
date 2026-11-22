@@ -16,10 +16,11 @@
 #
 # Usage: scripts/validate-on-pc.sh [make-target]      (default: validate-public)
 # Exit:  0 passed, 1 failed on the PC, 3 PC unavailable (fall back to the Pi, say so).
-# Env:   VALIDATION_PC (default pc-gabriel, an SSH host reaching the Windows OpenSSH).
+# Env:   VALIDATION_PC (default workstation-primary: an SSH alias for the workstation_primary role,
+#        defined in the operator's private ~/.ssh/config and reaching the Windows OpenSSH).
 set -u
 target=${1:-validate-public}
-host=${VALIDATION_PC:-pc-gabriel}
+host=${VALIDATION_PC:-workstation-primary}
 ssh_opts="-o BatchMode=yes -o ConnectTimeout=6 -o ServerAliveInterval=20"
 cd "$(git rev-parse --show-toplevel)" || exit 2
 log=$(mktemp) && trap 'rm -f "$log"' EXIT

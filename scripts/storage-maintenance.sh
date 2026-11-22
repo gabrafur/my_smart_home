@@ -21,7 +21,18 @@ APT_GET_BIN="${STORAGE_MAINTENANCE_APT_GET_BIN-apt-get}"
 NPM_BIN="${STORAGE_MAINTENANCE_NPM_BIN-npm}"
 PYTHON_BIN="${STORAGE_MAINTENANCE_PYTHON_BIN-python3}"
 SQLITE3_BIN="${STORAGE_MAINTENANCE_SQLITE3_BIN-sqlite3}"
-USER_HOME="${STORAGE_MAINTENANCE_USER_HOME-/home/gabriel}"
+# host_operator home: explicit override, else the caller's HOME, else (root) the home of the
+# account that owns the checkout. No account name is tracked; unresolved stays empty and the
+# preflight refuses it as user-home.
+resolve_user_home() {
+  if [[ -n ${STORAGE_MAINTENANCE_USER_HOME+x} ]]; then printf '%s' "$STORAGE_MAINTENANCE_USER_HOME"; return 0; fi
+  if (( EUID != 0 )); then printf '%s' "${HOME-}"; return 0; fi
+  local owner
+  owner=$(stat -c %U -- "$REPO_ROOT" 2>/dev/null) || return 0
+  [[ $owner != root ]] || return 0
+  getent passwd "$owner" 2>/dev/null | cut -d: -f6 || true
+}
+USER_HOME=$(resolve_user_home)
 USER_CACHE_ROOT="${STORAGE_MAINTENANCE_USER_CACHE_ROOT-$USER_HOME/.cache}"
 NPM_CACHE_ROOT="${STORAGE_MAINTENANCE_NPM_CACHE_ROOT-$USER_HOME/.npm}"
 PM2_ROOT="${STORAGE_MAINTENANCE_PM2_ROOT-$USER_HOME/.pm2}"

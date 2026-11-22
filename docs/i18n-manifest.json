@@ -66,6 +66,7 @@
     {"path": "docs/raspberry-mcp/reference/household-lights.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/raspberry-mcp/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/home-assistant-states.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/raspberry-mcp/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/codex-peer-reenrollment.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/raspberry-mcp/README.en.md"},
+    {"path": "docs/raspberry-mcp/reference/host-identity-roles.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/raspberry-mcp/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/task-observation.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/raspberry-mcp/README.en.md"},
     {"path": "docs/raspberry-mcp/reference/workspace-communication.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/raspberry-mcp/README.en.md"},
     {"path": "docs/raspberry-mcp/tools.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/raspberry-mcp/README.en.md"},

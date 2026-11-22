@@ -370,7 +370,7 @@ Em timers systemd, atribuição vazia de uma diretiva de disparo limpa toda a li
 
 <!-- /memory-record -->
 
-<!-- memory-record {"id":"imagem-canonica-do-auxiliar-de-seguranca","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-11-02","evidence":[{"file":"scripts/setup-node-red-security.mjs","sha256":"d775dc5f483addbe6483d17d31e48e575b9cd52c7e256d665d115874d8beb665"},{"file":"scripts/storage-maintenance.test.mjs","sha256":"33cea40585815823a8d13ade98642a9e4a01f552b02075c7411c9ad6cc4abadd"}]} -->
+<!-- memory-record {"id":"imagem-canonica-do-auxiliar-de-seguranca","category":"KNOWN_FAILURE_MODE","kind":"VERIFIED_FACT","last_verified":"2026-11-22","evidence":[{"file":"scripts/setup-node-red-security.mjs","sha256":"d775dc5f483addbe6483d17d31e48e575b9cd52c7e256d665d115874d8beb665"},{"file":"scripts/storage-maintenance.test.mjs","sha256":"e8de46b59e00430e7f3ee08b20618c8cf220be079345a028882f127c0da9930e"}]} -->
 ## Imagem canônica do auxiliar de segurança Node-RED
 
 O auxiliar de segurança resolve a imagem Node-RED diretamente do serviço canônico no Compose, exigindo o repositório esperado e digest SHA-256. Não deve manter uma segunda cópia literal do digest: uma atualização automática do Compose deixaria o auxiliar obsoleto e bloquearia a validação do backup. A regressão cobre o digest atual, mudança para outro digest, ausência, duplicação e referências não fixadas. Não é necessário executar o auxiliar nem alterar credenciais para validar esse contrato.

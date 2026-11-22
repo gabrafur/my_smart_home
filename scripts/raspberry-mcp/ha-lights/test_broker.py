@@ -149,11 +149,11 @@ class ActionTests(unittest.TestCase):
 
     def test_pc_poweroff_runs_only_the_registered_script_once(self):
         ha = FakeHA({'script.pc_desligar': 'off'})
-        r = self.run_req(actreq('pc_gabriel', 'poweroff'), ha)
+        r = self.run_req(actreq('workstation_primary', 'poweroff'), ha)
         self.assertEqual((r['state'], r['command_sent']), ('confirmed', True))
         self.assertEqual(ha.calls, [('script', 'turn_on', 'script.pc_desligar')])
         self.assertIn('effect_unverified', r)
-        self.assertEqual(self.run_req(actreq('pc_gabriel', 'poweroff'), ha)['reason'], 'minimum_spacing')
+        self.assertEqual(self.run_req(actreq('workstation_primary', 'poweroff'), ha)['reason'], 'minimum_spacing')
 
     def test_gate_pulse_is_one_press_with_spacing_and_hourly_limit(self):
         ha = FakeHA({'button.acionar_portao_da_garagem': 'unknown'})
@@ -180,7 +180,7 @@ class ActionTests(unittest.TestCase):
 
     def test_actions_are_closed_to_other_verbs_targets_and_fields(self):
         ha = FakeHA({'button.acionar_portao_da_garagem': 'unknown', 'switch.rele_acionador_portao': 'off'})
-        for req in (actreq('portao_garagem', 'open'), actreq('portao_garagem', 'on'), actreq('pc_gabriel', 'reboot'),
+        for req in (actreq('portao_garagem', 'open'), actreq('portao_garagem', 'on'), actreq('workstation_primary', 'reboot'),
                     actreq('rele_acionador_portao', 'pulse'), actreq('ar_condicionado_escritorio', 'pulse'),
                     {'name': 'ha_action_run', 'arguments': {'host': 'raspberry', 'target': 'portao_garagem', 'action': 'pulse', 'entity_id': 'x.y'}}):
             self.assertEqual(self.run_req(req, ha)['state'], 'refused')
@@ -199,7 +199,7 @@ class ActionTests(unittest.TestCase):
         self.clock.t += 5
         self.assertEqual(self.run_req(setreq(), ha)['state'], 'confirmed')
         read = self.run_req({'name': 'ha_actions_read', 'arguments': {'host': 'raspberry'}}, FakeHA({'button.acionar_portao_da_garagem': 'unknown', 'script.pc_desligar': 'off', 'switch.ar_condicionado_escritorio_power': 'on'}))
-        self.assertEqual([x['target'] for x in read['actions']], ['ar_condicionado_escritorio', 'pc_gabriel', 'portao_garagem'])
+        self.assertEqual([x['target'] for x in read['actions']], ['ar_condicionado_escritorio', 'portao_garagem', 'workstation_primary'])
         self.assertTrue(all(x['available'] for x in read['actions']))
 
 
@@ -225,7 +225,7 @@ class HouseTests(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.ledger = b.Ledger(self.dir.name)
         self.clock = Clock()
-        self.ha = HouseHA({'media_player.gabriel_s_fire_tv': 'idle', 'light.sala': 'off', 'lock.porta': 'locked',
+        self.ha = HouseHA({'media_player.example_living_room_tv': 'idle', 'light.sala': 'off', 'lock.porta': 'locked',
                            'switch.rele_acionador_portao': 'off', 'script.raspberry_desligar': 'off',
                            'button.zigbee2mqtt_bridge_restart': 'unknown', 'sensor.temp': '20'})
 
@@ -233,9 +233,9 @@ class HouseTests(unittest.TestCase):
         return b.handle(req, policy, self.ha, self.ledger, self.clock, self.clock.sleep)
 
     def test_tv_service_call_with_data_and_readback_for_lights(self):
-        r = self.run_req(hreq('media_player', 'volume_set', 'media_player.gabriel_s_fire_tv', {'volume_level': 0.2}))
+        r = self.run_req(hreq('media_player', 'volume_set', 'media_player.example_living_room_tv', {'volume_level': 0.2}))
         self.assertEqual((r['state'], r['command_sent']), ('accepted', True))
-        self.assertEqual(self.ha.calls[0], ('media_player', 'volume_set', 'media_player.gabriel_s_fire_tv', {'volume_level': 0.2}))
+        self.assertEqual(self.ha.calls[0], ('media_player', 'volume_set', 'media_player.example_living_room_tv', {'volume_level': 0.2}))
         self.clock.t += 2
         self.assertEqual(self.run_req(hreq('light', 'turn_on', 'light.sala'))['state'], 'confirmed')
 
@@ -256,7 +256,7 @@ class HouseTests(unittest.TestCase):
 
     def test_entities_read_filters_and_hides_denied(self):
         r = self.run_req({'name': 'ha_entities_read', 'arguments': {'host': 'raspberry', 'search': 'tv'}})
-        self.assertEqual([x['entity_id'] for x in r['entities']], ['media_player.gabriel_s_fire_tv'])
+        self.assertEqual([x['entity_id'] for x in r['entities']], ['media_player.example_living_room_tv'])
         every = self.run_req({'name': 'ha_entities_read', 'arguments': {'host': 'raspberry'}})
         ids = [x['entity_id'] for x in every['entities']]
         self.assertNotIn('switch.rele_acionador_portao', ids)

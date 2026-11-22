@@ -52,9 +52,14 @@ def main():
     if sys.argv[1:]==['--child']:child();return
     if sys.argv[1:] or os.geteuid()!=0:raise SystemExit('Run this fixed probe with sudo locally.')
     script=Path(__file__).resolve()
+    # The probe runs as the host_operator account (RASPBERRY_HOST_OPERATOR or SUDO_USER).
+    sys.path.insert(0,str(script.parent))
+    import host_operator
+    try:operator=host_operator.resolve()['user']
+    except host_operator.OperatorUnresolved as error:raise SystemExit(str(error))
     for limit in (8,32):
         args=['systemd-run','--quiet','--wait','--pipe','--collect','--unit=raspberry-mcp-diagnostic-probe-'+str(limit)]
-        properties=['User=gabriel','Group=raspberry-mcp','NoNewPrivileges=yes','CapabilityBoundingSet=',
+        properties=['User='+operator,'Group=raspberry-mcp','NoNewPrivileges=yes','CapabilityBoundingSet=',
           'ProtectSystem=strict','ProtectHome=yes','PrivateNetwork=yes','PrivateDevices=yes','PrivateTmp=yes',
           'RestrictAddressFamilies=AF_UNIX','RestrictSUIDSGID=yes','LockPersonality=yes',
           'ProtectKernelTunables=yes','ProtectKernelModules=yes','ProtectControlGroups=yes',

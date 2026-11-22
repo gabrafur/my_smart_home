@@ -11,13 +11,18 @@ export const lightDescriptors=[
   inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},target:{type:'string',enum:TARGETS},state:{type:'string',enum:['on','off']}},required:['host','target','state']},
   annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:true}},
 ];
-const ACTIONS={ar_condicionado_escritorio:['on','off'],pc_gabriel:['poweroff'],portao_garagem:['pulse']};
+const ACTIONS={ar_condicionado_escritorio:['on','off'],workstation_primary:['poweroff'],portao_garagem:['pulse']};
+// Deprecated target names kept only during a migration window. The tracked source is always
+// empty; the Root installer renders private aliases into this exact line (see ../host-identity/migrate.py).
+const LEGACY_ACTION_ALIASES=Object.freeze({});
+const canonicalAction=t=>typeof t==='string'?(Object.hasOwn(ACTIONS,t)?t:Object.hasOwn(LEGACY_ACTION_ALIASES,t)&&Object.hasOwn(ACTIONS,LEGACY_ACTION_ALIASES[t])?LEGACY_ACTION_ALIASES[t]:undefined):undefined;
+const ACTION_NAMES=[...Object.keys(ACTIONS),...Object.keys(LEGACY_ACTION_ALIASES).filter(canonicalAction)];
 export const actionDescriptors=[
  {name:'ha_actions_read',description:'Read the registered household actions and whether each can run now: office air conditioner (on/off state), PC shutdown and garage gate pulse. Omit target to list all. Read only.',
-  inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},target:{anyOf:[{type:'string',enum:Object.keys(ACTIONS)},{type:'null'}]}},required:['host']},
+  inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},target:{anyOf:[{type:'string',enum:ACTION_NAMES},{type:'null'}]}},required:['host']},
   annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false}},
- {name:'ha_action_run',description:'Run one registered household action through Home Assistant. ar_condicionado_escritorio: action on or off (state read back). pc_gabriel: action poweroff shuts the owner PC down (not read back). portao_garagem: action pulse sends ONE pulse to the garage gate button, which runs the next step of the gate cycle (open, stop or close); the gate has no position sensor, so only call it when the owner asked to open or close the gate, and never repeat it after uncertain/unconfirmed: observe with ha_actions_read. Rate limited per action.',
-  inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},target:{type:'string',enum:Object.keys(ACTIONS)},action:{type:'string',enum:['on','off','poweroff','pulse']}},required:['host','target','action']},
+ {name:'ha_action_run',description:'Run one registered household action through Home Assistant. ar_condicionado_escritorio: action on or off (state read back). workstation_primary: action poweroff shuts the primary workstation (owner PC) down (not read back); any other listed name is a deprecated alias of it. portao_garagem: action pulse sends ONE pulse to the garage gate button, which runs the next step of the gate cycle (open, stop or close); the gate has no position sensor, so only call it when the owner asked to open or close the gate, and never repeat it after uncertain/unconfirmed: observe with ha_actions_read. Rate limited per action.',
+  inputSchema:{type:'object',additionalProperties:false,properties:{host:{type:'string',enum:['raspberry']},target:{type:'string',enum:ACTION_NAMES},action:{type:'string',enum:['on','off','poweroff','pulse']}},required:['host','target','action']},
   annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:true}},
 ];
 const DOMAINS=['light','switch','fan','climate','media_player','cover','vacuum','remote','button','scene','script','input_boolean','input_button','number','select','lock','alarm_control_panel'];
@@ -35,8 +40,8 @@ export function validLightArgs(name,a){
  if(!plain(a)||a.host!=='raspberry')return false;
  if(name==='ha_entities_read')return Object.keys(a).every(k=>['host','domain','search'].includes(k))&&(a.domain==null||DOMAINS.includes(a.domain))&&(a.search==null||(typeof a.search==='string'&&a.search.length>0&&a.search.length<=64));
  if(name==='ha_service_call')return Object.keys(a).every(k=>['host','domain','service','entity_id','data'].includes(k))&&DOMAINS.includes(a.domain)&&typeof a.service==='string'&&/^[a-z_]{1,48}$/.test(a.service)&&typeof a.entity_id==='string'&&/^[a-z_]{1,32}\.[a-z0-9_]{1,96}$/.test(a.entity_id)&&a.entity_id.split('.')[0]===a.domain&&(a.data===undefined||(plain(a.data)&&Object.keys(a.data).length<=8&&Object.values(a.data).every(v=>['string','number','boolean'].includes(typeof v)||(Array.isArray(v)&&v.length<=4&&v.every(x=>typeof x==='number')))));
- if(name==='ha_actions_read')return Object.keys(a).every(k=>['host','target'].includes(k))&&(a.target===undefined||a.target===null||Object.hasOwn(ACTIONS,a.target));
- if(name==='ha_action_run')return Object.keys(a).length===3&&Object.hasOwn(ACTIONS,a.target)&&ACTIONS[a.target].includes(a.action);
+ if(name==='ha_actions_read')return Object.keys(a).every(k=>['host','target'].includes(k))&&(a.target===undefined||a.target===null||canonicalAction(a.target)!==undefined);
+ if(name==='ha_action_run')return Object.keys(a).length===3&&canonicalAction(a.target)!==undefined&&ACTIONS[canonicalAction(a.target)].includes(a.action);
  if(name==='ha_lights_read')return Object.keys(a).every(k=>['host','target'].includes(k))&&(a.target===undefined||a.target===null||TARGETS.includes(a.target));
  return Object.keys(a).length===3&&TARGETS.includes(a.target)&&['on','off'].includes(a.state);
 }
@@ -51,7 +56,7 @@ export function invokeLights(request,socket=SOCKET){return new Promise((resolve,
 // The sealed diagnostics broker lists "no_actuators" for its own diagnostic scope.
 // Add, never rewrite, an explicit statement of the separate lighting tools.
 export const householdLights={tools:['ha_lights_read','ha_light_set','ha_actions_read','ha_action_run','ha_entities_read','ha_service_call'],targets:TARGETS,
- actions:ACTIONS,scope:'whole_household_devices',not_reachable:['raspberry_power','gate_relay','system_administration'],
+ actions:ACTIONS,...(ACTION_NAMES.length>Object.keys(ACTIONS).length?{deprecated_action_aliases:Object.fromEntries(ACTION_NAMES.filter(k=>!Object.hasOwn(ACTIONS,k)).map(k=>[k,LEGACY_ACTION_ALIASES[k]]))}:{}),scope:'whole_household_devices',not_reachable:['raspberry_power','gate_relay','system_administration'],
  note:'no_actuators refers to the diagnostic and maintenance tools; household devices are found with ha_entities_read and driven with ha_service_call, the gate pulse, PC shutdown and air conditioner also by ha_action_run, each limited by the broker.'};
 export function annotateCapabilities(response){
  const r=response?.result;
@@ -70,8 +75,9 @@ export function makeLightsRoute(prior,invoke=invokeLights,audit=()=>{}){
    try{
     const args=name==='ha_entities_read'?{host:'raspberry',...(a.domain?{domain:a.domain}:{}),...(a.search?{search:a.search}:{})}
      :name==='ha_service_call'?{host:'raspberry',domain:a.domain,service:a.service,entity_id:a.entity_id,...(a.data?{data:a.data}:{})}
-     :name==='ha_lights_read'||name==='ha_actions_read'?{host:'raspberry',...(a.target?{target:a.target}:{})}
-     :name==='ha_action_run'?{host:'raspberry',target:a.target,action:a.action}:{host:'raspberry',target:a.target,state:a.state};
+     :name==='ha_lights_read'?{host:'raspberry',...(a.target?{target:a.target}:{})}
+     :name==='ha_actions_read'?{host:'raspberry',...(a.target?{target:canonicalAction(a.target)}:{})}
+     :name==='ha_action_run'?{host:'raspberry',target:canonicalAction(a.target),action:a.action}:{host:'raspberry',target:a.target,state:a.state};
     value=await invoke({name,arguments:args});
     if(!plain(value))throw Error();
    }catch{value={state:'unknown',source:'fixed_home_assistant_lighting_broker',collection_error:'lights_route_unavailable',automatic_retry:false};}

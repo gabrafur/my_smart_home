@@ -123,6 +123,34 @@ class Registry(unittest.TestCase):
             self.assertIsNone(reenroll.VERSION.fullmatch(bad))
 
 
+class OperatorHome(unittest.TestCase):
+    """The host_operator home comes from the sealed enrollment uid, never from a tracked name."""
+
+    @staticmethod
+    def passwd(home):
+        def lookup(uid):
+            if uid != 1001:
+                raise KeyError(uid)
+            return type('Entry', (), {'pw_dir': home})()
+        return lookup
+
+    def test_paths_follow_the_enrolled_uid(self):
+        home = reenroll.operator_home({'executable_uid': 1001}, self.passwd('/home/example_operator/'))
+        self.assertEqual(home, Path('/home/example_operator'))
+        self.assertEqual(str(home / reenroll.CONTROL_SOCKET),
+                         '/home/example_operator/.codex/app-server-control/app-server-control.sock')
+
+    def test_root_unknown_or_bool_uid_is_refused(self):
+        for ident in ({'executable_uid': 0}, {'executable_uid': True}, {'executable_uid': 1002}, {}):
+            with self.assertRaises(reenroll.Refused):
+                reenroll.operator_home(ident, self.passwd('/home/example_operator'))
+
+    def test_unsafe_home_is_refused(self):
+        for home in ('relative/home', '/', '/home/../root'):
+            with self.assertRaises(reenroll.Refused):
+                reenroll.operator_home({'executable_uid': 1001}, self.passwd(home))
+
+
 class Backoff(unittest.TestCase):
     def test_backs_off_only_for_the_same_failed_binary(self):
         last = {'live_sha256': NEW, 'state': 'failed', 'reason': 'registry_unavailable:URLError', 'at_epoch': 1000}
@@ -156,7 +184,7 @@ class Run(unittest.TestCase):
         reenroll.LOCK = root / 'lock'
         reenroll.LOCK.write_bytes(b'')
         reenroll.sealed_enrollment = lambda: reenroll.ENROLLMENT.read_bytes()
-        reenroll.installed_version = lambda: VERSION
+        reenroll.installed_version = lambda ident: VERSION
         self.peer = {'pid': 7, 'sha256': NEW, 'size': 42, 'stat': [1, 2, 42, 3, 4], 'socket': [1, 9]}
         reenroll.observe = lambda ident, cgroup, cache=None: dict(self.peer)
         self.registry_calls = 0

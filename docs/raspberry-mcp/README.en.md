@@ -66,6 +66,13 @@ only the pinned executable hash and size, and only for the process really servin
 control socket whose binary is byte-identical to the npm registry build; the attestor
 then re-attests by CAS.
 
+[Host identity roles](reference/host-identity-roles.md) replace personal
+identifiers in executable sources: `host_operator` paths come from the caller's HOME,
+installer-time rendering or the sealed enrollment uid, and the PC shutdown action is
+`workstation_primary`. A pinned compare-and-swap Root operator redeploys the units,
+broker policy and route without restarting services, with an optional private alias for
+the old action name; `make privacy-check` rejects the retired identifier by hash.
+
 The [general Node-RED administration contract](reference/nodered-administration.md)
 has a default-closed implementation with structured graph edits, opaque
 revision CAS, durable intents, native guards and own-operation rollback.

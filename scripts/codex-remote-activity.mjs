@@ -2,7 +2,23 @@ import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import os from "node:os";
 import path from "node:path";
+
+// Codex runs under the host_operator account; its paths come from that account's HOME (the
+// cron jobs run as it) or from CODEX_REMOTE_CONTROL_SOCKET / CODEX_REMOTE_CODEX_BIN. Root has no
+// Codex home, so the command-line entry points refuse a root caller that did not set both.
+export function defaultControlSocket(env = process.env, home = os.homedir()) {
+  return env.CODEX_REMOTE_CONTROL_SOCKET || path.join(home, ".codex/app-server-control/app-server-control.sock");
+}
+export function defaultCodexBin(env = process.env, home = os.homedir()) {
+  return env.CODEX_REMOTE_CODEX_BIN || path.join(home, ".local/bin/codex");
+}
+export function assertOperatorContext(env = process.env, uid = process.getuid?.()) {
+  if (uid === 0 && !(env.CODEX_REMOTE_CONTROL_SOCKET && env.CODEX_REMOTE_CODEX_BIN)) {
+    throw new Error("codex_operator_paths_unresolved");
+  }
+}
 
 const UUID = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 const unknown = reason => ({ state: "unknown", reason, no_effects: true });
@@ -99,9 +115,8 @@ async function collect(controlSocket) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length !== 2) process.exitCode = 64;
   else {
-    const socket = process.env.CODEX_REMOTE_CONTROL_SOCKET || "/home/gabriel/.codex/app-server-control/app-server-control.sock";
     let result;
-    try { result = await collect(socket); } catch { result = unknown("activity_collection_failed"); }
+    try { assertOperatorContext(); result = await collect(defaultControlSocket()); } catch { result = unknown("activity_collection_failed"); }
     process.stdout.write(JSON.stringify(result) + "\n");
   }
 }

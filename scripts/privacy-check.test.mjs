@@ -207,3 +207,27 @@ test("Git tracked mode excludes untracked files and staged mode sees staged cont
   const trackedResult = scanGitRepository(root, "staged");
   assert.ok(trackedResult.findings.some((item) => item.file === "tracked.txt"));
 });
+
+test("rejects retired personal identifiers by hash in paths, keys and camelCase", async () => {
+  const { createHash } = await import("node:crypto");
+  const { retiredIdentifierHashes } = await import("./privacy-check.mjs");
+  const word = ["syn", "thetic", "owner"].join("");
+  const retiredIdentifiers = [{ length: word.length, sha256: createHash("sha256").update(word).digest("hex") }];
+  const text = [
+    "home=/home/" + word + "/.codex",
+    "target: pc_" + word,
+    "const tv = 'media_player." + word + "_s_tv';",
+    "ssh pc" + word[0].toUpperCase() + word.slice(1),
+    "clean: workstation_primary /home/<host_operator>",
+    "near miss: " + word + "s " + word.slice(1),
+  ].join("\n");
+  const result = scanEntries([entry("fixture.sh", text)], { retiredIdentifiers });
+  assert.deepEqual(result.map((item) => [item.rule, item.line]), [1, 2, 3, 4].map((line) => ["retired-personal-identifier", line]));
+  assert.equal(JSON.stringify(result).includes(word), false);
+  assert.ok(retiredIdentifierHashes.length > 0);
+  for (const item of retiredIdentifierHashes) {
+    assert.deepEqual(Object.keys(item).sort(), ["length", "sha256"]);
+    assert.match(item.sha256, /^[a-f0-9]{64}$/);
+  }
+  assert.deepEqual(scanEntries([entry("fixture.sh", text)], { retiredIdentifiers: [] }), []);
+});

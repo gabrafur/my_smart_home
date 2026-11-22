@@ -4,8 +4,8 @@ CollectMode=inactive-or-failed
 
 [Service]
 Type=exec
-User=gabriel
-Group=gabriel
+User=@HOST_OPERATOR_USER@
+Group=@HOST_OPERATOR_GROUP@
 ExecStart=/usr/bin/node /usr/local/lib/raspberry-codex-account-status/broker.cjs
 StandardInput=socket
 StandardOutput=socket

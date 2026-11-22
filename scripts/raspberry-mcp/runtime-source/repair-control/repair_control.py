@@ -14,7 +14,7 @@ from repair_store import Store, ResumeStore, TASK, THREAD, TERMINAL, need, valid
 ROOT = Path('/usr/local/lib/raspberry-repair-control')
 POLICY = ROOT / 'policy.json'
 STATE = Path('/var/lib/raspberry-mcp-operations/task-control')
-RECEIPTS = Path('/home/gabriel/smart-home-proactive-review-20261023/evidence')
+RECEIPTS = Path('/home/<HOST_OPERATOR>/smart-home-proactive-review-20261023/evidence')
 EXPIRY = 1794066708.0
 NAMES = ('submit', 'status', 'result', 'reconcile', 'revoke', 'capabilities')
 TOOLS = tuple('codex_repair_' + x for x in NAMES)

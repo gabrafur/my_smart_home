@@ -3,7 +3,10 @@
 // Returns sanitized flags: no tokens, e-mail, account id or raw messages.
 'use strict';
 const WebSocket = require('/usr/local/lib/raspberry-ha-notices/vendor/ws');
-const APP = '/home/gabriel/.codex/app-server-control/app-server-control.sock';
+// The unit runs as the host_operator account (rendered at install time), so systemd sets HOME;
+// CODEX_APP_SERVER_CONTROL_SOCKET overrides it for tests or a non-default layout.
+const APP = process.env.CODEX_APP_SERVER_CONTROL_SOCKET
+  || require('node:path').join(require('node:os').homedir(), '.codex/app-server-control/app-server-control.sock');
 const METHODS = new Set(['initialize', 'account/read', 'account/rateLimits/read']);
 
 function classify(account, usage, now = Date.now()) {
@@ -52,7 +55,7 @@ function observe(socketPath = APP, timeoutMs = 8000) {
   });
 }
 
-module.exports = {classify, observe, METHODS};
+module.exports = {classify, observe, METHODS, APP};
 if (require.main === module) {
   let input = '';
   process.stdin.setEncoding('utf8');

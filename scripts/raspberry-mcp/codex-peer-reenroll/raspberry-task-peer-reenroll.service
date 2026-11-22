@@ -2,7 +2,7 @@
 Description=Re-enroll the Codex app-server executable after a registry-verified Codex update
 After=network-online.target
 Wants=network-online.target
-ConditionPathExists=/home/gabriel/.codex/app-server-control/app-server-control.sock
+ConditionPathExists=@HOST_OPERATOR_HOME@/.codex/app-server-control/app-server-control.sock
 
 [Service]
 Type=oneshot

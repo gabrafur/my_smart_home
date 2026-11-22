@@ -64,6 +64,14 @@ outros arquivos, bytes alterados e cópias em outro caminho continuam bloqueados
 Os metadados públicos originais desses bytes são preservados. Valores sintéticos e papéis lógicos têm
 fixtures negativas explícitas para evitar exceções implícitas.
 
+A regra `retired-personal-identifier` rejeita identificadores pessoais já
+removidos (por exemplo, nomes em caminhos `/home/<conta>`, alvos de ação ou
+hosts SSH). O scanner guarda só comprimento e SHA-256 da palavra, divide o
+texto em palavras de letras (inclusive em camelCase) e compara os hashes.
+Esses valores foram substituídos pelos papéis `host_operator` e
+`workstation_primary`, descritos em
+[papéis lógicos do host](raspberry-mcp/reference/host-identity-roles.md).
+
 Uma denylist privada pode ser fornecida por `PRIVACY_DENYLIST_FILE`. Ela é
 opcional, ignorada pelo Git e nunca tem seus valores impressos. Achados de
 privacidade e do scanner de segurança exibem apenas regra, arquivo, linha e
