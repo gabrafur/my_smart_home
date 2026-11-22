@@ -111,6 +111,37 @@ restart é um modelo em memória; o
 [tour técnico](ENGINEERING_TOUR.pt-BR.md) aponta para replays isolados do
 Node-RED que testam o estado de recovery das funções reais dos flows.
 
+## Stack de demo em Docker
+
+`make demo-stack` executa `scripts/demo-stack.mjs up`: sobe o projeto Compose
+`smart-home-demo` a partir de `demo/stack/compose.yml`, faz o onboarding de um
+usuário local `demo` com senha aleatória, conecta o Home Assistant ao broker da
+demo e mostra os endereços e as credenciais. A senha também fica em
+`demo/stack/.runtime/`, ignorado pelo Git.
+
+| Serviço | Endereço | O que roda |
+| --- | --- | --- |
+| Home Assistant | `http://127.0.0.1:8124` | integração `demo` nativa, painéis Casa e Sistema da demo, tema `casa` real |
+| Node-RED | `http://127.0.0.1:1881` | o tab "Demo: fatos → decisão → painel" (só nós nativos) |
+| Mosquitto | não publicado | broker anônimo acessível só dentro da rede da demo |
+
+O ciclo reproduz a arquitetura real em escala pequena: o Home Assistant publica
+no MQTT os estados do alarme e do sol; o Node-RED aplica um parâmetro visível,
+decide se a luz externa deveria acender e publica a decisão com
+`simulated: true` e `dispatched: false`; o painel só formata essa decisão. O
+Node-RED também publica saúde sintética do host a cada 30 segundos. Arme o
+alarme da demo à noite para ver a decisão mudar.
+
+Limites: as portas ficam em `127.0.0.1`; as imagens são os digests fixados no
+`docker-compose.yml`; nada monta bindings privados, segredos, `.storage`,
+dispositivos ou o socket do Docker; os containers não têm privilégios extras.
+`scripts/demo-stack.test.mjs` garante essas regras. `make demo-stack-down`
+remove containers e volumes.
+
+Os prints do README saem desta stack com `make demo-stack-screenshots`
+(precisa do Playwright) e são gravados em `docs/assets/generated/` sem
+metadados PNG.
+
 ## Contexto da IA
 
 O prompt canônico é `prompts/restore-smart-home.prompt.md`. Após o commit

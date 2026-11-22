@@ -136,6 +136,26 @@ memória. A implementação não importa clientes de rede, processo, MQTT ou
 controle de dispositivos. Veja [Bootstrap e demo](docs/BOOTSTRAP_DEMO.md) e a
 [saída determinística de exemplo](docs/demo-output.pt-BR.md).
 
+### Veja rodando: `make demo-stack`
+
+Com Docker, um comando sobe um Home Assistant sintético (dispositivos da
+integração `demo`), Mosquitto e Node-RED em `127.0.0.1`, com os painéis Casa e
+Sistema no mesmo estilo dos reais e um fluxo do Node-RED que lê fatos por MQTT,
+decide e publica o resultado como dry-run:
+
+```bash
+make demo-stack          # mostra usuário e senha da demo; HA na :8124, Node-RED na :1881
+make demo-stack-down     # remove os containers e volumes da demo
+```
+
+| Casa | Sistema |
+| --- | --- |
+| ![Painel Casa sintético da demo](docs/assets/generated/demo-casa.png) | ![Painel Sistema sintético da demo](docs/assets/generated/demo-sistema.png) |
+
+Usa os mesmos digests de imagem da stack real, nunca monta estado privado e
+não aciona dispositivo real. Detalhes:
+[Bootstrap e demo](docs/BOOTSTRAP_DEMO.md#stack-de-demo-em-docker).
+
 ## Faça um fork para a sua casa
 
 O repositório foi pensado para fork: a lógica é escrita contra papéis lógicos,

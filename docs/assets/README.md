@@ -44,6 +44,14 @@ GitHub. Sem Docker, o mesmo pacote pode ser instalado com
 Os diagramas de decisão e da cadeia noturna no `README` da raiz são blocos
 Mermaid inline, renderizados pelo próprio GitHub; não há SVG gerado para eles.
 
+## Prints da demo
+
+`generated/demo-casa.png` e `generated/demo-sistema.png` são capturas da stack
+sintética (`make demo-stack`, depois `make demo-stack-screenshots`). Mostram só
+entidades da integração `demo` do Home Assistant e dados inventados pelo fluxo
+de demo do Node-RED; os metadados PNG são removidos. A revisão semanal da
+documentação pode substituí-los, mas não consegue gerá-los no worker.
+
 ## Social preview
 
 `github-social-preview.svg` é a fonte determinística. O PNG publicado deve ser

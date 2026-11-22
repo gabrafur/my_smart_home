@@ -23,7 +23,11 @@ are listed by month; 2026-06 and 2026-07 predate the commit convention.
 
 ## Não lançado / Unreleased
 
-Sem mudanças desde `v2026.11.0`. / No changes since `v2026.11.0`.
+### Novidades / Added
+
+- **demo**: run a synthetic Home Assistant, MQTT and Node-RED stack
+
+Correções / Fixes: 1.
 
 ## v2026.11.0 — 2026-11-22
 

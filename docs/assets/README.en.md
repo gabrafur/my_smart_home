@@ -43,6 +43,14 @@ dark themes. Without Docker, install the same package with
 The decision and nightly-chain diagrams in the root `README` are inline Mermaid
 blocks rendered by GitHub itself; no SVG is generated for them.
 
+## Demo screenshots
+
+`generated/demo-casa.png` and `generated/demo-sistema.png` are captures of the
+synthetic stack (`make demo-stack`, then `make demo-stack-screenshots`). They
+show only Home Assistant `demo` integration entities and data invented by the
+demo Node-RED flow; PNG metadata is stripped. The weekly documentation review
+may replace them but cannot generate them in its worker.
+
 ## Social preview
 
 `github-social-preview.svg` is the deterministic source. The published PNG

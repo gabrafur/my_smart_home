@@ -111,6 +111,37 @@ inspect imports, prove no real route is called, and keep the
 restart is an in-memory model; the [technical tour](ENGINEERING_TOUR.md) links
 to isolated Node-RED replays that test the real flow functions' recovery state.
 
+## Demo stack in Docker
+
+`make demo-stack` runs `scripts/demo-stack.mjs up`: it starts the Compose
+project `smart-home-demo` from `demo/stack/compose.yml`, onboards a local
+`demo` user with a random password, connects Home Assistant to the demo
+broker, and prints the URLs and credentials. The password is also kept in the
+Git-ignored `demo/stack/.runtime/`.
+
+| Service | Address | What it runs |
+| --- | --- | --- |
+| Home Assistant | `http://127.0.0.1:8124` | built-in `demo` integration, the Casa and Sistema demo dashboards, the real `casa` theme |
+| Node-RED | `http://127.0.0.1:1881` | the tab "Demo: fatos → decisão → painel" (core nodes only) |
+| Mosquitto | not published | anonymous broker reachable only inside the demo network |
+
+The loop mirrors the real architecture on a small scale: Home Assistant
+publishes the alarm and sun states to MQTT; Node-RED applies a visible
+parameter, decides whether the exterior light should be on, and publishes the
+decision with `simulated: true` and `dispatched: false`; the dashboard only
+formats that decision. Node-RED also publishes synthetic host health every 30
+seconds. Arm the demo alarm at night to see the decision change.
+
+Boundaries: ports bind to `127.0.0.1`; images are the digests pinned in
+`docker-compose.yml`; nothing mounts private bindings, secrets, `.storage`,
+devices, or the Docker socket; the containers have no extra privileges.
+`scripts/demo-stack.test.mjs` enforces these rules. `make demo-stack-down`
+removes the containers and volumes.
+
+The screenshots in the README are produced from this stack with
+`make demo-stack-screenshots` (needs Playwright) and written to
+`docs/assets/generated/` without PNG metadata.
+
 ## AI context
 
 The canonical prompt is `prompts/restore-smart-home.prompt.md`. After identifying

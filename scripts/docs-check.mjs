@@ -20,7 +20,7 @@ const exactRepoPaths = new Set([
   "compose.modules.yml", "docker-compose.yml", "README.md", "README.pt-BR.md",
 ]);
 const privateDocumentedPrefixes = [
-  ".agent-history/", ".local-secrets/", "bindings/private/", "homeassistant/.storage/",
+  ".agent-history/", ".local-secrets/", "bindings/private/", "demo/stack/.runtime/", "homeassistant/.storage/",
   "homeassistant/.git-backup-trigger/", "homeassistant/secrets.yaml", "nodered/flows_cred.json",
 ];
 const rootHumanDocuments = new Set([

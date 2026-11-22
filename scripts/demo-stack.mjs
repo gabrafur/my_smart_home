@@ -201,13 +201,17 @@ export async function takeScreenshots({ haUrl = defaults.haUrl, outDir = path.jo
     const context = await browser.newContext({ viewport: { width: 1280, height: 820 }, locale: "pt-BR", colorScheme: "dark", deviceScaleFactor: 1 });
     const page = await context.newPage();
     await page.goto(`${haUrl}/`, { waitUntil: "networkidle" });
-    if (new URL(page.url()).pathname.startsWith("/auth/")) {
+    // The app redirects to /auth/authorize after loading; wait for the form.
+    const usernameField = page.locator('input[name="username"]');
+    const needsLogin = await usernameField.waitFor({ timeout: 20_000 }).then(() => true, () => false);
+    if (needsLogin) {
       const { username, password } = demoCredentials();
       await page.locator('input[name="username"]').fill(username);
       await page.locator('input[name="password"]').fill(password);
       await page.locator('input[name="password"]').press("Enter");
     }
     await page.waitForURL((url) => !url.pathname.startsWith("/auth/"), { timeout: 60_000 });
+    await page.waitForLoadState("networkidle");
     for (const shot of screenshots) {
       await page.goto(`${haUrl}${shot.path}`, { waitUntil: "networkidle" });
       await page.waitForTimeout(4_000);

@@ -134,6 +134,26 @@ in-memory restart. Its implementation imports no network, process, MQTT, or
 device-control client. See [Bootstrap and demo](docs/BOOTSTRAP_DEMO.en.md) and
 the [deterministic example output](docs/demo-output.md).
 
+### See it running: `make demo-stack`
+
+With Docker, one command starts a synthetic Home Assistant (built-in `demo`
+devices), Mosquitto, and Node-RED on `127.0.0.1`, with the Casa and Sistema
+dashboards in the same style as the real ones and a Node-RED flow that reads
+facts over MQTT, decides, and publishes the result as a dry-run:
+
+```bash
+make demo-stack          # prints the demo user and password; HA on :8124, Node-RED on :1881
+make demo-stack-down     # removes the demo containers and volumes
+```
+
+| Casa | Sistema |
+| --- | --- |
+| ![Synthetic Casa dashboard of the demo stack](docs/assets/generated/demo-casa.png) | ![Synthetic Sistema dashboard of the demo stack](docs/assets/generated/demo-sistema.png) |
+
+It uses the same image digests as the real stack, never mounts private state,
+and drives no real device. Details:
+[Bootstrap and demo](docs/BOOTSTRAP_DEMO.en.md#demo-stack-in-docker).
+
 ## Fork it for your home
 
 The repository is designed to be forked: logic is written against logical
