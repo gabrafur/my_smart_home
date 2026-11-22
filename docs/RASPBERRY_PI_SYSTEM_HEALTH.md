@@ -163,9 +163,11 @@ pendentes e encerra o incidente. Uso alto/crítico só é classificado com métr
 válidas e recentes. Os ajustes aceitam intervalo de retry de 10–600 s, 1–5 novas
 tentativas e idade máxima de 60–1.800 s, preservando a última política válida.
 
-Cada alerta confirmado tem identificador próprio e horário na notificação
-persistente do HA, evitando que outro alerta ou recuperação substitua seu
-conteúdo. A mesma ocorrência é registrada por `logbook.log`, associada ao sensor
+Cada condição tem uma única notificação persistente no HA, com ID estável
+(`raspberry_storage_alert` para capacidade/tendência e `raspberry_storage_collection`
+para falha de leitura): uma nova ocorrência substitui o texto, com o horário, e a
+recuperação apenas remove a notificação, sem deixar aviso de "recuperado". O histórico
+de cada ocorrência fica no `logbook.log`, associado ao sensor
 de status, com a retenção atual do Recorder de 30 dias. O cooldown só é
 confirmado após os aceites do celular, da notificação persistente e do Logbook.
 O aceite não comprova leitura no celular. Notificação persistente e histórico

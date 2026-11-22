@@ -2,7 +2,7 @@ const s = msg.storage;
 let alert = null;
 if (s.error_due) {
     alert = s.state.pendingAlert?.collection_error ? s.state.pendingAlert : {
-        collection_error: true,
+        collection_error: true, storage_notification_kind: "collection_error",
         payload: { title: "Raspberry Pi - falha na leitura do storage", message: `Não foi possível obter métricas válidas após ${msg.policy.collection_max_retries} novas tentativas. Isso não confirma defeito nem falta de espaço no disco. A coleta periódica continuará; nenhuma limpeza foi solicitada por esta falha.` },
         notificationAck: { id: `${s.now}:collection_error`, at: s.now, targets: [{ key: s.stateKey, field: "lastCollectionErrorNotificationAt" }] }
     };

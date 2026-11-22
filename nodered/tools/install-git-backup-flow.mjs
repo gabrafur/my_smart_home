@@ -108,7 +108,15 @@ linkOut("git_backup_health_out", groups.decision, "Resultado → registro saniti
 sw("git_backup_status_switch", groups.decision, "Resultado: sucesso, falha ou adiado?", "git_backup_status", "msg", [
   { t: "eq", v: "success", vt: "str" }, { t: "eq", v: "failed", vt: "str" },
   { t: "eq", v: "deferred", vt: "str" }, { t: "else" },
-], 1350, 280, [["git_backup_success_origin"], ["git_backup_alert_build"], ["git_backup_deferred_gate"], ["git_backup_invalid_gate"]]);
+], 1350, 280, [["git_backup_success_origin", "git_backup_failure_clear"], ["git_backup_alert_build"], ["git_backup_deferred_gate"], ["git_backup_invalid_gate"]]);
+// A successful backup resolves an earlier failure: remove its persistent notice.
+grouped(groups.decision, {
+  id: "git_backup_failure_clear", type: "api-call-service", z: TAB, g: groups.decision,
+  name: "EFEITO: remover falha resolvida", server: SERVER, version: 7, debugenabled: false, action: "persistent_notification.dismiss",
+  floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: '{"notification_id":"git_backup_failure"}',
+  dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true,
+  domain: "persistent_notification", service: "dismiss", x: 1480, y: 190, wires: [[]],
+});
 sw("git_backup_success_origin", groups.decision, "Sucesso veio da agenda diária?", "topic", "msg", [
   { t: "eq", v: "scheduled", vt: "str" }, { t: "else" },
 ], 1430, 140, [["git_backup_success_gate"], ["git_backup_manual_success"]]);

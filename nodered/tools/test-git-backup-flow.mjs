@@ -69,6 +69,11 @@ assert.ok(!JSON.stringify(node("git_backup_request")).includes("/mnt/data/docker
 assert.ok(!JSON.stringify(node("git_backup_request")).includes(".ssh"));
 assert.deepEqual(node("git_backup_result_out").links, ["git_backup_result_in"]);
 assert.equal(node("git_backup_status_switch").type, "switch");
+// A successful backup resolves an earlier failure: its persistent notice is removed.
+assert.ok(node("git_backup_status_switch").wires[0].includes("git_backup_failure_clear"));
+assert.match(node("git_backup_failure_clear").rules.map((rule) => String(rule.to ?? "")).join("\n"),
+  /"operation":"dismiss".*"notification_id":"git_backup_failure".*"test_mode":_git_backup_test = true/);
+assert.deepEqual(node("git_backup_failure_clear__hub_call").links, ["notification_hub_persistent_in"]);
 assert.equal(node("git_backup_success_origin").type, "switch");
 assert.equal(node("git_backup_success_gate").type, "switch");
 assert.equal(node("git_backup_failure_gate").type, "switch");

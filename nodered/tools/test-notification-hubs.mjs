@@ -61,6 +61,24 @@ assert.deepEqual(
 
 const byId = new Map(migrated.map((node) => [node.id, node]));
 assert.equal(byId.size, migrated.length, "IDs duplicados após instalar os hubs");
+// Resolved Codex conditions leave nothing in Home Assistant: forecast and usage
+// each keep one notice, the forecast recovery dismisses it, and usage back to
+// normal dismisses the usage notice.
+{
+  const rule = byId.get("codex_alert_persistent").rules.find((entry) => entry.p === "notification");
+  const notice = async (kind) => jsonata(rule.to).evaluate({ alert: { kind, title: "t" }, _codex_test: false });
+  for (const [kind, id, operation] of [
+    ["forecast_warning", "codex_alert_forecast", "create"], ["forecast_critical", "codex_alert_forecast", "create"],
+    ["recovery", "codex_alert_forecast", "dismiss"], ["usage_warning", "codex_alert_usage", "create"],
+    ["critical", "codex_alert_usage", "create"], ["cache_low", "codex_alert_cache_low", "create"],
+  ]) {
+    const result = await notice(kind);
+    assert.equal(result.notification_id, id, kind);
+    assert.equal(result.operation, operation, kind);
+  }
+  assert.match(byId.get("codex_usage_alert_clear").rules.map((entry) => String(entry.to ?? "")).join("\n"),
+    /"operation":"dismiss".*"notification_id":"codex_alert_usage"/);
+}
 const node = (id) => {
   const value = byId.get(id);
   assert.ok(value, `node ausente: ${id}`);
@@ -119,8 +137,8 @@ assert.deepEqual(
   "o painel deve atravessar a entrada canônica do hub Alexa",
 );
 
-assert.equal(NOTIFICATION_MIGRATIONS.length, 38, "a matriz explícita deve cobrir os 38 efeitos ativos fora do subflow legado");
-assert.equal(new Set(NOTIFICATION_MIGRATIONS.map(({ id }) => id)).size, 38);
+assert.equal(NOTIFICATION_MIGRATIONS.length, 40, "a matriz explícita deve cobrir os 40 efeitos ativos fora do subflow legado");
+assert.equal(new Set(NOTIFICATION_MIGRATIONS.map(({ id }) => id)).size, 40);
 for (const id of RETIRED_NOTIFICATION_IDS) {
   for (const suffix of ["", "__hub_call", "__hub_result"]) {
     assert.equal(byId.has(id + suffix), false, `não reativar canal removido: ${id + suffix}`);

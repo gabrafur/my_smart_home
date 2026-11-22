@@ -288,9 +288,9 @@ change("storage_visual_read_error", collection.id, "Marcar falha sem métricas",
 linkOut("storage_visual_read_error_out", collection.id, "Erro de leitura → mesma política", "storage_visual_input_in", 900, 2570);
 required("storage_visual_input_in").links.push("storage_visual_read_error_out");
 required("storage_visual_notify_in").wires = [["storage_visual_notification_prepare"]];
-fn("storage_visual_notification_prepare", effects.id, "Preservar ocorrência e horário no HA", "storage-notification-prepare.js", 1, 9980, 700, [["storage_visual_notification_ready_out"]]);
+fn("storage_visual_notification_prepare", effects.id, "ID estável; resolução remove do HA", "storage-notification-prepare.js", 1, 9980, 700, [["storage_visual_notification_ready_out"]]);
 linkOut("storage_visual_notification_ready_out", effects.id, "Ocorrência → dois canais", "storage_visual_notification_ready_in", 10250, 700);
-linkIn("storage_visual_notification_ready_in", effects.id, "Entregar e persistir cada ocorrência", "storage_visual_notification_ready_out", "storage_notify", 9630, 500);
+linkIn("storage_visual_notification_ready_in", effects.id, "Entregar ocorrência aos dois canais", "storage_visual_notification_ready_out", "storage_notify", 9630, 500);
 required("storage_visual_notification_ready_in").wires = [["storage_notify", "storage_notify_persistent"]];
 required("storage_test_instructions").name = "TESTE: reset; normal/crescimento; falha de leitura 4x; normal para recuperar. Sem efeitos reais.";
 grouped(collection.id, { id: "storage_visual_test_read_failure", type: "inject", z: TAB, g: collection.id,

@@ -208,7 +208,15 @@ result = evaluate(flow, metric(81)); accept(flow, result[1]);
 for (const hours of [0.25, 1, 6, 12, 23]) assert.equal(evaluate(flow, metric(81), NOW+hours*3600000)[1], null);
 result=evaluate(flow, metric(81), NOW+86400000); assert.ok(result[1]); accept(flow,result[1]);
 result=evaluate(flow, metric(91), NOW+86400000+60000); assert.ok(result[1], "escalation remains immediate");accept(flow,result[1]);
+const capacityNotice = call(f.notification, structuredClone(result[1]), flow);
 result=evaluate(flow,metric(60),NOW+86400000+120000); assert.ok(result[1], "recovery remains immediate");
+// A resolved condition leaves nothing in Home Assistant: one stable notice per
+// condition, replaced by each occurrence and only dismissed by the recovery.
+const capacityRecovery = call(f.notification, structuredClone(result[1]), flow);
+assert.equal(capacityNotice.payload.notification_id, "raspberry_storage_alert");
+assert.equal(capacityNotice.payload.persistent_notification_operation, "create");
+assert.equal(capacityRecovery.payload.notification_id, "raspberry_storage_alert");
+assert.equal(capacityRecovery.payload.persistent_notification_operation, "dismiss");
 flow=configured();flow.set("storage_health_policy_v2",{version:2,...defaults,notification_cooldown_h:12},"persistent");
 flow.set("storage_health_state_v1",{severity:"high",lastNotificationAt:NOW},"persistent");
 assert.equal(call(f.load,{},flow).policy.notification_cooldown_h,24);assert.equal(flow.get("storage_health_state_v1","persistent").lastNotificationAt,NOW);
@@ -269,10 +277,14 @@ assert.equal(flow.get('storage_health_state_v1', 'persistent').collectionStatus,
 assert.equal(evaluate(flow, metric(60), NOW + 241000)[1], null, 'collection recovery once');
 const firstNotice = call(f.notification, structuredClone(confirmedAlert), flow);
 const secondNotice = call(f.notification, structuredClone(result[1]), flow);
-assert.notEqual(firstNotice.payload.notification_id, secondNotice.payload.notification_id);
+assert.equal(firstNotice.payload.notification_id, "raspberry_storage_collection");
+assert.equal(secondNotice.payload.notification_id, firstNotice.payload.notification_id, "recovery targets the same notice");
+assert.equal(firstNotice.payload.persistent_notification_operation, "create");
+assert.equal(secondNotice.payload.persistent_notification_operation, "dismiss", "resolved collection alert leaves nothing in HA");
 assert.match(firstNotice.payload.message, /Ocorrência:/);
 const persistentIdRule = byId.get('storage_notify_persistent').rules.find(r => r.p === 'notification');
 assert.match(persistentIdRule.to, /payload.notification_id/);
+assert.match(persistentIdRule.to, /persistent_notification_operation = "dismiss" \? "dismiss" : "create"/);
 assert.equal(byId.get('storage_visual_retry_delay').pauseType, 'delayv');
 assert.deepEqual(logicalWireTargets('storage_visual_retry_read_in'), ['storage_read_ha']);
 assert.deepEqual(byId.get('storage_visual_read_catch').scope, ['storage_read_ha']);

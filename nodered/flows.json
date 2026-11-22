@@ -2654,7 +2654,12 @@
             "notification_hub_wire_out_f84122f74ad3",
             "notification_hub_wire_in_f84122f74ad3",
             "notification_hub_wire_out_9508fa5eb578",
-            "notification_hub_wire_in_9508fa5eb578"
+            "notification_hub_wire_in_9508fa5eb578",
+            "codex_level_usage_resolved",
+            "codex_usage_alert_clear",
+            "codex_usage_alert_clear__hub_call",
+            "notification_hub_wire_out_b6030eb05ca0",
+            "notification_hub_wire_in_b6030eb05ca0"
         ],
         "style": {
             "color": "#1f2937",
@@ -3461,7 +3466,9 @@
             "notification_hub_wire_in_7b0d29c68a9f",
             "notification_hub_wire_out_e8b646d9c5f3",
             "notification_hub_wire_in_e8b646d9c5f3",
-            "git_backup_health_out"
+            "git_backup_health_out",
+            "git_backup_failure_clear",
+            "git_backup_failure_clear__hub_call"
         ],
         "style": {
             "color": "#1f2937",
@@ -3871,7 +3878,8 @@
         "type": "switch",
         "wires": [
             [
-                "git_backup_success_origin"
+                "git_backup_success_origin",
+                "git_backup_failure_clear"
             ],
             [
                 "git_backup_alert_build"
@@ -18208,23 +18216,23 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "_notification_hub_context",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"payload\":payload,\"notification\":notification,\"had_notification\":$exists(notification)}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "notification",
                 "pt": "msg",
-                "t": "set",
-                "to": "{\"source\":\"storage_health\",\"operation\":\"create\",\"delivery\":\"queued\",\"notification_id\":_notification_hub_context.payload.notification_id,\"title\":_notification_hub_context.payload.title}",
+                "to": "{\"source\":\"storage_health\",\"operation\":_notification_hub_context.payload.persistent_notification_operation = \"dismiss\" ? \"dismiss\" : \"create\",\"delivery\":\"queued\",\"notification_id\":_notification_hub_context.payload.notification_id,\"title\":_notification_hub_context.payload.title}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "t": "set",
                 "to": "_notification_hub_context.payload.message",
                 "tot": "jsonata"
             }
@@ -19187,7 +19195,7 @@
     },
     {
         "finalize": "",
-        "func": "const s = msg.storage;\nlet alert = null;\nif (s.error_due) {\n    alert = s.state.pendingAlert?.collection_error ? s.state.pendingAlert : {\n        collection_error: true,\n        payload: { title: \"Raspberry Pi - falha na leitura do storage\", message: `Não foi possível obter métricas válidas após ${msg.policy.collection_max_retries} novas tentativas. Isso não confirma defeito nem falta de espaço no disco. A coleta periódica continuará; nenhuma limpeza foi solicitada por esta falha.` },\n        notificationAck: { id: `${s.now}:collection_error`, at: s.now, targets: [{ key: s.stateKey, field: \"lastCollectionErrorNotificationAt\" }] }\n    };\n    s.state.pendingAlert = alert;\n    s.state.collectionIncidentOpen = true;\n}\nif (s.testMode) flow.set(s.stateKey, s.state); else flow.set(s.stateKey, s.state, \"persistent\");\nconst mqtt = [{ topic: \"smart_home/raspberry/storage/collection_status\", payload: s.state.collectionStatus, retain: true }];\nconst event = { ...msg, payload: { event: \"collection_failure\", reason: s.collection_reason,\n    attempt: s.state.collectionFailureCount, retryScheduled: s.retry_due, at: new Date(s.now).toISOString() } };\nreturn [s.testMode ? [] : mqtt, s.testMode ? null : alert, event, s.retry_due ? msg : null];",
+        "func": "const s = msg.storage;\nlet alert = null;\nif (s.error_due) {\n    alert = s.state.pendingAlert?.collection_error ? s.state.pendingAlert : {\n        collection_error: true, storage_notification_kind: \"collection_error\",\n        payload: { title: \"Raspberry Pi - falha na leitura do storage\", message: `Não foi possível obter métricas válidas após ${msg.policy.collection_max_retries} novas tentativas. Isso não confirma defeito nem falta de espaço no disco. A coleta periódica continuará; nenhuma limpeza foi solicitada por esta falha.` },\n        notificationAck: { id: `${s.now}:collection_error`, at: s.now, targets: [{ key: s.stateKey, field: \"lastCollectionErrorNotificationAt\" }] }\n    };\n    s.state.pendingAlert = alert;\n    s.state.collectionIncidentOpen = true;\n}\nif (s.testMode) flow.set(s.stateKey, s.state); else flow.set(s.stateKey, s.state, \"persistent\");\nconst mqtt = [{ topic: \"smart_home/raspberry/storage/collection_status\", payload: s.state.collectionStatus, retain: true }];\nconst event = { ...msg, payload: { event: \"collection_failure\", reason: s.collection_reason,\n    attempt: s.state.collectionFailureCount, retryScheduled: s.retry_due, at: new Date(s.now).toISOString() } };\nreturn [s.testMode ? [] : mqtt, s.testMode ? null : alert, event, s.retry_due ? msg : null];",
         "g": "storage_visual_decision_group",
         "id": "storage_visual_invalid_finalize",
         "initialize": "",
@@ -20142,7 +20150,7 @@
     },
     {
         "finalize": "",
-        "func": "const s = msg.storage;\nconst fields = [];\nlet title;\nlet message;\nconst freeText = `${s.free.toFixed(1)} GiB livres`;\nconst trendText = s.growth24h === null ? \"\" : `; ${s.growth24h >= 0 ? \"+\" : \"\"}${s.growth24h.toFixed(1)} pp/24h`;\nconst cause = s.growth_cause_bytes === null ? \"\" : `; causa provavel: ${s.growth_cause} +${(s.growth_cause_bytes / 1073741824).toFixed(1)} GiB/24h`;\nif (s.alert_kind === \"recovery\") {\n    title = \"Raspberry Pi - storage recuperado\";\n    message = `✅ Raspberry Pi storage back to normal: ${s.used.toFixed(1)}% used (${freeText})${trendText}.`;\n    fields.push(\"lastNotificationAt\");\n} else if (s.alert_kind === \"capacity\") {\n    const icon = s.severity === \"critical\" ? \"🚨\" : \"⚠️\";\n    title = `Raspberry Pi - storage ${s.severity}`;\n    message = `${icon} Raspberry Pi storage ${s.severity}: ${s.used.toFixed(1)}% used (${freeText})${trendText}${cause}.`;\n    fields.push(\"lastNotificationAt\");\n    if (s.accelerated) fields.push(\"lastTrendNotificationAt\");\n} else if (s.alert_kind === \"trend\") {\n    const parts = [];\n    if (s.growth24h !== null) parts.push(`${s.growth24h >= 0 ? \"+\" : \"\"}${s.growth24h.toFixed(1)} pp/24h`);\n    if (s.growth7d !== null) parts.push(`${s.growth7d >= 0 ? \"+\" : \"\"}${s.growth7d.toFixed(1)} pp/7d`);\n    title = \"Raspberry Pi - crescimento de storage\";\n    message = `⚠️ Storage crescendo rapidamente: ${parts.join(\", \")}. Uso atual: ${s.used.toFixed(1)}% (${freeText})${cause}. A limpeza segura foi solicitada automaticamente.`;\n    fields.push(\"lastTrendNotificationAt\");\n} else return msg;\nmsg.storage_alert = { payload: { title, message }, notificationAck: { id: `${s.now}:${fields.join(\",\")}`, at: s.now, targets: fields.map((field) => ({ key: s.stateKey, field })) } };\nreturn msg;",
+        "func": "const s = msg.storage;\nconst fields = [];\nlet title;\nlet message;\nconst freeText = `${s.free.toFixed(1)} GiB livres`;\nconst trendText = s.growth24h === null ? \"\" : `; ${s.growth24h >= 0 ? \"+\" : \"\"}${s.growth24h.toFixed(1)} pp/24h`;\nconst cause = s.growth_cause_bytes === null ? \"\" : `; causa provavel: ${s.growth_cause} +${(s.growth_cause_bytes / 1073741824).toFixed(1)} GiB/24h`;\nif (s.alert_kind === \"recovery\") {\n    title = \"Raspberry Pi - storage recuperado\";\n    message = `✅ Raspberry Pi storage back to normal: ${s.used.toFixed(1)}% used (${freeText})${trendText}.`;\n    fields.push(\"lastNotificationAt\");\n} else if (s.alert_kind === \"capacity\") {\n    const icon = s.severity === \"critical\" ? \"🚨\" : \"⚠️\";\n    title = `Raspberry Pi - storage ${s.severity}`;\n    message = `${icon} Raspberry Pi storage ${s.severity}: ${s.used.toFixed(1)}% used (${freeText})${trendText}${cause}.`;\n    fields.push(\"lastNotificationAt\");\n    if (s.accelerated) fields.push(\"lastTrendNotificationAt\");\n} else if (s.alert_kind === \"trend\") {\n    const parts = [];\n    if (s.growth24h !== null) parts.push(`${s.growth24h >= 0 ? \"+\" : \"\"}${s.growth24h.toFixed(1)} pp/24h`);\n    if (s.growth7d !== null) parts.push(`${s.growth7d >= 0 ? \"+\" : \"\"}${s.growth7d.toFixed(1)} pp/7d`);\n    title = \"Raspberry Pi - crescimento de storage\";\n    message = `⚠️ Storage crescendo rapidamente: ${parts.join(\", \")}. Uso atual: ${s.used.toFixed(1)}% (${freeText})${cause}. A limpeza segura foi solicitada automaticamente.`;\n    fields.push(\"lastTrendNotificationAt\");\n} else return msg;\nmsg.storage_alert = { storage_notification_kind: s.alert_kind, payload: { title, message }, notificationAck: { id: `${s.now}:${fields.join(\",\")}`, at: s.now, targets: fields.map((field) => ({ key: s.stateKey, field })) } };\nreturn msg;",
         "g": "storage_visual_decision_group",
         "id": "storage_visual_alert_build",
         "initialize": "",
@@ -20251,7 +20259,7 @@
     },
     {
         "finalize": "",
-        "func": "const s = msg.storage;\nconst state = s.state;\nconst recovery = s.collection_recovered ? { collection_error: true,\n    payload: { title: \"Raspberry Pi - leitura do storage normalizada\", message: \"A coleta voltou a fornecer métricas válidas. O incidente de leitura foi encerrado.\" },\n    notificationAck: { id: `${s.now}:collection_recovery`, at: s.now, targets: [] } } : null;\nmsg.storage_selected_alert = msg.storage_alert ?? recovery ?? state.pendingAlert ?? null;\nif (msg.storage_alert) state.pendingAlert = msg.storage_alert;\nObject.assign(state, {\n    severity: s.severity, updatedAt: s.now, usedPercent: s.used, freeGiB: s.free,\n    growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n    growthCauseBytes: s.growth_cause_bytes, historySamples: s.history_samples,\n    historyCoverageHours: s.history_coverage_hours, historyOldestAt: s.history_oldest_at\n});\nmsg.storage_remediation = null;\nif (s.remediation_due) {\n    state.lastAutoRemediationAt = s.now;\n    msg.storage_remediation = {\n        ...msg, storageAutoRemediation: true, test_mode: msg.test_mode === true,\n        payload: { reason: s.accelerated ? \"accelerated-growth\" : \"capacity-threshold\", used: s.used,\n            growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n            growthCauseBytes: s.growth_cause_bytes }\n    };\n}\nif (s.testMode) flow.set(s.stateKey, state); else flow.set(s.stateKey, state, \"persistent\");\nreturn msg;",
+        "func": "const s = msg.storage;\nconst state = s.state;\nconst recovery = s.collection_recovered ? { collection_error: true, storage_notification_kind: \"collection_recovery\",\n    payload: { title: \"Raspberry Pi - leitura do storage normalizada\", message: \"A coleta voltou a fornecer métricas válidas. O incidente de leitura foi encerrado.\" },\n    notificationAck: { id: `${s.now}:collection_recovery`, at: s.now, targets: [] } } : null;\nmsg.storage_selected_alert = msg.storage_alert ?? recovery ?? state.pendingAlert ?? null;\nif (msg.storage_alert) state.pendingAlert = msg.storage_alert;\nObject.assign(state, {\n    severity: s.severity, updatedAt: s.now, usedPercent: s.used, freeGiB: s.free,\n    growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n    growthCauseBytes: s.growth_cause_bytes, historySamples: s.history_samples,\n    historyCoverageHours: s.history_coverage_hours, historyOldestAt: s.history_oldest_at\n});\nmsg.storage_remediation = null;\nif (s.remediation_due) {\n    state.lastAutoRemediationAt = s.now;\n    msg.storage_remediation = {\n        ...msg, storageAutoRemediation: true, test_mode: msg.test_mode === true,\n        payload: { reason: s.accelerated ? \"accelerated-growth\" : \"capacity-threshold\", used: s.used,\n            growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n            growthCauseBytes: s.growth_cause_bytes }\n    };\n}\nif (s.testMode) flow.set(s.stateKey, state); else flow.set(s.stateKey, state, \"persistent\");\nreturn msg;",
         "g": "storage_visual_decision_group",
         "id": "storage_visual_state_finalize",
         "initialize": "",
@@ -38359,7 +38367,8 @@
         "type": "rbe",
         "wires": [
             [
-                "codex_level_publish"
+                "codex_level_publish",
+                "notification_hub_wire_out_b6030eb05ca0"
             ]
         ],
         "x": 1820,
@@ -38706,23 +38715,23 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "_notification_hub_context",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"payload\":payload,\"notification\":notification,\"had_notification\":$exists(notification)}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "notification",
                 "pt": "msg",
-                "t": "set",
-                "to": "{\"source\":\"alertas_codex\",\"operation\":\"create\",\"delivery\":\"queued\",\"notification_id\":\"codex_alert_\" & alert.kind,\"title\":alert.title,\"test_mode\":_codex_test = true}",
+                "to": "{\"source\":\"alertas_codex\",\"operation\":alert.kind = \"recovery\" ? \"dismiss\" : \"create\",\"delivery\":\"queued\",\"notification_id\":\"codex_alert_\" & (alert.kind in [\"forecast_critical\", \"forecast_warning\", \"recovery\"] ? \"forecast\" : alert.kind in [\"critical\", \"usage_warning\"] ? \"usage\" : alert.kind),\"title\":alert.title,\"test_mode\":_codex_test = true}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "t": "set",
                 "to": "alert.message",
                 "tot": "jsonata"
             }
@@ -99440,12 +99449,12 @@
     },
     {
         "finalize": "",
-        "func": "const ack = msg.notificationAck;\nconst at = Number(ack?.at ?? Date.now());\nconst id = String(ack?.id ?? at).replace(/[^a-zA-Z0-9_-]/g, \"_\");\nmsg.payload = { ...msg.payload, notification_id: \"raspberry_storage_\" + id,\n    message: msg.payload.message + \"\\n\\nOcorrência: \" + new Date(at).toISOString() };\nreturn msg;",
+        "func": "// One persistent notice per condition, replaced by each new occurrence and\n// dismissed when the condition resolves (resolved alerts leave nothing in HA).\nconst ack = msg.notificationAck;\nconst at = Number(ack?.at ?? Date.now());\nconst kind = msg.storage_notification_kind ??\n    (/:collection_recovery$/.test(String(ack?.id)) ? \"collection_recovery\" : /:collection_error$/.test(String(ack?.id)) ? \"collection_error\" : \"capacity\");\nconst collection = kind === \"collection_error\" || kind === \"collection_recovery\";\nconst resolved = kind === \"recovery\" || kind === \"collection_recovery\";\nmsg.payload = { ...msg.payload,\n    notification_id: collection ? \"raspberry_storage_collection\" : \"raspberry_storage_alert\",\n    persistent_notification_operation: resolved ? \"dismiss\" : \"create\",\n    message: msg.payload.message + \"\\n\\nOcorrência: \" + new Date(at).toISOString() };\nreturn msg;",
         "g": "storage_group_alerts",
         "id": "storage_visual_notification_prepare",
         "initialize": "",
         "libs": [],
-        "name": "Preservar ocorrência e horário no HA",
+        "name": "ID estável; resolução remove do HA",
         "noerr": 0,
         "outputs": 1,
         "timeout": 0,
@@ -99479,7 +99488,7 @@
         "links": [
             "storage_visual_notification_dispatch_out"
         ],
-        "name": "Entregar e persistir cada ocorrência",
+        "name": "Entregar ocorrência aos dois canais",
         "type": "link in",
         "wires": [
             [
@@ -104451,5 +104460,180 @@
         "x": 770,
         "y": 3280,
         "z": "host_observer_tab"
+    },
+    {
+        "id": "git_backup_failure_clear",
+        "type": "change",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Preparar HA persistente para o hub",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_notification_hub_context",
+                "pt": "msg",
+                "to": "{\"payload\":payload,\"notification\":notification,\"had_notification\":$exists(notification)}",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "notification",
+                "pt": "msg",
+                "to": "{\"source\":\"backup_git\",\"operation\":\"dismiss\",\"delivery\":\"queued\",\"notification_id\":\"git_backup_failure\",\"test_mode\":_git_backup_test = true}",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "\"\"",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1480,
+        "y": 190,
+        "wires": [
+            [
+                "git_backup_failure_clear__hub_call"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_failure_clear__hub_call",
+        "type": "link call",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Hub HA → dismiss",
+        "links": [
+            "notification_hub_persistent_in"
+        ],
+        "linkType": "static",
+        "timeout": "30",
+        "x": 1740,
+        "y": 190,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "codex_level_usage_resolved",
+        "type": "switch",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Nível voltou ao normal?",
+        "x": 2400,
+        "y": 1080,
+        "wires": [
+            [
+                "codex_usage_alert_clear"
+            ]
+        ],
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "normal",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1
+    },
+    {
+        "id": "codex_usage_alert_clear",
+        "type": "change",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Preparar HA persistente para o hub",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_notification_hub_context",
+                "pt": "msg",
+                "to": "{\"payload\":payload,\"notification\":notification,\"had_notification\":$exists(notification)}",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "notification",
+                "pt": "msg",
+                "to": "{\"source\":\"alertas_codex\",\"operation\":\"dismiss\",\"delivery\":\"queued\",\"notification_id\":\"codex_alert_usage\",\"test_mode\":_codex_test = true}",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "\"\"",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2650,
+        "y": 1080,
+        "wires": [
+            [
+                "codex_usage_alert_clear__hub_call"
+            ]
+        ]
+    },
+    {
+        "id": "codex_usage_alert_clear__hub_call",
+        "type": "link call",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Hub HA → dismiss",
+        "links": [
+            "notification_hub_persistent_in"
+        ],
+        "linkType": "static",
+        "timeout": "30",
+        "x": 2930,
+        "y": 1080,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "notification_hub_wire_out_b6030eb05ca0",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Encurtar: Publicar somente mudança de nível",
+        "mode": "link",
+        "links": [
+            "notification_hub_wire_in_b6030eb05ca0"
+        ],
+        "x": 2000,
+        "y": 1280,
+        "wires": []
+    },
+    {
+        "id": "notification_hub_wire_in_b6030eb05ca0",
+        "type": "link in",
+        "z": "codex_alertas_tab",
+        "g": "codex_group_effects",
+        "name": "Continuar: Nível voltou ao normal?",
+        "links": [
+            "notification_hub_wire_out_b6030eb05ca0"
+        ],
+        "x": 2220,
+        "y": 1230,
+        "wires": [
+            [
+                "codex_level_usage_resolved"
+            ]
+        ]
     }
 ]

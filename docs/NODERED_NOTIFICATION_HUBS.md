@@ -146,6 +146,11 @@ faz `dismiss` do alerta original e **não** cria um aviso persistente de
 contrato com `dismiss_id` é a resolução: o gate `Resolução? remove o alerta;
 senão cria` envia ao hub somente o `dismiss`. `test-infrastructure-monitoring-flows.mjs`
 falha se algum desses monitores voltar a criar persistente numa resolução.
+O mesmo vale para `storage_health` (ID estável por condição; recuperação só remove),
+`backup_git` (sucesso remove `git_backup_failure`) e `alertas_codex` (previsão e uso
+com um ID cada; recuperação da previsão e uso de volta a `normal` removem). Ainda não
+têm sinal de resolução: erros pontuais de nó do observador global, relé do portão e
+falha de comando remoto do veículo.
 
 ## Retorno, falha e confirmação móvel
 
@@ -212,7 +217,7 @@ identifica a chamada ao hub.
 | `resfriamento_raspberry_pi` | normalização `a240a...` | HA persistente immediate | somente móvel primário (o alerta de emergência é removido por `5dd0...`); snapshot/fallback iguais |
 | `resfriamento_raspberry_pi` | falha `ab4f...` | HA persistente immediate | hub HA `create/immediate`; tentativas, razão, temperatura e ID iguais |
 | `resfriamento_raspberry_pi` | `5dd0...`, `36968...`, `4b48...` | três dismiss immediate | hub HA `dismiss/immediate`; os três IDs permanecem iguais |
-| `storage_health` | `storage_notify`, `storage_notify_secondary`, `storage_notify_persistent` | ambos os celulares + HA persistente queued | celular primário + hub HA; celular secundário desativado na configuração atual |
+| `storage_health` | `storage_notify`, `storage_notify_secondary`, `storage_notify_persistent` | ambos os celulares + HA persistente queued | celular primário + hub HA com ID estável (`raspberry_storage_alert` ou `raspberry_storage_collection`); a recuperação só faz dismiss; celular secundário desativado |
 | `localizacao_pessoas` | `564fd...` | comando `request_location_update` somente ao primário, queue first | hub móvel `background_command`, somente `resident_primary`, queue first |
 | `localizacao_pessoas` | `e0b7...` | comando `request_location_update` somente ao secundário, queue first | hub móvel `background_command`, somente `resident_secondary`, queue first |
 | `contexto_vehicle_primary` | refresh manual bloqueado | HA persistente immediate | hub HA `create/immediate`; objeto `notification` e ID iguais |
@@ -223,8 +228,8 @@ identifica a chamada ao hub.
 | `iluminacao_seguranca` | refletor indisponível | ambos os celulares | duas chamadas explícitas, uma por papel; motivo e título iguais |
 | `alarme_desarme_chegada` | confirmação de chegada | ambos os celulares, actionable | duas chamadas explícitas; tag, actions, títulos e correlação iguais |
 | `recuperacao_rtx` | endpoint recuperado | dismiss persistente queued | hub HA `dismiss/queued`; somente se o incidente global foi aberto, uma vez por recuperação, com o mesmo ID |
-| `alertas_codex` | alerta aceito | somente móvel primário + HA persistente queued | hubs móvel/HA; título, mensagem, tipo no ID, ack, retry e cooldown iguais |
-| `backup_git` | falha final | somente móvel primário + HA persistente queued | hubs móvel/HA; ID `git_backup_failure`, ack e retry iguais |
+| `alertas_codex` | alerta aceito | somente móvel primário + HA persistente queued | hubs móvel/HA; previsão e uso usam um ID por condição (`codex_alert_forecast`, `codex_alert_usage`); a recuperação da previsão e o nível de uso voltando a `normal` só fazem dismiss; ack, retry e cooldown iguais |
+| `backup_git` | falha final | somente móvel primário + HA persistente queued | hubs móvel/HA; ID `git_backup_failure`, ack e retry iguais; um backup bem-sucedido faz dismiss desse ID |
 | `notificacoes_chegadas_residentes` | `resident_secondary` se aproxima | somente móvel primário, actionable e time-sensitive | hub móvel somente `resident_primary`; tag, som, interruption level, dedupe e mensagem iguais |
 | `notificacoes_chegadas_residentes` | `resident_primary` se aproxima | somente móvel secundário, actionable e time-sensitive | hub móvel somente `resident_secondary`; tag, som, interruption level, dedupe e mensagem iguais |
 | `notificacoes_chegadas_residentes` | smoke test solicitado | somente móvel secundário | hub móvel somente `resident_secondary`, com `delivery_under_test` e conteúdo `TESTE`; nunca inclui o primário |

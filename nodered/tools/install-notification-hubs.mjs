@@ -61,7 +61,10 @@ export const NOTIFICATION_MIGRATIONS = Object.freeze([
   persistent("4b48bc3c0c58d87c", "resfriamento_raspberry_pi", "dismiss", "immediate", '"raspberry_pi_emergency_cooling_recovered"'),
   mobile("rpi_emergency_cooling_push_primary", "resfriamento_raspberry_pi", "resident_primary", "simple", '"Raspberry Pi - resfriamento de emergencia"', rpiStartMessage),
   mobile("storage_notify", "storage_health", "resident_primary", "simple", "_notification_hub_context.payload.title", "_notification_hub_context.payload.message"),
-  persistent("storage_notify_persistent", "storage_health", "create", "queued", '_notification_hub_context.payload.notification_id', "_notification_hub_context.payload.title", "_notification_hub_context.payload.message"),
+  // Stable ID per storage condition; the recovery only dismisses it.
+  persistent("storage_notify_persistent", "storage_health", "create", "queued", '_notification_hub_context.payload.notification_id', "_notification_hub_context.payload.title", "_notification_hub_context.payload.message", {
+    operationExpression: '_notification_hub_context.payload.persistent_notification_operation = "dismiss" ? "dismiss" : "create"',
+  }),
   mobile("564fdc36031eaef8", "localizacao_pessoas", "resident_primary", "background_command", null, '"request_location_update"', null, { testMode: "_location_test = true" }),
   mobile("e0b7c0ecf1d8ee28", "localizacao_pessoas", "resident_secondary", "background_command", null, '"request_location_update"', null, { testMode: "_location_test = true" }),
   persistent("vehicle_primary_manual_refresh_blocked_notification_v1", "contexto_vehicle_primary", "create", "immediate", "_notification_hub_context.notification.id", "_notification_hub_context.notification.title", "_notification_hub_context.notification.message"),
@@ -79,9 +82,15 @@ export const NOTIFICATION_MIGRATIONS = Object.freeze([
   persistent("local_ai_rtx_alert_dismiss", "recuperacao_rtx", "dismiss", "queued", '"nodered_observabilidade_global_domain_alert_local_ai_rtx_unavailable"'),
   persistent("internet_remote_alert_dismiss", "monitoramento_internet", "dismiss", "queued", '"nodered_observabilidade_global_domain_alert_remote_access_ssh_unavailable"'),
   mobile("codex_alert_push", "alertas_codex", "resident_primary", "simple", "alert.title", "alert.message", null, { testMode: "_codex_test = true" }),
-  persistent("codex_alert_persistent", "alertas_codex", "create", "queued", '"codex_alert_" & alert.kind', "alert.title", "alert.message", { testMode: "_codex_test = true" }),
+  // One notice per condition: forecast (warning/critical) and usage (warning/critical) share an ID,
+  // and a forecast recovery only dismisses it (resolved alerts leave nothing in Home Assistant).
+  persistent("codex_alert_persistent", "alertas_codex", "create", "queued", '"codex_alert_" & (alert.kind in ["forecast_critical", "forecast_warning", "recovery"] ? "forecast" : alert.kind in ["critical", "usage_warning"] ? "usage" : alert.kind)', "alert.title", "alert.message", {
+    testMode: "_codex_test = true", operationExpression: 'alert.kind = "recovery" ? "dismiss" : "create"',
+  }),
+  persistent("codex_usage_alert_clear", "alertas_codex", "dismiss", "queued", '"codex_alert_usage"', null, null, { testMode: "_codex_test = true" }),
   mobile("git_backup_notify_primary", "backup_git", "resident_primary", "simple", "alert.title", "alert.message", null, { testMode: "_git_backup_test = true" }),
   persistent("git_backup_notify_persistent", "backup_git", "create", "queued", '"git_backup_failure"', "alert.title", "alert.message", { testMode: "_git_backup_test = true" }),
+  persistent("git_backup_failure_clear", "backup_git", "dismiss", "queued", '"git_backup_failure"', null, null, { testMode: "_git_backup_test = true" }),
   mobile("resident_notifications_notify_primary", "notificacoes_chegadas_residentes", "resident_primary", "actionable", '"Casa inteligente"', "_notification_hub_context.payload.message", '{"tag":_notification_hub_context.payload.notification_key,"push":{"sound":"default","interruption-level":"time-sensitive"}}', { testMode: "_location_test = true" }),
   mobile("resident_notifications_notify_secondary", "notificacoes_chegadas_residentes", "resident_secondary", "actionable", '"Casa inteligente"', "_notification_hub_context.payload.message", '{"tag":_notification_hub_context.payload.notification_key,"push":{"sound":"default","interruption-level":"time-sensitive"}}', { testMode: "_location_test = true" }),
   mobile("resident_notifications_test_notify_secondary", "notificacoes_chegadas_residentes", "resident_secondary", "actionable", '"TESTE — Casa inteligente"', '"TESTE — confirmação do push de chegada para o celular."', '{"tag":"resident-notification-delivery-test","push":{"sound":"default","interruption-level":"time-sensitive"}}', { testMode: "true", deliveryUnderTest: "true" }),

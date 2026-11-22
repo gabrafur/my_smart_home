@@ -1,6 +1,6 @@
 const s = msg.storage;
 const state = s.state;
-const recovery = s.collection_recovered ? { collection_error: true,
+const recovery = s.collection_recovered ? { collection_error: true, storage_notification_kind: "collection_recovery",
     payload: { title: "Raspberry Pi - leitura do storage normalizada", message: "A coleta voltou a fornecer métricas válidas. O incidente de leitura foi encerrado." },
     notificationAck: { id: `${s.now}:collection_recovery`, at: s.now, targets: [] } } : null;
 msg.storage_selected_alert = msg.storage_alert ?? recovery ?? state.pendingAlert ?? null;
