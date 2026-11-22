@@ -83,6 +83,10 @@ templates only and cannot reproduce the original household.
   permissions read-only.
 - [ ] About → upload the social preview; review topics, description, homepage.
 - [ ] Turn Wiki/Projects off if they remain unused; decide on Discussions (above).
+- [ ] To publish a version: on `main`, move the *Unreleased* entries of the
+  [changelog](CHANGELOG.md) into a `vYYYY.MM.N` section, then push that tag
+  (or create the release with that new tag in the GitHub UI); the release
+  workflow fills the notes from the changelog.
 - [ ] Keep a few open issues labelled `good first issue`, each with scope, files, and how to validate.
 
 Do not require a check until it has appeared on a pull request. A mistyped

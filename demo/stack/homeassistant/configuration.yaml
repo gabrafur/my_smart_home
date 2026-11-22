@@ -1,0 +1,112 @@
+# Home Assistant for the synthetic demo stack. Every device comes from the
+# built-in `demo` integration; nothing here is a real household entity.
+homeassistant:
+  name: Casa demo
+  latitude: -23.55
+  longitude: -46.63
+  elevation: 760
+  unit_system: metric
+  currency: BRL
+  country: BR
+  language: pt-BR
+  time_zone: America/Sao_Paulo
+
+default_config:
+
+demo:
+
+frontend:
+  themes: !include_dir_merge_named themes
+
+lovelace:
+  dashboards:
+    painel-casa-demo:
+      mode: yaml
+      title: Casa
+      icon: mdi:home
+      show_in_sidebar: true
+      filename: dashboards/casa.yaml
+    painel-sistema-demo:
+      mode: yaml
+      title: Sistema
+      icon: mdi:server
+      show_in_sidebar: true
+      filename: dashboards/sistema.yaml
+
+# Node-RED publishes its decision and synthetic host health back over MQTT.
+mqtt:
+  sensor:
+    - name: Decisão da luz externa
+      unique_id: demo_nodered_exterior_light_decision
+      state_topic: smart-home-demo/decision
+      value_template: "{{ value_json.action }}"
+      json_attributes_topic: smart-home-demo/decision
+      icon: mdi:source-branch
+    - name: Temperatura do processador
+      unique_id: demo_host_cpu_temperature
+      state_topic: smart-home-demo/health
+      value_template: "{{ value_json.cpu_temp }}"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+    - name: Disco usado
+      unique_id: demo_host_disk_used
+      state_topic: smart-home-demo/health
+      value_template: "{{ value_json.disk_used_pct }}"
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:harddisk
+    - name: Memória usada
+      unique_id: demo_host_memory_used
+      state_topic: smart-home-demo/health
+      value_template: "{{ value_json.memory_used_pct }}"
+      unit_of_measurement: "%"
+      state_class: measurement
+      icon: mdi:memory
+  binary_sensor:
+    - name: Internet
+      unique_id: demo_internet
+      state_topic: smart-home-demo/health
+      value_template: "{{ 'ON' if value_json.internet == 'online' else 'OFF' }}"
+      device_class: connectivity
+    - name: Rede Zigbee
+      unique_id: demo_zigbee
+      state_topic: smart-home-demo/health
+      value_template: "{{ 'ON' if value_json.zigbee == 'online' else 'OFF' }}"
+      device_class: connectivity
+
+# Home Assistant is the producer of these facts: it publishes the alarm and sun
+# states (retained) on start, on every change and every 5 minutes. The decision
+# itself stays in Node-RED.
+automation:
+  - id: demo_publish_current_facts
+    alias: Demo — publicar fatos atuais
+    mode: queued
+    triggers:
+      - trigger: homeassistant
+        event: start
+        id: start
+      - trigger: state
+        entity_id:
+          - alarm_control_panel.security
+          - sun.sun
+        # `to: null` fires on state changes only, not on attribute updates.
+        to: null
+      - trigger: time_pattern
+        minutes: "/5"
+    actions:
+      - if:
+          - condition: trigger
+            id: start
+        then:
+          - delay: "00:00:05"
+      - repeat:
+          for_each:
+            - alarm_control_panel.security
+            - sun.sun
+          sequence:
+            - action: mqtt.publish
+              data:
+                topic: "demo_state/{{ repeat.item | replace('.', '/') }}/state"
+                payload: "{{ states(repeat.item) }}"
+                retain: true

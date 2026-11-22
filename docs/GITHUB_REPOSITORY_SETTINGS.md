@@ -83,6 +83,10 @@ ausentes e nunca torna o clone uma réplica da residência original.
   workflow somente leitura.
 - [ ] About → enviar o social preview, revisar topics, descrição e homepage.
 - [ ] Desabilitar Wiki/Projects se continuarem sem uso; decidir sobre Discussions (acima).
+- [ ] Para publicar uma versão: na `main`, mova as entradas de *Não lançado*
+  do [changelog](CHANGELOG.md) para uma seção `vAAAA.MM.N` e envie essa tag
+  (ou crie a Release com essa tag nova na interface do GitHub); o workflow de
+  release preenche as notas a partir do changelog.
 - [ ] Manter algumas issues abertas com o rótulo `good first issue`, cada uma com escopo, arquivos e como validar.
 
 Não habilite um required check antes de ele aparecer num pull request, pois um

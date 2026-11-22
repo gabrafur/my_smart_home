@@ -1,0 +1,55 @@
+# Synthetic demo stack. Separate Compose project (smart-home-demo), published on
+# 127.0.0.1 only, with its own volumes. It never mounts private bindings,
+# secrets, host devices or the household configuration, and has no privileges.
+# Images are the same digests pinned in docker-compose.yml.
+# Usage: make demo-stack / make demo-stack-down (see docs/BOOTSTRAP_DEMO.en.md).
+name: smart-home-demo
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto@sha256:fa12172a051310efe5bcb7a6a11b77bd5faacb82cbacd7742aa758bf024fd8e4
+    restart: "no"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant@sha256:493a07e8f6530fc640223f4a0a5248f20a61ca2f718bb1d31efbf08a2c5ea28f
+    restart: "no"
+    depends_on:
+      - mosquitto
+    ports:
+      - "127.0.0.1:8124:8123"
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ha-config:/config
+      - ./homeassistant/configuration.yaml:/config/configuration.yaml:ro
+      - ./homeassistant/dashboards:/config/dashboards:ro
+      - ../../homeassistant/themes:/config/themes:ro
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 8123), 5).close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  nodered:
+    image: nodered/node-red@sha256:2ccd38b4066648bd5e17430c50a2f8102c566a82fd4f2fc5c342e61664d6896f
+    restart: "no"
+    depends_on:
+      - mosquitto
+    ports:
+      - "127.0.0.1:1881:1880"
+    environment:
+      - TZ=America/Sao_Paulo
+      - MQTT_HOST=mosquitto
+    # Copy the versioned demo flow on first start so edits in the editor stay
+    # in the demo volume and never touch the repository.
+    entrypoint: ["/bin/sh", "-c", "[ -f /data/flows.json ] || cp /demo/flows.json /data/flows.json; exec ./entrypoint.sh"]
+    volumes:
+      - nodered-data:/data
+      - ./nodered:/demo:ro
+
+volumes:
+  ha-config:
+  nodered-data:

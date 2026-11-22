@@ -172,3 +172,6 @@ nodered/.notification-diagnostics.json.*
 
 # Core dumps written as root by crash-looping containers (unreadable to the backup)
 appdaemon/core
+
+# Synthetic demo stack runtime (generated demo user, never versioned)
+demo/stack/.runtime/

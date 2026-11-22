@@ -1,0 +1,138 @@
+# Painel Casa da demo: mesmo desenho do painel real (docs/DASHBOARDS.md), com
+# entidades sintéticas da integração `demo`.
+title: Casa
+views:
+  - title: Início
+    path: inicio
+    type: sections
+    theme: casa
+    max_columns: 3
+    dense_section_placement: true
+    header:
+      layout: start
+      badges_position: bottom
+      card:
+        type: markdown
+        text_only: true
+        content: >-
+          ## {% set h = now().hour %}{{ 'Bom dia' if h < 12 else
+          ('Boa tarde' if h < 18 else 'Boa noite') }}, {{ user }}
+    badges:
+      - type: entity
+        entity: alarm_control_panel.security
+        name: Alarme
+        show_name: true
+        show_state: true
+      - type: entity
+        entity: weather.demo_weather_south
+        show_name: false
+        show_state: true
+      - type: entity
+        entity: sensor.outside_temperature
+        name: Lá fora
+        show_name: true
+        show_state: true
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Acesso rápido
+            icon: mdi:gesture-tap-button
+          - type: tile
+            entity: cover.garage_door
+            name: Portão
+            icon: mdi:garage
+            tap_action:
+              action: toggle
+              confirmation:
+                text: Acionar o portão da garagem?
+          - type: tile
+            entity: alarm_control_panel.security
+            name: Alarme
+            tap_action:
+              action: more-info
+          - type: tile
+            entity: lock.front_door
+            name: Porta da frente
+            tap_action:
+              action: more-info
+          - type: tile
+            entity: switch.decorative_lights
+            name: Luzes decorativas
+      - type: grid
+        cards:
+          - type: heading
+            heading: Iluminação
+            icon: mdi:lightbulb-group
+          - type: tile
+            entity: light.entrance_color_white_lights
+            name: Luz externa
+          - type: tile
+            entity: light.living_room_rgbww_lights
+            name: Sala
+          - type: tile
+            entity: light.kitchen_lights
+            name: Cozinha
+          - type: tile
+            entity: light.office_rgbw_lights
+            name: Escritório
+          - type: tile
+            entity: light.bed_light
+            name: Quarto
+          - type: tile
+            entity: light.ceiling_lights
+            name: Teto
+      - type: grid
+        cards:
+          - type: heading
+            heading: Decisão do Node-RED
+            icon: mdi:source-branch
+          - type: tile
+            entity: sensor.decisao_da_luz_externa
+            name: Luz externa
+            grid_options:
+              columns: full
+          - type: markdown
+            grid_options:
+              columns: full
+            # Só formata o que o Node-RED publicou; a decisão não é refeita aqui.
+            content: >-
+              {% set d = states.sensor.decisao_da_luz_externa %}
+              {% if d and d.attributes.reason is defined %}
+              **Motivo:** {{ d.attributes.reason }}
+
+              **Fatos:** sol `{{ d.attributes.sun }}`, alarme `{{ d.attributes.alarm }}`
+
+              Simulada: nenhum comando enviado à luz (`dispatched: false`).
+              {% else %}
+              Aguardando a primeira decisão do Node-RED.
+              {% endif %}
+      - type: grid
+        cards:
+          - type: heading
+            heading: Clima
+            icon: mdi:thermostat
+          - type: thermostat
+            entity: climate.hvac
+            name: Escritório
+            grid_options:
+              columns: full
+          - type: tile
+            entity: sensor.outside_humidity
+            name: Umidade lá fora
+          - type: tile
+            entity: fan.living_room_fan
+            name: Ventilador
+      - type: grid
+        cards:
+          - type: heading
+            heading: Rotina
+            icon: mdi:calendar-check
+          - type: todo-list
+            entity: todo.shopping_list
+            title: Lista de compras
+            grid_options:
+              columns: full
+          - type: tile
+            entity: vacuum.demo_vacuum_0_ground_floor
+            name: Aspirador

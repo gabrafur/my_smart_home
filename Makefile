@@ -5,6 +5,7 @@
 	validate-bootstrap validate-demo validate-git validate-commit-message validate-staged privacy-check \
 	privacy-check-staged bindings-check backup-plan backup-verify offsite-backup-plan offsite-backup-measure offsite-backup-verify restore-plan \
 	restore-verify restore-test restore-apply bootstrap bootstrap-test demo demo-test \
+	demo-stack demo-stack-down demo-stack-screenshots \
 	modules-check context-recovery-check install-git-hooks \
 	benchmark-local-ai-high-potential benchmark-local-ai-high-potential-unit \
 	benchmark-local-ai-high-potential-integration benchmark-local-ai-high-potential-simulated \
@@ -53,6 +54,7 @@ validate-compose:
 	docker compose --env-file .env.example -f docker-compose.yml -f compose.modules.yml config --quiet
 	docker compose --env-file .env.example -f docker-compose.yml -f compose.modules.yml --profile '*' config --quiet
 	node scripts/compose-matrix-check.mjs
+	docker compose -f demo/stack/compose.yml config --quiet
 
 validate-json:
 	node scripts/structured-files-check.mjs json
@@ -335,6 +337,16 @@ demo:
 
 demo-test:
 	node --test scripts/demo.test.mjs
+
+# Synthetic Home Assistant + MQTT + Node-RED on 127.0.0.1 (ports 8124 and 1881).
+demo-stack:
+	node scripts/demo-stack.mjs up
+
+demo-stack-down:
+	node scripts/demo-stack.mjs down
+
+demo-stack-screenshots:
+	node scripts/demo-stack.mjs screenshots
 
 modules-check:
 	node scripts/modules-check.mjs

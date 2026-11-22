@@ -1,0 +1,450 @@
+[
+  {
+    "id": "demo_tab",
+    "type": "tab",
+    "label": "Demo: fatos → decisão → painel",
+    "disabled": false,
+    "info": "Fluxo sintético da demo (make demo-stack). Lê fatos do Home Assistant por MQTT, decide com um parâmetro visível e publica a decisão como dry-run (simulated: true, dispatched: false). Também publica saúde sintética do host. Nenhum dispositivo real é acionado."
+  },
+  {
+    "id": "demo_broker",
+    "type": "mqtt-broker",
+    "name": "Mosquitto da demo",
+    "broker": "${MQTT_HOST}",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthRetain": "false",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closeRetain": "false",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willRetain": "false",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "demo_group_policy",
+    "type": "group",
+    "z": "demo_tab",
+    "name": "1. Parâmetro visível — edite aqui",
+    "style": {
+      "label": true,
+      "stroke": "#3f6b8f",
+      "fill": "#e3ecf7",
+      "fill-opacity": "0.35",
+      "color": "#1b2330"
+    },
+    "nodes": [
+      "demo_policy_inject",
+      "demo_policy_store"
+    ],
+    "x": 64,
+    "y": 40,
+    "w": 520,
+    "h": 82
+  },
+  {
+    "id": "demo_group_facts",
+    "type": "group",
+    "z": "demo_tab",
+    "name": "2. Fatos do Home Assistant (MQTT)",
+    "style": {
+      "label": true,
+      "stroke": "#3f6b8f",
+      "fill": "#e9f2e3",
+      "fill-opacity": "0.35",
+      "color": "#1b2330"
+    },
+    "nodes": [
+      "demo_sun_in",
+      "demo_sun_store",
+      "demo_alarm_in",
+      "demo_alarm_store"
+    ],
+    "x": 64,
+    "y": 160,
+    "w": 520,
+    "h": 122
+  },
+  {
+    "id": "demo_group_decision",
+    "type": "group",
+    "z": "demo_tab",
+    "name": "3. Decisão e terminal dry-run (sem efeitos)",
+    "style": {
+      "label": true,
+      "stroke": "#3f6b8f",
+      "fill": "#fbf0d9",
+      "fill-opacity": "0.35",
+      "color": "#1b2330"
+    },
+    "nodes": [
+      "demo_decide",
+      "demo_decision_out"
+    ],
+    "x": 624,
+    "y": 40,
+    "w": 600,
+    "h": 242
+  },
+  {
+    "id": "demo_group_health",
+    "type": "group",
+    "z": "demo_tab",
+    "name": "4. Saúde sintética do host",
+    "style": {
+      "label": true,
+      "stroke": "#3f6b8f",
+      "fill": "#eee6f5",
+      "fill-opacity": "0.35",
+      "color": "#1b2330"
+    },
+    "nodes": [
+      "demo_health_tick",
+      "demo_health",
+      "demo_health_out"
+    ],
+    "x": 64,
+    "y": 320,
+    "w": 700,
+    "h": 82
+  },
+  {
+    "id": "demo_group_observer",
+    "type": "group",
+    "z": "demo_tab",
+    "name": "5. Observabilidade: qualquer erro do tab",
+    "style": {
+      "label": true,
+      "stroke": "#3f6b8f",
+      "fill": "#f7e3e3",
+      "fill-opacity": "0.35",
+      "color": "#1b2330"
+    },
+    "nodes": [
+      "demo_catch",
+      "demo_incident",
+      "demo_incident_out"
+    ],
+    "x": 64,
+    "y": 440,
+    "w": 700,
+    "h": 82
+  },
+  {
+    "id": "demo_policy_inject",
+    "type": "inject",
+    "name": "Política: luz externa só à noite com alarme armado",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "0.5",
+    "topic": "",
+    "payload": "{\"night_states\":[\"below_horizon\"],\"armed_states\":[\"armed_away\",\"armed_home\",\"armed_night\"]}",
+    "payloadType": "json",
+    "x": 250,
+    "y": 80,
+    "wires": [
+      [
+        "demo_policy_store"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_policy"
+  },
+  {
+    "id": "demo_policy_store",
+    "type": "change",
+    "name": "Guardar política",
+    "rules": [
+      {
+        "t": "set",
+        "p": "policy",
+        "pt": "flow",
+        "to": "payload",
+        "tot": "msg"
+      }
+    ],
+    "x": 490,
+    "y": 80,
+    "wires": [
+      [
+        "demo_decide"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_policy"
+  },
+  {
+    "id": "demo_sun_in",
+    "type": "mqtt in",
+    "name": "Sol (sun.sun)",
+    "topic": "demo_state/sun/sun/state",
+    "qos": "0",
+    "datatype": "utf8",
+    "broker": "demo_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 180,
+    "y": 200,
+    "wires": [
+      [
+        "demo_sun_store"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_facts"
+  },
+  {
+    "id": "demo_sun_store",
+    "type": "change",
+    "name": "Guardar sol",
+    "rules": [
+      {
+        "t": "set",
+        "p": "sun",
+        "pt": "flow",
+        "to": "payload",
+        "tot": "msg"
+      }
+    ],
+    "x": 450,
+    "y": 200,
+    "wires": [
+      [
+        "demo_decide"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_facts"
+  },
+  {
+    "id": "demo_alarm_in",
+    "type": "mqtt in",
+    "name": "Alarme (security)",
+    "topic": "demo_state/alarm_control_panel/security/state",
+    "qos": "0",
+    "datatype": "utf8",
+    "broker": "demo_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 190,
+    "y": 240,
+    "wires": [
+      [
+        "demo_alarm_store"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_facts"
+  },
+  {
+    "id": "demo_alarm_store",
+    "type": "change",
+    "name": "Guardar alarme",
+    "rules": [
+      {
+        "t": "set",
+        "p": "alarm",
+        "pt": "flow",
+        "to": "payload",
+        "tot": "msg"
+      }
+    ],
+    "x": 460,
+    "y": 240,
+    "wires": [
+      [
+        "demo_decide"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_facts"
+  },
+  {
+    "id": "demo_decide",
+    "type": "function",
+    "name": "Decidir luz externa (sem efeitos)",
+    "func": "const policy = flow.get('policy');\nconst sun = flow.get('sun');\nconst alarm = flow.get('alarm');\nif (!policy || sun === undefined || alarm === undefined) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'aguardando fatos' });\n    return null;\n}\nconst night = policy.night_states.includes(sun);\nconst armed = policy.armed_states.includes(alarm);\nconst action = night && armed ? 'ligar' : 'desligar';\nconst reason = !night ? 'é dia' : armed ? 'noite e alarme armado' : 'noite, mas alarme desarmado';\nmsg.payload = {\n    entity: 'light.entrance_color_white_lights',\n    action,\n    reason,\n    sun,\n    alarm,\n    simulated: true,\n    dispatched: false,\n    decided_at: new Date().toISOString(),\n};\nnode.status({ fill: action === 'ligar' ? 'yellow' : 'blue', shape: 'dot', text: action + ': ' + reason });\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 800,
+    "y": 120,
+    "wires": [
+      [
+        "demo_decision_out"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_decision"
+  },
+  {
+    "id": "demo_decision_out",
+    "type": "mqtt out",
+    "name": "Terminal dry-run: publica a decisão, não aciona a luz",
+    "topic": "smart-home-demo/decision",
+    "qos": "1",
+    "retain": "true",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "demo_broker",
+    "x": 900,
+    "y": 200,
+    "wires": [],
+    "z": "demo_tab",
+    "g": "demo_group_decision"
+  },
+  {
+    "id": "demo_health_tick",
+    "type": "inject",
+    "name": "A cada 30 s",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "30",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "2",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 170,
+    "y": 360,
+    "wires": [
+      [
+        "demo_health"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_health"
+  },
+  {
+    "id": "demo_health",
+    "type": "function",
+    "name": "Saúde sintética (valores inventados)",
+    "func": "const jitter = (base, spread) => Math.round((base + (Math.random() - 0.5) * spread) * 10) / 10;\nmsg.payload = {\n    cpu_temp: jitter(51, 6),\n    disk_used_pct: jitter(42, 0.4),\n    memory_used_pct: jitter(58, 8),\n    internet: 'online',\n    zigbee: 'online',\n    synthetic: true,\n};\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 400,
+    "y": 360,
+    "wires": [
+      [
+        "demo_health_out"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_health"
+  },
+  {
+    "id": "demo_health_out",
+    "type": "mqtt out",
+    "name": "Publicar saúde",
+    "topic": "smart-home-demo/health",
+    "qos": "1",
+    "retain": "true",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "demo_broker",
+    "x": 660,
+    "y": 360,
+    "wires": [],
+    "z": "demo_tab",
+    "g": "demo_group_health"
+  },
+  {
+    "id": "demo_catch",
+    "type": "catch",
+    "name": "Erros deste tab",
+    "scope": null,
+    "uncaught": false,
+    "x": 160,
+    "y": 480,
+    "wires": [
+      [
+        "demo_incident"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_observer"
+  },
+  {
+    "id": "demo_incident",
+    "type": "function",
+    "name": "Montar incidente",
+    "func": "msg.payload = {\n    source: msg.error && msg.error.source ? msg.error.source.name || msg.error.source.id : 'desconhecido',\n    message: msg.error ? String(msg.error.message).slice(0, 300) : 'erro sem mensagem',\n    at: new Date().toISOString(),\n};\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 480,
+    "wires": [
+      [
+        "demo_incident_out"
+      ]
+    ],
+    "z": "demo_tab",
+    "g": "demo_group_observer"
+  },
+  {
+    "id": "demo_incident_out",
+    "type": "mqtt out",
+    "name": "Publicar incidente",
+    "topic": "smart-home-demo/incident",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "demo_broker",
+    "x": 640,
+    "y": 480,
+    "wires": [],
+    "z": "demo_tab",
+    "g": "demo_group_observer"
+  }
+]

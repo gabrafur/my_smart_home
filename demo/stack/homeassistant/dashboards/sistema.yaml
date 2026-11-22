@@ -1,0 +1,74 @@
+# Painel Sistema da demo: saúde sintética publicada pelo Node-RED da demo e
+# atualizações da integração `demo`. Nenhum dado vem de um host real.
+title: Sistema
+views:
+  - title: Saúde
+    path: saude
+    type: sections
+    theme: casa
+    max_columns: 3
+    dense_section_placement: true
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Conectividade
+            icon: mdi:lan-connect
+          - type: tile
+            entity: binary_sensor.internet
+            name: Internet
+          - type: tile
+            entity: binary_sensor.rede_zigbee
+            name: Zigbee
+          - type: markdown
+            grid_options:
+              columns: full
+            content: >-
+              Valores sintéticos publicados a cada 30 s pelo fluxo de demo do
+              Node-RED em `smart-home-demo/health`.
+      - type: grid
+        cards:
+          - type: heading
+            heading: Servidor
+            icon: mdi:server
+          - type: gauge
+            entity: sensor.temperatura_do_processador
+            name: Processador
+            min: 30
+            max: 85
+            severity:
+              green: 30
+              yellow: 65
+              red: 75
+          - type: gauge
+            entity: sensor.disco_usado
+            name: Disco
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 75
+              red: 85
+          - type: gauge
+            entity: sensor.memoria_usada
+            name: Memória
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 75
+              red: 90
+      - type: grid
+        cards:
+          - type: heading
+            heading: Atualizações
+            icon: mdi:package-up
+          - type: tile
+            entity: update.demo_add_on
+            name: Complemento
+          - type: tile
+            entity: update.demo_living_room_bulb_update
+            name: Lâmpada da sala
+          - type: tile
+            entity: update.demo_update_with_progress
+            name: Firmware
