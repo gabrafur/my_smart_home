@@ -37,6 +37,11 @@ export function validateCommitSubject(subject) {
   return errors;
 }
 
+export function parentCount(rawCommit) {
+  const header = rawCommit.split("\n\n", 1)[0];
+  return header.split("\n").filter((line) => line.startsWith("parent ")).length;
+}
+
 function git(args) {
   const result = spawnSync("git", args, {
     cwd: repositoryRoot,
@@ -63,8 +68,10 @@ function checkRevisions(revision) {
     : [git(["rev-parse", "--verify", `${revision}^{commit}`])];
   let valid = true;
   for (const commit of commits) {
-    const parents = git(["show", "-s", "--format=%P", commit]).split(/\s+/).filter(Boolean);
-    if (parents.length > 1) continue;
+    // Count parents from the raw commit object: in a shallow checkout (CI uses
+    // fetch-depth 1) `%P` is empty for the boundary commit, which made a real
+    // merge commit look like an ordinary one with a non-conventional subject.
+    if (parentCount(git(["cat-file", "commit", commit])) > 1) continue;
     const subject = git(["show", "-s", "--format=%s", commit]);
     // GitHub's pull_request checkout can synthesize this single-parent merge
     // result, so it has no author-controlled conventional subject to validate.
