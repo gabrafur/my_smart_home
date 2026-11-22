@@ -207,6 +207,11 @@ What stays private in your fork: `.env`, `.local-secrets/`,
 | Provenance | [inventory](docs/DEPENDENCY_PROVENANCE.en.md), [notices](THIRD_PARTY_NOTICES.md) | vendored versions, licenses, and local deltas are explicit |
 | Agent context | [contract](docs/MEMORIA_VERSIONADA_AGENTES.md), [recovery](scripts/ai-context-recovery.mjs) | agents resume from commit and public memory, never automatic private runtime |
 
+Want one piece rather than the whole house? The
+[reusable components catalogue](docs/REUSABLE_COMPONENTS.en.md) lists what can
+be copied or extracted (layout validator, failure observer, notification hubs,
+bindings, restore engine, scoped MCP tools) and how.
+
 The [staged engineering tour](docs/ENGINEERING_TOUR.md) offers a 30-second
 architecture scan, a five-minute reliability/privacy review, and a 15-minute
 implementation walkthrough.

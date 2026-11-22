@@ -13,6 +13,7 @@ placeholders.
 | Documento | Quando usar | Inglês |
 | --- | --- | --- |
 | [Tour técnico de portfólio](ENGINEERING_TOUR.pt-BR.md) | Caminhos de evidência para 30 segundos, 5 minutos e 15 minutos | [English](ENGINEERING_TOUR.md) |
+| [Componentes reaproveitáveis](REUSABLE_COMPONENTS.md) | Peças que podem ser usadas em outros projetos, dependências e como extraí-las | [English](REUSABLE_COMPONENTS.en.md) |
 | [Changelog](CHANGELOG.md) | Novidades e desempenho por mês, a partir dos commits | bilíngue no mesmo arquivo |
 | [Instalação e restauração](INSTALACAO_RESTAURACAO_SMART_HOME.md) | Clone novo, recuperação ou migração de host | [English](INSTALLATION_RESTORE.en.md) |
 | [Contrato determinístico de restore](RESTORE_CONTRACT.md) | Manifesto, bundle, plan/verify/apply e contexto da IA | [English](RESTORE_CONTRACT.en.md) |

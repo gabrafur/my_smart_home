@@ -79,6 +79,7 @@
     { "id": "garage-gate-pulse", "area": "features", "strategy": "full pair", "pt": "docs/PORTAO_GARAGEM_BOTAO_PULSO.md", "en": "docs/PORTAO_GARAGEM_BOTAO_PULSO.en.md" },
     { "id": "global-failure-observer", "area": "operations", "strategy": "full pair", "pt": "docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md", "en": "docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.en.md" },
     { "id": "mcp-household-tools", "area": "operations", "strategy": "full pair", "pt": "docs/raspberry-mcp/reference/household-lights.md", "en": "docs/raspberry-mcp/reference/household-lights.en.md" },
+    { "id": "reusable-components", "area": "contributing", "strategy": "full pair", "pt": "docs/REUSABLE_COMPONENTS.md", "en": "docs/REUSABLE_COMPONENTS.en.md" },
     { "id": "docs-index", "area": "overview", "strategy": "full pair", "pt": "docs/README.md", "en": "docs/README.en.md" },
     { "id": "engineering-tour", "area": "portfolio", "strategy": "full pair", "pt": "docs/ENGINEERING_TOUR.pt-BR.md", "en": "docs/ENGINEERING_TOUR.md" },
     { "id": "containers", "area": "architecture", "strategy": "full pair", "pt": "docs/CONTAINERS.md", "en": "docs/CONTAINERS.en.md" },

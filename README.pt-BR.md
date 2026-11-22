@@ -210,6 +210,12 @@ O que continua privado no seu fork: `.env`, `.local-secrets/`,
 | Proveniência | [inventário](docs/DEPENDENCY_PROVENANCE.md), [notices](THIRD_PARTY_NOTICES.md) | versões, licenças e deltas locais de integrações vendorizadas ficam explícitos |
 | Contexto de agentes | [contrato](docs/MEMORIA_VERSIONADA_AGENTES.md), [recovery](scripts/ai-context-recovery.mjs) | agentes retomam pelo commit e memória pública, nunca por runtime privado automático |
 
+Quer só uma peça, e não a casa inteira? O
+[catálogo de componentes reaproveitáveis](docs/REUSABLE_COMPONENTS.md) lista o
+que pode ser copiado ou extraído (validador de layout, observador de falhas,
+hubs de notificação, bindings, motor de restore, ferramentas MCP limitadas) e
+como.
+
 O [tour de engenharia por profundidade](docs/ENGINEERING_TOUR.pt-BR.md) oferece
 uma leitura de 30 segundos da arquitetura, uma revisão de cinco minutos sobre
 confiabilidade/privacidade e uma inspeção de 15 minutos da implementação.

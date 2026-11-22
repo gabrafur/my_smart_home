@@ -12,6 +12,7 @@ physical identifiers must appear only as placeholders.
 | Document | Use it for | Portuguese |
 | --- | --- | --- |
 | [Technical portfolio tour](ENGINEERING_TOUR.md) | 30-second, 5-minute, and 15-minute evidence paths | [Português](ENGINEERING_TOUR.pt-BR.md) |
+| [Reusable components](REUSABLE_COMPONENTS.en.md) | Pieces you can use in other projects, their dependencies, and how to extract them | [Português](REUSABLE_COMPONENTS.md) |
 | [Changelog](CHANGELOG.md) | Monthly features and performance changes from commits | bilingual single file |
 | [Installation and restore](INSTALLATION_RESTORE.en.md) | Fresh clones, recovery, and host migration | [Português](INSTALACAO_RESTAURACAO_SMART_HOME.md) |
 | [Deterministic restore contract](RESTORE_CONTRACT.en.md) | Manifest, bundle, plan/verify/apply, and AI context | [Português](RESTORE_CONTRACT.md) |
