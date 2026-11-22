@@ -8,7 +8,15 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const { parseAllDocuments } = require("../validation/node_modules/yaml");
+let parseAllDocuments;
+try {
+  ({ parseAllDocuments } = require("../validation/node_modules/yaml"));
+} catch (error) {
+  if (error?.code !== "MODULE_NOT_FOUND") throw error;
+  console.error("Structured file check cannot start: validation dependencies are not installed.");
+  console.error("Run `make validate-dependencies` once, then repeat the check.");
+  process.exit(2);
+}
 
 function trackedFiles(root) {
   const result = spawnSync("git", ["ls-files", "--cached", "-z"], {
