@@ -42105,6 +42105,7 @@
             "global_observer_coverage__monitoramento_vpn_tab__out",
             "global_observer_coverage__monitoramento_zigbee_tab__out",
             "global_observer_coverage__mqtt_native_observer_tab__out",
+            "global_observer_coverage__notification_expiry_tab__out",
             "global_observer_coverage__notification_hub_alexa_tab__out",
             "global_observer_coverage__notification_hub_mobile_tab__out",
             "global_observer_coverage__notification_hub_persistent_tab__out",
@@ -104635,5 +104636,470 @@
                 "codex_level_usage_resolved"
             ]
         ]
+    },
+    {
+        "id": "notification_expiry_policy_group",
+        "type": "group",
+        "z": "notification_expiry_tab",
+        "name": "0. Política: sem sinal de resolução expira em 24 h",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "notification_expiry_policy_note",
+            "notification_expiry_tick",
+            "notification_expiry_tick_out"
+        ],
+        "x": 64,
+        "y": 20,
+        "w": 620,
+        "h": 180
+    },
+    {
+        "id": "notification_expiry_sweep_group",
+        "type": "group",
+        "z": "notification_expiry_tab",
+        "name": "1. Ler persistentes do HA, selecionar vencidas e remover pelo hub",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "notification_expiry_tick_in",
+            "notification_expiry_read",
+            "notification_expiry_test_in",
+            "notification_expiry_select",
+            "notification_expiry_pace",
+            "notification_expiry_hub_call",
+            "notification_expiry_mode",
+            "notification_expiry_result",
+            "notification_expiry_dry_run_terminal"
+        ],
+        "x": 720,
+        "y": 20,
+        "w": 1720,
+        "h": 180
+    },
+    {
+        "id": "notification_expiry_test_group",
+        "type": "group",
+        "z": "notification_expiry_tab",
+        "name": "2. Teste manual — dry-run do hub",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0891b2",
+            "stroke-opacity": "1",
+            "fill": "#cffafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "notification_expiry_test",
+            "notification_expiry_test_out"
+        ],
+        "x": 64,
+        "y": 240,
+        "w": 620,
+        "h": 120
+    },
+    {
+        "id": "notification_expiry_tab",
+        "type": "tab",
+        "label": "expiracao_notificacoes",
+        "disabled": false,
+        "info": "Regra do proprietário (23/11/2026): notificação persistente sem sinal de resolução (erro pontual de nó, relé do portão, comando do carro, avisos do Codex de cache/créditos/diário) é removida do Home Assistant 24 h depois de criada. Notificações com resolução própria não são tocadas. A remoção passa pelo hub persistente; TESTE termina no dry-run do hub.",
+        "env": []
+    },
+    {
+        "id": "notification_expiry_policy_note",
+        "type": "comment",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_policy_group",
+        "name": "Só IDs sem resolução; vencem 24 h após a criação.",
+        "info": "Lista fechada em tools/functions/notification-expiry-select.js. Um ID novo sem resolução precisa ser acrescentado lá e no teste.",
+        "x": 360,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "notification_expiry_tick",
+        "type": "inject",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_policy_group",
+        "name": "Agenda visível — varrer a cada 30 min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "1800",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "120",
+        "topic": "",
+        "x": 250,
+        "y": 130,
+        "wires": [
+            [
+                "notification_expiry_tick_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_tick_out",
+        "type": "link out",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_policy_group",
+        "name": "Varredura → leitura do HA",
+        "mode": "link",
+        "links": [
+            "notification_expiry_tick_in"
+        ],
+        "x": 560,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "notification_expiry_tick_in",
+        "type": "link in",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "Receber varredura",
+        "links": [
+            "notification_expiry_tick_out"
+        ],
+        "x": 770,
+        "y": 80,
+        "wires": [
+            [
+                "notification_expiry_read"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_read",
+        "type": "ha-api",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "FONTE: notificações persistentes do HA",
+        "server": "4126427d5e161a03",
+        "version": 1,
+        "debugenabled": false,
+        "protocol": "websocket",
+        "method": "get",
+        "path": "",
+        "data": "{\"type\":\"persistent_notification/get\"}",
+        "dataType": "json",
+        "responseType": "json",
+        "outputProperties": [
+            {
+                "property": "ha_notifications",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "results"
+            }
+        ],
+        "x": 1000,
+        "y": 80,
+        "wires": [
+            [
+                "notification_expiry_select"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_test_in",
+        "type": "link in",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "Receber lista TESTE",
+        "links": [
+            "notification_expiry_test_out"
+        ],
+        "x": 1000,
+        "y": 150,
+        "wires": [
+            [
+                "notification_expiry_select"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_select",
+        "type": "function",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "Selecionar vencidas sem sinal de resolução",
+        "func": "// Owner policy (23/11/2026): a Home Assistant persistent notification whose flow\n// has no resolution signal is removed 24 h after it was created. Notifications\n// with a real resolution (dismiss on recovery) are never touched here.\nconst MAX_AGE_MS = 24 * 60 * 60 * 1000;\nconst EXACT = new Set([\n    \"portao_garagem_rele_preso\",\n    \"vehicle_primary_remote_command_failed\",\n    \"vehicle_primary_refresh_blocked\",\n    \"codex_alert_cache_low\",\n    \"codex_alert_credits_low\",\n    \"codex_alert_daily\",\n    \"codex_alert_test\"\n]);\nconst PREFIXES = [\n    \"nodered_observabilidade_global_node_error_\",\n    \"nodered_observabilidade_global_monitor_internal_error_\"\n];\nconst eligible = (id) => EXACT.has(id) || PREFIXES.some((prefix) => id.startsWith(prefix));\n\nconst testMode = msg.test_mode === true;\nconst list = Array.isArray(msg.ha_notifications) ? msg.ha_notifications : null;\nif (list === null) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"lista do HA indisponível\" });\n    return null;\n}\nconst now = Number.isFinite(msg.expiry_now) ? msg.expiry_now : Date.now();\nconst expired = [];\nfor (const entry of list) {\n    const id = entry?.notification_id;\n    if (typeof id !== \"string\" || !eligible(id)) continue;\n    const createdAt = Date.parse(entry.created_at);\n    if (!Number.isFinite(createdAt) || now - createdAt < MAX_AGE_MS) continue;\n    expired.push({\n        topic: id,\n        payload: \"\",\n        test_mode: testMode,\n        _notification_expiry: { notification_id: id, created_at: entry.created_at, test_mode: testMode },\n        notification: {\n            source: \"expiracao_notificacoes\",\n            operation: \"dismiss\",\n            delivery: \"queued\",\n            notification_id: id,\n            test_mode: testMode\n        }\n    });\n}\nconst clock = new Date(now).toISOString().slice(11, 16);\nnode.status({\n    fill: expired.length ? \"yellow\" : \"green\",\n    shape: \"dot\",\n    text: `${testMode ? \"TESTE: \" : \"\"}${expired.length} vencida(s) de ${list.length} · ${clock} UTC`\n});\nreturn [expired];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1290,
+        "y": 80,
+        "wires": [
+            [
+                "notification_expiry_pace"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_pace",
+        "type": "delay",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "Uma remoção a cada 2 s",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "2",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1560,
+        "y": 80,
+        "wires": [
+            [
+                "notification_expiry_hub_call"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_hub_call",
+        "type": "link call",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "Hub HA → dismiss",
+        "links": [
+            "notification_hub_persistent_in"
+        ],
+        "linkType": "static",
+        "timeout": "30",
+        "x": 1790,
+        "y": 80,
+        "wires": [
+            [
+                "notification_expiry_mode"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_mode",
+        "type": "switch",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "Remoção real ou TESTE?",
+        "property": "_notification_expiry.test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2010,
+        "y": 80,
+        "wires": [
+            [
+                "notification_expiry_dry_run_terminal"
+            ],
+            [
+                "notification_expiry_result"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_result",
+        "type": "function",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "Resultado visível da remoção",
+        "func": "const expiry = msg._notification_expiry ?? {};\nconst status = msg.notification_delivery?.status ?? \"unknown\";\nconst accepted = status === \"accepted\" || status === \"simulated\";\nnode.status({\n    fill: accepted ? \"green\" : \"red\",\n    shape: accepted ? \"dot\" : \"ring\",\n    text: `${expiry.test_mode ? \"TESTE: \" : \"\"}${expiry.notification_id ?? \"?\"} → ${status}`\n});\nif (!accepted) node.warn({ expired_notification: expiry.notification_id ?? null, delivery_status: status });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2240,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "notification_expiry_dry_run_terminal",
+        "type": "function",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_sweep_group",
+        "name": "TESTE FINAL: nada removido do HA",
+        "func": "// TESTE: the hub answered from its own dry-run; nothing was removed from Home Assistant.\nconst expiry = msg._notification_expiry ?? {};\nmsg.notification_expiry_dry_run = {\n    simulated: true,\n    dispatched: false,\n    notification_id: expiry.notification_id ?? null,\n    hub_status: msg.notification_delivery?.status ?? \"unknown\"\n};\nnode.status({ fill: \"blue\", shape: \"dot\", text: `TESTE: ${expiry.notification_id ?? \"?\"} → ${msg.notification_delivery?.status ?? \"?\"}` });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2240,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "notification_expiry_test",
+        "type": "inject",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_test_group",
+        "name": "TESTE: 1 vencida, 1 recente, 1 com resolução",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "expiry_now",
+                "v": "1795435200000",
+                "vt": "num"
+            },
+            {
+                "p": "ha_notifications",
+                "v": "[{\"notification_id\":\"portao_garagem_rele_preso\",\"created_at\":\"2026-11-22T11:59:00.000Z\"},{\"notification_id\":\"codex_alert_credits_low\",\"created_at\":\"2026-11-23T11:00:00.000Z\"},{\"notification_id\":\"git_backup_failure\",\"created_at\":\"2026-11-20T12:00:00.000Z\"}]",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 270,
+        "y": 300,
+        "wires": [
+            [
+                "notification_expiry_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_expiry_test_out",
+        "type": "link out",
+        "z": "notification_expiry_tab",
+        "g": "notification_expiry_test_group",
+        "name": "Lista TESTE → seleção real",
+        "mode": "link",
+        "links": [
+            "notification_expiry_test_in"
+        ],
+        "x": 560,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__notification_expiry_tab__group",
+        "type": "group",
+        "z": "notification_expiry_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__notification_expiry_tab__catch",
+            "global_observer_coverage__notification_expiry_tab__status",
+            "global_observer_coverage__notification_expiry_tab__annotate",
+            "global_observer_coverage__notification_expiry_tab__out"
+        ],
+        "x": 2480,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__notification_expiry_tab__catch",
+        "type": "catch",
+        "z": "notification_expiry_tab",
+        "g": "global_observer_coverage__notification_expiry_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2620,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__notification_expiry_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__notification_expiry_tab__status",
+        "type": "status",
+        "z": "notification_expiry_tab",
+        "g": "global_observer_coverage__notification_expiry_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2630,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__notification_expiry_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__notification_expiry_tab__annotate",
+        "type": "function",
+        "z": "notification_expiry_tab",
+        "g": "global_observer_coverage__notification_expiry_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"notification_expiry_tab\",\"flow_label\":\"expiracao_notificacoes\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2900,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__notification_expiry_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__notification_expiry_tab__out",
+        "type": "link out",
+        "z": "notification_expiry_tab",
+        "g": "global_observer_coverage__notification_expiry_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 3145,
+        "y": 130,
+        "wires": []
     }
 ]

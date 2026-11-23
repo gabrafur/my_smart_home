@@ -148,9 +148,20 @@ senão cria` envia ao hub somente o `dismiss`. `test-infrastructure-monitoring-f
 falha se algum desses monitores voltar a criar persistente numa resolução.
 O mesmo vale para `storage_health` (ID estável por condição; recuperação só remove),
 `backup_git` (sucesso remove `git_backup_failure`) e `alertas_codex` (previsão e uso
-com um ID cada; recuperação da previsão e uso de volta a `normal` removem). Ainda não
-têm sinal de resolução: erros pontuais de nó do observador global, relé do portão e
-falha de comando remoto do veículo.
+com um ID cada; recuperação da previsão e uso de volta a `normal` removem).
+
+Sem sinal de resolução, a regra do proprietário (23/11/2026) é expirar em 24 h: a aba
+`expiracao_notificacoes` lê as persistentes do HA a cada 30 min
+(`persistent_notification/get`) e remove pelo hub, uma a cada 2 s, as criadas há mais de
+24 h com estes IDs: erro pontual de nó e falha interna do observador global
+(`nodered_observabilidade_global_node_error_*`, `..._monitor_internal_error_*`), relé do
+portão (`portao_garagem_rele_preso`), comando remoto e atualização bloqueada do veículo
+(`vehicle_primary_remote_command_failed`, `vehicle_primary_refresh_blocked`) e avisos do
+Codex sem recuperação (`codex_alert_cache_low`, `codex_alert_credits_low`,
+`codex_alert_daily`, `codex_alert_test`). A lista é fechada em
+`nodered/tools/functions/notification-expiry-select.js`;
+`test-notification-expiry-flow.mjs` falha se algum desses IDs ganhar `dismiss` em outro
+fluxo (então ele deve sair da expiração).
 
 ## Retorno, falha e confirmação móvel
 

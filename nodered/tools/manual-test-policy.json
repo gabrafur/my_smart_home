@@ -682,6 +682,18 @@
         "zg_dry_run_terminal"
       ],
       "reason": "Fatos sintéticos cruzam as decisões reais, confirmação, limites, dedupe e o gate final. Todos os efeitos de arquivo e alerta terminam em simulated:true e dispatched:false."
+    },
+    "notification_expiry_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "notification_expiry_test_group",
+        "notification_expiry_test"
+      ],
+      "automated_test": "test-notification-expiry-flow.mjs",
+      "dry_run_terminal_ids": [
+        "notification_expiry_dry_run_terminal"
+      ],
+      "reason": "A lista TESTE (uma vencida, uma recente e uma com resolução própria) percorre a seleção real e o hub persistente em test_mode; o hub responde do dry-run e nada é removido do HA."
     }
   }
 }
