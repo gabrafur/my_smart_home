@@ -64,13 +64,17 @@ const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\
 const frozenSyntheticQualityDataset = /^local-ai-research\/benchmarks\/quality-bakeoff-v1\/(?:dataset\.jsonl|inputs\.json)$/;
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
-// Public brand assets audited byte-for-byte against upstream v3.21.0,
-// commit 3693952d537858a36cc688c8d6ffdb6d8aeae7c9. Their existing public XMP
-// and creation metadata must remain intact for upstream provenance. A changed
-// byte, another path or another brand asset requires a fresh review.
+// Public brand assets audited byte-for-byte against their upstream release:
+// kia_uvo v3.21.0 (commit 3693952d537858a36cc688c8d6ffdb6d8aeae7c9) and
+// alexa_media v5.22.0 (commit 8616dea06102884743d11b60f5e5100ca63d2109).
+// Their existing public XMP and creation metadata must remain intact for
+// upstream provenance. A changed byte, another path or another brand asset
+// requires a fresh review.
 const auditedUpstreamImages = new Map([
   ["homeassistant/custom_components/kia_uvo/brand/icon.png", "3bb0ce350e5f577205c273ef9dcef012805a354638f166e7abbb702b712a42ae"],
   ["homeassistant/custom_components/kia_uvo/brand/icon@2x.png", "6715d92c7287433febf874885aada7a20ee24d75371277f929d0214428a9a8ed"],
+  ["homeassistant/custom_components/alexa_media/brand/icon.png", "da6415a4b15ce4ad9f3349b51ab4e1c7a2abfde5f8d0d6fe2124dfe420fe3704"],
+  ["homeassistant/custom_components/alexa_media/brand/icon@2x.png", "c5604d6dfacf612b86527fd9dd97c787074d57fb7f8ade7b4dbaf1ca36f7fd60"],
 ]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;
 const privateCodexPath = /^\.codex\/(?!(?:hooks\.json$|instructions\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$|memories(?:\/|$)))/;
