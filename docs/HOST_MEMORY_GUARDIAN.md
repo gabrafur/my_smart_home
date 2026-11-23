@@ -159,6 +159,22 @@ A contagem fica em memória (`memoryOnly`) e recomeça a cada reinício do
 Node-RED. O próximo ciclo do guardião refaz a verificação normalmente. Não há
 retry imediato.
 
+### Histórico do cartão SD
+
+As travas de 22/11/2026 (18:02 e 20:23 UTC) repetiram o padrão: CPU ociosa,
+memória livre e dezenas de processos em estado D esperando o cartão SD, que
+respondia escritas depois de segundos. Desde 23/11 cada resultado do guardião
+traz também `sd_read_ms` e `sd_write_ms` (latência média por operação no último
+intervalo), `sd_busy_percent` (tempo em que o `mmcblk0` esteve ocupado) e
+`blocked_tasks` (processos em estado D no instante da coleta). Os contadores
+vêm de `/proc/diskstats` e o ponto anterior fica no `state.json`; o primeiro
+ciclo, um reinício do host ou um intervalo acima de 15 minutos registram
+`unknown`. Como o journal fica em memória, o `result-history.log` é a fonte para
+reconstruir uma trava depois: uma linha ausente marca o minuto em que o próprio
+guardião não conseguiu rodar, e a linha seguinte mostra a latência acumulada.
+Esses campos são só registro; o Node-RED os ignora e não há alerta derivado
+deles.
+
 ## Testes seguros
 
 No grupo `TESTE — pedidos e resultados completos em dry-run`, execute na ordem:

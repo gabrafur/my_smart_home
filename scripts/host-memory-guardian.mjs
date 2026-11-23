@@ -237,7 +237,38 @@ export function parseProcStat(text) {
   if (![pid, ppid, userTicks, systemTicks, startTicks].every(Number.isFinite)) {
     throw new Error("invalid_proc_stat_fields");
   }
-  return { pid, ppid, cpuTicks: userTicks + systemTicks, startTicks };
+  return { pid, ppid, state: fields[0], cpuTicks: userTicks + systemTicks, startTicks };
+}
+
+// Storage stalls (22/11/2026) froze the host with idle CPU and free memory:
+// the SD card answered writes after seconds and every task needing it waited
+// in state D. Record per-minute disk latency and blocked tasks so the next
+// incident has history even when the volatile journal has rotated.
+export const STORAGE_DEVICE = "mmcblk0";
+
+export function parseDiskStats(text, device = STORAGE_DEVICE) {
+  for (const line of String(text ?? "").split("\n")) {
+    const fields = line.trim().split(/\s+/);
+    if (fields[2] !== device) continue;
+    const values = fields.slice(3, 14).map(Number);
+    if (values.length < 11 || !values.every(Number.isFinite)) return null;
+    const [reads, , , readMs, writes, , , writeMs, inFlight, ioMs] = values;
+    return { reads, readMs, writes, writeMs, inFlight, ioMs };
+  }
+  return null;
+}
+
+export function storageMetrics(current, previous, elapsedMs) {
+  const empty = { sdReadMs: null, sdWriteMs: null, sdBusyPercent: null };
+  if (!current || !previous || !(elapsedMs > 0) || elapsedMs > 15 * 60 * 1000) return empty;
+  const delta = (name) => current[name] - previous[name];
+  if (["reads", "writes", "readMs", "writeMs", "ioMs"].some((name) => delta(name) < 0)) return empty;
+  const average = (ms, count) => (count > 0 ? Math.round(ms / count) : 0);
+  return {
+    sdReadMs: average(delta("readMs"), delta("reads")),
+    sdWriteMs: average(delta("writeMs"), delta("writes")),
+    sdBusyPercent: Math.min(100, Math.round((delta("ioMs") / elapsedMs) * 100)),
+  };
 }
 
 function parseStatus(text) {
@@ -561,7 +592,8 @@ function scenarioSnapshot(name, nowMs) {
   return base;
 }
 
-function formatResult(decision, snapshot, terminated = 0, temporary = {}) {
+export function formatResult(decision, snapshot, terminated = 0, temporary = {}, storage = {}) {
+  const metric = (value) => (value == null ? "unknown" : value);
   const fields = [
     "memory-guardian",
     `status=${decision.status}`,
@@ -573,6 +605,10 @@ function formatResult(decision, snapshot, terminated = 0, temporary = {}) {
     `temp_removed=${Number(temporary.removedCount ?? 0)}`,
     `temp_reclaimed_mib=${Math.round(Number(temporary.reclaimedBytes ?? 0) / 1024 / 1024)}`,
     `cleanup_errors=${Number(temporary.errors ?? 0)}`,
+    `sd_read_ms=${metric(storage.sdReadMs)}`,
+    `sd_write_ms=${metric(storage.sdWriteMs)}`,
+    `sd_busy_percent=${metric(storage.sdBusyPercent)}`,
+    `blocked_tasks=${metric(storage.blockedTasks)}`,
   ];
   return fields.join(" ");
 }
@@ -667,8 +703,13 @@ async function main() {
   } else if (options.dryRun && temporary.selectedCount > 0 && result.decision.status === "healthy") {
     result.decision = { ...result.decision, status: "would_reclaim" };
   }
-  saveState(stateFile, result.state);
-  console.log(formatResult(result.decision, snapshot, result.terminated, temporary));
+  const disk = options.scenario ? null : parseDiskStats(readText(path.join(options.procRoot, "diskstats")));
+  const storage = {
+    ...storageMetrics(disk, previousState.disk, nowMs - Number(previousState.diskAt ?? 0)),
+    blockedTasks: options.scenario ? null : snapshot.processes.filter((entry) => entry.state === "D").length,
+  };
+  saveState(stateFile, disk ? { ...result.state, disk, diskAt: nowMs } : result.state);
+  console.log(formatResult(result.decision, snapshot, result.terminated, temporary, storage));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

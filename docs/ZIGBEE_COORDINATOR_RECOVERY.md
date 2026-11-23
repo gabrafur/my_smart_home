@@ -3,9 +3,12 @@
 [Português (principal)](ZIGBEE_COORDINATOR_RECOVERY.md) · [English summary](ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
 
 A aba `recuperacao_zigbee` é a fonte das decisões de recuperação. O adaptador
-nativo coleta fatos sanitizados a cada 15 segundos e executa somente pedidos
+nativo coleta fatos sanitizados a cada 30 segundos e executa somente pedidos
 fixos de backup, reconexão ou restauração do Zigbee2MQTT. Ele não controla
 dispositivos, não abre pareamento e não instala firmware.
+O intervalo acompanha a leitura de 30 segundos do canvas e mantém os fatos bem
+abaixo do limite de 90 segundos. Cada coleta lê os logs recentes do Zigbee2MQTT
+pelo Docker, por isso não roda mais vezes do que é lida.
 
 ## Política e proteção dos dados
 

@@ -15,6 +15,9 @@ import {
   reclaimTemporaryArtifacts,
   runGuardian,
   sshConnectionState,
+  formatResult,
+  parseDiskStats,
+  storageMetrics,
 } from "./host-memory-guardian.mjs";
 
 const MiB = 1024;
@@ -74,6 +77,7 @@ test("parsers reject incomplete host telemetry and preserve process counters", (
     ppid: 1,
     cpuTicks: 20,
     startTicks: 4000,
+    state: "S",
   });
 });
 
@@ -332,4 +336,22 @@ test("temporary cleanup fails closed for an invalid prefix contract", (t) => {
     prefixFile,
     procRoot: path.join(root, "missing-proc"),
   }), /temporary_prefix_invalid/);
+});
+
+test("records SD latency, busy time and blocked tasks between runs", () => {
+  const line = (reads, readMs, writes, writeMs, io) =>
+    ` 179       0 mmcblk0 ${reads} 0 0 ${readMs} ${writes} 0 0 ${writeMs} 0 ${io} 0 0 0 0 0`;
+  const before = parseDiskStats(`   1 0 ram0 1 2 3 4 5 6 7 8 9 10 11\n${line(100, 500, 10, 1000, 2000)}\n`);
+  const after = parseDiskStats(line(150, 600, 20, 31_000, 50_000));
+  assert.deepEqual(before, { reads: 100, readMs: 500, writes: 10, writeMs: 1000, inFlight: 0, ioMs: 2000 });
+  assert.deepEqual(storageMetrics(after, before, 60_000), { sdReadMs: 2, sdWriteMs: 3000, sdBusyPercent: 80 });
+  assert.equal(parseDiskStats("8 0 sda 1 2 3 4 5 6 7 8 9 10 11"), null);
+  // A reboot (counters reset) or a long gap yields unknown, never a fake number.
+  assert.deepEqual(storageMetrics(before, after, 60_000), { sdReadMs: null, sdWriteMs: null, sdBusyPercent: null });
+  assert.equal(storageMetrics(after, before, 3_600_000).sdWriteMs, null);
+  const result = formatResult({ status: "healthy" }, { availableKiB: 1024, totalKiB: 2048 }, 0, {},
+    { sdReadMs: 2, sdWriteMs: 3000, sdBusyPercent: 80, blockedTasks: 12 });
+  assert.match(result, / sd_read_ms=2 sd_write_ms=3000 sd_busy_percent=80 blocked_tasks=12$/);
+  assert.match(formatResult({ status: "healthy" }, { availableKiB: 1024, totalKiB: 2048 }),
+    / sd_write_ms=unknown sd_busy_percent=unknown blocked_tasks=unknown$/);
 });

@@ -36,7 +36,7 @@ cat > /etc/systemd/system/zigbee-coordinator-recovery.timer <<'EOF'
 Description=Publish Zigbee recovery facts and process fixed requests
 [Timer]
 OnBootSec=90s
-OnUnitInactiveSec=15s
+OnUnitInactiveSec=30s
 AccuracySec=2s
 [Install]
 WantedBy=timers.target

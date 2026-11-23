@@ -449,10 +449,10 @@
     },
     "ha-notices/notification_collector.cjs": {
       "source": "/usr/local/lib/raspberry-ha-notices/notification_collector.cjs",
-      "source_sha256": "94d8ca78b71c2a02a455ab73e302a2ed6d4509d65dd8a8cb979d3489b560172a",
-      "export_sha256": "94d8ca78b71c2a02a455ab73e302a2ed6d4509d65dd8a8cb979d3489b560172a",
+      "source_sha256": "4ad10ec7de547059babfdbd7edd258fb90c98451121732294abbb4772578d967",
+      "export_sha256": "4ad10ec7de547059babfdbd7edd258fb90c98451121732294abbb4772578d967",
       "normalizations": [],
-      "source_observed_at": "2026-11-16T14:38:51Z",
+      "source_observed_at": "2026-11-23T02:31:00Z",
       "source_observation_coverage": [
         "installed_source_bytes_only",
         "not_assistant_execution_or_household_functional_recovery_proof"

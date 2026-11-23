@@ -3,14 +3,26 @@ const fs=require('node:fs'),path=require('node:path');
 const {createHash}=require('node:crypto');
 const {NotificationState}=require('./notification_state.cjs');
 const STATE='/var/lib/raspberry-ha-notices';
-function atomic(directory,name,value,mode){
+function atomic(directory,name,value,mode,durable=true){
  const info=fs.lstatSync(directory);if(!info.isDirectory()||info.uid!==process.getuid()||(info.mode&0o022))throw Error('unsafe_state');
  const target=path.join(directory,name),temp=path.join(directory,'.'+name+'.new');
  if(fs.existsSync(target)){const s=fs.lstatSync(target);if(!s.isFile()||s.nlink!==1||s.uid!==process.getuid())throw Error('unsafe_state');}
  const raw=JSON.stringify(value)+'\n';if(Buffer.byteLength(raw)>524288)throw Error('snapshot_limit');
  const fd=fs.openSync(temp,fs.constants.O_WRONLY|fs.constants.O_CREAT|fs.constants.O_EXCL|fs.constants.O_NOFOLLOW,mode);
- try{fs.fchmodSync(fd,mode);fs.writeFileSync(fd,raw);fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
- fs.renameSync(temp,target);const parent=fs.openSync(directory,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY);try{fs.fsyncSync(parent);}finally{fs.closeSync(parent);}
+ try{fs.fchmodSync(fd,mode);fs.writeFileSync(fd,raw);if(durable)fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
+ fs.renameSync(temp,target);if(!durable)return;const parent=fs.openSync(directory,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY);try{fs.fsyncSync(parent);}finally{fs.closeSync(parent);}
+}
+// Snapshot content without its clock fields decides whether a write is needed.
+const PUBLIC_REFRESH_MS=10000;
+function snapshotContent(snapshot){
+ const {observed_at,last_transport_confirmation_at,...content}=snapshot;
+ if(content.private_content&&typeof content.private_content==='object'){const {observed_at:_,...status}=content.private_content;content.private_content=status;}
+ return JSON.stringify(content);
+}
+function eventsContent(events){
+ const {published_at,...content}=events;
+ if(content.capture&&typeof content.capture==='object'){const {observed_at:_,...capture}=content.capture;content.capture=capture;}
+ return JSON.stringify(content);
 }
 function load(directory){
  const target=path.join(directory,'cache.json');let fd;
@@ -124,10 +136,19 @@ function main(){
  const WebSocket=require('./vendor/ws');const state=new NotificationState(load(STATE));
  let privateCapture=null;
  try{const {createPrivateCapture}=require('./private_capture.cjs');privateCapture=createPrivateCapture();}catch{/* No grant or failure keeps legacy notices independent. */}
- const publish=()=>{const snapshot=state.snapshot(Date.now());
-  snapshot.private_content=privateCapture?privateCapture.status():{state:'not_activated_or_unavailable',collection_error:'private_content_access_not_activated'};
-  atomic(STATE,'cache.json',snapshot,0o600);atomic(STATE+'/public','snapshot.json',snapshot,0o640);
-  if(privateCapture)try{atomic(STATE+'/public','private-events.json',privateCapture.events(),0o640);}catch{privateCapture.collectionFailure();}
+ // The 5 s heartbeat used to rewrite three ~200 KiB files with fsync, about
+ // 8 GiB a day on the host SD card. A content change is written at once and
+ // durably; an unchanged public snapshot is only refreshed for its 20 s
+ // staleness reader, every 10 s and without fsync; the restart cache and the
+ // event list are written only when their content changes.
+ let publishedContent=null,publishedEvents=null,publicAt=0;
+ const publish=()=>{const now=Date.now(),snapshot=state.snapshot(now);
+  snapshot.private_content=privateCapture?privateCapture.status(now):{state:'not_activated_or_unavailable',collection_error:'private_content_access_not_activated'};
+  const content=snapshotContent(snapshot),changed=content!==publishedContent;
+  if(changed||now-publicAt>=PUBLIC_REFRESH_MS){atomic(STATE+'/public','snapshot.json',snapshot,0o640,changed);publicAt=now;}
+  if(changed){atomic(STATE,'cache.json',snapshot,0o600);publishedContent=content;}
+  if(privateCapture)try{const events=privateCapture.events(now),eventContent=eventsContent(events);
+   if(eventContent!==publishedEvents){atomic(STATE+'/public','private-events.json',events,0o640);publishedEvents=eventContent;}}catch{privateCapture.collectionFailure();}
  };
  let serviceProbe=null;try{
  const scopeFd=fs.openSync('/usr/local/lib/raspberry-ha-notices/icloud-readiness.json',fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);let scope;
@@ -145,5 +166,5 @@ function main(){
  const start=()=>{connection=connect({WebSocket,token,expectedUserHash:identity.user_id_sha256,allowAdministrativeIdentity:identity.role==='approved_existing_administrator',state,publish,serviceProbe,privateCapture,spool,onTerminal:()=>{process.exitCode=78;},onReconnect:()=>{retry=setTimeout(start,Math.min(60000,5000*2**Math.min(attempt++,4)));}})};
  start();process.once('SIGTERM',()=>{clearTimeout(retry);connection?.stop();state.failure('connection_closed');try{publish()}catch{}process.exitCode=0;});
 }
-module.exports={atomic,load,connect,readSpool,spoolFrames,SPOOL_PREFIX,SPOOL_ALIASES};
+module.exports={atomic,load,connect,readSpool,spoolFrames,snapshotContent,eventsContent,PUBLIC_REFRESH_MS,SPOOL_PREFIX,SPOOL_ALIASES};
 if(require.main===module){try{main()}catch{process.stderr.write('{"collection_error":"startup_failed","credentials_exposed":false}\n');process.exitCode=78;}}
