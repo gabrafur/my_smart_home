@@ -31951,7 +31951,7 @@
     },
     {
         "finalize": "",
-        "func": "const TEST_MODE = msg._alexa_media_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|current|failed|deferred|rollback|conflict|blocked)\\b/)?.[1];\nconst target = text.match(/\\btarget=(v[0-9][A-Za-z0-9.+-]*)\\b/)?.[1] ?? \"unknown\";\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nif (!status) {\n    if (!TEST_MODE) node.error(\"alexa_media_update_result_unrecognized\", msg);\n    return [null, null];\n}\nconst result = { version: 1, status, target, request_id: requestId, test_mode: TEST_MODE, observed_at: Date.now() };\nconst signature = [status, target, requestId].join(\":\");\nconst key = TEST_MODE ? \"alexa_media_update_last_result_v1__test\" : \"alexa_media_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result); else flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"rollback\", \"conflict\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : [\"success\", \"current\"].includes(status) ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: target + \": \" + (status === \"blocked\" ? \"revisar memória pública\" : status)\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"alexa_media_update_failed status=\" + status + \" target=\" + target + \" request_id=\" + requestId, msg);\n    return [null, null];\n}\nif ([\"success\", \"current\"].includes(status)) return [null, msg];\nreturn [null, null];",
+        "func": "const TEST_MODE = msg._alexa_media_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|current|failed|deferred|rollback|conflict|blocked)\\b/)?.[1];\nconst target = text.match(/\\btarget=(v[0-9][A-Za-z0-9.+-]*)\\b/)?.[1] ?? \"unknown\";\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nif (!status) {\n    if (!TEST_MODE) node.error(\"alexa_media_update_result_unrecognized\", msg);\n    return [null, null];\n}\nconst result = { version: 1, status, target, request_id: requestId, test_mode: TEST_MODE, observed_at: Date.now() };\nconst signature = [status, target, requestId].join(\":\");\nconst key = TEST_MODE ? \"alexa_media_update_last_result_v1__test\" : \"alexa_media_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result); else flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"rollback\", \"conflict\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : [\"success\", \"current\"].includes(status) ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: target + \": \" + (status === \"blocked\" ? \"bloqueada, revisar memória pública/privacidade\" : status)\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"alexa_media_update_failed status=\" + status + \" target=\" + target + \" request_id=\" + requestId, msg);\n    return [null, null];\n}\nif ([\"success\", \"current\"].includes(status)) return [null, msg];\nreturn [null, null];",
         "g": "daily_update_alexa_media_group",
         "id": "daily_update_alexa_media_parse_result",
         "initialize": "",
@@ -42112,6 +42112,7 @@
             "global_observer_coverage__recorder_retention_tab__out",
             "global_observer_coverage__resident_notifications_tab__out",
             "global_observer_coverage__rtx_metrics_tab__out",
+            "global_observer_coverage__sd_card_alert_tab__out",
             "global_observer_coverage__shared_integrations_tab__out",
             "global_observer_coverage__startup_readiness_tab__out",
             "global_observer_coverage__storage_health_tab__out",
@@ -105093,6 +105094,495 @@
         "type": "link out",
         "z": "notification_expiry_tab",
         "g": "global_observer_coverage__notification_expiry_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 3145,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "sd_card_alert_policy_group",
+        "type": "group",
+        "z": "sd_card_alert_tab",
+        "name": "0. Política: 2 leituras lentas avisam, 3 normais removem",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "sd_card_alert_policy_note",
+            "sd_card_alert_tick",
+            "sd_card_alert_tick_out"
+        ],
+        "x": 64,
+        "y": 20,
+        "w": 620,
+        "h": 180
+    },
+    {
+        "id": "sd_card_alert_decision_group",
+        "type": "group",
+        "z": "sd_card_alert_tab",
+        "name": "1. Avaliar leitura do guardião e avisar pelo hub",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "sd_card_alert_tick_in",
+            "sd_card_alert_read",
+            "sd_card_alert_test_in",
+            "sd_card_alert_evaluate",
+            "sd_card_alert_hub_call",
+            "sd_card_alert_mode",
+            "sd_card_alert_result",
+            "sd_card_alert_dry_run_terminal"
+        ],
+        "x": 720,
+        "y": 20,
+        "w": 1720,
+        "h": 180
+    },
+    {
+        "id": "sd_card_alert_test_group",
+        "type": "group",
+        "z": "sd_card_alert_tab",
+        "name": "2. Teste manual — dry-run do hub",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0891b2",
+            "stroke-opacity": "1",
+            "fill": "#cffafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "sd_card_alert_test_reset",
+            "sd_card_alert_test_slow",
+            "sd_card_alert_test_normal",
+            "sd_card_alert_test_out"
+        ],
+        "x": 64,
+        "y": 240,
+        "w": 620,
+        "h": 200
+    },
+    {
+        "id": "sd_card_alert_tab",
+        "type": "tab",
+        "label": "alerta_cartao_sd",
+        "disabled": false,
+        "info": "Regra do proprietário (23/11/2026): as travas de 22/11 vieram do cartão SD. O guardião de memória registra a latência média de escrita (sd_write_ms) e os processos esperando o disco (blocked_tasks). Duas leituras seguidas com escrita acima de 500 ms ou mais de 5 processos em espera criam um aviso persistente no HA; três leituras normais o removem. TESTE termina no dry-run do hub.",
+        "env": []
+    },
+    {
+        "id": "sd_card_alert_policy_note",
+        "type": "comment",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_policy_group",
+        "name": "Limites: escrita > 500 ms ou > 5 processos em espera.",
+        "info": "Picos isolados acontecem algumas vezes por hora e não avisam. Os limites e a histerese ficam em tools/functions/sd-card-alert-evaluate.js.",
+        "x": 360,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "sd_card_alert_tick",
+        "type": "inject",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_policy_group",
+        "name": "Agenda visível — ler a cada 30 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "100",
+        "topic": "",
+        "x": 230,
+        "y": 130,
+        "wires": [
+            [
+                "sd_card_alert_tick_out"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_tick_out",
+        "type": "link out",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_policy_group",
+        "name": "Agenda → leitura do guardião",
+        "mode": "link",
+        "links": [
+            "sd_card_alert_tick_in"
+        ],
+        "x": 560,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "sd_card_alert_tick_in",
+        "type": "link in",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_decision_group",
+        "name": "Receber agenda",
+        "links": [
+            "sd_card_alert_tick_out"
+        ],
+        "x": 770,
+        "y": 80,
+        "wires": [
+            [
+                "sd_card_alert_read"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_read",
+        "type": "exec",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_decision_group",
+        "name": "FONTE: última leitura do guardião (timeout 15 s)",
+        "command": "/opt/read-host-memory-guardian-result.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "x": 1010,
+        "y": 80,
+        "wires": [
+            [
+                "sd_card_alert_evaluate"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "sd_card_alert_test_in",
+        "type": "link in",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_decision_group",
+        "name": "Receber leitura TESTE",
+        "links": [
+            "sd_card_alert_test_out"
+        ],
+        "x": 1010,
+        "y": 150,
+        "wires": [
+            [
+                "sd_card_alert_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_evaluate",
+        "type": "function",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_decision_group",
+        "name": "Duas lentas avisam, três normais removem",
+        "func": "// Owner policy (23/11/2026): the SD card stalls of 22/11 froze the house for\n// minutes. Alert when the guardian sees slow writes or tasks blocked on disk in\n// two consecutive readings, and remove the alert after three normal readings.\nconst WRITE_MS_LIMIT = 500;\nconst BLOCKED_LIMIT = 5;\nconst RAISE_AFTER = 2;\nconst CLEAR_AFTER = 3;\nconst NOTIFICATION_ID = \"raspberry_pi_cartao_sd_lento\";\nconst testMode = msg.test_mode === true;\nconst key = testMode ? \"sd_card_alert_state_v1__test\" : \"sd_card_alert_state_v1\";\nconst load = () => (testMode ? flow.get(key) : flow.get(key, \"persistent\"));\nconst save = (value) => (testMode ? flow.set(key, value) : flow.set(key, value, \"persistent\"));\n\nif (testMode && msg.sd_card_alert_reset === true) {\n    save(undefined);\n    node.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: estado zerado\" });\n    return null;\n}\nconst raw = typeof msg.payload === \"string\" ? msg.payload.replace(/[\\r\\n]+/g, \" \").trim().slice(0, 800) : \"\";\nconst field = (name) => raw.match(new RegExp(\"(?:^| )\" + name + \"=([^ ]+)\"))?.[1];\nconst metric = (name) => {\n    const value = field(name);\n    return /^[0-9]+(\\.[0-9]+)?$/.test(value ?? \"\") ? Number(value) : null;\n};\nconst checkedAt = field(\"checked_at\");\nif (!raw.startsWith(\"host-memory-guardian \") || !checkedAt) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"sem leitura do guardião\" });\n    return null;\n}\nconst state = load() ?? { version: 1, active: false, slow: 0, normal: 0, last_checked_at: null };\nconst prefix = testMode ? \"TESTE: \" : \"\";\nif (state.last_checked_at === checkedAt) return null;\nstate.last_checked_at = checkedAt;\n\nconst writeMs = metric(\"sd_write_ms\");\nconst blocked = metric(\"blocked_tasks\");\nif (writeMs === null && blocked === null) {\n    save(state);\n    node.status({ fill: \"grey\", shape: \"ring\", text: prefix + \"métricas do SD indisponíveis\" });\n    return null;\n}\nconst slow = (writeMs ?? 0) > WRITE_MS_LIMIT || (blocked ?? 0) > BLOCKED_LIMIT;\nif (slow) {\n    state.slow += 1;\n    state.normal = 0;\n    state.worst_write_ms = Math.max(state.worst_write_ms ?? 0, writeMs ?? 0);\n    state.worst_blocked = Math.max(state.worst_blocked ?? 0, blocked ?? 0);\n} else {\n    state.normal += 1;\n    state.slow = 0;\n}\n\nlet operation = null;\nif (!state.active && state.slow >= RAISE_AFTER) {\n    state.active = true;\n    state.since = checkedAt;\n    operation = \"create\";\n} else if (state.active && state.normal >= CLEAR_AFTER) {\n    state.active = false;\n    operation = \"dismiss\";\n}\nif (!state.active && !slow) {\n    delete state.worst_write_ms;\n    delete state.worst_blocked;\n}\nsave(state);\n\nconst reading = \"escrita \" + (writeMs ?? \"?\") + \" ms · \" + (blocked ?? \"?\") + \" em espera\";\nnode.status({\n    fill: state.active ? \"red\" : slow ? \"yellow\" : \"green\",\n    shape: state.active ? \"ring\" : \"dot\",\n    text: prefix + (state.active ? \"SD lento\" : slow ? \"pico isolado\" : \"SD normal\") + \" · \" + reading\n});\nif (!operation) return null;\n\nconst notification = { source: \"alerta_cartao_sd\", operation, delivery: \"queued\", notification_id: NOTIFICATION_ID, test_mode: testMode };\nif (operation === \"create\") {\n    notification.title = \"Cartão SD do Raspberry Pi lento\";\n    msg.payload = \"O cartão SD respondeu devagar em \" + RAISE_AFTER + \" leituras seguidas (escrita média de até \" +\n        state.worst_write_ms + \" ms, \" + state.worst_blocked + \" processo(s) esperando o disco; desde \" +\n        checkedAt.replace(\"T\", \" \").replace(\"Z\", \"\") + \" UTC). A casa pode ficar lenta ou travar por alguns minutos. \" +\n        \"Evite builds e validações pesadas agora. Se isso se repetir, é sinal para migrar o sistema para um SSD. \" +\n        \"Este aviso some sozinho depois de \" + CLEAR_AFTER + \" leituras normais.\";\n} else {\n    msg.payload = \"\";\n}\nmsg.topic = NOTIFICATION_ID;\nmsg.notification = notification;\nmsg._sd_card_alert = { operation, test_mode: testMode, checked_at: checkedAt };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1300,
+        "y": 80,
+        "wires": [
+            [
+                "sd_card_alert_hub_call"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_hub_call",
+        "type": "link call",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_decision_group",
+        "name": "Hub HA → criar ou remover aviso",
+        "links": [
+            "notification_hub_persistent_in"
+        ],
+        "linkType": "static",
+        "timeout": "30",
+        "x": 1560,
+        "y": 80,
+        "wires": [
+            [
+                "sd_card_alert_mode"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_mode",
+        "type": "switch",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_decision_group",
+        "name": "Aviso real ou TESTE?",
+        "property": "_sd_card_alert.test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1790,
+        "y": 80,
+        "wires": [
+            [
+                "sd_card_alert_dry_run_terminal"
+            ],
+            [
+                "sd_card_alert_result"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_result",
+        "type": "function",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_decision_group",
+        "name": "Resultado visível do aviso",
+        "func": "const alert = msg._sd_card_alert ?? {};\nconst status = msg.notification_delivery?.status ?? \"unknown\";\nconst accepted = status === \"accepted\";\nnode.status({\n    fill: accepted ? \"green\" : \"red\",\n    shape: accepted ? \"dot\" : \"ring\",\n    text: (alert.operation === \"dismiss\" ? \"aviso removido\" : \"aviso criado\") + \" → \" + status\n});\nif (!accepted) node.warn({ sd_card_alert: alert.operation ?? null, delivery_status: status });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2040,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "sd_card_alert_dry_run_terminal",
+        "type": "function",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_decision_group",
+        "name": "TESTE FINAL: nada enviado ao HA",
+        "func": "const alert = msg._sd_card_alert ?? {};\nmsg.sd_card_alert_dry_run = {\n    simulated: true,\n    dispatched: false,\n    operation: alert.operation ?? null,\n    hub_status: msg.notification_delivery?.status ?? \"unknown\"\n};\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: \" + (alert.operation ?? \"?\") + \" simulado, nada enviado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2040,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "sd_card_alert_test_reset",
+        "type": "inject",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_test_group",
+        "name": "TESTE 1: zerar estado de teste",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "sd_card_alert_reset",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 250,
+        "y": 290,
+        "wires": [
+            [
+                "sd_card_alert_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_test_slow",
+        "type": "inject",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_test_group",
+        "name": "TESTE 2: leitura lenta (2× cria)",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "payload",
+                "v": "\"host-memory-guardian status=healthy sd_write_ms=1500 sd_busy_percent=90 blocked_tasks=8 checked_at=\" & $now()",
+                "vt": "jsonata"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 250,
+        "y": 340,
+        "wires": [
+            [
+                "sd_card_alert_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_test_normal",
+        "type": "inject",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_test_group",
+        "name": "TESTE 3: leitura normal (3× remove)",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "payload",
+                "v": "\"host-memory-guardian status=healthy sd_write_ms=10 sd_busy_percent=90 blocked_tasks=0 checked_at=\" & $now()",
+                "vt": "jsonata"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 250,
+        "y": 390,
+        "wires": [
+            [
+                "sd_card_alert_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "sd_card_alert_test_out",
+        "type": "link out",
+        "z": "sd_card_alert_tab",
+        "g": "sd_card_alert_test_group",
+        "name": "Leitura TESTE → avaliação real",
+        "mode": "link",
+        "links": [
+            "sd_card_alert_test_in"
+        ],
+        "x": 560,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__sd_card_alert_tab__group",
+        "type": "group",
+        "z": "sd_card_alert_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__sd_card_alert_tab__catch",
+            "global_observer_coverage__sd_card_alert_tab__status",
+            "global_observer_coverage__sd_card_alert_tab__annotate",
+            "global_observer_coverage__sd_card_alert_tab__out"
+        ],
+        "x": 2480,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__sd_card_alert_tab__catch",
+        "type": "catch",
+        "z": "sd_card_alert_tab",
+        "g": "global_observer_coverage__sd_card_alert_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2620,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__sd_card_alert_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__sd_card_alert_tab__status",
+        "type": "status",
+        "z": "sd_card_alert_tab",
+        "g": "global_observer_coverage__sd_card_alert_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2630,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__sd_card_alert_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__sd_card_alert_tab__annotate",
+        "type": "function",
+        "z": "sd_card_alert_tab",
+        "g": "global_observer_coverage__sd_card_alert_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"sd_card_alert_tab\",\"flow_label\":\"alerta_cartao_sd\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2900,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__sd_card_alert_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__sd_card_alert_tab__out",
+        "type": "link out",
+        "z": "sd_card_alert_tab",
+        "g": "global_observer_coverage__sd_card_alert_tab__group",
         "name": "Falha da aba → monitor global",
         "mode": "link",
         "links": [

@@ -694,6 +694,18 @@
         "notification_expiry_dry_run_terminal"
       ],
       "reason": "A lista TESTE (uma vencida, uma recente e uma com resolução própria) percorre a seleção real e o hub persistente em test_mode; o hub responde do dry-run e nada é removido do HA."
+    },
+    "sd_card_alert_tab": {
+      "strategy": "manual_full_dry_run",
+      "evidence_node_ids": [
+        "sd_card_alert_test_group",
+        "sd_card_alert_test_slow"
+      ],
+      "automated_test": "test-sd-card-alert-flow.mjs",
+      "dry_run_terminal_ids": [
+        "sd_card_alert_dry_run_terminal"
+      ],
+      "reason": "As leituras TESTE (lenta e normal, com horário do clique) percorrem a avaliação real e o hub persistente em test_mode, com estado próprio em memória; o hub responde do dry-run e nada é criado ou removido no HA."
     }
   }
 }

@@ -37,6 +37,7 @@
         "flows:update-alarm-arrival": "node tools/install-alarm-arrival-flow.mjs && node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
         "flows:update-codex-alerts": "node tools/install-codex-alert-flows.mjs && node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
         "flows:update-notification-expiry": "node tools/install-notification-expiry-flow.mjs && node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
+        "flows:update-sd-card-alert": "node tools/install-sd-card-alert-flow.mjs && node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
         "flows:test-alarm-arrival": "node tools/test-alarm-arrival-disarm-flow.mjs",
         "flows:test-alarm-house": "node tools/test-alarm-house-flow.mjs",
         "flows:test-arrival-context": "node tools/test-arrival-context-flow.mjs",

@@ -281,7 +281,7 @@ outra falha do Core segura os containers.
 O subfluxo Alexa Media verifica também a memória pública contra os arquivos
 candidatos e os metadados da próxima versão, antes de chamar HACS ou parar o
 Home Assistant. Uma evidência incompatível retorna `blocked` com motivo
-`public_memory_invalid`: o canvas mostra “revisar memória pública” e não pede
+`public_memory_invalid`: o canvas mostra “bloqueada, revisar memória pública/privacidade” e não pede
 backup de uma instalação que não ocorreu. Do mesmo modo, os arquivos candidatos passam
 pela verificação de privacidade do pre-push antes da instalação: uma versão que
 traga imagem ainda não auditada (como os ícones `brand/` da 5.22.0) retorna

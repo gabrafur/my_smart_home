@@ -369,7 +369,7 @@ const failed = ["failed", "rollback", "conflict"].includes(status);
 node.status({
     fill: failed ? "red" : ["success", "current"].includes(status) ? "green" : "yellow",
     shape: failed ? "ring" : "dot",
-    text: target + ": " + (status === "blocked" ? "revisar memória pública" : status)
+    text: target + ": " + (status === "blocked" ? "bloqueada, revisar memória pública/privacidade" : status)
 });
 msg.payload = result;
 if (TEST_MODE) return [msg, null];

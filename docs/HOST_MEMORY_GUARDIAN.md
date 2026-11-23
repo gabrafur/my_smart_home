@@ -172,8 +172,17 @@ ciclo, um reinício do host ou um intervalo acima de 15 minutos registram
 `unknown`. Como o journal fica em memória, o `result-history.log` é a fonte para
 reconstruir uma trava depois: uma linha ausente marca o minuto em que o próprio
 guardião não conseguiu rodar, e a linha seguinte mostra a latência acumulada.
-Esses campos são só registro; o Node-RED os ignora e não há alerta derivado
-deles.
+
+A aba `alerta_cartao_sd` do Node-RED lê a mesma linha a cada 30 s e avalia cada
+leitura nova uma vez. Duas leituras seguidas com `sd_write_ms` acima de 500 ou
+`blocked_tasks` acima de 5 criam o aviso persistente
+`raspberry_pi_cartao_sd_lento` no Home Assistant, pelo hub; três leituras
+normais seguidas o removem. Picos isolados, que aparecem algumas vezes por hora
+(no histórico de 23/11, 9 de 200 leituras e nunca duas seguidas), não avisam.
+Leituras `unknown` não somam nem zeram a contagem. O estado fica no contexto
+persistente (`sd_card_alert_state_v1`). Os botões `TESTE` usam estado próprio em
+memória e terminam no dry-run do hub; a regressão está em
+`nodered/tools/test-sd-card-alert-flow.mjs`.
 
 ## Testes seguros
 
