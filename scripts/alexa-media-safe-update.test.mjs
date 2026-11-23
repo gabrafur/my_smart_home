@@ -8,6 +8,7 @@ import path from "node:path";
 
 import {
   checkCandidateMemory,
+  checkCandidatePrivacy,
   canAcceptAbsorbedDelta,
   changedFilesFromDelta,
   normalizeVersion,
@@ -150,4 +151,35 @@ test("candidate behavior test runs the Kids regression against the staged tree o
   assert.match(calls[0].options.cwd, /homeassistant\/tests$/);
   assert.throws(() => runCandidateBehaviorTest("/staged", { execute: () => { throw new Error("exit 1 with private output"); } }),
     /^Error: candidate_amazon_kids_behavior_test_failed$/);
+});
+
+test("candidate privacy gate blocks unaudited images before any runtime change", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "alexa-privacy-"));
+  try {
+    fs.mkdirSync(path.join(root, "brand"));
+    fs.mkdirSync(path.join(root, "__pycache__"));
+    fs.writeFileSync(path.join(root, "__init__.py"), "VALUE = 1\n");
+    fs.writeFileSync(path.join(root, "__pycache__", "x.png"), "ignored cache");
+    assert.deepEqual(checkCandidatePrivacy(root), []);
+    fs.writeFileSync(path.join(root, "brand", "new.png"), "\x89PNG unreviewed");
+    assert.deepEqual(checkCandidatePrivacy(root), [
+      { rule: "image-location", file: "homeassistant/custom_components/alexa_media/brand/new.png" },
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("candidate privacy gate accepts the audited upstream brand icons", () => {
+  const installed = new URL("../homeassistant/custom_components/alexa_media/brand/", import.meta.url);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "alexa-privacy-"));
+  try {
+    fs.mkdirSync(path.join(root, "brand"));
+    const names = fs.readdirSync(installed).filter((name) => name.endsWith(".png"));
+    assert.equal(names.length, 2);
+    for (const name of names) fs.copyFileSync(new URL(name, installed), path.join(root, "brand", name));
+    assert.deepEqual(checkCandidatePrivacy(root), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

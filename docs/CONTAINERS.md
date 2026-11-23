@@ -282,7 +282,13 @@ O subfluxo Alexa Media verifica também a memória pública contra os arquivos
 candidatos e os metadados da próxima versão, antes de chamar HACS ou parar o
 Home Assistant. Uma evidência incompatível retorna `blocked` com motivo
 `public_memory_invalid`: o canvas mostra “revisar memória pública” e não pede
-backup de uma instalação que não ocorreu. O worker nunca atualiza fingerprints
+backup de uma instalação que não ocorreu. Do mesmo modo, os arquivos candidatos passam
+pela verificação de privacidade do pre-push antes da instalação: uma versão que
+traga imagem ainda não auditada (como os ícones `brand/` da 5.22.0) retorna
+`blocked` com motivo `public_privacy_review_required` e os arquivos em
+`privacy_findings` no `status.json`, em vez de ser instalada e depois quebrar o
+backup Git. Depois de conferir os bytes com a tag oficial, inclua o hash em
+`auditedUpstreamImages` de `scripts/privacy-check.mjs`. O worker nunca atualiza fingerprints
 para ocultar divergências. Notas sobre contratos duráveis devem referenciar o
 código e suas regressões, sem fixar a versão corrente em metadados que mudam a
 cada atualização. Após sucesso de instalação, o fluxo solicita o backup Git;

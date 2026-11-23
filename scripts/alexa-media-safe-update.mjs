@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkPublicMemory } from "./public-memory-check.mjs";
+import { scanEntries } from "./privacy-check.mjs";
 import { readRepositoryRecord, snapshotRepository, restoreRepository } from "./integration-repository.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -297,6 +298,26 @@ export function checkCandidateMemory(mergedRoot, metadata, root = repoRoot) {
   return checkPublicMemory({ repoRoot: root, trackedFiles, contentsOverrides });
 }
 
+// The pre-push privacy check gates every Git backup. A release that adds a file it
+// rejects (23/11: upstream brand icons, image-location) was applied at runtime and
+// then broke the nightly backup. Scan the candidate tree with the same rules first,
+// so such a release stays blocked until its new files are reviewed.
+export function checkCandidatePrivacy(mergedRoot, prefix = "homeassistant/custom_components/alexa_media/") {
+  const entries = [];
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "__pycache__") walk(absolute);
+      } else if (entry.isFile()) {
+        entries.push({ file: prefix + path.relative(mergedRoot, absolute).split(path.sep).join("/"), buffer: fs.readFileSync(absolute) });
+      }
+    }
+  };
+  walk(mergedRoot);
+  return scanEntries(entries).map(({ rule, file }) => ({ rule, file }));
+}
+
 function candidateMetadata(prepared) {
   return {
     ...prepared.metadata,
@@ -562,6 +583,12 @@ async function apply(target) {
     const memory = checkCandidateMemory(prepared.mergedRoot, candidateMetadata(prepared));
     if (memory.errors.length) {
       const status = statusFor(prepared, "blocked", { reason: "public_memory_invalid" });
+      writeJson(statusPath, status);
+      return status;
+    }
+    const privacy = checkCandidatePrivacy(prepared.mergedRoot);
+    if (privacy.length) {
+      const status = statusFor(prepared, "blocked", { reason: "public_privacy_review_required", privacy_findings: privacy });
       writeJson(statusPath, status);
       return status;
     }
