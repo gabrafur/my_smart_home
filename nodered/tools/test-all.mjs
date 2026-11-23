@@ -18,11 +18,17 @@ if (tests.length === 0) {
 
 for (const test of tests) {
   console.log(`\n[Node-RED public test] ${test}`);
+  const started = Date.now();
   const result = spawnSync(process.execPath, [path.join(toolsDirectory, test)], {
     cwd: path.dirname(toolsDirectory),
     stdio: "inherit",
   });
-  if (result.status !== 0) process.exit(result.status ?? 1);
+  if (result.status !== 0) {
+    // Name the failed file last: the pre-push log keeps only the tail.
+    const outcome = result.signal ? `signal ${result.signal}` : `exit ${result.status}`;
+    console.error(`\nNode-RED public test FAILED: ${test} (${outcome}, ${Date.now() - started} ms)`);
+    process.exit(result.status ?? 1);
+  }
 }
 
 console.log(`\nNode-RED public test suite passed (${tests.length} files).`);

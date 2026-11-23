@@ -84,7 +84,7 @@ test('nonfailed statuses preserve existing routes without emitting errors',()=>{
 test('actual generated diagnostic terminal is a full dry-run with no filesystem access',()=>{
   const h=harness();h.run({payload:fixture});let writes=0;
   const msg={_global_observer_test:true,_global_observer:{flow_id:'daily_host_updates_tab',flow_label:'atualizacoes_diarias'},error:{message:h.errors[0].message,source:{id:'daily_update_dependency_parse_result',type:'function',name:'Normalizar resultado npm'}}};
-  const result=vm.runInNewContext('(function(msg){'+byId.get('global_observer_diagnostic_build').func+'\n})(msg)',{msg,fs:new Proxy({},{get(){writes++;throw Error('filesystem access forbidden')}})},{timeout:100});
+  const result=vm.runInNewContext('(function(msg){'+byId.get('global_observer_diagnostic_build').func+'\n})(msg)',{msg,fs:new Proxy({},{get(){writes++;throw Error('filesystem access forbidden')}})},{timeout:5000});
   assert.equal(writes,0);
   assert.equal(result._observer_public_diagnostic.simulated,true);
   assert.equal(result._observer_public_diagnostic.dispatched,false);

@@ -330,7 +330,11 @@ async function testLock(throwFirst = false) {
   ping(structuredClone(input), pingFlow, asyncNode, asyncGlobal);
   assert.equal(pingFlow.get("internet_ping_cycle_running", "memoryOnly"), true);
   assert.equal(ping(structuredClone(input), pingFlow, asyncNode, asyncGlobal), null);
-  await new Promise((resolve) => setTimeout(resolve, 45));
+  // Wait for the fake pings to settle; a fixed sleep failed on a loaded Pi.
+  const deadline = Date.now() + 10_000;
+  while (pingFlow.get("internet_ping_cycle_running", "memoryOnly") && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
   assert.equal(pingFlow.get("internet_ping_cycle_running", "memoryOnly"), false);
   assert.equal(calls, 3);
   assert.equal(active, 0);
