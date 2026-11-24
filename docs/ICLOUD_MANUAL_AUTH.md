@@ -139,9 +139,13 @@ somente o verificador e `device_owner.py` são montados para leitura. O processo
 também fixa limites próprios de memória virtual, CPU, arquivos e duração, pois
 este host não oferece controle de memória por cgroup.
 
-Uma versão não revisada, hash de construtor divergente, versão diferente de
-pyicloud ou falha de coleta bloqueia a promoção. Não remover a allowlist para
-aceitar automaticamente uma versão nova. O modo dry-run informa `not_checked`
+Uma versão fora da lista só é admitida quando todos os arquivos nativos do iCloud
+(menos traduções) e do pyicloud são idênticos, byte a byte, aos revisados no Core
+2026.11.2 (`admission=identical_reviewed_source`). O mesmo teste de conteúdo é
+repetido no adaptador ao iniciar o Home Assistant. Qualquer arquivo novo, alterado
+ou ausente, hash de construtor divergente, versão diferente de pyicloud ou falha
+de coleta continua bloqueando a promoção. Não remover a allowlist nem trocar os
+hashes revisados para aceitar código novo. O modo dry-run informa `not_checked`
 e não inicia container nem comprova compatibilidade. Outros serviços não
 precisam desse verificador específico do iCloud.
 
@@ -221,6 +225,10 @@ divergências e sem mudanças de código em relação a 2026.11.1; só as tradu�
 imagem anterior e a licença upstream não mudou. O preflight isolado, sem rede,
 configuração residencial ou autenticação Apple, retornou `compatible` com o
 mesmo hash de construtor. A próxima versão continua bloqueada até nova revisão.
+
+Em 24/11 o Core 2026.11.3 parou na mesma trava com código idêntico: só as
+traduções `ja`, `nl`, `sk` e `sv` mudaram. Desde então a igualdade de conteúdo
+admite esse caso sem edição manual; código diferente exige nova revisão.
 
 ## Rejeição de sessão durante polling
 

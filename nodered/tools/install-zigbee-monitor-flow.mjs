@@ -194,8 +194,9 @@ linkOut("zigbee_component_reminder_mutate_out", groups.component, "Lembrete → 
 terminal("zigbee_component_no_reminder", groups.component, "Sem lembrete devido", { fill: "grey", shape: "ring", text: "sem lembrete" }, 2740, 1200);
 linkOut("zigbee_component_mutate_out", groups.component, "Decisão → estado do componente", "zigbee_component_mutate_in", 3440, 930);
 linkIn("zigbee_component_mutate_in", groups.component, "Receber mutação", ["zigbee_component_mutate_out", "zigbee_component_reminder_mutate_out"], "zigbee_component_state_mutate", 3560, 930);
-fn("zigbee_component_state_mutate", groups.component, "Persistir estado por componente", "zigbee-component-state-mutate.js", 1, 3790, 930, [["zigbee_component_effect_out"]]);
-linkOut("zigbee_component_effect_out", groups.component, "Evento do componente → fronteira", "zigbee_component_effect_in", 4040, 930);
+fn("zigbee_component_state_mutate", groups.component, "Persistir estado por componente", "zigbee-component-state-mutate.js", 1, 3790, 930, [["zigbee_component_diagnose"]]);
+fn("zigbee_component_diagnose", groups.component, "Diagnosticar energia ou sinal (24 h)", "zigbee-component-diagnose.js", 1, 4080, 930, [["zigbee_component_effect_out"]]);
+linkOut("zigbee_component_effect_out", groups.component, "Evento do componente → fronteira", "zigbee_component_effect_in", 4310, 930);
 
 linkIn("zigbee_route_error_in", groups.component, "Receber falha Zigbee", ["zigbee_route_error_out"], "zigbee_route_policy_load", 1250, 1430);
 fn("zigbee_route_policy_load", groups.component, "Carregar política de recuperação", "zigbee-policy-load.js", 1, 1480, 1430, [["zigbee_route_policy_available"]]);
@@ -389,6 +390,8 @@ linkIn("zigbee_route_decide_in", groups.component, "Rota ainda aberta", "zigbee_
 get("zigbee_component_availability").wires[0].push("zigbee_live_out");
 linkOut("zigbee_live_out", groups.input, "Dados MQTT → evidência de rota", "zigbee_live_in", 750, 1020);
 linkIn("zigbee_live_in", settle, "Publicações e TESTE sem retained", ["zigbee_live_out", "zigbee_settle_test_live_out"], "zigbee_route_telemetry", 110, 3760);
+get("zigbee_live_in").wires[0].push("zigbee_announce_store");
+fn("zigbee_announce_store", settle, "Guardar reinício anunciado pelo módulo", "zigbee-announce-store.js", 0, 400, 3830, []);
 fn("zigbee_route_telemetry", settle, "Guardar somente dados novos do dispositivo", "zigbee-route-telemetry.js", 0, 400, 3760, []);
 // Components now require continuous availability; saved incidents alone cannot recover.
 get("zigbee_component_valid").wires[0] = ["zigbee_component_settle_out"];

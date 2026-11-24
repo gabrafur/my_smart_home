@@ -39,7 +39,9 @@ a avaliação normal encerra o incidente que perdeu corroboração. Uma chamada 
 com `NoConnectionError`, `Connection lost` ou o envelope websocket de resultado
 com código 3 e mensagem `Connection lost` também alimenta essa confirmação,
 mesmo quando chega antes do status de desconexão. Timeout genérico e falha de
-serviço não bastam. Chamadores gerados dos hubs, identificados pelo contrato de
+serviço não bastam. O timeout do refresh e da releitura de cache do veículo
+pertence ao lifecycle dele, que tenta de novo, avisa uma vez e remove o aviso
+quando chega telemetria nova; o observador não o duplica. Chamadores gerados dos hubs, identificados pelo contrato de
 notificação, compartilham a carência do HA para evitar cascata enquanto a fila
 aguarda reconexão; um link call comum continua alertável. O refresh do veículo
 preserva evidência e deadlines nessa desconexão, sem ativar bypass, criar falha

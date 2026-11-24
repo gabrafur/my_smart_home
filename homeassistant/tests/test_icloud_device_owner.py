@@ -48,6 +48,23 @@ class AdapterTests(unittest.TestCase):
   self.assertNotIn(native.ATTR_OWNER_NAME,cls(self.account,object(),self.status)._attrs)
  def test_next_minor_rejected(self):
   with self.assertRaisesRegex(RuntimeError,'unsupported_icloud_core_version'):adapter.prepare_device_class(self.core,'2026.11.3')
+ def test_new_version_needs_byte_identical_native_source(self):
+  import tempfile
+  with tempfile.TemporaryDirectory() as tmp:
+   root=pathlib.Path(tmp);(root/'account.py').write_text('reviewed');(root/'translations').mkdir();(root/'translations/pt.json').write_text('{}')
+   self.core.__file__=str(root/'account.py')
+   digest=adapter.tree_digest(root,('translations','__pycache__'))
+   with patch.object(adapter,'REVIEWED_NATIVE_SOURCE',digest):
+    (root/'translations/pt.json').write_text('{"changed":true}')
+    self.assertTrue(issubclass(adapter.prepare_device_class(self.core,'2026.11.3'),native.IcloudDevice))
+    class Changed:
+     def __init__(self):pass
+    self.core.IcloudDevice=Changed
+    with self.assertRaisesRegex(RuntimeError,'icloud_constructor_changed'):adapter.prepare_device_class(self.core,'2026.11.3')
+    self.core.IcloudDevice=native.IcloudDevice
+    (root/'extra.py').write_text('new file')
+    with self.assertRaisesRegex(RuntimeError,'unsupported_icloud_core_version'):adapter.prepare_device_class(self.core,'2026.11.3')
+  self.assertIsNone(adapter.tree_digest('/nonexistent-reviewed-source'))
  def test_second_install_is_idempotent(self):
   cls=adapter.prepare_device_class(self.core,'2026.10.1');self.core.IcloudDevice=cls
   self.assertIs(adapter.prepare_device_class(self.core,'2026.10.1'),cls)

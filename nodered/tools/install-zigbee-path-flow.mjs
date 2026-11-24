@@ -54,8 +54,8 @@ export function installZigbeePathFlow({nodes,group,fn,inject,sw,change,linkOut,l
  linkIn(id('next_effect_in'),get('zigbee_route_configure_test_gate').g,'Próximo salto → produção ou dry-run',id('next_effect'),'zigbee_route_configure_test_gate',3340,1510);
  o('verified_out','Último destino → aguardar dados estáveis',id('verified_in'),1600,4970);
  linkIn(id('verified_in'),get('zigbee_route_recovered').g,'Todos os saltos aceitos',id('verified_out'),'zigbee_route_recovered',3085,1735);
- get('zigbee_component_state_mutate').wires[0].push(id('offline_out'));
- linkOut(id('offline_out'),get('zigbee_component_state_mutate').g,'Offline confirmado → recuperação limitada',id('offline_in'),4060,980);
+ get('zigbee_component_diagnose').wires[0].push(id('offline_out'));
+ linkOut(id('offline_out'),get('zigbee_component_state_mutate').g,'Offline confirmado → recuperação limitada',id('offline_in'),4310,990);
  i('offline_in','Receber novo incidente offline',id('offline_out'),id('offline'),120,5140);
  f('offline','Adaptar incidente sem duplicar alerta','zigbee-path-offline.js',620,5140,[[id('offline_ok')]]);
  switcher('offline_ok','Novo offline e recuperação habilitada?',"zigbee_path_policy.offline_recovery = true and zigbee_component_action = 'open'",1190,5140,[[id('offline_recover')],[]]);

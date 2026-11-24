@@ -6,10 +6,11 @@ if (!component || !msg.zigbee_component_key) {
         .toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
     msg.zigbee_component_key = `${slug || "component"}_${hash.toString(16).padStart(8, "0")}`;
 }
+const diagnosis = msg.zigbee_component_diagnosis_text || "";
 const when = new Date(msg.zigbee_now).toLocaleString("pt-BR");
 if (msg.zigbee_component_event === "down") msg.notification = {
     id: `zigbee_component_${msg.zigbee_component_key}`, title: "Componente Zigbee indisponível",
-    message: `O componente Zigbee “${component}” ficou indisponível em ${when}. Verifique alimentação, alcance, bateria e a malha Zigbee.`
+    message: `O componente Zigbee “${component}” ficou indisponível em ${when}. Verifique alimentação, alcance, bateria e a malha Zigbee.${diagnosis}`
 };
 else if (msg.zigbee_component_event === "recovery") msg.notification = {
     id: `zigbee_component_recovered_${msg.zigbee_component_key}`,
@@ -20,7 +21,7 @@ else if (msg.zigbee_component_event === "recovery") msg.notification = {
 };
 else if (msg.zigbee_component_event === "reminder") msg.notification = {
     id: `zigbee_component_${msg.zigbee_component_key}`, title: "Componente Zigbee continua indisponível",
-    message: `O componente Zigbee “${component}” continua indisponível há pelo menos ${msg.policy.reminder_interval_h} horas. Novo lembrete em ${when}.`
+    message: `O componente Zigbee “${component}” continua indisponível há pelo menos ${msg.policy.reminder_interval_h} horas. Novo lembrete em ${when}.${diagnosis}`
 };
 else return null;
 return msg;

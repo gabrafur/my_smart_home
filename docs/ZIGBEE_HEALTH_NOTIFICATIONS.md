@@ -194,6 +194,19 @@ componente, o Node-RED persiste se há incidente aberto:
 - `online` contínuo por 60 s após o incidente: uma recuperação;
 - `online` no startup sem incidente: ignorado.
 
+O aviso de queda e o lembrete trazem um diagnóstico das últimas 24 h, calculado
+em “Diagnosticar energia ou sinal (24 h)”. Um módulo de tomada anuncia
+(`device_announce` em `zigbee2mqtt/bridge/event`) quando reinicia; quem só perde
+o rádio volta sem anunciar:
+
+- `sinal`: dois ou mais retornos, nenhum com reinício — tem energia, falta malha;
+- `energia`: só retornos com reinício;
+- `misto` ou `indefinido`: evidência insuficiente para separar as causas.
+
+É indício, não prova física, e não muda incidente nem recuperação. O atributo
+`unstable_components` de `binary_sensor.zigbee_network` resume
+`nome:quedas:retornos_sem_reinício`.
+
 Enquanto o componente permanecer offline, o tick periódico da aba repete o
 mesmo alerta a cada intervalo configurado. A enumeração do mapa persistente é
 um adaptador estrutural pequeno; os blocos visuais decidem se o componente

@@ -98,6 +98,15 @@ friendly names containing `/`. An offline value confirmed for 30 seconds opens o
 duplicates are ignored. Recovery requires 60 seconds continuously online.
 The bridge must also be stable, and retained online at startup stays silent.
 
+Outage alerts and reminders carry a 24-hour diagnosis. A mains module announces
+itself (`device_announce` on `zigbee2mqtt/bridge/event`) when it reboots; one that
+only lost radio contact returns without announcing. `sinal` means two or more
+returns and no reboot (powered, weak mesh); `energia` means only rebooted returns;
+`misto` and `indefinido` mean the evidence cannot separate the causes. It is a
+hint, not physical proof, and changes no incident or recovery. The
+`unstable_components` attribute of `binary_sensor.zigbee_network` lists
+`name:outages:returns_without_reboot`.
+
 A periodic tick repeats the same component alert every 24 hours while it stays
 offline, even when no new MQTT availability message arrives. Recovery cancels
 the reminder schedule.

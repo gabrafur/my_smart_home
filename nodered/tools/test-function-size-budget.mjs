@@ -19,8 +19,7 @@ const OVERSIZED = new Map([
   ["354c9839bfca592f", 9146],
   ["vehicle_primary_refresh_telemetry_v1", 9081],
   ["security_visual_arrival_facts", 8994],
-  ["global_observer_ingest", 8178],
-  ["vehicle_primary_api_error_log_v1", 8007]
+  ["global_observer_ingest", 8178]
 ]);
 
 const failures = [];

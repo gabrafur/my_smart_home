@@ -6,11 +6,33 @@ from __future__ import annotations
 import hashlib
 import inspect
 import textwrap
+from pathlib import Path
 
 EXPECTED_INIT = '69eacf8342e90c7c3f46b775fb60ef324c70835d5a353850be335f2ceed3ed17'
 
+# Every native iCloud file except translations, as reviewed in Core 2026.11.2.
+REVIEWED_NATIVE_SOURCE = '264fcfee7cc8a324fc08f0096ab4e750ec164db821d82ad03adb87b213e2ebef'
+
+def tree_digest(root, skip=()):
+    """Order-independent digest of one source tree; None when unreadable."""
+    try:
+        base = Path(root)
+        rows = sorted((path.relative_to(base).as_posix(), path) for path in base.rglob('*')
+                      if path.is_file() and path.suffix != '.pyc'
+                      and path.relative_to(base).parts[0] not in skip)
+        body = ''.join(f'{name}\0{hashlib.sha256(path.read_bytes()).hexdigest()}\n' for name, path in rows)
+    except (OSError, ValueError):
+        return None
+    return hashlib.sha256(body.encode()).hexdigest() if rows else None
+
+def native_source_reviewed(core):
+    """A new Core version is admitted only with byte-identical reviewed code."""
+    origin = getattr(core, '__file__', None)
+    return bool(origin) and tree_digest(Path(origin).parent, ('translations', '__pycache__')) == REVIEWED_NATIVE_SOURCE
+
 def prepare_device_class(core, version):
-    if version not in ('2026.10.1', '2026.10.4', '2026.11.0', '2026.11.1', '2026.11.2'):
+    if (version not in ('2026.10.1', '2026.10.4', '2026.11.0', '2026.11.1', '2026.11.2')
+            and not native_source_reviewed(core)):
         raise RuntimeError('unsupported_icloud_core_version')
     original_class = core.IcloudDevice
     if getattr(original_class, '_reviewed_owner_adapter', False):

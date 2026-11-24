@@ -37,7 +37,10 @@
   },
   "binary_sensor.zigbee_network": {
    "label": "Rede Zigbee",
-   "attributes": []
+   "attributes": [
+    "unstable_components",
+    "checked_at"
+   ]
   },
   "binary_sensor.tuya_devices": {
    "label": "Dispositivos Tuya",

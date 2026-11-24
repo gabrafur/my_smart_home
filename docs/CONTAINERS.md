@@ -278,6 +278,12 @@ e também o Core recusado pela trava de compatibilidade (`unsupported_*`,
 qualquer mudança no compose ou nos serviços; o aviso de falha continua. Qualquer
 outra falha do Core segura os containers.
 
+Os atualizadores da Alexa Media e da Kia UVO param o Home Assistant com prazo de
+120 s (`scripts/home-assistant-planned-stop.mjs`). O padrão de 10 s do Docker
+encerrava o processo à força antes de o recorder fechar o SQLite. Depois de uma
+atualização confirmada, o aviso “Home Assistant iniciado” passa a dizer o motivo
+do reinício e quanto a parada levou.
+
 O subfluxo Alexa Media verifica também a memória pública contra os arquivos
 candidatos e os metadados da próxima versão, antes de chamar HACS ou parar o
 Home Assistant. Uma evidência incompatível retorna `blocked` com motivo

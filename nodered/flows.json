@@ -7019,13 +7019,13 @@
             "zigbee_test_route_log_in"
         ],
         "style": {
-            "color": "#1f2937",
-            "fill": "#dbeafe",
-            "fill-opacity": "0.35",
             "label": true,
             "label-position": "nw",
+            "color": "#1f2937",
             "stroke": "#2563eb",
-            "stroke-opacity": "1"
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
         },
         "type": "group",
         "w": 1162,
@@ -7065,13 +7065,13 @@
             "zigbee_network_effect_out"
         ],
         "style": {
-            "color": "#1f2937",
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.35",
             "label": true,
             "label-position": "nw",
+            "color": "#1f2937",
             "stroke": "#0f766e",
-            "stroke-opacity": "1"
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
         },
         "type": "group",
         "w": 3112,
@@ -7171,6 +7171,7 @@
             "zigbee_path_next_effect_in",
             "zigbee_path_verified_in",
             "zigbee_path_offline_out",
+            "zigbee_component_diagnose",
             "notification_hub_wire_out_e701eb22e5a2",
             "notification_hub_wire_in_e701eb22e5a2",
             "notification_hub_wire_out_0bb8d336406e",
@@ -7179,13 +7180,13 @@
             "notification_hub_wire_in_fa5b9c4a397e"
         ],
         "style": {
-            "color": "#1f2937",
-            "fill": "#ede9fe",
-            "fill-opacity": "0.35",
             "label": true,
             "label-position": "nw",
+            "color": "#1f2937",
             "stroke": "#7c3aed",
-            "stroke-opacity": "1"
+            "stroke-opacity": "1",
+            "fill": "#ede9fe",
+            "fill-opacity": "0.35"
         },
         "type": "group",
         "w": 3377,
@@ -7231,13 +7232,13 @@
             "zigbee_notify_effect__dismiss_call"
         ],
         "style": {
-            "color": "#1f2937",
-            "fill": "#fee2e2",
-            "fill-opacity": "0.35",
             "label": true,
             "label-position": "nw",
+            "color": "#1f2937",
             "stroke": "#dc2626",
-            "stroke-opacity": "1"
+            "stroke-opacity": "1",
+            "fill": "#fee2e2",
+            "fill-opacity": "0.35"
         },
         "type": "group",
         "w": 2702,
@@ -7282,13 +7283,13 @@
             "zigbee_dry_run_terminal"
         ],
         "style": {
-            "color": "#1f2937",
-            "fill": "#cffafe",
-            "fill-opacity": "0.35",
             "label": true,
             "label-position": "nw",
+            "color": "#1f2937",
             "stroke": "#0891b2",
-            "stroke-opacity": "1"
+            "stroke-opacity": "1",
+            "fill": "#cffafe",
+            "fill-opacity": "0.35"
         },
         "type": "group",
         "w": 4382,
@@ -21596,7 +21597,7 @@
     },
     {
         "finalize": "",
-        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^\\p{L}\\p{N} _-]/gu, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\n// HA transport failure is not evidence that the vehicle/provider is failing.\n// The global observer confirms the shared outage from the original call error.\nlet haDisconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(message);\nconst envelope = message.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\nif (envelope) {\n    try {\n        const result = JSON.parse(envelope[1]);\n        haDisconnected = result.type === \"result\" && result.success === false &&\n            result.error?.code === 3 && result.error?.message === \"Connection lost\";\n    } catch { /* Preserve the ordinary failure path for unknown errors. */ }\n}\nif (haDisconnected) {\n    const test = msg._location_test === true || msg.payload?.test_mode === true;\n    const transportKey = \"security_vehicle_primary_refresh_v1\" + (test ? \"__test\" : \"\");\n    const store = test ? undefined : \"persistent\";\n    const previous = flow.get(transportKey, store);\n    if (previous && !/viagens?|trip/i.test(source)) {\n        const next = { ...previous };\n        if (/cache|reler/i.test(source)) {\n            next.cache_probe_in_flight = false;\n            next.cache_probe_in_flight_until = null;\n        } else {\n            next.request_in_flight = false;\n            next.in_flight_until = null;\n        }\n        // Keep deadlines, provider evidence and any pre-existing failure intact.\n        flow.set(transportKey, next, store);\n    }\n    node.warn(\"VEHICLE_PRIMARY_REFRESH_HA_DISCONNECTED; canonical retry preserved\");\n    return null;\n}\nconst failureClass = /service\\s+kia_uvo\\.update\\s+not\\s+found/i.test(message)\n    ? \"integration_unavailable\"\n    : /(?:did not return fresh data|fresh data is pending|no fresh data)/i.test(message)\n    ? \"no_fresh_data\"\n    : /provider denied|backoff is active|\\b403\\b.*\\bForbidden\\b/i.test(message)\n    ? \"provider_backoff\"\n    : /(?:401|unauthori[sz]ed|authentic)/i.test(message)\n    ? \"authentication\"\n    : /(?:timeout|timed out|readtimeout)/i.test(message)\n        ? \"timeout\"\n        : /already in progress|coalesced/i.test(message)\n            ? \"concurrent_request_coalesced\"\n            : \"api_error\";\nconst key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nconst cacheProbeFailure = /cache|reler/i.test(source);\nconst tripRefreshFailure = /viagens?|trip/i.test(source);\nconst successfulHttpResponse = /\\b(?:200|202)\\b/.test(message);\nif (successfulHttpResponse && !tripRefreshFailure) {\n    const intervalMs = Number(state.interval_ms);\n    const intervalReady = Number.isFinite(intervalMs) && intervalMs > 0;\n    const requestAt = Number(state.last_request_at ?? state.last_attempt_at ?? now);\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.awaiting_evidence = true;\n    state.evidence_wait_started_at = Number(state.evidence_wait_started_at) > 0\n        ? state.evidence_wait_started_at\n        : requestAt;\n    state.service_accepted_at = now;\n    state.next_allowed_at = intervalReady\n        ? Math.max(Number(state.next_allowed_at ?? 0), requestAt + intervalMs)\n        : Math.max(Number(state.next_allowed_at ?? 0), now);\n    state.next_retry_at = state.next_allowed_at;\n    state.cooldown_until = null;\n    state.state = \"awaiting_evidence\";\n    state.reason = \"api_accepted_awaiting_fresh_data\";\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.warn(\n        \"VEHICLE_PRIMARY_API_ACCEPTED_FROM_ERROR_PATH\" +\n        \" source=\" + source + \" message=\" + message\n    );\n    return null;\n}\nconst engineRelevantFailure =\n    !tripRefreshFailure &&\n    failureClass !== \"concurrent_request_coalesced\";\nconst shouldActivateAutomaticBypass =\n    engineRelevantFailure &&\n    state.engine_communication_failed !== true;\nconst failedEndpoint = tripRefreshFailure\n    ? \"public_bindings.call (viagens do dia)\"\n    : cacheProbeFailure\n        ? \"kia_uvo.update (releitura do cache)\"\n        : \"public_bindings.call (wake do veículo)\";\nconst failureNotificationKey = `${failureClass}|${failedEndpoint}`;\nconst failureLabels = {\n    no_fresh_data: \"ausência de telemetria nova\",\n    authentication: \"autenticação\",\n    timeout: \"tempo esgotado\",\n    concurrent_request_coalesced: \"requisição concorrente\",\n    provider_backoff: \"acesso temporariamente recusado pelo provedor\",\n    api_error: \"erro da API\"\n};\nconst intervalMs = Number(state.interval_ms);\nconst intervalReady = Number.isFinite(intervalMs) && intervalMs > 0;\nstate.request_in_flight = false;\nstate.in_flight_until = null;\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_settle_until = null;\nstate.awaiting_evidence = true;\nstate.state = \"backoff\";\nstate.reason = failureClass;\nstate.failure_at = now;\nstate.failure_source = source;\nstate.failure_endpoint = failedEndpoint;\nstate.failure_stage = source;\nstate.last_failure_class = failureClass;\nif (engineRelevantFailure) {\n    state.engine_communication_failed = true;\n    state.engine_bypass_recovery_pending = false;\n} else if (typeof state.engine_communication_failed !== \"boolean\") {\n    state.engine_communication_failed = false;\n}\nif (cacheProbeFailure) {\n    state.next_allowed_at = intervalReady\n        ? Math.max(Number(state.next_allowed_at ?? 0), now + intervalMs)\n        : Math.max(Number(state.next_allowed_at ?? 0), now);\n}\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nlet notification = null;\nconst notificationWorthy = ![\n    \"no_fresh_data\",\n    \"concurrent_request_coalesced\"\n].includes(failureClass);\nif (\n    notificationWorthy &&\n    state.failure_notification_key !== failureNotificationKey\n) {\n    state.failure_notified_at = now;\n    state.failure_notification_key = failureNotificationKey;\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: false,\n        side_effect: \"notify:resident_primary+persistent_notification\"\n    };\n    msg.alert = failureClass === \"integration_unavailable\"\n        ? {\n            title: \"Endpoint Bluelink indisponível\",\n            message:\n                `O endpoint ${failedEndpoint} não está disponível no ` +\n                \"Home Assistant. A etapa que falhou foi “\" + source +\n                \"”. As retentativas automáticas permanecem em backoff.\"\n        }\n        : {\n            title: \"Erro ao atualizar veículo\",\n            message:\n                `Falha de ${failureLabels[failureClass] ?? failureClass} ` +\n                `no endpoint ${failedEndpoint}, ` +\n                `durante “${source}”. As retentativas automáticas ` +\n                \"permanecem em backoff.\"\n        };\n    msg.notification = {\n        id: \"vehicle_primary_refresh_failed\",\n        title: msg.alert.title,\n        message: msg.alert.message\n    };\n    notification = msg;\n}\nflow.set(key, state, \"persistent\");\nconst bypassCommand = shouldActivateAutomaticBypass\n    ? {\n        topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        qos: 1,\n        retain: false,\n        payload: JSON.stringify({\n            requested_state: \"ON\",\n            source: \"api_failure\"\n        })\n    }\n    : null;\nconst logMessage =\n    \"VEHICLE_PRIMARY_API_ERROR class=\" + failureClass +\n    \" source=\" + source + \" message=\" + message;\nif ([\"provider_backoff\", \"no_fresh_data\"].includes(failureClass)) {\n    // Backoff do provedor e wake sem telemetria nova já foram convertidos em\n    // estado persistente, bypass e alerta deduplicado. São falhas operacionais\n    // esperadas, não defeitos do canvas para o observador global duplicar.\n    node.warn(logMessage);\n} else {\n    node.error(logMessage, msg);\n}\nreturn notification || bypassCommand\n    ? [notification, bypassCommand]\n    : null;",
+        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^\\p{L}\\p{N} _-]/gu, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\n// HA transport failure is not evidence that the vehicle/provider is failing.\n// The global observer confirms the shared outage from the original call error.\nlet haDisconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(message);\nconst envelope = message.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\nif (envelope) {\n    try {\n        const result = JSON.parse(envelope[1]);\n        haDisconnected = result.type === \"result\" && result.success === false &&\n            result.error?.code === 3 && result.error?.message === \"Connection lost\";\n    } catch { /* Preserve the ordinary failure path for unknown errors. */ }\n}\nif (haDisconnected) {\n    const test = msg._location_test === true || msg.payload?.test_mode === true;\n    const transportKey = \"security_vehicle_primary_refresh_v1\" + (test ? \"__test\" : \"\");\n    const store = test ? undefined : \"persistent\";\n    const previous = flow.get(transportKey, store);\n    if (previous && !/viagens?|trip/i.test(source)) {\n        const next = { ...previous };\n        if (/cache|reler/i.test(source)) {\n            next.cache_probe_in_flight = false;\n            next.cache_probe_in_flight_until = null;\n        } else {\n            next.request_in_flight = false;\n            next.in_flight_until = null;\n        }\n        // Keep deadlines, provider evidence and any pre-existing failure intact.\n        flow.set(transportKey, next, store);\n    }\n    node.warn(\"VEHICLE_PRIMARY_REFRESH_HA_DISCONNECTED; canonical retry preserved\");\n    return null;\n}\nconst failureClass = /service\\s+kia_uvo\\.update\\s+not\\s+found/i.test(message)\n    ? \"integration_unavailable\"\n    : /(?:did not return fresh data|fresh data is pending|no fresh data)/i.test(message)\n    ? \"no_fresh_data\"\n    : /provider denied|backoff is active|\\b403\\b.*\\bForbidden\\b/i.test(message)\n    ? \"provider_backoff\"\n    : /(?:401|unauthori[sz]ed|authentic)/i.test(message)\n    ? \"authentication\"\n    : /(?:timeout|timed out|readtimeout)/i.test(message)\n        ? \"timeout\"\n        : /already in progress|coalesced/i.test(message)\n            ? \"concurrent_request_coalesced\"\n            : \"api_error\";\nconst key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nconst cacheProbeFailure = /cache|reler/i.test(source);\nconst tripRefreshFailure = /viagens?|trip/i.test(source);\nconst successfulHttpResponse = /\\b(?:200|202)\\b/.test(message);\nif (successfulHttpResponse && !tripRefreshFailure) {\n    const intervalMs = Number(state.interval_ms);\n    const intervalReady = Number.isFinite(intervalMs) && intervalMs > 0;\n    const requestAt = Number(state.last_request_at ?? state.last_attempt_at ?? now);\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.awaiting_evidence = true;\n    state.evidence_wait_started_at = Number(state.evidence_wait_started_at) > 0\n        ? state.evidence_wait_started_at\n        : requestAt;\n    state.service_accepted_at = now;\n    state.next_allowed_at = intervalReady\n        ? Math.max(Number(state.next_allowed_at ?? 0), requestAt + intervalMs)\n        : Math.max(Number(state.next_allowed_at ?? 0), now);\n    state.next_retry_at = state.next_allowed_at;\n    state.cooldown_until = null;\n    state.state = \"awaiting_evidence\";\n    state.reason = \"api_accepted_awaiting_fresh_data\";\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.warn(\n        \"VEHICLE_PRIMARY_API_ACCEPTED_FROM_ERROR_PATH\" +\n        \" source=\" + source + \" message=\" + message\n    );\n    return null;\n}\nconst engineRelevantFailure =\n    !tripRefreshFailure &&\n    failureClass !== \"concurrent_request_coalesced\";\nconst shouldActivateAutomaticBypass =\n    engineRelevantFailure &&\n    state.engine_communication_failed !== true;\nconst failedEndpoint = tripRefreshFailure\n    ? \"public_bindings.call (viagens do dia)\"\n    : cacheProbeFailure\n        ? \"kia_uvo.update (releitura do cache)\"\n        : \"public_bindings.call (wake do veículo)\";\nconst failureNotificationKey = `${failureClass}|${failedEndpoint}`;\nconst failureLabels = {\n    no_fresh_data: \"ausência de telemetria nova\",\n    authentication: \"autenticação\",\n    timeout: \"tempo esgotado\",\n    concurrent_request_coalesced: \"requisição concorrente\",\n    provider_backoff: \"acesso temporariamente recusado pelo provedor\",\n    api_error: \"erro da API\"\n};\nconst intervalMs = Number(state.interval_ms);\nconst intervalReady = Number.isFinite(intervalMs) && intervalMs > 0;\nstate.request_in_flight = false;\nstate.in_flight_until = null;\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_settle_until = null;\nstate.awaiting_evidence = true;\nstate.state = \"backoff\";\nstate.reason = failureClass;\nstate.failure_at = now;\nstate.failure_source = source;\nstate.failure_endpoint = failedEndpoint;\nstate.failure_stage = source;\nstate.last_failure_class = failureClass;\nif (engineRelevantFailure) {\n    state.engine_communication_failed = true;\n    state.engine_bypass_recovery_pending = false;\n} else if (typeof state.engine_communication_failed !== \"boolean\") {\n    state.engine_communication_failed = false;\n}\nif (cacheProbeFailure) {\n    state.next_allowed_at = intervalReady\n        ? Math.max(Number(state.next_allowed_at ?? 0), now + intervalMs)\n        : Math.max(Number(state.next_allowed_at ?? 0), now);\n}\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nlet notification = null;\nconst notificationWorthy = ![\n    \"no_fresh_data\",\n    \"concurrent_request_coalesced\"\n].includes(failureClass);\nif (\n    notificationWorthy &&\n    state.failure_notification_key !== failureNotificationKey\n) {\n    state.failure_notified_at = now;\n    state.failure_notification_key = failureNotificationKey;\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: false,\n        side_effect: \"notify:resident_primary+persistent_notification\"\n    };\n    msg.alert = failureClass === \"integration_unavailable\"\n        ? {\n            title: \"Endpoint Bluelink indisponível\",\n            message:\n                `O endpoint ${failedEndpoint} não está disponível no ` +\n                \"Home Assistant. A etapa que falhou foi “\" + source +\n                \"”. As retentativas automáticas permanecem em backoff.\"\n        }\n        : {\n            title: \"Erro ao atualizar veículo\",\n            message:\n                `Falha de ${failureLabels[failureClass] ?? failureClass} ` +\n                `no endpoint ${failedEndpoint}, ` +\n                `durante “${source}”. As retentativas automáticas ` +\n                \"permanecem em backoff.\"\n        };\n    msg.notification = {\n        id: \"vehicle_primary_refresh_failed\",\n        title: msg.alert.title,\n        message: msg.alert.message\n    };\n    notification = msg;\n}\nflow.set(key, state, \"persistent\");\nconst bypassCommand = shouldActivateAutomaticBypass\n    ? {\n        topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        qos: 1,\n        retain: false,\n        payload: JSON.stringify({\n            requested_state: \"ON\",\n            source: \"api_failure\"\n        })\n    }\n    : null;\nconst logMessage =\n    \"VEHICLE_PRIMARY_API_ERROR class=\" + failureClass +\n    \" source=\" + source + \" message=\" + message;\nif ([\"provider_backoff\", \"no_fresh_data\", \"timeout\"].includes(failureClass)) {\n    // Já viraram estado persistente, bypass e alerta deduplicado: são falhas\n    // operacionais esperadas, que o observador global não deve duplicar.\n    node.warn(logMessage);\n} else {\n    node.error(logMessage, msg);\n}\nreturn notification || bypassCommand\n    ? [notification, bypassCommand]\n    : null;",
         "g": "43a2bc9c218353ae",
         "id": "vehicle_primary_api_error_log_v1",
         "initialize": "",
@@ -42134,7 +42135,7 @@
     },
     {
         "finalize": "",
-        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst duloSource = sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\";\nconst internetState = String(readiness?.internet_state ?? \"unknown\").toLowerCase();\n// Generated notification link callers depend on HA but do not report its status.\nconst haNotificationCaller = sourceType === \"link call\" && sourceId.endsWith(\"__hub_call\") &&\n    typeof msg.notification?.source === \"string\" && msg._notification_hub_context !== undefined;\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource || haNotificationCaller ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    // Consume the location coordinator's decision; do not duplicate its limits.\n    const transportRetryPending = flowId === \"ea0a6aa0d24ff863\" &&\n        [\"people_visual_primary_icloud_update\", \"people_visual_secondary_icloud_update\"].includes(sourceId) &&\n        sourceType === \"api-call-service\" &&\n        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&\n        msg.payload?.refresh_transport_retry_pending === true;\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        transport_retry_pending: transportRetryPending,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n    const serviceStartupHandled = sourceType === \"api-call-service\" &&\n        /^notification_hub_mobile_(primary|secondary)_(simple|actionable|background)$/.test(sourceId) &&\n        /^HomeAssistantError: Service public_bindings\\.call not found\\.?$/.test(errorText);\n    data.expected_pending = data.accepted_wake_pending || transportRetryPending || serviceStartupHandled;\n    // A call can fail before the websocket status event reaches this observer.\n    // Parse the transport envelope; domain/service errors cannot prove HA down.\n    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);\n    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\n    if (envelope) {\n        try {\n            const result = JSON.parse(envelope[1]);\n            disconnected = result.type === \"result\" && result.success === false &&\n                result.error?.code === 3 && result.error?.message === \"Connection lost\";\n        } catch { /* Unknown errors stay on the ordinary error path. */ }\n    }\n    if (haSource && disconnected) {\n        Object.assign(data, { kind: \"status\", monitored: true, failing: true,\n            incident_key: \"connection:home_assistant\", incident_kind: \"home_assistant\",\n            status_text: \"connection lost\", key: `${flowId}:${sourceId}` });\n    }\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    // HA entity values carry timestamps and may themselves be offline/unavailable.\n    // Only the connection status contract can open a shared incident.\n    const connectionFailure = haSource\n        ? /^(?:home-assistant\\.status\\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)\n        : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || (duloSource && internetState === \"online\"),\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
+        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst duloSource = sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\";\nconst internetState = String(readiness?.internet_state ?? \"unknown\").toLowerCase();\n// Generated notification link callers depend on HA but do not report its status.\nconst haNotificationCaller = sourceType === \"link call\" && sourceId.endsWith(\"__hub_call\") &&\n    typeof msg.notification?.source === \"string\" && msg._notification_hub_context !== undefined;\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource || haNotificationCaller ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    // The location coordinator decides.\n    const transportRetryPending = flowId === \"ea0a6aa0d24ff863\" &&\n        [\"people_visual_primary_icloud_update\", \"people_visual_secondary_icloud_update\"].includes(sourceId) &&\n        sourceType === \"api-call-service\" &&\n        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&\n        msg.payload?.refresh_transport_retry_pending === true;\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        transport_retry_pending: transportRetryPending,\n        // The vehicle lifecycle retries, notifies and dismisses these itself.\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" &&\n            [\"8907830bb7f6c40c\", \"vehicle_primary_cache_probe_call_v1\"].includes(sourceId) &&\n            (classification === \"timeout\" || /Bluelink wake accepted but fresh data is pending/i.test(errorText)),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n    const serviceStartupHandled = sourceType === \"api-call-service\" &&\n        /^notification_hub_mobile_(primary|secondary)_(simple|actionable|background)$/.test(sourceId) &&\n        /^HomeAssistantError: Service public_bindings\\.call not found\\.?$/.test(errorText);\n    data.expected_pending = data.accepted_wake_pending || transportRetryPending || serviceStartupHandled;\n    // Only the transport envelope proves HA down.\n    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);\n    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\n    if (envelope) {\n        try {\n            const result = JSON.parse(envelope[1]);\n            disconnected = result.type === \"result\" && result.success === false &&\n                result.error?.code === 3 && result.error?.message === \"Connection lost\";\n        } catch { /* Unknown errors stay on the ordinary error path. */ }\n    }\n    if (haSource && disconnected) {\n        Object.assign(data, { kind: \"status\", monitored: true, failing: true,\n            incident_key: \"connection:home_assistant\", incident_kind: \"home_assistant\",\n            status_text: \"connection lost\", key: `${flowId}:${sourceId}` });\n    }\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    // HA entity values may be offline; only connection status opens an incident.\n    const connectionFailure = haSource\n        ? /^(?:home-assistant\\.status\\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)\n        : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || (duloSource && internetState === \"online\"),\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
         "g": "global_observer_production_group",
         "id": "global_observer_ingest",
         "initialize": "",
@@ -61437,16 +61438,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_state_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "recover_online",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "network_recovery",
                 "tot": "str"
             }
@@ -61472,16 +61473,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_state_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "mark_recovering",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "none",
                 "tot": "str"
             }
@@ -61507,16 +61508,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_state_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "baseline_online",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "none",
                 "tot": "str"
             }
@@ -61616,16 +61617,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_state_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "network_reminder",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "network_reminder",
                 "tot": "str"
             }
@@ -61651,16 +61652,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_state_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "keep_offline",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "none",
                 "tot": "str"
             }
@@ -61716,16 +61717,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_state_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "open_failure",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "network_down",
                 "tot": "str"
             }
@@ -61751,16 +61752,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_state_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "mark_checking",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "none",
                 "tot": "str"
             }
@@ -61846,7 +61847,7 @@
     },
     {
         "finalize": "",
-        "func": "const testMode = msg._zigbee_test === true;\nconst state = msg.zigbee_state;\nconst persistedHistory = {\n    last_outage_at: state.last_outage_at,\n    last_recovery_at: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s\n};\nif (testMode) {\n    flow.set(msg.zigbee_state_key, state);\n    flow.set(msg.zigbee_history_key, persistedHistory);\n} else {\n    flow.set(msg.zigbee_state_key, state, \"persistent\");\n    flow.set(msg.zigbee_history_key, persistedHistory, \"persistent\");\n}\nmsg.zigbee_publications = [\n    { topic: \"nodered/infrastructure/zigbee/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/zigbee/attributes\", payload: JSON.stringify({\n        state: state.phase, raw_state: state.raw_state, stable_for_s: state.stable_for_s,\n        checked_at: state.last_checked_at,\n        last_outage: state.last_outage_at || \"Nenhuma queda confirmada\",\n        last_recovery: state.last_recovery_at || \"Nenhuma recuperação registrada\",\n        last_outage_duration_s: state.last_outage_duration_s,\n        failure_confirmation_s: msg.policy.failure_confirmation_s,\n        recovery_confirmation_s: msg.policy.recovery_confirmation_s,\n        reminder_interval_h: msg.policy.reminder_interval_h,\n        next_reminder: state.incident_open ? state.next_reminder_at : null\n    }) },\n    { topic: \"nodered/infrastructure/zigbee/state\", payload: state.phase }\n];\nreturn msg;",
+        "func": "const testMode = msg._zigbee_test === true;\nconst state = msg.zigbee_state;\nconst persistedHistory = {\n    last_outage_at: state.last_outage_at,\n    last_recovery_at: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s\n};\nif (testMode) {\n    flow.set(msg.zigbee_state_key, state);\n    flow.set(msg.zigbee_history_key, persistedHistory);\n} else {\n    flow.set(msg.zigbee_state_key, state, \"persistent\");\n    flow.set(msg.zigbee_history_key, persistedHistory, \"persistent\");\n}\nconst outages = testMode ? flow.get(\"zigbee_component_outages_v1__test\") : flow.get(\"zigbee_component_outages_v1\", \"persistent\");\nconst unstable = Object.entries(outages || {}).map(([name, rows]) => [name, rows.filter((row) => Date.now() - Date.parse(row.start) < 86400000)])\n    .filter(([, rows]) => rows.length)\n    .map(([name, rows]) => `${name}:${rows.length}:${rows.filter((row) => row.rebooted === false).length}`);\nmsg.zigbee_publications = [\n    { topic: \"nodered/infrastructure/zigbee/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/zigbee/attributes\", payload: JSON.stringify({\n        state: state.phase, raw_state: state.raw_state, stable_for_s: state.stable_for_s,\n        checked_at: state.last_checked_at,\n        last_outage: state.last_outage_at || \"Nenhuma queda confirmada\",\n        last_recovery: state.last_recovery_at || \"Nenhuma recuperação registrada\",\n        last_outage_duration_s: state.last_outage_duration_s,\n        failure_confirmation_s: msg.policy.failure_confirmation_s,\n        recovery_confirmation_s: msg.policy.recovery_confirmation_s,\n        reminder_interval_h: msg.policy.reminder_interval_h,\n        unstable_components: unstable.join(\" \").slice(0, 64) || \"nenhum\",\n        next_reminder: state.incident_open ? state.next_reminder_at : null\n    }) },\n    { topic: \"nodered/infrastructure/zigbee/state\", payload: state.phase }\n];\nreturn msg;",
         "g": "grp_zigbee_state",
         "id": "zigbee_network_finalize",
         "initialize": "",
@@ -62129,16 +62130,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_component_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "touch",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_component_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "none",
                 "tot": "str"
             }
@@ -62164,16 +62165,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_component_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "open",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_component_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "down",
                 "tot": "str"
             }
@@ -62229,16 +62230,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_component_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "recover",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_component_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "recovery",
                 "tot": "str"
             }
@@ -62264,16 +62265,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_component_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "baseline",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_component_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "none",
                 "tot": "str"
             }
@@ -62449,16 +62450,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_component_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "reminder",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_component_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "reminder",
                 "tot": "str"
             }
@@ -62551,13 +62552,34 @@
         "type": "function",
         "wires": [
             [
-                "zigbee_component_effect_out",
-                "zigbee_path_offline_out"
+                "zigbee_component_diagnose"
             ]
         ],
         "x": 4090,
         "y": 880,
         "z": "monitoramento_zigbee_tab"
+    },
+    {
+        "id": "zigbee_component_diagnose",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Diagnosticar energia ou sinal (24 h)",
+        "func": "// Evidence only: outages in 24 h and whether the module rebooted to return.\nconst test = msg._zigbee_test === true;\nconst read = (key) => (test ? flow.get(key + \"__test\") : flow.get(key, \"persistent\")) || {};\nconst all = read(\"zigbee_component_outages_v1\");\nconst name = msg.zigbee_component;\nconst before = Array.isArray(all[name]) ? all[name] : [];\nconst start = (entry) => Date.parse(entry.start);\nconst rows = before.filter((entry) => msg.zigbee_now - start(entry) < 86400000).map((entry) => ({ ...entry }));\nif (msg.zigbee_component_action === \"open\") rows.push({ start: msg.zigbee_now_iso, rebooted: null });\nconst open = rows.findLast((entry) => entry.rebooted === null);\nif (msg.zigbee_component_action === \"recover\" && open) {\n    open.rebooted = Number(read(\"zigbee_announce_v1\")[name] ?? 0) >= start(open);\n}\nif (JSON.stringify(rows) !== JSON.stringify(before)) {\n    all[name] = rows.slice(-48);\n    if (test) flow.set(\"zigbee_component_outages_v1__test\", all);\n    else flow.set(\"zigbee_component_outages_v1\", all, \"persistent\");\n}\nconst rebooted = rows.filter((entry) => entry.rebooted === true).length;\nconst silent = rows.filter((entry) => entry.rebooted === false).length;\nconst code = silent >= 2 && !rebooted ? \"sinal\" : rebooted && !silent ? \"energia\"\n    : rebooted && silent ? \"misto\" : \"indefinido\";\nmsg.zigbee_component_diagnosis = { code, outages_24h: rows.length, silent, rebooted };\nmsg.zigbee_component_diagnosis_text = {\n    sinal: ` Diagnóstico: ${rows.length} quedas em 24 h e ${silent} retornos sem o módulo reiniciar. Isso indica que ele tem energia e perde o sinal Zigbee; religar não resolve, reforce a malha.`,\n    energia: ` Diagnóstico: o módulo reiniciou ao voltar, o que indica falta de energia (interruptor, tomada ou disjuntor).`,\n    misto: ` Diagnóstico: ${rebooted} retorno(s) com reinício e ${silent} sem. Verifique energia e malha.`,\n    indefinido: \" Diagnóstico: ainda sem retornos suficientes para separar energia de sinal.\"\n}[code];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 4360,
+        "y": 880,
+        "wires": [
+            [
+                "zigbee_component_effect_out",
+                "zigbee_path_offline_out"
+            ]
+        ]
     },
     {
         "g": "grp_zigbee_detect",
@@ -62569,7 +62591,7 @@
         "name": "Evento do componente → fronteira",
         "type": "link out",
         "wires": [],
-        "x": 4285,
+        "x": 4600,
         "y": 880,
         "z": "monitoramento_zigbee_tab"
     },
@@ -62739,16 +62761,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "open",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "zigbee_route_quiet_open = true ? \"route_retry\" : \"route_failure\"",
                 "tot": "jsonata"
             }
@@ -62774,16 +62796,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "retry",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "route_retry",
                 "tot": "str"
             }
@@ -62809,16 +62831,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "touch",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "none",
                 "tot": "str"
             }
@@ -63292,16 +63314,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "recovery_failed",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "route_recovery_failed",
                 "tot": "str"
             }
@@ -63496,16 +63518,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "verify",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "none",
                 "tot": "str"
             }
@@ -63531,16 +63553,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "recovery_failed",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "route_recovery_failed",
                 "tot": "str"
             }
@@ -63937,7 +63959,7 @@
     },
     {
         "finalize": "",
-        "func": "const component = msg.zigbee_component;\nif (!component || !msg.zigbee_component_key) {\n    let hash = 0x811c9dc5;\n    for (const byte of Buffer.from(component || \"component\", \"utf8\")) { hash ^= byte; hash = Math.imul(hash, 0x01000193) >>> 0; }\n    const slug = String(component || \"component\").normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\")\n        .toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\n    msg.zigbee_component_key = `${slug || \"component\"}_${hash.toString(16).padStart(8, \"0\")}`;\n}\nconst when = new Date(msg.zigbee_now).toLocaleString(\"pt-BR\");\nif (msg.zigbee_component_event === \"down\") msg.notification = {\n    id: `zigbee_component_${msg.zigbee_component_key}`, title: \"Componente Zigbee indisponível\",\n    message: `O componente Zigbee “${component}” ficou indisponível em ${when}. Verifique alimentação, alcance, bateria e a malha Zigbee.`\n};\nelse if (msg.zigbee_component_event === \"recovery\") msg.notification = {\n    id: `zigbee_component_recovered_${msg.zigbee_component_key}`,\n    dismiss_id: `zigbee_component_${msg.zigbee_component_key}`, title: \"Componente Zigbee recuperado\",\n    message: `O componente Zigbee “${component}” voltou a ficar disponível em ${when}.` +\n        (msg.zigbee_component_route_context?.state === \"pending\"\n            ? \" O incidente de rota permanece aberto; o funcionamento dos comandos não está comprovado.\" : \"\")\n};\nelse if (msg.zigbee_component_event === \"reminder\") msg.notification = {\n    id: `zigbee_component_${msg.zigbee_component_key}`, title: \"Componente Zigbee continua indisponível\",\n    message: `O componente Zigbee “${component}” continua indisponível há pelo menos ${msg.policy.reminder_interval_h} horas. Novo lembrete em ${when}.`\n};\nelse return null;\nreturn msg;",
+        "func": "const component = msg.zigbee_component;\nif (!component || !msg.zigbee_component_key) {\n    let hash = 0x811c9dc5;\n    for (const byte of Buffer.from(component || \"component\", \"utf8\")) { hash ^= byte; hash = Math.imul(hash, 0x01000193) >>> 0; }\n    const slug = String(component || \"component\").normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\")\n        .toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\n    msg.zigbee_component_key = `${slug || \"component\"}_${hash.toString(16).padStart(8, \"0\")}`;\n}\nconst diagnosis = msg.zigbee_component_diagnosis_text || \"\";\nconst when = new Date(msg.zigbee_now).toLocaleString(\"pt-BR\");\nif (msg.zigbee_component_event === \"down\") msg.notification = {\n    id: `zigbee_component_${msg.zigbee_component_key}`, title: \"Componente Zigbee indisponível\",\n    message: `O componente Zigbee “${component}” ficou indisponível em ${when}. Verifique alimentação, alcance, bateria e a malha Zigbee.${diagnosis}`\n};\nelse if (msg.zigbee_component_event === \"recovery\") msg.notification = {\n    id: `zigbee_component_recovered_${msg.zigbee_component_key}`,\n    dismiss_id: `zigbee_component_${msg.zigbee_component_key}`, title: \"Componente Zigbee recuperado\",\n    message: `O componente Zigbee “${component}” voltou a ficar disponível em ${when}.` +\n        (msg.zigbee_component_route_context?.state === \"pending\"\n            ? \" O incidente de rota permanece aberto; o funcionamento dos comandos não está comprovado.\" : \"\")\n};\nelse if (msg.zigbee_component_event === \"reminder\") msg.notification = {\n    id: `zigbee_component_${msg.zigbee_component_key}`, title: \"Componente Zigbee continua indisponível\",\n    message: `O componente Zigbee “${component}” continua indisponível há pelo menos ${msg.policy.reminder_interval_h} horas. Novo lembrete em ${when}.${diagnosis}`\n};\nelse return null;\nreturn msg;",
         "g": "grp_zigbee_notify",
         "id": "zigbee_component_notification_build",
         "info": "Disponibilidade e rota são contratos independentes. O retorno de disponibilidade mantém o incidente de rota e informa quando ele segue pendente; não comprova comandos. Mesmas decisões e fronteira dry-run de produção.",
@@ -64046,9 +64068,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "_notification_hub_shared",
                 "pt": "msg",
-                "t": "set",
                 "to": "notification",
                 "tot": "msg"
             }
@@ -64122,23 +64144,23 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "_notification_hub_context",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"payload\":payload,\"notification\":notification,\"had_notification\":$exists(notification)}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "notification",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"source\":\"monitoramento_zigbee\",\"recipients\":[\"resident_primary\"],\"profile\":\"simple\",\"title\":_notification_hub_shared.title}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "t": "set",
                 "to": "_notification_hub_shared.message",
                 "tot": "jsonata"
             }
@@ -64181,23 +64203,23 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "_notification_hub_context",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"payload\":payload,\"notification\":notification,\"had_notification\":$exists(notification)}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "notification",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"source\":\"monitoramento_zigbee\",\"operation\":\"create\",\"delivery\":\"queued\",\"notification_id\":_notification_hub_shared.id,\"title\":_notification_hub_shared.title}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "t": "set",
                 "to": "_notification_hub_shared.message",
                 "tot": "jsonata"
             }
@@ -64270,23 +64292,23 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "_notification_hub_context",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"payload\":payload,\"notification\":notification,\"had_notification\":$exists(notification)}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "notification",
                 "pt": "msg",
-                "t": "set",
                 "to": "{\"source\":\"monitoramento_zigbee\",\"operation\":\"dismiss\",\"delivery\":\"queued\",\"notification_id\":_notification_hub_shared.dismiss_id}",
                 "tot": "jsonata"
             },
             {
+                "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "t": "set",
                 "to": "\"\"",
                 "tot": "jsonata"
             }
@@ -65799,16 +65821,17 @@
             "zigbee_settle_note",
             "zigbee_route_exhausted_in",
             "zigbee_route_exhausted",
-            "zigbee_route_exhausted_return"
+            "zigbee_route_exhausted_return",
+            "zigbee_announce_store"
         ],
         "style": {
-            "color": "#1f2937",
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.35",
             "label": true,
             "label-position": "nw",
+            "color": "#1f2937",
             "stroke": "#0f766e",
-            "stroke-opacity": "1"
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
         },
         "type": "group",
         "w": 4600,
@@ -66139,16 +66162,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "recovered",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "route_recovery",
                 "tot": "str"
             }
@@ -66252,7 +66275,8 @@
         "type": "link in",
         "wires": [
             [
-                "zigbee_route_telemetry"
+                "zigbee_route_telemetry",
+                "zigbee_announce_store"
             ]
         ],
         "x": 110,
@@ -66275,6 +66299,23 @@
         "x": 400,
         "y": 3760,
         "z": "monitoramento_zigbee_tab"
+    },
+    {
+        "id": "zigbee_announce_store",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_stabilization",
+        "name": "Guardar reinício anunciado pelo módulo",
+        "func": "// A mains module announces itself when it boots; one that only lost radio\n// contact returns without announcing. This separates power from signal.\nif (msg.retain === true || msg.topic !== \"zigbee2mqtt/bridge/event\") return null;\nlet event = msg.payload;\nif (typeof event === \"string\") { try { event = JSON.parse(event); } catch { return null; } }\nconst name = event?.data?.friendly_name;\nif (event?.type !== \"device_announce\" || typeof name !== \"string\" || !name) return null;\nconst test = msg._zigbee_test === true;\nconst key = \"zigbee_announce_v1\" + (test ? \"__test\" : \"\");\nconst store = test ? undefined : \"persistent\";\nconst announces = flow.get(key, store) || {};\nannounces[name] = Number(msg.monitor_now ?? Date.now());\nflow.set(key, announces, store);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 3830,
+        "wires": []
     },
     {
         "g": "grp_zigbee_detect",
@@ -68354,16 +68395,16 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_route_action",
                 "pt": "msg",
-                "t": "set",
                 "to": "recovery_failed",
                 "tot": "str"
             },
             {
+                "t": "set",
                 "p": "zigbee_route_event",
                 "pt": "msg",
-                "t": "set",
                 "to": "route_recovery_failed",
                 "tot": "str"
             }
@@ -84481,97 +84522,97 @@
         "z": "monitoramento_zigbee_tab"
     },
     {
-        "g": "grp_zigbee_detect",
         "id": "notification_hub_wire_out_e701eb22e5a2",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Encurtar: Registrar falha da varredura",
+        "mode": "link",
         "links": [
             "notification_hub_wire_in_e701eb22e5a2"
         ],
-        "mode": "link",
-        "name": "Encurtar: Registrar falha da varredura",
-        "type": "link out",
-        "wires": [],
         "x": 3420,
         "y": 1640,
-        "z": "monitoramento_zigbee_tab"
+        "wires": []
     },
     {
-        "g": "grp_zigbee_detect",
         "id": "notification_hub_wire_in_e701eb22e5a2",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Continuar: Persistir lifecycle da rota",
         "links": [
             "notification_hub_wire_out_e701eb22e5a2"
         ],
-        "name": "Continuar: Persistir lifecycle da rota",
-        "type": "link in",
+        "x": 2800,
+        "y": 1280,
         "wires": [
             [
                 "zigbee_route_state_mutate"
             ]
-        ],
-        "x": 2800,
-        "y": 1280,
-        "z": "monitoramento_zigbee_tab"
+        ]
     },
     {
-        "g": "grp_zigbee_detect",
         "id": "notification_hub_wire_out_0bb8d336406e",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Encurtar: Configure aceito: aguardar evidência",
+        "mode": "link",
         "links": [
             "notification_hub_wire_in_0bb8d336406e"
         ],
-        "mode": "link",
-        "name": "Encurtar: Configure aceito: aguardar evidência",
-        "type": "link out",
-        "wires": [],
         "x": 3400,
         "y": 1700,
-        "z": "monitoramento_zigbee_tab"
+        "wires": []
     },
     {
-        "g": "grp_zigbee_detect",
         "id": "notification_hub_wire_in_0bb8d336406e",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Continuar: Persistir lifecycle da rota",
         "links": [
             "notification_hub_wire_out_0bb8d336406e"
         ],
-        "name": "Continuar: Persistir lifecycle da rota",
-        "type": "link in",
+        "x": 2760,
+        "y": 1580,
         "wires": [
             [
                 "zigbee_route_state_mutate"
             ]
-        ],
-        "x": 2760,
-        "y": 1580,
-        "z": "monitoramento_zigbee_tab"
+        ]
     },
     {
-        "g": "grp_zigbee_detect",
         "id": "notification_hub_wire_out_fa5b9c4a397e",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Encurtar: Registrar falha e cooldown",
+        "mode": "link",
         "links": [
             "notification_hub_wire_in_fa5b9c4a397e"
         ],
-        "mode": "link",
-        "name": "Encurtar: Registrar falha e cooldown",
-        "type": "link out",
-        "wires": [],
         "x": 3400,
         "y": 1800,
-        "z": "monitoramento_zigbee_tab"
+        "wires": []
     },
     {
-        "g": "grp_zigbee_detect",
         "id": "notification_hub_wire_in_fa5b9c4a397e",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Continuar: Persistir lifecycle da rota",
         "links": [
             "notification_hub_wire_out_fa5b9c4a397e"
         ],
-        "name": "Continuar: Persistir lifecycle da rota",
-        "type": "link in",
+        "x": 2760,
+        "y": 1730,
         "wires": [
             [
                 "zigbee_route_state_mutate"
             ]
-        ],
-        "x": 2760,
-        "y": 1730,
-        "z": "monitoramento_zigbee_tab"
+        ]
     },
     {
         "finalize": "",
@@ -101595,13 +101636,13 @@
             "notification_hub_wire_in_50bb430d29ef"
         ],
         "style": {
-            "color": "#1f2937",
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.35",
             "label": true,
             "label-position": "nw",
+            "color": "#1f2937",
             "stroke": "#0f766e",
-            "stroke-opacity": "1"
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
         },
         "type": "group",
         "w": 3600,
@@ -102001,9 +102042,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_path_use",
                 "pt": "msg",
-                "t": "set",
                 "to": "true",
                 "tot": "bool"
             }
@@ -102029,9 +102070,9 @@
         "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "zigbee_path_use",
                 "pt": "msg",
-                "t": "set",
                 "to": "false",
                 "tot": "bool"
             }
@@ -102274,8 +102315,8 @@
         "name": "Offline confirmado → recuperação limitada",
         "type": "link out",
         "wires": [],
-        "x": 4060,
-        "y": 980,
+        "x": 4600,
+        "y": 940,
         "z": "monitoramento_zigbee_tab"
     },
     {
@@ -102995,35 +103036,35 @@
         "z": "monitoramento_zigbee_tab"
     },
     {
-        "g": "grp_zigbee_paths",
         "id": "notification_hub_wire_out_50bb430d29ef",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Encurtar: Há próximo destino confirmado?",
+        "mode": "link",
         "links": [
             "notification_hub_wire_in_50bb430d29ef"
         ],
-        "mode": "link",
-        "name": "Encurtar: Há próximo destino confirmado?",
-        "type": "link out",
-        "wires": [],
         "x": 1280,
         "y": 5000,
-        "z": "monitoramento_zigbee_tab"
+        "wires": []
     },
     {
-        "g": "grp_zigbee_paths",
         "id": "notification_hub_wire_in_50bb430d29ef",
+        "type": "link in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_paths",
+        "name": "Continuar: Último destino → aguardar dados estáveis",
         "links": [
             "notification_hub_wire_out_50bb430d29ef"
         ],
-        "name": "Continuar: Último destino → aguardar dados estáveis",
-        "type": "link in",
+        "x": 1420,
+        "y": 4970,
         "wires": [
             [
                 "zigbee_path_verified_out"
             ]
-        ],
-        "x": 1420,
-        "y": 4970,
-        "z": "monitoramento_zigbee_tab"
+        ]
     },
     {
         "checkall": "true",

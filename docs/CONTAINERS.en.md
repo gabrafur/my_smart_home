@@ -315,6 +315,11 @@ between 5 and 1,440 minutes feeds the native loop `delay`. Named switches route
 Core, Alexa Media Player, Kia UVO/Hyundai Bluelink, other versioned HACS
 integrations, physical firmware, and unknown sources to separate subflows.
 
+The Alexa Media and Kia UVO updaters stop Home Assistant with a 120 s limit
+(`scripts/home-assistant-planned-stop.mjs`); Docker's 10 s default killed it before
+the recorder closed SQLite. After a confirmed update, the "Home Assistant iniciado"
+notice states the restart reason and how long the stop took.
+
 Alexa and Bluelink always receive the exact version advertised by the Home
 Assistant entity. Alexa resolves the official tag and commit, compares the
 component byte for byte with the recorded base, permits only allowlisted or

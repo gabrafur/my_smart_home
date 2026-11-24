@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { kiaRepositoryRecordCode } from "./kia-repository-record.mjs";
+import { STOP_ARGS, announcePlannedRestart } from "./home-assistant-planned-stop.mjs";
 import { snapshotRepository, restoreRepository } from "./integration-repository.mjs";
 import { auditFailureCategory } from "./kia-uvo-audit-failure.mjs";
 
@@ -105,6 +106,13 @@ function command(commandName, args, options = {}) {
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
     env: { ...process.env, ...(options.env ?? {}) },
   });
+}
+
+// Seconds Home Assistant took to stop.
+function stopHomeAssistant() {
+  const startedAt = Date.now();
+  command("docker", [...STOP_ARGS]);
+  return (Date.now() - startedAt) / 1000;
 }
 
 function readStatus() {
@@ -660,7 +668,7 @@ async function applyPrepared(prepared, token, options = {}) {
       });
       await waitForHacsInstallation(token, updateEntity.entity_id, prepared.target);
     }
-    command("docker", ["compose", "stop", "homeassistant"]);
+    const stopSeconds = stopHomeAssistant();
     makeComponentWritable();
     fs.rmSync(componentDir, { recursive: true, force: true });
     copyComponent(prepared.mergedRoot, componentDir);
@@ -695,6 +703,9 @@ async function applyPrepared(prepared, token, options = {}) {
       );
     }
     writeJson(statePath, config);
+    await announcePlannedRestart((servicePath, body) => haRequest("POST", servicePath, token, body), {
+      reason: `atualização da Kia UVO ${prepared.target}`, stopSeconds,
+    });
     const status = statusFor(prepared, "applied", {
       applied_at: new Date().toISOString(),
       tests: { ...prepared.tests, ...runtimeTests, library_version: libraryVersion },
@@ -708,7 +719,7 @@ async function applyPrepared(prepared, token, options = {}) {
     console.log(JSON.stringify(status, null, 2));
     return status;
   } catch (error) {
-    command("docker", ["compose", "stop", "homeassistant"]);
+    stopHomeAssistant();
     makeComponentWritable();
     fs.rmSync(componentDir, { recursive: true, force: true });
     copyComponent(path.join(backupDir, "kia_uvo"), componentDir);

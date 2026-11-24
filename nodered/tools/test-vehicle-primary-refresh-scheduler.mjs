@@ -1020,13 +1020,18 @@ for (const [number, message, expected] of [
         next_allowed_at: DAY + 60_000,
       },
     });
+    const errors = [], warnings = [];
     execute(code.error, {
       now: DAY,
       store,
+      errors,
+      warnings,
       msg: { error: { source: { name: "Forçar refresh" }, message } },
     });
     const state = store.get(KEY);
     assert.equal(state.last_failure_class, expected);
+    // The lifecycle owns a timeout end to end; other classes still reach the observer.
+    assert.deepEqual([errors.length, warnings.length], expected === "timeout" ? [0, 1] : [1, 0]);
     assert.equal(state.request_in_flight, false);
     assert.equal(coordinator(store, DAY + 1_000, { anyone_away: true }), null);
   });

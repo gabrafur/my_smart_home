@@ -283,6 +283,22 @@ assert.equal(
   0,
   "wake aceito e ainda pendente não deve abrir incidente global",
 );
+// 24/11/2026: o timeout do refresh gerou dois avisos globais, embora o lifecycle
+// do veículo já repita, avise e remova o próprio aviso.
+const vehicleTimeout = (source, message = "Error: Vehicle refresh failed at /ccs2/carstatus: Read timed out. (read timeout=30)") => {
+  const vehicleStore = memory();
+  const event = (id, text, at) => ({
+    _global_observer_test: true, observer_now: at,
+    _global_observer: { flow_id: "c22d8b12055e87f7", flow_label: "contexto_vehicle_primary" },
+    error: { message: text, source: { id, type: "api-call-service", name: "veículo" } },
+  });
+  runIngest(event("boot", "arranque", 0), vehicleStore); // past the startup grace
+  return runIngest(event(source, message, 3_600_000), vehicleStore);
+};
+assert.equal(vehicleTimeout("8907830bb7f6c40c"), null);
+assert.equal(vehicleTimeout("vehicle_primary_cache_probe_call_v1"), null);
+assert.ok(vehicleTimeout("16396e34ff530ac7"), "outro nó do veículo continua alertável");
+assert.ok(vehicleTimeout("8907830bb7f6c40c", "Error: 401 unauthorized"), "autenticação continua alertável");
 
 const statusFailure = {
   _global_observer_test: true,

@@ -25,7 +25,7 @@ atualizações pendentes; baterias.
   fora: além de acionáveis, o estado deles revela quem está em casa.
 - Atributos só saem quando a política os lista para a entidade (por exemplo,
   `freshness` e `last_confirmed_at` dos resultados de cópia; versões das
-  atualizações), e só como valores curtos de máquina. Texto livre vira
+  atualizações; `unstable_components` da rede Zigbee), e só como valores curtos de máquina. Texto livre vira
   `[withheld]`; `friendly_name` e demais atributos nunca saem.
 - O broker só faz `GET /api/states/<entidade>`; não existe caminho para
   chamar serviço. Usa o token do usuário não administrador do Home Assistant

@@ -48,6 +48,12 @@ Um envio sem recibo retorna `state=not_recorded` e
 `send_state=not_sent_by_adapter`; essa afirmação se limita ao adaptador.
 Recibos incertos já registrados nunca são reenviados, inclusive após restart.
 
+Quando não existe recibo, a rota (`scripts/raspberry-mcp/task-absence/`) responde
+`state=absent` com `reason=task_not_found` ou `send_not_found`, sem erro MCP; antes
+alguns clientes mostravam isso como `INVALID_ARGUMENT`. A ausência cobre só os
+recibos retidos do adaptador, não autoriza criar tarefa nem repetir efeito, e
+recusas ou incerteza continuam como erro.
+
 ## Vínculo de incidente e diagnóstico de admissão
 
 A exportação atual em `scripts/raspberry-mcp/runtime-source/task-control/`

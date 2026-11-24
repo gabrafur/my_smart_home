@@ -67,7 +67,7 @@ if (msg.error) {
     const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);
     const key = `${flowId}:${sourceId}:${signature}`;
     const previous = state.errors[key] ?? {};
-    // Consume the location coordinator's decision; do not duplicate its limits.
+    // The location coordinator decides.
     const transportRetryPending = flowId === "ea0a6aa0d24ff863" &&
         ["people_visual_primary_icloud_update", "people_visual_secondary_icloud_update"].includes(sourceId) &&
         sourceType === "api-call-service" &&
@@ -75,15 +75,16 @@ if (msg.error) {
         msg.payload?.refresh_transport_retry_pending === true;
     Object.assign(data, { kind: "error", error_text: errorText, classification, signature, key, previous,
         transport_retry_pending: transportRetryPending,
-        accepted_wake_pending: flowId === "c22d8b12055e87f7" && sourceId === "8907830bb7f6c40c" &&
-            /Bluelink wake accepted but fresh data is pending/i.test(errorText),
+        // The vehicle lifecycle retries, notifies and dismisses these itself.
+        accepted_wake_pending: flowId === "c22d8b12055e87f7" &&
+            ["8907830bb7f6c40c", "vehicle_primary_cache_probe_call_v1"].includes(sourceId) &&
+            (classification === "timeout" || /Bluelink wake accepted but fresh data is pending/i.test(errorText)),
         connection_suppressed: Boolean(sharedIncidentKey && classification !== "autenticação" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });
     const serviceStartupHandled = sourceType === "api-call-service" &&
         /^notification_hub_mobile_(primary|secondary)_(simple|actionable|background)$/.test(sourceId) &&
         /^HomeAssistantError: Service public_bindings\.call not found\.?$/.test(errorText);
     data.expected_pending = data.accepted_wake_pending || transportRetryPending || serviceStartupHandled;
-    // A call can fail before the websocket status event reaches this observer.
-    // Parse the transport envelope; domain/service errors cannot prove HA down.
+    // Only the transport envelope proves HA down.
     let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);
     const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\{.*\})$/);
     if (envelope) {
@@ -101,8 +102,7 @@ if (msg.error) {
 } else if (msg.status) {
     const text = String(msg.status.text ?? "").toLowerCase();
     const shared = haSource || mqttSource;
-    // HA entity values carry timestamps and may themselves be offline/unavailable.
-    // Only the connection status contract can open a shared incident.
+    // HA entity values may be offline; only connection status opens an incident.
     const connectionFailure = haSource
         ? /^(?:home-assistant\.status\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)
         : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);

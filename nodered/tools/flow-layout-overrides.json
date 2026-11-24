@@ -11096,7 +11096,7 @@
           "y": 880
         },
         "zigbee_component_effect_out": {
-          "x": 4285,
+          "x": 4600,
           "y": 880
         },
         "zigbee_network_effect_in": {
@@ -11454,8 +11454,8 @@
           "y": 1735
         },
         "zigbee_path_offline_out": {
-          "x": 4060,
-          "y": 980
+          "x": 4600,
+          "y": 940
         },
         "zigbee_path_offline_in": {
           "x": 120,

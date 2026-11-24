@@ -130,9 +130,13 @@ container has no network, privileges or home configuration. Only the checker
 and `device_owner.py` are mounted read-only. The process sets its own virtual
 memory, CPU, file and time limits because this host has no cgroup memory control.
 
-An unreviewed version, changed constructor hash, different pyicloud version or
-collection failure blocks promotion. Do not remove the allowlist to accept new
-versions automatically. Dry-run returns `not_checked`, creates no container and
+A version outside the list is admitted only when every native iCloud file
+(except translations) and every pyicloud file is byte-identical to the ones
+reviewed in Core 2026.11.2 (`admission=identical_reviewed_source`). The adapter
+repeats the content check when Home Assistant starts. Any added, changed or
+missing file, changed constructor hash, different pyicloud version or collection
+failure still blocks promotion. Do not remove the allowlist or replace the
+reviewed hashes to accept new code. Dry-run returns `not_checked`, creates no container and
 does not establish compatibility. Other services do not need this iCloud check.
 
 The 2026.10.4 review matched all 15 files of the image's iCloud directory against

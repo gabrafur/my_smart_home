@@ -183,10 +183,9 @@ const bypassCommand = shouldActivateAutomaticBypass
 const logMessage =
     "VEHICLE_PRIMARY_API_ERROR class=" + failureClass +
     " source=" + source + " message=" + message;
-if (["provider_backoff", "no_fresh_data"].includes(failureClass)) {
-    // Backoff do provedor e wake sem telemetria nova já foram convertidos em
-    // estado persistente, bypass e alerta deduplicado. São falhas operacionais
-    // esperadas, não defeitos do canvas para o observador global duplicar.
+if (["provider_backoff", "no_fresh_data", "timeout"].includes(failureClass)) {
+    // Já viraram estado persistente, bypass e alerta deduplicado: são falhas
+    // operacionais esperadas, que o observador global não deve duplicar.
     node.warn(logMessage);
 } else {
     node.error(logMessage, msg);

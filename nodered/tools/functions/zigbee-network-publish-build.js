@@ -12,6 +12,10 @@ if (testMode) {
     flow.set(msg.zigbee_state_key, state, "persistent");
     flow.set(msg.zigbee_history_key, persistedHistory, "persistent");
 }
+const outages = testMode ? flow.get("zigbee_component_outages_v1__test") : flow.get("zigbee_component_outages_v1", "persistent");
+const unstable = Object.entries(outages || {}).map(([name, rows]) => [name, rows.filter((row) => Date.now() - Date.parse(row.start) < 86400000)])
+    .filter(([, rows]) => rows.length)
+    .map(([name, rows]) => `${name}:${rows.length}:${rows.filter((row) => row.rebooted === false).length}`);
 msg.zigbee_publications = [
     { topic: "nodered/infrastructure/zigbee/connection", payload: state.phase === "online" ? "ON" : "OFF" },
     { topic: "nodered/infrastructure/zigbee/attributes", payload: JSON.stringify({
@@ -23,6 +27,7 @@ msg.zigbee_publications = [
         failure_confirmation_s: msg.policy.failure_confirmation_s,
         recovery_confirmation_s: msg.policy.recovery_confirmation_s,
         reminder_interval_h: msg.policy.reminder_interval_h,
+        unstable_components: unstable.join(" ").slice(0, 64) || "nenhum",
         next_reminder: state.incident_open ? state.next_reminder_at : null
     }) },
     { topic: "nodered/infrastructure/zigbee/state", payload: state.phase }

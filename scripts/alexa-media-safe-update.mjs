@@ -9,6 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkPublicMemory } from "./public-memory-check.mjs";
 import { scanEntries } from "./privacy-check.mjs";
+import { STOP_ARGS, announcePlannedRestart } from "./home-assistant-planned-stop.mjs";
 import { readRepositoryRecord, snapshotRepository, restoreRepository } from "./integration-repository.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -108,6 +109,13 @@ function command(commandName, args, options = {}) {
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
     env: { ...process.env, ...(options.env ?? {}) },
   });
+}
+
+// Seconds Home Assistant took to stop.
+function stopHomeAssistant() {
+  const startedAt = Date.now();
+  command("docker", [...STOP_ARGS]);
+  return (Date.now() - startedAt) / 1000;
 }
 
 function sha256(filePath) {
@@ -634,7 +642,7 @@ async function apply(target) {
         });
         await waitForInstallation(token, prepared.metadata, prepared.targetRef.version);
       }
-      command("docker", ["compose", "stop", "homeassistant"]);
+      const stopSeconds = stopHomeAssistant();
       makeComponentWritable(targetDir);
       fs.rmSync(targetDir, { recursive: true, force: true });
       copyComponent(prepared.mergedRoot, targetDir);
@@ -653,6 +661,9 @@ async function apply(target) {
         base_tag_object: prepared.targetRef.tag_object,
         license_sha256: prepared.targetLicenseHash,
       }, 0o644);
+      await announcePlannedRestart((servicePath, body) => haRequest("POST", servicePath, token, body), {
+        reason: `atualização da Alexa Media ${prepared.targetRef.version}`, stopSeconds,
+      });
       const status = statusFor(prepared, "success", { runtime, applied_at: new Date().toISOString() });
       writeJson(statusPath, status);
       return status;
@@ -660,7 +671,7 @@ async function apply(target) {
       let rollbackRuntime = null;
       let rollbackError = null;
       try {
-        command("docker", ["compose", "stop", "homeassistant"]);
+        stopHomeAssistant();
         makeComponentWritable(targetDir);
         fs.rmSync(targetDir, { recursive: true, force: true });
         copyComponent(path.join(backupDir, "alexa_media"), targetDir);
