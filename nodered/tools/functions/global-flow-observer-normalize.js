@@ -83,8 +83,8 @@ if (msg.error) {
     const serviceStartupHandled = sourceType === "api-call-service" &&
         /^notification_hub_mobile_(primary|secondary)_(simple|actionable|background)$/.test(sourceId) &&
         /^HomeAssistantError: Service public_bindings\.call not found\.?$/.test(errorText);
-    data.expected_pending = data.accepted_wake_pending || transportRetryPending || serviceStartupHandled;
-    // Only the transport envelope proves HA down.
+    data.expected_pending = data.accepted_wake_pending || msg._observer_owned?.includes?.(sourceId) === true || transportRetryPending || serviceStartupHandled;
+    // Only this envelope proves HA down.
     let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);
     const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\{.*\})$/);
     if (envelope) {

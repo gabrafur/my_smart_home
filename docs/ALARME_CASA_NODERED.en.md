@@ -31,7 +31,9 @@ receives an out-of-range value.
 
 - retry interval: **10 s**, integer from 1 to 300 s;
 - warning cadence: **5 attempts**, integer from 1 to 100;
-- attempt limit: **0 (no limit)**, from 0 to 1,000.
+- attempt limit: **0 (no limit)**, from 0 to 1,000;
+- phones, first notified failure: **3rd**, from 1 to 100;
+- phones, repetition: **every 30 failures**, from 1 to 1,000.
 
 The default `0` keeps the previous unlimited retry. Changing it to a positive
 value is an explicit, visible operational change.
@@ -51,8 +53,16 @@ the `security_panel` role through `public_bindings.call`.
   wait. Restarting Node-RED never replays a security action automatically: the
   policy and the last intention are recovered, but an interrupted command needs
   a new request.
-- The failure notice fires on the first failure and then at the visual
+- The voice failure notice fires on the first failure and then at the visual
   cadence. The effect uses the logical `mobile_primary` role.
+- Group `5. Aviso nos celulares e no HA` notifies both residents and creates
+  `alarme_casa_comando_falhou` on the 3rd consecutive failure, repeats every 30
+  and, when Moni accepts the command, removes the notice and confirms on the
+  phones. An opposite intention only removes it. The text separates a Moni refusal
+  from a missing confirmation; acceptance is the command acknowledgement, not a
+  panel reading.
+- Errors of the two panel services are declared in `_observer_owned`, so the
+  global observer opens no second generic notice for them.
 - After an accepted arm, `Atualizar estado Moni Mobile` requests an entity
   refresh before the success notice.
 

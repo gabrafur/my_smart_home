@@ -1720,30 +1720,32 @@
         "z": "29d64664bf8cbde8"
     },
     {
-        "h": 242,
         "id": "alarm_group_policy",
+        "type": "group",
+        "z": "alarm_house_tab",
         "name": "0. Política visual — edite os valores",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35",
+            "color": "#1f2937"
+        },
         "nodes": [
             "alarm_policy_help",
             "alarm_policy_retry_seconds",
             "alarm_policy_notify_every",
             "alarm_policy_max_attempts",
+            "alarm_policy_phone_after",
+            "alarm_policy_phone_every",
             "alarm_policy_validate"
         ],
-        "style": {
-            "color": "#1f2937",
-            "fill": "#dbeafe",
-            "fill-opacity": "0.35",
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#2563eb",
-            "stroke-opacity": "1"
-        },
-        "type": "group",
-        "w": 632,
         "x": 64,
         "y": 39,
-        "z": "alarm_house_tab"
+        "w": 632,
+        "h": 342
     },
     {
         "h": 362,
@@ -1785,9 +1787,19 @@
         "z": "alarm_house_tab"
     },
     {
-        "h": 222,
         "id": "alarm_group_retry",
+        "type": "group",
+        "z": "alarm_house_tab",
         "name": "2. Política temporal, retry e cancelamento",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7c3aed",
+            "stroke-opacity": "1",
+            "fill": "#ede9fe",
+            "fill-opacity": "0.35",
+            "color": "#1f2937"
+        },
         "nodes": [
             "alarm_failure_in",
             "alarm_failure_load_policy",
@@ -1801,27 +1813,29 @@
             "alarm_retry_cancelled_terminal",
             "alarm_retry_exhausted_terminal",
             "alarm_retry_notify_switch",
-            "alarm_retry_notify_out"
+            "alarm_retry_notify_out",
+            "alarm_alert_failure_out",
+            "alarm_alert_cancelled_out"
         ],
-        "style": {
-            "color": "#1f2937",
-            "fill": "#ede9fe",
-            "fill-opacity": "0.35",
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7c3aed",
-            "stroke-opacity": "1"
-        },
-        "type": "group",
-        "w": 2517,
         "x": 64,
         "y": 432,
-        "z": "alarm_house_tab"
+        "w": 2517,
+        "h": 222
     },
     {
-        "h": 312,
         "id": "alarm_group_effects",
+        "type": "group",
+        "z": "alarm_house_tab",
         "name": "3. Gates finais, efeitos e confirmação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#dc2626",
+            "stroke-opacity": "1",
+            "fill": "#fee2e2",
+            "fill-opacity": "0.35",
+            "color": "#1f2937"
+        },
         "nodes": [
             "alarm_effect_request_in",
             "alarm_effect_load_policy",
@@ -1843,22 +1857,13 @@
             "alarm_notify_alexa",
             "alarm_notify_alexa__hub_call",
             "alarm_security_dry_run_out",
-            "alarm_notification_dry_run_out"
+            "alarm_notification_dry_run_out",
+            "alarm_alert_accepted_out"
         ],
-        "style": {
-            "color": "#1f2937",
-            "fill": "#fee2e2",
-            "fill-opacity": "0.35",
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#dc2626",
-            "stroke-opacity": "1"
-        },
-        "type": "group",
-        "w": 2801,
         "x": 64,
         "y": 694,
-        "z": "alarm_house_tab"
+        "w": 2801,
+        "h": 312
     },
     {
         "h": 262,
@@ -13143,32 +13148,33 @@
         "z": "alarm_house_tab"
     },
     {
-        "action": "",
-        "from": "",
-        "g": "alarm_group_effects",
         "id": "arm_alarm_notify_success",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_effects",
         "name": "Confirmar aceite: alarme armado",
-        "property": "",
-        "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "notify_text",
                 "pt": "msg",
-                "t": "set",
                 "to": "Alarme armado com sucesso.",
                 "tot": "str"
             }
         ],
+        "action": "",
+        "property": "",
+        "from": "",
         "to": "",
-        "type": "change",
-        "wires": [
-            [
-                "moni_mobile_update_after_arm"
-            ]
-        ],
+        "reg": false,
         "x": 1635,
         "y": 735,
-        "z": "alarm_house_tab"
+        "wires": [
+            [
+                "moni_mobile_update_after_arm",
+                "alarm_alert_accepted_out"
+            ]
+        ]
     },
     {
         "action": "homeassistant.update_entity",
@@ -13203,32 +13209,33 @@
         "z": "alarm_house_tab"
     },
     {
-        "action": "",
-        "from": "",
-        "g": "alarm_group_effects",
         "id": "disarm_alarm_notify_success",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_effects",
         "name": "Confirmar aceite: alarme desarmado",
-        "property": "",
-        "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "notify_text",
                 "pt": "msg",
-                "t": "set",
                 "to": "Alarme desarmado com sucesso.",
                 "tot": "str"
             }
         ],
+        "action": "",
+        "property": "",
+        "from": "",
         "to": "",
-        "type": "change",
-        "wires": [
-            [
-                "alarm_notification_final_gate"
-            ]
-        ],
+        "reg": false,
         "x": 1675,
         "y": 855,
-        "z": "alarm_house_tab"
+        "wires": [
+            [
+                "alarm_notification_final_gate",
+                "alarm_alert_accepted_out"
+            ]
+        ]
     },
     {
         "g": "alarm_group_effects",
@@ -13412,15 +13419,15 @@
         "z": "alarm_house_tab"
     },
     {
-        "g": "alarm_group_policy",
         "id": "alarm_policy_help",
-        "info": "Retry: 1–300 s. Aviso: a cada 1–100 falhas, além da primeira. Limite: 0 mantém retries sem limite (comportamento anterior); 1–1.000 limita tentativas.",
-        "name": "Duplo clique no número → altere → Deploy. Inválido preserva a última política válida.",
         "type": "comment",
-        "wires": [],
+        "z": "alarm_house_tab",
+        "g": "alarm_group_policy",
+        "name": "Duplo clique no número → altere → Deploy. Inválido preserva a última política válida.",
+        "info": "Retry: 1–300 s. Aviso: a cada 1–100 falhas, além da primeira. Limite: 0 mantém retries sem limite (comportamento anterior); 1–1.000 limita tentativas. Celular: avisa a partir da falha 1–100 e repete a cada 1–1.000 falhas.",
         "x": 380,
         "y": 80,
-        "z": "alarm_house_tab"
+        "wires": []
     },
     {
         "crontab": "",
@@ -13513,21 +13520,21 @@
         "z": "alarm_house_tab"
     },
     {
-        "finalize": "",
-        "func": "const limits = {\n    retry_seconds: { min: 1, max: 300 },\n    notify_every_attempts: { min: 1, max: 100 },\n    max_attempts: { min: 0, max: 1000 }\n};\nconst key = String(msg.topic ?? \"\");\nconst rule = limits[key];\nconst value = Number(msg.payload);\nif (!rule || !Number.isInteger(value) || value < rule.min || value > rule.max) {\n    node.error(\"Política do alarme inválida: \" + (key || \"campo ausente\") + \"=\" + msg.payload, msg);\n    return null;\n}\nconst previous = flow.get(\"alarm_house_policy_v1\", \"persistent\");\nconst candidate = previous?.version === 1 ? { ...previous } : { version: 1, owner: \"node_red\" };\ncandidate[key] = value;\ncandidate.complete = Object.keys(limits).every((field) => Number.isFinite(candidate[field]));\ncandidate.updated_at = Date.now();\nflow.set(\"alarm_house_policy_v1\", candidate, \"persistent\");\nnode.status({\n    fill: candidate.complete ? \"green\" : \"yellow\",\n    shape: candidate.complete ? \"dot\" : \"ring\",\n    text: candidate.complete\n        ? \"retry \" + candidate.retry_seconds + \" s | aviso /\" + candidate.notify_every_attempts\n        : \"aguardando os três valores\"\n});\nreturn null;",
-        "g": "alarm_group_policy",
         "id": "alarm_policy_validate",
-        "initialize": "",
-        "libs": [],
+        "type": "function",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_policy",
         "name": "Validar e preservar política única",
-        "noerr": 0,
+        "func": "const limits = {\n    retry_seconds: { min: 1, max: 300 },\n    notify_every_attempts: { min: 1, max: 100 },\n    max_attempts: { min: 0, max: 1000 },\n    phone_after_attempts: { min: 1, max: 100 },\n    phone_every_attempts: { min: 1, max: 1000 }\n};\nconst key = String(msg.topic ?? \"\");\nconst rule = limits[key];\nconst value = Number(msg.payload);\nif (!rule || !Number.isInteger(value) || value < rule.min || value > rule.max) {\n    node.error(\"Política do alarme inválida: \" + (key || \"campo ausente\") + \"=\" + msg.payload, msg);\n    return null;\n}\nconst previous = flow.get(\"alarm_house_policy_v1\", \"persistent\");\nconst candidate = previous?.version === 1 ? { ...previous } : { version: 1, owner: \"node_red\" };\ncandidate[key] = value;\ncandidate.complete = Object.keys(limits).every((field) => Number.isFinite(candidate[field]));\ncandidate.updated_at = Date.now();\nflow.set(\"alarm_house_policy_v1\", candidate, \"persistent\");\nnode.status({\n    fill: candidate.complete ? \"green\" : \"yellow\",\n    shape: candidate.complete ? \"dot\" : \"ring\",\n    text: candidate.complete\n        ? \"retry \" + candidate.retry_seconds + \" s | aviso /\" + candidate.notify_every_attempts\n        : \"aguardando os cinco valores\"\n});\nreturn null;",
         "outputs": 0,
         "timeout": 0,
-        "type": "function",
-        "wires": [],
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
         "x": 535,
         "y": 190,
-        "z": "alarm_house_tab"
+        "wires": []
     },
     {
         "finalize": "",
@@ -13838,26 +13845,27 @@
         "z": "alarm_house_tab"
     },
     {
-        "finalize": "",
-        "func": "const policy = msg.policy;\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"Política visual do alarme indisponível\", msg);\n    return null;\n}\nconst attempt = Number.isInteger(msg.retry_count) ? msg.retry_count + 1 : 1;\nconst unlimited = policy.max_attempts === 0;\nconst retryAllowed = unlimited || attempt < policy.max_attempts;\nconst notifyNow = attempt === 1 || attempt % policy.notify_every_attempts === 0 || !retryAllowed;\nmsg.retry_count = attempt;\nmsg.retry = {\n    attempt,\n    retry_allowed: retryAllowed,\n    notify_now: notifyNow,\n    delay_ms: policy.retry_seconds * 1000,\n    reason: retryAllowed ? \"temporary_service_failure\" : \"attempt_limit_reached\"\n};\nconst actionLabel = msg.alarm_request?.action === \"disarm\" ? \"desarmar\" : \"armar\";\nmsg.notify_text = retryAllowed\n    ? \"Falha ao \" + actionLabel + \" o alarme. Tentativa \" + attempt + \"; nova tentativa em \" + policy.retry_seconds + \" s.\"\n    : \"Falha ao \" + actionLabel + \" o alarme. Limite de \" + policy.max_attempts + \" tentativas atingido.\";\nreturn msg;",
-        "g": "alarm_group_retry",
         "id": "alarm_retry_evaluate",
-        "initialize": "",
-        "libs": [],
+        "type": "function",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_retry",
         "name": "Calcular contador (sem decidir rota)",
-        "noerr": 0,
+        "func": "const policy = msg.policy;\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"Política visual do alarme indisponível\", msg);\n    return null;\n}\nconst attempt = Number.isInteger(msg.retry_count) ? msg.retry_count + 1 : 1;\nconst unlimited = policy.max_attempts === 0;\nconst retryAllowed = unlimited || attempt < policy.max_attempts;\nconst notifyNow = attempt === 1 || attempt % policy.notify_every_attempts === 0 || !retryAllowed;\nmsg.retry_count = attempt;\nmsg.retry = {\n    attempt,\n    retry_allowed: retryAllowed,\n    notify_now: notifyNow,\n    delay_ms: policy.retry_seconds * 1000,\n    reason: retryAllowed ? \"temporary_service_failure\" : \"attempt_limit_reached\"\n};\nconst actionLabel = msg.alarm_request?.action === \"disarm\" ? \"desarmar\" : \"armar\";\nmsg.notify_text = retryAllowed\n    ? \"Falha ao \" + actionLabel + \" o alarme. Tentativa \" + attempt + \"; nova tentativa em \" + policy.retry_seconds + \" s.\"\n    : \"Falha ao \" + actionLabel + \" o alarme. Limite de \" + policy.max_attempts + \" tentativas atingido.\";\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
-        "type": "function",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 655,
+        "y": 523,
         "wires": [
             [
                 "alarm_retry_allowed_switch",
-                "alarm_retry_notify_switch"
+                "alarm_retry_notify_switch",
+                "alarm_alert_failure_out"
             ]
-        ],
-        "x": 655,
-        "y": 523,
-        "z": "alarm_house_tab"
+        ]
     },
     {
         "checkall": "true",
@@ -13967,14 +13975,13 @@
         "z": "alarm_house_tab"
     },
     {
-        "checkall": "true",
-        "g": "alarm_group_retry",
         "id": "alarm_retry_still_desired_switch",
+        "type": "switch",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_retry",
         "name": "A intenção ainda é a mesma?",
-        "outputs": 2,
         "property": "retry.still_desired",
         "propertyType": "msg",
-        "repair": false,
         "rules": [
             {
                 "t": "eq",
@@ -13985,18 +13992,20 @@
                 "t": "else"
             }
         ],
-        "type": "switch",
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2065,
+        "y": 473,
         "wires": [
             [
                 "alarm_retry_request_out"
             ],
             [
-                "alarm_retry_cancelled_terminal"
+                "alarm_retry_cancelled_terminal",
+                "alarm_alert_cancelled_out"
             ]
-        ],
-        "x": 2065,
-        "y": 473,
-        "z": "alarm_house_tab"
+        ]
     },
     {
         "g": "alarm_group_retry",
@@ -14111,32 +14120,39 @@
         "z": "alarm_house_tab"
     },
     {
-        "action": "",
-        "from": "",
-        "g": "alarm_group_effects",
         "id": "alarm_effect_load_policy",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_effects",
         "name": "Carregar política para o efeito",
-        "property": "",
-        "reg": false,
         "rules": [
             {
+                "t": "set",
                 "p": "policy",
                 "pt": "msg",
-                "t": "set",
                 "to": "$flowContext(\"alarm_house_policy_v1\", \"persistent\")",
                 "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "_observer_owned",
+                "pt": "msg",
+                "to": "[\"70eb073f8191e69e\",\"8261c7cfb6756ca8\"]",
+                "tot": "json"
             }
         ],
+        "action": "",
+        "property": "",
+        "from": "",
         "to": "",
-        "type": "change",
+        "reg": false,
+        "x": 325,
+        "y": 785,
         "wires": [
             [
                 "alarm_effect_action_switch"
             ]
-        ],
-        "x": 325,
-        "y": 785,
-        "z": "alarm_house_tab"
+        ]
     },
     {
         "checkall": "true",
@@ -14613,22 +14629,23 @@
         "z": "alarm_house_tab"
     },
     {
-        "g": "alarm_group_tests",
         "id": "alarm_test_dry_run_in",
+        "type": "link in",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_tests",
+        "name": "Receber efeito TESTE",
         "links": [
             "alarm_security_dry_run_out",
-            "alarm_notification_dry_run_out"
+            "alarm_notification_dry_run_out",
+            "alarm_alert_dry_run_out"
         ],
-        "name": "Receber efeito TESTE",
-        "type": "link in",
+        "x": 1240,
+        "y": 1237,
         "wires": [
             [
                 "alarm_test_dry_run_terminal"
             ]
-        ],
-        "x": 1240,
-        "y": 1237,
-        "z": "alarm_house_tab"
+        ]
     },
     {
         "finalize": "",
@@ -14712,6 +14729,733 @@
         "x": 3149,
         "y": 142,
         "z": "alarm_house_tab"
+    },
+    {
+        "id": "alarm_policy_phone_after",
+        "type": "inject",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_policy",
+        "name": "Celular: avisar na — 3ª falha",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.5,
+        "topic": "phone_after_attempts",
+        "payload": "3",
+        "payloadType": "num",
+        "x": 230,
+        "y": 290,
+        "wires": [
+            [
+                "alarm_policy_validate"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_policy_phone_every",
+        "type": "inject",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_policy",
+        "name": "Celular: repetir a cada — 30 falhas",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.5,
+        "topic": "phone_every_attempts",
+        "payload": "30",
+        "payloadType": "num",
+        "x": 250,
+        "y": 340,
+        "wires": [
+            [
+                "alarm_policy_validate"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_failure_out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_retry",
+        "name": "Falha contada → aviso nos celulares",
+        "mode": "link",
+        "links": [
+            "alarm_alert_failure_in"
+        ],
+        "x": 870,
+        "y": 565,
+        "wires": []
+    },
+    {
+        "id": "alarm_alert_cancelled_out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_retry",
+        "name": "Intenção trocada → encerrar aviso",
+        "mode": "link",
+        "links": [
+            "alarm_alert_cancelled_in"
+        ],
+        "x": 2355,
+        "y": 590,
+        "wires": []
+    },
+    {
+        "id": "alarm_alert_accepted_out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_effects",
+        "name": "Comando aceito → encerrar aviso",
+        "mode": "link",
+        "links": [
+            "alarm_alert_accepted_in"
+        ],
+        "x": 1900,
+        "y": 795,
+        "wires": []
+    },
+    {
+        "id": "alarm_alert_failure_in",
+        "type": "link in",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Receber falha contada",
+        "links": [
+            "alarm_alert_failure_out",
+            "alarm_test_alert_failure_out"
+        ],
+        "x": 105,
+        "y": 1400,
+        "wires": [
+            [
+                "alarm_alert_kind_failure"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_kind_failure",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Evento: falha",
+        "rules": [
+            {
+                "t": "set",
+                "p": "alarm_alert_kind",
+                "pt": "msg",
+                "to": "failure",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 260,
+        "y": 1400,
+        "wires": [
+            [
+                "alarm_alert_facts"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_accepted_in",
+        "type": "link in",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Receber comando aceito",
+        "links": [
+            "alarm_alert_accepted_out",
+            "alarm_test_alert_accepted_out"
+        ],
+        "x": 105,
+        "y": 1460,
+        "wires": [
+            [
+                "alarm_alert_kind_accepted"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_kind_accepted",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Evento: aceite",
+        "rules": [
+            {
+                "t": "set",
+                "p": "alarm_alert_kind",
+                "pt": "msg",
+                "to": "accepted",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 260,
+        "y": 1460,
+        "wires": [
+            [
+                "alarm_alert_facts"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_cancelled_in",
+        "type": "link in",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Receber intenção trocada",
+        "links": [
+            "alarm_alert_cancelled_out",
+            "alarm_test_alert_cancelled_out"
+        ],
+        "x": 105,
+        "y": 1520,
+        "wires": [
+            [
+                "alarm_alert_kind_cancelled"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_kind_cancelled",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Evento: cancelamento",
+        "rules": [
+            {
+                "t": "set",
+                "p": "alarm_alert_kind",
+                "pt": "msg",
+                "to": "cancelled",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 260,
+        "y": 1520,
+        "wires": [
+            [
+                "alarm_alert_facts"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_facts",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Ler aviso aberto e montar texto",
+        "func": "// Facts for the phone alert of one alarm command; the canvas decides the route.\n// Opened by repeated failures, closed by an accepted command or a new intention.\nconst test = msg.test_mode === true;\nconst key = \"alarm_house_alert_v1\" + (test ? \"__test\" : \"\");\nconst store = test ? undefined : \"persistent\";\nconst open = flow.get(key, store) ?? null;\nconst now = Number(msg.alarm_alert_now ?? Date.now());\nconst action = msg.alarm_request?.action === \"disarm\" ? \"disarm\" : \"arm\";\nconst verb = action === \"disarm\" ? \"desarmar\" : \"armar\";\nconst policy = msg.policy ?? flow.get(\"alarm_house_policy_v1\", \"persistent\") ?? {};\nconst attempt = Number(msg.retry?.attempt ?? 0);\nconst clock = (value) => new Date(value).toLocaleTimeString(\"pt-BR\", { timeZone: \"America/Sao_Paulo\", hour: \"2-digit\", minute: \"2-digit\" });\nconst alert = { id: \"alarme_casa_comando_falhou\", event: \"none\" };\nif (msg.alarm_alert_kind === \"failure\") {\n    const same = open?.action === action;\n    const started = same ? open.started_at : now - Math.max(0, attempt - 1) * Number(msg.retry?.delay_ms ?? 0);\n    const after = Number(policy.phone_after_attempts);\n    const every = Number(policy.phone_every_attempts);\n    const last = msg.retry?.retry_allowed === false;\n    if (last || (attempt >= after && (attempt - after) % every === 0)) {\n        const refused = /nao confirmou o (?:arme|desarme)/i.test(String(msg.error?.message ?? \"\"));\n        alert.event = \"failure\";\n        alert.title = `Alarme NÃO conseguiu ${verb}`;\n        alert.message = `${refused ? \"A Moni recusou o comando\" : \"Sem confirmação da Moni\"}: ${attempt} tentativa(s) desde ${clock(started)}. ` +\n            (last ? \"As tentativas acabaram. \" : `Continuo tentando a cada ${policy.retry_seconds} s. `) +\n            (action === \"arm\" ? \"Confira no app da Moni se há setor aberto.\" : \"Use o app da Moni ou o teclado.\");\n        flow.set(key, { action, started_at: started, attempts: attempt }, store);\n    }\n} else if (open && msg.alarm_alert_kind === \"accepted\") {\n    alert.event = \"resolved\";\n    alert.title = action === \"disarm\" ? \"Alarme desarmado\" : \"Alarme armado\";\n    alert.message = `A Moni aceitou o comando às ${clock(now)}, após as falhas iniciadas às ${clock(open.started_at)}.`;\n    flow.set(key, null, store);\n} else if (open && msg.alarm_alert_kind === \"cancelled\") {\n    alert.event = \"cancelled\";\n    flow.set(key, null, store);\n}\nnode.status({ fill: alert.event === \"failure\" ? \"red\" : \"grey\", shape: \"dot\", text: (test ? \"TESTE: \" : \"\") + alert.event });\nmsg.alarm_alert = alert;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 1460,
+        "wires": [
+            [
+                "alarm_alert_gate"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_gate",
+        "type": "switch",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Gate final: celulares ou TESTE?",
+        "property": "test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "neq",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "t": "eq",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 830,
+        "y": 1460,
+        "wires": [
+            [
+                "alarm_alert_route"
+            ],
+            [
+                "alarm_alert_dry_run_out"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_dry_run_out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Aviso TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "alarm_test_dry_run_in"
+        ],
+        "x": 1035,
+        "y": 1540,
+        "wires": []
+    },
+    {
+        "id": "alarm_alert_route",
+        "type": "switch",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Avisar, confirmar ou só encerrar?",
+        "property": "alarm_alert.event",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "failure",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "resolved",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "cancelled",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 4,
+        "x": 1150,
+        "y": 1440,
+        "wires": [
+            [
+                "alarm_alert_mobile_prepare",
+                "alarm_alert_create_prepare"
+            ],
+            [
+                "alarm_alert_mobile_prepare",
+                "alarm_alert_dismiss_prepare"
+            ],
+            [
+                "alarm_alert_dismiss_prepare"
+            ],
+            [
+                "alarm_alert_none"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_none",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Sem aviso a enviar",
+        "func": "return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1420,
+        "y": 1540,
+        "wires": []
+    },
+    {
+        "id": "alarm_alert_mobile_prepare",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Preparar os dois celulares",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "alarm_alert.message",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "notification",
+                "pt": "msg",
+                "to": "{\"source\":\"alarme_casa\",\"recipients\":[\"resident_primary\",\"resident_secondary\"],\"profile\":\"simple\",\"title\":alarm_alert.title}",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1470,
+        "y": 1380,
+        "wires": [
+            [
+                "alarm_alert_mobile_call"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_mobile_call",
+        "type": "link call",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Hub móvel → os dois residentes",
+        "links": [
+            "notification_hub_mobile_in"
+        ],
+        "linkType": "static",
+        "timeout": "180",
+        "x": 1770,
+        "y": 1380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "alarm_alert_create_prepare",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Preparar alerta no HA",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "alarm_alert.message",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "notification",
+                "pt": "msg",
+                "to": "{\"source\":\"alarme_casa\",\"operation\":\"create\",\"delivery\":\"queued\",\"notification_id\":\"alarme_casa_comando_falhou\",\"title\":alarm_alert.title}",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1470,
+        "y": 1430,
+        "wires": [
+            [
+                "alarm_alert_create_call"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_create_call",
+        "type": "link call",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Hub HA → criar/atualizar",
+        "links": [
+            "notification_hub_persistent_in"
+        ],
+        "linkType": "static",
+        "timeout": "180",
+        "x": 1770,
+        "y": 1430,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "alarm_alert_dismiss_prepare",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Preparar remoção do alerta",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "\"\"",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "notification",
+                "pt": "msg",
+                "to": "{\"source\":\"alarme_casa\",\"operation\":\"dismiss\",\"delivery\":\"queued\",\"notification_id\":\"alarme_casa_comando_falhou\"}",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1470,
+        "y": 1480,
+        "wires": [
+            [
+                "alarm_alert_dismiss_call"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_alert_dismiss_call",
+        "type": "link call",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "Hub HA → remover resolvido",
+        "links": [
+            "notification_hub_persistent_in"
+        ],
+        "linkType": "static",
+        "timeout": "180",
+        "x": 1770,
+        "y": 1480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "alarm_test_alert_failure",
+        "type": "inject",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "TESTE 5: 3ª falha de arme",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "alarm_request",
+                "v": "{\"action\":\"arm\"}",
+                "vt": "json"
+            },
+            {
+                "p": "policy",
+                "v": "{\"retry_seconds\":10,\"phone_after_attempts\":3,\"phone_every_attempts\":30}",
+                "vt": "json"
+            },
+            {
+                "p": "retry",
+                "v": "{\"attempt\":3,\"retry_allowed\":true,\"delay_ms\":10000}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 1610,
+        "wires": [
+            [
+                "alarm_test_alert_failure_out"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_test_alert_failure_out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "TESTE 5: 3ª falha de arme → aviso",
+        "mode": "link",
+        "links": [
+            "alarm_alert_failure_in"
+        ],
+        "x": 400,
+        "y": 1610,
+        "wires": []
+    },
+    {
+        "id": "alarm_test_alert_accepted",
+        "type": "inject",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "TESTE 6: aceite após falha",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "alarm_request",
+                "v": "{\"action\":\"arm\"}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 1660,
+        "wires": [
+            [
+                "alarm_test_alert_accepted_out"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_test_alert_accepted_out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "TESTE 6: aceite após falha → aviso",
+        "mode": "link",
+        "links": [
+            "alarm_alert_accepted_in"
+        ],
+        "x": 400,
+        "y": 1660,
+        "wires": []
+    },
+    {
+        "id": "alarm_test_alert_cancelled",
+        "type": "inject",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "TESTE 7: intenção trocada",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "alarm_request",
+                "v": "{\"action\":\"arm\"}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 1710,
+        "wires": [
+            [
+                "alarm_test_alert_cancelled_out"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_test_alert_cancelled_out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "alarm_group_alert",
+        "name": "TESTE 7: intenção trocada → aviso",
+        "mode": "link",
+        "links": [
+            "alarm_alert_cancelled_in"
+        ],
+        "x": 400,
+        "y": 1710,
+        "wires": []
+    },
+    {
+        "id": "alarm_group_alert",
+        "type": "group",
+        "z": "alarm_house_tab",
+        "name": "5. Aviso nos celulares e no HA — abre na falha repetida, encerra no aceite",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#ea580c",
+            "stroke-opacity": "1",
+            "fill": "#ffedd5",
+            "fill-opacity": "0.35",
+            "color": "#1f2937"
+        },
+        "nodes": [
+            "alarm_alert_failure_in",
+            "alarm_alert_kind_failure",
+            "alarm_alert_accepted_in",
+            "alarm_alert_kind_accepted",
+            "alarm_alert_cancelled_in",
+            "alarm_alert_kind_cancelled",
+            "alarm_alert_facts",
+            "alarm_alert_gate",
+            "alarm_alert_dry_run_out",
+            "alarm_alert_route",
+            "alarm_alert_none",
+            "alarm_alert_mobile_prepare",
+            "alarm_alert_mobile_call",
+            "alarm_alert_create_prepare",
+            "alarm_alert_create_call",
+            "alarm_alert_dismiss_prepare",
+            "alarm_alert_dismiss_call",
+            "alarm_test_alert_failure",
+            "alarm_test_alert_failure_out",
+            "alarm_test_alert_accepted",
+            "alarm_test_alert_accepted_out",
+            "alarm_test_alert_cancelled",
+            "alarm_test_alert_cancelled_out"
+        ],
+        "x": 64,
+        "y": 1330,
+        "w": 1880,
+        "h": 420
     },
     {
         "entities": {
@@ -42135,7 +42879,7 @@
     },
     {
         "finalize": "",
-        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst duloSource = sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\";\nconst internetState = String(readiness?.internet_state ?? \"unknown\").toLowerCase();\n// Generated notification link callers depend on HA but do not report its status.\nconst haNotificationCaller = sourceType === \"link call\" && sourceId.endsWith(\"__hub_call\") &&\n    typeof msg.notification?.source === \"string\" && msg._notification_hub_context !== undefined;\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource || haNotificationCaller ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    // The location coordinator decides.\n    const transportRetryPending = flowId === \"ea0a6aa0d24ff863\" &&\n        [\"people_visual_primary_icloud_update\", \"people_visual_secondary_icloud_update\"].includes(sourceId) &&\n        sourceType === \"api-call-service\" &&\n        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&\n        msg.payload?.refresh_transport_retry_pending === true;\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        transport_retry_pending: transportRetryPending,\n        // The vehicle lifecycle retries, notifies and dismisses these itself.\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" &&\n            [\"8907830bb7f6c40c\", \"vehicle_primary_cache_probe_call_v1\"].includes(sourceId) &&\n            (classification === \"timeout\" || /Bluelink wake accepted but fresh data is pending/i.test(errorText)),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n    const serviceStartupHandled = sourceType === \"api-call-service\" &&\n        /^notification_hub_mobile_(primary|secondary)_(simple|actionable|background)$/.test(sourceId) &&\n        /^HomeAssistantError: Service public_bindings\\.call not found\\.?$/.test(errorText);\n    data.expected_pending = data.accepted_wake_pending || transportRetryPending || serviceStartupHandled;\n    // Only the transport envelope proves HA down.\n    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);\n    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\n    if (envelope) {\n        try {\n            const result = JSON.parse(envelope[1]);\n            disconnected = result.type === \"result\" && result.success === false &&\n                result.error?.code === 3 && result.error?.message === \"Connection lost\";\n        } catch { /* Unknown errors stay on the ordinary error path. */ }\n    }\n    if (haSource && disconnected) {\n        Object.assign(data, { kind: \"status\", monitored: true, failing: true,\n            incident_key: \"connection:home_assistant\", incident_kind: \"home_assistant\",\n            status_text: \"connection lost\", key: `${flowId}:${sourceId}` });\n    }\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    // HA entity values may be offline; only connection status opens an incident.\n    const connectionFailure = haSource\n        ? /^(?:home-assistant\\.status\\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)\n        : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || (duloSource && internetState === \"online\"),\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
+        "func": "const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode?undefined:\"persistent\";\nconst getState = () => store?flow.get(stateKey,store):flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\",\"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now=Number(msg.observer_now??Date.now());\nconst bootKey = \"global_observer_boot_at\" + (testMode ? \"__test\" : \"\");\nlet bootAt = flow.get(bootKey, \"memoryOnly\");\nif (!Number.isFinite(bootAt)) { bootAt = now; flow.set(bootKey, bootAt, \"memoryOnly\"); }\nconst readiness = typeof global !== \"undefined\" && typeof global.get === \"function\"\n    ? global.get(\"startup_readiness_v1\", \"memoryOnly\") : null;\nconst startupGrace = readiness?.ready === false ||\n    now - bootAt < Number(policy.connection_recovery_grace_seconds) * 1000;\nconst observer=msg._global_observer??{};\nconst flowId=String(observer.flow_id??\"unknown\").slice(0,100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id??\"unknown\").slice(0,100);\nconst sourceType = String(source.type??\"unknown\").slice(0,80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0,100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst duloSource = sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\";\nconst internetState = String(readiness?.internet_state ?? \"unknown\").toLowerCase();\n// Generated notification link callers depend on HA but do not report its status.\nconst haNotificationCaller = sourceType === \"link call\" && sourceId.endsWith(\"__hub_call\") &&\n    typeof msg.notification?.source === \"string\" && msg._notification_hub_context !== undefined;\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource || haNotificationCaller ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    // The location coordinator decides.\n    const transportRetryPending = flowId === \"ea0a6aa0d24ff863\" &&\n        [\"people_visual_primary_icloud_update\", \"people_visual_secondary_icloud_update\"].includes(sourceId) &&\n        sourceType === \"api-call-service\" &&\n        /^(?:HomeAssistantError: )?ICLOUD_TRANSPORT_INTERRUPTED$/.test(errorText) &&\n        msg.payload?.refresh_transport_retry_pending === true;\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        transport_retry_pending: transportRetryPending,\n        // The vehicle lifecycle retries, notifies and dismisses these itself.\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" &&\n            [\"8907830bb7f6c40c\", \"vehicle_primary_cache_probe_call_v1\"].includes(sourceId) &&\n            (classification === \"timeout\" || /Bluelink wake accepted but fresh data is pending/i.test(errorText)),\n        connection_suppressed: Boolean(sharedIncidentKey && classification !== \"autenticação\" && (startupGrace || sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n    const serviceStartupHandled = sourceType === \"api-call-service\" &&\n        /^notification_hub_mobile_(primary|secondary)_(simple|actionable|background)$/.test(sourceId) &&\n        /^HomeAssistantError: Service public_bindings\\.call not found\\.?$/.test(errorText);\n    data.expected_pending = data.accepted_wake_pending || msg._observer_owned?.includes?.(sourceId) === true || transportRetryPending || serviceStartupHandled;\n    // Only this envelope proves HA down.\n    let disconnected = /^(?:Error: )?(?:NoConnectionError|Connection lost)$/i.test(errorText);\n    const envelope = errorText.match(/^(?:Error: )?Unrecognized error: (\\{.*\\})$/);\n    if (envelope) {\n        try {\n            const result = JSON.parse(envelope[1]);\n            disconnected = result.type === \"result\" && result.success === false &&\n                result.error?.code === 3 && result.error?.message === \"Connection lost\";\n        } catch { /* Unknown errors stay on the ordinary error path. */ }\n    }\n    if (haSource && disconnected) {\n        Object.assign(data, { kind: \"status\", monitored: true, failing: true,\n            incident_key: \"connection:home_assistant\", incident_kind: \"home_assistant\",\n            status_text: \"connection lost\", key: `${flowId}:${sourceId}` });\n    }\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    // HA entity values may be offline; only connection status opens an incident.\n    const connectionFailure = haSource\n        ? /^(?:home-assistant\\.status\\.(?:disconnected|error)|disconnected|not connected|connection (?:lost|error|failed|timed out)|sem conexão|desconectado)(?:$|: )/.test(text)\n        : /^(?:disconnected|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indisponível|sem conexão|desconectado)(?:$|: )/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || (duloSource && internetState === \"online\"),\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
         "g": "global_observer_production_group",
         "id": "global_observer_ingest",
         "initialize": "",

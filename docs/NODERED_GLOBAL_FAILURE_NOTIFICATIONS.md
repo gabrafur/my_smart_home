@@ -41,7 +41,9 @@ com código 3 e mensagem `Connection lost` também alimenta essa confirmação,
 mesmo quando chega antes do status de desconexão. Timeout genérico e falha de
 serviço não bastam. O timeout do refresh e da releitura de cache do veículo
 pertence ao lifecycle dele, que tenta de novo, avisa uma vez e remove o aviso
-quando chega telemetria nova; o observador não o duplica. Chamadores gerados dos hubs, identificados pelo contrato de
+quando chega telemetria nova; o observador não o duplica. Um
+fluxo que é dono do aviso de um nó declara o ID em `msg._observer_owned`; os
+demais nós continuam alertáveis. Chamadores gerados dos hubs, identificados pelo contrato de
 notificação, compartilham a carência do HA para evitar cascata enquanto a fila
 aguarda reconexão; um link call comum continua alertável. O refresh do veículo
 preserva evidência e deadlines nessa desconexão, sem ativar bypass, criar falha

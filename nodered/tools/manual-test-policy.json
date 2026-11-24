@@ -191,7 +191,10 @@
         "alarm_test_reset",
         "alarm_test_arm",
         "alarm_test_failure_arm",
-        "alarm_test_disarm"
+        "alarm_test_disarm",
+        "alarm_test_alert_failure",
+        "alarm_test_alert_accepted",
+        "alarm_test_alert_cancelled"
       ],
       "dry_run_terminal_ids": [
         "alarm_test_dry_run_terminal"

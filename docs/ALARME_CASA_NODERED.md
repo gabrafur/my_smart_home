@@ -19,7 +19,7 @@ flow `iluminacao_externa`.
   em vez de contornar a política com uma chamada direta ao alarme.
 - `alarm_arrival_disarm_command_in` recebe somente pedidos confirmados pela
   notificacao acionavel do flow `alarme_desarme_chegada`.
-- Os controles `TESTE 1` a `TESTE 4` usam estado sintético isolado e terminam no
+- Os controles `TESTE 1` a `TESTE 7` usam estado sintético isolado e terminam no
   terminal dry-run. Não há inject manual ligado a um serviço real.
 
 ## Política visual
@@ -31,7 +31,9 @@ fora do limite.
 
 - intervalo de retry: **10 s**, inteiro entre 1 e 300 s;
 - periodicidade do aviso: **5 tentativas**, inteiro entre 1 e 100;
-- limite de tentativas: **0 (sem limite)**, entre 0 e 1.000.
+- limite de tentativas: **0 (sem limite)**, entre 0 e 1.000;
+- celular, primeira falha avisada: **3ª**, entre 1 e 100;
+- celular, repetição: **a cada 30 falhas**, entre 1 e 1.000.
 
 O valor padrão `0` preserva o retry indefinido anterior. Alterá-lo para um valor
 positivo é uma mudança operacional explícita e visível.
@@ -51,8 +53,15 @@ Os comandos de armar e desarmar usam as ações allowlisted `arm_away` e
   espera. Reiniciar o Node-RED não reproduz automaticamente uma ação de
   segurança: a política e a última intenção são recuperadas, mas um comando
   interrompido exige uma nova solicitação.
-- O aviso de falha ocorre na primeira falha e depois conforme a periodicidade
-  visual. O efeito usa o papel lógico `mobile_primary`.
+- O aviso de falha por voz ocorre na primeira falha e depois conforme a
+  periodicidade visual. O efeito usa o papel lógico `mobile_primary`.
+- O grupo `5. Aviso nos celulares e no HA` avisa os dois residentes e cria
+  `alarme_casa_comando_falhou` na 3ª falha seguida, repete a cada 30 e, quando a
+  Moni aceita o comando, remove o alerta e confirma nos celulares. Uma intenção
+  oposta só remove o alerta. O texto separa recusa da Moni de falta de
+  confirmação; o aceite é o reconhecimento do comando, não leitura do painel.
+- Os erros dos dois serviços do painel são declarados em `_observer_owned`, e o
+  observador global não abre um segundo aviso genérico para eles.
 - Depois de um armamento aceito, `Atualizar estado Moni Mobile` solicita a
   atualizacao da entidade antes do aviso de sucesso.
 

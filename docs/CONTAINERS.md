@@ -282,7 +282,9 @@ Os atualizadores da Alexa Media e da Kia UVO param o Home Assistant com prazo de
 120 s (`scripts/home-assistant-planned-stop.mjs`). O padrão de 10 s do Docker
 encerrava o processo à força antes de o recorder fechar o SQLite. Depois de uma
 atualização confirmada, o aviso “Home Assistant iniciado” passa a dizer o motivo
-do reinício e quanto a parada levou.
+do reinício e quanto a parada levou. O backup externo, a troca de imagens e a
+atualização do firmware Zigbee também esperam até 120 s: o Zigbee2MQTT grava o
+backup do rádio ao parar (cerca de 24 s, mais quando há módulos sem resposta).
 
 O subfluxo Alexa Media verifica também a memória pública contra os arquivos
 candidatos e os metadados da próxima versão, antes de chamar HACS ou parar o

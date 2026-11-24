@@ -1279,7 +1279,9 @@ export async function runDailyCycle({
   const {capture,captureError,restorationError} = await captureWithOrderedStops({
     services: servicesToRestore,
     maintenance: metadataMaintenance,
-    stop: selected => runChecked("docker", ["compose", "stop", "--timeout", "30", ...selected], { timeout: 180_000 }),
+    // Zigbee2MQTT writes its radio backup while stopping: ~24 s, more when modules do
+    // not answer. The services stop in parallel, so the limit only delays a slow one.
+    stop: selected => runChecked("docker", ["compose", "stop", "--timeout", "120", ...selected], { timeout: 180_000 }),
     start: selected => runChecked("docker", ["compose", "start", ...selected], { timeout: 180_000 }),
     wait: selected => waitForServices(selected, outageDeadline),
     capture: async () => {

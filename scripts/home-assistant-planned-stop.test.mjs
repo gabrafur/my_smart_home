@@ -32,3 +32,10 @@ test("a failed notice never fails the update", async () => {
   assert.equal(await announcePlannedRestart(async (...args) => { calls.push(args); }, { reason: "x" }), true);
   assert.equal(calls[0][0], "/api/services/persistent_notification/create");
 });
+
+test("planned stops leave time for the Zigbee2MQTT radio backup and the recorder", () => {
+  const source = (file) => fs.readFileSync(new URL(file, import.meta.url), "utf8");
+  assert.match(source("offsite-backup.mjs"), /"compose", "stop", "--timeout", "120"/);
+  assert.match(source("docker-auto-update.mjs"), /"up", "-d", "--no-deps", "--timeout", "120"/);
+  assert.match(source("zigbee-firmware-maintenance.mjs"), /'stop','-t','120','zigbee2mqtt'\],150000/);
+});

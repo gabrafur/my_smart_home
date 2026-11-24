@@ -69,6 +69,8 @@ for (const [id, topic, payload] of [
   ["alarm_policy_retry_seconds", "retry_seconds", "10"],
   ["alarm_policy_notify_every", "notify_every_attempts", "5"],
   ["alarm_policy_max_attempts", "max_attempts", "0"],
+  ["alarm_policy_phone_after", "phone_after_attempts", "3"],
+  ["alarm_policy_phone_every", "phone_every_attempts", "30"],
 ]) {
   assert.equal(node(id).topic, topic);
   assert.equal(node(id).payload, payload);
@@ -79,6 +81,7 @@ for (const [id, topic, payload] of [
 const policyStore = store();
 for (const [topic, payload] of [
   ["retry_seconds", 10], ["notify_every_attempts", 5], ["max_attempts", 0],
+  ["phone_after_attempts", 3], ["phone_every_attempts", 30],
 ]) {
   const applied = runFunction("alarm_policy_validate", { topic, payload }, policyStore);
   assert.equal(applied.result, null);
@@ -88,7 +91,8 @@ assert.deepEqual(
   JSON.parse(JSON.stringify(policyStore.get("alarm_house_policy_v1"))),
   {
     version: 1, owner: "node_red", retry_seconds: 10,
-    notify_every_attempts: 5, max_attempts: 0, complete: true,
+    notify_every_attempts: 5, max_attempts: 0, phone_after_attempts: 3,
+    phone_every_attempts: 30, complete: true,
     updated_at: policyStore.get("alarm_house_policy_v1").updated_at,
   },
 );
@@ -97,6 +101,8 @@ for (const [topic, payload] of [
   ["retry_seconds", 0], ["retry_seconds", 301],
   ["notify_every_attempts", 0], ["notify_every_attempts", 101],
   ["max_attempts", -1], ["max_attempts", 1001], ["max_attempts", 1.5],
+  ["phone_after_attempts", 0], ["phone_after_attempts", 101],
+  ["phone_every_attempts", 0], ["phone_every_attempts", 1001],
   ["unknown", 10],
 ]) {
   const rejected = runFunction("alarm_policy_validate", { topic, payload }, policyStore);
@@ -185,8 +191,49 @@ assert.deepEqual(node("alarm_arm_final_gate").wires[1], ["alarm_security_dry_run
 assert.deepEqual(node("alarm_disarm_final_gate").wires[1], ["alarm_security_dry_run_out"]);
 assert.deepEqual(node("alarm_notification_final_gate").wires[1], ["alarm_notification_dry_run_out"]);
 assert.deepEqual(node("alarm_test_dry_run_in").links.sort(), [
-  "alarm_notification_dry_run_out", "alarm_security_dry_run_out",
+  "alarm_notification_dry_run_out", "alarm_security_dry_run_out", "alarm_alert_dry_run_out",
 ].sort());
+
+// Incident of 24/11/2026: ten refusals reached only Alexa and a generic notice.
+const phonePolicy = { retry_seconds: 10, phone_after_attempts: 3, phone_every_attempts: 30 };
+const T0 = Date.UTC(2026, 10, 24, 12, 28, 15);
+const refusal = { message: "Error: Servidor Moni Mobile nao confirmou o arme" };
+const failed = (values, attempt, extra = {}) => runFunction("alarm_alert_facts", {
+  alarm_alert_kind: "failure", alarm_request: { action: "arm" }, policy: phonePolicy, error: refusal,
+  retry: { attempt, retry_allowed: true, delay_ms: 10_000 }, alarm_alert_now: T0 + (attempt - 1) * 10_000, ...extra,
+}, values).result.alarm_alert;
+const finish = (values, kind, extra = {}) => runFunction("alarm_alert_facts", {
+  alarm_alert_kind: kind, alarm_request: { action: "arm" }, alarm_alert_now: T0 + 105_000, ...extra,
+}, values).result.alarm_alert;
+const alertStore = store();
+assert.deepEqual([1, 2, 3, 4, 10].map((attempt) => failed(alertStore, attempt).event), ["none", "none", "failure", "none", "none"]);
+const repeated = failed(alertStore, 33);
+assert.equal(repeated.event, "failure", "a persistent refusal is repeated every 30 attempts");
+assert.equal(repeated.title, "Alarme NÃO conseguiu armar");
+assert.match(repeated.message, /^A Moni recusou o comando: 33 tentativa\(s\) desde 09:28\. Continuo tentando a cada 10 s\. Confira no app da Moni se há setor aberto\.$/);
+const accepted = finish(alertStore, "accepted");
+assert.deepEqual([accepted.event, accepted.title], ["resolved", "Alarme armado"]);
+assert.match(accepted.message, /às 09:30, após as falhas iniciadas às 09:28\.$/);
+assert.equal(finish(alertStore, "accepted").event, "none", "an ordinary success never reaches the phones");
+failed(alertStore, 3);
+assert.equal(finish(alertStore, "cancelled").event, "cancelled", "a new intention closes the notice without a push");
+assert.equal(finish(alertStore, "cancelled").event, "none");
+assert.match(failed(store(), 1, { retry: { attempt: 1, retry_allowed: false, delay_ms: 10_000 } }).message, /As tentativas acabaram/);
+assert.match(failed(store(), 3, { error: { message: "timed out" } }).message, /^Sem confirmação da Moni/);
+const testStore = store();
+failed(testStore, 3, { test_mode: true });
+assert.deepEqual([...testStore.keys()], ["alarm_house_alert_v1__test"], "TESTE não toca no aviso de produção");
+assert.deepEqual(node("alarm_alert_gate").wires, [["alarm_alert_route"], ["alarm_alert_dry_run_out"]]);
+assert.deepEqual(node("alarm_alert_route").wires, [
+  ["alarm_alert_mobile_prepare", "alarm_alert_create_prepare"],
+  ["alarm_alert_mobile_prepare", "alarm_alert_dismiss_prepare"],
+  ["alarm_alert_dismiss_prepare"], ["alarm_alert_none"],
+]);
+const alertTo = (id) => node(id).rules.map((rule) => String(rule.to)).join("\n");
+assert.match(alertTo("alarm_alert_mobile_prepare"), /"recipients":\["resident_primary","resident_secondary"\]/);
+for (const id of ["alarm_alert_create_prepare", "alarm_alert_dismiss_prepare"]) assert.match(alertTo(id), /"notification_id":"alarme_casa_comando_falhou"/);
+// Only the two panel services are owned; any other error still reaches the observer.
+assert.equal(node("alarm_effect_load_policy").rules.find((rule) => rule.p === "_observer_owned").to, '["70eb073f8191e69e","8261c7cfb6756ca8"]');
 assert.equal(node("alarm_test_dry_run_terminal").outputs, 0);
 assert.equal((node("alarm_test_dry_run_terminal").wires ?? []).flat().length, 0);
 

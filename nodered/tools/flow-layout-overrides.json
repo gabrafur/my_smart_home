@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Geometria can\u00f4nica baseada nas edi\u00e7\u00f5es visuais conclu\u00eddas em 2026-09-12. Grupos s\u00e3o compactados com margem uniforme; l\u00f3gica e liga\u00e7\u00f5es permanecem nos geradores can\u00f4nicos.",
+  "description": "Geometria canônica baseada nas edições visuais concluídas em 2026-09-12. Grupos são compactados com margem uniforme; lógica e ligações permanecem nos geradores canônicos.",
   "canvases": {
     "recorder_retention_tab": {
       "label": "recorder_retention",
@@ -1295,7 +1295,7 @@
           "x": 64,
           "y": 39,
           "w": 632,
-          "h": 242
+          "h": 342
         },
         "alarm_group_inputs": {
           "x": 724,
@@ -1614,6 +1614,124 @@
         "alarm_notify_alexa__hub_call": {
           "x": 2689,
           "y": 800
+        },
+        "alarm_policy_phone_after": {
+          "x": 230,
+          "y": 290
+        },
+        "alarm_policy_phone_every": {
+          "x": 250,
+          "y": 340
+        },
+        "alarm_alert_failure_out": {
+          "x": 870,
+          "y": 565
+        },
+        "alarm_alert_cancelled_out": {
+          "x": 2355,
+          "y": 590
+        },
+        "alarm_alert_accepted_out": {
+          "x": 1900,
+          "y": 795
+        },
+        "alarm_alert_failure_in": {
+          "x": 105,
+          "y": 1400
+        },
+        "alarm_alert_kind_failure": {
+          "x": 260,
+          "y": 1400
+        },
+        "alarm_alert_accepted_in": {
+          "x": 105,
+          "y": 1460
+        },
+        "alarm_alert_kind_accepted": {
+          "x": 260,
+          "y": 1460
+        },
+        "alarm_alert_cancelled_in": {
+          "x": 105,
+          "y": 1520
+        },
+        "alarm_alert_kind_cancelled": {
+          "x": 260,
+          "y": 1520
+        },
+        "alarm_alert_facts": {
+          "x": 540,
+          "y": 1460
+        },
+        "alarm_alert_gate": {
+          "x": 830,
+          "y": 1460
+        },
+        "alarm_alert_dry_run_out": {
+          "x": 1035,
+          "y": 1540
+        },
+        "alarm_alert_route": {
+          "x": 1150,
+          "y": 1440
+        },
+        "alarm_alert_none": {
+          "x": 1420,
+          "y": 1540
+        },
+        "alarm_alert_mobile_prepare": {
+          "x": 1470,
+          "y": 1380
+        },
+        "alarm_alert_mobile_call": {
+          "x": 1770,
+          "y": 1380
+        },
+        "alarm_alert_create_prepare": {
+          "x": 1470,
+          "y": 1430
+        },
+        "alarm_alert_create_call": {
+          "x": 1770,
+          "y": 1430
+        },
+        "alarm_alert_dismiss_prepare": {
+          "x": 1470,
+          "y": 1480
+        },
+        "alarm_alert_dismiss_call": {
+          "x": 1770,
+          "y": 1480
+        },
+        "alarm_test_alert_failure": {
+          "x": 180,
+          "y": 1610
+        },
+        "alarm_test_alert_failure_out": {
+          "x": 400,
+          "y": 1610
+        },
+        "alarm_test_alert_accepted": {
+          "x": 180,
+          "y": 1660
+        },
+        "alarm_test_alert_accepted_out": {
+          "x": 400,
+          "y": 1660
+        },
+        "alarm_test_alert_cancelled": {
+          "x": 180,
+          "y": 1710
+        },
+        "alarm_test_alert_cancelled_out": {
+          "x": 400,
+          "y": 1710
+        },
+        "alarm_group_alert": {
+          "x": 64,
+          "y": 1330,
+          "w": 1880,
+          "h": 420
         }
       },
       "geometry_final": true

@@ -305,7 +305,7 @@ async function reconcileImages(channels, options = {}) {
     if (changedServices.length > 0) {
       if (!dryRun) {
         await recreateAndVerify(changedServices, {
-          recreate: () => run("docker", ["compose", "up", "-d", "--no-deps", ...changedServices], { mutates: true }),
+          recreate: () => run("docker", ["compose", "up", "-d", "--no-deps", "--timeout", "120", ...changedServices], { mutates: true }),
           wait: waitForHealthyService,
           report: log,
           record: (state) => {

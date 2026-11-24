@@ -43,7 +43,9 @@ websocket result envelope with code 3 and message `Connection lost` also feeds
 that confirmation, even when it arrives before the disconnection status. A
 generic timeout or a service failure is not enough. A vehicle refresh or cache
 probe timeout belongs to the vehicle lifecycle, which retries, notifies once and
-removes its notice on fresh telemetry, so the observer does not duplicate it. Generated hub callers,
+removes its notice on fresh telemetry, so the observer does not duplicate it. A
+flow that owns the notice of a node lists its ID in `msg._observer_owned`; every
+other node still alerts. Generated hub callers,
 identified by the notification contract, share the Home Assistant grace period
 to avoid a cascade while the queue waits for reconnection; an ordinary link
 call still alerts. The vehicle refresh keeps evidence and deadlines during that

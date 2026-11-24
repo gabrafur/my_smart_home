@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const FLOWS = new URL("../flows.json", import.meta.url).pathname;
@@ -9,6 +10,7 @@ const TAB = "alarm_house_tab";
 const HA_SERVER = "4126427d5e161a03";
 
 const flows = JSON.parse(readFileSync(FLOWS, "utf8"));
+const alertFacts = readFileSync(fileURLToPath(new URL("functions/alarm-alert-facts.js", import.meta.url)), "utf8").trimEnd();
 
 function required(id) {
   const node = flows.find((candidate) => candidate.id === id);
@@ -107,6 +109,15 @@ const managedIds = [
   "alarm_test_arm", "alarm_test_disarm", "alarm_test_failure_arm",
   "alarm_test_failure_prepare", "alarm_test_failure_out", "alarm_test_requests_out", "alarm_test_dry_run_in",
   "alarm_test_dry_run_terminal",
+  "alarm_policy_phone_after", "alarm_policy_phone_every",
+  "alarm_group_alert", "alarm_alert_failure_out", "alarm_alert_accepted_out", "alarm_alert_cancelled_out",
+  "alarm_alert_failure_in", "alarm_alert_accepted_in", "alarm_alert_cancelled_in",
+  "alarm_alert_kind_failure", "alarm_alert_kind_accepted", "alarm_alert_kind_cancelled",
+  "alarm_alert_facts", "alarm_alert_gate", "alarm_alert_route", "alarm_alert_none",
+  "alarm_alert_mobile_prepare", "alarm_alert_mobile_call", "alarm_alert_create_prepare", "alarm_alert_create_call",
+  "alarm_alert_dismiss_prepare", "alarm_alert_dismiss_call", "alarm_alert_dry_run_out",
+  "alarm_test_alert_failure", "alarm_test_alert_accepted", "alarm_test_alert_cancelled",
+  "alarm_test_alert_failure_out", "alarm_test_alert_accepted_out", "alarm_test_alert_cancelled_out",
 ];
 remove(managedIds);
 
@@ -122,7 +133,9 @@ const notifyService = required("alarm_notify_alexa");
 const policyValidate = String.raw`const limits = {
     retry_seconds: { min: 1, max: 300 },
     notify_every_attempts: { min: 1, max: 100 },
-    max_attempts: { min: 0, max: 1000 }
+    max_attempts: { min: 0, max: 1000 },
+    phone_after_attempts: { min: 1, max: 100 },
+    phone_every_attempts: { min: 1, max: 1000 }
 };
 const key = String(msg.topic ?? "");
 const rule = limits[key];
@@ -142,7 +155,7 @@ node.status({
     shape: candidate.complete ? "dot" : "ring",
     text: candidate.complete
         ? "retry " + candidate.retry_seconds + " s | aviso /" + candidate.notify_every_attempts
-        : "aguardando os três valores"
+        : "aguardando os cinco valores"
 });
 return null;`;
 
@@ -231,17 +244,19 @@ return null;`;
 
 upsert(group("alarm_group_policy", "0. Política visual — edite os valores", [
   "alarm_policy_help", "alarm_policy_retry_seconds", "alarm_policy_notify_every",
-  "alarm_policy_max_attempts", "alarm_policy_validate",
-], 64, 40, 636, 260, "#2563eb", "#dbeafe"));
+  "alarm_policy_max_attempts", "alarm_policy_phone_after", "alarm_policy_phone_every", "alarm_policy_validate",
+], 64, 40, 636, 360, "#2563eb", "#dbeafe"));
 upsert({
   id: "alarm_policy_help", type: "comment", z: TAB, g: "alarm_group_policy",
   name: "Duplo clique no número → altere → Deploy. Inválido preserva a última política válida.",
-  info: "Retry: 1–300 s. Aviso: a cada 1–100 falhas, além da primeira. Limite: 0 mantém retries sem limite (comportamento anterior); 1–1.000 limita tentativas.",
+  info: "Retry: 1–300 s. Aviso: a cada 1–100 falhas, além da primeira. Limite: 0 mantém retries sem limite (comportamento anterior); 1–1.000 limita tentativas. Celular: avisa a partir da falha 1–100 e repete a cada 1–1.000 falhas.",
   x: 380, y: 80, wires: [],
 });
 upsert(inject("alarm_policy_retry_seconds", "alarm_group_policy", "Intervalo de retry — 10 s", "retry_seconds", 10, "num", 220, 140, [["alarm_policy_validate"]], true));
 upsert(inject("alarm_policy_notify_every", "alarm_group_policy", "Avisar a cada — 5 tentativas", "notify_every_attempts", 5, "num", 230, 190, [["alarm_policy_validate"]], true));
 upsert(inject("alarm_policy_max_attempts", "alarm_group_policy", "Limite — 0 (sem limite)", "max_attempts", 0, "num", 220, 240, [["alarm_policy_validate"]], true));
+upsert(inject("alarm_policy_phone_after", "alarm_group_policy", "Celular: avisar na — 3ª falha", "phone_after_attempts", 3, "num", 230, 290, [["alarm_policy_validate"]], true));
+upsert(inject("alarm_policy_phone_every", "alarm_group_policy", "Celular: repetir a cada — 30 falhas", "phone_every_attempts", 30, "num", 250, 340, [["alarm_policy_validate"]], true));
 upsert(functionNode("alarm_policy_validate", "alarm_group_policy", "Validar e preservar política única", policyValidate, 0, 535, 190, []));
 
 Object.assign(required("alarm_dulo_hub_link_in"), {
@@ -305,7 +320,8 @@ upsert(linkIn("alarm_failure_in", "alarm_group_retry", "Receber falha real ou si
 upsert(change("alarm_failure_load_policy", "alarm_group_retry", "Carregar política visual válida", [
   { t: "set", p: "policy", pt: "msg", to: '$flowContext("alarm_house_policy_v1", "persistent")', tot: "jsonata" },
 ], 370, 450, [["alarm_retry_evaluate"]]));
-upsert(functionNode("alarm_retry_evaluate", "alarm_group_retry", "Calcular contador (sem decidir rota)", retryEvaluate, 1, 670, 450, [["alarm_retry_allowed_switch", "alarm_retry_notify_switch"]]));
+upsert(functionNode("alarm_retry_evaluate", "alarm_group_retry", "Calcular contador (sem decidir rota)", retryEvaluate, 1, 670, 450, [["alarm_retry_allowed_switch", "alarm_retry_notify_switch", "alarm_alert_failure_out"]]));
+upsert(linkOut("alarm_alert_failure_out", "alarm_group_retry", "Falha contada → aviso nos celulares", ["alarm_alert_failure_in"], 870, 490));
 upsert(switchNode("alarm_retry_allowed_switch", "alarm_group_retry", "Retry permitido pelo limite?", "retry.retry_allowed", [
   { t: "eq", v: "true", vt: "bool" }, { t: "else" },
 ], 970, 430, [["alarm_retry_delay_prepare"], ["alarm_retry_exhausted_terminal"]]));
@@ -322,7 +338,8 @@ upsert({
 upsert(functionNode("alarm_retry_read_desired", "alarm_group_retry", "Ler última intenção (sem decidir)", readDesired, 1, 1810, 400, [["alarm_retry_still_desired_switch"]]));
 upsert(switchNode("alarm_retry_still_desired_switch", "alarm_group_retry", "A intenção ainda é a mesma?", "retry.still_desired", [
   { t: "eq", v: "true", vt: "bool" }, { t: "else" },
-], 2080, 400, [["alarm_retry_request_out"], ["alarm_retry_cancelled_terminal"]]));
+], 2080, 400, [["alarm_retry_request_out"], ["alarm_retry_cancelled_terminal", "alarm_alert_cancelled_out"]]));
+upsert(linkOut("alarm_alert_cancelled_out", "alarm_group_retry", "Intenção trocada → encerrar aviso", ["alarm_alert_cancelled_in"], 2370, 490));
 upsert(linkOut("alarm_retry_request_out", "alarm_group_retry", "Retry confirmado → gate final", ["alarm_effect_request_in"], 2370, 410));
 upsert({
   id: "alarm_retry_cancelled_terminal", type: "debug", z: TAB, g: "alarm_group_retry",
@@ -346,11 +363,13 @@ upsert(group("alarm_group_retry", "2. Política temporal, retry e cancelamento",
   "alarm_retry_read_desired", "alarm_retry_still_desired_switch",
   "alarm_retry_request_out", "alarm_retry_cancelled_terminal",
   "alarm_retry_exhausted_terminal", "alarm_retry_notify_switch", "alarm_retry_notify_out",
+  "alarm_alert_failure_out", "alarm_alert_cancelled_out",
 ], 64, 380, 2500, 230, "#7c3aed", "#ede9fe"));
 
 upsert(linkIn("alarm_effect_request_in", "alarm_group_effects", "Receber intenção ou retry", ["alarm_intent_ready_out", "alarm_retry_request_out"], 820, 680, [["alarm_effect_load_policy"]]));
 upsert(change("alarm_effect_load_policy", "alarm_group_effects", "Carregar política para o efeito", [
   { t: "set", p: "policy", pt: "msg", to: '$flowContext("alarm_house_policy_v1", "persistent")', tot: "jsonata" },
+  { t: "set", p: "_observer_owned", pt: "msg", to: '["70eb073f8191e69e","8261c7cfb6756ca8"]', tot: "json" },
 ], 1040, 680, [["alarm_effect_action_switch"]]));
 upsert(switchNode("alarm_effect_action_switch", "alarm_group_effects", "Efeito solicitado: armar ou desarmar?", "alarm_request.action", [
   { t: "eq", v: "arm", vt: "str" }, { t: "eq", v: "disarm", vt: "str" },
@@ -368,7 +387,7 @@ Object.assign(armService, {
 });
 upsert(change("arm_alarm_notify_success", "alarm_group_effects", "Confirmar aceite: alarme armado", [
   { t: "set", p: "notify_text", pt: "msg", to: "Alarme armado com sucesso.", tot: "str" },
-], 2350, 630, [["moni_mobile_update_after_arm"]]));
+], 2350, 630, [["moni_mobile_update_after_arm", "alarm_alert_accepted_out"]]));
 Object.assign(updateService, {
   g: "alarm_group_effects", name: "EFEITO: atualizar estado publicado", x: 2650, y: 630,
   wires: [["alarm_notification_final_gate"]],
@@ -379,7 +398,8 @@ Object.assign(disarmService, {
 });
 upsert(change("disarm_alarm_notify_success", "alarm_group_effects", "Confirmar aceite: alarme desarmado", [
   { t: "set", p: "notify_text", pt: "msg", to: "Alarme desarmado com sucesso.", tot: "str" },
-], 2390, 750, [["alarm_notification_final_gate"]]));
+], 2390, 750, [["alarm_notification_final_gate", "alarm_alert_accepted_out"]]));
+upsert(linkOut("alarm_alert_accepted_out", "alarm_group_effects", "Comando aceito → encerrar aviso", ["alarm_alert_accepted_in"], 2650, 700));
 upsert({
   id: "arm_alarm_catch", type: "catch", z: TAB, g: "alarm_group_effects",
   name: "Capturar falha ao armar", scope: ["70eb073f8191e69e"], uncaught: false,
@@ -415,7 +435,7 @@ upsert(group("alarm_group_effects", "3. Gates finais, efeitos e confirmação", 
   "disarm_alarm_notify_success", "arm_alarm_catch", "alarm_arm_failure_prepare",
   "disarm_alarm_catch", "alarm_disarm_failure_prepare", "alarm_failure_out",
   "alarm_notification_in", "alarm_notification_final_gate", "alarm_notify_alexa",
-  "alarm_security_dry_run_out", "alarm_notification_dry_run_out",
+  "alarm_security_dry_run_out", "alarm_notification_dry_run_out", "alarm_alert_accepted_out",
 ], 740, 610, 2540, 300, "#dc2626", "#fee2e2"));
 
 upsert({
@@ -437,7 +457,7 @@ upsert(change("alarm_test_failure_prepare", "alarm_group_tests", "Preparar falha
   { t: "set", p: "dry_run_boundary", pt: "msg", to: "retry_notification", tot: "str" },
 ], 990, 1080, [["alarm_test_failure_out"]]));
 upsert(linkOut("alarm_test_failure_out", "alarm_group_tests", "Falha TESTE → política de retry", ["alarm_failure_in"], 1210, 1080));
-upsert(linkIn("alarm_test_dry_run_in", "alarm_group_tests", "Receber efeito TESTE", ["alarm_security_dry_run_out", "alarm_notification_dry_run_out"], 1220, 1150, [["alarm_test_dry_run_terminal"]]));
+upsert(linkIn("alarm_test_dry_run_in", "alarm_group_tests", "Receber efeito TESTE", ["alarm_security_dry_run_out", "alarm_notification_dry_run_out", "alarm_alert_dry_run_out"], 1220, 1150, [["alarm_test_dry_run_terminal"]]));
 upsert(functionNode("alarm_test_dry_run_terminal", "alarm_group_tests", "TESTE FINAL: registrar sem enviar", dryRun, 0, 1480, 1150, []));
 upsert(group("alarm_group_tests", "4. Testes manuais completos — dry-run", [
   "alarm_test_instructions", "alarm_test_reset", "alarm_test_reset_state",
@@ -445,6 +465,53 @@ upsert(group("alarm_group_tests", "4. Testes manuais completos — dry-run", [
   "alarm_test_failure_arm", "alarm_test_failure_prepare", "alarm_test_failure_out", "alarm_test_dry_run_in",
   "alarm_test_dry_run_terminal",
 ], 64, 930, 1600, 280, "#0891b2", "#cffafe"));
+
+const A = "alarm_group_alert";
+const kind = (value) => [{ t: "set", p: "alarm_alert_kind", pt: "msg", to: value, tot: "str" }];
+const alertInputs = [
+  ["failure", "Receber falha contada", ["alarm_alert_failure_out", "alarm_test_alert_failure_out"], 1400],
+  ["accepted", "Receber comando aceito", ["alarm_alert_accepted_out", "alarm_test_alert_accepted_out"], 1460],
+  ["cancelled", "Receber intenção trocada", ["alarm_alert_cancelled_out", "alarm_test_alert_cancelled_out"], 1520],
+];
+for (const [name, label, sources, y] of alertInputs) {
+  upsert(linkIn(`alarm_alert_${name}_in`, A, label, sources, 105, y, [[`alarm_alert_kind_${name}`]]));
+  upsert(change(`alarm_alert_kind_${name}`, A, `Evento: ${{ failure: "falha", accepted: "aceite", cancelled: "cancelamento" }[name]}`, kind(name), 260, y, [["alarm_alert_facts"]]));
+}
+upsert(functionNode("alarm_alert_facts", A, "Ler aviso aberto e montar texto", alertFacts, 1, 540, 1460, [["alarm_alert_gate"]]));
+upsert(switchNode("alarm_alert_gate", A, "Gate final: celulares ou TESTE?", "test_mode", [
+  { t: "neq", v: "true", vt: "bool" }, { t: "eq", v: "true", vt: "bool" },
+], 830, 1460, [["alarm_alert_route"], ["alarm_alert_dry_run_out"]]));
+upsert(linkOut("alarm_alert_dry_run_out", A, "Aviso TESTE → dry-run", ["alarm_test_dry_run_in"], 1035, 1540));
+upsert(switchNode("alarm_alert_route", A, "Avisar, confirmar ou só encerrar?", "alarm_alert.event", [
+  { t: "eq", v: "failure", vt: "str" }, { t: "eq", v: "resolved", vt: "str" }, { t: "eq", v: "cancelled", vt: "str" }, { t: "else" },
+], 1150, 1440, [["alarm_alert_mobile_prepare", "alarm_alert_create_prepare"], ["alarm_alert_mobile_prepare", "alarm_alert_dismiss_prepare"], ["alarm_alert_dismiss_prepare"], ["alarm_alert_none"]]));
+upsert(functionNode("alarm_alert_none", A, "Sem aviso a enviar", "return null;", 0, 1420, 1540, []));
+const alertCall = (name, label, notification, payload, hub, hubLabel, y) => {
+  upsert(change(`alarm_alert_${name}_prepare`, A, label, [
+    { t: "set", p: "payload", pt: "msg", to: payload, tot: "jsonata" },
+    { t: "set", p: "notification", pt: "msg", to: JSON.stringify({ source: "alarme_casa", ...notification }).slice(0, -1) +
+      (name === "dismiss" ? "}" : ',"title":alarm_alert.title}'), tot: "jsonata" },
+  ], 1470, y, [[`alarm_alert_${name}_call`]]));
+  upsert({ id: `alarm_alert_${name}_call`, type: "link call", z: TAB, g: A, name: hubLabel, links: [hub], linkType: "static", timeout: "180", x: 1770, y, wires: [[]] });
+};
+const alertId = "alarme_casa_comando_falhou";
+alertCall("mobile", "Preparar os dois celulares", { recipients: ["resident_primary", "resident_secondary"], profile: "simple" }, "alarm_alert.message", "notification_hub_mobile_in", "Hub móvel → os dois residentes", 1380);
+alertCall("create", "Preparar alerta no HA", { operation: "create", delivery: "queued", notification_id: alertId }, "alarm_alert.message", "notification_hub_persistent_in", "Hub HA → criar/atualizar", 1430);
+alertCall("dismiss", "Preparar remoção do alerta", { operation: "dismiss", delivery: "queued", notification_id: alertId }, '""', "notification_hub_persistent_in", "Hub HA → remover resolvido", 1480);
+const alertTest = (name, label, payload, y) => {
+  upsert({ ...inject(`alarm_test_alert_${name}`, A, label, "", "", "date", 180, y, [[`alarm_test_alert_${name}_out`]]),
+    props: [{ p: "test_mode", v: "true", vt: "bool" }, ...Object.entries(payload).map(([p, v]) => ({ p, v: JSON.stringify(v), vt: "json" }))] });
+  upsert(linkOut(`alarm_test_alert_${name}_out`, A, `${label} → aviso`, [`alarm_alert_${name}_in`], 400, y));
+};
+alertTest("failure", "TESTE 5: 3ª falha de arme", { alarm_request: { action: "arm" }, policy: { retry_seconds: 10, phone_after_attempts: 3, phone_every_attempts: 30 }, retry: { attempt: 3, retry_allowed: true, delay_ms: 10000 } }, 1610);
+alertTest("accepted", "TESTE 6: aceite após falha", { alarm_request: { action: "arm" } }, 1660);
+alertTest("cancelled", "TESTE 7: intenção trocada", { alarm_request: { action: "arm" } }, 1710);
+upsert(group(A, "5. Aviso nos celulares e no HA — abre na falha repetida, encerra no aceite", [
+  ...alertInputs.flatMap(([name]) => [`alarm_alert_${name}_in`, `alarm_alert_kind_${name}`]),
+  "alarm_alert_facts", "alarm_alert_gate", "alarm_alert_dry_run_out", "alarm_alert_route", "alarm_alert_none",
+  ...["mobile", "create", "dismiss"].flatMap((name) => [`alarm_alert_${name}_prepare`, `alarm_alert_${name}_call`]),
+  ...["failure", "accepted", "cancelled"].flatMap((name) => [`alarm_test_alert_${name}`, `alarm_test_alert_${name}_out`]),
+], 64, 1330, 1880, 420, "#ea580c", "#ffedd5"));
 
 writeFileSync(OUT, JSON.stringify(installNotificationHubs(flows), null, 4) + "\n");
 console.log(`Fluxo visual do alarme escrito em ${OUT}.`);

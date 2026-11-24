@@ -142,7 +142,7 @@ test("recreates changed image services without touching dependencies", () => {
   const source = fs.readFileSync("scripts/docker-auto-update.mjs", "utf8");
   assert.match(
     source,
-    /\["compose", "up", "-d", "--no-deps", \.\.\.changedServices\]/,
+    /\["compose", "up", "-d", "--no-deps", "--timeout", "120", \.\.\.changedServices\]/,
   );
 });
 

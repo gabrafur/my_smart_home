@@ -318,7 +318,9 @@ integrations, physical firmware, and unknown sources to separate subflows.
 The Alexa Media and Kia UVO updaters stop Home Assistant with a 120 s limit
 (`scripts/home-assistant-planned-stop.mjs`); Docker's 10 s default killed it before
 the recorder closed SQLite. After a confirmed update, the "Home Assistant iniciado"
-notice states the restart reason and how long the stop took.
+notice states the restart reason and how long the stop took. The off-site backup,
+image replacement and Zigbee firmware update also wait up to 120 s: Zigbee2MQTT
+writes its radio backup while stopping (about 24 s, longer with silent modules).
 
 Alexa and Bluelink always receive the exact version advertised by the Home
 Assistant entity. Alexa resolves the official tag and commit, compares the

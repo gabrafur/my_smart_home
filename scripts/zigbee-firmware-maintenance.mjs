@@ -203,7 +203,7 @@ export async function processFirmwareQueue(){
     const bundle={version:1,saved_at:Date.now(),identity:validated.identity,devices:validated.devices,preserved_membership_count:validated.preserved_membership_count,configuration:read(path.join(dataDir,'configuration.yaml')),database:raw,backup:JSON.stringify(validated.backup,null,2)+'\n'};bundle.digest=hash(JSON.stringify(bundle));
     atomic(path.join(PRIVATE,'pre-firmware-'+request.id+'.json'),bundle);atomic(path.join(PRIVATE,'last-good.json'),bundle);job.backup_digest=bundle.digest;persist();
    },
-   stop:async()=>{docker(['stop','-t','20','zigbee2mqtt'],35000)},install:async()=>vendor(identity,'install',request),
+   stop:async()=>{docker(['stop','-t','120','zigbee2mqtt'],150000)},install:async()=>vendor(identity,'install',request),
    restore:async()=>{
     const bundle=JSON.parse(read(path.join(PRIVATE,'pre-firmware-'+request.id+'.json'))),{digest,...body}=bundle;
     if(digest!==job.backup_digest||hash(JSON.stringify(body))!==digest)throw Error('backup_integrity_failed');

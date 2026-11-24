@@ -297,6 +297,19 @@ const vehicleTimeout = (source, message = "Error: Vehicle refresh failed at /ccs
 };
 assert.equal(vehicleTimeout("8907830bb7f6c40c"), null);
 assert.equal(vehicleTimeout("vehicle_primary_cache_probe_call_v1"), null);
+// A flow that owns the notice of one node declares it; every other node still alerts.
+const ownedError = (source) => {
+  const ownedStore = memory();
+  const event = (id, at) => ({
+    _global_observer_test: true, observer_now: at, _observer_owned: ["70eb073f8191e69e"],
+    _global_observer: { flow_id: "alarm_house_tab", flow_label: "alarme_casa" },
+    error: { message: "Servidor Moni Mobile nao confirmou o arme", source: { id, type: "api-call-service", name: "x" } },
+  });
+  runIngest(event("boot", 0), ownedStore);
+  return runIngest(event(source, 3_600_000), ownedStore);
+};
+assert.equal(ownedError("70eb073f8191e69e"), null);
+assert.ok(ownedError("moni_mobile_update_after_arm"));
 assert.ok(vehicleTimeout("16396e34ff530ac7"), "outro nó do veículo continua alertável");
 assert.ok(vehicleTimeout("8907830bb7f6c40c", "Error: 401 unauthorized"), "autenticação continua alertável");
 
