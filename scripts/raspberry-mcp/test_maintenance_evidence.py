@@ -20,6 +20,43 @@ class EvidenceTests(unittest.TestCase):
   row=e.result_file(path,'fixture',self.now)
   self.assertEqual(row['data']['reason'],'maintenance_busy');self.assertEqual(row['age_seconds'],60)
   self.assertNotIn('PRIVATE',json.dumps(row));self.assertNotIn('private-request',json.dumps(row))
+ def test_validation_receipts_keep_completed_cycles_and_project_public_test_ids(self):
+  raw = """[2026-10-19T13:00:00+00:00] backup started
+not ok 91 - demo images are the digests pinned for the real stack
+not ok 92 - PRIVATE
+make[1]: *** [Makefile:254: validate-scripts] Error 1
+[2026-10-19T13:10:00+00:00] backup validation receipt: stage=git_push exit_code=1
+[2026-10-19T13:10:01+00:00] backup failed: could not push origin/main reason=validation_failed
+[2026-10-19T13:15:00+00:00] backup started
+[2026-10-19T13:17:00+00:00] backup validation receipt: stage=git_push exit_code=0
+[2026-10-19T13:17:01+00:00] backup finished: pushed 1234567
+[2026-10-19T13:20:00+00:00] backup started
+"""
+  failed, passed = e.validation_receipts(raw)
+  self.assertEqual(failed['test'], 'demo_stack_image_digest_alignment')
+  self.assertEqual((failed['check_target'], failed['exit_code'], failed['exit_code_scope']),
+                   ('validate-scripts', 1, 'git_push'))
+  self.assertEqual(passed['status'], 'passed')
+  self.assertNotEqual(passed['cycle_id'], failed['cycle_id'])
+  self.assertNotIn('PRIVATE', json.dumps([failed, passed]))
+
+ def test_sd_sources_project_unknown_latency_and_only_fixed_device_errors(self):
+  path = self.root / 'result-history.log'
+  path.write_text('host-memory-guardian checked_at=2026-10-19T13:59:00Z '
+                  'sd_read_ms=0 sd_write_ms=unknown sd_busy_percent=105 request_id=PRIVATE\n')
+  with patch.object(e.time, 'time', return_value=self.now):
+   rows = e.sd_latency(path)['data']
+  self.assertEqual(rows, [{'at': '2026-10-19T13:59:00+00:00', 'sd_read_ms': 0,
+                          'sd_write_ms': None, 'sd_busy_percent': None}])
+  sample = ('2026-10-19T13:59:00+00:00 I/O error on dev mmcblk0p2 PRIVATE\n'
+            '2026-10-19T13:59:01+00:00 mmc1: timeout on different device\n')
+  self.assertEqual(e.sd_kernel_errors(run=lambda *_args, **_kwargs: sample)['data'],
+                   [{'at': '2026-10-19T13:59:00+00:00', 'error': 'io_error'}])
+  def refused(*args, **kwargs):
+   raise PermissionError()
+  unavailable = e.sd_kernel_errors(run=refused)
+  self.assertIsNone(unavailable['data'])
+  self.assertEqual(unavailable['collection_error'], 'source_permission_denied')
  def test_local_icloud_guard_has_closed_diagnostic(self):
   raw=('2026-10-19T13:59:00Z custom_components.icloud.native_bridge.ManualActionRequired: waiting_for_user\n')
   rows=e.summarize_logs('homeassistant',raw,self.now-3600,self.now)['events']

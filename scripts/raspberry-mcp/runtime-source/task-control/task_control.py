@@ -30,7 +30,7 @@ LEGACY_POLICY = Path('/usr/local/lib/raspberry-mcp/codex-control-approval.json')
 LEGACY_DB = Path('/var/lib/raspberry-mcp-operations/codex-control/jobs.sqlite3')
 UID = 1001
 TOOLS = ('codex_task_create', 'codex_task_send', 'codex_task_status',
-         'codex_task_reconcile', 'codex_task_revoke', 'codex_task_list')
+         'codex_task_reconcile', 'codex_task_revoke', 'codex_task_list', 'codex_task_find_incident')
 FIELDS = {
     'codex_task_create': ('operation_id', 'task_key', 'objective', 'acceptance'),
     'codex_task_send': ('operation_id', 'task_id', 'text'),
@@ -38,6 +38,7 @@ FIELDS = {
     'codex_task_reconcile': ('operation_id', 'result_hash'),
     'codex_task_revoke': (),
     'codex_task_list': ('page_size', 'cursor'),
+    'codex_task_find_incident': ('object_id', 'revision'),
 }
 
 
@@ -230,6 +231,9 @@ def validate(name, args):
     if name == 'codex_task_list':
         import task_list
         task_list.validate(args)
+    if name == 'codex_task_find_incident':
+        need(all(type(args[key]) is str and re.fullmatch('[a-f0-9]{64}', args[key])
+                 for key in FIELDS[name]), 'invalid_incident_identifier')
 
 
 def resources():
@@ -511,8 +515,12 @@ def communication_state(policy, legacy, revoked, now):
 def handle(name, args, old):
     need(os.geteuid() == UID, 'task_identity_refused')
     validate(name, args)
-    p, legacy = task_policy(old, observation=name in ('codex_task_status', 'codex_task_list',
+    p, legacy = task_policy(old, observation=name in ('codex_task_status', 'codex_task_list', 'codex_task_find_incident',
                                                 'codex_task_reconcile', 'codex_task_revoke'))
+    if name == 'codex_task_find_incident':
+        import task_list
+        with locked(read_only=True):
+            return task_list.find_incident(args, __import__(__name__))
     admission_closed = bool(legacy.get('_v2_peer_unconfirmed') or
                             (legacy.get('_observation_only') and not legacy.get('_v2')) or not p['enabled'] or
                             (STATE / 'revoked').exists())

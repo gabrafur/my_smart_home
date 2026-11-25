@@ -111,6 +111,7 @@ Os detalhes de tipos,limites e enums ficam no modelo de esquemas mencionado acim
 | `codex_task_create` | `host`, `operation_id`, `task_key`, `objective`, `acceptance` |
 | `codex_task_send` | `host`, `operation_id`, `task_id`, `text` |
 | `codex_task_status` | `host`, `operation_id`, `kind` |
+| `codex_task_find_incident` | `host`, `object_id`, `revision` |
 | `codex_task_reconcile` | `host`, `operation_id`, `result_hash` |
 | `codex_task_revoke` | `host` |
 | `codex_task_list` | `host`, `page_size`, `cursor` |

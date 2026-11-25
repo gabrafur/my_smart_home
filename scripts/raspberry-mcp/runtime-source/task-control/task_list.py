@@ -1,5 +1,6 @@
 """Read-only scoped inventory. Never enumerate the daemon's private global history."""
 import base64
+from contextlib import contextmanager
 import datetime
 import hashlib
 import json
@@ -38,7 +39,8 @@ def validate(args):
     need(type(args['page_size']) is int and 1<=args['page_size']<=16,'invalid_list_page_size')
     need(args['cursor'] is None or isinstance(args['cursor'],str) and 1<=len(args['cursor'])<=512,'invalid_list_cursor')
 
-def read_database(path,tasks,queries,incident_tasks=False):
+@contextmanager
+def registry_snapshot(path, tasks):
     tasks.read(path,1001,0o600,1048576)
     need(not any(os.path.lexists(str(path)+suffix) for suffix in ('-wal','-journal')),
          'database_journal_requires_reconciliation')
@@ -47,12 +49,64 @@ def read_database(path,tasks,queries,incident_tasks=False):
     try:
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
+        yield db
+    finally:
+        db.close()
+
+def read_database(path,tasks,queries,incident_tasks=False):
+    with registry_snapshot(path, tasks) as db:
         result=[list(map(dict,db.execute(sql))) for sql in queries]
         if incident_tasks:
             from task_store import incident_task_projection
             result.append({row['id']:incident_task_projection(db,row['id']) for row in result[0][:MAX_TASKS]})
         return result
-    finally:db.close()
+
+def find_incident(args, tasks):
+    from task_store import HISTORY_RESULT, history_read, incident_decode, incident_task_projection
+
+    object_id, revision = args['object_id'], args['revision']
+    task_id, operation_id = object_id[:32], revision[-32:]
+    result = {
+        'state': 'absent', 'reason': 'no_recorded_binding_for_revision',
+        'source': 'task_control_retained_receipts', 'project': '/mnt/data/docker',
+        'object_id': object_id, 'revision': revision, 'operation_id': None,
+        'task_id': None, 'thread_id': None, 'collection_error': None,
+        'coverage': ['exact_authenticated_binding_in_adapter_registry', 'includes_retained_archive',
+                     'unregistered_or_unlinked_threads_outside_lookup'],
+        'new_task_authorized': False, 'automatic_retry': False,
+    }
+    with registry_snapshot(tasks.STATE / 'jobs.sqlite3', tasks) as db:
+        task = db.execute('SELECT thread FROM tasks WHERE id=?', (task_id,)).fetchone()
+        send = db.execute('SELECT task,state,result FROM sends WHERE id=?', (operation_id,)).fetchone()
+        binding = None
+        if send is not None and send['task'] == task_id:
+            records = db.execute(
+                "SELECT state FROM audit WHERE id=? AND state LIKE 'incident_binding_v1:%' LIMIT 2",
+                (operation_id,)).fetchall()
+            need(len(records) <= 1, 'incident_binding_conflict')
+            if records:
+                binding = incident_decode(records[0]['state'], operation_id, send['state'])
+            elif send['result'] == HISTORY_RESULT:
+                archived = history_read(db, 'sends', operation_id)
+                need(archived is not None, 'history_snapshot_missing')
+                binding = archived['incident_binding']
+        if binding and (binding.get('object_id'), binding.get('revision')) == (object_id, revision):
+            need(binding.get('operation_id') == operation_id and task is not None, 'incident_binding_conflict')
+            thread_id = task['thread']
+            need(isinstance(thread_id, str) and UUID.fullmatch(thread_id), 'invalid_registry_identity')
+            return {**result, 'state': 'found', 'reason': 'exact_incident_binding',
+                    'task_id': task_id, 'thread_id': thread_id, 'operation_id': operation_id,
+                    'send_state': binding['send_state']}
+        if task is not None:
+            prior = incident_task_projection(db, task_id)
+            if prior['state'] == 'unknown':
+                return {**result, 'state': 'unknown', 'reason': 'candidate_binding_unconfirmed'}
+            if prior['object_id'] == object_id:
+                thread_id = task['thread']
+                need(isinstance(thread_id, str) and UUID.fullmatch(thread_id), 'invalid_registry_identity')
+                return {**result, 'state': 'related', 'reason': 'same_object_other_revision',
+                        'task_id': task_id, 'thread_id': thread_id}
+        return result
 
 def registry(tasks,now):
     rows={key:{'thread_id':key,'safe_title':title,'title_source':'fixed_reference_alias',

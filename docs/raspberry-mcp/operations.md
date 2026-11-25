@@ -225,6 +225,42 @@ existente quando `collection_error` é nulo e `registered_identities_listed` é
 verdadeiro. A derivação e os testes estão em
 [`task-list-row-errors`](../../scripts/raspberry-mcp/task-list-row-errors/README.md).
 
+### Busca exata de tarefa por incidente
+
+Use `codex_task_find_incident` com `host=raspberry` e os dois hashes completos
+`object_id` e `revision` do aviso. A consulta verifica o vínculo autenticado
+dos recibos retidos em `/mnt/data/docker`, incluindo o arquivo histórico do
+adaptador. `found` identifica a thread e a operação da revisão. `related`
+identifica a thread de outra revisão vinculada ao mesmo objeto. `absent`
+confirma a falta de vínculo da revisão no registro consultado. Uma criação
+candidata sem vínculo comprovado ou uma falha de leitura permanece `unknown`.
+O lookup não inicia, retoma ou envia turnos. Threads sem vínculo ou fora do
+registro não podem ser descartadas, e a consulta não autoriza um novo envio.
+
+`codex_task_status` retorna `task_not_found` somente após consultar o registro
+retido. Uma thread observada como `notLoaded` mantém esse estado. Recusas
+operacionais nas leituras de tarefas, referências legadas, runtime Node-RED e
+fontes públicas voltam em `state`, `reason` e `collection_error`. Solicitações
+inválidas, falta de acesso e fontes indisponíveis têm estados distintos. A
+validade e o escopo do leitor legado e da administração do Node-RED continuam
+sujeitos às respectivas políticas. Uma conexão existente pode manter a versão
+antiga do frontend até se reconectar.
+
+### Validações Git e observação passiva do cartão SD
+
+`backup_results.data.git.validation_receipts` retorna até oito validações
+terminais do trecho retido do log do backup. Cada entrada inclui ID de ciclo,
+etapa, horário, teste e alvo quando reconhecidos, e código de saída do
+`git push` quando registrado. Rótulos de testes vêm de uma lista pública.
+Campos sem evidência permanecem nulos. Compare a hora final com o recibo da
+etapa Core e seu estado de prontidão antes de atribuir a falha a um serviço.
+
+`host_diagnostics.evidence.sd_latency` expõe até 120 leituras passivas do
+guardião, com médias de leitura e escrita por intervalo e percentual de
+ocupação. `sd_kernel_errors` expõe até 32 erros reconhecidos do dispositivo
+fixo no buffer atual do kernel. Mensagens rotacionadas ficam fora da cobertura.
+Nenhuma das duas leituras escreve no cartão para medir desempenho.
+
 ## Manutenção de armazenamento
 
 O [catálogo de armazenamento](../../scripts/raspberry-mcp/runtime-source/storage-maintenance/README.md)

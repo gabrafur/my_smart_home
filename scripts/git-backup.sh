@@ -222,10 +222,14 @@ defer_development_paths() {
     [[ "$approved_head" =~ ^[a-f0-9]{40}$ ]] || exit 1
     push_ref="$approved_head:refs/heads/$BRANCH"
   fi
-  if ! push_output=$(env -u GIT_BACKUP_RECOVERY_JOB GIT_BACKUP_CLEAN_VALIDATION=1 git push "$REMOTE" "$push_ref" --quiet 2>&1); then
+  if push_output=$(env -u GIT_BACKUP_RECOVERY_JOB GIT_BACKUP_CLEAN_VALIDATION=1 git push "$REMOTE" "$push_ref" --quiet 2>&1); then
+    log "backup validation receipt: stage=git_push exit_code=0"
+  else
+    push_exit=$?
     # Keep the actual failed check in this private operational log; a generic
     # validation_failed code alone cannot diagnose or prevent recurrence.
     retain_push_diagnostics "$push_output" >> "$LOG_FILE"
+    log "backup validation receipt: stage=git_push exit_code=$push_exit"
     case "$push_output" in
       *"resource-safe: another broad validation is already running"*|\
       *"resource-safe: refusing validation"*)

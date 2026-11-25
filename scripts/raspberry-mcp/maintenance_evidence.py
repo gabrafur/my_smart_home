@@ -135,12 +135,112 @@ def git_last_success(root=ROOT):
         return d.evidence('git_backup.bounded_log',None,coverage=['no_success_in_last_128KiB','older_history_not_searched'])
     except (OSError,ValueError) as error:return d.evidence('git_backup.bounded_log',None,error=cause(error),coverage=['bounded_log_unavailable'])
 
+GIT_LINE = re.compile(r'^\[(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|[+-]\d\d:\d\d))\] (.*)$')
+DEMO_DIGEST_TEST = re.compile(r'^\s*not ok \d+ - demo images are the digests pinned for the real stack\s*$')
+VALIDATION_TARGET = re.compile(r'^make(?:\[\d+\])?: \*\*\* \[Makefile:\d+: (validate-[a-z-]+)\] Error \d+$')
+PUBLIC_CHECKS = {'validate-scripts', 'validate-public', 'validate-node-red', 'validate-homeassistant',
+                 'validate-docs', 'validate-commit-message'}
+
+
+def validation_receipts(log):
+    started = None
+    receipts = []
+    for line in log.splitlines():
+        match = GIT_LINE.fullmatch(line)
+        message = match[2] if match else None
+        if message == 'backup started':
+            started, exit_code, test, target = match[1], None, None, None
+        elif started is None:
+            continue
+        elif message and (marker := re.fullmatch(r'backup validation receipt: stage=git_push exit_code=(\d{1,3})', message)):
+            exit_code = int(marker[1])
+        elif DEMO_DIGEST_TEST.fullmatch(line):
+            test = 'demo_stack_image_digest_alignment'
+        elif (failure := VALIDATION_TARGET.fullmatch(line)) and target is None and failure[1] in PUBLIC_CHECKS:
+            target = failure[1]
+        elif message and message.startswith(('backup failed:', 'backup finished:', 'backup deferred:')):
+            failure = re.search(r' reason=(validation_failed|validation_node_red_layout)$', message)
+            if failure or exit_code == 0:
+                when = dt.datetime.fromisoformat(match[1]).astimezone(dt.timezone.utc).isoformat()
+                cycle = hashlib.sha256(f'git-backup:{started}:{when}'.encode()).hexdigest()[:32]
+                receipts.append({'cycle_id': cycle, 'stage': 'git_pre_push_validation',
+                                 'status': 'failed' if failure else 'passed', 'finished_at': when,
+                                 'test': test, 'check_target': target, 'exit_code': exit_code,
+                                 'exit_code_scope': 'git_push' if exit_code is not None else None})
+            started = None
+    return receipts[-8:]
+
+
+def git_validations(root):
+    source = 'git_backup.bounded_log.validation_receipts'
+    coverage = ['last_128_kib_of_log_up_to_eight_completed_validation_cycles',
+                'allowlisted_test_ids_only', 'exit_code_is_git_push_when_recorded']
+    try:
+        rows = validation_receipts(fixed_tail(root / '.git-backup.log'))
+        return d.evidence(source, rows, coverage=coverage)
+    except (OSError, ValueError) as error:
+        return d.evidence(source, None, error=cause(error), coverage=coverage)
+
+
+def sd_latency(path):
+    source = 'host_memory_guardian.sd_diskstats_history'
+    coverage = ['last_120_samples_in_retained_guardian_history', 'interval_mean_completed_io_ms',
+                'gaps_and_unknown_metrics_are_not_zero', 'no_storage_benchmark']
+    now = time.time()
+    try:
+        rows = []
+        for line in fixed_tail(path).splitlines():
+            if not line.startswith('host-memory-guardian '):
+                continue
+            fields = dict(re.findall(r'\b([a-z_]+)=([^\s]+)', line))
+            at = timestamp(fields.get('checked_at'))
+            if at is None or at > now + 5:
+                continue
+            row = {'at': d.utc(at)}
+            for key, upper in (('sd_read_ms', 900000), ('sd_write_ms', 900000), ('sd_busy_percent', 100)):
+                value = fields.get(key, '')
+                row[key] = int(value) if re.fullmatch(r'\d{1,6}', value) and int(value) <= upper else None
+            rows.append(row)
+        rows.sort(key=lambda row: row['at'])
+        return d.evidence(source, rows[-120:], error=None if rows else 'no_retained_samples',
+                          observed=timestamp(rows[-1]['at']) if rows else None, now=now, coverage=coverage)
+    except (OSError, ValueError) as error:
+        return d.evidence(source, None, error=cause(error), coverage=coverage)
+
+
+def sd_kernel_errors(run=bounded_command):
+    source = 'kernel_ring_buffer.mmcblk0'
+    coverage = ['retained_current_boot_kernel_ring_only', 'fixed_sd_device_and_error_patterns',
+                'empty_samples_do_not_exclude_rotated_messages']
+    events = []
+    try:
+        raw = run(['/usr/bin/dmesg', '--kernel', '--level=emerg,alert,crit,err,warn',
+                   '--time-format=iso'], limit=131072, timeout=2)
+        for line in raw.splitlines():
+            match = re.fullmatch(r'(\S+)\s+(.*)', line)
+            if match is None or not re.search(r'\bmmcblk0(?:p\d+)?\b|\bmmc0:', match[2]):
+                continue
+            reason = next((code for pattern, code in (
+                (r'I/O error|error -5\b|uncorrectable', 'io_error'),
+                (r'time[ -]?out|timed out|error -110\b', 'timeout'),
+                (r'\bCRC\b|error -84\b', 'crc_error'),
+            ) if re.search(pattern, match[2], re.I)), None)
+            if reason:
+                stamp = dt.datetime.fromisoformat(match[1])
+                if stamp.tzinfo is not None:
+                    events.append({'at': stamp.astimezone(dt.timezone.utc).isoformat(), 'error': reason})
+        return d.evidence(source, events[-32:], coverage=coverage)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        return d.evidence(source, None, error=cause(error), coverage=coverage)
+
+
 def backups(root=ROOT):
     gitdir=root/'homeassistant/.git-backup-trigger';update=root/'homeassistant/.daily-update-trigger'
     git=result_file(gitdir/'result','git_backup.result');offsite=result_file(update/'offsite-backup-result','offsite.stage_result')
     gitdata=dict(git['data']);offdata=dict(offsite['data'])
     gitdata.update(evidence=git,requested=queue(gitdir/'requested','git_backup.requested'),processing=queue(gitdir/'processing','git_backup.processing'),
-      locks=locks(root),last_success=git_last_success(root),next_retry={'at':None,'reason':'worker_documented_minutely_schedule_not_verified'})
+      locks=locks(root),last_success=git_last_success(root),validation_receipts=git_validations(root),
+      next_retry={'at':None,'reason':'worker_documented_minutely_schedule_not_verified'})
     offdata.update(evidence=offsite,previous_unknown_origin='legacy_collector_hardcoded_unknown_and_never_read_offsite_result',
       requested=queue(update/'offsite-backup-requested','offsite.requested'),processing=queue(update/'offsite-backup-processing','offsite.processing'),
       last_success={'observed_at':None,'reason':'no_durable_success_history_in_allowed_result_source'},
@@ -256,6 +356,8 @@ def logs(args,run=bounded_command,now=None):
 
 def host():
     result=d.host_diagnostics()
+    result['sd_latency'] = sd_latency(ROOT / '.local-state/host-memory-guardian/result-history.log')
+    result['sd_kernel_errors'] = sd_kernel_errors()
     if result['throttling']['collection_error']:
         result['throttling']['collection_error']='device_unavailable_to_unprivileged_private_devices_broker'
         result['throttling']['coverage']+=['vcio_gencmd_requires_device_access','no_permission_escalation_attempted']
