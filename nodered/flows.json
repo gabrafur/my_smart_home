@@ -57688,7 +57688,7 @@
         "g": "grp_internet_triggers",
         "id": "internet_policy_note",
         "info": "Limites: quorum 1–3; falha/retorno 1–10 ciclos; ping 1–10 s; execução 1–15 s; acesso 1–5 ciclos; relatório 30–900 s; retry 60–3.600 s. Tailscale fica no monitoramento_vpn.",
-        "name": "Padrões: internet 3/2/3/2; SSH/Codex 1 ciclo; telemetria 180 s; retry 300 s.",
+        "name": "Padrões: internet 3/2/3/2; SSH/Codex 3 ciclos; telemetria 180 s; retry 300 s.",
         "type": "comment",
         "wires": [],
         "x": 600,
@@ -57707,7 +57707,7 @@
         "props": [
             {
                 "p": "payload",
-                "v": "{\"targets\":[{\"name\":\"cloudflare\",\"address\":\"1.1.1.1\"},{\"name\":\"google\",\"address\":\"8.8.8.8\"},{\"name\":\"quad9\",\"address\":\"9.9.9.9\"}],\"required_responses\":2,\"failure_cycles\":3,\"recovery_cycles\":2,\"ping_timeout_s\":2,\"exec_timeout_ms\":3000,\"remote_access_failure_cycles\":1,\"remote_access_report_stale_s\":180,\"remote_access_recovery_cooldown_s\":300}",
+                "v": "{\"targets\":[{\"name\":\"cloudflare\",\"address\":\"1.1.1.1\"},{\"name\":\"google\",\"address\":\"8.8.8.8\"},{\"name\":\"quad9\",\"address\":\"9.9.9.9\"}],\"required_responses\":2,\"failure_cycles\":3,\"recovery_cycles\":2,\"ping_timeout_s\":2,\"exec_timeout_ms\":3000,\"remote_access_failure_cycles\":3,\"remote_access_report_stale_s\":180,\"remote_access_recovery_cooldown_s\":300}",
                 "vt": "json"
             }
         ],
@@ -104760,7 +104760,7 @@
     },
     {
         "finalize": "",
-        "func": "const test=msg._global_observer_test===true||msg.payload?.test_mode===true;\nconst key=test?'eva_transport_incident_v1__test':'eva_transport_incident_v1',store=test?undefined:'persistent';\nconst active=flow.get(key,store)===true;\nif(msg._eva_transport_ok===true){flow.set(key,false,store);return null;}\nif(active)return null;\nflow.set(key,true,store);\nmsg.payload={test_mode:test,observer_kind:'domain_alert',incident_key:'eva_private_transport_unconfirmed',mobile_notification:true};\nmsg.alert={title:'Entrega privada à Eva não confirmada',message:'O transporte de um aviso técnico não confirmou a revisão dentro do prazo configurado. O aviso foi preservado na fila; verificar o recibo existente antes de repetir qualquer operação.'};\nreturn msg;",
+        "func": "const test=msg._global_observer_test===true||msg.payload?.test_mode===true;\nconst key=test?'eva_transport_incident_v1__test':'eva_transport_incident_v1',store=test?undefined:'persistent';\nconst active=flow.get(key,store)===true;\nif(msg._eva_transport_ok===true){\n if(!active)return null;\n // Resolved means gone: the confirmed receipt removes the owner's HA notice.\n flow.set(key,false,store);\n msg.payload={test_mode:test,observer_kind:'node_recovery',persistent_incident_kind:'domain_alert',persistent_notification_operation:'dismiss',mobile_notification:false,incident_key:'eva_private_transport_unconfirmed'};\n msg.alert={title:'Entrega privada à Eva confirmada',message:'O transporte voltou a confirmar a revisão; o aviso foi removido.'};\n return msg;\n}\nif(active)return null;\nflow.set(key,true,store);\nmsg.payload={test_mode:test,observer_kind:'domain_alert',incident_key:'eva_private_transport_unconfirmed',mobile_notification:true};\nmsg.alert={title:'Entrega privada à Eva não confirmada',message:'O transporte de um aviso técnico não confirmou a revisão dentro do prazo configurado. O aviso foi preservado na fila; verificar o recibo existente antes de repetir qualquer operação.'};\nreturn msg;",
         "g": "global_observer_eva_private_group",
         "id": "global_observer_eva_private_failure",
         "initialize": "",

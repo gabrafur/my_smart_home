@@ -16,6 +16,7 @@ import {
   servicesNeedingRecreate,
   validateComposeCandidate,
   recreateAndVerify,
+  mirrorDemoImages,
 } from "./docker-auto-update.mjs";
 import { probeService, startupComplete, requireReadinessCoverage,
   mqttProbeScript, zigbeeProbeScript, nodeRedProbeScript, portainerProbeScript } from "./container-readiness.mjs";
@@ -80,6 +81,36 @@ test("validation failure restores only the updater's Compose candidate", () => {
   content = "before";
   validateComposeCandidate(plan, { ...io, validate: () => {} });
   assert.equal(content, "candidate");
+});
+
+test("demo stack follows the real stack digests and keeps its volumes", () => {
+  const real = `services:
+  homeassistant:
+    image: example/ha@sha256:new
+  mosquitto:
+    image: example/mqtt@sha256:same
+  portainer:
+    image: example/portainer@sha256:other
+`;
+  const demo = `name: demo
+services:
+  mosquitto:
+    image: example/mqtt@sha256:same
+  homeassistant:
+    image: example/ha@sha256:old
+    volumes:
+      - ha-config:/config
+
+volumes:
+  ha-config:
+`;
+  const next = mirrorDemoImages(demo, real);
+  assert.match(next, /homeassistant:\n    image: example\/ha@sha256:new/);
+  assert.match(next, /mosquitto:\n    image: example\/mqtt@sha256:same/);
+  assert.doesNotMatch(next, /portainer/);
+  assert.match(next, /\nvolumes:\n  ha-config:\n$/);
+  assert.equal(mirrorDemoImages(next, real), next);
+  assert.throws(() => mirrorDemoImages(demo.replace("homeassistant", "unknown"), real), /Could not find compose service unknown/);
 });
 
 test("replaces an image even when comments precede it", () => {

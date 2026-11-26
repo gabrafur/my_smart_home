@@ -21,12 +21,17 @@ test('escalation survives turn/restart, deduplicates and resets on recovery',()=
  invoke(registryBody,{...event,payload:{...event.payload,persistent_notification_operation:'dismiss'}},resumed);
  assert.equal(invoke(registryBody,tick,resumed)[1],null);
 });
-test('transport failure notifies owner once and resets after exact ack',()=>{
+test('transport failure notifies owner once and is dismissed after exact ack',()=>{
  const source=fs.readFileSync(new URL('functions/eva-private-notice-failure.js',import.meta.url),'utf8');
  const db={},msg={_global_observer_test:true,_eva_transport_ok:false};
  const first=invoke(source,structuredClone(msg),db);assert.equal(first.payload.mobile_notification,true);assert.equal(first.payload.notification_audience,undefined);
  assert.equal(invoke(source,structuredClone(msg),db),null);
- assert.equal(invoke(source,{...msg,_eva_transport_ok:true},db),null);
+ const recovered=invoke(source,{...msg,_eva_transport_ok:true},db);
+ assert.equal(recovered.payload.persistent_notification_operation,'dismiss');
+ assert.equal(recovered.payload.persistent_incident_kind,'domain_alert');
+ assert.equal(recovered.payload.incident_key,'eva_private_transport_unconfirmed');
+ assert.equal(recovered.payload.mobile_notification,false);
+ assert.equal(invoke(source,{...msg,_eva_transport_ok:true},db),null,'healthy receipts never repeat the dismiss');
  assert.ok(invoke(source,structuredClone(msg),db));
 });
 

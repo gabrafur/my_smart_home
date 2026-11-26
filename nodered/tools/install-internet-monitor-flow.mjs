@@ -125,7 +125,7 @@ const policy = {
   recovery_cycles: 2,
   ping_timeout_s: 2,
   exec_timeout_ms: 3000,
-  remote_access_failure_cycles: 1,
+  remote_access_failure_cycles: 3,
   remote_access_report_stale_s: 180,
   remote_access_recovery_cooldown_s: 300,
 };
@@ -136,7 +136,7 @@ add({
 });
 grouped(groups.input, {
   id: "internet_policy_note", type: "comment", z: TAB, g: groups.input,
-  name: "Padrões: internet 3/2/3/2; SSH/Codex 1 ciclo; telemetria 180 s; retry 300 s.",
+  name: "Padrões: internet 3/2/3/2; SSH/Codex 3 ciclos; telemetria 180 s; retry 300 s.",
   info: "Limites: quorum 1–3; falha/retorno 1–10 ciclos; ping 1–10 s; execução 1–15 s; acesso 1–5 ciclos; relatório 30–900 s; retry 60–3.600 s. Tailscale fica no monitoramento_vpn.", x: 560, y: 60, wires: [],
 });
 inject("internet_policy_default", groups.input, "CONFIG: aplicar política visual", [{ p: "payload", v: JSON.stringify(policy), vt: "json" }], 220, 125, [["internet_policy_validate"]], { once: true, onceDelay: "1" });

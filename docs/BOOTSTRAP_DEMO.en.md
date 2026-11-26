@@ -133,7 +133,9 @@ formats that decision. Node-RED also publishes synthetic host health every 30
 seconds. Arm the demo alarm at night to see the decision change.
 
 Boundaries: ports bind to `127.0.0.1`; images are the digests pinned in
-`docker-compose.yml`; nothing mounts private bindings, secrets, `.storage`,
+`docker-compose.yml` (`scripts/docker-auto-update.mjs` copies each new digest
+into the demo in the same update, otherwise the nightly Git backup is blocked);
+nothing mounts private bindings, secrets, `.storage`,
 devices, or the Docker socket; the containers have no extra privileges.
 `scripts/demo-stack.test.mjs` enforces these rules. `make demo-stack-down`
 removes the containers and volumes.

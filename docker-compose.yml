@@ -33,7 +33,7 @@ services:
 
   homeassistant:
     logging: *default-logging
-    image: ghcr.io/home-assistant/home-assistant@sha256:493a07e8f6530fc640223f4a0a5248f20a61ca2f718bb1d31efbf08a2c5ea28f
+    image: ghcr.io/home-assistant/home-assistant@sha256:24e541ddae5818bf8eb27898b9ba00d0c344a655aa5097e9e9bd4b19356be847
     container_name: homeassistant
     mem_limit: 3072m
     restart: always

@@ -32,8 +32,9 @@ Esse registro é intenção, não confirmação de entrega: recibos dos hubs con
 necessários para afirmar que o aviso foi aceito ou entregue.
 
 O monitor confere revisão e recibo a cada 30 segundos. Pendência além do limite
-gera alerta de domínio ao proprietário, fora da própria rota privada, com
-reset quando o recibo exato aparece. Erro real de leitura/escrita usa a rota
+gera alerta de domínio ao proprietário, fora da própria rota privada. Quando o
+recibo exato aparece, o incidente é encerrado e o aviso sai do Home Assistant
+(dismiss pelo observador global, sem novo aviso no celular). Erro real de leitura/escrita usa a rota
 interna do monitor, com dedupe e proteção contra recursão. Ausência de ack nunca
 autoriza repetir um reparo: observar a operação existente.
 

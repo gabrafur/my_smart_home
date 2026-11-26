@@ -97,7 +97,7 @@ const defaults = {
   recovery_cycles: 2,
   ping_timeout_s: 2,
   exec_timeout_ms: 3000,
-  remote_access_failure_cycles: 1,
+  remote_access_failure_cycles: 3,
   remote_access_report_stale_s: 180,
   remote_access_recovery_cooldown_s: 300,
 };

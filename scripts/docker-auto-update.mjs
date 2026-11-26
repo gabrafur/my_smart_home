@@ -9,6 +9,7 @@ import { createDockerRecoveryStore } from "./docker-update-recovery.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const composePath = path.join(repoRoot, "docker-compose.yml");
+const demoComposePath = path.join(repoRoot, "demo", "stack", "compose.yml");
 const logPath = path.join(repoRoot, ".docker-auto-update.log");
 const lockPath = path.join(repoRoot, ".docker-auto-update.lock");
 const recovery = createDockerRecoveryStore(repoRoot);
@@ -196,6 +197,40 @@ export function replaceServiceImage(compose, service, nextDigest) {
   return { compose: lines.join("\n"), current };
 }
 
+// The synthetic demo stack must run the same digests as the real stack
+// (scripts/demo-stack.test.mjs, part of the pre-push gate). Copy each demo
+// service's image from docker-compose.yml so an image update never leaves the
+// nightly Git backup blocked by a stale demo pin.
+export function mirrorDemoImages(demo, real) {
+  const lines = demo.split("\n");
+  const start = lines.indexOf("services:");
+  if (start === -1) throw new Error("Demo compose has no services section");
+  const names = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^\S/.test(line)) break;
+    const match = line.match(/^  ([a-zA-Z0-9_-]+):\s*$/);
+    if (match) names.push(match[1]);
+  }
+  let next = demo;
+  for (const name of names) {
+    const { current } = replaceServiceImage(real, name, "");
+    next = replaceServiceImage(next, name, current).compose;
+  }
+  return next;
+}
+
+function syncDemoImages() {
+  const before = fs.readFileSync(demoComposePath, "utf8");
+  const next = mirrorDemoImages(before, fs.readFileSync(composePath, "utf8"));
+  if (next === before) return;
+  if (dryRun) {
+    log("demo stack images would follow docker-compose.yml");
+    return;
+  }
+  fs.writeFileSync(demoComposePath, next);
+  log("demo stack images now match docker-compose.yml");
+}
+
 function updateComposeDigests(channels = imageChannels) {
   const before = fs.readFileSync(composePath, "utf8");
   let compose = before;
@@ -301,6 +336,7 @@ async function reconcileImages(channels, options = {}) {
       write: (content) => fs.writeFileSync(composePath, content),
       validate: validateAfterComposeEdit,
     });
+    syncDemoImages();
 
     if (changedServices.length > 0) {
       if (!dryRun) {

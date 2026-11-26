@@ -133,7 +133,9 @@ Node-RED também publica saúde sintética do host a cada 30 segundos. Arme o
 alarme da demo à noite para ver a decisão mudar.
 
 Limites: as portas ficam em `127.0.0.1`; as imagens são os digests fixados no
-`docker-compose.yml`; nada monta bindings privados, segredos, `.storage`,
+`docker-compose.yml` (o `scripts/docker-auto-update.mjs` copia cada digest novo
+para a demo na mesma atualização, senão o backup Git noturno fica bloqueado);
+nada monta bindings privados, segredos, `.storage`,
 dispositivos ou o socket do Docker; os containers não têm privilégios extras.
 `scripts/demo-stack.test.mjs` garante essas regras. `make demo-stack-down`
 remove containers e volumes.

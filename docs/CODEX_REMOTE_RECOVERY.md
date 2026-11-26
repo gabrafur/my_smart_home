@@ -85,6 +85,12 @@ impede recovery e não conta uma falha confirmada com esse relatório. Relatóri
 legado positivo continua legível; um legado negativo não confirma ausência,
 pois o produtor antigo confundia erro de `ss` com listener ausente.
 
+O alerta ao proprietário exige `remote_access_failure_cycles` = 3 relatórios
+ruins seguidos (cerca de 3 minutos). Com 1 ciclo, uma sonda lenta sob carga do
+cartão SD (por exemplo `codex --version` acima de 10 s) avisava o celular e se
+resolvia em menos de um minuto, com o App Server no ar o tempo todo
+(25/11 e 26/11/2026).
+
 Atualize primeiro os dois consumidores de relatório no Node-RED e depois o
 produtor. Os testes cobrem a cadeia produtor → normalização → decisão com
 relatórios sintéticos e proíbem lançamento/sinal durante falhas de consulta.

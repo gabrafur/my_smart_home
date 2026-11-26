@@ -1,7 +1,14 @@
 const test=msg._global_observer_test===true||msg.payload?.test_mode===true;
 const key=test?'eva_transport_incident_v1__test':'eva_transport_incident_v1',store=test?undefined:'persistent';
 const active=flow.get(key,store)===true;
-if(msg._eva_transport_ok===true){flow.set(key,false,store);return null;}
+if(msg._eva_transport_ok===true){
+ if(!active)return null;
+ // Resolved means gone: the confirmed receipt removes the owner's HA notice.
+ flow.set(key,false,store);
+ msg.payload={test_mode:test,observer_kind:'node_recovery',persistent_incident_kind:'domain_alert',persistent_notification_operation:'dismiss',mobile_notification:false,incident_key:'eva_private_transport_unconfirmed'};
+ msg.alert={title:'Entrega privada à Eva confirmada',message:'O transporte voltou a confirmar a revisão; o aviso foi removido.'};
+ return msg;
+}
 if(active)return null;
 flow.set(key,true,store);
 msg.payload={test_mode:test,observer_kind:'domain_alert',incident_key:'eva_private_transport_unconfirmed',mobile_notification:true};
