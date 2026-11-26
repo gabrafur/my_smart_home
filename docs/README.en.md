@@ -78,7 +78,7 @@ Portuguese, summarised in English further down:
 - [Garage gate: local relay](PORTAO_GARAGEM_RELE_LOCAL.md)
 - [Garage gate: pulse button](PORTAO_GARAGEM_BOTAO_PULSO.en.md)
 - [Power control](CONTROLE_ENERGIA_HOME_ASSISTANT.md)
-- [TV Wake-on-LAN](WAKE_ON_LAN_TV_SALA.md)
+- [TV Wake-on-LAN](WAKE_ON_LAN_TV_SALA.en.md)
 
 ### Feature summaries
 
