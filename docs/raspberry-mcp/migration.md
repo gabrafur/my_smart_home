@@ -10,10 +10,10 @@ compatibilidade, sem duplicar o manual.
 | [RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md](../RASPBERRY_MCP_ADMIN_AND_PORTABILITY.md) | `README.md`, `architecture.md`, `installation.md`, `tools.md`, `operations.md` e referências temáticas |
 | `RASPBERRY_READONLY_MCP.md` (removido) | `reference/read-only-base.md` |
 | `RASPBERRY_CODEX_TASKS.md` (removido) | `reference/task-control.md` |
-| `RASPBERRY_MCP_MAINTENANCE_MATRIX.md` (removido) | `maintenance/matrix.md` |
-| `RASPBERRY_MCP_MAINTENANCE_STAGE1.md` (removido) | `maintenance/stage1.md` |
-| `RASPBERRY_MCP_EVIDENCE_STAGE2.md` (removido) | `maintenance/evidence-stage2.md` |
-| `RASPBERRY_MCP_OPERATIONS_PROPOSAL.md` (removido) | `maintenance/proposals.md` |
+| [RASPBERRY_MCP_MAINTENANCE_MATRIX.md](../RASPBERRY_MCP_MAINTENANCE_MATRIX.md) | `maintenance/matrix.md` |
+| [RASPBERRY_MCP_MAINTENANCE_STAGE1.md](../RASPBERRY_MCP_MAINTENANCE_STAGE1.md) | `maintenance/stage1.md` |
+| [RASPBERRY_MCP_EVIDENCE_STAGE2.md](../RASPBERRY_MCP_EVIDENCE_STAGE2.md) | `maintenance/evidence-stage2.md` |
+| [RASPBERRY_MCP_OPERATIONS_PROPOSAL.md](../RASPBERRY_MCP_OPERATIONS_PROPOSAL.md) | `maintenance/proposals.md` |
 
 O manual antes monolítico foi dividido por headings, preservando os contratos e
 links de evidência por tema. A história Git conserva o conteúdo anterior. Os
@@ -22,6 +22,15 @@ mantêm seus hashes originais e não devem ser apresentadas como verificação d
 novos bytes. A documentação geral de saúde do Raspberry permanece no seu próprio
 [manual](../RASPBERRY_PI_SYSTEM_HEALTH.md), pois também atende produtores que não
 pertencem ao MCP.
+
+Os quatro arquivos de manutenção (`RASPBERRY_MCP_MAINTENANCE_MATRIX.md`,
+`RASPBERRY_MCP_MAINTENANCE_STAGE1.md`, `RASPBERRY_MCP_EVIDENCE_STAGE2.md` e
+`RASPBERRY_MCP_OPERATIONS_PROPOSAL.md`) não podem ser removidos: o reparo do
+índice de documentação (`docs_snapshot_repair.py`, instalado como root) lê esses
+caminhos ao montar `maintenance_capabilities`. Sem eles, a ferramenta responde
+`operation_unavailable` para qualquer cliente. Foi o que aconteceu de 22/11/2026
+(commit `a7a8ee2`) até 26/11/2026, e a Eva perdeu nesse período o diagnóstico do
+procmon e de toda a manutenção.
 
 Fontes, manifests, licenças e README de cada pacote permanecem próximos ao código
 em `scripts/raspberry-mcp/`; o índice operacional referencia esses contratos, sem

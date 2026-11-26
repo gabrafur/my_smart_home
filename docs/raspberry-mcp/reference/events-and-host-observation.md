@@ -123,6 +123,15 @@ da aplicação; não é uma aprovação administrativa nem uma identidade de cha
 | `producer` | horário/idade, sequência, perdas do anel, conexão dos streams e métricas allowlisted |
 | `producer.resources` | horário/idade, valores numéricos ou null, erros e validade da política visual |
 | `producer.producer_cost` | custo do próprio produtor; exclui journal filho e janela de 24h |
+
+O leitor root (`health_summary.py`) só aceita em `host_observer_policy_v1` as dez
+chaves visuais de `HOST_POLICY_BOUNDS`. A janela de parada e de crash loop
+(`stop_confirm_ms`, `crash_loop_stops`, `crash_loop_window_ms`) fica em
+`host_observer_lifecycle_policy_v1`, e o fluxo junta as duas na normalização.
+Entre 18/11 e 26/11/2026 as três chaves ficaram na política visual, o leitor a
+considerou inválida e `host_observation` respondeu `unknown` com
+`visual_policy_unavailable_or_invalid`. `test-host-observer.mjs` agora compara
+as chaves gravadas com as do leitor.
 | `NodeRED` | horário/idade do último frame, sequência, papéis observados e incidentes sanitizados |
 | `NodeRED.visual_policy` | política validada, lida do canvas; não redefine thresholds no MCP |
 | `notification_intent_recorded` | intenção persistida; não prova entrega da notificação |

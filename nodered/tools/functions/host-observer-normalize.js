@@ -1,7 +1,12 @@
 const test = msg._host_observer_test === true;
 const now = test && Number.isFinite(msg._host_test_now) ? msg._host_test_now : Date.now();
-const policy = flow.get("host_observer_policy_v1", "persistent");
-if (!policy) return null;
+const visualPolicy = flow.get("host_observer_policy_v1", "persistent");
+// Until the policy store rewrites the split keys, a legacy 13-key visual policy
+// still carries the stop window.
+const lifecyclePolicy = flow.get("host_observer_lifecycle_policy_v1", "persistent")
+    ?? (Number.isFinite(visualPolicy?.stop_confirm_ms) ? visualPolicy : null);
+if (!visualPolicy || !lifecyclePolicy) return null;
+const policy = {...visualPolicy, ...lifecyclePolicy};
 let value;
 try {
     value = typeof msg.payload === "string" && msg.payload.length <= 65536

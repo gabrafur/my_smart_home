@@ -13,6 +13,13 @@ if (!value || Object.keys(value).length !== Object.keys(bounds).length ||
     node.status({fill: "red", shape: "ring", text: "política rejeitada; anterior preservada"});
     return null;
 }
-flow.set("host_observer_policy_v1", {...value}, "persistent");
+// The MCP reader (health_summary.py) accepts exactly the ten visual keys in
+// host_observer_policy_v1; the stop/crash-loop window lives in its own key so
+// the root-pinned reader keeps validating the visual policy.
+const LIFECYCLE = ["stop_confirm_ms", "crash_loop_stops", "crash_loop_window_ms"];
+const visual = Object.fromEntries(Object.keys(bounds).filter((key) => !LIFECYCLE.includes(key)).map((key) => [key, value[key]]));
+const lifecycle = Object.fromEntries(LIFECYCLE.map((key) => [key, value[key]]));
+flow.set("host_observer_policy_v1", visual, "persistent");
+flow.set("host_observer_lifecycle_policy_v1", lifecycle, "persistent");
 node.status({fill: "green", shape: "dot", text: "política visual válida"});
 return null;

@@ -213,7 +213,14 @@ hold(spaced,5,'die',3001000,3061000);
 assert.equal(spaced.dry.length,0,'stops spread over hours are separate planned restarts');
 {const policy={...POLICY};for(const key of ['stop_confirm_ms','crash_loop_stops','crash_loop_window_ms'])delete policy[key];
  const rejected=harness();rejected.run('host_obs_policy_store',{payload:policy});
- assert.equal(rejected.context('host_observer_tab').get('host_observer_policy_v1','persistent').stop_confirm_ms,POLICY.stop_confirm_ms,'policy without the stop window is rejected and the last one kept');}
+ assert.equal(rejected.context('host_observer_tab').get('host_observer_lifecycle_policy_v1','persistent').stop_confirm_ms,POLICY.stop_confirm_ms,'policy without the stop window is rejected and the last one kept');}
+// The root-pinned MCP reader accepts exactly its ten visual keys in host_observer_policy_v1.
+{const reader=fs.readFileSync(new URL('../../scripts/raspberry-mcp/runtime-source/repair-control/health_summary.py',import.meta.url),'utf8');
+ const bounds=reader.match(/^HOST_POLICY_BOUNDS = \{([\s\S]*?)\}\n/m)[1];
+ const readerKeys=[...bounds.matchAll(/'([a-z_]+)':/g)].map(m=>m[1]).sort();
+ const stored=harness();stored.run('host_obs_policy_store',{payload:{...POLICY}});
+ assert.deepEqual(Object.keys(stored.context('host_observer_tab').get('host_observer_policy_v1','persistent')).sort(),readerKeys,'visual policy keys must match the MCP reader');
+ assert.deepEqual(stored.context('host_observer_tab').get('host_observer_lifecycle_policy_v1','persistent'),{stop_confirm_ms:POLICY.stop_confirm_ms,crash_loop_stops:POLICY.crash_loop_stops,crash_loop_window_ms:POLICY.crash_loop_window_ms});}
 const rc=harness();rc.run('host_obs_read_complete',{payload:{code:0}});assert.equal(rc.dry.length,0);
 const code=new Function('msg',source('read-completion'));assert.equal(code({payload:{code:0}}),null);assert.equal(code({payload:{code:1}}).payload.report,null);assert.equal(code({payload:{signal:'SIGTERM'}}).payload.collection_error,'source_invalid_or_unavailable');
 const malformed=harness();for(const now of [1000000,1021000])replay(malformed,null,now);
