@@ -142,8 +142,18 @@ automations are out of scope.
 
 Limits: 120 commands per hour and 1 s between them; `lock` and
 `alarm_control_panel` have 10 per hour and 10 s. Every command is recorded
-before it is sent and is never resent. Lights, `switch`, `fan`, and `lock` are
-read back (`confirmed`/`unconfirmed`); the others return `accepted` when Home
+before it is sent and is never resent.
+
+Since v5 (2026-11-26) the state is read back (`confirmed`/`unconfirmed`) whenever
+the outcome is predictable: on/off for lights, `switch`, `fan`, `input_boolean`,
+and the TV (`media_player`: on is `on`, `idle`, `playing`, `paused`, or
+`buffering`; off is `off` or `standby`), play/pause/stop, `lock`, opening and
+closing a `cover`, `climate.turn_off`, `climate.set_hvac_mode` (against the
+requested mode), vacuum start/pause/return to base, and arming or disarming the
+alarm. The TV gets a 20 s window because it wakes over the network. The vacuum,
+covers, and alarm get 15 s, and the air conditioner 10 s. The Moni panel always
+reports `unknown`, so alarm commands come back `unconfirmed`, which is the honest
+result. Volume, source, temperature, and the rest return `accepted` when Home
 Assistant accepted the service. To undo the wide scope, remove `generic` from
 the policy (the tools answer `generic_control_not_installed`) or return to v3
 with `ha-lights-r4/deploy.py rollback`.

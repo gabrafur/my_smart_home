@@ -131,8 +131,17 @@ somente por `ha_action_run` (`portao_garagem`), com limite próprio. Administra�
 `homeassistant.*`, `shell_command` e automações não estão no alcance.
 
 Limites: 120 comandos por hora e 1 s entre eles; `lock` e `alarm_control_panel` têm 10
-por hora e 10 s. Cada comando é gravado antes do envio e nunca é reenviado. Luzes,
-`switch`, `fan` e `lock` são lidos de volta (`confirmed`/`unconfirmed`); os demais
-retornam `accepted` quando o Home Assistant aceitou o serviço. Para desfazer o alcance
+por hora e 10 s. Cada comando é gravado antes do envio e nunca é reenviado.
+
+Desde a v5 (26/11/2026), o estado é lido de volta (`confirmed`/`unconfirmed`) sempre que o
+resultado é previsível: ligar e desligar de luzes, `switch`, `fan`, `input_boolean` e TV
+(`media_player`: ligada é `on`, `idle`, `playing`, `paused` ou `buffering`; desligada é `off`
+ou `standby`), play/pause/stop, `lock`, abrir e fechar `cover`, `climate.turn_off`,
+`climate.set_hvac_mode` (contra o modo pedido), início, pausa e volta à base do aspirador e
+armar ou desarmar o alarme. A TV tem 20 s de janela, porque acorda pela rede. Aspirador,
+cortina e alarme têm 15 s, e o ar-condicionado 10 s. O painel da Moni sempre informa
+`unknown`, então os comandos de alarme voltam `unconfirmed`, que é o resultado honesto.
+Volume, fonte, temperatura e o resto retornam `accepted` quando o Home Assistant aceitou o
+serviço. Para desfazer o alcance
 amplo, remova `generic` da política (as ferramentas respondem `generic_control_not_installed`)
 ou volte à v3 com `ha-lights-r4/deploy.py rollback`.

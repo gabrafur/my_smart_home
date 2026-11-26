@@ -45,9 +45,31 @@ DATA_KEYS = frozenset({'brightness', 'brightness_pct', 'color_temp_kelvin', 'rgb
                        'position', 'percentage', 'oscillating', 'command', 'device', 'num_repeats', 'delay_secs',
                        'fan_speed', 'value', 'option', 'humidity'})
 STRICT_DOMAINS = {'lock': (10, 10), 'alarm_control_panel': (10, 10)}  # (per hour, spacing seconds)
-GENERIC_EXPECT = {('light', 'turn_on'): 'on', ('light', 'turn_off'): 'off', ('switch', 'turn_on'): 'on',
-                  ('switch', 'turn_off'): 'off', ('fan', 'turn_on'): 'on', ('fan', 'turn_off'): 'off',
-                  ('lock', 'lock'): 'locked', ('lock', 'unlock'): 'unlocked'}
+# Accepted final states read back after a service call; a call without an entry returns `accepted`.
+MEDIA_ON = ('on', 'idle', 'playing', 'paused', 'buffering')
+GENERIC_EXPECT = {('light', 'turn_on'): ('on',), ('light', 'turn_off'): ('off',), ('switch', 'turn_on'): ('on',),
+                  ('switch', 'turn_off'): ('off',), ('fan', 'turn_on'): ('on',), ('fan', 'turn_off'): ('off',),
+                  ('lock', 'lock'): ('locked',), ('lock', 'unlock'): ('unlocked', 'open'), ('lock', 'open'): ('open', 'unlocked'),
+                  ('media_player', 'turn_on'): MEDIA_ON, ('media_player', 'turn_off'): ('off', 'standby'),
+                  ('media_player', 'media_play'): ('playing', 'buffering'), ('media_player', 'media_pause'): ('paused', 'idle'),
+                  ('media_player', 'media_stop'): ('idle', 'off', 'standby', 'on'),
+                  ('climate', 'turn_off'): ('off',), ('cover', 'open_cover'): ('open', 'opening'),
+                  ('cover', 'close_cover'): ('closed', 'closing'), ('input_boolean', 'turn_on'): ('on',),
+                  ('input_boolean', 'turn_off'): ('off',), ('vacuum', 'start'): ('cleaning',),
+                  ('vacuum', 'pause'): ('paused', 'idle'), ('vacuum', 'stop'): ('idle', 'paused', 'docked'),
+                  ('vacuum', 'return_to_base'): ('returning', 'docked'),
+                  ('alarm_control_panel', 'alarm_arm_away'): ('armed_away', 'arming'),
+                  ('alarm_control_panel', 'alarm_arm_home'): ('armed_home', 'arming'),
+                  ('alarm_control_panel', 'alarm_arm_night'): ('armed_night', 'arming'),
+                  ('alarm_control_panel', 'alarm_disarm'): ('disarmed',)}
+# Slow devices (a TV waking over the network, a vacuum leaving the dock) get a longer read-back window.
+READBACK_SECONDS = {'media_player': 20, 'vacuum': 15, 'cover': 15, 'alarm_control_panel': 15, 'climate': 10}
+
+
+def generic_expect(domain, service, data):
+    if (domain, service) == ('climate', 'set_hvac_mode') and type(data.get('hvac_mode')) is str:
+        return (data['hvac_mode'],)
+    return GENERIC_EXPECT.get((domain, service))
 ENTITY_ANY = re.compile(r'[a-z_]{1,32}\.[a-z0-9_]{1,96}')
 SERVICE = re.compile(r'[a-z_]{1,48}')
 
@@ -294,20 +316,21 @@ def service_call(args, policy, ha, ledger, clock, sleep, base):
             sent = 'accepted'
         except Exception:
             sent = 'uncertain'
-        expect = GENERIC_EXPECT.get((domain, service))
-        deadline = clock() + (policy['limits']['readback_seconds'] if expect else 2)
+        expect = generic_expect(domain, service, data)
+        window = max(policy['limits']['readback_seconds'], READBACK_SECONDS.get(domain, 0))
+        deadline = clock() + (window if expect else 2)
         observed = before
         while True:
             try:
                 observed = ha.state(entity)
             except Exception:
                 observed = {'state': 'unknown', 'last_changed': None}
-            done = observed['state'] == expect if expect else clock() >= deadline
+            done = observed['state'] in expect if expect else clock() >= deadline
             if done or clock() >= deadline:
                 break
             sleep(0.5)
         if expect:
-            outcome = 'confirmed' if observed['state'] == expect else ('uncertain' if sent == 'uncertain' else 'unconfirmed')
+            outcome = 'confirmed' if observed['state'] in expect else ('uncertain' if sent == 'uncertain' else 'unconfirmed')
         else:
             outcome = 'accepted' if sent == 'accepted' else 'uncertain'
         entry['outcome'], entry['observed'], entry['service_call'] = outcome, observed['state'], sent

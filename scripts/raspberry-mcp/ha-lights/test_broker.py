@@ -209,8 +209,10 @@ class HouseHA(FakeHA):
 
     def call(self, domain, service, entity, data=None):
         self.calls.append((domain, service, entity, data))
-        if self.follow and domain in ('light', 'switch', 'fan'):
+        if self.follow and domain in ('light', 'switch', 'fan', 'media_player'):
             self.states[entity] = 'on' if service == 'turn_on' else 'off'
+        if self.follow and domain == 'climate' and service == 'set_hvac_mode':
+            self.states[entity] = data['hvac_mode']
 
 
 def hreq(domain, service, entity, data=None, **extra):
@@ -238,6 +240,27 @@ class HouseTests(unittest.TestCase):
         self.assertEqual(self.ha.calls[0], ('media_player', 'volume_set', 'media_player.example_living_room_tv', {'volume_level': 0.2}))
         self.clock.t += 2
         self.assertEqual(self.run_req(hreq('light', 'turn_on', 'light.sala'))['state'], 'confirmed')
+
+    def test_tv_power_is_confirmed_by_readback_and_a_silent_tv_is_unconfirmed(self):
+        tv = 'media_player.example_living_room_tv'
+        self.ha.states[tv] = 'off'
+        on = self.run_req(hreq('media_player', 'turn_on', tv))
+        self.assertEqual((on['state'], on['observed_state']), ('confirmed', 'on'))
+        self.clock.t += 2
+        off = self.run_req(hreq('media_player', 'turn_off', tv))
+        self.assertEqual((off['state'], off['observed_state']), ('confirmed', 'off'))
+        self.ha.follow = False
+        self.clock.t += 2
+        started = self.clock.t
+        silent = self.run_req(hreq('media_player', 'turn_on', tv))
+        self.assertEqual((silent['state'], silent['observed_state']), ('unconfirmed', 'off'))
+        self.assertGreaterEqual(self.clock.t - started, 20, 'a TV waking over the network gets 20 s')
+        self.assertEqual(len(self.ha.calls), 3, 'never resent')
+
+    def test_climate_mode_is_confirmed_against_the_requested_mode(self):
+        self.ha.states['climate.escritorio'] = 'off'
+        r = self.run_req(hreq('climate', 'set_hvac_mode', 'climate.escritorio', {'hvac_mode': 'cool'}))
+        self.assertEqual((r['state'], r['observed_state']), ('confirmed', 'cool'))
 
     def test_denied_entities_unknown_services_domains_and_data_refused(self):
         for req in (hreq('switch', 'turn_on', 'switch.rele_acionador_portao'), hreq('script', 'turn_on', 'script.raspberry_desligar'),
