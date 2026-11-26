@@ -143,6 +143,14 @@ Nada precisa ser refixado: `sudo systemctl restart raspberry-nodered-runtime-met
 repetir a leitura. Foi o que resolveu em 20/11/2026, e o `nodered_admin_read` voltou a responder.
 Depois de qualquer refixar do leitor, reinicie-o uma vez mais, tarde o bastante para a diferença não importar.
 
+A diferença cresce com o tempo. O relógio do Pi adianta cerca de 43 s por dia, e o DietPi
+(`CONFIG_NTP_MODE=2`) só sincroniza uma vez por dia, voltando a hora de uma vez. Cada salto desloca o
+`btime` para trás na mesma medida. Em 25/11/2026 o leitor foi refixado às 11:36:38 UTC (Docker
+atualizado pelo DietPi), reiniciado 3 s depois e a leitura funcionou. O salto de 26/11 às 01:24
+(−43 s) bastou para a guarda passar a recusar; a idade do `input_boolean.nodered_runtime_incident`
+não tem relação com isso (ele só muda quando há incidente). Corrigido em 26/11 às 22:00 UTC com um
+reinício do leitor. Um reinício feito minutos depois do refixar resiste a anos de saltos diários.
+
 O endereço fica estável com uma sobreposição privada da composição,
 `docker-compose.override.yml`, fora do Git: ela define a sub-rede da rede
 padrão, um intervalo separado para endereços dinâmicos e o endereço fixo do
@@ -236,6 +244,17 @@ confirma a falta de vínculo da revisão no registro consultado. Uma criação
 candidata sem vínculo comprovado ou uma falha de leitura permanece `unknown`.
 O lookup não inicia, retoma ou envia turnos. Threads sem vínculo ou fora do
 registro não podem ser descartadas, e a consulta não autoriza um novo envio.
+
+O campo `new_task_authorized` é sempre `false`: ele diz que a busca em si não
+concede nada, e não que criar seja proibido. Depois de um `absent`, quem decide
+a criação é `events_status.client_execution_policy`. Com `continuation_ready`
+verdadeiro e o fluxo `natural_actionable_ha_notification` na política, o cliente
+pode chamar `codex_task_create` com o `task_key` derivado da receita
+`identity_recipe` (prefixo `eva-workspace-` mais os 32 primeiros caracteres do
+`object_id`). As confirmações na interface e os limites do backend continuam
+valendo. Um aviso de dispositivo que não responde (bateria, energia ou sinal
+Zigbee, como o abajur em 26/11/2026) não tem correção em código: o reparo é
+físico e fica com o proprietário, e uma tarefa nova não o resolve.
 
 `codex_task_status` retorna `task_not_found` somente após consultar o registro
 retido. Uma thread observada como `notLoaded` mantém esse estado. Recusas

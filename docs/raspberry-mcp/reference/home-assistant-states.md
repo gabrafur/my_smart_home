@@ -11,6 +11,13 @@ valor), `age_seconds`, `available` (falso para `unavailable`, `unknown` ou
 entidade ausente) e `collection_error`. Sem `entity_id` lista todas; com um
 `entity_id` registrado lê só ela.
 
+A idade de um `input_boolean` mede desde a última mudança, não a última
+medição. `input_boolean.nodered_runtime_incident` só muda quando o Node-RED
+cai ou volta (automação do `nodered/status` no MQTT). Por isso `off` com
+dias de idade significa "nenhum incidente desde então", e não um dado velho.
+A prova de que os fluxos estão rodando agora é `nodered_admin_read` com
+`view=runtime` e `collection_error` nulo.
+
 ## O que pode ser lido
 
 A política do root (`/usr/local/lib/raspberry-ha-states/policy.json`, fonte em
