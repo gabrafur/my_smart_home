@@ -367,6 +367,17 @@ Os geradores que ainda montam uma representação intermediária legada aplicam
 qualquer `public_bindings.call` com ação `notify*` fora dos hubs móvel/Alexa e
 qualquer `persistent_notification.*` fora do hub persistente.
 
+As abas de internet, Zigbee e Tuya só se regeneram pela cadeia canônica
+`npm --prefix nodered run flows:update-infrastructure`. Os instaladores de cada
+aba recusam rodar sozinhos: até 27/11/2026, rodar só o da Tuya apagava cerca de
+180 nós de produção (rotas e fios dos hubs criados por passos posteriores).
+A cadeia usa `routeLikeApproved()`: mantém cada par "Encurtar/Continuar" já
+aprovado cuja ligação direta continua existindo, não cria par para ligação que
+a produção já desenha direta e só roteia ligações novas. `reconcileGeneratedFlows()`
+também ignora diferenças apenas de ordem de chaves (regras, estilos). Com o
+gerador inalterado, o resultado é byte a byte igual ao `flows.json`, e
+`test-infrastructure-monitoring-flows.mjs` exige isso.
+
 As notificações nativas do Home Assistant não pertencem a esta migração. Em
 particular, o watchdog de indisponibilidade do próprio Node-RED deve permanecer
 independente em `homeassistant/packages/nodered_flow_health.yaml`; movê-lo para

@@ -108,6 +108,13 @@ const fixtureSecond = reconcileGeneratedFlows(fixtureResult, desiredFixture, {
 assert.equal(fixtureSecond.filter((node) => node.id === "managed-new").length, 1);
 assert.equal(JSON.stringify(fixtureSecond), JSON.stringify(fixtureResult));
 
+// Same value with another key order keeps the persisted bytes.
+const ordered = [{ id: "keyed", type: "change", z: "tab-managed", rules: [{ p: "a", pt: "msg", t: "set", to: "1", tot: "str" }], x: 1, y: 1, wires: [[]] }];
+const reordered = [{ id: "keyed", type: "change", z: "tab-managed", rules: [{ t: "set", p: "a", pt: "msg", to: "1", tot: "str" }], x: 9, y: 9, wires: [[]] }];
+assert.equal(JSON.stringify(reconcileGeneratedFlows(ordered, reordered, { isOwned: () => true })), JSON.stringify(ordered));
+const changedRule = structuredClone(reordered); changedRule[0].rules[0].to = "2";
+assert.equal(reconcileGeneratedFlows(ordered, changedRule, { isOwned: () => true })[0].rules[0].to, "2");
+
 // Cada gerador deve estabilizar após a primeira execução sem ordem/geometria artificial.
 for (const [name, script] of [
   ["resident", "install-resident-notifications-flow.mjs"],

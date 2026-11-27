@@ -43,6 +43,12 @@ if (process.argv[4] === "--refresh-remote-report") {
   process.exit(0);
 }
 if (process.argv[4] !== undefined) throw Error("Unknown generation mode");
+// Running this step alone undoes visual routes and hub wiring added by the
+// later steps of the canonical chain (27/11/2026: -182 production nodes for
+// Tuya). install-infrastructure-monitoring-flows.mjs runs it with this flag.
+if (process.env.NODE_RED_INFRASTRUCTURE_CANONICAL !== "1") {
+  throw new Error("Use npm run flows:update-infrastructure: este passo isolado desfaz nós de produção.");
+}
 
 const observerPrefix = `global_observer_coverage__${TAB}__`;
 const observerNode = (node) => String(node.id).startsWith(observerPrefix);

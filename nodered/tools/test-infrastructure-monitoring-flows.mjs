@@ -76,6 +76,14 @@ const semanticProjection = (file) => restoreGeneratedWireRoutes(JSON.parse(fs.re
   .sort((left, right) => left.id.localeCompare(right.id));
 assert.deepEqual(semanticProjection(temporary), semanticProjection(flowPath), "gerador canônico alterou o comportamento do fluxo persistido");
 assert.equal(digest(temporary), digest(repeated), "gerador canônico de infraestrutura não converge em uma execução");
+// Rerunning the unchanged canonical chain must reproduce production byte for
+// byte: approved visual bridges stay and key order is not rewritten.
+assert.equal(digest(temporary), digest(flowPath), "gerador canônico de infraestrutura desfaz o flows.json em produção");
+for (const step of ["install-tuya-monitor-flow.mjs", "install-zigbee-monitor-flow.mjs", "install-internet-monitor-flow.mjs"]) {
+  const alone = spawnSync(process.execPath, [path.join(here, step), flowPath, repeated], { encoding: "utf8", env: { ...process.env, NODE_RED_INFRASTRUCTURE_CANONICAL: "" } });
+  assert.notEqual(alone.status, 0, `${step} isolado deve recusar`);
+  assert.match(alone.stderr, /flows:update-infrastructure/);
+}
 fs.unlinkSync(temporary);
 fs.unlinkSync(repeated);
 

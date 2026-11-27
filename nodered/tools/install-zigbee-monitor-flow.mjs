@@ -10,6 +10,12 @@ import { installNotificationHubs } from "./install-notification-hubs.mjs";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
 const outputPath = path.resolve(process.argv[3] ?? sourcePath);
+// Running this step alone undoes visual routes and hub wiring added by the
+// later steps of the canonical chain (27/11/2026: -182 production nodes for
+// Tuya). install-infrastructure-monitoring-flows.mjs runs it with this flag.
+if (process.env.NODE_RED_INFRASTRUCTURE_CANONICAL !== "1") {
+  throw new Error("Use npm run flows:update-infrastructure: este passo isolado desfaz nós de produção.");
+}
 const functionsDir = path.join(here, "functions");
 const TAB = "monitoramento_zigbee_tab";
 const MQTT = "721c47f31046b8bc";

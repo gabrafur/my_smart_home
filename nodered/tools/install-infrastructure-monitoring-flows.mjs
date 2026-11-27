@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { refreshNotificationWireRoutes } from "./install-notification-hubs.mjs";
+import { routeLikeApproved } from "./install-notification-hubs.mjs";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -30,10 +30,12 @@ for (const script of [
 ]) {
   execFileSync(process.execPath, [path.join(here, script), outputPath, outputPath], {
     stdio: "inherit",
-    env: { ...process.env, NODE_RED_NOTIFICATION_ROUTE_WIRES: "0" },
+    env: { ...process.env, NODE_RED_NOTIFICATION_ROUTE_WIRES: "0", NODE_RED_INFRASTRUCTURE_CANONICAL: "1" },
   });
 }
-const routedFlows = refreshNotificationWireRoutes(JSON.parse(fs.readFileSync(outputPath, "utf8")));
+// Keep the approved visual bridges and route only edges that are new; the
+// narrower notification-tab routing used before dropped 14 production bridges.
+const routedFlows = routeLikeApproved(originalFlows, JSON.parse(fs.readFileSync(outputPath, "utf8")));
 // Updating infrastructure must not reset the user's lighting, notification hubs
 // or manual routes in other canvases as a side effect of shared generators.
 const tabs = new Set(["monitoramento_internet_tab", "monitoramento_zigbee_tab", "monitoramento_tuya_tab"]);

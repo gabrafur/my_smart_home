@@ -680,6 +680,7 @@ function routeLongNotificationTabWires(flows, options = {}) {
         // A ligação para um link out já encerra a trilha visual local. Ela não
         // deve ganhar outro par de links, mesmo quando o grupo for reposicionado.
         if (source.type === "link in" || (target.type === "link out" && !options.includeLinkTargets)) continue;
+        if (options.skip?.(source, output, target)) continue;
         const distance = Math.hypot(target.x - source.x, target.y - source.y);
         if (distance <= 500 && target.x >= source.x - 30) continue;
         routes.push({ source, target, output, index });
@@ -738,6 +739,70 @@ function routeLongNotificationTabWires(flows, options = {}) {
 
 export function refreshNotificationWireRoutes(inputFlows) {
   return routeLongNotificationTabWires(restoreGeneratedWireRoutes(inputFlows));
+}
+
+const ROUTE_ID = /^notification_hub_wire_out_([a-f0-9]{12})$/;
+
+// Route a generator's output the way the approved flow is already routed, so
+// rerunning an unchanged generator reproduces flows.json byte for byte:
+// - every bridge pair of the approved flow whose direct edge still exists is
+//   kept as is (even if its wire got shorter after a manual move);
+// - an edge that the approved flow already drew directly stays direct;
+// - only edges that are new to the approved flow are routed, measured on the
+//   approved geometry of the nodes that already existed.
+export function routeLikeApproved(approvedFlows, desiredFlows) {
+  const approved = structuredClone(approvedFlows);
+  const approvedById = new Map(approved.map((node) => [node.id, node]));
+  const bridges = new Map();
+  for (const out of approved) {
+    const match = ROUTE_ID.exec(out.id);
+    const input = match && approvedById.get(`notification_hub_wire_in_${match[1]}`);
+    const target = input?.wires?.[0]?.[0];
+    if (out.type !== "link out" || input?.type !== "link in" || !target) continue;
+    for (const source of approved) {
+      (source.wires ?? []).forEach((targets, output) => {
+        if (targets.includes(out.id)) bridges.set(`${source.id}:${output}:${target}`, { out, input });
+      });
+    }
+  }
+  const direct = new Set();
+  for (const source of restoreGeneratedWireRoutes(structuredClone(approvedFlows))) {
+    (source.wires ?? []).forEach((targets, output) => {
+      for (const target of targets) direct.add(`${source.id}:${output}:${target}`);
+    });
+  }
+  const flows = restoreGeneratedWireRoutes(structuredClone(desiredFlows));
+  for (const node of flows) {
+    const existing = approvedById.get(node.id);
+    if (!existing) continue;
+    for (const field of ["x", "y", "w", "h"]) {
+      if (Object.hasOwn(existing, field)) node[field] = existing[field];
+    }
+  }
+  const byId = new Map(flows.map((node) => [node.id, node]));
+  for (const source of [...flows]) {
+    (source.wires ?? []).forEach((targets, output) => {
+      targets.forEach((target, index) => {
+        const bridge = bridges.get(`${source.id}:${output}:${target}`);
+        if (!bridge || byId.has(bridge.out.id) || byId.get(target)?.z !== source.z) return;
+        const out = structuredClone(bridge.out);
+        const input = structuredClone(bridge.input);
+        targets[index] = out.id;
+        flows.push(out, input);
+        byId.set(out.id, out);
+        byId.set(input.id, input);
+        for (const node of [out, input]) {
+          const owner = node.g ? byId.get(node.g) : null;
+          if (owner?.type === "group" && Array.isArray(owner.nodes) && !owner.nodes.includes(node.id)) owner.nodes.push(node.id);
+        }
+      });
+    });
+  }
+  return routeLongNotificationTabWires(flows, {
+    tabs: flows.filter((node) => node.type === "tab").map((node) => node.id),
+    includeLinkTargets: true,
+    skip: (source, output, target) => direct.has(`${source.id}:${output}:${target.id}`),
+  });
 }
 
 // Add named visual bridges without moving the approved nodes or changing the

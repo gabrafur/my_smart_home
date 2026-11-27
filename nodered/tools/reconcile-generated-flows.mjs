@@ -19,10 +19,26 @@ function stableMembership(current = [], desired = [], isOwnedId = () => true) {
   ];
 }
 
+// Same value regardless of object key order. Generators often build rules and
+// styles with a different key order than the editor saved; rewriting them
+// would churn flows.json without any behavioural change.
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
+  }
+  return value;
+}
+
+const sameValue = (left, right) => JSON.stringify(canonical(left)) === JSON.stringify(canonical(right));
+
 function mergeNode(current, desired, { preserveLayout, isOwnedId }) {
   const merged = structuredClone(current);
   for (const [property, value] of Object.entries(desired)) {
     if (preserveLayout && LAYOUT_FIELDS.has(property)) {
+      continue;
+    }
+    if (Object.hasOwn(current, property) && sameValue(current[property], value)) {
       continue;
     }
     if (property === "nodes" && Array.isArray(current.nodes) && Array.isArray(value)) {
