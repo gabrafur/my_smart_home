@@ -65,3 +65,21 @@ test('private delivery resumes exact pending identity and cleans only after matc
  invoke(deliveryBody,{_eva_private_test_ack:{operation:'dismiss',previous_revision:'a'.repeat(64),revision:'c'.repeat(64)}},resumed);
  assert.equal(resumed.eva_private_delivery_test_v1.phase,'complete');assert.equal(Object.keys(resumed).length,2);
 });
+
+const exportBody=fs.readFileSync(new URL('functions/eva-private-notice-export.js',import.meta.url),'utf8');
+test('exporter mirrors exactly the roles the root spool accepts',()=>{
+ const listed=src=>[...src.matchAll(/'([a-z][a-z0-9_-]+)'/g)].map(m=>m[1]);
+ const exporter=listed(exportBody.match(/const roles = new Set\(\[[^\]]*\]/)[0]);
+ const spool=listed(fs.readFileSync(new URL('../../scripts/raspberry-mcp/eva-notice-transport/consume.py',import.meta.url),'utf8').match(/^ROLES = \([^)]*\)/m)[0]);
+ assert.deepEqual(exporter,spool);
+});
+test('a host incident outside the private mirror is skipped without an error or file access',()=>{
+ for(const operation of ['create','dismiss']){
+  const statuses=[];
+  const fsTrap=new Proxy({},{get(){throw Error('file access');}});
+  const out=vm.runInNewContext('(function(){'+exportBody+'})()',{msg:{payload:{incident_key:'native_docker_appdaemon',notification_audience:'eva_private',persistent_notification_operation:operation}},fs:fsTrap,crypto:fsTrap,node:{status:s=>statuses.push(s)},Buffer});
+  assert.deepEqual(JSON.parse(JSON.stringify(out._eva_private_result)),{dispatched:false,state:'not_mirrored'});
+  assert.equal(statuses.length,1);
+ }
+ assert.throws(()=>vm.runInNewContext('(function(){'+exportBody+'})()',{msg:{payload:{incident_key:'native_docker_appdaemon',notification_audience:'other',persistent_notification_operation:'create'}},node:{status(){}}}),/eva_export_contract/);
+});

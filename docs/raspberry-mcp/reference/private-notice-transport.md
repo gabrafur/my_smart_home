@@ -66,6 +66,16 @@ somente recibos, ledger e fila privada. Diretórios e arquivos têm dono/grupo
 fixos; links e permissões abertas são recusados. O contêiner usa o volume `/data`
 existente: instalar o transporte não requer alteração da rede nem recriação.
 
+O portão de audiência do observador do host manda para a Eva qualquer incidente
+`native_*`, `resource_*` ou `observation_*`, mas só esses cinco papéis têm arquivo
+na outbox. Um papel fora da lista (por exemplo `native_docker_appdaemon`, quando o
+backup externo para o AppDaemon) termina no exportador com
+`_eva_private_result.state = not_mirrored` e status cinza, sem erro. Até 27/11/2026
+ele lançava `eva_export_contract`, e o monitor global avisava o dono no celular. O
+incidente continua em `host_observation` e no registry, cujo escalonamento de 24 h
+ainda chega ao dono. `test-eva-private-notice.mjs` confere que o exportador e o
+consumidor root têm a mesma lista.
+
 O consumidor grava intent antes do efeito. Se interrompido, aceita como já
 aplicado somente o conteúdo exato desse intent; divergência de bytes exige
 investigação. O ack só aparece depois de verificar o arquivo no spool. O ack

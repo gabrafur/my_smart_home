@@ -188,7 +188,7 @@ def effect_inventory(before, after, diff):
 # Exactly reviewed Node-RED builtins; no npm resolution, alias or caller module.
 # Function bytes are pinned as well as identity, so a later func-only patch cannot
 # reuse a filesystem capability for a different program.
-EVA_PRIVATE_BUILTINS = {'global_observer_eva_private_export': {'func_sha256': '4d3d7a759db707d8a79342e222cb6308ce00315fd6d9cbc9100ed88c66f65289', 'libs': [{'var': 'fs', 'module': 'fs'}, {'var': 'crypto', 'module': 'crypto'}], 'outputs': 0}, 'global_observer_eva_private_status': {'func_sha256': 'aca1791556f118de16ed12b7ebec380e0f2db041491d0de40712f021dcb9401d', 'libs': [{'var': 'fs', 'module': 'fs'}], 'outputs': 2}}
+EVA_PRIVATE_BUILTINS = {'global_observer_eva_private_export': {'func_sha256': '09304a22a27b238311ff4275b8d87082fc07ca4360f0af30ce52da02c327bc8a', 'libs': [{'var': 'fs', 'module': 'fs'}, {'var': 'crypto', 'module': 'crypto'}], 'outputs': 0}, 'global_observer_eva_private_status': {'func_sha256': 'aca1791556f118de16ed12b7ebec380e0f2db041491d0de40712f021dcb9401d', 'libs': [{'var': 'fs', 'module': 'fs'}], 'outputs': 2}}
 
 
 def admitted_private_builtins(node):

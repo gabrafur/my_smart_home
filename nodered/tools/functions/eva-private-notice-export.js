@@ -7,8 +7,17 @@ if ((msg._global_observer_test === true || p.test_mode === true)&&!deliveryTest)
     msg._eva_private_result = {simulated:true,dispatched:false};
     return msg;
 }
-if (p.notification_audience !== 'eva_private' || !roles.has(p.incident_key) ||
+if (p.notification_audience !== 'eva_private' ||
     !['create','dismiss'].includes(p.persistent_notification_operation)) throw Error('eva_export_contract');
+// The audience gate admits every native/resource/observation key; the root spool has
+// only these files. Another host incident (AppDaemon stopped by the offsite backup,
+// 27/11/2026) used to throw here and page the owner. It stays in host_observation and
+// in the registry, whose 24 h escalation still reaches the owner.
+if (!roles.has(p.incident_key)) {
+    node.status({fill:'grey',shape:'ring',text:'fora do espelho da Eva: '+String(p.incident_key).slice(0,60)});
+    msg._eva_private_result = {dispatched:false,state:'not_mirrored'};
+    return msg;
+}
 const dir='/data/.eva-notice-outbox';
 const receiptDir='/data/.eva-notice-receipts';
 const role=p.incident_key;
