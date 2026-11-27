@@ -150,6 +150,10 @@ atualizado pelo DietPi), reiniciado 3 s depois e a leitura funcionou. O salto de
 (−43 s) bastou para a guarda passar a recusar; a idade do `input_boolean.nodered_runtime_incident`
 não tem relação com isso (ele só muda quando há incidente). Corrigido em 26/11 às 22:00 UTC com um
 reinício do leitor. Um reinício feito minutos depois do refixar resiste a anos de saltos diários.
+Desde 27/11/2026 às 01:46 UTC o DietPi usa `CONFIG_NTP_MODE=4`: o `systemd-timesyncd` fica
+ativo e corrige o relógio aos poucos, sem o salto diário de dezenas de segundos. A troca foi
+feita com `dietpi-set_software ntpd-mode 4` por operador root aprovado pelo dono, e o reverso é
+o mesmo comando com `2`.
 
 O endereço fica estável com uma sobreposição privada da composição,
 `docker-compose.override.yml`, fora do Git: ela define a sub-rede da rede

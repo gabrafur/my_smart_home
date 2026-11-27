@@ -50,8 +50,21 @@ class RecoveryUnavailable(RuntimeError):
     """A bounded recovery was inconclusive or refused."""
 
 
-async def refresh_account_with_recovery(hass, entry, lock):
-    """One authorized recovery and reload; concurrent callers share its result."""
+async def refresh_account_with_recovery(hass, entry, lock, *, loaded=lambda: True):
+    """One authorized recovery and reload; concurrent callers share its result.
+
+    Callers for the same entry run one at a time. Node-RED refreshes both
+    residents at once; without this, the second call could reach the entry
+    while the first one reloads it and fail as "provider unavailable" (27/11/2026),
+    or use the old client concurrently with the renewal.
+    """
+    async with lock:
+        if not loaded():
+            raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
+        return await _refresh_locked(hass, entry)
+
+
+async def _refresh_locked(hass, entry):
     account = entry.runtime_data
     requires_otp = getattr(account, 'location_session_requires_otp', None)
     if callable(requires_otp) and requires_otp():
@@ -70,30 +83,27 @@ async def refresh_account_with_recovery(hass, entry, lock):
         rejected = True
     if not rejected and api is not None:
         return False
-    async with lock:
-        current = entry.runtime_data
-        if current is account:
-            recover = getattr(account, 'recover_location_session', None)
-            if not callable(recover):
-                return False
-            result = await hass.async_add_executor_job(recover)
-            if result == 'otp_required':
-                raise OTPRequired('ICLOUD_OTP_REQUIRED')
-            if result != 'session_ready':
-                raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
-            if not await hass.config_entries.async_reload(entry.entry_id):
-                raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
-            current = entry.runtime_data
-        # Prove service access after renewal, not merely token acceptance.
-        api = getattr(current, 'api', None)
-        requires_otp = getattr(current, 'location_session_requires_otp', None)
-        if callable(requires_otp) and requires_otp():
-            raise OTPRequired('ICLOUD_OTP_REQUIRED')
-        if api is not None and (getattr(api, 'native_requires_2fa', False)
-                                or getattr(api, 'native_requires_2sa', False)):
-            raise OTPRequired('ICLOUD_OTP_REQUIRED')
-        if not getattr(current, '_manual_platforms_loaded', False):
-            raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
-        if not await hass.async_add_executor_job(refresh_devices, api):
-            raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
-        return True
+    recover = getattr(account, 'recover_location_session', None)
+    if not callable(recover):
+        return False
+    result = await hass.async_add_executor_job(recover)
+    if result == 'otp_required':
+        raise OTPRequired('ICLOUD_OTP_REQUIRED')
+    if result != 'session_ready':
+        raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
+    if not await hass.config_entries.async_reload(entry.entry_id):
+        raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
+    current = entry.runtime_data
+    # Prove service access after renewal, not merely token acceptance.
+    api = getattr(current, 'api', None)
+    requires_otp = getattr(current, 'location_session_requires_otp', None)
+    if callable(requires_otp) and requires_otp():
+        raise OTPRequired('ICLOUD_OTP_REQUIRED')
+    if api is not None and (getattr(api, 'native_requires_2fa', False)
+                            or getattr(api, 'native_requires_2sa', False)):
+        raise OTPRequired('ICLOUD_OTP_REQUIRED')
+    if not getattr(current, '_manual_platforms_loaded', False):
+        raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
+    if not await hass.async_add_executor_job(refresh_devices, api):
+        raise RecoveryUnavailable('ICLOUD_SESSION_RECOVERY_UNAVAILABLE')
+    return True

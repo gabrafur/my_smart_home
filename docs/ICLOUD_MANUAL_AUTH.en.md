@@ -170,3 +170,17 @@ attempt only when no persisted attempt marker exists.
 `test_icloud_cached_transport.py` covers these boundaries and deterministic
 interleavings. Its public provider model supplements the isolated native-library
 check. A loaded-code proof establishes the version, not Apple recovery.
+
+## Recovery requested by the location refresh
+
+Both iCloud effects on the `localizacao_pessoas` canvas send
+`data.recover_session=true`. Calls for the same entry run one at a time under a
+per-entry lock, and a later call reuses the client that the first recovery
+loaded. A recovering call looks the entry up in any state and uses it only after
+it holds the lock and finds the entry loaded. Before this, Node-RED refreshed
+both residents at once, and on 27/11/2026 the second call reached the entry while
+the first one was reloading it. It answered
+`iCloud location refresh provider is unavailable` and opened a flow-failure
+notice even though the renewal had worked. An entry still unloaded after the wait
+now reports `ICLOUD_SESSION_RECOVERY_UNAVAILABLE`.
+

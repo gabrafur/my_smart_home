@@ -87,3 +87,44 @@ class RecoveryTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(sut.OTPRequired):
             await sut.refresh_account_with_recovery(*case)
         self.assertEqual(self.calls,['refresh'])
+
+    async def test_caller_arriving_during_reload_waits_for_the_reloaded_entry(self):
+        # 27/11/2026: the second resident's call reached the entry while the
+        # first call reloaded it and failed as "provider unavailable".
+        hass,entry,lock=self.setup_case()
+        reloading=asyncio.Event();release=asyncio.Event()
+        state={'loaded':True}
+        original=hass.config_entries.async_reload
+        async def slow_reload(entry_id):
+            state['loaded']=False;reloading.set();await release.wait()
+            result=await original(entry_id);state['loaded']=True;return result
+        hass.config_entries.async_reload=slow_reload
+        loaded=lambda:state['loaded']
+        first=asyncio.create_task(sut.refresh_account_with_recovery(hass,entry,lock,loaded=loaded))
+        await reloading.wait()
+        second=asyncio.create_task(sut.refresh_account_with_recovery(hass,entry,lock,loaded=loaded))
+        await asyncio.sleep(0.05)
+        self.assertFalse(second.done(),'the second call must wait for the reload')
+        release.set()
+        self.assertEqual(await asyncio.gather(first,second),[True,True])
+        self.assertEqual(self.calls,['refresh','recover','reload','refresh','refresh'])
+
+    async def test_refreshes_of_one_account_never_overlap(self):
+        hass,entry,lock=self.setup_case()
+        entry.runtime_data.api.error=None
+        active={'now':0,'max':0}
+        def refresh(api):
+            active['now']+=1;active['max']=max(active['max'],active['now'])
+            import time;time.sleep(0.05);active['now']-=1;return True
+        original=sut.refresh_devices;sut.refresh_devices=refresh
+        try:
+            await asyncio.gather(*(sut.refresh_account_with_recovery(hass,entry,lock) for _ in range(3)))
+        finally:
+            sut.refresh_devices=original
+        self.assertEqual(active['max'],1)
+
+    async def test_entry_still_unloaded_after_waiting_is_a_stable_code(self):
+        case=self.setup_case()
+        with self.assertRaises(sut.RecoveryUnavailable):
+            await sut.refresh_account_with_recovery(*case,loaded=lambda:False)
+        self.assertEqual(self.calls,[])

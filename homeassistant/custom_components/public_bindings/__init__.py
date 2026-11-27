@@ -12,10 +12,12 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.const import (
+    CONF_USERNAME,
     EVENT_COMPONENT_LOADED,
     EVENT_HOMEASSISTANT_STARTED,
     EVENT_STATE_CHANGED,
 )
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
@@ -222,15 +224,23 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         """Make Find My fetch current data instead of republishing its cache."""
         if not isinstance(account_identifier, str) or not account_identifier:
             raise HomeAssistantError("iCloud location refresh account is unavailable")
-        for config_entry in hass.config_entries.async_loaded_entries("icloud"):
+        # A recovering call may find the entry mid-reload (another resident's
+        # recovery). Look at every entry and let the shared lock wait for it.
+        entries = (hass.config_entries.async_entries("icloud") if recover_session is True
+                   else hass.config_entries.async_loaded_entries("icloud"))
+        for config_entry in entries:
             account = getattr(config_entry, "runtime_data", None)
-            if getattr(account, "username", None) != account_identifier:
+            if (getattr(account, "username", None) != account_identifier
+                    and config_entry.data.get(CONF_USERNAME) != account_identifier):
                 continue
             api = getattr(account, "api", None)
             try:
                 if recover_session is True:
                     lock = icloud_recovery_locks.setdefault(config_entry.entry_id, asyncio.Lock())
-                    if await refresh_account_with_recovery(hass, config_entry, lock):
+                    if await refresh_account_with_recovery(
+                        hass, config_entry, lock,
+                        loaded=lambda entry=config_entry: entry.state is ConfigEntryState.LOADED,
+                    ):
                         return
                     break
                 if await hass.async_add_executor_job(refresh_devices, api):

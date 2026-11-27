@@ -249,8 +249,15 @@ Os dois efeitos iCloud do canvas `localizacao_pessoas` enviam
 fixada pelo binding privado; a chamada não recebe senha, token ou código.
 O Home Assistant só usa essa autorização após rejeição tipada de sessão ou
 quando o cliente da conta não existe. Falhas de transporte e erros desconhecidos
-não viram permissão de login. Chamadas concorrentes compartilham um lock por
-entrada e reutilizam o cliente que a primeira recuperação carregou.
+não viram permissão de login. As chamadas da mesma entrada rodam uma de cada
+vez sob um lock por entrada, e a seguinte reutiliza o cliente que a primeira
+recuperação carregou. A chamada com recuperação procura a entrada em qualquer
+estado e só a usa depois de obter o lock e encontrá-la carregada. Antes, o Node-RED
+pedia o refresh dos dois moradores ao mesmo tempo, e em 27/11/2026 a segunda
+chamada chegou enquanto a primeira recarregava a entrada. Ela respondeu
+`iCloud location refresh provider is unavailable` e abriu um aviso de falha
+de fluxo, embora a renovação tivesse funcionado. Se a entrada continuar
+descarregada depois da espera, o código é `ICLOUD_SESSION_RECOVERY_UNAVAILABLE`.
 
 A recuperação renova o token salvo por `accountLogin`, preservando cookies e
 confiança. Se o token expirou de fato, continua valendo o orçamento separado
