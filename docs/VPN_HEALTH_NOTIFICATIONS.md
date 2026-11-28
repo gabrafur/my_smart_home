@@ -14,8 +14,9 @@ retained <code>nodered&#47;infrastructure&#47;vpn&#47;host-health</code> um docu
 sanitizado.
 
 O relatório contém apenas papel lógico, tipo da VPN, estado booleano, motivo
-normalizado e horário. Endereços, nomes do host, peers e topologia da tailnet
-nunca entram no MQTT, nos flows, nos logs públicos ou no Git. O instalador
+normalizado e horário, mais a lista `key_expiry` descrita abaixo. Endereços,
+nomes de host, usuários, tags e topologia da tailnet nunca entram no MQTT, nos
+flows, nos logs públicos ou no Git. O instalador
 idempotente `scripts/install-vpn-health-monitor-cron.sh` mantém o bloco do
 `crontab` e usa `flock` para impedir sobreposição.
 
@@ -47,6 +48,39 @@ remove o alerta da queda; nenhum aviso de "recuperada" fica no Home Assistant. O
 `binary_sensor.vpn_primary_connection` e
 `sensor.vpn_primary_connection_state`.
 
+## Validade das chaves do Tailscale
+
+Cada aparelho da tailnet tem uma chave que vence (180 dias por padrão). Quando
+ela vence, o aparelho é deslogado em silêncio: o servidor continua no ar, mas o
+celular deixa de alcançá-lo e o app do Home Assistant parece fora do ar. Em
+27/11/2026 isso aconteceu com o iPhone do proprietário.
+
+O publicador inclui `key_expiry`: uma entrada por chave com vencimento, com
+apenas `scope` (`host` para o Raspberry Pi, `device` para os demais),
+`platform` (`ios`, `android`, `windows`, `macos`, `linux` ou `other`),
+`shared` (aparelho de outra conta com acesso compartilhado) e `expires_at`.
+Aparelhos sem vencimento (por exemplo, com "Disable key expiry") não aparecem.
+
+A rotina fica no tab `atualizacoes_diarias`, grupo **VPN: validade das chaves
+do Tailscale**, gerada por `nodered/tools/install-vpn-key-expiry-flow.mjs`
+(chamado pelo gerador do tab):
+
+- o `mqtt in` guarda só a lista sanitizada em contexto persistente;
+- a avaliação roda todo dia às 09:00 e 120 s depois de o Node-RED subir;
+- o parâmetro visual avisa a 14, 7, 3, 1 e 0 dias (`notify_days`) e ignora
+  relatório com mais de 48 h (`report_max_age_hours`); a saúde do relatório
+  continua com este tab `monitoramento_vpn`;
+- cada chave abre um aviso persistente e um push nos dois celulares uma vez por
+  faixa, pelo monitor global;
+- chave renovada, com vencimento desativado ou fora da janela remove o aviso
+  persistente, sem push;
+- o texto diz qual aparelho (Raspberry Pi, plataforma ou compartilhado), a
+  data, a consequência e como evitar (`login.tailscale.com` → Machines →
+  Disable key expiry, ou entrar de novo no app).
+
+Os botões `TESTE 1` a `TESTE 3` e o `RESET` usam contexto próprio e terminam no
+dry-run do tab. Regressão: `node nodered/tools/test-vpn-key-expiry-flow.mjs`.
+
 ## Monitor existente de internet
 
 O tab `monitoramento_internet` permanece responsável pela conectividade geral.
@@ -74,7 +108,9 @@ Validação e implantação:
 
 ```bash
 node --test scripts/vpn-health-publisher.test.mjs
+node nodered/tools/test-vpn-key-expiry-flow.mjs
 npm --prefix nodered run flows:update-vpn-monitor
+npm --prefix nodered run flows:update-daily-host-updates
 npm --prefix nodered run flows:update-global-observer
 npm --prefix nodered run flows:test-vpn-monitor
 npm --prefix nodered run flows:validate-layout

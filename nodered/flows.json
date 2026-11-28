@@ -27618,7 +27618,8 @@
             "daily_update_offsite_request_test_out",
             "daily_update_offsite_result_test_out",
             "daily_update_coordinator_dry_out",
-            "daily_update_coordinator_alert_dry_out"
+            "daily_update_coordinator_alert_dry_out",
+            "daily_update_vpn_key_dry_out"
         ],
         "name": "Receber efeito TESTE",
         "type": "link in",
@@ -43492,6 +43493,7 @@
             "local_ai_rtx_alert_out",
             "zg_guard_alert_out",
             "daily_update_coordinator_alert_out",
+            "daily_update_vpn_key_alert_out",
             "people_visual_refresh_alert_out",
             "internet_remote_access_alert_out",
             "weekly_docs_review_alert_out",
@@ -106376,5 +106378,479 @@
         "x": 3145,
         "y": 130,
         "wires": []
+    },
+    {
+        "id": "daily_update_vpn_key_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "VPN: validade das chaves do Tailscale → aviso antes de deslogar",
+        "style": {
+            "label": true,
+            "stroke": "#1d4ed8",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.2"
+        },
+        "nodes": [
+            "daily_update_vpn_key_architecture",
+            "daily_update_vpn_key_report_in",
+            "daily_update_vpn_key_ingest",
+            "daily_update_vpn_key_daily",
+            "daily_update_vpn_key_startup",
+            "daily_update_vpn_key_policy",
+            "daily_update_vpn_key_evaluate",
+            "daily_update_vpn_key_gate",
+            "daily_update_vpn_key_dry_out",
+            "daily_update_vpn_key_alert_out",
+            "daily_update_vpn_key_test_in"
+        ],
+        "x": 64,
+        "y": 10442,
+        "w": 1560,
+        "h": 320
+    },
+    {
+        "id": "daily_update_vpn_key_tests_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "TESTES da validade das chaves — mesmo caminho até dry-run",
+        "style": {
+            "label": true,
+            "stroke": "#0891b2"
+        },
+        "nodes": [
+            "daily_update_vpn_key_test_expiring_out",
+            "daily_update_vpn_key_test_expiring",
+            "daily_update_vpn_key_test_expired_out",
+            "daily_update_vpn_key_test_expired",
+            "daily_update_vpn_key_test_renewed_out",
+            "daily_update_vpn_key_test_renewed",
+            "daily_update_vpn_key_test_reset",
+            "daily_update_vpn_key_test_reset_apply"
+        ],
+        "x": 64,
+        "y": 10822,
+        "w": 1560,
+        "h": 160
+    },
+    {
+        "id": "daily_update_vpn_key_architecture",
+        "type": "comment",
+        "name": "Chave vence em 180 dias e o aparelho é deslogado em silêncio. Avisa a 14, 7, 3, 1 e 0 dias; renovou → remove o aviso",
+        "info": "O publicador do host (scripts/vpn-health-publisher.mjs) envia por MQTT só escopo (host/aparelho), plataforma, compartilhado e data de vencimento — nunca nomes ou endereços. A avaliação roda todo dia às 09:00 e ao subir. Cada chave gera um aviso persistente e push uma vez por faixa; quando a chave é renovada ou deixa de vencer, o aviso persistente é removido sem push. Relatório velho não decide nada: a saúde do relatório é do monitoramento_vpn.",
+        "x": 760,
+        "y": 10482,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_report_in",
+        "type": "mqtt in",
+        "name": "FONTE: relatório sanitizado da VPN (host)",
+        "topic": "nodered/infrastructure/vpn/host-health",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 250,
+        "y": 10542,
+        "wires": [
+            [
+                "daily_update_vpn_key_ingest"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_ingest",
+        "type": "function",
+        "name": "Guardar só a validade das chaves",
+        "func": "// Keep only the sanitized key-expiry list from the host VPN report.\nlet payload = msg.payload;\nif (Buffer.isBuffer(payload)) payload = payload.toString(\"utf8\");\nif (typeof payload === \"string\") {\n    try {\n        payload = JSON.parse(payload);\n    } catch {\n        node.status({ fill: \"red\", shape: \"ring\", text: \"relatório inválido\" });\n        return null;\n    }\n}\nif (payload?.schema_version !== 1 || !Array.isArray(payload.key_expiry)) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"relatório sem validade de chaves\" });\n    return null;\n}\nconst PLATFORMS = [\"ios\", \"android\", \"windows\", \"macos\", \"linux\", \"other\"];\nconst entries = payload.key_expiry\n    .filter((entry) => [\"host\", \"device\"].includes(entry?.scope) && Number.isFinite(Date.parse(entry?.expires_at)))\n    .slice(0, 50)\n    .map((entry) => ({\n        scope: entry.scope,\n        platform: PLATFORMS.includes(entry.platform) ? entry.platform : \"other\",\n        shared: entry.shared === true,\n        expires_at: new Date(Date.parse(entry.expires_at)).toISOString()\n    }));\nflow.set(\"vpn_key_expiry_report_v1\", {\n    checked_at: String(payload.checked_at ?? \"\").slice(0, 40),\n    entries\n}, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: `${entries.length} chaves; próxima ${entries[0]?.expires_at.slice(0, 10) ?? \"—\"}` });\nreturn null;\n",
+        "outputs": 0,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 10542,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_daily",
+        "type": "inject",
+        "name": "Todo dia às 09:00",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 09 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 10622,
+        "wires": [
+            [
+                "daily_update_vpn_key_policy"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_startup",
+        "type": "inject",
+        "name": "Ao subir (após 120 s)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "120",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 10682,
+        "wires": [
+            [
+                "daily_update_vpn_key_policy"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_policy",
+        "type": "change",
+        "name": "PARÂMETRO: avisar a 14, 7, 3, 1 e 0 dias",
+        "rules": [
+            {
+                "t": "set",
+                "p": "vpn_key_policy",
+                "pt": "msg",
+                "to": "{\"notify_days\":[14,7,3,1,0],\"report_max_age_hours\":48}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 520,
+        "y": 10652,
+        "wires": [
+            [
+                "daily_update_vpn_key_evaluate"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_evaluate",
+        "type": "function",
+        "name": "Decidir aviso por chave e faixa",
+        "func": "// Daily decision: warn before a Tailscale key logs a device out; dismiss the\n// warning once the key was renewed or its expiry disabled.\nconst TEST = msg._ha_updates_test === true;\nconst read = (key) => TEST ? flow.get(key + \"__test\") : flow.get(key, \"persistent\");\nconst write = (key, value) => TEST ? flow.set(key + \"__test\", value) : flow.set(key, value, \"persistent\");\nconst DAY = 86400000;\n\nconst policy = msg.vpn_key_policy ?? {};\nconst days = Array.isArray(policy.notify_days)\n    ? [...new Set(policy.notify_days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 60))].sort((a, b) => a - b)\n    : [];\nconst maxAgeHours = Number.isInteger(policy.report_max_age_hours) && policy.report_max_age_hours >= 1 && policy.report_max_age_hours <= 168\n    ? policy.report_max_age_hours : null;\nif (!days.length || maxAgeHours === null) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"política inválida; nada decidido\" });\n    return null;\n}\n\nconst now = Number(msg.monitor_now ?? Date.now());\nconst report = TEST ? msg.vpn_key_report : read(\"vpn_key_expiry_report_v1\");\nconst checkedAt = Date.parse(report?.checked_at ?? \"\");\nif (!Array.isArray(report?.entries) || !Number.isFinite(checkedAt) || now - checkedAt > maxAgeHours * 3600000) {\n    // Stale telemetry belongs to monitoramento_vpn; never dismiss on missing data.\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"sem relatório recente; aguardando\" });\n    return null;\n}\n\nfunction incidentFor(entry) {\n    let hash = 2166136261;\n    for (const c of [entry.scope, entry.platform, entry.shared, entry.expires_at].join(\"|\")) {\n        hash = Math.imul(hash ^ c.charCodeAt(0), 16777619) >>> 0;\n    }\n    return \"vpn_key_expiry_\" + hash.toString(16).padStart(8, \"0\");\n}\nfunction dateText(ms) {\n    try {\n        return new Date(ms).toLocaleDateString(\"pt-BR\", { timeZone: \"America/Sao_Paulo\" });\n    } catch {\n        return new Date(ms).toISOString().slice(0, 10);\n    }\n}\nconst PLATFORM = {\n    ios: \"do iPhone/iPad\", android: \"do Android\", windows: \"do PC Windows\",\n    macos: \"do Mac\", linux: \"de um aparelho Linux\", other: \"de um aparelho\"\n};\nfunction describe(entry, expiresAt) {\n    const left = expiresAt - now;\n    const daysLeft = Math.floor(left / DAY);\n    const when = left <= 0 ? \"venceu em \" + dateText(expiresAt)\n        : daysLeft === 0 ? \"vence hoje (\" + dateText(expiresAt) + \")\"\n        : daysLeft === 1 ? \"vence amanhã (\" + dateText(expiresAt) + \")\"\n        : \"vence em \" + daysLeft + \" dias (\" + dateText(expiresAt) + \")\";\n    const who = entry.scope === \"host\" ? \"do Raspberry Pi (servidor da casa)\"\n        : entry.shared ? \"de um aparelho compartilhado de outra conta\"\n        : PLATFORM[entry.platform] ?? PLATFORM.other;\n    const effect = entry.scope === \"host\"\n        ? \"Quando vencer, todo o acesso remoto à casa para: app do Home Assistant fora de casa, Eva e Claude.\"\n        : \"Quando vencer, esse aparelho é deslogado da VPN e o app do Home Assistant deixa de conectar fora de casa.\";\n    const fix = entry.shared\n        ? \"O dono desse aparelho precisa entrar de novo no app do Tailscale ou desativar o vencimento na conta dele.\"\n        : \"Para evitar: login.tailscale.com → Machines → ⋯ → Disable key expiry, ou entre de novo no app do Tailscale.\";\n    return {\n        title: left <= 0 ? \"VPN: chave do Tailscale venceu\" : \"VPN: chave do Tailscale \" + when.replace(/ \\(.*\\)$/, \"\"),\n        message: \"A chave do Tailscale \" + who + \" \" + when + \". \" + effect + \" \" + fix,\n        expired: left <= 0\n    };\n}\n\nconst previous = read(\"vpn_key_expiry_notices_v1\") ?? {};\nconst state = {};\nconst out = [];\nconst base = (incident, reason) => ({\n    observer_kind: \"domain_alert\",\n    persistent_incident_kind: \"domain_alert\",\n    persistent_notification_operation: \"create\",\n    mobile_notification: true,\n    incident_key: incident,\n    test_mode: TEST,\n    reason,\n    source_observed_at: checkedAt,\n    source_time_kind: \"native\",\n    policy_decided_at: now\n});\n\nfor (const entry of report.entries) {\n    const expiresAt = Date.parse(entry.expires_at);\n    const daysLeft = Math.floor((expiresAt - now) / DAY);\n    const bucket = days.find((d) => Math.max(daysLeft, 0) <= d);\n    if (bucket === undefined) continue;\n    const incident = incidentFor(entry);\n    state[incident] = { bucket, expires_at: entry.expires_at };\n    if (previous[incident]?.bucket === bucket) continue;\n    const text = describe(entry, expiresAt);\n    out.push({\n        ...msg,\n        payload: base(incident, text.expired ? \"vpn_key_expired\" : \"vpn_key_expiring\"),\n        alert: { title: text.title, message: text.message }\n    });\n}\nfor (const incident of Object.keys(previous)) {\n    if (state[incident]) continue;\n    out.push({\n        ...msg,\n        payload: {\n            ...base(incident, \"vpn_key_renewed\"),\n            observer_kind: \"domain_recovery\",\n            persistent_notification_operation: \"dismiss\",\n            mobile_notification: false\n        },\n        alert: { title: \"VPN: chave do Tailscale renovada\", message: \"A chave que estava para vencer foi renovada ou deixou de vencer.\" }\n    });\n}\nwrite(\"vpn_key_expiry_notices_v1\", state);\nconst open = Object.keys(state).length;\nnode.status({\n    fill: open ? \"yellow\" : \"green\", shape: \"dot\",\n    text: (open ? open + \" chave(s) perto de vencer\" : \"nenhuma chave perto de vencer\") + (TEST ? \" (TESTE)\" : \"\")\n});\nreturn [out];\n",
+        "outputs": 1,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 10652,
+        "wires": [
+            [
+                "daily_update_vpn_key_gate"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_gate",
+        "type": "switch",
+        "name": "Aviso é TESTE?",
+        "property": "_ha_updates_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1120,
+        "y": 10652,
+        "wires": [
+            [
+                "daily_update_vpn_key_dry_out"
+            ],
+            [
+                "daily_update_vpn_key_alert_out"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_dry_out",
+        "type": "link out",
+        "name": "TESTE → dry-run compartilhado",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1380,
+        "y": 10612,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_alert_out",
+        "type": "link out",
+        "name": "Aviso → monitor global (HA + celulares)",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 1400,
+        "y": 10692,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_in",
+        "type": "link in",
+        "name": "Receber TESTE",
+        "links": [
+            "daily_update_vpn_key_test_expiring_out",
+            "daily_update_vpn_key_test_expired_out",
+            "daily_update_vpn_key_test_renewed_out"
+        ],
+        "x": 360,
+        "y": 10722,
+        "wires": [
+            [
+                "daily_update_vpn_key_policy"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_expiring_out",
+        "type": "link out",
+        "name": "→ política",
+        "mode": "link",
+        "links": [
+            "daily_update_vpn_key_test_in"
+        ],
+        "x": 280,
+        "y": 10942,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_tests_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_expiring",
+        "type": "inject",
+        "name": "TESTE 1: iPhone vence em 14 dias",
+        "props": [
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767268800000",
+                "vt": "num"
+            },
+            {
+                "p": "vpn_key_report",
+                "v": "{\"checked_at\":\"2026-01-01T12:00:00.000Z\",\"entries\":[{\"scope\":\"device\",\"platform\":\"ios\",\"shared\":false,\"expires_at\":\"2026-01-15T13:00:00.000Z\"}]}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 240,
+        "y": 10882,
+        "wires": [
+            [
+                "daily_update_vpn_key_test_expiring_out"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_tests_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_expired_out",
+        "type": "link out",
+        "name": "→ política",
+        "mode": "link",
+        "links": [
+            "daily_update_vpn_key_test_in"
+        ],
+        "x": 600,
+        "y": 10942,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_tests_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_expired",
+        "type": "inject",
+        "name": "TESTE 2: chave do Pi venceu",
+        "props": [
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767268800000",
+                "vt": "num"
+            },
+            {
+                "p": "vpn_key_report",
+                "v": "{\"checked_at\":\"2026-01-01T12:00:00.000Z\",\"entries\":[{\"scope\":\"host\",\"platform\":\"linux\",\"shared\":false,\"expires_at\":\"2026-01-01T11:00:00.000Z\"}]}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 560,
+        "y": 10882,
+        "wires": [
+            [
+                "daily_update_vpn_key_test_expired_out"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_tests_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_renewed_out",
+        "type": "link out",
+        "name": "→ política",
+        "mode": "link",
+        "links": [
+            "daily_update_vpn_key_test_in"
+        ],
+        "x": 940,
+        "y": 10942,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_tests_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_renewed",
+        "type": "inject",
+        "name": "TESTE 3: tudo renovado (remove avisos)",
+        "props": [
+            {
+                "p": "_ha_updates_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "monitor_now",
+                "v": "1767268800000",
+                "vt": "num"
+            },
+            {
+                "p": "vpn_key_report",
+                "v": "{\"checked_at\":\"2026-01-01T12:00:00.000Z\",\"entries\":[{\"scope\":\"host\",\"platform\":\"linux\",\"shared\":false,\"expires_at\":\"2026-06-30T12:00:00.000Z\"}]}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 900,
+        "y": 10882,
+        "wires": [
+            [
+                "daily_update_vpn_key_test_renewed_out"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_tests_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_reset",
+        "type": "inject",
+        "name": "RESET: somente estado de TESTE",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1230,
+        "y": 10882,
+        "wires": [
+            [
+                "daily_update_vpn_key_test_reset_apply"
+            ]
+        ],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_tests_group"
+    },
+    {
+        "id": "daily_update_vpn_key_test_reset_apply",
+        "type": "function",
+        "name": "Limpar estado de TESTE",
+        "func": "flow.set('vpn_key_expiry_notices_v1__test', undefined);node.status({fill:'grey',shape:'ring',text:'TESTE limpo'});return null;",
+        "outputs": 0,
+        "noerr": 0,
+        "timeout": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1460,
+        "y": 10882,
+        "wires": [],
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_vpn_key_tests_group"
     }
 ]

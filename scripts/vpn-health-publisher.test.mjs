@@ -58,3 +58,22 @@ test("cron installer exposes one bounded retained MQTT publisher", () => {
   assert.match(output, /vpn-health-publisher\.mjs --publish/);
   assert.equal(VPN_HEALTH_TOPIC, "nodered/infrastructure/vpn/host-health");
 });
+
+test("summarizes key expiry without names, addresses or users", () => {
+  const raw = JSON.stringify({
+    BackendState: "Running",
+    Self: { Online: true, HostName: "private-host", OS: "linux", KeyExpiry: "2027-03-04T00:16:18Z" },
+    Peer: {
+      a: { HostName: "private-phone", OS: "iOS", UserID: 7, KeyExpiry: "2027-05-26T22:10:51Z" },
+      b: { HostName: "private-shared", OS: "", ShareeNode: true, KeyExpiry: "2026-12-11T22:49:46Z" },
+      c: { HostName: "funnel-ingress-node" },
+    },
+  });
+  const report = collectVpnHealth({ run: () => ({ status: 0, stdout: raw }) });
+  assert.deepEqual(report.key_expiry, [
+    { scope: "device", platform: "other", shared: true, expires_at: "2026-12-11T22:49:46.000Z" },
+    { scope: "host", platform: "linux", shared: false, expires_at: "2027-03-04T00:16:18.000Z" },
+    { scope: "device", platform: "ios", shared: false, expires_at: "2027-05-26T22:10:51.000Z" },
+  ]);
+  assert.doesNotMatch(JSON.stringify(report), /private|funnel|UserID/);
+});

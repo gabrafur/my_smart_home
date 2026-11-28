@@ -70,7 +70,8 @@ assert.equal(node("daily_update_offsite_result_poll").repeat, "60");
 assert.equal(node("daily_update_offsite_result_startup").once, true);
 assert.deepEqual(
   flows.filter((entry) => entry.z === "daily_host_updates_tab" && entry.crontab).map((entry) => entry.id),
-  ["daily_update_inventory_apply_schedule"],
+  // The 09:00 VPN key check only notifies; it never applies an update.
+  ["daily_update_inventory_apply_schedule", "daily_update_vpn_key_daily"],
 );
 assert.equal(node("daily_update_inventory_apply_schedule").crontab, "00 03 * * *");
 assert.equal(node("daily_update_inventory_apply_schedule").props.find((item) => item.p === "_update_apply_authorized").v, "true");

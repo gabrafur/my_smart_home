@@ -41,6 +41,37 @@ export function evaluateTailscaleStatus(raw, checkedAt = new Date().toISOString(
   };
 }
 
+const KEY_PLATFORMS = new Map([
+  ["ios", "ios"], ["android", "android"], ["windows", "windows"],
+  ["macos", "macos"], ["linux", "linux"],
+]);
+
+// Node keys expire (180 days by default) and the device is silently logged
+// out. Only scope, platform, sharing and the expiry instant leave the host:
+// never names, addresses, users or tags.
+export function summarizeKeyExpiry(raw) {
+  let status;
+  try {
+    status = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return [];
+  }
+  const entry = (node, scope) => {
+    const expiresAt = Date.parse(node?.KeyExpiry ?? "");
+    if (!Number.isFinite(expiresAt)) return null;
+    return {
+      scope,
+      platform: KEY_PLATFORMS.get(String(node.OS ?? "").toLowerCase()) ?? "other",
+      shared: node.ShareeNode === true,
+      expires_at: new Date(expiresAt).toISOString(),
+    };
+  };
+  return [
+    entry(status?.Self, "host"),
+    ...Object.values(status?.Peer ?? {}).map((peer) => entry(peer, "device")),
+  ].filter(Boolean).sort((a, b) => a.expires_at.localeCompare(b.expires_at));
+}
+
 export function collectVpnHealth({
   tailscaleBin = process.env.VPN_HEALTH_TAILSCALE_BIN || "tailscale",
   now = new Date(),
@@ -53,10 +84,12 @@ export function collectVpnHealth({
     windowsHide: true,
   });
   const vpns = [];
+  let keyExpiry = [];
 
   if (result?.error?.code !== "ENOENT") {
     if (result?.status === 0) {
       vpns.push(evaluateTailscaleStatus(result.stdout, checkedAt));
+      keyExpiry = summarizeKeyExpiry(result.stdout);
     } else {
       vpns.push({
         role: "vpn_primary",
@@ -77,6 +110,7 @@ export function collectVpnHealth({
     checked_at: checkedAt,
     supported_vpn_count: vpns.length,
     vpns,
+    key_expiry: keyExpiry,
   };
 }
 

@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { reconcileGeneratedFlows } from "./reconcile-generated-flows.mjs";
 import { installCoordinatorFirmwareFlow } from "./install-coordinator-firmware-flow.mjs";
+import { installVpnKeyExpiryFlow } from "./install-vpn-key-expiry-flow.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -2448,6 +2449,7 @@ for (const node of nodes) {
 }
 
 installCoordinatorFirmwareFlow(nodes, flows);
+installVpnKeyExpiryFlow(nodes, flows);
 
 const replacements = new Map(nodes.map((node) => [node.id, node]));
 // Preserve approved named routes when they still lead to the generated target.
