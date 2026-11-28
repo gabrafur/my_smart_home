@@ -70,8 +70,9 @@ do Tailscale**, gerada por `nodered/tools/install-vpn-key-expiry-flow.mjs`
 - o parâmetro visual avisa a 14, 7, 3, 1 e 0 dias (`notify_days`) e ignora
   relatório com mais de 48 h (`report_max_age_hours`); a saúde do relatório
   continua com este tab `monitoramento_vpn`;
-- cada chave abre um aviso persistente e um push nos dois celulares uma vez por
-  faixa, pelo monitor global;
+- cada chave abre um aviso persistente e um push no celular principal uma vez
+  por faixa, pelo monitor global (alertas técnicos não vão ao celular
+  secundário);
 - chave renovada, com vencimento desativado ou fora da janela remove o aviso
   persistente, sem push;
 - o texto diz qual aparelho (Raspberry Pi, plataforma ou compartilhado), a
